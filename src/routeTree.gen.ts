@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
+import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -51,6 +52,11 @@ const AppExploreRoute = AppExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUUsernameRoute = AppUUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/u/$username': typeof AppUUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/u/$username': typeof AppUUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,12 +85,27 @@ export interface FileRoutesById {
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
+  '/_app/u/$username': typeof AppUUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/explore' | '/feed' | '/leaderboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/explore'
+    | '/feed'
+    | '/leaderboard'
+    | '/u/$username'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/explore' | '/feed' | '/leaderboard'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/explore'
+    | '/feed'
+    | '/leaderboard'
+    | '/u/$username'
   id:
     | '__root__'
     | '/'
@@ -92,6 +115,7 @@ export interface FileRouteTypes {
     | '/_app/explore'
     | '/_app/feed'
     | '/_app/leaderboard'
+    | '/_app/u/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExploreRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/u/$username': {
+      id: '/_app/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof AppUUsernameRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -159,12 +190,14 @@ interface AppRouteChildren {
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
+  AppUUsernameRoute: typeof AppUUsernameRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
+  AppUUsernameRoute: AppUUsernameRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
