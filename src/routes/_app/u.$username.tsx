@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,8 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
+import { fetchUserBadges } from "@/lib/badges";
+import { BadgeRow } from "@/components/BadgeChip";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar } from "lucide-react";
+import { Sparkles, Calendar, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/u/$username")({
@@ -20,6 +22,7 @@ function ProfilePage() {
   const { username } = Route.useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -65,6 +68,12 @@ function ProfilePage() {
   const posts = useQuery({
     queryKey: ["user-posts", profile?.id],
     queryFn: () => fetchUserPosts(profile!.id),
+    enabled: !!profile,
+  });
+
+  const badges = useQuery({
+    queryKey: ["badges", profile?.id],
+    queryFn: () => fetchUserBadges(profile!.id),
     enabled: !!profile,
   });
 
@@ -134,19 +143,30 @@ function ProfilePage() {
             <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
           </Link>
         ) : user ? (
-          <Button
-            size="sm"
-            onClick={() => followMut.mutate()}
-            disabled={followMut.isPending}
-            className={isFollowing ? "glass border border-white/10" : "bg-gradient-primary border-0 shadow-glow"}
-            variant={isFollowing ? "outline" : "default"}
-          >
-            {isFollowing ? "Following" : "Follow"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => followMut.mutate()}
+              disabled={followMut.isPending}
+              className={isFollowing ? "glass border border-white/10" : "bg-gradient-primary border-0 shadow-glow"}
+              variant={isFollowing ? "outline" : "default"}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </Button>
+            <Button size="sm" variant="outline" className="glass border-white/10" onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}>
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          </div>
         ) : null}
       </div>
 
       {profile.bio && <p className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">{profile.bio}</p>}
+
+      {badges.data && badges.data.length > 0 && (
+        <div className="px-1 md:px-2 mt-4">
+          <BadgeRow badges={badges.data} max={8} />
+        </div>
+      )}
 
       <div className="px-1 md:px-2 mt-4 flex items-center gap-5 text-sm">
         <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>

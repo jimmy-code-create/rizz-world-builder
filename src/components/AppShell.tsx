@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +15,9 @@ import {
 const tabs = [
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
+  { to: "/channels", label: "Rooms", icon: Hash },
+  { to: "/drops", label: "Drops", icon: Gift },
+  { to: "/dms", label: "DMs", icon: MessageCircle },
   { to: "/leaderboard", label: "Top", icon: Trophy },
 ] as const;
 
