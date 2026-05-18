@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
+import { StoriesStrip } from "@/components/StoriesStrip";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,6 +52,8 @@ function FeedPage() {
           </p>
         </div>
       </motion.div>
+
+      <StoriesStrip />
 
       <PostComposer />
 

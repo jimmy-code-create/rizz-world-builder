@@ -14,6 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          color: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+          rarity: Database["public"]["Enums"]["badge_rarity"]
+          slug: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          name: string
+          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          slug: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          slug?: string
+        }
+        Relationships: []
+      }
+      channel_members: {
+        Row: {
+          channel_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["channel_member_role"]
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["channel_member_role"]
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["channel_member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          icon_url: string | null
+          id: string
+          is_public: boolean
+          member_count: number
+          name: string
+          owner_id: string
+          slug: string
+          topic: string | null
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          is_public?: boolean
+          member_count?: number
+          name: string
+          owner_id: string
+          slug: string
+          topic?: string | null
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          is_public?: boolean
+          member_count?: number
+          name?: string
+          owner_id?: string
+          slug?: string
+          topic?: string | null
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          attachment_url: string | null
+          body: string
+          created_at: string
+          id: string
+          read: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          read?: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          read?: boolean
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drop_claims: {
+        Row: {
+          claimed_at: string
+          drop_id: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          drop_id: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          drop_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drop_claims_drop_id_fkey"
+            columns: ["drop_id"]
+            isOneToOne: false
+            referencedRelation: "drops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drop_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drops: {
+        Row: {
+          claim_count: number
+          claim_limit: number
+          created_at: string
+          creator_id: string
+          description: string | null
+          expires_at: string
+          id: string
+          media_url: string | null
+          title: string
+        }
+        Insert: {
+          claim_count?: number
+          claim_limit?: number
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          expires_at: string
+          id?: string
+          media_url?: string | null
+          title: string
+        }
+        Update: {
+          claim_count?: number
+          claim_limit?: number
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          expires_at?: string
+          id?: string
+          media_url?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drops_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string
@@ -43,6 +287,94 @@ export type Database = {
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          attachment_url: string | null
+          author_id: string
+          body: string
+          channel_id: string
+          created_at: string
+          id: string
+          reply_to: string | null
+        }
+        Insert: {
+          attachment_url?: string | null
+          author_id: string
+          body: string
+          channel_id: string
+          created_at?: string
+          id?: string
+          reply_to?: string | null
+        }
+        Update: {
+          attachment_url?: string | null
+          author_id?: string
+          body?: string
+          channel_id?: string
+          created_at?: string
+          id?: string
+          reply_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -293,6 +625,113 @@ export type Database = {
         }
         Relationships: []
       }
+      stories: {
+        Row: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          media_type: string
+          media_url: string
+          view_count: number
+        }
+        Insert: {
+          author_id: string
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url: string
+          view_count?: number
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_views: {
+        Row: {
+          story_id: string
+          viewed_at: string
+          viewer_id: string
+        }
+        Insert: {
+          story_id: string
+          viewed_at?: string
+          viewer_id: string
+        }
+        Update: {
+          story_id?: string
+          viewed_at?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          awarded_at: string
+          badge_id: string
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          badge_id: string
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          badge_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -329,6 +768,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
+      channel_member_role: "owner" | "mod" | "member"
+      channel_type: "text" | "announcement" | "drops"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -457,6 +899,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
+      channel_member_role: ["owner", "mod", "member"],
+      channel_type: ["text", "announcement", "drops"],
     },
   },
 } as const

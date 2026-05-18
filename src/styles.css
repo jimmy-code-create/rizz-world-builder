@@ -214,3 +214,12 @@
   50% { transform: rotate(180deg) scale(1.15); }
   100% { transform: rotate(360deg) scale(1); }
 }
+
+/* Phase 3/4 helpers */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+@keyframes progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
