@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createPost } from "@/lib/posts";
 import { toast } from "sonner";
 
-export function PostComposer() {
+export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [caption, setCaption] = useState("");
@@ -28,6 +28,7 @@ export function PostComposer() {
       setPreviewUrl(null);
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
+      onPosted?.();
       toast.success("Posted to RIZZ ✨");
     },
     onError: (e: Error) => toast.error(e.message),
