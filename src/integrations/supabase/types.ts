@@ -16,34 +16,43 @@ export type Database = {
     Tables: {
       badges: {
         Row: {
+          animated: boolean
           color: string
           created_at: string
           description: string
+          glow_color: string
           icon: string
           id: string
           name: string
           rarity: Database["public"]["Enums"]["badge_rarity"]
           slug: string
+          tier: number
         }
         Insert: {
+          animated?: boolean
           color?: string
           created_at?: string
           description: string
+          glow_color?: string
           icon: string
           id?: string
           name: string
           rarity?: Database["public"]["Enums"]["badge_rarity"]
           slug: string
+          tier?: number
         }
         Update: {
+          animated?: boolean
           color?: string
           created_at?: string
           description?: string
+          glow_color?: string
           icon?: string
           id?: string
           name?: string
           rarity?: Database["public"]["Enums"]["badge_rarity"]
           slug?: string
+          tier?: number
         }
         Relationships: []
       }
@@ -586,6 +595,42 @@ export type Database = {
           },
         ]
       }
+      profile_effects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          preview_color: string
+          rarity: Database["public"]["Enums"]["badge_rarity"]
+          slug: string
+          type: Database["public"]["Enums"]["profile_effect_type"]
+          unlock_rizz: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          preview_color?: string
+          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          slug: string
+          type: Database["public"]["Enums"]["profile_effect_type"]
+          unlock_rizz?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          preview_color?: string
+          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          slug?: string
+          type?: Database["public"]["Enums"]["profile_effect_type"]
+          unlock_rizz?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           accent_color: string | null
@@ -595,7 +640,11 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          reduced_motion: boolean
           rizz_score: number
+          theme_mode: string
+          theme_preset: string
+          ui_density: string
           updated_at: string
           username: string
         }
@@ -607,7 +656,11 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          reduced_motion?: boolean
           rizz_score?: number
+          theme_mode?: string
+          theme_preset?: string
+          ui_density?: string
           updated_at?: string
           username: string
         }
@@ -619,7 +672,11 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          reduced_motion?: boolean
           rizz_score?: number
+          theme_mode?: string
+          theme_preset?: string
+          ui_density?: string
           updated_at?: string
           username?: string
         }
@@ -732,6 +789,35 @@ export type Database = {
           },
         ]
       }
+      user_profile_effects: {
+        Row: {
+          acquired_at: string
+          effect_id: string
+          equipped: boolean
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          effect_id: string
+          equipped?: boolean
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          effect_id?: string
+          equipped?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profile_effects_effect_id_fkey"
+            columns: ["effect_id"]
+            isOneToOne: false
+            referencedRelation: "profile_effects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -753,11 +839,89 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_participants: {
+        Row: {
+          hand_raised: boolean
+          joined_at: string
+          muted: boolean
+          role: Database["public"]["Enums"]["voice_role"]
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          hand_raised?: boolean
+          joined_at?: string
+          muted?: boolean
+          role?: Database["public"]["Enums"]["voice_role"]
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          hand_raised?: boolean
+          joined_at?: string
+          muted?: boolean
+          role?: Database["public"]["Enums"]["voice_role"]
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "voice_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_rooms: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          ended_at: string | null
+          host_id: string
+          id: string
+          is_live: boolean
+          listener_count: number
+          started_at: string
+          title: string
+          topic: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          is_live?: boolean
+          listener_count?: number
+          started_at?: string
+          title: string
+          topic?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          is_live?: boolean
+          listener_count?: number
+          started_at?: string
+          title?: string
+          topic?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      award_badge: {
+        Args: { _slug: string; _user: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -771,6 +935,8 @@ export type Database = {
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       channel_member_role: "owner" | "mod" | "member"
       channel_type: "text" | "announcement" | "drops"
+      profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
+      voice_role: "host" | "speaker" | "listener"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -902,6 +1068,8 @@ export const Constants = {
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       channel_member_role: ["owner", "mod", "member"],
       channel_type: ["text", "announcement", "drops"],
+      profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
+      voice_role: ["host", "speaker", "listener"],
     },
   },
 } as const

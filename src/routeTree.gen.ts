@@ -13,13 +13,18 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
+import { Route as AppEffectsRouteImport } from './routes/_app/effects'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppChannelsRouteImport } from './routes/_app/channels'
+import { Route as AppBadgesRouteImport } from './routes/_app/badges'
+import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
@@ -43,9 +48,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppVoiceRoute = AppVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
@@ -63,6 +78,11 @@ const AppExploreRoute = AppExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEffectsRoute = AppEffectsRouteImport.update({
+  id: '/effects',
+  path: '/effects',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDropsRoute = AppDropsRouteImport.update({
   id: '/drops',
   path: '/drops',
@@ -77,6 +97,16 @@ const AppChannelsRoute = AppChannelsRouteImport.update({
   id: '/channels',
   path: '/channels',
   getParentRoute: () => AppRoute,
+} as any)
+const AppBadgesRoute = AppBadgesRouteImport.update({
+  id: '/badges',
+  path: '/badges',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppVoiceRoute,
 } as any)
 const AppUUsernameRoute = AppUUsernameRouteImport.update({
   id: '/u/$username',
@@ -98,31 +128,41 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/badges': typeof AppBadgesRoute
   '/channels': typeof AppChannelsRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
+  '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/notifications': typeof AppNotificationsRoute
   '/settings': typeof AppSettingsRoute
+  '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/voice/$id': typeof AppVoiceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/badges': typeof AppBadgesRoute
   '/channels': typeof AppChannelsRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
+  '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/notifications': typeof AppNotificationsRoute
   '/settings': typeof AppSettingsRoute
+  '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/voice/$id': typeof AppVoiceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,16 +170,21 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_app/badges': typeof AppBadgesRoute
   '/_app/channels': typeof AppChannelsRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/drops': typeof AppDropsRoute
+  '/_app/effects': typeof AppEffectsRoute
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/voice': typeof AppVoiceRouteWithChildren
   '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/u/$username': typeof AppUUsernameRoute
+  '/_app/voice/$id': typeof AppVoiceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,47 +192,62 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/badges'
     | '/channels'
     | '/dms'
     | '/drops'
+    | '/effects'
     | '/explore'
     | '/feed'
     | '/leaderboard'
+    | '/notifications'
     | '/settings'
+    | '/voice'
     | '/c/$slug'
     | '/dm/$userId'
     | '/u/$username'
+    | '/voice/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/signup'
+    | '/badges'
     | '/channels'
     | '/dms'
     | '/drops'
+    | '/effects'
     | '/explore'
     | '/feed'
     | '/leaderboard'
+    | '/notifications'
     | '/settings'
+    | '/voice'
     | '/c/$slug'
     | '/dm/$userId'
     | '/u/$username'
+    | '/voice/$id'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
     | '/signup'
+    | '/_app/badges'
     | '/_app/channels'
     | '/_app/dms'
     | '/_app/drops'
+    | '/_app/effects'
     | '/_app/explore'
     | '/_app/feed'
     | '/_app/leaderboard'
+    | '/_app/notifications'
     | '/_app/settings'
+    | '/_app/voice'
     | '/_app/c/$slug'
     | '/_app/dm/$userId'
     | '/_app/u/$username'
+    | '/_app/voice/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -227,11 +287,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/voice': {
+      id: '/_app/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof AppVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings': {
       id: '/_app/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/leaderboard': {
@@ -255,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExploreRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/effects': {
+      id: '/_app/effects'
+      path: '/effects'
+      fullPath: '/effects'
+      preLoaderRoute: typeof AppEffectsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/drops': {
       id: '/_app/drops'
       path: '/drops'
@@ -275,6 +356,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/channels'
       preLoaderRoute: typeof AppChannelsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/badges': {
+      id: '/_app/badges'
+      path: '/badges'
+      fullPath: '/badges'
+      preLoaderRoute: typeof AppBadgesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/voice/$id': {
+      id: '/_app/voice/$id'
+      path: '/$id'
+      fullPath: '/voice/$id'
+      preLoaderRoute: typeof AppVoiceIdRouteImport
+      parentRoute: typeof AppVoiceRoute
     }
     '/_app/u/$username': {
       id: '/_app/u/$username'
@@ -300,27 +395,47 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppVoiceRouteChildren {
+  AppVoiceIdRoute: typeof AppVoiceIdRoute
+}
+
+const AppVoiceRouteChildren: AppVoiceRouteChildren = {
+  AppVoiceIdRoute: AppVoiceIdRoute,
+}
+
+const AppVoiceRouteWithChildren = AppVoiceRoute._addFileChildren(
+  AppVoiceRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppBadgesRoute: typeof AppBadgesRoute
   AppChannelsRoute: typeof AppChannelsRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDropsRoute: typeof AppDropsRoute
+  AppEffectsRoute: typeof AppEffectsRoute
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCSlugRoute: typeof AppCSlugRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBadgesRoute: AppBadgesRoute,
   AppChannelsRoute: AppChannelsRoute,
   AppDmsRoute: AppDmsRoute,
   AppDropsRoute: AppDropsRoute,
+  AppEffectsRoute: AppEffectsRoute,
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCSlugRoute: AppCSlugRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppUUsernameRoute: AppUUsernameRoute,
@@ -337,13 +452,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

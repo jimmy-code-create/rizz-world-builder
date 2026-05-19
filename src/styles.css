@@ -126,6 +126,76 @@
   /* RIZZ is dark-only — same tokens */
 }
 
+/* ============ THEME PRESETS ============ */
+[data-theme="midnight"] {
+  --background: oklch(0.10 0.04 260);
+  --primary: oklch(0.65 0.22 250);
+  --rizz-pink: oklch(0.65 0.22 250);
+  --rizz-violet: oklch(0.40 0.20 280);
+  --rizz-cyan: oklch(0.75 0.18 220);
+  --rizz-glow: oklch(0.65 0.22 250 / 0.55);
+  --accent: oklch(0.55 0.20 240);
+}
+[data-theme="sunset"] {
+  --background: oklch(0.14 0.05 35);
+  --primary: oklch(0.72 0.22 30);
+  --rizz-pink: oklch(0.72 0.22 30);
+  --rizz-violet: oklch(0.55 0.22 350);
+  --rizz-cyan: oklch(0.75 0.20 60);
+  --rizz-glow: oklch(0.72 0.22 30 / 0.55);
+  --accent: oklch(0.70 0.22 50);
+}
+[data-theme="cyber"] {
+  --background: oklch(0.10 0.05 160);
+  --primary: oklch(0.78 0.22 160);
+  --rizz-pink: oklch(0.78 0.22 160);
+  --rizz-violet: oklch(0.55 0.25 295);
+  --rizz-cyan: oklch(0.85 0.18 180);
+  --rizz-glow: oklch(0.78 0.22 160 / 0.55);
+  --accent: oklch(0.70 0.25 200);
+}
+[data-theme="mono"] {
+  --background: oklch(0.10 0 0);
+  --primary: oklch(0.95 0 0);
+  --rizz-pink: oklch(0.95 0 0);
+  --rizz-violet: oklch(0.50 0 0);
+  --rizz-cyan: oklch(0.80 0 0);
+  --rizz-glow: oklch(0.95 0 0 / 0.4);
+  --accent: oklch(0.65 0 0);
+  --primary-foreground: oklch(0.10 0 0);
+}
+[data-theme="pastel"] {
+  --background: oklch(0.18 0.04 320);
+  --primary: oklch(0.82 0.14 330);
+  --rizz-pink: oklch(0.82 0.14 330);
+  --rizz-violet: oklch(0.70 0.15 280);
+  --rizz-cyan: oklch(0.85 0.12 200);
+  --rizz-glow: oklch(0.82 0.14 330 / 0.5);
+  --accent: oklch(0.80 0.14 200);
+}
+
+[data-mode="light"] {
+  --background: oklch(0.98 0.01 320);
+  --foreground: oklch(0.15 0.03 295);
+  --card: oklch(1 0 0 / 0.7);
+  --muted: oklch(0.95 0.02 295);
+  --muted-foreground: oklch(0.45 0.04 295);
+  --border: oklch(0.15 0.03 295 / 0.1);
+  color-scheme: light;
+}
+
+[data-density="compact"] {
+  --radius: 0.75rem;
+}
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 @layer base {
   html {
     color-scheme: dark;
@@ -222,4 +292,86 @@
 @keyframes progress {
   from { width: 0%; }
   to { width: 100%; }
+}
+
+/* ============ PROFILE EFFECTS (Discord-style) ============ */
+@keyframes ring-rotate { to { transform: rotate(360deg); } }
+@keyframes ring-pulse {
+  0%,100% { box-shadow: 0 0 0 2px var(--ec, #ff2d92), 0 0 20px var(--ec, #ff2d92); }
+  50% { box-shadow: 0 0 0 3px var(--ec, #ff2d92), 0 0 40px var(--ec, #ff2d92); }
+}
+@keyframes hue-shift { to { filter: hue-rotate(360deg); } }
+@keyframes confetti-drift {
+  0% { transform: translateY(-10%) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(120%) rotate(720deg); opacity: 0; }
+}
+@keyframes snow-fall {
+  0% { transform: translateY(-10%); opacity: 0; }
+  20% { opacity: 0.9; }
+  100% { transform: translateY(110%); opacity: 0; }
+}
+@keyframes sparkle-twinkle {
+  0%,100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@keyframes name-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes glitch-rgb {
+  0%,100% { text-shadow: 2px 0 rgba(255,0,80,.7), -2px 0 rgba(0,200,255,.7); transform: translate(0); }
+  20% { text-shadow: -2px 0 rgba(255,0,80,.7), 2px 0 rgba(0,200,255,.7); transform: translate(-1px,1px); }
+  40% { transform: translate(1px,-1px); }
+}
+
+.fx-ring-neon { --ec: #ff2d92; border-radius: 9999px; box-shadow: 0 0 0 2px var(--ec), 0 0 20px var(--ec); animation: ring-pulse 2.4s ease-in-out infinite; }
+.fx-ring-aurora { --ec: #a855f7; }
+.fx-ring-aurora::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #ff2d92, #a855f7, #06b6d4, #22d3ee, #ec4899, #ff2d92);
+  filter: blur(6px); z-index: -1; animation: ring-rotate 4s linear infinite;
+}
+.fx-ring-fire::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #f97316, #facc15, #ef4444, #f97316);
+  filter: blur(8px); z-index: -1; animation: ring-rotate 2s linear infinite;
+}
+.fx-ring-holo::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #22d3ee, #a855f7, #ec4899, #facc15, #22d3ee);
+  filter: blur(6px); z-index: -1; animation: ring-rotate 6s linear infinite, hue-shift 8s linear infinite;
+}
+.fx-ring-sakura::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #fb7185, #fda4af, transparent 60%, #fb7185);
+  filter: blur(5px); z-index: -1; animation: ring-rotate 8s linear infinite;
+}
+.fx-ring-electric::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #facc15, transparent 10%, #06b6d4, transparent 30%, #facc15, transparent 60%, #ec4899);
+  filter: blur(3px) brightness(1.4); z-index: -1; animation: ring-rotate 1.5s linear infinite;
+}
+
+.np-gold {
+  background: linear-gradient(90deg, #f59e0b, #fde047, #f59e0b, #fbbf24, #f59e0b);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 3s linear infinite;
+}
+.np-vapor {
+  background: linear-gradient(90deg, #f472b6, #22d3ee, #a78bfa, #f472b6);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 4s linear infinite;
+}
+.np-mythic {
+  background: linear-gradient(90deg, #a855f7, #ec4899, #facc15, #22d3ee, #a855f7);
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 2.5s linear infinite;
+}
+.np-glitch { animation: glitch-rgb 1.6s steps(6) infinite; }
+
+/* Skeleton shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, oklch(0.20 0.04 295), oklch(0.28 0.05 295), oklch(0.20 0.04 295));
+  background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
 }
