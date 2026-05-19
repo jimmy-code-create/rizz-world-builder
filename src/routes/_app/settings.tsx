@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, Palette } from "lucide-react";
+import { THEME_PRESETS, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
