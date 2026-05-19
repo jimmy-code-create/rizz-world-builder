@@ -23,9 +23,11 @@ import { Route as AppEffectsRouteImport } from './routes/_app/effects'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppChannelsRouteImport } from './routes/_app/channels'
+import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
+import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
 
@@ -98,6 +100,11 @@ const AppChannelsRoute = AppChannelsRouteImport.update({
   path: '/channels',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBookmarksRoute = AppBookmarksRouteImport.update({
+  id: '/bookmarks',
+  path: '/bookmarks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBadgesRoute = AppBadgesRouteImport.update({
   id: '/badges',
   path: '/badges',
@@ -111,6 +118,11 @@ const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
 const AppUUsernameRoute = AppUUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTagTagRoute = AppTagTagRouteImport.update({
+  id: '/tag/$tag',
+  path: '/tag/$tag',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
@@ -129,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/badges': typeof AppBadgesRoute
+  '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
@@ -141,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
   '/dm/$userId': typeof AppDmUserIdRoute
+  '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
 }
@@ -149,6 +163,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/badges': typeof AppBadgesRoute
+  '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
@@ -161,6 +176,7 @@ export interface FileRoutesByTo {
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
   '/dm/$userId': typeof AppDmUserIdRoute
+  '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
 }
@@ -171,6 +187,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/badges': typeof AppBadgesRoute
+  '/_app/bookmarks': typeof AppBookmarksRoute
   '/_app/channels': typeof AppChannelsRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/drops': typeof AppDropsRoute
@@ -183,6 +200,7 @@ export interface FileRoutesById {
   '/_app/voice': typeof AppVoiceRouteWithChildren
   '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
+  '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/_app/voice/$id': typeof AppVoiceIdRoute
 }
@@ -193,6 +211,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/badges'
+    | '/bookmarks'
     | '/channels'
     | '/dms'
     | '/drops'
@@ -205,6 +224,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/c/$slug'
     | '/dm/$userId'
+    | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -213,6 +233,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/badges'
+    | '/bookmarks'
     | '/channels'
     | '/dms'
     | '/drops'
@@ -225,6 +246,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/c/$slug'
     | '/dm/$userId'
+    | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
   id:
@@ -234,6 +256,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/badges'
+    | '/_app/bookmarks'
     | '/_app/channels'
     | '/_app/dms'
     | '/_app/drops'
@@ -246,6 +269,7 @@ export interface FileRouteTypes {
     | '/_app/voice'
     | '/_app/c/$slug'
     | '/_app/dm/$userId'
+    | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/_app/voice/$id'
   fileRoutesById: FileRoutesById
@@ -357,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChannelsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bookmarks': {
+      id: '/_app/bookmarks'
+      path: '/bookmarks'
+      fullPath: '/bookmarks'
+      preLoaderRoute: typeof AppBookmarksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/badges': {
       id: '/_app/badges'
       path: '/badges'
@@ -376,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/u/$username'
       fullPath: '/u/$username'
       preLoaderRoute: typeof AppUUsernameRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tag/$tag': {
+      id: '/_app/tag/$tag'
+      path: '/tag/$tag'
+      fullPath: '/tag/$tag'
+      preLoaderRoute: typeof AppTagTagRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dm/$userId': {
@@ -409,6 +447,7 @@ const AppVoiceRouteWithChildren = AppVoiceRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
+  AppBookmarksRoute: typeof AppBookmarksRoute
   AppChannelsRoute: typeof AppChannelsRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDropsRoute: typeof AppDropsRoute
@@ -421,11 +460,13 @@ interface AppRouteChildren {
   AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCSlugRoute: typeof AppCSlugRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
+  AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppBadgesRoute: AppBadgesRoute,
+  AppBookmarksRoute: AppBookmarksRoute,
   AppChannelsRoute: AppChannelsRoute,
   AppDmsRoute: AppDmsRoute,
   AppDropsRoute: AppDropsRoute,
@@ -438,6 +479,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCSlugRoute: AppCSlugRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
+  AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
 }
 

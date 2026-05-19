@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
   toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
   type FeedPost,
 } from "@/lib/posts";
+import { toggleBookmark } from "@/lib/bookmarks";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
@@ -26,12 +28,13 @@ function timeAgo(iso: string) {
   return `${Math.floor(s / 86400)}d`;
 }
 
-export function PostCard({ post, liked: initialLiked }: { post: FeedPost; liked?: boolean }) {
+export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [showComments, setShowComments] = useState(false);
+  const [saved, setSaved] = useState(!!initialSaved);
 
   const reactions = useQuery({
     queryKey: ["reactions", post.id],
@@ -84,6 +87,18 @@ export function PostCard({ post, liked: initialLiked }: { post: FeedPost; liked?
   const accent = post.author?.accent_color || "var(--rizz-pink)";
   const initial = (post.author?.display_name || post.author?.username || "?").charAt(0).toUpperCase();
 
+  const bookmarkMut = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to save");
+      const was = saved;
+      setSaved(!was);
+      try { await toggleBookmark(post.id, user.id, was); }
+      catch (e) { setSaved(was); throw e; }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["bookmarks"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <motion.article
       layout
@@ -107,7 +122,15 @@ export function PostCard({ post, liked: initialLiked }: { post: FeedPost; liked?
       </header>
 
       {post.caption && (
-        <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+        <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
+          {renderCaptionWithTags(post.caption).map((p, i) =>
+            p.tag ? (
+              <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+            ) : (
+              <span key={i}>{p.text}</span>
+            )
+          )}
+        </p>
       )}
 
       {post.media_url && (
@@ -181,6 +204,15 @@ export function PostCard({ post, liked: initialLiked }: { post: FeedPost; liked?
           </PopoverContent>
         </Popover>
         <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => bookmarkMut.mutate()}
+          className={saved ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}
+          aria-label="Save post"
+        >
+          <Bookmark className={`h-5 w-5 ${saved ? "fill-current" : ""}`} />
+        </Button>
         <Button
           variant="ghost"
           size="sm"

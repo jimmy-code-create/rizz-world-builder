@@ -56,6 +56,35 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -300,6 +329,24 @@ export type Database = {
           },
         ]
       }
+      hashtags: {
+        Row: {
+          created_at: string
+          post_count: number
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          post_count?: number
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          post_count?: number
+          tag?: string
+        }
+        Relationships: []
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -476,6 +523,39 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_hashtags: {
+        Row: {
+          created_at: string
+          post_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_hashtags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_hashtags_tag_fkey"
+            columns: ["tag"]
+            isOneToOne: false
+            referencedRelation: "hashtags"
+            referencedColumns: ["tag"]
           },
         ]
       }
