@@ -49,6 +49,13 @@ export async function acquireEffect(userId: string, effectId: string) {
   if (error && !error.message.includes("duplicate")) throw error;
 }
 
+export function isTrialActive(profile: { trial_active?: boolean | null; trial_ends_at?: string | null } | null) {
+  if (!profile) return false;
+  if (!profile.trial_active) return false;
+  if (!profile.trial_ends_at) return true;
+  return new Date(profile.trial_ends_at).getTime() > Date.now();
+}
+
 export async function equipEffect(userId: string, effectId: string, type: ProfileEffectType) {
   // unequip current of this type
   const { data: current } = await supabase
