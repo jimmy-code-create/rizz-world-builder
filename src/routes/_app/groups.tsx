@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -87,12 +87,10 @@ function GroupsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {groups.data!.map((g) => (
-            <Link
+            <button
               key={g.id}
-              to="/groups/$id" as any
-              params={{ id: g.id } as any}
-              onClick={(e) => { e.preventDefault(); toast.info("Group room UI coming next"); }}
-              className="glass rounded-2xl p-4 border border-white/5 hover:border-[var(--rizz-pink)]/30 hover:shadow-glow transition-all flex items-center gap-3"
+              onClick={() => toast.info("Group room UI coming next")}
+              className="glass rounded-2xl p-4 border border-white/5 hover:border-[var(--rizz-pink)]/30 hover:shadow-glow transition-all flex items-center gap-3 text-left"
               style={{ ["--ec" as any]: g.accent_color ?? "#ff2d92" }}
             >
               <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center font-display font-bold text-lg shadow-glow shrink-0">
@@ -104,7 +102,7 @@ function GroupsPage() {
                 <p className="text-[10px] text-muted-foreground mt-1">{g.member_count} member{g.member_count === 1 ? "" : "s"}</p>
               </div>
               {g.is_voice_live && <span className="text-[10px] font-bold uppercase text-[var(--rizz-pink)] animate-pulse">● Live</span>}
-            </Link>
+            </button>
           ))}
         </div>
       )}

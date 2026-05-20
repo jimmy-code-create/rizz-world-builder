@@ -17,6 +17,7 @@ import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
+import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
 import { Route as AppEffectsRouteImport } from './routes/_app/effects'
@@ -68,6 +69,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGroupsRoute = AppGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFeedRoute = AppFeedRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
+  '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/settings': typeof AppSettingsRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
+  '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/settings': typeof AppSettingsRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_app/effects': typeof AppEffectsRoute
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
+  '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/effects'
     | '/explore'
     | '/feed'
+    | '/groups'
     | '/leaderboard'
     | '/notifications'
     | '/settings'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/effects'
     | '/explore'
     | '/feed'
+    | '/groups'
     | '/leaderboard'
     | '/notifications'
     | '/settings'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/_app/effects'
     | '/_app/explore'
     | '/_app/feed'
+    | '/_app/groups'
     | '/_app/leaderboard'
     | '/_app/notifications'
     | '/_app/settings'
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof AppLeaderboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups': {
+      id: '/_app/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AppGroupsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/feed': {
@@ -454,6 +473,7 @@ interface AppRouteChildren {
   AppEffectsRoute: typeof AppEffectsRoute
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
+  AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -473,6 +493,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEffectsRoute: AppEffectsRoute,
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
+  AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSettingsRoute: AppSettingsRoute,
