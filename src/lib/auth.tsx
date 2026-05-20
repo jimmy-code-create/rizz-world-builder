@@ -15,6 +15,8 @@ type Profile = {
   theme_mode: string | null;
   ui_density: string | null;
   reduced_motion: boolean | null;
+  trial_active: boolean | null;
+  trial_ends_at: string | null;
 };
 
 type AuthCtx = {
@@ -37,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (uid: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, banner_url, bio, rizz_score, accent_color, theme_preset, theme_mode, ui_density, reduced_motion")
+      .select("id, username, display_name, avatar_url, banner_url, bio, rizz_score, accent_color, theme_preset, theme_mode, ui_density, reduced_motion, trial_active, trial_ends_at")
       .eq("id", uid)
       .maybeSingle();
     setProfile(data ?? null);
