@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Mic, Search, Palette } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,19 +20,20 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/channels", label: "Rooms", icon: Hash },
-  { to: "/voice", label: "Voice", icon: Mic },
-  { to: "/drops", label: "Drops", icon: Gift },
+  { to: "/groups", label: "Groups", icon: Users },
+  { to: "/channels", label: "Channels", icon: Hash },
+  { to: "/drops", label: "Giveaways", icon: Gift },
   { to: "/dms", label: "DMs", icon: MessageCircle },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/badges", label: "Badges", icon: Sparkles },
+  { to: "/effects", label: "Effects", icon: Sparkles },
+  { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Top", icon: Trophy },
 ] as const;
 
 const mobileTabs = [
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/channels", label: "Rooms", icon: Hash },
+  { to: "/groups", label: "Groups", icon: Users },
   { to: "/dms", label: "DMs", icon: MessageCircle },
 ] as const;
 

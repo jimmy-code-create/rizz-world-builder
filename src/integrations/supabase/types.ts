@@ -219,6 +219,27 @@ export type Database = {
           },
         ]
       }
+      dm_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       drop_claims: {
         Row: {
           claimed_at: string
@@ -262,7 +283,11 @@ export type Database = {
           expires_at: string
           id: string
           media_url: string | null
+          require_follow: boolean
           title: string
+          winner_count: number
+          winner_user_ids: string[]
+          winners_picked_at: string | null
         }
         Insert: {
           claim_count?: number
@@ -273,7 +298,11 @@ export type Database = {
           expires_at: string
           id?: string
           media_url?: string | null
+          require_follow?: boolean
           title: string
+          winner_count?: number
+          winner_user_ids?: string[]
+          winners_picked_at?: string | null
         }
         Update: {
           claim_count?: number
@@ -284,7 +313,11 @@ export type Database = {
           expires_at?: string
           id?: string
           media_url?: string | null
+          require_follow?: boolean
           title?: string
+          winner_count?: number
+          winner_user_ids?: string[]
+          winners_picked_at?: string | null
         }
         Relationships: [
           {
@@ -328,6 +361,156 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      group_invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          group_id: string
+          id: string
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          group_id: string
+          id?: string
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          group_id?: string
+          id?: string
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["group_member_role"]
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["group_member_role"]
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["group_member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_messages: {
+        Row: {
+          attachment_url: string | null
+          author_id: string
+          body: string
+          created_at: string
+          group_id: string
+          id: string
+          reply_to: string | null
+        }
+        Insert: {
+          attachment_url?: string | null
+          author_id: string
+          body: string
+          created_at?: string
+          group_id: string
+          id?: string
+          reply_to?: string | null
+        }
+        Update: {
+          attachment_url?: string | null
+          author_id?: string
+          body?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          reply_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          icon_url: string | null
+          id: string
+          is_voice_live: boolean
+          member_count: number
+          name: string
+          owner_id: string
+          slug: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          is_voice_live?: boolean
+          member_count?: number
+          name: string
+          owner_id: string
+          slug: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          is_voice_live?: boolean
+          member_count?: number
+          name?: string
+          owner_id?: string
+          slug?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       hashtags: {
         Row: {
@@ -724,6 +907,8 @@ export type Database = {
           rizz_score: number
           theme_mode: string
           theme_preset: string
+          trial_active: boolean
+          trial_ends_at: string
           ui_density: string
           updated_at: string
           username: string
@@ -740,6 +925,8 @@ export type Database = {
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
+          trial_active?: boolean
+          trial_ends_at?: string
           ui_density?: string
           updated_at?: string
           username: string
@@ -756,6 +943,8 @@ export type Database = {
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
+          trial_active?: boolean
+          trial_ends_at?: string
           ui_density?: string
           updated_at?: string
           username?: string
@@ -1009,12 +1198,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_group_member: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
+      pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       channel_member_role: "owner" | "mod" | "member"
       channel_type: "text" | "announcement" | "drops"
+      group_member_role: "owner" | "admin" | "member"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
       voice_role: "host" | "speaker" | "listener"
     }
@@ -1148,6 +1343,7 @@ export const Constants = {
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       channel_member_role: ["owner", "mod", "member"],
       channel_type: ["text", "announcement", "drops"],
+      group_member_role: ["owner", "admin", "member"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
       voice_role: ["host", "speaker", "listener"],
     },
