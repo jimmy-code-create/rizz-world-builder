@@ -2,16 +2,23 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth";
 import {
   toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
+  deletePost, reportPost,
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
@@ -19,6 +26,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
+const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
 
 function timeAgo(iso: string) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -99,6 +107,31 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+
+  const deleteMut = useMutation({
+    mutationFn: () => deletePost(post.id),
+    onSuccess: () => {
+      toast.success("Post deleted");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["user-posts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reportMut = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to report");
+      await reportPost({ postId: post.id, reporterId: user.id, reason: reportReason });
+    },
+    onSuccess: () => { toast.success("Report submitted — thanks"); setReportOpen(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const isMine = user?.id === post.author_id;
+  const postUrl = typeof window !== "undefined" ? `${window.location.origin}/u/${post.author?.username}` : "";
+
   return (
     <motion.article
       layout
@@ -119,6 +152,36 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           </Link>
           <p className="text-xs text-muted-foreground truncate">@{post.author?.username} · {timeAgo(post.created_at)}</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8" aria-label="More">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="glass-strong border-white/10">
+            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
+              <LinkIcon className="mr-2 h-4 w-4" /> Copy link
+            </DropdownMenuItem>
+            {isMine ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => { if (confirm("Delete this post?")) deleteMut.mutate(); }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete post
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive focus:text-destructive">
+                  <Flag className="mr-2 h-4 w-4" /> Report post
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {post.caption && (
@@ -229,6 +292,28 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       <AnimatePresence>
         {showComments && <CommentsThread postId={post.id} />}
       </AnimatePresence>
+
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="glass-strong border-white/10">
+          <DialogTitle className="font-display">Report this post</DialogTitle>
+          <DialogDescription>Tell us what's wrong. Our team will review.</DialogDescription>
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setReportReason(r)}
+                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/15" : "border-white/10 hover:bg-white/5"}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button onClick={() => reportMut.mutate()} disabled={reportMut.isPending} className="bg-gradient-primary border-0">Submit report</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.article>
   );
 }

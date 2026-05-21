@@ -146,3 +146,36 @@ export async function addComment(postId: string, userId: string, body: string) {
     .insert({ post_id: postId, author_id: userId, body });
   if (error) throw error;
 }
+
+export async function deletePost(postId: string) {
+  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  if (error) throw error;
+}
+
+export async function reportPost(input: {
+  postId: string;
+  reporterId: string;
+  reason: string;
+  details?: string;
+}) {
+  const { error } = await (supabase.from as any)("post_reports").insert({
+    post_id: input.postId,
+    reporter_id: input.reporterId,
+    reason: input.reason,
+    details: input.details ?? null,
+  });
+  if (error && !error.message.includes("duplicate")) throw error;
+}
+
+export async function fetchReels(limit = 30): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(
+      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
+    )
+    .eq("media_type", "video")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as FeedPost[];
+}

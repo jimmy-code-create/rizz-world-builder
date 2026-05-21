@@ -811,6 +811,33 @@ export type Database = {
           },
         ]
       }
+      post_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          post_id: string
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id: string
+          reason: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id?: string
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           author_id: string
