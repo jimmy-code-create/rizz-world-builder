@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
+  { to: "/reels", label: "Reels", icon: Film },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/channels", label: "Channels", icon: Hash },
@@ -32,8 +33,8 @@ const sideTabs = [
 
 const mobileTabs = [
   { to: "/feed", label: "Feed", icon: Home },
+  { to: "/reels", label: "Reels", icon: Film },
   { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/groups", label: "Groups", icon: Users },
   { to: "/dms", label: "DMs", icon: MessageCircle },
 ] as const;
 

@@ -12,6 +12,7 @@ import { BadgeRow } from "@/components/BadgeChip";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { FollowListDialog } from "@/components/social/FollowListDialog";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -26,6 +27,7 @@ function ProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -170,8 +172,12 @@ function ProfilePage() {
 
       <div className="px-1 md:px-2 mt-4 flex items-center gap-5 text-sm">
         <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
-        <div><span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span></div>
-        <div><span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span></div>
+        <button onClick={() => setListOpen("followers")} className="hover:underline">
+          <span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span>
+        </button>
+        <button onClick={() => setListOpen("following")} className="hover:underline">
+          <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
+        </button>
         <div className="ml-auto flex items-center gap-1.5 text-[var(--rizz-pink)] font-bold">
           <Sparkles className="h-4 w-4" />
           {profile.rizz_score} Rizz
@@ -191,6 +197,15 @@ function ProfilePage() {
           posts.data?.map((p) => <PostCard key={p.id} post={p} />)
         )}
       </div>
+
+      {listOpen && (
+        <FollowListDialog
+          open={!!listOpen}
+          onOpenChange={(v) => !v && setListOpen(null)}
+          userId={profile.id}
+          mode={listOpen}
+        />
+      )}
     </div>
   );
 }
