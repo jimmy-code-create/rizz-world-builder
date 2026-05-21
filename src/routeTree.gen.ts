@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
@@ -59,6 +60,11 @@ const AppVoiceRoute = AppVoiceRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReelsRoute = AppReelsRouteImport.update({
+  id: '/reels',
+  path: '/reels',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/reels': typeof AppReelsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
   '/_app/c/$slug': typeof AppCSlugRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/reels'
     | '/settings'
     | '/voice'
     | '/c/$slug'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/reels'
     | '/settings'
     | '/voice'
     | '/c/$slug'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/_app/groups'
     | '/_app/leaderboard'
     | '/_app/notifications'
+    | '/_app/reels'
     | '/_app/settings'
     | '/_app/voice'
     | '/_app/c/$slug'
@@ -335,6 +347,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reels': {
+      id: '/_app/reels'
+      path: '/reels'
+      fullPath: '/reels'
+      preLoaderRoute: typeof AppReelsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notifications': {
@@ -476,6 +495,7 @@ interface AppRouteChildren {
   AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppReelsRoute: typeof AppReelsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCSlugRoute: typeof AppCSlugRoute
@@ -496,6 +516,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppReelsRoute: AppReelsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCSlugRoute: AppCSlugRoute,

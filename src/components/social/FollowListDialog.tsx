@@ -30,25 +30,14 @@ export function FollowListDialog({
     (async () => {
       const col = mode === "followers" ? "follower_id" : "following_id";
       const filter = mode === "followers" ? "following_id" : "follower_id";
-      const { data } = await supabase
-        .from("follows")
-        .select(`${col}, p:profiles!follows_${col}_fkey(id, username, display_name, avatar_url)`)
-        .eq(filter, userId)
-        .limit(200);
-      const list = (data ?? [])
-        .map((r: any) => r.p)
-        .filter(Boolean) as Row[];
-      // fallback if FK alias not set up
-      if (list.length === 0 && (data ?? []).length > 0) {
-        const ids = (data ?? []).map((r: any) => r[col]);
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, username, display_name, avatar_url")
-          .in("id", ids);
-        setRows((profs ?? []) as Row[]);
-      } else {
-        setRows(list);
-      }
+      const { data } = await supabase.from("follows").select(col).eq(filter, userId).limit(500);
+      const ids = (data ?? []).map((r: any) => r[col]).filter(Boolean);
+      if (ids.length === 0) { setRows([]); setLoading(false); return; }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .in("id", ids);
+      setRows((profs ?? []) as Row[]);
       setLoading(false);
     })();
   }, [open, userId, mode]);
