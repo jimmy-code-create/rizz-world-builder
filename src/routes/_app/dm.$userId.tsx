@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,8 +25,25 @@ function DMPage() {
   const { userId } = Route.useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [body, setBody] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const [openMsg, setOpenMsg] = useState<string | null>(null);
+  const pressTimer = useRef<number | null>(null);
+
+  const startPress = (id: string) => {
+    if (pressTimer.current) window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(15);
+      setOpenMsg(id);
+    }, 400);
+  };
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
 
   const other = useQuery({
     queryKey: ["profile-id", userId],
@@ -71,7 +88,7 @@ function DMPage() {
   };
 
   const startCall = (video: boolean) => {
-    toast.success(`${video ? "Video" : "Voice"} call requested — ringing @${other.data?.username ?? "user"}…`);
+    nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
   const deleteMsg = async (id: string) => {
@@ -126,11 +143,17 @@ function DMPage() {
             const mine = m.sender_id === user?.id;
             return (
               <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}>
-                <Popover>
+                <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
                       className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm break-words text-left ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
-                      onContextMenu={(e) => e.preventDefault()}
+                      onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
+                      onTouchStart={() => startPress(m.id)}
+                      onTouchEnd={cancelPress}
+                      onTouchMove={cancelPress}
+                      onMouseDown={() => startPress(m.id)}
+                      onMouseUp={cancelPress}
+                      onMouseLeave={cancelPress}
                     >
                       {m.body}
                     </button>
@@ -138,14 +161,17 @@ function DMPage() {
                   <PopoverContent className="w-auto p-2 glass-strong border-white/10" side="top">
                     <div className="flex gap-1 mb-2">
                       {QUICK_EMOJIS.map((e) => (
-                        <button key={e} onClick={() => react(m.id, e)} className="h-9 w-9 rounded-lg hover:bg-white/10 text-lg transition-transform hover:scale-125">{e}</button>
+                        <button key={e} onClick={() => { react(m.id, e); setOpenMsg(null); }} className="h-9 w-9 rounded-lg hover:bg-white/10 text-lg transition-transform hover:scale-125">{e}</button>
                       ))}
                     </div>
                     <div className="flex flex-col text-xs">
-                      <button onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Copy text</button>
-                      <button onClick={() => setBody((b) => (b ? b + " " : "") + `> ${m.body}\n`)} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Reply</button>
+                      <button onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Copy text</button>
+                      <button onClick={() => { setBody((b) => (b ? b + " " : "") + `> ${m.body}\n`); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Reply</button>
+                      <button onClick={() => { startCall(false); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Voice call</button>
+                      <button onClick={() => { startCall(true); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Video call</button>
+                      <button onClick={() => { toast("Reported"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Report</button>
                       {mine && (
-                        <button onClick={() => deleteMsg(m.id)} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete</button>
+                        <button onClick={() => { deleteMsg(m.id); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete</button>
                       )}
                     </div>
                   </PopoverContent>

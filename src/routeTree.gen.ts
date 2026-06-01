@@ -31,6 +31,7 @@ import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
+import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
 
 const SignupRoute = SignupRouteImport.update({
@@ -142,6 +143,11 @@ const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
   path: '/dm/$userId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCallUserIdRoute = AppCallUserIdRouteImport.update({
+  id: '/call/$userId',
+  path: '/call/$userId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCSlugRoute = AppCSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
+  '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/c/$slug': typeof AppCSlugRoute
+  '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
   '/_app/c/$slug': typeof AppCSlugRoute
+  '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/c/$slug'
+    | '/call/$userId'
     | '/dm/$userId'
     | '/tag/$tag'
     | '/u/$username'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/c/$slug'
+    | '/call/$userId'
     | '/dm/$userId'
     | '/tag/$tag'
     | '/u/$username'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/voice'
     | '/_app/c/$slug'
+    | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
@@ -461,6 +473,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDmUserIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/call/$userId': {
+      id: '/_app/call/$userId'
+      path: '/call/$userId'
+      fullPath: '/call/$userId'
+      preLoaderRoute: typeof AppCallUserIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/c/$slug': {
       id: '/_app/c/$slug'
       path: '/c/$slug'
@@ -499,6 +518,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCSlugRoute: typeof AppCSlugRoute
+  AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
@@ -520,6 +540,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCSlugRoute: AppCSlugRoute,
+  AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
