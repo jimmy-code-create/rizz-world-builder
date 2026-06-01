@@ -1,11 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Music2 } from "lucide-react";
+import {
+  Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
+  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { fetchReels } from "@/lib/posts";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { fetchReels, createPost } from "@/lib/posts";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+
+const SONG_LIBRARY = [
+  { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
+  { id: "midnight", title: "Midnight Drive", artist: "Lunar Tape", bpm: 92, mood: "Chill" },
+  { id: "sakura", title: "Sakura Bloom", artist: "Yume", bpm: 105, mood: "Soft" },
+  { id: "phonk", title: "Phonk Phantom", artist: "ZVRR", bpm: 140, mood: "Drift" },
+  { id: "afro", title: "Lagos Sunset", artist: "Ade & Co", bpm: 115, mood: "Afro" },
+  { id: "lofi", title: "Study Cat", artist: "Boku", bpm: 80, mood: "Lo-fi" },
+  { id: "trap", title: "Diamond Drip", artist: "808 Saint", bpm: 145, mood: "Trap" },
+  { id: "hyper", title: "Hyperpop Crush", artist: "Glitch", bpm: 160, mood: "Hyper" },
+];
 
 export const Route = createFileRoute("/_app/reels")({
   head: () => ({ meta: [{ title: "Reels · RIZZ" }] }),
@@ -15,12 +35,31 @@ export const Route = createFileRoute("/_app/reels")({
 function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const [muted, setMuted] = useState(true);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
+      <button
+        onClick={() => setEditorOpen(true)}
+        className="fixed bottom-24 md:bottom-6 right-4 z-30 h-14 w-14 rounded-full bg-gradient-primary shadow-glow grid place-items-center active:scale-95 transition-transform"
+        aria-label="Upload reel"
+      >
+        <Plus className="h-7 w-7 text-white" />
+      </button>
+
+      <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+
       {reels.isLoading && <div className="h-full grid place-items-center text-muted-foreground">Loading reels…</div>}
       {reels.data?.length === 0 && (
-        <div className="h-full grid place-items-center text-muted-foreground">No reels yet — post a video to start the vibe.</div>
+        <div className="h-full grid place-items-center text-center px-8">
+          <div>
+            <div className="text-5xl mb-3">🎬</div>
+            <p className="text-muted-foreground mb-4">No reels yet — be the first to drop a vibe.</p>
+            <Button onClick={() => setEditorOpen(true)} className="bg-gradient-primary border-0 shadow-glow">
+              <Upload className="h-4 w-4 mr-2" /> Upload a reel
+            </Button>
+          </div>
+        </div>
       )}
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {reels.data?.map((r) => (
@@ -96,5 +135,213 @@ function ReelAction({ icon, label, onClick }: { icon: React.ReactNode; label: st
       <span className="h-11 w-11 rounded-full glass-strong grid place-items-center">{icon}</span>
       <span className="text-[11px] font-medium">{label}</span>
     </button>
+  );
+}
+
+function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [song, setSong] = useState<string | null>(null);
+  const [songQuery, setSongQuery] = useState("");
+  const [trim, setTrim] = useState<[number, number]>([0, 60]);
+  const [duration, setDuration] = useState(60);
+  const [overlay, setOverlay] = useState("");
+  const previewRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+
+  const pick = (f: File | null) => {
+    if (!f) return;
+    if (!f.type.startsWith("video/")) { toast.error("Pick a video file"); return; }
+    if (f.size > 50 * 1024 * 1024) { toast.error("Max 50MB"); return; }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setFile(f);
+    setPreviewUrl(URL.createObjectURL(f));
+  };
+
+  const reset = () => {
+    setFile(null); setCaption(""); setSong(null); setOverlay("");
+    setTrim([0, 60]); setDuration(60);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  };
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      if (!user || !file) throw new Error("Pick a video first");
+      const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
+      const songLine = songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
+      const overlayLine = overlay ? `\n${overlay}` : "";
+      const fullCaption = (caption + overlayLine + songLine).trim();
+      return createPost({ authorId: user.id, caption: fullCaption, file });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reels"] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      toast.success("Reel posted 🎬");
+      reset();
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const filteredSongs = SONG_LIBRARY.filter((s) =>
+    !songQuery || (s.title + s.artist + s.mood).toLowerCase().includes(songQuery.toLowerCase())
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="glass-strong border-white/10 max-w-3xl p-0 overflow-hidden max-h-[90dvh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+          <DialogTitle className="text-base font-black">Create reel</DialogTitle>
+          <DialogDescription className="sr-only">Upload a video, trim it, add a song and caption.</DialogDescription>
+          <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-full hover:bg-white/10"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0">
+          <div className="bg-black grid place-items-center min-h-[280px] md:min-h-[440px] relative">
+            {previewUrl ? (
+              <>
+                <video
+                  ref={previewRef}
+                  src={previewUrl}
+                  className="max-h-full max-w-full object-contain"
+                  controls
+                  onLoadedMetadata={(e) => {
+                    const d = Math.round((e.currentTarget.duration || 60));
+                    setDuration(d);
+                    setTrim([0, Math.min(d, 60)]);
+                  }}
+                />
+                {overlay && (
+                  <div className="absolute inset-x-4 top-4 text-center pointer-events-none">
+                    <span className="inline-block bg-black/60 text-white px-3 py-1 rounded-lg text-sm font-bold backdrop-blur">{overlay}</span>
+                  </div>
+                )}
+                {song && (
+                  <div className="absolute left-3 bottom-3 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur">
+                    <Music2 className="h-3 w-3" />
+                    {SONG_LIBRARY.find((s) => s.id === song)?.title}
+                  </div>
+                )}
+              </>
+            ) : (
+              <label className="cursor-pointer flex flex-col items-center gap-3 text-white/70 px-6 py-12 text-center">
+                <input type="file" accept="video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+                <div className="h-16 w-16 rounded-full bg-gradient-primary grid place-items-center shadow-glow">
+                  <Upload className="h-7 w-7 text-white" />
+                </div>
+                <p className="font-bold text-white">Tap to upload video</p>
+                <p className="text-xs">MP4, MOV · up to 50MB</p>
+              </label>
+            )}
+          </div>
+
+          <div className="p-4 overflow-y-auto">
+            <Tabs defaultValue="caption">
+              <TabsList className="w-full glass border border-white/10">
+                <TabsTrigger value="caption" className="flex-1"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption</TabsTrigger>
+                <TabsTrigger value="song" className="flex-1"><Music2 className="h-3.5 w-3.5 mr-1" /> Song</TabsTrigger>
+                <TabsTrigger value="trim" className="flex-1"><Scissors className="h-3.5 w-3.5 mr-1" /> Trim</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="caption" className="space-y-3 mt-4">
+                <Textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value.slice(0, 500))}
+                  placeholder="Describe your reel… use #hashtags and @mentions"
+                  className="glass border-white/10 min-h-[110px] resize-none"
+                />
+                <p className="text-xs text-muted-foreground text-right">{500 - caption.length} left</p>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sticker text</p>
+                  <Input
+                    value={overlay}
+                    onChange={(e) => setOverlay(e.target.value.slice(0, 60))}
+                    placeholder="POV: it's Friday"
+                    className="glass border-white/10"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="song" className="space-y-3 mt-4">
+                <Input
+                  value={songQuery}
+                  onChange={(e) => setSongQuery(e.target.value)}
+                  placeholder="Search songs, artists, moods…"
+                  className="glass border-white/10"
+                />
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                  <button
+                    onClick={() => setSong(null)}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
+                      song === null ? "bg-gradient-primary text-white shadow-glow" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-white/10 grid place-items-center"><Music2 className="h-4 w-4" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold">Original audio</p>
+                      <p className="text-xs opacity-70">Use the sound from your clip</p>
+                    </div>
+                    {song === null && <Check className="h-4 w-4" />}
+                  </button>
+                  {filteredSongs.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSong(s.id)}
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
+                        song === s.id ? "bg-gradient-primary text-white shadow-glow" : "hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="h-10 w-10 rounded-lg bg-[var(--rizz-pink)]/20 grid place-items-center text-base">🎵</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{s.title}</p>
+                        <p className="text-xs opacity-70 truncate">{s.artist} · {s.bpm} BPM · {s.mood}</p>
+                      </div>
+                      {song === s.id && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="trim" className="space-y-4 mt-4">
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="text-muted-foreground">Start</span>
+                    <span className="font-mono">{trim[0]}s → {trim[1]}s</span>
+                    <span className="text-muted-foreground">End</span>
+                  </div>
+                  <Slider
+                    value={trim}
+                    min={0}
+                    max={duration}
+                    step={1}
+                    onValueChange={(v) => setTrim([v[0], v[1]] as [number, number])}
+                  />
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Selected length: <span className="font-bold text-foreground">{trim[1] - trim[0]}s</span> · Source: {duration}s
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Trim is applied on playback — full clip is uploaded.</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-white/10 shrink-0">
+          <Button variant="ghost" onClick={reset} disabled={!file || mut.isPending}>Reset</Button>
+          <Button
+            onClick={() => mut.mutate()}
+            disabled={!file || mut.isPending}
+            className="bg-gradient-primary border-0 shadow-glow px-6"
+          >
+            {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
