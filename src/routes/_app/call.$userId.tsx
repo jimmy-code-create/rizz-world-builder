@@ -18,7 +18,7 @@ function CallPage() {
   const { video } = Route.useSearch();
   const nav = useNavigate();
   const [muted, setMuted] = useState(false);
-  const [cam, setCam] = useState(video);
+  const [cam, setCam] = useState<boolean>(!!video);
   const [speaker, setSpeaker] = useState(true);
   const [hand, setHand] = useState(false);
   const [seconds, setSeconds] = useState(0);
