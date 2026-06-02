@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PostComposer } from "@/components/PostComposer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { CommandPalette } from "@/components/CommandPalette";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -181,6 +182,7 @@ export function AppShell() {
           <PostComposer onPosted={() => setComposerOpen(false)} />
         </DialogContent>
       </Dialog>
+      <CommandPalette />
     </div>
   );
 }

@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Flame } from "lucide-react";
+import { Search, Flame, Hash, Clock, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
+import { fetchTrendingTags } from "@/lib/hashtags";
+
+const RECENT_KEY = "rizz:recent-search";
+function loadRecent(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+}
+function pushRecent(s: string) {
+  const list = [s, ...loadRecent().filter((x) => x !== s)].slice(0, 6);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+}
 
 export const Route = createFileRoute("/_app/explore")({
   head: () => ({ meta: [{ title: "Explore · RIZZ" }] }),
@@ -14,6 +24,13 @@ export const Route = createFileRoute("/_app/explore")({
 
 function ExplorePage() {
   const [q, setQ] = useState("");
+  const [recent, setRecent] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadRecent()));
+
+  useEffect(() => {
+    if (!q.trim()) return;
+    const id = window.setTimeout(() => { pushRecent(q.trim()); setRecent(loadRecent()); }, 800);
+    return () => window.clearTimeout(id);
+  }, [q]);
 
   const search = useQuery({
     queryKey: ["explore-search", q],
@@ -44,6 +61,8 @@ function ExplorePage() {
     },
   });
 
+  const trendingTags = useQuery({ queryKey: ["trending-tags"], queryFn: () => fetchTrendingTags(12) });
+
   return (
     <div>
       <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-display text-3xl font-bold tracking-tight mb-1">
@@ -56,10 +75,49 @@ function ExplorePage() {
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search creators…"
+          placeholder="Search creators, tags…  (⌘K)"
           className="pl-9 glass border-white/10 h-11"
         />
+        {q && (
+          <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear">
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
+
+      {!q && recent.length > 0 && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="flex items-center gap-1.5 font-display font-semibold text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" /> Recent
+            </h2>
+            <button onClick={() => { localStorage.removeItem(RECENT_KEY); setRecent([]); }} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recent.map((r) => (
+              <button key={r} onClick={() => setQ(r)} className="glass border border-white/10 rounded-full px-3 py-1 text-xs hover:border-[var(--rizz-pink)]/40 transition-colors">
+                {r}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {trendingTags.data && trendingTags.data.length > 0 && (
+        <section className="mb-8">
+          <h2 className="flex items-center gap-1.5 font-display font-semibold text-lg mb-3">
+            <Hash className="h-5 w-5 text-[var(--rizz-pink)]" /> Trending tags
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {trendingTags.data.map((t) => (
+              <Link key={t.tag} to="/tag/$tag" params={{ tag: t.tag }} className="glass border border-white/10 rounded-full px-3 py-1.5 text-sm hover:border-[var(--rizz-pink)]/40 transition-colors flex items-center gap-1.5">
+                <span className="font-medium">#{t.tag}</span>
+                <span className="text-[10px] text-muted-foreground">{t.post_count}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {trending.data && trending.data.length > 0 && (
         <section className="mb-8">
