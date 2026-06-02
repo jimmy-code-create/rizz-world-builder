@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Heart, MessageCircle, UserPlus, Sparkles } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Sparkles, CheckCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · RIZZ" }] }),
@@ -16,6 +19,7 @@ const ICON: Record<string, any> = { like: Heart, comment: MessageCircle, follow:
 function NotificationsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow">("all");
   const items = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -32,23 +36,56 @@ function NotificationsPage() {
 
   useEffect(() => {
     if (!user) return;
-    // Mark all as read on view
-    supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false).then();
     const ch = supabase.channel("notifs-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => qc.invalidateQueries({ queryKey: ["notifications"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
 
+  const markAll = async () => {
+    if (!user) return;
+    await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+    qc.invalidateQueries({ queryKey: ["unread-notifs"] });
+    toast.success("All caught up");
+  };
+
+  const filtered = useMemo(() => {
+    const list = items.data ?? [];
+    if (tab === "all") return list;
+    if (tab === "unread") return list.filter((n: any) => !n.read);
+    return list.filter((n: any) => n.type === tab || (tab === "like" && n.type === "reaction"));
+  }, [items.data, tab]);
+
+  const unreadCount = (items.data ?? []).filter((n: any) => !n.read).length;
+
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold tracking-tight mb-1 flex items-center gap-2">
-        <Bell className="h-7 w-7 text-[var(--rizz-pink)]" /> Notifications
-      </h1>
-      <p className="text-sm text-muted-foreground mb-6">All the buzz, in one place.</p>
+      <div className="flex items-end justify-between gap-3 mb-1">
+        <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Bell className="h-7 w-7 text-[var(--rizz-pink)]" /> Notifications
+          {unreadCount > 0 && <span className="text-xs font-bold bg-[var(--rizz-pink)] text-white px-2 py-0.5 rounded-full">{unreadCount}</span>}
+        </h1>
+        {unreadCount > 0 && (
+          <Button onClick={markAll} size="sm" variant="ghost" className="text-xs gap-1.5">
+            <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+          </Button>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">All the buzz, in one place.</p>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
+        <TabsList className="glass border border-white/5">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="unread">Unread</TabsTrigger>
+          <TabsTrigger value="like">Likes</TabsTrigger>
+          <TabsTrigger value="comment">Comments</TabsTrigger>
+          <TabsTrigger value="follow">Follows</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="space-y-2">
-        {items.data?.map((n: any) => {
+        {filtered.map((n: any) => {
           const Icon = ICON[n.type] ?? Bell;
           return (
             <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className={`glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3`}>
@@ -62,10 +99,10 @@ function NotificationsPage() {
         })}
       </div>
 
-      {items.data?.length === 0 && (
+      {filtered.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
           <Bell className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Nothing yet. Go drop a vibe.</p>
+          <p className="text-sm text-muted-foreground">{tab === "all" ? "Nothing yet. Go drop a vibe." : "Nothing here in this tab."}</p>
         </div>
       )}
     </div>
