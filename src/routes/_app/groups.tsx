@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_app/groups")({
 function GroupsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
   const [name, setName] = useState("");
@@ -33,10 +34,11 @@ function GroupsPage() {
   const handleCreate = async () => {
     if (!user || !name.trim()) return;
     try {
-      await createGroup({ owner_id: user.id, name: name.trim(), topic: topic.trim() || undefined });
+      const g = await createGroup({ owner_id: user.id, name: name.trim(), topic: topic.trim() || undefined });
       toast.success("Group created");
       setOpenCreate(false); setName(""); setTopic("");
       qc.invalidateQueries({ queryKey: ["my-groups"] });
+      nav({ to: "/g/$id", params: { id: g.id } });
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -44,10 +46,11 @@ function GroupsPage() {
     if (!user || !code.trim()) return;
     try {
       const c = code.trim().split("/").pop()!.replace(/[^a-z0-9]/gi, "");
-      await acceptInvite(c, user.id);
+      const g = await acceptInvite(c, user.id);
       toast.success("Joined the group ✨");
       setOpenJoin(false); setCode("");
       qc.invalidateQueries({ queryKey: ["my-groups"] });
+      if (g?.id) nav({ to: "/g/$id", params: { id: g.id } });
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -89,7 +92,7 @@ function GroupsPage() {
           {groups.data!.map((g) => (
             <button
               key={g.id}
-              onClick={() => toast.info("Group room UI coming next")}
+              onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
               className="glass rounded-2xl p-4 border border-white/5 hover:border-[var(--rizz-pink)]/30 hover:shadow-glow transition-all flex items-center gap-3 text-left"
               style={{ ["--ec" as any]: g.accent_color ?? "#ff2d92" }}
             >
