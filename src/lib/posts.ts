@@ -152,6 +152,14 @@ export async function deletePost(postId: string) {
   if (error) throw error;
 }
 
+export async function updatePostCaption(postId: string, caption: string) {
+  const { error } = await supabase
+    .from("posts")
+    .update({ caption: caption.trim() || null, updated_at: new Date().toISOString() })
+    .eq("id", postId);
+  if (error) throw error;
+}
+
 export async function reportPost(input: {
   postId: string;
   reporterId: string;
