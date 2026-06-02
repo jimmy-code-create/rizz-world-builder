@@ -30,6 +30,8 @@ import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
+import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
+import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
@@ -138,6 +140,16 @@ const AppTagTagRoute = AppTagTagRouteImport.update({
   path: '/tag/$tag',
   getParentRoute: () => AppRoute,
 } as any)
+const AppJoinCodeRoute = AppJoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGIdRoute = AppGIdRouteImport.update({
+  id: '/g/$id',
+  path: '/g/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
   id: '/dm/$userId',
   path: '/dm/$userId',
@@ -175,6 +187,8 @@ export interface FileRoutesByFullPath {
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
+  '/g/$id': typeof AppGIdRoute
+  '/join/$code': typeof AppJoinCodeRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -200,6 +214,8 @@ export interface FileRoutesByTo {
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
+  '/g/$id': typeof AppGIdRoute
+  '/join/$code': typeof AppJoinCodeRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -227,6 +243,8 @@ export interface FileRoutesById {
   '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
+  '/_app/g/$id': typeof AppGIdRoute
+  '/_app/join/$code': typeof AppJoinCodeRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/_app/voice/$id': typeof AppVoiceIdRoute
@@ -254,6 +272,8 @@ export interface FileRouteTypes {
     | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
+    | '/g/$id'
+    | '/join/$code'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -279,6 +299,8 @@ export interface FileRouteTypes {
     | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
+    | '/g/$id'
+    | '/join/$code'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -305,6 +327,8 @@ export interface FileRouteTypes {
     | '/_app/c/$slug'
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
+    | '/_app/g/$id'
+    | '/_app/join/$code'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/_app/voice/$id'
@@ -466,6 +490,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTagTagRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/join/$code': {
+      id: '/_app/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof AppJoinCodeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/g/$id': {
+      id: '/_app/g/$id'
+      path: '/g/$id'
+      fullPath: '/g/$id'
+      preLoaderRoute: typeof AppGIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dm/$userId': {
       id: '/_app/dm/$userId'
       path: '/dm/$userId'
@@ -520,6 +558,8 @@ interface AppRouteChildren {
   AppCSlugRoute: typeof AppCSlugRoute
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
+  AppGIdRoute: typeof AppGIdRoute
+  AppJoinCodeRoute: typeof AppJoinCodeRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
 }
@@ -542,6 +582,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppCSlugRoute: AppCSlugRoute,
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
+  AppGIdRoute: AppGIdRoute,
+  AppJoinCodeRoute: AppJoinCodeRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
 }
@@ -557,13 +599,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
