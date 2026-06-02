@@ -79,6 +79,14 @@ function DMPage() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
 
+  // Mark incoming messages as read when viewed
+  useEffect(() => {
+    if (!user || !msgs.data) return;
+    const unread = msgs.data.filter((m: any) => m.recipient_id === user.id && !m.read).map((m: any) => m.id);
+    if (unread.length === 0) return;
+    supabase.from("direct_messages").update({ read: true }).in("id", unread).then(() => {});
+  }, [user, msgs.data]);
+
   const send = async () => {
     if (!user || !body.trim()) return;
     const text = body.trim();
