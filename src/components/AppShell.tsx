@@ -17,6 +17,7 @@ import {
 import { PostComposer } from "@/components/PostComposer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CommandPalette } from "@/components/CommandPalette";
+import { AppOverlays } from "@/components/AppOverlays";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -183,6 +184,7 @@ export function AppShell() {
         </DialogContent>
       </Dialog>
       <CommandPalette />
+      <AppOverlays />
     </div>
   );
 }

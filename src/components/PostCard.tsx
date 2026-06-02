@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,11 @@ import {
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import {
   toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
-  deletePost, reportPost,
+  deletePost, reportPost, updatePostCaption,
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
@@ -109,6 +110,8 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [caption, setCaption] = useState(post.caption ?? "");
 
   const deleteMut = useMutation({
     mutationFn: () => deletePost(post.id),
@@ -129,8 +132,26 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const editMut = useMutation({
+    mutationFn: () => updatePostCaption(post.id, caption),
+    onSuccess: () => {
+      toast.success("Post updated");
+      setEditOpen(false);
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["user-posts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const isMine = user?.id === post.author_id;
   const postUrl = typeof window !== "undefined" ? `${window.location.origin}/u/${post.author?.username}` : "";
+  const sharePost = async () => {
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      try { await (navigator as any).share({ title: `@${post.author?.username} on RIZZ`, text: post.caption ?? "", url: postUrl }); return; } catch {}
+    }
+    navigator.clipboard.writeText(postUrl);
+    toast.success("Link copied");
+  };
 
   return (
     <motion.article
@@ -164,6 +185,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             </DropdownMenuItem>
             {isMine ? (
               <>
+                <DropdownMenuItem onClick={() => { setCaption(post.caption ?? ""); setEditOpen(true); }}>
+                  <Pencil className="mr-2 h-4 w-4" /> Edit caption
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => { if (confirm("Delete this post?")) deleteMut.mutate(); }}
@@ -279,10 +303,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.origin + "/u/" + post.author?.username);
-            toast.success("Profile link copied");
-          }}
+          onClick={sharePost}
           className="text-muted-foreground"
         >
           <Share2 className="h-5 w-5" />
@@ -311,6 +332,19 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <DialogFooter>
             <Button variant="ghost" onClick={() => setReportOpen(false)}>Cancel</Button>
             <Button onClick={() => reportMut.mutate()} disabled={reportMut.isPending} className="bg-gradient-primary border-0">Submit report</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="glass-strong border-white/10">
+          <DialogTitle className="font-display">Edit caption</DialogTitle>
+          <DialogDescription>Refine your post — the original media stays the same.</DialogDescription>
+          <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="bg-transparent border-white/10" />
+          <p className="text-[10px] text-muted-foreground text-right">{caption.length}/2000</p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={() => editMut.mutate()} disabled={editMut.isPending} className="bg-gradient-primary border-0">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
