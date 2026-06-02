@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -28,8 +28,14 @@ function DMPage() {
   const nav = useNavigate();
   const [body, setBody] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
   const pressTimer = useRef<number | null>(null);
+  const [online, setOnline] = useState(false);
+  const [peerTyping, setPeerTyping] = useState(false);
+  const [showJump, setShowJump] = useState(false);
+  const presenceCh = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingTimer = useRef<number | null>(null);
 
   const startPress = (id: string) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
@@ -77,7 +83,49 @@ function DMPage() {
     return () => { supabase.removeChannel(ch); };
   }, [user, userId, qc]);
 
+  // Presence + typing channel (deterministic key: sorted pair)
+  useEffect(() => {
+    if (!user) return;
+    const key = [user.id, userId].sort().join(":");
+    const ch = supabase.channel(`dm-presence-${key}`, { config: { presence: { key: user.id } } });
+    presenceCh.current = ch;
+    ch.on("presence", { event: "sync" }, () => {
+      const state = ch.presenceState() as Record<string, unknown[]>;
+      setOnline(Boolean(state[userId]?.length));
+    });
+    ch.on("broadcast", { event: "typing" }, ({ payload }: any) => {
+      if (payload?.user_id !== userId) return;
+      setPeerTyping(true);
+      if (typingTimer.current) window.clearTimeout(typingTimer.current);
+      typingTimer.current = window.setTimeout(() => setPeerTyping(false), 2500);
+    });
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") await ch.track({ at: Date.now() });
+    });
+    return () => {
+      if (typingTimer.current) window.clearTimeout(typingTimer.current);
+      supabase.removeChannel(ch);
+      presenceCh.current = null;
+    };
+  }, [user, userId]);
+
+  const broadcastTyping = () => {
+    presenceCh.current?.send({ type: "broadcast", event: "typing", payload: { user_id: user?.id } });
+  };
+
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+
+  // Show jump button when not at the bottom
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const near = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+      setShowJump(!near);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Mark incoming messages as read when viewed
   useEffect(() => {
@@ -121,8 +169,11 @@ function DMPage() {
         </Avatar>
         </Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="flex-1 min-w-0">
-          <p className="font-bold truncate">{other.data?.display_name || other.data?.username}</p>
-          <p className="text-xs text-muted-foreground truncate">@{other.data?.username}</p>
+          <p className="font-bold truncate flex items-center gap-1.5">
+            {other.data?.display_name || other.data?.username}
+            {online && <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{peerTyping ? "typing…" : online ? "Active now" : `@${other.data?.username}`}</p>
         </Link>
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
@@ -139,13 +190,14 @@ function DMPage() {
               <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>View profile</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast("User muted")}>Mute conversation</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast("User blocked")} className="text-destructive focus:text-destructive">Block user</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
 
-      <div className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
+      <div ref={scrollRef} className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
         <AnimatePresence initial={false}>
           {msgs.data?.map((m) => {
             const mine = m.sender_id === user?.id;
@@ -189,7 +241,28 @@ function DMPage() {
           })}
         </AnimatePresence>
         <div ref={endRef} />
+        {peerTyping && (
+          <div className="flex items-end gap-1 justify-start">
+            <div className="glass border border-white/10 px-3 py-2 rounded-2xl">
+              <span className="inline-flex gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:120ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:240ms]" />
+              </span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {showJump && (
+        <button
+          onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}
+          className="fixed bottom-36 md:bottom-20 right-4 z-30 h-10 w-10 rounded-full glass-strong border border-white/10 grid place-items-center shadow-glow active:scale-95"
+          aria-label="Scroll to latest"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
 
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
         <div className="max-w-3xl mx-auto flex gap-2">
@@ -205,7 +278,14 @@ function DMPage() {
               </div>
             </PopoverContent>
           </Popover>
-          <Input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Message…" maxLength={1000} className="glass border-white/10" />
+          <Input
+            value={body}
+            onChange={(e) => { setBody(e.target.value); broadcastTyping(); }}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Message…"
+            maxLength={1000}
+            className="glass border-white/10"
+          />
           <Button onClick={send} disabled={!body.trim()} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
