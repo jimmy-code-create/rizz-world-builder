@@ -10,9 +10,10 @@ import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, MessageCircle } from "lucide-react";
+import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star } from "lucide-react";
 import { toast } from "sonner";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -79,6 +80,86 @@ function ProfilePage() {
     enabled: !!profile,
   });
 
+  const reelsQ = useQuery({
+    queryKey: ["user-reels", profile?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("author_id", profile!.id)
+        .eq("media_type", "video")
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!profile,
+  });
+
+  const channelsQ = useQuery({
+    queryKey: ["user-channels", profile?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("channels")
+        .select("id,name,slug,topic,accent_color,member_count,icon_url")
+        .eq("owner_id", profile!.id)
+        .order("member_count", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!profile,
+  });
+
+  const groupsQ = useQuery({
+    queryKey: ["user-groups", profile?.id],
+    queryFn: async () => {
+      const { data: mem } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", profile!.id);
+      const ids = (mem ?? []).map((m) => m.group_id);
+      if (!ids.length) return [];
+      const { data } = await supabase
+        .from("groups")
+        .select("id,name,slug,topic,accent_color,member_count,icon_url")
+        .in("id", ids)
+        .order("member_count", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!profile,
+  });
+
+  const rizzBreakdown = useQuery({
+    queryKey: ["rizz-breakdown", profile?.id],
+    queryFn: async () => {
+      const uid = profile!.id;
+      const [{ count: likes }, { count: comments }, { count: reactions }, postsRes, { count: badgeCount }] = await Promise.all([
+        supabase.from("post_likes").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
+        supabase.from("post_comments").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
+        supabase.from("post_reactions").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
+        supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", uid),
+        supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", uid),
+      ]);
+      return {
+        likes: likes ?? 0,
+        comments: comments ?? 0,
+        reactions: reactions ?? 0,
+        postCount: postsRes.count ?? 0,
+        badges: badgeCount ?? 0,
+      };
+    },
+    enabled: !!profile,
+  });
+
+  const shareProfile = async () => {
+    const url = `${window.location.origin}/u/${profile!.username}`;
+    const shareData = { title: `@${profile!.username} on RIZZ`, text: profile!.bio || `Check out @${profile!.username} on RIZZ`, url };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Profile link copied");
+      }
+    } catch {}
+  };
+
   const followMut = useMutation({
     mutationFn: async () => {
       if (!user || !profile) return;
@@ -141,9 +222,14 @@ function ProfilePage() {
           <p className="text-sm text-muted-foreground">@{profile.username}</p>
         </div>
         {isMe ? (
-          <Link to="/settings">
-            <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="glass border-white/10" onClick={shareProfile}>
+              <Share2 className="h-4 w-4" />
+            </Button>
+            <Link to="/settings">
+              <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
+            </Link>
+          </div>
         ) : user ? (
           <div className="flex gap-2">
             <Button
@@ -157,6 +243,9 @@ function ProfilePage() {
             </Button>
             <Button size="sm" variant="outline" className="glass border-white/10" onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}>
               <MessageCircle className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" className="glass border-white/10" onClick={shareProfile}>
+              <Share2 className="h-4 w-4" />
             </Button>
           </div>
         ) : null}
@@ -188,15 +277,98 @@ function ProfilePage() {
         <Calendar className="h-3 w-3" /> Joined {joined}
       </div>
 
-      <div className="mt-8 border-t border-white/5 pt-6">
-        {posts.data?.length === 0 ? (
-          <div className="glass rounded-3xl p-10 text-center">
-            <p className="text-sm text-muted-foreground">No posts yet.</p>
-          </div>
-        ) : (
-          posts.data?.map((p) => <PostCard key={p.id} post={p} />)
-        )}
-      </div>
+      <Tabs defaultValue="posts" className="mt-8">
+        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-2xl p-1">
+          <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
+          <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
+          <TabsTrigger value="channels" className="gap-1.5"><Hash className="h-4 w-4" />Channels</TabsTrigger>
+          <TabsTrigger value="servers" className="gap-1.5"><Users className="h-4 w-4" />Servers</TabsTrigger>
+          <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="posts" className="mt-6 space-y-4">
+          {posts.isLoading ? (
+            <div className="h-40 animate-pulse rounded-3xl glass" />
+          ) : posts.data?.length === 0 ? (
+            <EmptyState label="No posts yet" />
+          ) : (
+            posts.data?.map((p) => <PostCard key={p.id} post={p} />)
+          )}
+        </TabsContent>
+
+        <TabsContent value="reels" className="mt-6">
+          {reelsQ.isLoading ? (
+            <div className="h-40 animate-pulse rounded-3xl glass" />
+          ) : reelsQ.data?.length === 0 ? (
+            <EmptyState label="No reels yet" />
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+              {reelsQ.data?.map((r) => (
+                <Link key={r.id} to="/reels" className="relative aspect-[9/16] rounded-xl overflow-hidden glass group">
+                  <video src={r.media_url ?? undefined} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                    <div className="text-xs flex items-center gap-1"><Heart className="h-3 w-3" />{r.like_count}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="channels" className="mt-6 space-y-2">
+          {channelsQ.isLoading ? (
+            <div className="h-24 animate-pulse rounded-3xl glass" />
+          ) : channelsQ.data?.length === 0 ? (
+            <EmptyState label="No channels owned" />
+          ) : (
+            channelsQ.data?.map((c) => (
+              <Link key={c.id} to="/c/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--rizz-violet))` }}>
+                    #
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{c.name}</div>
+                    {c.topic && <div className="text-xs text-muted-foreground truncate">{c.topic}</div>}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{c.member_count} members</div>
+                </div>
+              </Link>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="servers" className="mt-6 space-y-2">
+          {groupsQ.isLoading ? (
+            <div className="h-24 animate-pulse rounded-3xl glass" />
+          ) : groupsQ.data?.length === 0 ? (
+            <EmptyState label="Not in any servers yet" />
+          ) : (
+            groupsQ.data?.map((g) => (
+              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  {g.icon_url ? (
+                    <img src={g.icon_url} className="h-10 w-10 rounded-xl object-cover" alt="" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--rizz-violet))` }}>
+                      {g.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{g.name}</div>
+                    {g.topic && <div className="text-xs text-muted-foreground truncate">{g.topic}</div>}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{g.member_count}</div>
+                </div>
+              </Link>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="rizz" className="mt-6">
+          <RizzBreakdown score={profile.rizz_score} data={rizzBreakdown.data} loading={rizzBreakdown.isLoading} accent={accent} />
+        </TabsContent>
+      </Tabs>
 
       {listOpen && (
         <FollowListDialog
@@ -206,6 +378,53 @@ function ProfilePage() {
           mode={listOpen}
         />
       )}
+    </div>
+  );
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="glass rounded-3xl p-10 text-center">
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function RizzBreakdown({ score, data, loading, accent }: { score: number; data?: { likes: number; comments: number; reactions: number; postCount: number; badges: number }; loading: boolean; accent: string }) {
+  if (loading || !data) return <div className="h-40 animate-pulse rounded-3xl glass" />;
+  const rows = [
+    { icon: Heart, label: "Likes received", value: data.likes, pts: data.likes * 2, color: "var(--rizz-pink)" },
+    { icon: MessageSquare, label: "Comments received", value: data.comments, pts: data.comments * 3, color: "var(--rizz-violet)" },
+    { icon: Sparkles, label: "Reactions received", value: data.reactions, pts: data.reactions * 1, color: "var(--rizz-pink)" },
+    { icon: UserPlus, label: "Posts published", value: data.postCount, pts: data.postCount * 5, color: "var(--rizz-violet)" },
+    { icon: Star, label: "Badges earned", value: data.badges, pts: data.badges * 25, color: "var(--rizz-pink)" },
+  ];
+  const total = rows.reduce((a, r) => a + r.pts, 0) || 1;
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-3xl p-6 text-center" style={{ boxShadow: `0 0 40px ${accent}30` }}>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Rizz Score</div>
+        <div className="font-display text-5xl font-bold mt-2 flex items-center justify-center gap-2" style={{ color: accent }}>
+          <Sparkles className="h-8 w-8" />{score}
+        </div>
+      </div>
+      <div className="glass rounded-3xl p-5 space-y-3">
+        {rows.map((r) => {
+          const pct = Math.min(100, (r.pts / total) * 100);
+          const Icon = r.icon;
+          return (
+            <div key={r.label}>
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <div className="flex items-center gap-2"><Icon className="h-4 w-4" style={{ color: r.color }} /> {r.label}</div>
+                <div className="text-muted-foreground"><span className="font-semibold text-foreground">{r.value}</span> · +{r.pts}</div>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${r.color}, ${accent})` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
