@@ -173,6 +173,36 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     toast.success("Link copied");
   };
 
+  const doubleTapLike = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 280) {
+      if (!liked) likeMut.mutate();
+      setBurst((b) => b + 1);
+    }
+    lastTap.current = now;
+  };
+  const hideLocally = () => {
+    const s = readSet(HIDDEN_KEY); s.add(post.id); writeSet(HIDDEN_KEY, s);
+    setHidden(true); toast.success("Post hidden");
+  };
+  const muteAuthor = () => {
+    if (!post.author_id) return;
+    const s = readSet(MUTED_KEY); s.add(post.author_id); writeSet(MUTED_KEY, s);
+    setHidden(true); toast.success(`Muted @${post.author?.username}`);
+  };
+  const copyText = () => {
+    if (!post.caption) return toast.info("No caption to copy");
+    navigator.clipboard.writeText(post.caption); toast.success("Caption copied");
+  };
+  const downloadMedia = () => {
+    if (!post.media_url) return toast.info("No media to download");
+    const a = document.createElement("a");
+    a.href = post.media_url; a.target = "_blank"; a.rel = "noopener";
+    a.click(); toast.success("Opening media");
+  };
+
+  if (hidden) return null;
+
   return (
     <motion.article
       layout
