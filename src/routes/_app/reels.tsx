@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
-  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check,
+  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check, Captions, Gauge, Sparkles,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,9 @@ function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [captions, setCaptions] = useState(true);
+  const [filter, setFilter] = useState<string>("none");
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
@@ -48,6 +51,20 @@ function ReelsPage() {
       </button>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-xs">
+        <Gauge className="h-3.5 w-3.5 opacity-70" />
+        {[0.5, 1, 1.5, 2].map((s) => (
+          <button key={s} onClick={() => setSpeed(s)} className={`px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
+        ))}
+        <span className="w-px h-3 bg-white/10 mx-1" />
+        <button onClick={() => setCaptions((c) => !c)} className={`px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
+        <span className="w-px h-3 bg-white/10 mx-1" />
+        <Sparkles className="h-3.5 w-3.5 opacity-70" />
+        {(["none", "warm", "cool", "noir", "vivid"] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)} className={`px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
+        ))}
+      </div>
 
       {reels.isLoading && <div className="h-full grid place-items-center text-muted-foreground">Loading reels…</div>}
       {reels.data?.length === 0 && (
@@ -63,15 +80,24 @@ function ReelsPage() {
       )}
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {reels.data?.map((r) => (
-          <ReelItem key={r.id} post={r} muted={muted} toggleMute={() => setMuted((m) => !m)} />
+          <ReelItem key={r.id} post={r} muted={muted} toggleMute={() => setMuted((m) => !m)} speed={speed} captions={captions} filter={filter} />
         ))}
       </div>
     </div>
   );
 }
 
-function ReelItem({ post, muted, toggleMute }: { post: any; muted: boolean; toggleMute: () => void }) {
+const FILTER_CSS: Record<string, string> = {
+  none: "none",
+  warm: "saturate(1.15) hue-rotate(-10deg) brightness(1.05)",
+  cool: "saturate(1.05) hue-rotate(15deg) brightness(1.02) contrast(1.05)",
+  noir: "grayscale(1) contrast(1.15)",
+  vivid: "saturate(1.55) contrast(1.1)",
+};
+
+function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: any; muted: boolean; toggleMute: () => void; speed: number; captions: boolean; filter: string }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [progress, setProgress] = useState(0);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -85,6 +111,7 @@ function ReelItem({ post, muted, toggleMute }: { post: any; muted: boolean; togg
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
 
   const remix = () => toast.success("Remix template saved to your drafts ✨");
   const share = () => {
@@ -101,8 +128,16 @@ function ReelItem({ post, muted, toggleMute }: { post: any; muted: boolean; togg
         loop
         playsInline
         onClick={toggleMute}
-        className="h-full w-full object-contain"
+        onTimeUpdate={(e) => {
+          const v = e.currentTarget;
+          if (v.duration) setProgress((v.currentTime / v.duration) * 100);
+        }}
+        className="h-full w-full object-contain transition-[filter] duration-300"
+        style={{ filter: FILTER_CSS[filter] || "none" }}
       />
+      <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
+        <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
+      </div>
       <button onClick={toggleMute} className="absolute top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
@@ -114,7 +149,7 @@ function ReelItem({ post, muted, toggleMute }: { post: any; muted: boolean; togg
           </Avatar>
           <span className="font-bold text-sm">@{post.author?.username}</span>
         </Link>
-        {post.caption && <p className="text-sm line-clamp-3">{post.caption}</p>}
+        {captions && post.caption && <p className="text-sm line-clamp-3 bg-black/30 backdrop-blur-sm rounded-lg px-2 py-1 inline-block">{post.caption}</p>}
         <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
           <Music2 className="h-3.5 w-3.5" /> Original audio · @{post.author?.username}
         </div>
