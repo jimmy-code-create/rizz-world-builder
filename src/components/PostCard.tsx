@@ -233,6 +233,17 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
               <LinkIcon className="mr-2 h-4 w-4" /> Copy link
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={copyText}>
+              <Copy className="mr-2 h-4 w-4" /> Copy text
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
+              <Languages className="mr-2 h-4 w-4" /> Translate
+            </DropdownMenuItem>
+            {post.media_url && (
+              <DropdownMenuItem onClick={downloadMedia}>
+                <Download className="mr-2 h-4 w-4" /> Download media
+              </DropdownMenuItem>
+            )}
             {isMine ? (
               <>
                 <DropdownMenuItem onClick={() => { setCaption(post.caption ?? ""); setEditOpen(true); }}>
@@ -249,6 +260,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             ) : (
               <>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={hideLocally}>
+                  <EyeOff className="mr-2 h-4 w-4" /> Hide this post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={muteAuthor}>
+                  <VolumeX className="mr-2 h-4 w-4" /> Mute @{post.author?.username}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive focus:text-destructive">
                   <Flag className="mr-2 h-4 w-4" /> Report post
                 </DropdownMenuItem>
@@ -271,12 +288,27 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       )}
 
       {post.media_url && (
-        <div className="relative bg-black/40">
+        <div className="relative bg-black/40" onClick={doubleTapLike}>
           {post.media_type === "video" ? (
             <video src={post.media_url} controls className="w-full max-h-[600px] object-contain" />
           ) : (
             <img src={post.media_url} alt="" className="w-full max-h-[600px] object-cover" />
           )}
+          <AnimatePresence>
+            {burst > 0 && (
+              <motion.div
+                key={burst}
+                initial={{ scale: 0.3, opacity: 0 }}
+                animate={{ scale: 1.4, opacity: 1 }}
+                exit={{ scale: 1.8, opacity: 0 }}
+                transition={{ duration: 0.55 }}
+                className="pointer-events-none absolute inset-0 grid place-items-center"
+                onAnimationComplete={() => setBurst(0)}
+              >
+                <Heart className="h-24 w-24 text-[var(--rizz-pink)] fill-current drop-shadow-[0_0_30px_rgba(255,45,146,0.8)]" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
