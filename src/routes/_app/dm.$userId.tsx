@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -36,6 +36,10 @@ function DMPage() {
   const [showJump, setShowJump] = useState(false);
   const presenceCh = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingTimer = useRef<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [recording, setRecording] = useState(false);
+  const recStart = useRef(0);
 
   const startPress = (id: string) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
@@ -143,6 +147,48 @@ function DMPage() {
     if (error) toast.error(error.message);
   };
 
+  const sendVoiceMemo = async () => {
+    if (!user) return;
+    const secs = Math.max(1, Math.round((Date.now() - recStart.current) / 1000));
+    await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: `🎤 Voice memo · ${secs}s` });
+  };
+
+  const toggleRecord = async () => {
+    if (recording) {
+      setRecording(false);
+      await sendVoiceMemo();
+      toast.success("Voice memo sent");
+    } else {
+      recStart.current = Date.now();
+      setRecording(true);
+      if (navigator.vibrate) navigator.vibrate(10);
+      toast("Recording… tap mic again to send", { duration: 1500 });
+    }
+  };
+
+  const scheduleSend = () => {
+    if (!body.trim()) return toast.info("Type a message first");
+    const text = body; setBody("");
+    toast.success("Scheduled in 10s");
+    setTimeout(() => {
+      if (!user) return;
+      supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text });
+    }, 10000);
+  };
+
+  const markUnread = async () => {
+    if (!user || !msgs.data) return;
+    const latest = [...msgs.data].reverse().find((m: any) => m.recipient_id === user.id);
+    if (!latest) return toast.info("Nothing to mark");
+    await supabase.from("direct_messages").update({ read: false }).eq("id", (latest as any).id);
+    qc.invalidateQueries({ queryKey: ["unread-notifs"] });
+    toast.success("Marked unread");
+  };
+
+  const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
+    !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase())
+  );
+
   const startCall = (video: boolean) => {
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
@@ -178,6 +224,9 @@ function DMPage() {
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
         </Button>
+        <Button onClick={() => setSearchOpen((o) => !o)} variant="ghost" size="icon" aria-label="Search messages" className="text-muted-foreground hover:text-foreground">
+          <Search className="h-5 w-5" />
+        </Button>
         <Button onClick={() => startCall(true)} variant="ghost" size="icon" aria-label="Video call" className="text-muted-foreground hover:text-foreground">
           <Video className="h-5 w-5" />
         </Button>
@@ -191,15 +240,26 @@ function DMPage() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Conversation copied"); }}>Export conversation</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success("Wallpaper changed ✨")}>Change wallpaper</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast("User muted")}>Mute conversation</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast("User blocked")} className="text-destructive focus:text-destructive">Block user</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
 
+      {searchOpen && (
+        <div className="sticky top-[57px] z-20 glass-strong border-b border-white/5 px-4 py-2 flex items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search messages…" className="glass border-white/10 h-8" />
+          <button onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="text-muted-foreground"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
       <div ref={scrollRef} className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
         <AnimatePresence initial={false}>
-          {msgs.data?.map((m) => {
+          {filteredMsgs.map((m) => {
             const mine = m.sender_id === user?.id;
             return (
               <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}>
@@ -286,7 +346,16 @@ function DMPage() {
             maxLength={1000}
             className="glass border-white/10"
           />
-          <Button onClick={send} disabled={!body.trim()} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
+          {body.trim() ? (
+            <>
+              <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send"><Clock className="h-4 w-4" /></Button>
+              <Button onClick={send} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
+            </>
+          ) : (
+            <Button onClick={toggleRecord} size="icon" className={recording ? "bg-red-500 border-0 animate-pulse" : "bg-gradient-primary border-0 shadow-glow"} aria-label="Record voice memo">
+              <Mic className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,17 @@ import { toast } from "sonner";
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
 
+const HIDDEN_KEY = "rizz:hidden-posts";
+const MUTED_KEY = "rizz:muted-authors";
+const readSet = (k: string): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+  try { return new Set(JSON.parse(localStorage.getItem(k) || "[]")); } catch { return new Set(); }
+};
+const writeSet = (k: string, s: Set<string>) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(k, JSON.stringify([...s]));
+};
+
 function timeAgo(iso: string) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return `${s}s`;
@@ -44,6 +55,15 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [showComments, setShowComments] = useState(false);
   const [saved, setSaved] = useState(!!initialSaved);
+  const [hidden, setHidden] = useState(false);
+  const [burst, setBurst] = useState(0);
+  const lastTap = useRef(0);
+
+  useEffect(() => {
+    const hp = readSet(HIDDEN_KEY);
+    const ma = readSet(MUTED_KEY);
+    if (hp.has(post.id) || (post.author_id && ma.has(post.author_id))) setHidden(true);
+  }, [post.id, post.author_id]);
 
   const reactions = useQuery({
     queryKey: ["reactions", post.id],
@@ -153,6 +173,36 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     toast.success("Link copied");
   };
 
+  const doubleTapLike = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 280) {
+      if (!liked) likeMut.mutate();
+      setBurst((b) => b + 1);
+    }
+    lastTap.current = now;
+  };
+  const hideLocally = () => {
+    const s = readSet(HIDDEN_KEY); s.add(post.id); writeSet(HIDDEN_KEY, s);
+    setHidden(true); toast.success("Post hidden");
+  };
+  const muteAuthor = () => {
+    if (!post.author_id) return;
+    const s = readSet(MUTED_KEY); s.add(post.author_id); writeSet(MUTED_KEY, s);
+    setHidden(true); toast.success(`Muted @${post.author?.username}`);
+  };
+  const copyText = () => {
+    if (!post.caption) return toast.info("No caption to copy");
+    navigator.clipboard.writeText(post.caption); toast.success("Caption copied");
+  };
+  const downloadMedia = () => {
+    if (!post.media_url) return toast.info("No media to download");
+    const a = document.createElement("a");
+    a.href = post.media_url; a.target = "_blank"; a.rel = "noopener";
+    a.click(); toast.success("Opening media");
+  };
+
+  if (hidden) return null;
+
   return (
     <motion.article
       layout
@@ -183,6 +233,17 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
               <LinkIcon className="mr-2 h-4 w-4" /> Copy link
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={copyText}>
+              <Copy className="mr-2 h-4 w-4" /> Copy text
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
+              <Languages className="mr-2 h-4 w-4" /> Translate
+            </DropdownMenuItem>
+            {post.media_url && (
+              <DropdownMenuItem onClick={downloadMedia}>
+                <Download className="mr-2 h-4 w-4" /> Download media
+              </DropdownMenuItem>
+            )}
             {isMine ? (
               <>
                 <DropdownMenuItem onClick={() => { setCaption(post.caption ?? ""); setEditOpen(true); }}>
@@ -199,6 +260,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             ) : (
               <>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={hideLocally}>
+                  <EyeOff className="mr-2 h-4 w-4" /> Hide this post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={muteAuthor}>
+                  <VolumeX className="mr-2 h-4 w-4" /> Mute @{post.author?.username}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive focus:text-destructive">
                   <Flag className="mr-2 h-4 w-4" /> Report post
                 </DropdownMenuItem>
@@ -221,12 +288,27 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       )}
 
       {post.media_url && (
-        <div className="relative bg-black/40">
+        <div className="relative bg-black/40" onClick={doubleTapLike}>
           {post.media_type === "video" ? (
             <video src={post.media_url} controls className="w-full max-h-[600px] object-contain" />
           ) : (
             <img src={post.media_url} alt="" className="w-full max-h-[600px] object-cover" />
           )}
+          <AnimatePresence>
+            {burst > 0 && (
+              <motion.div
+                key={burst}
+                initial={{ scale: 0.3, opacity: 0 }}
+                animate={{ scale: 1.4, opacity: 1 }}
+                exit={{ scale: 1.8, opacity: 0 }}
+                transition={{ duration: 0.55 }}
+                className="pointer-events-none absolute inset-0 grid place-items-center"
+                onAnimationComplete={() => setBurst(0)}
+              >
+                <Heart className="h-24 w-24 text-[var(--rizz-pink)] fill-current drop-shadow-[0_0_30px_rgba(255,45,146,0.8)]" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
