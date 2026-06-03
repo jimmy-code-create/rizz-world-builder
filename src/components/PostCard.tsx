@@ -55,6 +55,15 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [showComments, setShowComments] = useState(false);
   const [saved, setSaved] = useState(!!initialSaved);
+  const [hidden, setHidden] = useState(false);
+  const [burst, setBurst] = useState(0);
+  const lastTap = useRef(0);
+
+  useEffect(() => {
+    const hp = readSet(HIDDEN_KEY);
+    const ma = readSet(MUTED_KEY);
+    if (hp.has(post.id) || (post.author_id && ma.has(post.author_id))) setHidden(true);
+  }, [post.id, post.author_id]);
 
   const reactions = useQuery({
     queryKey: ["reactions", post.id],
