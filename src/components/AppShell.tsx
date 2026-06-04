@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, FlaskConical } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ const sideTabs = [
   { to: "/effects", label: "Effects", icon: Sparkles },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Top", icon: Trophy },
+  { to: "/labs", label: "Labs", icon: FlaskConical },
 ] as const;
 
 const mobileTabs = [
