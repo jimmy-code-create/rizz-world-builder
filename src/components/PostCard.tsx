@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import {
   toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
-  deletePost, reportPost, updatePostCaption,
+  deletePost, reportPost, updatePostCaption, togglePinPost,
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
@@ -49,6 +49,7 @@ function timeAgo(iso: string) {
 }
 
 export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
+  const isPinned = (post as any).is_pinned === true;
   const { user } = useAuth();
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
@@ -163,6 +164,16 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const pinMut = useMutation({
+    mutationFn: () => togglePinPost(post.id, isPinned),
+    onSuccess: () => {
+      toast.success(isPinned ? "Unpinned" : "Pinned to top");
+      qc.invalidateQueries({ queryKey: ["user-posts"] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const isMine = user?.id === post.author_id;
   const postUrl = typeof window !== "undefined" ? `${window.location.origin}/u/${post.author?.username}` : "";
   const sharePost = async () => {
@@ -221,7 +232,14 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="font-semibold text-sm hover:underline block truncate">
             {post.author?.display_name || post.author?.username}
           </Link>
-          <p className="text-xs text-muted-foreground truncate">@{post.author?.username} · {timeAgo(post.created_at)}</p>
+          <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+            <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
+            {isPinned && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[var(--rizz-pink)] uppercase tracking-wider">
+                <Pin className="h-2.5 w-2.5 fill-current" /> Pinned
+              </span>
+            )}
+          </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -246,6 +264,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             )}
             {isMine ? (
               <>
+                <DropdownMenuItem onClick={() => pinMut.mutate()}>
+                  {isPinned ? <><PinOff className="mr-2 h-4 w-4" /> Unpin from profile</> : <><Pin className="mr-2 h-4 w-4" /> Pin to profile</>}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { setCaption(post.caption ?? ""); setEditOpen(true); }}>
                   <Pencil className="mr-2 h-4 w-4" /> Edit caption
                 </DropdownMenuItem>
@@ -277,13 +298,24 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
       {post.caption && (
         <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
-          {renderCaptionWithTags(post.caption).map((p, i) =>
-            p.tag ? (
-              <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
-            ) : (
-              <span key={i}>{p.text}</span>
-            )
-          )}
+          {renderCaptionWithTags(post.caption).map((p, i) => {
+            if (p.tag) {
+              return (
+                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+              );
+            }
+            if (p.mention) {
+              return (
+                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+              );
+            }
+            if (p.url) {
+              return (
+                <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+              );
+            }
+            return <span key={i}>{p.text}</span>;
+          })}
         </p>
       )}
 

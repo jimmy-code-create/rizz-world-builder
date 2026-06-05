@@ -1,0 +1,1 @@
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false; ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS pinned_at timestamptz; CREATE INDEX IF NOT EXISTS posts_author_pinned_idx ON public.posts(author_id, is_pinned DESC, pinned_at DESC NULLS LAST, created_at DESC);

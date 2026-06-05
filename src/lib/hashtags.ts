@@ -24,14 +24,19 @@ export async function fetchPostsByTag(tag: string, limit = 50): Promise<FeedPost
   return ((data ?? []) as any[]).map((r) => r.post).filter(Boolean) as FeedPost[];
 }
 
-export function renderCaptionWithTags(caption: string): { text: string; tag?: string }[] {
-  const parts: { text: string; tag?: string }[] = [];
-  const re = /#([a-zA-Z0-9_]{2,32})/g;
+export function renderCaptionWithTags(
+  caption: string
+): { text: string; tag?: string; mention?: string; url?: string }[] {
+  const parts: { text: string; tag?: string; mention?: string; url?: string }[] = [];
+  // Order matters: URLs first, then mentions, then hashtags
+  const re = /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]{2,32})|#([a-zA-Z0-9_]{2,32})/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(caption))) {
     if (m.index > last) parts.push({ text: caption.slice(last, m.index) });
-    parts.push({ text: m[0], tag: m[1].toLowerCase() });
+    if (m[1]) parts.push({ text: m[0], url: m[1] });
+    else if (m[2]) parts.push({ text: m[0], mention: m[2].toLowerCase() });
+    else if (m[3]) parts.push({ text: m[0], tag: m[3].toLowerCase() });
     last = m.index + m[0].length;
   }
   if (last < caption.length) parts.push({ text: caption.slice(last) });

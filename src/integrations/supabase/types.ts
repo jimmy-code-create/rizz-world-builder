@@ -845,9 +845,11 @@ export type Database = {
           comment_count: number
           created_at: string
           id: string
+          is_pinned: boolean
           like_count: number
           media_type: string | null
           media_url: string | null
+          pinned_at: string | null
           reaction_count: number
           updated_at: string
         }
@@ -857,9 +859,11 @@ export type Database = {
           comment_count?: number
           created_at?: string
           id?: string
+          is_pinned?: boolean
           like_count?: number
           media_type?: string | null
           media_url?: string | null
+          pinned_at?: string | null
           reaction_count?: number
           updated_at?: string
         }
@@ -869,9 +873,11 @@ export type Database = {
           comment_count?: number
           created_at?: string
           id?: string
+          is_pinned?: boolean
           like_count?: number
           media_type?: string | null
           media_url?: string | null
+          pinned_at?: string | null
           reaction_count?: number
           updated_at?: string
         }

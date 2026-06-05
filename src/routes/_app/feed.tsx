@@ -10,6 +10,8 @@ import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles } from "lucide-react";
+import { TrendingTagsRail } from "@/components/TrendingTagsRail";
+import { FollowSuggestions } from "@/components/FollowSuggestions";
 
 export const Route = createFileRoute("/_app/feed")({
   head: () => ({ meta: [{ title: "Feed · RIZZ" }] }),
@@ -57,6 +59,8 @@ function FeedPage() {
 
       <PostComposer />
 
+      <TrendingTagsRail />
+
       {feed.isLoading && (
         <div className="space-y-4">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-3xl" />)}
@@ -71,8 +75,11 @@ function FeedPage() {
         </div>
       )}
 
-      {feed.data?.map((p) => (
-        <PostCard key={p.id} post={p} liked={likes.data?.has(p.id)} />
+      {feed.data?.map((p, i) => (
+        <div key={p.id}>
+          <PostCard post={p} liked={likes.data?.has(p.id)} />
+          {i === 2 && <FollowSuggestions />}
+        </div>
       ))}
     </div>
   );
