@@ -37,6 +37,8 @@ export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
       "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
     )
     .eq("author_id", userId)
+    .order("is_pinned", { ascending: false })
+    .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as FeedPost[];
@@ -156,6 +158,14 @@ export async function updatePostCaption(postId: string, caption: string) {
   const { error } = await supabase
     .from("posts")
     .update({ caption: caption.trim() || null, updated_at: new Date().toISOString() })
+    .eq("id", postId);
+  if (error) throw error;
+}
+
+export async function togglePinPost(postId: string, isPinned: boolean) {
+  const { error } = await supabase
+    .from("posts")
+    .update({ is_pinned: !isPinned, pinned_at: !isPinned ? new Date().toISOString() : null } as any)
     .eq("id", postId);
   if (error) throw error;
 }
