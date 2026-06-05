@@ -18,6 +18,7 @@ import { PostComposer } from "@/components/PostComposer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CommandPalette } from "@/components/CommandPalette";
 import { AppOverlays } from "@/components/AppOverlays";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -50,6 +51,13 @@ export function AppShell() {
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
   }, [loading, user, nav]);
+
+  // Allow the keyboard shortcut "n" (and other places) to open the composer
+  useEffect(() => {
+    const open = () => setComposerOpen(true);
+    window.addEventListener("rizz:new-post", open);
+    return () => window.removeEventListener("rizz:new-post", open);
+  }, []);
 
   const unread = useQuery({
     queryKey: ["unread-notifs", user?.id],
@@ -186,6 +194,7 @@ export function AppShell() {
       </Dialog>
       <CommandPalette />
       <AppOverlays />
+      <KeyboardShortcuts profileUsername={profile?.username} />
     </div>
   );
 }
