@@ -10,6 +10,7 @@ export type FeedPost = {
   comment_count: number;
   reaction_count: number;
   created_at: string;
+  is_pinned?: boolean;
   author: {
     username: string;
     display_name: string | null;
@@ -34,7 +35,7 @@ export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
+      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, is_pinned, pinned_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
     )
     .eq("author_id", userId)
     .order("is_pinned", { ascending: false })

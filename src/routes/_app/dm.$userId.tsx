@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MessageReactions } from "@/components/DMReactionsBar";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
 
@@ -296,6 +297,7 @@ function DMPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
               </motion.div>
             );
           })}

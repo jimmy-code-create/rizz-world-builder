@@ -232,7 +232,14 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="font-semibold text-sm hover:underline block truncate">
             {post.author?.display_name || post.author?.username}
           </Link>
-          <p className="text-xs text-muted-foreground truncate">@{post.author?.username} · {timeAgo(post.created_at)}</p>
+          <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+            <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
+            {isPinned && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[var(--rizz-pink)] uppercase tracking-wider">
+                <Pin className="h-2.5 w-2.5 fill-current" /> Pinned
+              </span>
+            )}
+          </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -291,13 +298,24 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
       {post.caption && (
         <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
-          {renderCaptionWithTags(post.caption).map((p, i) =>
-            p.tag ? (
-              <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
-            ) : (
-              <span key={i}>{p.text}</span>
-            )
-          )}
+          {renderCaptionWithTags(post.caption).map((p, i) => {
+            if (p.tag) {
+              return (
+                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+              );
+            }
+            if (p.mention) {
+              return (
+                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+              );
+            }
+            if (p.url) {
+              return (
+                <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+              );
+            }
+            return <span key={i}>{p.text}</span>;
+          })}
         </p>
       )}
 
