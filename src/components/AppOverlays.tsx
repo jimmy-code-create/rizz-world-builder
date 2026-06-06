@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowUp, WifiOff, Wifi } from "lucide-react";
+import { ArrowUp, WifiOff, Wifi, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -31,6 +31,12 @@ export function AppOverlays() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [showTop, setShowTop] = useState(false);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [progress, setProgress] = useState(0);
+  const [installEvt, setInstallEvt] = useState<any>(null);
+  const [installDismissed, setInstallDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("rizz:install-dismissed") === "1";
+  });
 
   // Vim-style "g then x" navigation + ? help + . scroll-to-top
   useEffect(() => {
@@ -68,7 +74,12 @@ export function AppOverlays() {
 
   // Scroll-to-top button
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 600);
+    const onScroll = () => {
+      setShowTop(window.scrollY > 600);
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      setProgress(max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
@@ -83,8 +94,22 @@ export function AppOverlays() {
     return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
   }, []);
 
+  // PWA install prompt capture
+  useEffect(() => {
+    const onPrompt = (e: any) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener("beforeinstallprompt", onPrompt as any);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt as any);
+  }, []);
+
   return (
     <>
+      {/* Scroll progress bar */}
+      <div
+        className="fixed top-0 left-0 right-0 h-0.5 z-50 pointer-events-none bg-gradient-primary origin-left transition-transform duration-100"
+        style={{ transform: `scaleX(${progress / 100})` }}
+        aria-hidden
+      />
+
       <AnimatePresence>
         {!online && (
           <motion.div
@@ -94,6 +119,29 @@ export function AppOverlays() {
             className="fixed top-2 left-1/2 -translate-x-1/2 z-50 glass-strong border border-amber-500/30 rounded-full px-3 py-1.5 text-xs font-medium flex items-center gap-2 shadow-glow"
           >
             <WifiOff className="h-3.5 w-3.5 text-amber-400" /> You're offline
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {installEvt && !installDismissed && (
+          <motion.div
+            initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+            className="fixed bottom-24 md:bottom-6 right-4 z-40 glass-strong border border-white/10 rounded-2xl p-3 pr-2 shadow-glow flex items-center gap-3 max-w-xs"
+          >
+            <div className="h-9 w-9 rounded-xl bg-gradient-primary grid place-items-center"><Download className="h-4 w-4" /></div>
+            <div className="text-xs flex-1">
+              <p className="font-semibold">Install RIZZ</p>
+              <p className="text-muted-foreground">Get the app on your device.</p>
+            </div>
+            <button
+              onClick={async () => { await installEvt.prompt?.(); setInstallEvt(null); }}
+              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gradient-primary"
+            >Install</button>
+            <button
+              onClick={() => { setInstallDismissed(true); localStorage.setItem("rizz:install-dismissed","1"); }}
+              className="h-7 w-7 grid place-items-center rounded-full hover:bg-white/5" aria-label="Dismiss"
+            ><X className="h-3.5 w-3.5" /></button>
           </motion.div>
         )}
       </AnimatePresence>
