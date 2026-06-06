@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, X, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { StoryComposer } from "@/components/StoryComposer";
 
 type Story = {
   id: string;
@@ -21,8 +21,7 @@ export function StoriesStrip() {
   const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [viewing, setViewing] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -45,47 +44,22 @@ export function StoriesStrip() {
     }, new Map<string, Story[]>()).values()
   );
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("stories").upload(path, file);
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("stories").getPublicUrl(path);
-      const mediaType = file.type.startsWith("video") ? "video" : "image";
-      const { error: insErr } = await supabase.from("stories").insert({ author_id: user.id, media_url: pub.publicUrl, media_type: mediaType });
-      if (insErr) throw insErr;
-      toast.success("Story posted ✨");
-      await load();
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
-
   return (
     <>
       <div className="mb-5 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto scrollbar-hide">
         <div className="flex items-center gap-3">
           {/* Add story */}
           <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
+            onClick={() => setComposerOpen(true)}
             className="flex flex-col items-center gap-1.5 shrink-0"
           >
             <div className="relative h-16 w-16 rounded-full bg-gradient-primary p-[2px] shadow-glow">
               <div className="h-full w-full rounded-full bg-background flex items-center justify-center">
-                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-6 w-6" />}
+                <Plus className="h-6 w-6" />
               </div>
             </div>
             <span className="text-[10px] font-medium text-muted-foreground">Your story</span>
           </button>
-          <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleUpload} />
 
           {grouped.map((group, idx) => {
             const s = group[0];
@@ -121,6 +95,11 @@ export function StoriesStrip() {
             onNext={() => setViewing(viewing + 1 < grouped.length ? viewing + 1 : null)}
             onPrev={() => setViewing(viewing - 1 >= 0 ? viewing - 1 : null)}
           />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {composerOpen && (
+          <StoryComposer open={composerOpen} onClose={() => setComposerOpen(false)} onPosted={load} />
         )}
       </AnimatePresence>
     </>
