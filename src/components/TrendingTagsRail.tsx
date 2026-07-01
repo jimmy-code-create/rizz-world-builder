@@ -11,7 +11,7 @@ export function TrendingTagsRail() {
   });
   if (!data || data.length === 0) return null;
   return (
-    <div className="glass rounded-3xl p-4 mb-4 border border-white/5">
+    <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-white/5">
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="h-4 w-4 text-[var(--rizz-pink)]" />
         <h3 className="text-sm font-display font-bold tracking-tight">Trending now</h3>
