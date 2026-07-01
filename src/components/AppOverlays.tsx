@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowUp, WifiOff, Wifi, Download, X } from "lucide-react";
+import { ArrowUp, WifiOff, Wifi, Download, X, Focus } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -14,6 +14,7 @@ const ROUTES: Record<string, string> = {
 const SHORTCUTS: { keys: string; label: string }[] = [
   { keys: "⌘K  /  /", label: "Open command palette" },
   { keys: "?", label: "Show this help" },
+  { keys: "shift + F", label: "Toggle focus mode" },
   { keys: "g then f", label: "Go to Feed" },
   { keys: "g then r", label: "Go to Reels" },
   { keys: "g then e", label: "Go to Explore" },
@@ -37,6 +38,17 @@ export function AppOverlays() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("rizz:install-dismissed") === "1";
   });
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("rizz:focus-mode") === "1";
+  });
+
+  // Apply focus mode class + persist
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("focus-mode", focusMode);
+    localStorage.setItem("rizz:focus-mode", focusMode ? "1" : "0");
+  }, [focusMode]);
 
   // Vim-style "g then x" navigation + ? help + . scroll-to-top
   useEffect(() => {
@@ -67,6 +79,15 @@ export function AppOverlays() {
       }
       if (e.key === "?") { e.preventDefault(); setHelpOpen(true); return; }
       if (k === ".") { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      if (e.shiftKey && k === "f") {
+        e.preventDefault();
+        setFocusMode((v) => {
+          const next = !v;
+          toast.success(next ? "Focus mode on" : "Focus mode off", { icon: <Focus className="h-4 w-4" /> });
+          return next;
+        });
+        return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); if (timer) window.clearTimeout(timer); };
@@ -160,6 +181,16 @@ export function AppOverlays() {
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Focus mode toggle — bottom right on desktop */}
+      <button
+        onClick={() => setFocusMode((v) => !v)}
+        className={`hidden md:grid fixed bottom-6 right-6 z-30 h-10 w-10 rounded-full glass-strong border place-items-center shadow-glow active:scale-95 transition-colors ${focusMode ? "border-[var(--rizz-pink)] text-[var(--rizz-pink)]" : "border-white/10"}`}
+        aria-label="Toggle focus mode"
+        title="Focus mode (shift+F)"
+      >
+        <Focus className="h-4 w-4" />
+      </button>
 
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="glass-strong border-white/10 max-w-md">

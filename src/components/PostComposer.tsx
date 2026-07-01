@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ImagePlus, Sparkles, X, Loader2, Smile } from "lucide-react";
@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createPost } from "@/lib/posts";
 import { toast } from "sonner";
+import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { confettiBurst } from "@/lib/confetti";
 
 const DRAFT_KEY = "rizz:post-draft";
 const QUICK_EMOJIS = ["🔥","💖","😂","✨","👀","💀","🥶","👑","🎉","💯","🙌","😎","🥹","🫶","🤝","🤩"];
@@ -22,6 +24,9 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   });
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [caret, setCaret] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const postBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // Autosave caption draft to localStorage
   useEffect(() => {
@@ -45,6 +50,8 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       onPosted?.();
       toast.success("Posted to RIZZ ✨");
+      const r = postBtnRef.current?.getBoundingClientRect();
+      confettiBurst(r ? r.left + r.width / 2 : undefined, r ? r.top : undefined);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,12 +79,31 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           <AvatarImage src={profile?.avatar_url ?? undefined} />
           <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <Textarea
+            ref={textareaRef}
             placeholder="Drop something hot…"
             value={caption}
-            onChange={(e) => setCaption(e.target.value.slice(0, 600))}
+            onChange={(e) => {
+              setCaption(e.target.value.slice(0, 600));
+              setCaret(e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+            onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
             className="bg-transparent border-0 resize-none min-h-[60px] focus-visible:ring-0 text-base placeholder:text-muted-foreground/60 px-0"
+          />
+          <MentionAutocomplete
+            value={caption}
+            caret={caret}
+            onPick={(username) => {
+              const { value, caret: nc } = replaceMention(caption, caret, username);
+              setCaption(value.slice(0, 600));
+              setCaret(nc);
+              requestAnimationFrame(() => {
+                const ta = textareaRef.current;
+                if (ta) { ta.focus(); ta.setSelectionRange(nc, nc); }
+              });
+            }}
           />
           {previewUrl && (
             <div className="relative mt-2 rounded-2xl overflow-hidden border border-white/10">
@@ -125,6 +151,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               </span>
             </div>
             <Button
+              ref={postBtnRef}
               size="sm"
               onClick={() => mut.mutate()}
               disabled={mut.isPending || (!caption.trim() && !file)}

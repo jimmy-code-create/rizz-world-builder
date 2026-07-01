@@ -375,3 +375,7 @@
   background: linear-gradient(90deg, oklch(0.20 0.04 295), oklch(0.28 0.05 295), oklch(0.20 0.04 295));
   background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
 }
+
+/* Focus mode — hides secondary rails and suggestions for a distraction-free feed */
+body.focus-mode [data-focus-hide] { display: none !important; }
+body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
