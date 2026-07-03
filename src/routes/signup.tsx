@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { AuthCard } from "@/components/AuthCard";
+import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,8 @@ function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errKind, setErrKind] = useState<AuthErrorKind | null>(null);
+  const [errMsg, setErrMsg] = useState<string>("");
 
   useEffect(() => { if (user) nav({ to: "/feed" }); }, [user, nav]);
 
@@ -28,19 +31,32 @@ function SignupPage() {
     e.preventDefault();
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) return toast.error("Username: 3–20 chars, letters/numbers/underscore");
     setLoading(true);
+    setErrKind(null);
     const { error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: window.location.origin + "/feed", data: { username, display_name: username } },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      const kind = classifyAuthError(error.message);
+      setErrKind(kind);
+      setErrMsg(error.message);
+      if (kind !== "network" && kind !== "rate_limit") toast.error(error.message);
+      return;
+    }
     toast.success("You're in. Welcome to RIZZ.");
     nav({ to: "/feed" });
   };
 
   const onGoogle = async () => {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/feed" });
-    if (result.error) toast.error((result.error as Error).message ?? "Google sign-in failed");
+    if (result.error) {
+      const msg = (result.error as Error).message ?? "Google sign-in failed";
+      const kind = classifyAuthError(msg);
+      setErrKind(kind);
+      setErrMsg(msg);
+      if (kind !== "network" && kind !== "rate_limit") toast.error(msg);
+    }
   };
 
   return (
@@ -51,6 +67,14 @@ function SignupPage() {
     >
       <Button type="button" onClick={onGoogle} variant="outline" className="w-full glass border-white/10 hover:bg-white/5 h-11">Continue with Google</Button>
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />OR<div className="h-px flex-1 bg-border" /></div>
+      {errKind && (
+        <AuthErrorBanner
+          kind={errKind}
+          rawMessage={errMsg}
+          onRetry={() => { setErrKind(null); void onSubmit(new Event("submit") as unknown as React.FormEvent); }}
+          retryLabel="Try creating account again"
+        />
+      )}
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
