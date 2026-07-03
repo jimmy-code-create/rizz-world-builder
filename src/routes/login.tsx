@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { AuthCard } from "@/components/AuthCard";
+import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,8 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errKind, setErrKind] = useState<AuthErrorKind | null>(null);
+  const [errMsg, setErrMsg] = useState<string>("");
 
   useEffect(() => {
     if (user) nav({ to: "/feed" });
@@ -28,16 +31,29 @@ function LoginPage() {
   const onEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrKind(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      const kind = classifyAuthError(error.message);
+      setErrKind(kind);
+      setErrMsg(error.message);
+      if (kind !== "network" && kind !== "rate_limit") toast.error(error.message);
+      return;
+    }
     toast.success("Welcome back");
     nav({ to: "/feed" });
   };
 
   const onGoogle = async () => {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/feed" });
-    if (result.error) toast.error((result.error as Error).message ?? "Google sign-in failed");
+    if (result.error) {
+      const msg = (result.error as Error).message ?? "Google sign-in failed";
+      const kind = classifyAuthError(msg);
+      setErrKind(kind);
+      setErrMsg(msg);
+      if (kind !== "network" && kind !== "rate_limit") toast.error(msg);
+    }
   };
 
   return (
@@ -56,6 +72,14 @@ function LoginPage() {
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <div className="h-px flex-1 bg-border" />OR<div className="h-px flex-1 bg-border" />
       </div>
+      {errKind && (
+        <AuthErrorBanner
+          kind={errKind}
+          rawMessage={errMsg}
+          onRetry={() => { setErrKind(null); void onEmail(new Event("submit") as unknown as React.FormEvent); }}
+          retryLabel="Try logging in again"
+        />
+      )}
       <form onSubmit={onEmail} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
