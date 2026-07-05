@@ -128,8 +128,8 @@ function CallPage() {
 
         // Mic level meter
         try {
-          const AC: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-          const ac = new AC();
+          const AC: any = (window as any).AudioContext || (window as any).webkitAudioContext;
+          const ac: AudioContext = new AC();
           audioCtxRef.current = ac;
           const src = ac.createMediaStreamSource(stream);
           const an = ac.createAnalyser(); an.fftSize = 256;
