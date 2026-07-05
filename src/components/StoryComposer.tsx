@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Type, Smile, Image as ImageIcon, Palette, Trash2, Loader2, Send, Wand2 } from "lucide-react";
+import { X, Type, Smile, Image as ImageIcon, Palette, Trash2, Loader2, Send, Wand2, Undo2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -50,12 +50,24 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [bg, setBg] = useState<string>("linear-gradient(135deg,#ff3ea5,#7c3aed)");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<"text"|"sticker"|"filter"|"bg"|null>(null);
+  const [history, setHistory] = useState<Overlay[][]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [dragOverTrash, setDragOverTrash] = useState(false);
+
+  const pushHistory = (prev: Overlay[]) => setHistory((h) => [...h.slice(-19), prev]);
+  const undo = () => setHistory((h) => {
+    if (h.length === 0) return h;
+    const last = h[h.length - 1];
+    setOverlays(last);
+    return h.slice(0, -1);
+  });
 
   useEffect(() => {
     if (!open) {
       setFile(null); setMediaUrl(null); setIsVideo(false);
       setOverlays([]); setSelected(null); setFilter("none");
       setBg("linear-gradient(135deg,#ff3ea5,#7c3aed)"); setPanel(null);
+      setHistory([]); setEditingId(null);
     }
   }, [open]);
 
@@ -69,11 +81,13 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   const addText = () => {
     const id = crypto.randomUUID();
+    pushHistory(overlays);
     setOverlays((o) => [...o, { id, kind:"text", value:"Tap to edit", x:0.5, y:0.5, scale:1, rotate:0, color:"#ffffff", font:"display" }]);
-    setSelected(id); setPanel("text");
+    setSelected(id); setPanel(null); setEditingId(id);
   };
   const addSticker = (s: string) => {
     const id = crypto.randomUUID();
+    pushHistory(overlays);
     setOverlays((o) => [...o, { id, kind:"sticker", value:s, x:0.5, y:0.5, scale:1.5, rotate:0 }]);
     setSelected(id);
   };
@@ -83,26 +97,92 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   };
   const removeSelected = () => {
     if (!selected) return;
+    pushHistory(overlays);
     setOverlays((o) => o.filter((it) => it.id !== selected));
     setSelected(null);
   };
+  const duplicateSelected = () => {
+    if (!selected) return;
+    const it = overlays.find((o) => o.id === selected); if (!it) return;
+    pushHistory(overlays);
+    const id = crypto.randomUUID();
+    setOverlays((o) => [...o, { ...it, id, x: Math.min(0.9, it.x + 0.05), y: Math.min(0.9, it.y + 0.05) }]);
+    setSelected(id);
+  };
 
+  // Multi-touch drag / pinch / rotate
   const onDragOverlay = (id: string) => (e: React.PointerEvent) => {
+    if (editingId === id) return;
     const stage = stageRef.current; if (!stage) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setSelected(id);
     const rect = stage.getBoundingClientRect();
-    const move = (ev: PointerEvent) => {
-      const x = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
-      const y = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
-      setOverlays((arr) => arr.map((it) => it.id === id ? { ...it, x, y } : it));
+    const start = overlays.find((o) => o.id === id);
+    if (!start) return;
+    pushHistory(overlays);
+
+    const pts = new Map<number, { x: number; y: number }>();
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    let baseScale = start.scale, baseRotate = start.rotate;
+    let initDist = 0, initAngle = 0;
+
+    const trashHit = (cx: number, cy: number) => {
+      const t = document.getElementById("story-trash");
+      if (!t) return false;
+      const r = t.getBoundingClientRect();
+      return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
     };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+
+    const move = (ev: PointerEvent) => {
+      if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      const arr = Array.from(pts.values());
+      if (arr.length >= 2) {
+        const [a, b] = arr;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        if (initDist === 0) { initDist = dist; initAngle = angle; return; }
+        const scale = Math.max(0.3, Math.min(6, baseScale * (dist / initDist)));
+        const rotate = baseRotate + (angle - initAngle);
+        const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        const x = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (cy - rect.top) / rect.height));
+        setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y, scale, rotate } : it));
+      } else if (arr.length === 1) {
+        const p = arr[0];
+        const x = Math.max(0, Math.min(1, (p.x - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (p.y - rect.top) / rect.height));
+        setDragOverTrash(trashHit(p.x, p.y));
+        setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y } : it));
+      }
+    };
+    const up = (ev: PointerEvent) => {
+      pts.delete(ev.pointerId);
+      if (pts.size === 0) {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        // Trash drop
+        if (dragOverTrash) {
+          setOverlays((cur) => cur.filter((it) => it.id !== id));
+          setSelected(null);
+        }
+        setDragOverTrash(false);
+      } else {
+        initDist = 0; // reset pinch base
+      }
+    };
+    const extra = (ev: PointerEvent) => {
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      initDist = 0;
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    window.addEventListener("pointerdown", extra);
+    // cleanup extra listener on end
+    const stopExtra = () => window.removeEventListener("pointerdown", extra);
+    window.addEventListener("pointerup", stopExtra, { once: true });
   };
 
   const sel = overlays.find((o) => o.id === selected) || null;
@@ -179,7 +259,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <button onClick={onClose} className="h-10 w-10 rounded-full glass-strong grid place-items-center">
           <X className="h-5 w-5" />
         </button>
-        <div className="text-sm font-semibold">New story</div>
+        <div className="flex items-center gap-2">
+          <button onClick={undo} disabled={history.length === 0} className="h-10 w-10 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Undo">
+            <Undo2 className="h-5 w-5" />
+          </button>
+          <div className="text-sm font-semibold">New story</div>
+        </div>
         <Button onClick={post} disabled={busy} size="sm" className="bg-gradient-primary shadow-glow rounded-full px-4">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" /> Share</>}
         </Button>
@@ -210,13 +295,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
             <div
               key={ov.id}
               onPointerDown={onDragOverlay(ov.id)}
-              onDoubleClick={() => {
-                if (ov.kind === "text") {
-                  const v = window.prompt("Edit text", ov.value); if (v != null) updateSelected({ value: v });
-                  setSelected(ov.id); setPanel("text");
-                }
-              }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing ${selected===ov.id ? "outline outline-2 outline-white/70 rounded-md" : ""}`}
+              onDoubleClick={() => { if (ov.kind === "text") { setSelected(ov.id); setEditingId(ov.id); } }}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 touch-none ${editingId===ov.id ? "cursor-text" : "cursor-grab active:cursor-grabbing"} ${selected===ov.id ? "outline outline-2 outline-white/70 rounded-md" : ""}`}
               style={{
                 left: `${ov.x * 100}%`, top: `${ov.y * 100}%`,
                 transform: `translate(-50%,-50%) rotate(${ov.rotate}deg) scale(${ov.scale})`,
@@ -225,8 +305,25 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 textShadow: ov.kind === "text" ? "0 2px 8px rgba(0,0,0,.5)" : undefined,
                 whiteSpace: "nowrap",
               }}
-            >{ov.value}</div>
+            >
+              {ov.kind === "text" && editingId === ov.id ? (
+                <span
+                  ref={(el) => { if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r); } }}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onBlur={(e) => { updateSelected({ value: e.currentTarget.textContent || " " }); setEditingId(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
+                  className="outline-none"
+                >{ov.value}</span>
+              ) : ov.value}
+            </div>
           ))}
+
+          {/* Trash drop zone (visible while dragging) */}
+          <div id="story-trash" className={`absolute left-1/2 bottom-4 -translate-x-1/2 h-14 w-14 rounded-full grid place-items-center transition-all ${selected ? "opacity-100" : "opacity-0 pointer-events-none"} ${dragOverTrash ? "bg-destructive scale-125" : "bg-black/50 border border-white/20"}`}>
+            <Trash2 className="h-5 w-5" />
+          </div>
 
           {!mediaUrl && (
             <button
@@ -275,9 +372,14 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 ))}
               </div>
             )}
-            <button onClick={removeSelected} className="ml-auto h-8 w-8 rounded-full grid place-items-center hover:bg-destructive/20 text-destructive shrink-0">
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <div className="ml-auto flex items-center gap-1 shrink-0">
+              <button onClick={duplicateSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10" aria-label="Duplicate">
+                <Copy className="h-4 w-4" />
+              </button>
+              <button onClick={removeSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-destructive/20 text-destructive" aria-label="Delete">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
