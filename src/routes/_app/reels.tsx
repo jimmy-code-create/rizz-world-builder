@@ -52,17 +52,17 @@ function ReelsPage() {
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-xs">
-        <Gauge className="h-3.5 w-3.5 opacity-70" />
+      <div className="fixed top-[calc(env(safe-area-inset-top)+3.75rem)] md:top-4 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-1rem)] flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-[11px] overflow-x-auto no-scrollbar whitespace-nowrap">
+        <Gauge className="h-3.5 w-3.5 opacity-70 shrink-0" />
         {[0.5, 1, 1.5, 2].map((s) => (
-          <button key={s} onClick={() => setSpeed(s)} className={`px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
+          <button key={s} onClick={() => setSpeed(s)} className={`shrink-0 px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
         ))}
-        <span className="w-px h-3 bg-white/10 mx-1" />
-        <button onClick={() => setCaptions((c) => !c)} className={`px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
-        <span className="w-px h-3 bg-white/10 mx-1" />
-        <Sparkles className="h-3.5 w-3.5 opacity-70" />
+        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
+        <button onClick={() => setCaptions((c) => !c)} className={`shrink-0 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
+        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
+        <Sparkles className="h-3.5 w-3.5 opacity-70 shrink-0" />
         {(["none", "warm", "cool", "noir", "vivid"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
+          <button key={f} onClick={() => setFilter(f)} className={`shrink-0 px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
         ))}
       </div>
 
