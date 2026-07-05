@@ -138,10 +138,10 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
       <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>
-      <button onClick={toggleMute} className="absolute top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center">
+      <button onClick={toggleMute} className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center z-20">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
-      <div className="absolute left-4 right-20 bottom-6 text-white drop-shadow">
+      <div className="absolute left-4 right-20 bottom-24 md:bottom-6 text-white drop-shadow">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
@@ -154,7 +154,7 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
           <Music2 className="h-3.5 w-3.5" /> Original audio · @{post.author?.username}
         </div>
       </div>
-      <div className="absolute right-3 bottom-10 flex flex-col items-center gap-3 text-white">
+      <div className="absolute right-3 bottom-44 md:bottom-10 flex flex-col items-center gap-3 text-white">
         <ReelAction icon={<Heart className="h-6 w-6" />} label={String(post.like_count)} />
         <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={String(post.comment_count)} />
         <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />
