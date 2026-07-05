@@ -52,17 +52,17 @@ function ReelsPage() {
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-xs">
-        <Gauge className="h-3.5 w-3.5 opacity-70" />
+      <div className="fixed top-[calc(env(safe-area-inset-top)+3.75rem)] md:top-4 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-1rem)] flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-[11px] overflow-x-auto no-scrollbar whitespace-nowrap">
+        <Gauge className="h-3.5 w-3.5 opacity-70 shrink-0" />
         {[0.5, 1, 1.5, 2].map((s) => (
-          <button key={s} onClick={() => setSpeed(s)} className={`px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
+          <button key={s} onClick={() => setSpeed(s)} className={`shrink-0 px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
         ))}
-        <span className="w-px h-3 bg-white/10 mx-1" />
-        <button onClick={() => setCaptions((c) => !c)} className={`px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
-        <span className="w-px h-3 bg-white/10 mx-1" />
-        <Sparkles className="h-3.5 w-3.5 opacity-70" />
+        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
+        <button onClick={() => setCaptions((c) => !c)} className={`shrink-0 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
+        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
+        <Sparkles className="h-3.5 w-3.5 opacity-70 shrink-0" />
         {(["none", "warm", "cool", "noir", "vivid"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
+          <button key={f} onClick={() => setFilter(f)} className={`shrink-0 px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
         ))}
       </div>
 
@@ -138,10 +138,10 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
       <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>
-      <button onClick={toggleMute} className="absolute top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center">
+      <button onClick={toggleMute} className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center z-20">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
-      <div className="absolute left-4 right-20 bottom-6 text-white drop-shadow">
+      <div className="absolute left-4 right-20 bottom-24 md:bottom-6 text-white drop-shadow">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
@@ -154,7 +154,7 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
           <Music2 className="h-3.5 w-3.5" /> Original audio · @{post.author?.username}
         </div>
       </div>
-      <div className="absolute right-3 bottom-10 flex flex-col items-center gap-3 text-white">
+      <div className="absolute right-3 bottom-44 md:bottom-10 flex flex-col items-center gap-3 text-white">
         <ReelAction icon={<Heart className="h-6 w-6" />} label={String(post.like_count)} />
         <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={String(post.comment_count)} />
         <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />

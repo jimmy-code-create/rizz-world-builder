@@ -146,8 +146,8 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                   </div>
                 </PopoverContent>
               </Popover>
-              <span className="text-xs text-muted-foreground ml-2">
-                {600 - caption.length} chars left
+              <span className="text-[11px] text-muted-foreground ml-1 tabular-nums">
+                {600 - caption.length}
               </span>
             </div>
             <Button
