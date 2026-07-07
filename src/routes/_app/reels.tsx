@@ -3,16 +3,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
-  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check, Captions, Gauge, Sparkles,
+  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check, Captions, Gauge, Sparkles, Bookmark, Send,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { fetchReels, createPost } from "@/lib/posts";
+import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
+import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -34,11 +36,23 @@ export const Route = createFileRoute("/_app/reels")({
 
 function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
+  const { user } = useAuth();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [captions, setCaptions] = useState(true);
   const [filter, setFilter] = useState<string>("none");
+
+  const likes = useQuery({
+    queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
+    queryFn: () => fetchMyLikes(user!.id, reels.data!.map((r) => r.id)),
+    enabled: !!user && !!reels.data && reels.data.length > 0,
+  });
+  const saved = useQuery({
+    queryKey: ["my-bookmarks-set", user?.id],
+    queryFn: () => fetchMyBookmarkIds(user!.id),
+    enabled: !!user,
+  });
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
@@ -80,7 +94,17 @@ function ReelsPage() {
       )}
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {reels.data?.map((r) => (
-          <ReelItem key={r.id} post={r} muted={muted} toggleMute={() => setMuted((m) => !m)} speed={speed} captions={captions} filter={filter} />
+          <ReelItem
+            key={r.id}
+            post={r}
+            muted={muted}
+            toggleMute={() => setMuted((m) => !m)}
+            speed={speed}
+            captions={captions}
+            filter={filter}
+            initialLiked={!!likes.data?.has(r.id)}
+            initialSaved={!!saved.data?.has(r.id)}
+          />
         ))}
       </div>
     </div>
@@ -95,9 +119,21 @@ const FILTER_CSS: Record<string, string> = {
   vivid: "saturate(1.55) contrast(1.1)",
 };
 
-function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: any; muted: boolean; toggleMute: () => void; speed: number; captions: boolean; filter: string }) {
+function ReelItem({ post, muted, toggleMute, speed, captions, filter, initialLiked, initialSaved }: { post: any; muted: boolean; toggleMute: () => void; speed: number; captions: boolean; filter: string; initialLiked: boolean; initialSaved: boolean }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const ref = useRef<HTMLVideoElement>(null);
   const [progress, setProgress] = useState(0);
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
+  const [saved, setSaved] = useState(initialSaved);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [burst, setBurst] = useState(0); // heart burst counter
+  const lastTap = useRef(0);
+
+  useEffect(() => setLiked(initialLiked), [initialLiked]);
+  useEffect(() => setSaved(initialSaved), [initialSaved]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -113,6 +149,54 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
   }, []);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
 
+  async function doLike(force?: boolean) {
+    if (!user) { toast.error("Sign in to like"); return; }
+    const next = force ?? !liked;
+    if (next === liked) { setBurst((n) => n + 1); return; }
+    setLiked(next);
+    setLikeCount((c) => Math.max(0, c + (next ? 1 : -1)));
+    if (next) setBurst((n) => n + 1);
+    try {
+      await toggleLike(post.id, user.id, !next);
+      qc.invalidateQueries({ queryKey: ["reel-likes"] });
+    } catch (e: any) {
+      setLiked(!next);
+      setLikeCount((c) => Math.max(0, c + (next ? -1 : 1)));
+      toast.error(e.message ?? "Couldn't like");
+    }
+  }
+
+  async function doSave() {
+    if (!user) { toast.error("Sign in to save"); return; }
+    const next = !saved;
+    setSaved(next);
+    try {
+      await toggleBookmark(post.id, user.id, !next);
+      toast.success(next ? "Saved" : "Removed from saved");
+      qc.invalidateQueries({ queryKey: ["my-bookmarks-set"] });
+    } catch (e: any) {
+      setSaved(!next);
+      toast.error(e.message ?? "Couldn't save");
+    }
+  }
+
+  function onVideoTap() {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      doLike(true);
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
+      // single-tap: toggle mute after a short delay unless a double tap follows
+      setTimeout(() => {
+        if (lastTap.current && Date.now() - lastTap.current >= 280) {
+          toggleMute();
+          lastTap.current = 0;
+        }
+      }, 300);
+    }
+  }
+
   const remix = () => toast.success("Remix template saved to your drafts ✨");
   const share = () => {
     navigator.clipboard.writeText(window.location.origin + "/u/" + post.author?.username);
@@ -127,7 +211,7 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
         muted={muted}
         loop
         playsInline
-        onClick={toggleMute}
+        onClick={onVideoTap}
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
           if (v.duration) setProgress((v.currentTime / v.duration) * 100);
@@ -135,13 +219,20 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
         className="h-full w-full object-contain transition-[filter] duration-300"
         style={{ filter: FILTER_CSS[filter] || "none" }}
       />
+      {burst > 0 && (
+        <Heart
+          key={burst}
+          className="pointer-events-none absolute inset-0 m-auto h-32 w-32 text-[var(--rizz-pink)] fill-[var(--rizz-pink)] drop-shadow-2xl animate-ping-once"
+          style={{ animation: "reel-heart 700ms ease-out forwards" }}
+        />
+      )}
       <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>
       <button onClick={toggleMute} className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center z-20">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
-      <div className="absolute left-4 right-20 bottom-24 md:bottom-6 text-white drop-shadow">
+      <div className="absolute left-4 right-20 bottom-28 md:bottom-6 text-white drop-shadow">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
@@ -154,22 +245,114 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter }: { post: 
           <Music2 className="h-3.5 w-3.5" /> Original audio · @{post.author?.username}
         </div>
       </div>
-      <div className="absolute right-3 bottom-44 md:bottom-10 flex flex-col items-center gap-3 text-white">
-        <ReelAction icon={<Heart className="h-6 w-6" />} label={String(post.like_count)} />
-        <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={String(post.comment_count)} />
+      <div className="absolute right-2 bottom-32 md:bottom-10 flex flex-col items-center gap-3 text-white z-10">
+        <ReelAction
+          icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
+          label={String(likeCount)}
+          onClick={() => doLike()}
+          active={liked}
+        />
+        <ReelAction
+          icon={<MessageCircle className="h-6 w-6" />}
+          label={String(post.comment_count ?? 0)}
+          onClick={() => setCommentsOpen(true)}
+        />
+        <ReelAction
+          icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
+          label={saved ? "Saved" : "Save"}
+          onClick={doSave}
+          active={saved}
+        />
         <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />
-        <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white">Remix</Button>
+        <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
       </div>
+
+      <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+
+      <style>{`
+        @keyframes reel-heart {
+          0% { transform: scale(0.4); opacity: 0; }
+          25% { transform: scale(1.2); opacity: 1; }
+          70% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+      `}</style>
     </section>
   );
 }
 
-function ReelAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
+function ReelAction({ icon, label, onClick, active }: { icon: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1">
-      <span className="h-11 w-11 rounded-full glass-strong grid place-items-center">{icon}</span>
-      <span className="text-[11px] font-medium">{label}</span>
+    <button onClick={onClick} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+      <span className={`h-12 w-12 rounded-full glass-strong grid place-items-center ${active ? "ring-2 ring-white/50" : ""}`}>{icon}</span>
+      <span className="text-[11px] font-semibold drop-shadow">{label}</span>
     </button>
+  );
+}
+
+function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenChange: (o: boolean) => void; postId: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const comments = useQuery({
+    queryKey: ["reel-comments", postId],
+    queryFn: () => fetchComments(postId),
+    enabled: open,
+  });
+  const mut = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in first");
+      if (!body.trim()) throw new Error("Say something");
+      await addComment(postId, user.id, body.trim().slice(0, 500));
+    },
+    onSuccess: () => {
+      setBody("");
+      qc.invalidateQueries({ queryKey: ["reel-comments", postId] });
+      qc.invalidateQueries({ queryKey: ["reels"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="glass-strong border-white/10 rounded-t-3xl max-h-[80dvh] flex flex-col pb-[max(env(safe-area-inset-bottom),0.75rem)]"
+      >
+        <SheetHeader className="text-left">
+          <SheetTitle className="font-display text-lg">Comments</SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-3">
+          {comments.isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
+          {comments.data?.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Be the first to comment ✨</p>}
+          {(comments.data ?? []).map((c: any) => (
+            <div key={c.id} className="flex gap-2.5">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarImage src={c.author?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-xs">{(c.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold">@{c.author?.username}</p>
+                <p className="text-sm break-words">{c.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
+          className="flex items-center gap-2 pt-2 border-t border-white/5"
+        >
+          <Input
+            value={body}
+            onChange={(e) => setBody(e.target.value.slice(0, 500))}
+            placeholder="Add a comment…"
+            className="glass border-white/10"
+          />
+          <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-gradient-primary border-0 shadow-glow shrink-0">
+            {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 

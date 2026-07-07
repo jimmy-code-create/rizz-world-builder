@@ -58,22 +58,26 @@ export async function createPost(input: {
     const { error: upErr } = await supabase.storage
       .from("post-media")
       .upload(path, input.file, { contentType: input.file.type, upsert: false });
-    if (upErr) throw upErr;
+    if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
     const { data: pub } = supabase.storage.from("post-media").getPublicUrl(path);
     media_url = pub.publicUrl;
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
   }
+  const caption = (input.caption ?? "").trim().slice(0, 2000) || null;
   const { data, error } = await supabase
     .from("posts")
     .insert({
       author_id: input.authorId,
-      caption: input.caption.trim() || null,
+      caption,
       media_url,
       media_type,
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    const detail = (error as any).details || (error as any).hint || "";
+    throw new Error(`Couldn't post: ${error.message}${detail ? ` — ${detail}` : ""}`);
+  }
   return data;
 }
 

@@ -1,72 +1,52 @@
-## Phase 7 — "Mega Transformation"
+## Goal
+Make RIZZ genuinely mobile-first: every desktop feature reachable on phone, canvas + reels + call screen fully touch-friendly, and kill the upload/integer error.
 
-A large, multi-step phase. I'll ship in grouped commits, verifying the build after each. Reply **"Approved"** to start, or call out anything to drop.
+## 1. Mobile parity for every desktop feature
+Right now the desktop sidebar exposes 12 sections (Feed, Reels, Explore, Groups, Channels, Giveaways, DMs, Saved, Effects, Badges, Top, Labs) but the mobile bottom bar only shows 4. Fix:
+- Keep the bottom bar at 5 core tabs (Feed, Reels, +, DMs, Explore) but swap the last slot for a **"More" sheet** (bottom `Sheet` from shadcn) that lists **all** sidebar items + Profile + Settings + Sign out with the same icons.
+- Add the same **New post** and **notifications** entries inside the sheet header, plus the profile card.
+- Move the search bar into a full-width tap target that opens `/explore` with the input focused.
 
----
+## 2. Story canvas (`StoryComposer.tsx`) mobile fixes
+- Lock canvas to `aspect-[9/16]` with `max-h-[calc(100dvh-8rem)]` and `touch-none` so gestures don't scroll the page.
+- Fix pinch/rotate: pointer capture on the overlay, `touch-action: none` inline, prevent `preventDefault` errors on passive listeners.
+- Bigger tap targets (44px min) for toolbar buttons; make the toolbar horizontally scrollable with `overflow-x-auto no-scrollbar snap-x`.
+- Trash zone: move to top-right on mobile so it doesn't fight with the OS home bar; fade in only while dragging.
+- Text overlay: switch double-tap to single-tap on mobile (double-tap zooms the page on iOS Safari); use `inputMode="text"` and blur on Enter.
+- Persist draft to `localStorage` so accidental route change doesn't nuke the story.
 
-### 1. Stories 2.0 (better canvas)
-- Full-screen story viewer with progress bars, tap-to-advance, swipe-down to close (framer-motion).
-- Story composer with canvas: image/video upload, text overlays, stickers, color filters, draw tool (HTML5 canvas), background gradients.
-- Story replies → DM thread.
-- Seen-by list for author.
-- 24h auto-expiry already in DB; add view counter UI.
+## 3. Reels mobile UX (`routes/_app/reels.tsx`)
+- Rebuild the side-action rail as **thumb-reachable**: right-edge, `bottom-32`, 56px hit areas, iconography with count under each (Like, Comment, React, Share, Save, More).
+- Wire **Like** button to `toggleLike` with optimistic count + heart burst; wire **Comment** to open a bottom `Sheet` with the existing comments component; wire **React** to the emoji popover; wire **Save** to bookmarks.
+- Ensure vertical snap works: `snap-y snap-mandatory h-[100dvh] overflow-y-scroll` on the reel list, each item `snap-start h-[100dvh]`.
+- Mute button + top control bar collapse into a single translucent pill on mobile.
+- Double-tap the video to like (with heart animation).
 
-### 2. Groups (replaces "Voice Rooms" room concept)
-- New `groups`, `group_members`, `group_invites`, `group_messages` tables.
-- **Friends-only join**: invite-link join requires inviter and joiner to be mutual followers (DB trigger enforced).
-- Shareable invite links: `/_app/join/$code` → preview group → Join button.
-- Group chat (text + media), member list, owner controls (rename, kick, regenerate link).
-- Group voice/video call entry point (WebRTC mesh, ≤8 participants) inside the group, not as standalone rooms.
-- Remove standalone `/voice` discovery page; keep `voice_rooms` table but tie to `group_id`.
+## 4. Call screen mobile polish (`call.$userId.tsx`)
+- Switch layout to `h-[100dvh]` grid: remote video fills, self-view PiP draggable within safe-area, control dock pinned above `env(safe-area-inset-bottom)`.
+- Buttons: 64px circular, spaced for thumbs, with haptic-style press animation.
+- Hide the desktop-only side chat panel on mobile; expose it via a "Chat" button that opens a sheet.
 
-### 3. DMs upgrade
-- Conversation list with last-message preview, unread badges, online dots (presence).
-- Typing indicators (Realtime broadcast).
-- Read receipts (already have `read` column — wire UI).
-- Emoji reactions on messages.
-- Reply-to / quote.
-- Image + voice-note attachments (storage bucket `dm-media`).
-- 1:1 voice & video call button (WebRTC, signaling via Realtime channel).
+## 5. Upload "integer" error
+Symptom the user described ("text integer SMTH problem on uploading") most likely comes from Postgres complaining about the caption length or a numeric column overflow during `createPost`. Fix:
+- Add client-side guards in `PostComposer` + `StoryComposer`: caption capped at 600 (already), enforce **file size numeric as Number**, and coerce any width/height metadata we send to `Math.round(...)` before insert.
+- Wrap `createPost` and story insert in try/catch that surfaces the real Postgres message via `toast.error(err.message)` instead of the generic one so we can see the exact failing column if it recurs.
+- If the DB has an `int4` counter that can overflow (e.g. `like_count`, `view_count`), migrate it to `bigint`. I'll inspect the schema first turn of build mode and, if needed, ship a single migration converting overflow-prone counters to `bigint` with matching GRANTs untouched.
 
-### 4. Calling (1:1 + group)
-- Pure WebRTC peer mesh, Supabase Realtime for signaling (offer/answer/ICE).
-- Pre-call screen (mic/cam preview, device picker).
-- In-call UI: mute, camera toggle, screen share, hang up, picture-in-picture.
-- Incoming-call toast + ringtone.
-- Hand-raise, mic state pulse rings, speaker spotlight for group calls.
+## 6. Small "more interesting" polish
+- Add a floating **quick-actions FAB long-press** on mobile: hold the + to reveal Post / Story / Reel / Go Live.
+- Animate bottom nav active tab with a pill highlight (framer-motion `layoutId`).
+- Add pull-to-refresh on Feed and Reels using a simple `overscroll-behavior` + touchstart delta.
 
-### 5. Drops → Giveaways
-- Rename UX to "Giveaways". Keep `drops` table; add `winner_count`, `winners_picked_at`, `winner_user_ids[]`.
-- Random winner picker (server fn) when expiry hits or owner clicks "Draw winners".
-- Entry requirements (toggle): must follow host, must be in group X.
-- Winner reveal screen + notification to winners.
+## Files to touch
+- `src/components/AppShell.tsx` — More sheet, mobile parity, active-tab pill, long-press FAB.
+- `src/components/StoryComposer.tsx` — gesture + layout + text overlay fixes.
+- `src/routes/_app/reels.tsx` — action rail, sheets, snap, double-tap like.
+- `src/routes/_app/call.$userId.tsx` — mobile layout, safe-area dock, chat sheet.
+- `src/components/PostComposer.tsx` — better error surfacing on upload.
+- `src/lib/posts.ts` — surface real error, coerce numerics.
+- **Maybe** one Supabase migration if a counter column is `int4` and overflowing.
 
-### 6. Profile effects — "free trial month" + new effects
-- Seed ~30 new effects across rings (12), nameplates (10), overlays (8): holographic, liquid-metal, galaxy, sakura petals, matrix rain, glitch RGB, neon pulse, fire trail, ice crystal, rainbow shimmer, etc.
-- **Free trial flag**: add `trial_active` (bool) + `trial_ends_at` to `profiles`, auto-set on signup to `now() + 30 days`.
-- `acquireEffect` and unlock UI bypass `unlock_rizz` while `trial_active` is true → all effects free for everyone for 1 month.
-- Trial countdown banner in Settings → Appearance.
-- Better nameplate equip flow: dedicated `/effects` tab with live preview using the user's actual @handle, equip persists everywhere (PostCard, profile, DMs, group lists).
-
-### 7. UI/UX polish (~25 fixes)
-- New aurora + noise background, tighter type scale, consistent button gaps, mobile nav cleanup, skeleton shimmers, hover glows, focus rings, reduced-motion respect, toast restyle, empty-state SVGs, infinite scroll on feed, pull-to-refresh, sticky composer, density modes wired everywhere.
-
-### 8. Misc upgrades
-- Mention autocomplete (`@username`) in composer + DMs.
-- Link previews (Open Graph fetch via server fn).
-- Post pinning on profile.
-- Follow suggestions sidebar.
-- Save-for-later already shipped; add folders.
-- Keyboard shortcuts (`g f` = feed, `g d` = dms, `n` = new post).
-
----
-
-### Order of execution
-1. Migrations: groups, group_members, group_invites, group_messages, profiles.trial fields, drops winner fields, new profile_effects seed, dm_reactions, dm presence helpers.
-2. Backend libs: `lib/groups.ts`, `lib/calls.ts`, `lib/giveaways.ts`, update `lib/effects.ts` for trial bypass, `lib/dms.ts` upgrade.
-3. New routes: `/_app/groups`, `/_app/g.$id`, `/_app/join.$code`, `/_app/giveaways` (rename drops UI), call overlays.
-4. Components: StoryViewer, StoryComposer (canvas), CallOverlay, GroupChat, GroupCallTile, GiveawayCard, MentionInput, LinkPreview.
-5. UI polish pass + remove standalone voice rooms page.
-6. Build verify.
-
-This is large — I'll commit in chunks and keep you posted. Reply **"Approved"** to begin, or list anything to skip/change.
+## Out of scope
+- No visual redesign of the color system.
+- No new backend features beyond the counter migration (if needed).
