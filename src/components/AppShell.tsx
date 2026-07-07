@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, FlaskConical } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, FlaskConical, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PostComposer } from "@/components/PostComposer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandPalette } from "@/components/CommandPalette";
 import { AppOverlays } from "@/components/AppOverlays";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -38,7 +39,6 @@ const sideTabs = [
 const mobileTabs = [
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/reels", label: "Reels", icon: Film },
-  { to: "/explore", label: "Explore", icon: Compass },
   { to: "/dms", label: "DMs", icon: MessageCircle },
 ] as const;
 
@@ -47,6 +47,10 @@ export function AppShell() {
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Close the More sheet whenever the route changes
+  useEffect(() => { setMoreOpen(false); }, [path]);
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
@@ -183,6 +187,16 @@ export function AppShell() {
           {mobileTabs.slice(2).map((t) => (
             <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
           ))}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className="flex-1 flex flex-col items-center gap-0.5 py-1.5"
+            aria-label="More"
+          >
+            <div className="p-1.5 rounded-xl">
+              <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground">More</span>
+          </button>
         </div>
       </nav>
 
@@ -192,6 +206,82 @@ export function AppShell() {
           <PostComposer onPosted={() => setComposerOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Mobile "More" drawer — every desktop section within thumb reach */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="glass-strong border-white/10 rounded-t-3xl max-h-[85dvh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1rem)]"
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-xl">Everything on RIZZ</SheetTitle>
+          </SheetHeader>
+
+          {/* Profile card */}
+          <Link
+            to="/u/$username"
+            params={{ username: profile?.username ?? "" }}
+            className="mt-4 flex items-center gap-3 p-3 rounded-2xl glass border border-white/5"
+          >
+            <Avatar className="h-12 w-12 ring-2 ring-[var(--rizz-pink)]/40">
+              <AvatarImage src={profile?.avatar_url ?? undefined} />
+              <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate">{profile?.display_name || profile?.username}</p>
+              <p className="text-xs text-muted-foreground truncate">@{profile?.username} · View profile</p>
+            </div>
+          </Link>
+
+          {/* Grid of every destination */}
+          <div className="mt-4 grid grid-cols-4 gap-2">
+            {sideTabs.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
+                  isActive(t.to) ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
+                }`}
+              >
+                <t.icon className="h-5 w-5" />
+                <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
+              </Link>
+            ))}
+            <Link
+              to="/notifications"
+              className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
+                isActive("/notifications") ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
+              }`}
+            >
+              <Bell className="h-5 w-5" />
+              <span className="text-[11px] font-medium">Inbox</span>
+              {(unread.data ?? 0) > 0 && (
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 rounded-full">{unread.data}</span>
+              )}
+            </Link>
+            <Link to="/bookmarks" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+              <Bookmark className="h-5 w-5" />
+              <span className="text-[11px] font-medium">Saved</span>
+            </Link>
+            <Link to="/settings" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+              <Settings className="h-5 w-5" />
+              <span className="text-[11px] font-medium">Settings</span>
+            </Link>
+            <Link to="/settings" hash="appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+              <Palette className="h-5 w-5" />
+              <span className="text-[11px] font-medium">Theme</span>
+            </Link>
+          </div>
+
+          <button
+            onClick={() => { setMoreOpen(false); signOut(); }}
+            className="mt-4 w-full flex items-center justify-center gap-2 p-3 rounded-2xl glass border border-destructive/30 text-destructive font-medium text-sm"
+          >
+            <LogOut className="h-4 w-4" /> Sign out
+          </button>
+        </SheetContent>
+      </Sheet>
+
       <CommandPalette />
       <AppOverlays />
       <KeyboardShortcuts profileUsername={profile?.username} />
