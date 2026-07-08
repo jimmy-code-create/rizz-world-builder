@@ -20,6 +20,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { CommandPalette } from "@/components/CommandPalette";
 import { AppOverlays } from "@/components/AppOverlays";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { OwnerPanel } from "@/components/OwnerPanel";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -48,6 +49,7 @@ export function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [ownerOpen, setOwnerOpen] = useState(false);
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -93,10 +95,16 @@ export function AppShell() {
     <div className="relative min-h-dvh pb-24 md:pb-0 md:pl-64">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
-        <Link to="/feed" className="flex items-center gap-2 mb-6 px-2">
-          <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow">R</div>
+        <button
+          type="button"
+          onClick={() => setOwnerOpen(true)}
+          className="flex items-center gap-2 mb-6 px-2 group"
+          aria-label="Open owner panel"
+          title="Owner panel"
+        >
+          <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow group-hover:scale-105 transition-transform">R</div>
           <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
-        </Link>
+        </button>
 
         <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-gradient-primary border-0 shadow-glow rounded-xl h-10 gap-2">
           <Plus className="h-4 w-4" /> New post
@@ -150,10 +158,15 @@ export function AppShell() {
 
       {/* Mobile top bar */}
       <header className="md:hidden sticky top-0 z-30 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between gap-2">
-        <Link to="/feed" className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setOwnerOpen(true)}
+          className="flex items-center gap-2 shrink-0"
+          aria-label="Open owner panel"
+        >
           <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold text-sm shadow-glow">R</div>
           <span className="font-display text-lg font-bold">RIZZ</span>
-        </Link>
+        </button>
         <Link to="/explore" className="flex-1 max-w-xs flex items-center gap-2 glass rounded-full px-3 py-1.5 text-xs text-muted-foreground border border-white/5">
           <Search className="h-3.5 w-3.5" /> Search RIZZ
         </Link>
@@ -285,6 +298,7 @@ export function AppShell() {
       <CommandPalette />
       <AppOverlays />
       <KeyboardShortcuts profileUsername={profile?.username} />
+      <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
     </div>
   );
 }
