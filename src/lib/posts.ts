@@ -74,7 +74,6 @@ export async function createPost(input: {
   // Server-side validation & friendly error mapping.
   return await createPostValidated({
     data: {
-      authorId: input.authorId,
       caption: input.caption,
       media_url,
       media_type,
