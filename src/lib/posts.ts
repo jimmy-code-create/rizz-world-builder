@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createPostValidated } from "@/lib/owner.functions";
 
 export type FeedPost = {
   id: string;
@@ -53,6 +54,13 @@ export async function createPost(input: {
   let media_url: string | null = null;
   let media_type: "image" | "video" | "none" = "none";
   if (input.file) {
+    // Client-side guards for a friendly error before hitting the wire.
+    const MAX = 50 * 1024 * 1024;
+    if (input.file.size > MAX) {
+      throw new Error(`File too large (${(input.file.size / 1024 / 1024).toFixed(1)}MB). Max is 50MB.`);
+    }
+    const okType = input.file.type.startsWith("image/") || input.file.type.startsWith("video/");
+    if (!okType) throw new Error("Only image or video files can be uploaded.");
     const ext = input.file.name.split(".").pop() ?? "bin";
     const path = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage
@@ -63,22 +71,15 @@ export async function createPost(input: {
     media_url = pub.publicUrl;
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
   }
-  const caption = (input.caption ?? "").trim().slice(0, 2000) || null;
-  const { data, error } = await supabase
-    .from("posts")
-    .insert({
-      author_id: input.authorId,
-      caption,
+  // Server-side validation & friendly error mapping.
+  return await createPostValidated({
+    data: {
+      authorId: input.authorId,
+      caption: input.caption,
       media_url,
       media_type,
-    })
-    .select()
-    .single();
-  if (error) {
-    const detail = (error as any).details || (error as any).hint || "";
-    throw new Error(`Couldn't post: ${error.message}${detail ? ` — ${detail}` : ""}`);
-  }
-  return data;
+    },
+  });
 }
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
