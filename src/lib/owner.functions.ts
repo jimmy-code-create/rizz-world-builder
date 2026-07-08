@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createHash, timingSafeEqual } from "node:crypto";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function verifyPassword(input: string): boolean {
   const expected = process.env.OWNER_PANEL_PASSWORD;
@@ -173,25 +174,24 @@ export const ownerGrantAdmin = createServerFn({ method: "POST" })
 // similar upload errors. Media is uploaded from the client first; this fn
 // clamps numeric/text fields and inserts the row with a friendly error map.
 export const createPostValidated = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: {
-    authorId: string;
     caption?: string | null;
     media_url?: string | null;
     media_type?: "image" | "video" | "none" | null;
   }) => d)
-  .handler(async ({ data }) => {
-    const db = await admin();
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
     // Coerce + clamp everything to values Postgres will accept.
     const caption = (data.caption ?? "").toString().trim().slice(0, 2000) || null;
     const media_type: "image" | "video" | "none" =
       data.media_type === "image" || data.media_type === "video" ? data.media_type : "none";
     const media_url = data.media_url && typeof data.media_url === "string" ? data.media_url.slice(0, 2048) : null;
     if (!caption && !media_url) throw new Error("Add a caption or media before posting");
-    if (!data.authorId) throw new Error("Not signed in");
 
-    const { data: row, error } = await db
+    const { data: row, error } = await supabase
       .from("posts")
-      .insert({ author_id: data.authorId, caption, media_url, media_type })
+      .insert({ author_id: userId, caption, media_url, media_type })
       .select()
       .single();
     if (error) {
