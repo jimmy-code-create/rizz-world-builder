@@ -191,6 +191,31 @@ function DMPage() {
   );
 
   const startCall = (video: boolean) => {
+    if (!user) return;
+    // Ring the callee via their personal broadcast channel so they get a
+    // system-style incoming-call sheet even if they're not viewing the DM.
+    try {
+      const ring = supabase.channel(`call:incoming:${userId}`, {
+        config: { broadcast: { self: false, ack: false } },
+      });
+      ring.subscribe((st) => {
+        if (st !== "SUBSCRIBED") return;
+        ring.send({
+          type: "broadcast",
+          event: "ring",
+          payload: {
+            fromId: user.id,
+            fromUsername: (user as any)?.user_metadata?.username,
+            fromDisplayName: (user as any)?.user_metadata?.display_name,
+            fromAvatar: (user as any)?.user_metadata?.avatar_url,
+            video,
+          },
+        }).finally(() => {
+          // let the message flush before closing
+          setTimeout(() => supabase.removeChannel(ring), 800);
+        });
+      });
+    } catch { /* non-fatal */ }
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
