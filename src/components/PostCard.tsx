@@ -4,6 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Nameplate } from "@/components/profile/Nameplate";
+import { useEquipped } from "@/lib/useEquipped";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
