@@ -4,6 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Nameplate } from "@/components/profile/Nameplate";
+import { useEquipped } from "@/lib/useEquipped";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -222,16 +225,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       className="glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
     >
       <header className="flex items-center gap-3 p-4 pb-3">
-        <Link to="/u/$username" params={{ username: post.author?.username ?? "" }}>
-          <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
-            <AvatarImage src={post.author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
-          </Avatar>
-        </Link>
+        <AuthorAvatarLink post={post} accent={accent} initial={initial} />
         <div className="flex-1 min-w-0">
-          <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="font-semibold text-sm hover:underline block truncate">
-            {post.author?.display_name || post.author?.username}
-          </Link>
+          <AuthorNameLink post={post} />
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
             {isPinned && (
@@ -542,5 +538,43 @@ function CommentsThread({ postId }: { postId: string }) {
         </form>
       )}
     </motion.div>
+  );
+}
+
+function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
+  const eq = useEquipped(post.author_id);
+  const deco = eq.data?.avatar_decoration;
+  return (
+    <Link to="/u/$username" params={{ username: post.author?.username ?? "" }}>
+      {deco ? (
+        <AvatarDecoration
+          src={post.author?.avatar_url}
+          fallback={initial}
+          size={40}
+          effectSlug={deco.slug}
+          accent={deco.preview_color || accent}
+        />
+      ) : (
+        <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
+          <AvatarImage src={post.author?.avatar_url ?? undefined} />
+          <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+        </Avatar>
+      )}
+    </Link>
+  );
+}
+
+function AuthorNameLink({ post }: { post: any }) {
+  const eq = useEquipped(post.author_id);
+  const np = eq.data?.nameplate;
+  const name = post.author?.display_name || post.author?.username || "";
+  return (
+    <Link
+      to="/u/$username"
+      params={{ username: post.author?.username ?? "" }}
+      className="font-semibold text-sm hover:underline block truncate"
+    >
+      <Nameplate name={name} slug={np?.slug} />
+    </Link>
   );
 }

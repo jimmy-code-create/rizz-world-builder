@@ -79,7 +79,12 @@ function CallPage() {
       }
     };
 
-    const ch = supabase.channel(`call:${roomId}`, { config: { broadcast: { self: false, ack: false } } });
+    const ch = supabase.channel(`call:${roomId}`, {
+      config: {
+        broadcast: { self: false, ack: false },
+        presence: { key: meId },
+      },
+    });
     chRef.current = ch;
 
     pc.onicecandidate = (e) => {
@@ -88,15 +93,21 @@ function CallPage() {
 
     ch
       .on("broadcast", { event: "offer" }, async ({ payload }) => {
-        if (payload.from === meId || isCaller) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        const ans = await pc.createAnswer();
-        await pc.setLocalDescription(ans);
-        ch.send({ type: "broadcast", event: "answer", payload: { from: meId, sdp: ans } });
+        if (payload.from === meId) return;
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          const ans = await pc.createAnswer();
+          await pc.setLocalDescription(ans);
+          ch.send({ type: "broadcast", event: "answer", payload: { from: meId, sdp: ans } });
+        } catch (err) { console.warn("offer handling failed", err); }
       })
       .on("broadcast", { event: "answer" }, async ({ payload }) => {
-        if (payload.from === meId || !isCaller) return;
-        if (!pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        if (payload.from === meId) return;
+        try {
+          if (pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          }
+        } catch (err) { console.warn("answer handling failed", err); }
       })
       .on("broadcast", { event: "ice" }, async ({ payload }) => {
         if (payload.from === meId) return;
@@ -107,12 +118,17 @@ function CallPage() {
         cleanup();
         nav({ to: "/dm/$userId", params: { userId } });
       })
-      .on("broadcast", { event: "ready" }, async ({ payload }) => {
-        if (payload.from === meId || !isCaller) return;
-        // Callee is online → send offer
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        ch.send({ type: "broadcast", event: "offer", payload: { from: meId, sdp: offer } });
+      .on("presence", { event: "sync" }, async () => {
+        // Both peers present → caller sends offer once
+        const state = ch.presenceState() as Record<string, unknown>;
+        const hasPeer = Object.keys(state).some((k) => k !== meId);
+        if (isCaller && hasPeer && pc.signalingState === "stable" && !pc.currentLocalDescription) {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            ch.send({ type: "broadcast", event: "offer", payload: { from: meId, sdp: offer } });
+          } catch (err) { console.warn("offer create failed", err); }
+        }
       });
 
     (async () => {
@@ -147,8 +163,7 @@ function CallPage() {
 
         await ch.subscribe(async (st) => {
           if (st === "SUBSCRIBED") {
-            // Announce ready; caller waits for callee's "ready" to send offer
-            ch.send({ type: "broadcast", event: "ready", payload: { from: meId } });
+            await ch.track({ id: meId, at: Date.now() });
           }
         });
       } catch (e: any) {

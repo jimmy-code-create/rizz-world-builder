@@ -21,6 +21,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { AppOverlays } from "@/components/AppOverlays";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
+import { IncomingCallRinger } from "@/components/IncomingCallRinger";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -294,6 +295,7 @@ export function AppShell() {
           </button>
         </SheetContent>
       </Sheet>
+      <IncomingCallRinger />
 
       <CommandPalette />
       <AppOverlays />
