@@ -540,3 +540,41 @@ function CommentsThread({ postId }: { postId: string }) {
     </motion.div>
   );
 }
+
+function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
+  const eq = useEquipped(post.author_id);
+  const deco = eq.data?.avatar_decoration;
+  return (
+    <Link to="/u/$username" params={{ username: post.author?.username ?? "" }}>
+      {deco ? (
+        <AvatarDecoration
+          src={post.author?.avatar_url}
+          fallback={initial}
+          size={40}
+          effectSlug={deco.slug}
+          accent={deco.preview_color || accent}
+        />
+      ) : (
+        <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
+          <AvatarImage src={post.author?.avatar_url ?? undefined} />
+          <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+        </Avatar>
+      )}
+    </Link>
+  );
+}
+
+function AuthorNameLink({ post }: { post: any }) {
+  const eq = useEquipped(post.author_id);
+  const np = eq.data?.nameplate;
+  const name = post.author?.display_name || post.author?.username || "";
+  return (
+    <Link
+      to="/u/$username"
+      params={{ username: post.author?.username ?? "" }}
+      className="font-semibold text-sm hover:underline block truncate"
+    >
+      <Nameplate name={name} slug={np?.slug} />
+    </Link>
+  );
+}
