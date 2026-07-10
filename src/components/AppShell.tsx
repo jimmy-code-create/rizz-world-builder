@@ -22,6 +22,7 @@ import { AppOverlays } from "@/components/AppOverlays";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
 import { IncomingCallRinger } from "@/components/IncomingCallRinger";
+import { NightclubCanvas } from "@/components/NightclubCanvas";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -94,6 +95,7 @@ export function AppShell() {
 
   return (
     <div className="relative min-h-dvh pb-24 md:pb-0 md:pl-64">
+      <NightclubCanvas />
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
         <button

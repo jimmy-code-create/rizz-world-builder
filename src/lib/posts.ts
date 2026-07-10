@@ -57,28 +57,38 @@ export async function createPost(input: {
     // Client-side guards for a friendly error before hitting the wire.
     const MAX = 50 * 1024 * 1024;
     if (input.file.size > MAX) {
-      throw new Error(`File too large (${(input.file.size / 1024 / 1024).toFixed(1)}MB). Max is 50MB.`);
+      throw new Error(`That file is ${(input.file.size / 1024 / 1024).toFixed(1)}MB — max is 50MB. Try a smaller/compressed clip.`);
     }
+    if (input.file.size === 0) throw new Error("That file is empty. Pick another one.");
     const okType = input.file.type.startsWith("image/") || input.file.type.startsWith("video/");
     if (!okType) throw new Error("Only image or video files can be uploaded.");
-    const ext = input.file.name.split(".").pop() ?? "bin";
-    const path = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    // Sanitize extension to avoid weird storage paths
+    const rawExt = (input.file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin";
+    const path = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${rawExt}`;
     const { error: upErr } = await supabase.storage
       .from("post-media")
       .upload(path, input.file, { contentType: input.file.type, upsert: false });
-    if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
+    if (upErr) {
+      const m = upErr.message || "";
+      if (/exceeded|too large|payload/i.test(m)) throw new Error("Upload rejected — file is too large. Compress and retry.");
+      if (/permission|unauth|forbidden|rls/i.test(m)) throw new Error("You're not signed in. Sign back in and try again.");
+      if (/mime|content.type/i.test(m)) throw new Error("That file type isn't allowed. Use JPG/PNG/MP4/MOV.");
+      throw new Error(`Upload failed: ${m}`);
+    }
     const { data: pub } = supabase.storage.from("post-media").getPublicUrl(path);
     media_url = pub.publicUrl;
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
   }
   // Server-side validation & friendly error mapping.
-  return await createPostValidated({
-    data: {
-      caption: input.caption,
-      media_url,
-      media_type,
-    },
-  });
+  try {
+    return await createPostValidated({
+      data: { caption: input.caption, media_url, media_type },
+    });
+  } catch (e: any) {
+    const m = (e?.message || "").toString();
+    if (/unauthorized|no authorization/i.test(m)) throw new Error("Session expired. Sign back in and try again.");
+    throw e;
+  }
 }
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {

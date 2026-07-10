@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
@@ -76,10 +76,15 @@ function FeedPage() {
       )}
 
       {feed.data?.map((p, i) => (
-        <div key={p.id}>
+        <motion.div
+          key={p.id}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35, ease: "easeOut" }}
+        >
           <PostCard post={p} liked={likes.data?.has(p.id)} />
           {i === 2 && <FollowSuggestions />}
-        </div>
+        </motion.div>
       ))}
     </div>
   );

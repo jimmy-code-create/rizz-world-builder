@@ -379,3 +379,190 @@
 /* Focus mode — hides secondary rails and suggestions for a distraction-free feed */
 body.focus-mode [data-focus-hide] { display: none !important; }
 body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
+
+/* ============ NIGHTCLUB CANVAS ============ */
+.nightclub-canvas {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  transform: translate3d(var(--px, 0), var(--py, 0), 0);
+  will-change: transform;
+}
+.nc-orb {
+  position: absolute; border-radius: 9999px; filter: blur(80px); opacity: 0.55;
+  mix-blend-mode: screen; will-change: transform;
+}
+.nc-orb-1 { width: 55vmax; height: 55vmax; left: -15vmax; top: -20vmax;
+  background: radial-gradient(circle, oklch(0.68 0.28 5 / 0.9), transparent 65%);
+  animation: nc-drift-1 22s ease-in-out infinite; }
+.nc-orb-2 { width: 60vmax; height: 60vmax; right: -20vmax; top: 10vmax;
+  background: radial-gradient(circle, oklch(0.45 0.25 295 / 0.9), transparent 65%);
+  animation: nc-drift-2 28s ease-in-out infinite; }
+.nc-orb-3 { width: 45vmax; height: 45vmax; left: 20vmax; bottom: -20vmax;
+  background: radial-gradient(circle, oklch(0.78 0.18 200 / 0.7), transparent 65%);
+  animation: nc-drift-3 26s ease-in-out infinite; }
+.nc-beam {
+  position: absolute; top: -20%; height: 140%; width: 40vmax;
+  background: linear-gradient(90deg, transparent, oklch(0.95 0.08 320 / 0.06), transparent);
+  transform-origin: 50% 0%;
+  animation: nc-sweep 14s linear infinite;
+  mix-blend-mode: screen;
+}
+.nc-beam-1 { left: 20%; animation-duration: 18s; }
+.nc-beam-2 { right: 15%; animation-duration: 22s; animation-direction: reverse; opacity: 0.7; }
+.nc-grain {
+  position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+  background-image: radial-gradient(oklch(1 0 0) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+@keyframes nc-drift-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vmax,4vmax) scale(1.1); } }
+@keyframes nc-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-5vmax,6vmax) scale(1.08); } }
+@keyframes nc-drift-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4vmax,-5vmax) scale(1.12); } }
+@keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
+
+/* ============ PROCEDURAL EFFECT CLASSES ============
+   All effect classes here consume `--ec` (edge color) so a single class can
+   render any of 40 palette colors from the profile_effects catalog. */
+
+/* Additional avatar-ring styles (existing ring-neon/aurora/fire/holo/sakura/electric
+   are above). Each uses --ec so it can be tinted per row. */
+.fx-ring-ice { border-radius: 9999px; box-shadow: 0 0 0 2px var(--ec, #06b6d4), 0 0 30px var(--ec, #06b6d4);
+  animation: ring-pulse 3.6s ease-in-out infinite; }
+.fx-ring-toxic::before {
+  content: ""; position: absolute; inset: -6px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, var(--ec), transparent 30%, var(--ec) 60%, transparent 90%);
+  filter: blur(6px); z-index: -1; animation: ring-rotate 3.5s linear infinite;
+}
+.fx-ring-sunset::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, var(--ec), #fda4af, #facc15, var(--ec));
+  filter: blur(7px); z-index: -1; animation: ring-rotate 5s linear infinite;
+}
+.fx-ring-galaxy::before {
+  content: ""; position: absolute; inset: -7px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, var(--ec), #312e81, #a855f7, #06b6d4, var(--ec));
+  filter: blur(8px); z-index: -1; animation: ring-rotate 9s linear infinite, hue-shift 12s linear infinite;
+}
+.fx-ring-chrome::before {
+  content: ""; position: absolute; inset: -4px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #cbd5e1, var(--ec), #f8fafc, var(--ec), #cbd5e1);
+  filter: blur(3px) brightness(1.2); z-index: -1; animation: ring-rotate 6s linear infinite;
+}
+.fx-ring-ember::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, var(--ec), #ea580c, transparent 60%, var(--ec));
+  filter: blur(5px); z-index: -1; animation: ring-rotate 3s linear infinite;
+}
+/* Tinted variants of the pre-existing named classes, so aurora/fire/holo/sakura/electric
+   still respect --ec on top of their base gradient. */
+.fx-ring-aurora, .fx-ring-fire, .fx-ring-holo, .fx-ring-sakura, .fx-ring-electric {
+  border-radius: 9999px;
+  box-shadow: 0 0 22px var(--ec, #ff2d92);
+}
+
+/* Procedural nameplate variants — all use --nc for tint. */
+.np-base {
+  background: linear-gradient(90deg, var(--nc, #ff2d92), color-mix(in oklab, var(--nc, #ff2d92) 40%, white 60%), var(--nc, #ff2d92));
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 3s linear infinite;
+}
+.np-p-shimmer { composes: np-base; }
+.np-p-gradient {
+  background: linear-gradient(90deg, var(--nc), color-mix(in oklab, var(--nc) 50%, white 50%));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.np-p-glow { color: var(--nc); text-shadow: 0 0 8px var(--nc), 0 0 20px color-mix(in oklab, var(--nc) 40%, transparent 60%); }
+.np-p-glitch { color: var(--nc); animation: glitch-rgb 1.6s steps(6) infinite; }
+.np-p-rainbow {
+  background: linear-gradient(90deg, var(--nc), #f43f5e, #facc15, #22d3ee, #a855f7, var(--nc));
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 2.5s linear infinite;
+}
+.np-p-chrome {
+  background: linear-gradient(90deg, #cbd5e1, var(--nc), #f8fafc, var(--nc), #cbd5e1);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 3s linear infinite;
+}
+.np-p-sparkle { color: var(--nc); text-shadow: 0 0 4px white, 0 0 12px var(--nc); }
+.np-p-wave { color: var(--nc); animation: name-wave 2s ease-in-out infinite; display: inline-block; }
+.np-p-neon { color: var(--nc); text-shadow: 0 0 4px var(--nc), 0 0 12px var(--nc), 0 0 24px var(--nc); }
+.np-p-ember {
+  background: linear-gradient(90deg, var(--nc), #ea580c, #facc15, var(--nc));
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 2s linear infinite;
+}
+.np-p-ice {
+  background: linear-gradient(90deg, var(--nc), #e0f2fe, var(--nc));
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 4s linear infinite;
+}
+.np-p-mythic {
+  background: linear-gradient(90deg, var(--nc), #a855f7, #ec4899, #facc15, #22d3ee, var(--nc));
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: name-shimmer 2.5s linear infinite;
+}
+@keyframes name-wave {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Profile-effect background overlays — placed inside a relative parent (e.g. hero card).
+   Pointer-events none so they never block interaction. */
+.pfx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.pfx-sparkles::before, .pfx-sparkles::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(circle, var(--ec, #ff2d92) 1px, transparent 1.5px) 0 0/40px 40px,
+    radial-gradient(circle, var(--ec, #ff2d92) 1px, transparent 1.5px) 20px 20px/40px 40px;
+  animation: sparkle-twinkle 2.8s ease-in-out infinite;
+  opacity: 0.6;
+}
+.pfx-hearts::before {
+  content: "♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥"; position: absolute; inset: 0;
+  color: var(--ec, #ff2d92); font-size: 14px; letter-spacing: 24px;
+  animation: confetti-drift 6s linear infinite; opacity: 0.7;
+}
+.pfx-snow::before {
+  content: ""; position: absolute; inset: -20% 0;
+  background: radial-gradient(circle at 20% 20%, var(--ec, #f1f5f9) 1.5px, transparent 2px) 0 0/60px 80px,
+              radial-gradient(circle at 70% 40%, var(--ec, #f1f5f9) 1px, transparent 1.5px) 0 0/50px 70px;
+  animation: snow-fall 8s linear infinite;
+}
+.pfx-confetti::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(45deg, var(--ec, #ff2d92) 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(-45deg, var(--ec, #ff2d92) 25%, transparent 25%) 8px 0/16px 16px;
+  animation: confetti-drift 5s linear infinite; opacity: 0.5;
+}
+.pfx-embers::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 30% 90%, var(--ec, #ea580c) 2px, transparent 3px) 0 0/40px 60px,
+              radial-gradient(circle at 70% 90%, var(--ec, #ea580c) 1.5px, transparent 2.5px) 0 0/50px 80px;
+  animation: snow-fall 6s linear reverse infinite;
+  filter: blur(0.5px);
+}
+.pfx-bubbles::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle, var(--ec, #22d3ee) 3px, transparent 4px) 0 0/70px 70px;
+  animation: snow-fall 10s linear reverse infinite; opacity: 0.4;
+}
+.pfx-stars::before {
+  content: "✦ ✦ ✦ ✦ ✦"; position: absolute; inset: 0;
+  color: var(--ec, #facc15); font-size: 10px; letter-spacing: 30px;
+  animation: sparkle-twinkle 3s ease-in-out infinite;
+}
+.pfx-lightning::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 45%, var(--ec, #facc15) 50%, transparent 55%);
+  filter: blur(2px); animation: nc-sweep 3s linear infinite; opacity: 0.4;
+}
+.pfx-petals::before {
+  content: "❀ ❀ ❀ ❀"; position: absolute; inset: 0;
+  color: var(--ec, #fda4af); font-size: 14px; letter-spacing: 40px;
+  animation: confetti-drift 9s linear infinite; opacity: 0.75;
+}
+.pfx-meteors::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(20deg, transparent 40%, var(--ec, #ff2d92) 50%, transparent 60%);
+  background-size: 30px 200%; animation: snow-fall 3s linear infinite;
+  opacity: 0.35;
+}
