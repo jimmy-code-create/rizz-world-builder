@@ -1,13 +1,32 @@
 import { useMemo } from "react";
 
-/** Full-coverage overlay effect (banner/profile background). */
-export function ProfileEffect({ slug }: { slug?: string | null }) {
-  if (!slug) return null;
+const STYLE_CLASS: Record<string, string> = {
+  sparkles: "pfx-sparkles",
+  hearts: "pfx-hearts",
+  snow: "pfx-snow",
+  confetti: "pfx-confetti",
+  embers: "pfx-embers",
+  bubbles: "pfx-bubbles",
+  stars: "pfx-stars",
+  lightning: "pfx-lightning",
+  petals: "pfx-petals",
+  meteors: "pfx-meteors",
+};
 
+/** Full-coverage overlay effect (banner/profile background). */
+export function ProfileEffect({ slug, accent }: { slug?: string | null; accent?: string | null }) {
+  if (!slug) return null;
   if (slug === "fx-confetti") return <ConfettiOverlay />;
   if (slug === "fx-snow") return <SnowOverlay />;
   if (slug === "fx-sparkles") return <SparklesOverlay />;
   if (slug === "fx-glitch") return <GlitchOverlay />;
+
+  // Procedural: fx-<style>-<color>
+  if (slug.startsWith("fx-")) {
+    const style = slug.split("-")[1];
+    const cls = STYLE_CLASS[style];
+    if (cls) return <div className={`pfx ${cls}`} style={accent ? ({ ["--ec" as any]: accent } as React.CSSProperties) : undefined} />;
+  }
   return null;
 }
 
