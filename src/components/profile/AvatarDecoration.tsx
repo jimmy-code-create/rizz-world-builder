@@ -1,14 +1,33 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-const RING_CLASS: Record<string, string> = {
-  "ring-neon": "fx-ring-neon",
-  "ring-aurora": "fx-ring-aurora",
-  "ring-fire": "fx-ring-fire",
-  "ring-holo": "fx-ring-holo",
-  "ring-sakura": "fx-ring-sakura",
-  "ring-electric": "fx-ring-electric",
+/**
+ * Slug resolution:
+ *  - legacy exact slugs ("ring-neon", "ring-aurora", …) still work
+ *  - procedural slugs "ring-<style>-<color>" (e.g. "ring-ice-cyan") map by <style>
+ *  - unknown → colored glow ring using accent
+ */
+const STYLE_CLASS: Record<string, string> = {
+  neon: "fx-ring-neon",
+  aurora: "fx-ring-aurora",
+  fire: "fx-ring-fire",
+  holo: "fx-ring-holo",
+  sakura: "fx-ring-sakura",
+  electric: "fx-ring-electric",
+  ice: "fx-ring-ice",
+  toxic: "fx-ring-toxic",
+  sunset: "fx-ring-sunset",
+  galaxy: "fx-ring-galaxy",
+  chrome: "fx-ring-chrome",
+  ember: "fx-ring-ember",
 };
+function resolveRingClass(slug?: string | null): string | undefined {
+  if (!slug) return undefined;
+  if (!slug.startsWith("ring-")) return undefined;
+  const parts = slug.split("-");
+  // ring-<style> OR ring-<style>-<color>
+  return STYLE_CLASS[parts[1]] ?? "fx-ring-neon";
+}
 
 type Props = {
   src?: string | null;
@@ -20,7 +39,7 @@ type Props = {
 };
 
 export function AvatarDecoration({ src, fallback, size = 40, effectSlug, accent, className }: Props) {
-  const ringClass = effectSlug ? RING_CLASS[effectSlug] : undefined;
+  const ringClass = resolveRingClass(effectSlug);
   return (
     <div className={cn("relative inline-block", className)} style={{ width: size, height: size }}>
       {ringClass && <div className={cn("absolute inset-0 rounded-full pointer-events-none", ringClass)} style={{ ["--ec" as any]: accent || "#ff2d92" }} />}
