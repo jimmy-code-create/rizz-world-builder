@@ -4,7 +4,9 @@ import { Phone, PhoneOff, Video as VideoIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Nameplate } from "@/components/profile/Nameplate";
+import { useEquipped } from "@/lib/useEquipped";
 
 type Incoming = {
   fromId: string;
@@ -52,23 +54,35 @@ export function IncomingCallRinger() {
     setCall(null);
   };
 
+  const eq = useEquipped(call?.fromId);
+  const decor = (eq.data as any)?.avatar_decoration;
+  const namep = (eq.data as any)?.nameplate;
+
   return (
     <AnimatePresence>
       {call && (
         <motion.div
-          initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -80, opacity: 0 }}
+          initial={{ y: -80, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -80, opacity: 0, scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 260, damping: 22 }}
           className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-md"
         >
           <div className="glass-strong rounded-3xl border border-white/10 p-3 flex items-center gap-3 shadow-2xl">
-            <Avatar className="h-12 w-12 ring-2 ring-[var(--rizz-pink)]/50">
-              <AvatarImage src={call.fromAvatar ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary font-bold">
-                {(call.fromUsername ?? "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <AvatarDecoration
+              src={call.fromAvatar}
+              fallback={(call.fromUsername ?? "?").charAt(0).toUpperCase()}
+              size={48}
+              effectSlug={decor?.slug}
+              accent={decor?.preview_color}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate">
-                {call.fromDisplayName || call.fromUsername || "Someone"}
+                <Nameplate
+                  name={call.fromDisplayName || call.fromUsername || "Someone"}
+                  slug={namep?.slug}
+                  accent={namep?.preview_color}
+                />
               </p>
               <p className="text-xs text-muted-foreground">
                 Incoming {call.video ? "video" : "voice"} call…
