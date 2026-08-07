@@ -341,8 +341,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
       {/* Selected overlay toolbar */}
       {sel && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
             <span className="text-xs px-2 text-muted-foreground shrink-0">{sel.kind === "text" ? "Text" : "Sticker"}</span>
             <div className="flex items-center gap-1 shrink-0">
               <span className="text-[10px] text-muted-foreground">size</span>
@@ -385,17 +385,17 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
       {/* Panels */}
       {panel === "sticker" && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-3 grid grid-cols-10 gap-2">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-[26vh] overflow-y-auto">
             {STICKERS.map((s) => (
-              <button key={s} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl hover:scale-110 transition">{s}</button>
+              <button key={s} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl h-10 grid place-items-center hover:scale-110 transition">{s}</button>
             ))}
           </div>
         </div>
       )}
       {panel === "filter" && mediaUrl && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
             {FILTERS.map((f) => (
               <button key={f.name} onClick={() => setFilter(f.css)} className={`shrink-0 text-xs px-3 py-2 rounded-xl border ${filter===f.css ? "bg-white/15 border-white/30" : "border-white/10"}`}>
                 {f.name}
@@ -405,8 +405,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         </div>
       )}
       {panel === "bg" && !mediaUrl && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
             {[
               "linear-gradient(135deg,#ff3ea5,#7c3aed)",
               "linear-gradient(135deg,#0ea5e9,#22d3ee)",
@@ -422,7 +422,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       )}
 
       {/* Bottom action bar */}
-      <div className="p-3 pt-1 shrink-0">
+      <div className="px-2 pt-1 shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
         <div className="glass-strong rounded-2xl p-2 flex items-center justify-around">
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
