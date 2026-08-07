@@ -51,7 +51,7 @@ function ResetPasswordPage() {
   return (
     <AuthCard title="Forgot your password?" subtitle="We'll email you a link to set a new one.">
       {errKind && (
-        <AuthErrorBanner kind={errKind} detail={errMsg} onRetry={() => setErrKind(null)} retryLabel="Try again" />
+        <AuthErrorBanner kind={errKind} rawMessage={errMsg} onRetry={() => setErrKind(null)} retryLabel="Try again" />
       )}
       {sent ? (
         <div className="space-y-4 text-sm text-muted-foreground">
