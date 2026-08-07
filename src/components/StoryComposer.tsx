@@ -253,33 +253,32 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 flex flex-col"
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col overscroll-none"
+      style={{ height: "100dvh" }}
     >
-      <div className="flex items-center justify-between p-3 shrink-0">
-        <button onClick={onClose} className="h-10 w-10 rounded-full glass-strong grid place-items-center">
+      <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
+        <button onClick={onClose} className="h-9 w-9 rounded-full glass-strong grid place-items-center">
           <X className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          <button onClick={undo} disabled={history.length === 0} className="h-10 w-10 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Undo">
+          <button onClick={undo} disabled={history.length === 0} className="h-9 w-9 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Undo">
             <Undo2 className="h-5 w-5" />
           </button>
-          <div className="text-sm font-semibold">New story</div>
+          <div className="text-sm font-semibold hidden xs:block sm:block">New story</div>
         </div>
-        <Button onClick={post} disabled={busy} size="sm" className="bg-gradient-primary shadow-glow rounded-full px-4">
+        <Button onClick={post} disabled={busy} size="sm" className="bg-gradient-primary shadow-glow rounded-full px-4 h-9">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" /> Share</>}
         </Button>
       </div>
 
       {/* Canvas stage — 9:16 */}
-      <div className="flex-1 flex items-center justify-center px-3 pb-3 min-h-0">
+      <div className="flex-1 flex items-center justify-center px-2 pb-1 min-h-0">
         <div
           ref={stageRef}
           onPointerDown={(e) => { if (e.target === stageRef.current) setSelected(null); }}
-          className="relative rounded-3xl overflow-hidden shadow-glow border border-white/10 select-none touch-none"
+          className="relative rounded-2xl overflow-hidden shadow-glow border border-white/10 select-none touch-none h-full w-auto max-h-full max-w-full"
           style={{
             aspectRatio: "9 / 16",
-            height: "min(100%, calc((100dvh - 240px)))",
-            maxWidth: "100%",
             background: mediaUrl ? "#000" : bg,
           }}
         >
@@ -342,8 +341,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
       {/* Selected overlay toolbar */}
       {sel && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
             <span className="text-xs px-2 text-muted-foreground shrink-0">{sel.kind === "text" ? "Text" : "Sticker"}</span>
             <div className="flex items-center gap-1 shrink-0">
               <span className="text-[10px] text-muted-foreground">size</span>
@@ -386,17 +385,17 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
       {/* Panels */}
       {panel === "sticker" && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-3 grid grid-cols-10 gap-2">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-[26vh] overflow-y-auto">
             {STICKERS.map((s) => (
-              <button key={s} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl hover:scale-110 transition">{s}</button>
+              <button key={s} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl h-10 grid place-items-center hover:scale-110 transition">{s}</button>
             ))}
           </div>
         </div>
       )}
       {panel === "filter" && mediaUrl && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
             {FILTERS.map((f) => (
               <button key={f.name} onClick={() => setFilter(f.css)} className={`shrink-0 text-xs px-3 py-2 rounded-xl border ${filter===f.css ? "bg-white/15 border-white/30" : "border-white/10"}`}>
                 {f.name}
@@ -406,8 +405,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         </div>
       )}
       {panel === "bg" && !mediaUrl && (
-        <div className="px-3 pb-2 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto">
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
             {[
               "linear-gradient(135deg,#ff3ea5,#7c3aed)",
               "linear-gradient(135deg,#0ea5e9,#22d3ee)",
@@ -423,7 +422,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       )}
 
       {/* Bottom action bar */}
-      <div className="p-3 pt-1 shrink-0">
+      <div className="px-2 pt-1 shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
         <div className="glass-strong rounded-2xl p-2 flex items-center justify-around">
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />

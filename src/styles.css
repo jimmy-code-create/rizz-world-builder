@@ -566,3 +566,9 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   background-size: 30px 200%; animation: snow-fall 3s linear infinite;
   opacity: 0.35;
 }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}

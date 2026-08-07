@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createPostValidated } from "@/lib/owner.functions";
+import { createPostValidated } from "@/lib/posts.functions";
 
 export type FeedPost = {
   id: string;
@@ -79,15 +79,32 @@ export async function createPost(input: {
     media_url = pub.publicUrl;
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
   }
-  // Server-side validation & friendly error mapping.
+  const caption = (input.caption ?? "").trim().slice(0, 2000) || null;
+  if (!caption && !media_url) throw new Error("Add a caption or media before posting");
+
+  // Server-side validation first; fall back to a direct RLS-scoped insert if
+  // the server function can't be reached (offline SSR worker, expired bearer).
   try {
     return await createPostValidated({
-      data: { caption: input.caption, media_url, media_type },
+      data: { caption, media_url, media_type },
     });
   } catch (e: any) {
     const m = (e?.message || "").toString();
-    if (/unauthorized|no authorization/i.test(m)) throw new Error("Session expired. Sign back in and try again.");
-    throw e;
+    const recoverable = /unauthorized|failed to fetch|network|500|fetch failed|not a function|is not defined/i.test(m);
+    if (!recoverable) throw e;
+    const { data: row, error } = await supabase
+      .from("posts")
+      .insert({ author_id: input.authorId, caption, media_url, media_type })
+      .select()
+      .single();
+    if (error) {
+      const em = error.message || "";
+      if (/out of range|integer|numeric/i.test(em)) throw new Error("A number was too large. Try a shorter caption.");
+      if (/value too long|too long/i.test(em)) throw new Error("Caption or link is too long. Shorten it and try again.");
+      if (/row-level|permission/i.test(em)) throw new Error("Session expired. Sign back in and try again.");
+      throw new Error(`Couldn't post: ${em}`);
+    }
+    return row;
   }
 }
 

@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function verifyPassword(input: string): boolean {
   const expected = process.env.OWNER_PANEL_PASSWORD;
@@ -168,39 +167,4 @@ export const ownerGrantAdmin = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
     return { ok: true };
-  });
-
-// Server-side validated post creation to prevent "integer out of range" and
-// similar upload errors. Media is uploaded from the client first; this fn
-// clamps numeric/text fields and inserts the row with a friendly error map.
-export const createPostValidated = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
-    caption?: string | null;
-    media_url?: string | null;
-    media_type?: "image" | "video" | "none" | null;
-  }) => d)
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    // Coerce + clamp everything to values Postgres will accept.
-    const caption = (data.caption ?? "").toString().trim().slice(0, 2000) || null;
-    const media_type: "image" | "video" | "none" =
-      data.media_type === "image" || data.media_type === "video" ? data.media_type : "none";
-    const media_url = data.media_url && typeof data.media_url === "string" ? data.media_url.slice(0, 2048) : null;
-    if (!caption && !media_url) throw new Error("Add a caption or media before posting");
-
-    const { data: row, error } = await supabase
-      .from("posts")
-      .insert({ author_id: userId, caption, media_url, media_type })
-      .select()
-      .single();
-    if (error) {
-      const msg = error.message || "";
-      if (/out of range|integer|numeric/i.test(msg)) throw new Error("A number was too large. Try a smaller value or shorter caption.");
-      if (/value too long|too long/i.test(msg)) throw new Error("Caption or link is too long. Shorten it and try again.");
-      if (/violates.*row-level/i.test(msg)) throw new Error("You don't have permission to post right now. Sign back in.");
-      if (/foreign key/i.test(msg)) throw new Error("Your profile isn't fully set up yet. Reload the page.");
-      throw new Error(`Couldn't post: ${msg}`);
-    }
-    return row;
   });
