@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function verifyPassword(input: string): boolean {
   const expected = process.env.OWNER_PANEL_PASSWORD;
