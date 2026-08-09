@@ -1,50 +1,37 @@
-## Goal
-Make equipped effects visible everywhere, add a nightclub-style animated canvas across the app, fix reel/post uploads, and dramatically expand the effects catalog.
+# Phase 8 — Upload debugging, smoother app, mobile canvas fixes
 
-## 1. Fix uploads (posts + reels)
-- Investigate current failure by reading `src/lib/owner.functions.ts` (`createPostValidated`) and the reels composer path — user says "don't know what problem is coming", so I'll reproduce via Playwright, capture the exact server error, and fix root cause.
-- Common suspects to verify and harden:
-  - `media_type` enum vs DB check constraint (`"none"` may not be allowed on inserts with a `media_url`).
-  - Numeric fields (`like_count`, etc.) using `int4` — ensure server never sends counts; DB defaults handle it.
-  - Storage path length / filename sanitization.
-  - Auth bearer middleware attached for `createPostValidated`.
-- Return **clear user-facing messages** for: file too large, unsupported type, storage upload failure, validation failure, unauthorized.
-- Apply the same validated path to the reel composer (currently may bypass `createPostValidated`).
+## 1. Reel upload debug panel (owner-only)
+- Every upload step (validate file, storage upload, get public URL, insert post) gets a step name, timestamp and a generated request ID.
+- On failure the toast keeps the friendly message; the full trace (request ID, failing step, raw backend message and status) is kept and shown in an owner-only debug drawer.
+- Drawer opens from the Owner Control Room (RIZZ logo, password) and from a small badge on the reel/post composer that only the owner/admin sees.
+- Copy-to-clipboard button for the whole trace.
 
-## 2. Effects everywhere with unified timing
-One shared hook + one shared wrapper so every surface renders effects identically:
-- Use existing `useEquipped(userId)` on: `PostCard` (done), `StoryComposer`/story ring, `StoriesStrip` avatars, reels overlay author, `IncomingCallRinger` caller avatar, DM header + message bubbles, profile hero, comments, mentions, follow suggestions.
-- Standardize animation timing via CSS custom properties in `styles.css` (`--fx-duration`, `--fx-ease`) so nameplates/rings/glows all pulse in sync.
-- Nameplate + AvatarDecoration used consistently (replace raw `<Avatar>` usages on the surfaces above).
+## 2. Text-only posts
+- The post composer already allows text-only. The reel editor gets a "text reel" mode that renders the caption over a gradient and uploads that, so nothing forces you to pick media.
 
-## 3. Nightclub animated canvas
-- New `<NightclubCanvas />` mounted once in `AppShell` behind content:
-  - Layered animated gradient blobs (pink/violet/cyan) with slow drift.
-  - Subtle grain + light-beam sweeps using CSS `@keyframes` (GPU-only transforms/opacity).
-  - Respects `prefers-reduced-motion` and the profile `reduced_motion` flag.
-- Route-scoped motion polish (framer-motion):
-  - Feed: stagger post cards on mount.
-  - DM: message enter animation + typing indicator shimmer.
-  - Profile: hero parallax on scroll, avatar float.
-- Zero layout shift; canvas is `position: fixed; inset: 0; z-index: -1; pointer-events: none`.
+## 3. Delete all content + hide raw IDs
+- Delete every post, reel, story and their child rows (likes, comments, reactions, bookmarks, hashtag links, views) for your account.
+- Sweep the UI so no raw UUID is ever shown as text — profiles, groups, DMs and share links use usernames, slugs or short codes instead.
 
-## 4. Expand effects catalog to 1000+
-- Generate programmatically in a single migration:
-  - **Avatar decorations (~400):** ring styles × color palettes × rarities (neon, aurora, fire, holo, sakura, electric, ice, toxic, sunset, galaxy, etc. × 40 palette variants).
-  - **Nameplates (~300):** gradient/animated text presets (gold, vapor, mythic, chrome, ember, ocean, matrix… × variants).
-  - **Profile effects / gifts (~300):** background auras, particle overlays (hearts, sparkles, snow, confetti, embers, bubbles, stars, lightning) × color variants.
-- Each row: `slug`, `name`, `type`, `rarity`, `unlock_rizz`, `preview_color`, `description`. All CSS-driven — no image assets required.
-- Rendering: extend `AvatarDecoration` / `Nameplate` / `ProfileEffect` to resolve slugs via a small pattern map (prefix → CSS class + CSS var color), so 1000 rows share ~30 base animations parameterized by color.
-- Owner panel: bulk-assign any effect/badge to a user (already scaffolded — just wire the new catalog).
+## 4. Remove Labs
+- Delete the `/labs` route and its entries in the desktop sidebar, mobile "More" sheet, command palette and keyboard shortcuts.
 
-## 5. Verification
-- Playwright: log in, upload an image post, upload a video reel, publish a story, open DM, trigger a call — screenshot each and confirm no errors + effects visible.
-- Confirm build passes and no console errors on `/feed`, `/reels`, `/dm/:id`, `/u/:username`.
+## 5. Smoothness pass
+- Lighter nightclub canvas on mobile, GPU-friendly transforms only, fewer simultaneous animations, capped stagger.
+- Lazy-load feed media (`loading="lazy"`, `decoding="async"`); videos preload metadata only.
+- Debounce realtime invalidations so a burst of events causes one refetch instead of many.
+- Respect reduced-motion everywhere.
+
+## 6. DM long-press + reply fix
+- Long-press sheet gets reliable touch handling: no accidental trigger while scrolling, haptic feedback, no text selection.
+- Reply becomes a real quoted-reply chip above the input instead of injecting `> text` into the box. Tapping a reply scrolls to the original message and highlights it with a fading glow.
+
+## 7. Full-screen canvas fixes (from your screenshots)
+- The story composer and the "Create reel" overlay currently render inside the app shell, so the RIZZ header and bottom nav bleed through and there are two close buttons.
+- Both move to a true full-screen layer above the shell: one close button, safe-area padding, canvas sized to the real viewport, bottom toolbar always reachable, no nav overlap.
+- The call screen gets the same treatment so controls never sit under the bottom nav.
 
 ## Technical notes
-- No schema breaking changes; effects insertion is additive with `ON CONFLICT (slug) DO NOTHING`.
-- Nightclub canvas is pure CSS/SVG — no new deps.
-- Upload fix: any DB-side fix goes through a migration; app-side fixes go in `owner.functions.ts` + reel composer.
-
-## Question before I start
-The 1000+ effects will be procedurally generated variants (e.g. "Neon Ring · Cyan", "Neon Ring · Magenta", …) sharing base animations. That's the only realistic way to hit 1000+ without shipping thousands of custom assets. OK to proceed with that approach?
+- Debug trace lives in a small client store (`src/lib/upload-trace.ts`), not persisted; owner gate uses `has_role(auth.uid(),'admin')` plus the existing password gate.
+- Content deletion runs as a data operation scoped to your user id.
+- Overlays use `createPortal` into `document.body` with `position: fixed; inset: 0` and `env(safe-area-inset-*)` padding.
