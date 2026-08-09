@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createPostValidated } from "@/lib/posts.functions";
+import { startTrace } from "@/lib/upload-trace";
 
 export type FeedPost = {
   id: string;
@@ -50,26 +51,31 @@ export async function createPost(input: {
   authorId: string;
   caption: string;
   file?: File | null;
+  kind?: "post" | "reel" | "story";
 }) {
+  const trace = startTrace(input.kind ?? "post");
   let media_url: string | null = null;
   let media_type: "image" | "video" | "none" = "none";
   if (input.file) {
+    trace.step("validate file", `${input.file.name} · ${(input.file.size / 1024 / 1024).toFixed(2)}MB · ${input.file.type || "unknown type"}`);
     // Client-side guards for a friendly error before hitting the wire.
     const MAX = 50 * 1024 * 1024;
     if (input.file.size > MAX) {
-      throw new Error(`That file is ${(input.file.size / 1024 / 1024).toFixed(1)}MB — max is 50MB. Try a smaller/compressed clip.`);
+      throw new Error(trace.fail("validate file", `That file is ${(input.file.size / 1024 / 1024).toFixed(1)}MB — max is 50MB. Try a smaller/compressed clip.`));
     }
-    if (input.file.size === 0) throw new Error("That file is empty. Pick another one.");
+    if (input.file.size === 0) throw new Error(trace.fail("validate file", "That file is empty. Pick another one."));
     const okType = input.file.type.startsWith("image/") || input.file.type.startsWith("video/");
-    if (!okType) throw new Error("Only image or video files can be uploaded.");
+    if (!okType) throw new Error(trace.fail("validate file", "Only image or video files can be uploaded."));
     // Sanitize extension to avoid weird storage paths
     const rawExt = (input.file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin";
     const path = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${rawExt}`;
+    trace.step("storage upload", `post-media/${path}`);
     const { error: upErr } = await supabase.storage
       .from("post-media")
       .upload(path, input.file, { contentType: input.file.type, upsert: false });
     if (upErr) {
       const m = upErr.message || "";
+      trace.fail("storage upload", m);
       if (/exceeded|too large|payload/i.test(m)) throw new Error("Upload rejected — file is too large. Compress and retry.");
       if (/permission|unauth|forbidden|rls/i.test(m)) throw new Error("You're not signed in. Sign back in and try again.");
       if (/mime|content.type/i.test(m)) throw new Error("That file type isn't allowed. Use JPG/PNG/MP4/MOV.");
@@ -78,20 +84,26 @@ export async function createPost(input: {
     const { data: pub } = supabase.storage.from("post-media").getPublicUrl(path);
     media_url = pub.publicUrl;
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
+    trace.step("public url", media_url);
   }
   const caption = (input.caption ?? "").trim().slice(0, 2000) || null;
-  if (!caption && !media_url) throw new Error("Add a caption or media before posting");
+  if (!caption && !media_url) throw new Error(trace.fail("validate content", "Add a caption or media before posting"));
 
   // Server-side validation first; fall back to a direct RLS-scoped insert if
   // the server function can't be reached (offline SSR worker, expired bearer).
   try {
-    return await createPostValidated({
+    trace.step("server insert", "createPostValidated");
+    const row = await createPostValidated({
       data: { caption, media_url, media_type },
     });
+    trace.done();
+    return row;
   } catch (e: any) {
     const m = (e?.message || "").toString();
     const recoverable = /unauthorized|failed to fetch|network|500|fetch failed|not a function|is not defined/i.test(m);
+    trace.fail("server insert", m);
     if (!recoverable) throw e;
+    trace.step("fallback insert", "direct RLS insert");
     const { data: row, error } = await supabase
       .from("posts")
       .insert({ author_id: input.authorId, caption, media_url, media_type })
@@ -99,11 +111,13 @@ export async function createPost(input: {
       .single();
     if (error) {
       const em = error.message || "";
+      trace.fail("fallback insert", em);
       if (/out of range|integer|numeric/i.test(em)) throw new Error("A number was too large. Try a shorter caption.");
       if (/value too long|too long/i.test(em)) throw new Error("Caption or link is too long. Shorten it and try again.");
       if (/row-level|permission/i.test(em)) throw new Error("Session expired. Sign back in and try again.");
       throw new Error(`Couldn't post: ${em}`);
     }
+    trace.done();
     return row;
   }
 }
