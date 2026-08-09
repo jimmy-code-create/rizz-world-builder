@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Crown, Lock, Search, Sparkles, Trophy, Gift, Shield, Loader2, X, Check } from "lucide-react";
+import { UploadDebugPanel } from "@/components/UploadDebugPanel";
 import {
   ownerVerify, ownerSearchUsers, ownerListCatalog, ownerUserInventory,
   ownerGrantBadge, ownerRevokeBadge, ownerGrantEffect, ownerRemoveEffect,
@@ -82,7 +83,12 @@ export function OwnerPanel({ open, onOpenChange }: { open: boolean; onOpenChange
             <p className="text-xs text-muted-foreground">Default password is <code className="text-foreground">rizz-owner-2026</code> — change it in your backend secrets (OWNER_PANEL_PASSWORD).</p>
           </div>
         ) : (
-          <OwnerBody password={password} onLock={lock} />
+          <>
+            <OwnerBody password={password} onLock={lock} />
+            <div className="border-t border-white/5 p-4">
+              <UploadDebugPanel />
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
