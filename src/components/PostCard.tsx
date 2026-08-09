@@ -318,9 +318,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       {post.media_url && (
         <div className="relative bg-black/40" onClick={doubleTapLike}>
           {post.media_type === "video" ? (
-            <video src={post.media_url} controls className="w-full max-h-[600px] object-contain" />
+            <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[600px] object-contain" />
           ) : (
-            <img src={post.media_url} alt="" className="w-full max-h-[600px] object-cover" />
+            <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[600px] object-cover" />
           )}
           <AnimatePresence>
             {burst > 0 && (
