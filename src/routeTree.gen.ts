@@ -19,7 +19,6 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
-import { Route as AppLabsRouteImport } from './routes/_app/labs'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
@@ -85,11 +84,6 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLabsRoute = AppLabsRouteImport.update({
-  id: '/labs',
-  path: '/labs',
   getParentRoute: () => AppRoute,
 } as any)
 const AppGroupsRoute = AppGroupsRouteImport.update({
@@ -192,7 +186,6 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/groups': typeof AppGroupsRoute
-  '/labs': typeof AppLabsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/reels': typeof AppReelsRoute
@@ -221,7 +214,6 @@ export interface FileRoutesByTo {
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/groups': typeof AppGroupsRoute
-  '/labs': typeof AppLabsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/reels': typeof AppReelsRoute
@@ -252,7 +244,6 @@ export interface FileRoutesById {
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
   '/_app/groups': typeof AppGroupsRoute
-  '/_app/labs': typeof AppLabsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/reels': typeof AppReelsRoute
@@ -283,7 +274,6 @@ export interface FileRouteTypes {
     | '/explore'
     | '/feed'
     | '/groups'
-    | '/labs'
     | '/leaderboard'
     | '/notifications'
     | '/reels'
@@ -312,7 +302,6 @@ export interface FileRouteTypes {
     | '/explore'
     | '/feed'
     | '/groups'
-    | '/labs'
     | '/leaderboard'
     | '/notifications'
     | '/reels'
@@ -342,7 +331,6 @@ export interface FileRouteTypes {
     | '/_app/explore'
     | '/_app/feed'
     | '/_app/groups'
-    | '/_app/labs'
     | '/_app/leaderboard'
     | '/_app/notifications'
     | '/_app/reels'
@@ -436,13 +424,6 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof AppLeaderboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/labs': {
-      id: '/_app/labs'
-      path: '/labs'
-      fullPath: '/labs'
-      preLoaderRoute: typeof AppLabsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/groups': {
@@ -589,7 +570,6 @@ interface AppRouteChildren {
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
   AppGroupsRoute: typeof AppGroupsRoute
-  AppLabsRoute: typeof AppLabsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppReelsRoute: typeof AppReelsRoute
@@ -614,7 +594,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
   AppGroupsRoute: AppGroupsRoute,
-  AppLabsRoute: AppLabsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppReelsRoute: AppReelsRoute,
@@ -641,13 +620,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { FullScreenLayer } from "@/components/FullScreenLayer";
 
 type Overlay = {
   id: string;
@@ -251,9 +252,10 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   if (!open) return null;
 
   return (
+    <FullScreenLayer open={open}>
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 flex flex-col overscroll-none"
+      className="fixed inset-0 z-[100] bg-black flex flex-col overscroll-none"
       style={{ height: "100dvh" }}
     >
       <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
@@ -433,6 +435,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       </div>
       <input ref={fileRef} hidden type="file" accept="image/*,video/*" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
     </motion.div>
+    </FullScreenLayer>
   );
 }
 
