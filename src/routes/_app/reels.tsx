@@ -421,7 +421,6 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
-        showCloseButton={false}
         className="glass-strong border-white/10 md:max-w-3xl p-0 overflow-hidden flex flex-col
           max-md:top-0 max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:translate-x-0 max-md:translate-y-0
           max-md:max-w-none max-md:w-screen max-md:h-[100dvh] max-md:rounded-none md:max-h-[90dvh]"
@@ -432,7 +431,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
         >
           <DialogTitle className="text-base font-black">Create reel</DialogTitle>
           <DialogDescription className="sr-only">Upload a video, trim it, add a song and caption.</DialogDescription>
-          <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-full hover:bg-white/10"><X className="h-4 w-4" /></button>
+          <span className="h-8 w-8" aria-hidden />
         </div>
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
