@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
-  Plus, Upload, Scissors, Type as TypeIcon, Loader2, X, Check, Captions, Gauge, Sparkles, Bookmark, Send,
+  Plus, Upload, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
