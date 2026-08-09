@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X } from "lucide-react";
+import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -32,6 +33,9 @@ function DMPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
   const pressTimer = useRef<number | null>(null);
+  const pressStart = useRef<{ x: number; y: number } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);
   const [showJump, setShowJump] = useState(false);
@@ -42,18 +46,35 @@ function DMPage() {
   const [recording, setRecording] = useState(false);
   const recStart = useRef(0);
 
-  const startPress = (id: string) => {
+  const startPress = (id: string, point?: { x: number; y: number }) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
+    pressStart.current = point ?? null;
     pressTimer.current = window.setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(15);
       setOpenMsg(id);
-    }, 400);
+      pressTimer.current = null;
+    }, 350);
+  };
+  /** Only cancel on a real drag (scroll), not on tiny finger jitter. */
+  const movePress = (point: { x: number; y: number }) => {
+    const s = pressStart.current;
+    if (!s || !pressTimer.current) return;
+    if (Math.hypot(point.x - s.x, point.y - s.y) > 12) cancelPress();
   };
   const cancelPress = () => {
     if (pressTimer.current) {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
+    pressStart.current = null;
+  };
+
+  const jumpToMessage = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlighted(id);
+    window.setTimeout(() => setHighlighted((h) => (h === id ? null : h)), 1600);
   };
 
   const other = useQuery({
@@ -142,8 +163,10 @@ function DMPage() {
 
   const send = async () => {
     if (!user || !body.trim()) return;
-    const text = body.trim();
+    const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
+    const text = (quoted + body.trim()).trim();
     setBody("");
+    setReplyTo(null);
     const { error } = await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text });
     if (error) toast.error(error.message);
   };
@@ -287,21 +310,43 @@ function DMPage() {
         <AnimatePresence initial={false}>
           {filteredMsgs.map((m) => {
             const mine = m.sender_id === user?.id;
+            const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
+            const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
             return (
-              <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+              <motion.div
+                key={m.id}
+                id={`msg-${m.id}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`group flex items-end gap-1 rounded-2xl transition-shadow duration-500 ${
+                  highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
+                } ${mine ? "justify-end" : "justify-start"}`}
+              >
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm break-words text-left ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm break-words text-left select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      style={{ WebkitTouchCallout: "none" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
-                      onTouchStart={() => startPress(m.id)}
+                      onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
                       onTouchEnd={cancelPress}
-                      onTouchMove={cancelPress}
-                      onMouseDown={() => startPress(m.id)}
+                      onTouchCancel={cancelPress}
+                      onTouchMove={(e) => movePress({ x: e.touches[0].clientX, y: e.touches[0].clientY })}
+                      onMouseDown={(e) => startPress(m.id, { x: e.clientX, y: e.clientY })}
                       onMouseUp={cancelPress}
                       onMouseLeave={cancelPress}
                     >
-                      {m.body}
+                      {quote && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
+                          className="mb-1 flex items-center gap-1 text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
+                        >
+                          <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
+                        </span>
+                      )}
+                      {rest}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-2 glass-strong border-white/10" side="top">
@@ -312,7 +357,7 @@ function DMPage() {
                     </div>
                     <div className="flex flex-col text-xs">
                       <button onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Copy text</button>
-                      <button onClick={() => { setBody((b) => (b ? b + " " : "") + `> ${m.body}\n`); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Reply</button>
+                      <button onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Reply</button>
                       <button onClick={() => { startCall(false); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Voice call</button>
                       <button onClick={() => { startCall(true); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Video call</button>
                       <button onClick={() => { toast("Reported"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Report</button>
@@ -352,7 +397,22 @@ function DMPage() {
       )}
 
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
-        <div className="max-w-3xl mx-auto flex gap-2">
+        <div className="max-w-3xl mx-auto">
+          {replyTo && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl glass border border-white/10 px-3 py-2">
+              <CornerUpLeft className="h-3.5 w-3.5 text-[var(--rizz-pink)] shrink-0" />
+              <button onClick={() => jumpToMessage(replyTo.id)} className="flex-1 min-w-0 text-left">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Replying to {replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}
+                </p>
+                <p className="text-xs truncate">{replyTo.body}</p>
+              </button>
+              <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" className="text-muted-foreground shrink-0">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="text-muted-foreground"><Smile className="h-5 w-5" /></Button>
@@ -383,6 +443,7 @@ function DMPage() {
               <Mic className="h-4 w-4" />
             </Button>
           )}
+          </div>
         </div>
       </div>
     </div>
