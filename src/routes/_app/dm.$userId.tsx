@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageReactions } from "@/components/DMReactionsBar";
+import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
+import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
+import { blockUser, muteUser } from "@/lib/social";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
 
@@ -45,6 +48,16 @@ function DMPage() {
   const [searchQ, setSearchQ] = useState("");
   const [recording, setRecording] = useState(false);
   const recStart = useRef(0);
+  const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
+  const [recMs, setRecMs] = useState(0);
+  const [sendingVoice, setSendingVoice] = useState(false);
+
+  // Live elapsed timer while recording
+  useEffect(() => {
+    if (!recording) return;
+    const t = window.setInterval(() => setRecMs(Date.now() - recStart.current), 200);
+    return () => window.clearInterval(t);
+  }, [recording]);
 
   const startPress = (id: string, point?: { x: number; y: number }) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
@@ -171,22 +184,42 @@ function DMPage() {
     if (error) toast.error(error.message);
   };
 
-  const sendVoiceMemo = async () => {
-    if (!user) return;
-    const secs = Math.max(1, Math.round((Date.now() - recStart.current) / 1000));
-    await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: `🎤 Voice memo · ${secs}s` });
-  };
-
   const toggleRecord = async () => {
+    if (!user) return;
     if (recording) {
+      const stop = stopRec.current;
+      stopRec.current = null;
       setRecording(false);
-      await sendVoiceMemo();
-      toast.success("Voice memo sent");
+      if (!stop) return;
+      setSendingVoice(true);
+      try {
+        const clip = await stop();
+        if (clip.durationMs < 600) { toast.info("Too short — hold a bit longer"); return; }
+        const path = await uploadVoiceNote(user.id, clip);
+        const { error } = await supabase.from("direct_messages").insert({
+          sender_id: user.id,
+          recipient_id: userId,
+          body: "🎤 Voice note",
+          audio_url: path,
+          duration_ms: clip.durationMs,
+        });
+        if (error) throw new Error(error.message);
+        qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      } catch (e: any) {
+        toast.error(e?.message ?? "Couldn't send that voice note");
+      } finally {
+        setSendingVoice(false);
+      }
     } else {
-      recStart.current = Date.now();
-      setRecording(true);
-      if (navigator.vibrate) navigator.vibrate(10);
-      toast("Recording… tap mic again to send", { duration: 1500 });
+      try {
+        stopRec.current = await startRecording();
+        recStart.current = Date.now();
+        setRecMs(0);
+        setRecording(true);
+        if (navigator.vibrate) navigator.vibrate(10);
+      } catch {
+        toast.error("Microphone access denied");
+      }
     }
   };
 
@@ -292,8 +325,29 @@ function DMPage() {
             <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
             <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Conversation copied"); }}>Export conversation</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast.success("Wallpaper changed ✨")}>Change wallpaper</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast("User muted")}>Mute conversation</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast("User blocked")} className="text-destructive focus:text-destructive">Block user</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                if (!user) return;
+                try { await muteUser(user.id, userId); toast.success("Conversation muted"); }
+                catch (e: any) { toast.error(e.message); }
+              }}
+            >
+              Mute conversation
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                if (!user) return;
+                if (!confirm(`Block @${other.data?.username}?`)) return;
+                try {
+                  await blockUser(user.id, userId);
+                  toast.success("User blocked");
+                  nav({ to: "/dms" });
+                } catch (e: any) { toast.error(e.message); }
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              Block user
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
@@ -310,8 +364,23 @@ function DMPage() {
         <AnimatePresence initial={false}>
           {filteredMsgs.map((m) => {
             const mine = m.sender_id === user?.id;
+            const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
+            if (audioPath) {
+              return (
+                <motion.div
+                  key={m.id}
+                  id={`msg-${m.id}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
+                >
+                  <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
+                  <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                </motion.div>
+              );
+            }
             return (
               <motion.div
                 key={m.id}
@@ -439,8 +508,18 @@ function DMPage() {
               <Button onClick={send} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
             </>
           ) : (
-            <Button onClick={toggleRecord} size="icon" className={recording ? "bg-red-500 border-0 animate-pulse" : "bg-gradient-primary border-0 shadow-glow"} aria-label="Record voice memo">
-              <Mic className="h-4 w-4" />
+            <Button
+              onClick={toggleRecord}
+              disabled={sendingVoice}
+              size="icon"
+              className={recording ? "bg-red-500 border-0 animate-pulse min-w-16 px-2" : "bg-gradient-primary border-0 shadow-glow"}
+              aria-label={recording ? "Stop and send voice note" : "Record voice note"}
+            >
+              {recording ? (
+                <span className="text-xs font-semibold tabular-nums">{formatDuration(recMs)}</span>
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
             </Button>
           )}
           </div>

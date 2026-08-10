@@ -13,6 +13,11 @@ export type FeedPost = {
   reaction_count: number;
   created_at: string;
   is_pinned?: boolean;
+  visibility?: "public" | "close_friends";
+  quote_post_id?: string | null;
+  remix_of?: string | null;
+  edit_count?: number;
+  has_poll?: boolean;
   author: {
     username: string;
     display_name: string | null;
@@ -21,23 +26,30 @@ export type FeedPost = {
   } | null;
 };
 
+const FEED_COLS =
+  "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edit_count, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
+
 export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select(
-      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
-    )
+    .select(FEED_COLS)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as unknown as FeedPost[];
 }
 
+/** Fetch a single post for quote-embeds. */
+export async function fetchPostById(id: string): Promise<FeedPost | null> {
+  const { data } = await supabase.from("posts").select(FEED_COLS).eq("id", id).maybeSingle();
+  return (data as unknown as FeedPost) ?? null;
+}
+
 export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, is_pinned, pinned_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
+      FEED_COLS + ", is_pinned, pinned_at"
     )
     .eq("author_id", userId)
     .order("is_pinned", { ascending: false })
@@ -52,6 +64,9 @@ export async function createPost(input: {
   caption: string;
   file?: File | null;
   kind?: "post" | "reel" | "story";
+  visibility?: "public" | "close_friends";
+  quotePostId?: string | null;
+  remixOf?: string | null;
 }) {
   const trace = startTrace(input.kind ?? "post");
   let media_url: string | null = null;
@@ -94,7 +109,14 @@ export async function createPost(input: {
   try {
     trace.step("server insert", "createPostValidated");
     const row = await createPostValidated({
-      data: { caption, media_url, media_type },
+      data: {
+        caption,
+        media_url,
+        media_type,
+        visibility: input.visibility ?? "public",
+        quote_post_id: input.quotePostId ?? null,
+        remix_of: input.remixOf ?? null,
+      },
     });
     trace.done();
     return row;
@@ -106,7 +128,15 @@ export async function createPost(input: {
     trace.step("fallback insert", "direct RLS insert");
     const { data: row, error } = await supabase
       .from("posts")
-      .insert({ author_id: input.authorId, caption, media_url, media_type })
+      .insert({
+        author_id: input.authorId,
+        caption,
+        media_url,
+        media_type,
+        visibility: input.visibility ?? "public",
+        quote_post_id: input.quotePostId ?? null,
+        remix_of: input.remixOf ?? null,
+      })
       .select()
       .single();
     if (error) {
@@ -201,11 +231,26 @@ export async function deletePost(postId: string) {
 }
 
 export async function updatePostCaption(postId: string, caption: string) {
+  // Keep an edit-history entry so the card can show "Edited".
+  const { data: prev } = await supabase.from("posts").select("caption").eq("id", postId).maybeSingle();
+  if (prev) {
+    await supabase.from("post_edits").insert({ post_id: postId, previous_caption: prev.caption });
+  }
   const { error } = await supabase
     .from("posts")
     .update({ caption: caption.trim() || null, updated_at: new Date().toISOString() })
     .eq("id", postId);
   if (error) throw error;
+}
+
+export async function fetchPostEdits(postId: string) {
+  const { data, error } = await supabase
+    .from("post_edits")
+    .select("id, previous_caption, edited_at")
+    .eq("post_id", postId)
+    .order("edited_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function togglePinPost(postId: string, isPinned: boolean) {
@@ -234,12 +279,21 @@ export async function reportPost(input: {
 export async function fetchReels(limit = 30): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select(
-      "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)"
-    )
+    .select(FEED_COLS)
     .eq("media_type", "video")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as FeedPost[];
+}
+
+/** Reels that remix a given reel. */
+export async function fetchRemixes(postId: string): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(FEED_COLS)
+    .eq("remix_of", postId)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as FeedPost[];
 }

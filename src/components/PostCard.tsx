@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -26,6 +26,9 @@ import {
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
+import { PollBlock } from "@/components/post/PollBlock";
+import { QuoteEmbed } from "@/components/post/QuoteEmbed";
+import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 
@@ -202,7 +205,22 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   const muteAuthor = () => {
     if (!post.author_id) return;
     const s = readSet(MUTED_KEY); s.add(post.author_id); writeSet(MUTED_KEY, s);
+    if (user) muteUser(user.id, post.author_id).catch(() => {});
     setHidden(true); toast.success(`Muted @${post.author?.username}`);
+  };
+  const blockAuthor = async () => {
+    if (!user || !post.author_id) return;
+    if (!confirm(`Block @${post.author?.username}? You won't see each other anywhere on RIZZ.`)) return;
+    try {
+      await blockUser(user.id, post.author_id);
+      setHidden(true);
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      toast.success(`Blocked @${post.author?.username}`);
+    } catch (e: any) { toast.error(e.message); }
+  };
+  const quoteThis = () => {
+    window.dispatchEvent(new CustomEvent("rizz:quote-post", { detail: { id: post.id } }));
+    window.dispatchEvent(new Event("rizz:new-post"));
   };
   const copyText = () => {
     if (!post.caption) return toast.info("No caption to copy");
@@ -230,6 +248,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <AuthorNameLink post={post} />
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
+            {(post as any).edit_count > 0 && <span className="text-[10px] italic">· edited</span>}
+            {post.visibility === "close_friends" && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                <Lock className="h-2.5 w-2.5" /> Close friends
+              </span>
+            )}
             {isPinned && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[var(--rizz-pink)] uppercase tracking-wider">
                 <Pin className="h-2.5 w-2.5 fill-current" /> Pinned
@@ -249,6 +273,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             </DropdownMenuItem>
             <DropdownMenuItem onClick={copyText}>
               <Copy className="mr-2 h-4 w-4" /> Copy text
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={quoteThis}>
+              <Quote className="mr-2 h-4 w-4" /> Quote post
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
               <Languages className="mr-2 h-4 w-4" /> Translate
@@ -283,6 +310,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
                 <DropdownMenuItem onClick={muteAuthor}>
                   <VolumeX className="mr-2 h-4 w-4" /> Mute @{post.author?.username}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={blockAuthor}>
+                  <Ban className="mr-2 h-4 w-4" /> Block @{post.author?.username}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive focus:text-destructive">
                   <Flag className="mr-2 h-4 w-4" /> Report post
                 </DropdownMenuItem>
@@ -314,6 +344,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           })}
         </p>
       )}
+
+      {post.quote_post_id && <QuoteEmbed postId={post.quote_post_id} />}
+      <PollBlock postId={post.id} />
 
       {post.media_url && (
         <div className="relative bg-black/40" onClick={doubleTapLike}>
