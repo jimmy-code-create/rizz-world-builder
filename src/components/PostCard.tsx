@@ -248,7 +248,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <AuthorNameLink post={post} />
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
-            {(post as any).edit_count > 0 && <span className="text-[10px] italic">· edited</span>}
+            {(post as any).edited_at && <span className="text-[10px] italic">· edited</span>}
             {post.visibility === "close_friends" && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
                 <Lock className="h-2.5 w-2.5" /> Close friends
