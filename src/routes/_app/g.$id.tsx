@@ -89,7 +89,10 @@ function GroupRoom() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold truncate flex items-center gap-1.5">{g.name} {isOwner && <Crown className="h-3.5 w-3.5 text-[var(--rizz-pink)]" />}</p>
-          <p className="text-xs text-muted-foreground truncate">{g.member_count} member{g.member_count === 1 ? "" : "s"} · {g.topic || "No topic"}</p>
+          <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 rounded-md bg-[var(--rizz-pink)]/15 text-[9px] font-bold uppercase tracking-wide text-[var(--rizz-pink)]">Private group</span>
+            {g.member_count} member{g.member_count === 1 ? "" : "s"} · {g.topic || "No topic"}
+          </p>
         </div>
         <Button onClick={makeInvite} variant="ghost" size="icon" aria-label="Invite" className="text-muted-foreground hover:text-foreground">
           <Link2 className="h-5 w-5" />
@@ -127,9 +130,12 @@ function GroupRoom() {
                 {!mine && (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 )}
-                <div className={`max-w-[75%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                  {!mine && <span className="text-[10px] text-muted-foreground ml-3 mb-0.5">@{m.author?.username}</span>}
-                  <div className={`px-4 py-2 rounded-2xl text-sm break-words ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>{m.body}</div>
+                <div className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                  {!mine && <span className="text-[11px] text-muted-foreground ml-3 mb-0.5">@{m.author?.username}</span>}
+                  <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>{m.body}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 px-2">
+                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
                 </div>
               </motion.div>
             );
