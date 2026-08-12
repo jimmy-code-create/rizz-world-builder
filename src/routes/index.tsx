@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "RIZZ — Your feed. Your server. Your world." },
-      { name: "description", content: "The social platform built for Gen Z creators. Feeds, live channels, drops, voice rooms, badges. Join the world that never sleeps." },
+      { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
     ],
   }),
 });
