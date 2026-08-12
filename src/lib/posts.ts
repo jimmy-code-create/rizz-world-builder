@@ -16,7 +16,7 @@ export type FeedPost = {
   visibility?: "public" | "close_friends";
   quote_post_id?: string | null;
   remix_of?: string | null;
-  edit_count?: number;
+  edited_at?: string | null;
   has_poll?: boolean;
   author: {
     username: string;
@@ -27,7 +27,7 @@ export type FeedPost = {
 };
 
 const FEED_COLS =
-  "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edit_count, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
+  "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edited_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
 
 export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
   const { data, error } = await supabase
