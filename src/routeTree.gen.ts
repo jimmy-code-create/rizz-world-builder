@@ -9,42 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppVoiceRouteImport } from './routes/_app/voice'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
-import { Route as AppReelsRouteImport } from './routes/_app/reels'
-import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
-import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
-import { Route as AppGroupsRouteImport } from './routes/_app/groups'
-import { Route as AppFeedRouteImport } from './routes/_app/feed'
-import { Route as AppExploreRouteImport } from './routes/_app/explore'
-import { Route as AppEffectsRouteImport } from './routes/_app/effects'
-import { Route as AppDropsRouteImport } from './routes/_app/drops'
-import { Route as AppDmsRouteImport } from './routes/_app/dms'
-import { Route as AppChannelsRouteImport } from './routes/_app/channels'
-import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
-import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
-import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
-import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
-import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
-import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
-import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
-import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
+import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
+import { Route as AppChannelsRouteImport } from './routes/_app/channels'
+import { Route as AppDmsRouteImport } from './routes/_app/dms'
+import { Route as AppDropsRouteImport } from './routes/_app/drops'
+import { Route as AppEffectsRouteImport } from './routes/_app/effects'
+import { Route as AppExploreRouteImport } from './routes/_app/explore'
+import { Route as AppFeedRouteImport } from './routes/_app/feed'
+import { Route as AppGroupsRouteImport } from './routes/_app/groups'
+import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppReelsRouteImport } from './routes/_app/reels'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
+import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
+import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
+import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
+import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
+import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
+import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
+import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -52,73 +51,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppVoiceRoute = AppVoiceRouteImport.update({
-  id: '/voice',
-  path: '/voice',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReelsRoute = AppReelsRouteImport.update({
-  id: '/reels',
-  path: '/reels',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotificationsRoute = AppNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
-  id: '/leaderboard',
-  path: '/leaderboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppGroupsRoute = AppGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFeedRoute = AppFeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppExploreRoute = AppExploreRouteImport.update({
-  id: '/explore',
-  path: '/explore',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEffectsRoute = AppEffectsRouteImport.update({
-  id: '/effects',
-  path: '/effects',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDropsRoute = AppDropsRouteImport.update({
-  id: '/drops',
-  path: '/drops',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDmsRoute = AppDmsRouteImport.update({
-  id: '/dms',
-  path: '/dms',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChannelsRoute = AppChannelsRouteImport.update({
-  id: '/channels',
-  path: '/channels',
+const AppBadgesRoute = AppBadgesRouteImport.update({
+  id: '/badges',
+  path: '/badges',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBookmarksRoute = AppBookmarksRouteImport.update({
@@ -126,39 +71,69 @@ const AppBookmarksRoute = AppBookmarksRouteImport.update({
   path: '/bookmarks',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBadgesRoute = AppBadgesRouteImport.update({
-  id: '/badges',
-  path: '/badges',
+const AppChannelsRoute = AppChannelsRouteImport.update({
+  id: '/channels',
+  path: '/channels',
   getParentRoute: () => AppRoute,
 } as any)
-const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppVoiceRoute,
-} as any)
-const AppUUsernameRoute = AppUUsernameRouteImport.update({
-  id: '/u/$username',
-  path: '/u/$username',
+const AppDmsRoute = AppDmsRouteImport.update({
+  id: '/dms',
+  path: '/dms',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTagTagRoute = AppTagTagRouteImport.update({
-  id: '/tag/$tag',
-  path: '/tag/$tag',
+const AppDropsRoute = AppDropsRouteImport.update({
+  id: '/drops',
+  path: '/drops',
   getParentRoute: () => AppRoute,
 } as any)
-const AppJoinCodeRoute = AppJoinCodeRouteImport.update({
-  id: '/join/$code',
-  path: '/join/$code',
+const AppEffectsRoute = AppEffectsRouteImport.update({
+  id: '/effects',
+  path: '/effects',
   getParentRoute: () => AppRoute,
 } as any)
-const AppGIdRoute = AppGIdRouteImport.update({
-  id: '/g/$id',
-  path: '/g/$id',
+const AppExploreRoute = AppExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
   getParentRoute: () => AppRoute,
 } as any)
-const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
-  id: '/dm/$userId',
-  path: '/dm/$userId',
+const AppFeedRoute = AppFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGroupsRoute = AppGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReelsRoute = AppReelsRouteImport.update({
+  id: '/reels',
+  path: '/reels',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoiceRoute = AppVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCSlugRoute = AppCSlugRouteImport.update({
+  id: '/c/$slug',
+  path: '/c/$slug',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCallUserIdRoute = AppCallUserIdRouteImport.update({
@@ -166,10 +141,35 @@ const AppCallUserIdRoute = AppCallUserIdRouteImport.update({
   path: '/call/$userId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCSlugRoute = AppCSlugRouteImport.update({
-  id: '/c/$slug',
-  path: '/c/$slug',
+const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
+  id: '/dm/$userId',
+  path: '/dm/$userId',
   getParentRoute: () => AppRoute,
+} as any)
+const AppGIdRoute = AppGIdRouteImport.update({
+  id: '/g/$id',
+  path: '/g/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJoinCodeRoute = AppJoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTagTagRoute = AppTagTagRouteImport.update({
+  id: '/tag/$tag',
+  path: '/tag/$tag',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUUsernameRoute = AppUUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppVoiceRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -356,25 +356,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -384,95 +370,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/voice': {
-      id: '/_app/voice'
-      path: '/voice'
-      fullPath: '/voice'
-      preLoaderRoute: typeof AppVoiceRouteImport
-      parentRoute: typeof AppRoute
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/reels': {
-      id: '/_app/reels'
-      path: '/reels'
-      fullPath: '/reels'
-      preLoaderRoute: typeof AppReelsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/notifications': {
-      id: '/_app/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/leaderboard': {
-      id: '/_app/leaderboard'
-      path: '/leaderboard'
-      fullPath: '/leaderboard'
-      preLoaderRoute: typeof AppLeaderboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/groups': {
-      id: '/_app/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof AppGroupsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/feed': {
-      id: '/_app/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof AppFeedRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/explore': {
-      id: '/_app/explore'
-      path: '/explore'
-      fullPath: '/explore'
-      preLoaderRoute: typeof AppExploreRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/effects': {
-      id: '/_app/effects'
-      path: '/effects'
-      fullPath: '/effects'
-      preLoaderRoute: typeof AppEffectsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/drops': {
-      id: '/_app/drops'
-      path: '/drops'
-      fullPath: '/drops'
-      preLoaderRoute: typeof AppDropsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/dms': {
-      id: '/_app/dms'
-      path: '/dms'
-      fullPath: '/dms'
-      preLoaderRoute: typeof AppDmsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/channels': {
-      id: '/_app/channels'
-      path: '/channels'
-      fullPath: '/channels'
-      preLoaderRoute: typeof AppChannelsRouteImport
+    '/_app/badges': {
+      id: '/_app/badges'
+      path: '/badges'
+      fullPath: '/badges'
+      preLoaderRoute: typeof AppBadgesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/bookmarks': {
@@ -482,53 +405,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBookmarksRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/badges': {
-      id: '/_app/badges'
-      path: '/badges'
-      fullPath: '/badges'
-      preLoaderRoute: typeof AppBadgesRouteImport
+    '/_app/channels': {
+      id: '/_app/channels'
+      path: '/channels'
+      fullPath: '/channels'
+      preLoaderRoute: typeof AppChannelsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/voice/$id': {
-      id: '/_app/voice/$id'
-      path: '/$id'
-      fullPath: '/voice/$id'
-      preLoaderRoute: typeof AppVoiceIdRouteImport
-      parentRoute: typeof AppVoiceRoute
-    }
-    '/_app/u/$username': {
-      id: '/_app/u/$username'
-      path: '/u/$username'
-      fullPath: '/u/$username'
-      preLoaderRoute: typeof AppUUsernameRouteImport
+    '/_app/dms': {
+      id: '/_app/dms'
+      path: '/dms'
+      fullPath: '/dms'
+      preLoaderRoute: typeof AppDmsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/tag/$tag': {
-      id: '/_app/tag/$tag'
-      path: '/tag/$tag'
-      fullPath: '/tag/$tag'
-      preLoaderRoute: typeof AppTagTagRouteImport
+    '/_app/drops': {
+      id: '/_app/drops'
+      path: '/drops'
+      fullPath: '/drops'
+      preLoaderRoute: typeof AppDropsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/join/$code': {
-      id: '/_app/join/$code'
-      path: '/join/$code'
-      fullPath: '/join/$code'
-      preLoaderRoute: typeof AppJoinCodeRouteImport
+    '/_app/effects': {
+      id: '/_app/effects'
+      path: '/effects'
+      fullPath: '/effects'
+      preLoaderRoute: typeof AppEffectsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/g/$id': {
-      id: '/_app/g/$id'
-      path: '/g/$id'
-      fullPath: '/g/$id'
-      preLoaderRoute: typeof AppGIdRouteImport
+    '/_app/explore': {
+      id: '/_app/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof AppExploreRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/dm/$userId': {
-      id: '/_app/dm/$userId'
-      path: '/dm/$userId'
-      fullPath: '/dm/$userId'
-      preLoaderRoute: typeof AppDmUserIdRouteImport
+    '/_app/feed': {
+      id: '/_app/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof AppFeedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups': {
+      id: '/_app/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AppGroupsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leaderboard': {
+      id: '/_app/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof AppLeaderboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reels': {
+      id: '/_app/reels'
+      path: '/reels'
+      fullPath: '/reels'
+      preLoaderRoute: typeof AppReelsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/voice': {
+      id: '/_app/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof AppVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/c/$slug': {
+      id: '/_app/c/$slug'
+      path: '/c/$slug'
+      fullPath: '/c/$slug'
+      preLoaderRoute: typeof AppCSlugRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/call/$userId': {
@@ -538,12 +503,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCallUserIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/c/$slug': {
-      id: '/_app/c/$slug'
-      path: '/c/$slug'
-      fullPath: '/c/$slug'
-      preLoaderRoute: typeof AppCSlugRouteImport
+    '/_app/dm/$userId': {
+      id: '/_app/dm/$userId'
+      path: '/dm/$userId'
+      fullPath: '/dm/$userId'
+      preLoaderRoute: typeof AppDmUserIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/g/$id': {
+      id: '/_app/g/$id'
+      path: '/g/$id'
+      fullPath: '/g/$id'
+      preLoaderRoute: typeof AppGIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/join/$code': {
+      id: '/_app/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof AppJoinCodeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tag/$tag': {
+      id: '/_app/tag/$tag'
+      path: '/tag/$tag'
+      fullPath: '/tag/$tag'
+      preLoaderRoute: typeof AppTagTagRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/u/$username': {
+      id: '/_app/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof AppUUsernameRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/voice/$id': {
+      id: '/_app/voice/$id'
+      path: '/$id'
+      fullPath: '/voice/$id'
+      preLoaderRoute: typeof AppVoiceIdRouteImport
+      parentRoute: typeof AppVoiceRoute
     }
   }
 }
