@@ -61,7 +61,12 @@ function GroupsPage() {
           <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
             <Users className="h-7 w-7 text-[var(--rizz-pink)]" /> Groups
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Private hangouts. Friends only · join by invite link.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Private hangouts — invite link only, friends of a member.
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Want public, open rooms instead? Browse <Link to="/channels" className="text-[var(--rizz-pink)] font-medium">Channels</Link>.
+          </p>
         </div>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" className="glass border-white/10 rounded-xl gap-2" onClick={() => setOpenJoin(true)}>
