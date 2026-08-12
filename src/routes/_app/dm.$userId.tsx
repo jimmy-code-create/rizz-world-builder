@@ -394,7 +394,7 @@ function DMPage() {
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm break-words text-left select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words text-left select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
                       style={{ WebkitTouchCallout: "none" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}

@@ -51,7 +51,12 @@ function ChannelsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Channels</h1>
-          <p className="text-sm text-muted-foreground mt-1">Live spaces. Find your people.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Public spaces anyone can join — topics, announcements and drops.
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Looking for a private, invite-only hangout? Use <Link to="/groups" className="text-[var(--rizz-pink)] font-medium">Groups</Link>.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
