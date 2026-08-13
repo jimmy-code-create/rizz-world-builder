@@ -313,7 +313,7 @@ function CallPage() {
         className="relative z-10 px-4"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
       >
-        <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 border border-white/10 flex items-center justify-around">
+        <div className="max-w-md mx-auto glass-strong rounded-3xl px-2 py-3 border border-white/10 flex items-center justify-between gap-1">
           <CtrlBtn active={!muted} on={<Mic />} off={<MicOff />} onClick={() => setMuted((m) => !m)} label={muted ? "Unmute" : "Mute"} />
           <CtrlBtn active={cam} on={<Video />} off={<VideoOff />} onClick={() => setCam((c) => !c)} label={cam ? "Video on" : "Video off"} />
           <CtrlBtn active={speaker} on={<Volume2 />} off={<Volume2 className="opacity-50" />} onClick={() => setSpeaker((s) => !s)} label="Speaker" />
@@ -322,7 +322,7 @@ function CallPage() {
           <button
             onClick={end}
             aria-label="End call"
-            className="h-14 w-14 rounded-full bg-red-500 hover:bg-red-600 grid place-items-center shadow-lg shadow-red-500/40 transition-transform active:scale-95"
+            className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-red-500 hover:bg-red-600 grid place-items-center shadow-lg shadow-red-500/40 transition-transform active:scale-95"
           >
             <PhoneOff className="h-6 w-6" />
           </button>
@@ -338,7 +338,7 @@ function CtrlBtn({ active, on, off, onClick, label }: { active: boolean; on: Rea
     <button
       onClick={onClick}
       aria-label={label}
-      className={`h-12 w-12 rounded-full grid place-items-center transition-all active:scale-95 ${
+      className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-full grid place-items-center [&_svg]:h-5 [&_svg]:w-5 transition-all active:scale-95 ${
         active ? "bg-white/15 text-white" : "bg-white/5 text-white/60"
       }`}
     >
