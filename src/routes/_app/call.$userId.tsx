@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, MonitorUp, Hand, SwitchCamera } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { FullScreenLayer } from "@/components/FullScreenLayer";
 
 export const Route = createFileRoute("/_app/call/$userId")({
   head: () => ({ meta: [{ title: "Call · RIZZ" }] }),
@@ -244,7 +245,11 @@ function CallPage() {
   const flipCam = async () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
   return (
-    <div className="fixed inset-0 z-40 bg-gradient-to-br from-[#1a0820] via-[#0b0b15] to-black text-white flex flex-col">
+    <FullScreenLayer open>
+    <div
+      className="fixed inset-0 z-[120] bg-gradient-to-br from-[#1a0820] via-[#0b0b15] to-black text-white flex flex-col overscroll-none"
+      style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(60% 50% at 50% 30%, rgba(255,45,146,0.35), transparent 60%)" }} />
 
       {/* Remote video fills when available */}
@@ -293,7 +298,10 @@ function CallPage() {
 
       {/* Local self-view PiP */}
       {cam && (
-        <div className="absolute top-4 right-4 z-20 h-40 w-28 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
+        <div
+          className="absolute right-4 z-20 h-40 w-28 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black"
+          style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+        >
           <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover scale-x-[-1]" />
           <button onClick={flipCam} className="absolute bottom-1 right-1 h-7 w-7 rounded-full bg-black/60 grid place-items-center">
             <SwitchCamera className="h-3.5 w-3.5" />
@@ -301,7 +309,10 @@ function CallPage() {
         </div>
       )}
 
-      <div className="relative z-10 pb-10 px-4">
+      <div
+        className="relative z-10 px-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+      >
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 border border-white/10 flex items-center justify-around">
           <CtrlBtn active={!muted} on={<Mic />} off={<MicOff />} onClick={() => setMuted((m) => !m)} label={muted ? "Unmute" : "Mute"} />
           <CtrlBtn active={cam} on={<Video />} off={<VideoOff />} onClick={() => setCam((c) => !c)} label={cam ? "Video on" : "Video off"} />
@@ -318,6 +329,7 @@ function CallPage() {
         </div>
       </div>
     </div>
+    </FullScreenLayer>
   );
 }
 
