@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal } from "lucide-react";
+import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ const sideTabs = [
   { to: "/channels", label: "Channels", icon: Hash },
   { to: "/drops", label: "Giveaways", icon: Gift },
   { to: "/dms", label: "DMs", icon: MessageCircle },
+  { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
   { to: "/effects", label: "Effects", icon: Sparkles },
   { to: "/badges", label: "Badges", icon: Trophy },
