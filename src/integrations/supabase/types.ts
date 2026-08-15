@@ -207,6 +207,109 @@ export type Database = {
           },
         ]
       }
+      chat_stories: {
+        Row: {
+          category: string
+          created_at: string
+          emoji: string
+          gradient: string
+          hook: string
+          id: string
+          likes_count: number
+          me_name: string
+          plays_count: number
+          slug: string
+          them_name: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          emoji?: string
+          gradient?: string
+          hook: string
+          id?: string
+          likes_count?: number
+          me_name?: string
+          plays_count?: number
+          slug: string
+          them_name: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          emoji?: string
+          gradient?: string
+          hook?: string
+          id?: string
+          likes_count?: number
+          me_name?: string
+          plays_count?: number
+          slug?: string
+          them_name?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      chat_story_likes: {
+        Row: {
+          created_at: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_story_likes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "chat_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_story_lines: {
+        Row: {
+          body: string
+          id: string
+          idx: number
+          speaker: string
+          story_id: string
+        }
+        Insert: {
+          body: string
+          id?: string
+          idx: number
+          speaker: string
+          story_id: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          idx?: number
+          speaker?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_story_lines_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "chat_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       close_friends: {
         Row: {
           created_at: string

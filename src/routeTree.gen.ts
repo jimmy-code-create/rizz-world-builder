@@ -17,6 +17,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppChannelsRouteImport } from './routes/_app/channels'
+import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
 import { Route as AppEffectsRouteImport } from './routes/_app/effects'
@@ -74,6 +75,11 @@ const AppBookmarksRoute = AppBookmarksRouteImport.update({
 const AppChannelsRoute = AppChannelsRouteImport.update({
   id: '/channels',
   path: '/channels',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatStoriesRoute = AppChatStoriesRouteImport.update({
+  id: '/chat-stories',
+  path: '/chat-stories',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDmsRoute = AppDmsRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
+  '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
   '/effects': typeof AppEffectsRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
+  '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
   '/effects': typeof AppEffectsRoute
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   '/_app/badges': typeof AppBadgesRoute
   '/_app/bookmarks': typeof AppBookmarksRoute
   '/_app/channels': typeof AppChannelsRoute
+  '/_app/chat-stories': typeof AppChatStoriesRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/drops': typeof AppDropsRoute
   '/_app/effects': typeof AppEffectsRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/badges'
     | '/bookmarks'
     | '/channels'
+    | '/chat-stories'
     | '/dms'
     | '/drops'
     | '/effects'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/badges'
     | '/bookmarks'
     | '/channels'
+    | '/chat-stories'
     | '/dms'
     | '/drops'
     | '/effects'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/_app/badges'
     | '/_app/bookmarks'
     | '/_app/channels'
+    | '/_app/chat-stories'
     | '/_app/dms'
     | '/_app/drops'
     | '/_app/effects'
@@ -410,6 +422,13 @@ declare module '@tanstack/react-router' {
       path: '/channels'
       fullPath: '/channels'
       preLoaderRoute: typeof AppChannelsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/chat-stories': {
+      id: '/_app/chat-stories'
+      path: '/chat-stories'
+      fullPath: '/chat-stories'
+      preLoaderRoute: typeof AppChatStoriesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dms': {
@@ -564,6 +583,7 @@ interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
   AppBookmarksRoute: typeof AppBookmarksRoute
   AppChannelsRoute: typeof AppChannelsRoute
+  AppChatStoriesRoute: typeof AppChatStoriesRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDropsRoute: typeof AppDropsRoute
   AppEffectsRoute: typeof AppEffectsRoute
@@ -588,6 +608,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBadgesRoute: AppBadgesRoute,
   AppBookmarksRoute: AppBookmarksRoute,
   AppChannelsRoute: AppChannelsRoute,
+  AppChatStoriesRoute: AppChatStoriesRoute,
   AppDmsRoute: AppDmsRoute,
   AppDropsRoute: AppDropsRoute,
   AppEffectsRoute: AppEffectsRoute,
