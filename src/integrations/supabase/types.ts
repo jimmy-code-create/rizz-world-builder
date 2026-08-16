@@ -252,6 +252,47 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_story_choices: {
+        Row: {
+          at_idx: number
+          created_at: string
+          goto_idx: number
+          id: string
+          label: string
+          position: number
+          reply_body: string
+          story_id: string
+        }
+        Insert: {
+          at_idx: number
+          created_at?: string
+          goto_idx: number
+          id?: string
+          label: string
+          position?: number
+          reply_body: string
+          story_id: string
+        }
+        Update: {
+          at_idx?: number
+          created_at?: string
+          goto_idx?: number
+          id?: string
+          label?: string
+          position?: number
+          reply_body?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_story_choices_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "chat_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_story_likes: {
         Row: {
           created_at: string
@@ -283,6 +324,7 @@ export type Database = {
           body: string
           id: string
           idx: number
+          next_idx: number | null
           speaker: string
           story_id: string
         }
@@ -290,6 +332,7 @@ export type Database = {
           body: string
           id?: string
           idx: number
+          next_idx?: number | null
           speaker: string
           story_id: string
         }
@@ -297,6 +340,7 @@ export type Database = {
           body?: string
           id?: string
           idx?: number
+          next_idx?: number | null
           speaker?: string
           story_id?: string
         }
