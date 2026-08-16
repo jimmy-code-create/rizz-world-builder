@@ -1,9 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronsRight, Play, Pause, Heart, RotateCcw } from "lucide-react";
+import { X, ChevronsRight, Play, Pause, Heart, RotateCcw, GitBranch } from "lucide-react";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 
-export type StoryLine = { idx: number; speaker: string; body: string };
+export type StoryLine = {
+  idx: number;
+  speaker: string;
+  body: string;
+  next_idx?: number | null;
+  chapter?: string | null;
+};
+export type StoryChoice = {
+  at_idx: number;
+  position: number;
+  label: string;
+  reply_body: string;
+  goto_idx: number;
+};
 export type ChatStory = {
   id: string;
   title: string;
@@ -15,49 +28,115 @@ export type ChatStory = {
   me_name: string;
 };
 
+type Bubble = { key: string; speaker: string; body: string };
+
 /**
- * Tap-to-advance chat story reader: messages land one by one with a typing
- * bubble in between, like reading someone else's conversation.
+ * Tap-to-advance chat story reader with branching chapters.
+ *
+ * Playback walks a path of line indices rather than a simple counter: a line
+ * may declare `next_idx` to jump to another chapter, and a story may offer
+ * viewer replies at certain indices (`choices`). Picking a reply appends it as
+ * your own bubble and continues from that branch's `goto_idx`.
  */
 export function ChatStoryPlayer({
   story,
   lines,
+  choices = [],
   liked,
   onLike,
   onClose,
 }: {
   story: ChatStory;
   lines: StoryLine[];
+  choices?: StoryChoice[];
   liked: boolean;
   onLike: () => void;
   onClose: () => void;
 }) {
-  const [shown, setShown] = useState(1);
+  const byIdx = useMemo(() => new Map(lines.map((l) => [l.idx, l])), [lines]);
+  const sorted = useMemo(() => [...lines].sort((a, b) => a.idx - b.idx), [lines]);
+  const first = sorted[0]?.idx;
+
+  const choicesAt = useMemo(() => {
+    const m = new Map<number, StoryChoice[]>();
+    for (const c of choices) {
+      const arr = m.get(c.at_idx) ?? [];
+      arr.push(c);
+      m.set(c.at_idx, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.position - b.position);
+    return m;
+  }, [choices]);
+
+  /** Next index after `idx`: explicit jump, else the next line in the same chapter block. */
+  const nextOf = (idx: number): number | null => {
+    const line = byIdx.get(idx);
+    if (line?.next_idx != null) return line.next_idx;
+    const pos = sorted.findIndex((l) => l.idx === idx);
+    const nxt = sorted[pos + 1];
+    if (!nxt) return null;
+    return Math.floor(nxt.idx / 100) === Math.floor(idx / 100) ? nxt.idx : null;
+  };
+
+  const [path, setPath] = useState<Bubble[]>([]);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
   const [typing, setTyping] = useState(false);
   const [auto, setAuto] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
-  const done = shown >= lines.length;
+
+  const reset = () => {
+    if (first == null) return;
+    const l = byIdx.get(first)!;
+    setPath([{ key: `l-${first}`, speaker: l.speaker, body: l.body }]);
+    setCursor(first);
+    setPicked(new Set());
+  };
+
+  useEffect(() => { reset(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [story.id, first]);
+
+  const pending = cursor != null && !picked.has(cursor) ? (choicesAt.get(cursor) ?? []) : [];
+  const nextIdx = cursor == null ? null : nextOf(cursor);
+  const done = pending.length === 0 && nextIdx == null;
+  const nextSpeaker = nextIdx != null ? byIdx.get(nextIdx)?.speaker : undefined;
+  const total = sorted.length;
 
   const advance = () => {
-    if (typing || done) return;
+    if (typing || done || pending.length > 0 || nextIdx == null) return;
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
-      setShown((s) => Math.min(s + 1, lines.length));
+      const l = byIdx.get(nextIdx);
+      if (!l) return;
+      setPath((p) => [...p, { key: `l-${nextIdx}-${p.length}`, speaker: l.speaker, body: l.body }]);
+      setCursor(nextIdx);
     }, 520);
   };
 
+  const choose = (c: StoryChoice) => {
+    if (cursor == null) return;
+    setPicked((s) => new Set(s).add(cursor));
+    const target = byIdx.get(c.goto_idx);
+    setPath((p) => [
+      ...p,
+      { key: `r-${c.at_idx}-${c.position}-${p.length}`, speaker: "me", body: c.reply_body },
+      ...(target ? [{ key: `l-${c.goto_idx}-${p.length + 1}`, speaker: target.speaker, body: target.body }] : []),
+    ]);
+    if (target) setCursor(c.goto_idx);
+  };
+
   useEffect(() => {
-    if (!auto || done || typing) return;
+    if (!auto || done || typing || pending.length > 0) return;
     const t = window.setTimeout(advance, 900);
     return () => window.clearTimeout(t);
-  }, [auto, done, typing, shown]);
+  }, [auto, done, typing, cursor, pending.length]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [shown, typing]);
+  }, [path.length, typing, pending.length]);
 
-  const visible = lines.slice(0, shown);
+  const visible = path;
+  const chapter = cursor != null ? byIdx.get(cursor)?.chapter : null;
 
   return (
     <FullScreenLayer open>
