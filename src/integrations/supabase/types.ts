@@ -215,12 +215,14 @@ export type Database = {
           gradient: string
           hook: string
           id: string
+          is_branching: boolean
           likes_count: number
           me_name: string
           plays_count: number
           slug: string
           them_name: string
           title: string
+          word_count: number
         }
         Insert: {
           category?: string
@@ -229,12 +231,14 @@ export type Database = {
           gradient?: string
           hook: string
           id?: string
+          is_branching?: boolean
           likes_count?: number
           me_name?: string
           plays_count?: number
           slug: string
           them_name: string
           title: string
+          word_count?: number
         }
         Update: {
           category?: string
@@ -243,12 +247,14 @@ export type Database = {
           gradient?: string
           hook?: string
           id?: string
+          is_branching?: boolean
           likes_count?: number
           me_name?: string
           plays_count?: number
           slug?: string
           them_name?: string
           title?: string
+          word_count?: number
         }
         Relationships: []
       }
@@ -322,6 +328,7 @@ export type Database = {
       chat_story_lines: {
         Row: {
           body: string
+          chapter: string | null
           id: string
           idx: number
           next_idx: number | null
@@ -330,6 +337,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          chapter?: string | null
           id?: string
           idx: number
           next_idx?: number | null
@@ -338,6 +346,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          chapter?: string | null
           id?: string
           idx?: number
           next_idx?: number | null
