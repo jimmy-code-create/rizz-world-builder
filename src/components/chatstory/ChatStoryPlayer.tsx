@@ -259,6 +259,21 @@ export function ChatStoryPlayer({
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
               </button>
             </>
+          ) : pending.length > 0 ? (
+            <div className="flex-1 space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <GitBranch className="h-3 w-3" /> Your reply
+              </p>
+              {pending.map((c) => (
+                <button
+                  key={`${c.at_idx}-${c.position}`}
+                  onClick={() => choose(c)}
+                  className="w-full h-11 rounded-full glass text-sm font-semibold px-4 text-left"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           ) : (
             <button
               onClick={advance}
