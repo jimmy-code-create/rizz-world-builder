@@ -159,6 +159,7 @@ function ChatStoriesPage() {
         <ChatStoryPlayer
           story={open}
           lines={lines.data}
+          choices={choices.data ?? []}
           liked={!!likes.data?.has(open.id)}
           onLike={() => toggleLike(open.id)}
           onClose={() => setOpenId(null)}
