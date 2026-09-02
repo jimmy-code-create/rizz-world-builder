@@ -177,7 +177,7 @@ export function ChatStoryPlayer({
           <div className="mt-3 h-1 rounded-full bg-background/25 overflow-hidden">
             <div
               className="h-full bg-background/90 transition-all duration-300"
-              style={{ width: `${Math.round((shown / Math.max(lines.length, 1)) * 100)}%` }}
+              style={{ width: `${Math.round((path.length / Math.max(total, 1)) * 100)}%` }}
             />
           </div>
         </div>
@@ -190,7 +190,7 @@ export function ChatStoryPlayer({
           <AnimatePresence initial={false}>
             {visible.map((l) => (
               <motion.div
-                key={l.idx}
+                key={l.key}
                 initial={{ opacity: 0, y: 12, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ type: "spring", stiffness: 420, damping: 30 }}
@@ -222,7 +222,7 @@ export function ChatStoryPlayer({
           </AnimatePresence>
 
           {typing && (
-            <div className={lines[shown]?.speaker === "me" ? "flex justify-end" : "flex justify-start"}>
+            <div className={nextSpeaker === "me" ? "flex justify-end" : "flex justify-start"}>
               <div className="glass-strong rounded-2xl px-4 py-3 flex gap-1">
                 {[0, 1, 2].map((i) => (
                   <span
@@ -245,7 +245,7 @@ export function ChatStoryPlayer({
           {done ? (
             <>
               <button
-                onClick={() => setShown(1)}
+                onClick={reset}
                 className="h-11 flex-1 rounded-full glass flex items-center justify-center gap-2 text-sm font-semibold"
               >
                 <RotateCcw className="h-4 w-4" /> Replay
@@ -259,6 +259,21 @@ export function ChatStoryPlayer({
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
               </button>
             </>
+          ) : pending.length > 0 ? (
+            <div className="flex-1 space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <GitBranch className="h-3 w-3" /> Your reply
+              </p>
+              {pending.map((c) => (
+                <button
+                  key={`${c.at_idx}-${c.position}`}
+                  onClick={() => choose(c)}
+                  className="w-full h-11 rounded-full glass text-sm font-semibold px-4 text-left"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           ) : (
             <button
               onClick={advance}

@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
 import { Heart, MessageSquareText, Play } from "lucide-react";
 import { toast } from "sonner";
-import { ChatStoryPlayer, type ChatStory, type StoryLine } from "@/components/chatstory/ChatStoryPlayer";
+import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 
 export const Route = createFileRoute("/_app/chat-stories")({
   head: () => ({
@@ -55,10 +55,23 @@ function ChatStoriesPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_story_lines")
-        .select("idx,speaker,body")
+        .select("idx,speaker,body,next_idx,chapter")
         .eq("story_id", openId!)
         .order("idx");
       return (data ?? []) as unknown as StoryLine[];
+    },
+    enabled: !!openId,
+  });
+
+  const choices = useQuery({
+    queryKey: ["chat-story-choices", openId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("chat_story_choices")
+        .select("at_idx,position,label,reply_body,goto_idx")
+        .eq("story_id", openId!)
+        .order("position");
+      return (data ?? []) as unknown as StoryChoice[];
     },
     enabled: !!openId,
   });
@@ -146,6 +159,7 @@ function ChatStoriesPage() {
         <ChatStoryPlayer
           story={open}
           lines={lines.data}
+          choices={choices.data ?? []}
           liked={!!likes.data?.has(open.id)}
           onLike={() => toggleLike(open.id)}
           onClose={() => setOpenId(null)}
