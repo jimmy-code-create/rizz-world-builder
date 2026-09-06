@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ImagePlus, Sparkles, X, Loader2, Smile, BarChart3, Globe, Lock, Plus } from "lucide-react";
+import { Sparkles, X, Loader2, Smile, BarChart3, Globe, Lock, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,8 +24,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(DRAFT_KEY) ?? "";
   });
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [pollOn, setPollOn] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
@@ -53,14 +51,13 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
-      if (!caption.trim() && !file && !quoteId && !pollOn) throw new Error("Add a caption or media");
+       if (!caption.trim() && !quoteId && !pollOn) throw new Error("Write something before posting");
       if (pollOn && pollOptions.filter((o) => o.trim()).length < 2) {
         throw new Error("A poll needs at least 2 options");
       }
       const row: any = await createPost({
         authorId: user.id,
         caption,
-        file,
         visibility,
         quotePostId: quoteId,
       });
@@ -71,8 +68,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
     },
     onSuccess: () => {
       setCaption("");
-      setFile(null);
-      setPreviewUrl(null);
       setQuoteId(null);
       setPollOn(false);
       setPollQuestion("");
@@ -90,16 +85,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   });
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
-
-  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    if (f && f.size > 25 * 1024 * 1024) {
-      toast.error("Max 25MB");
-      return;
-    }
-    setFile(f);
-    setPreviewUrl(f ? URL.createObjectURL(f) : null);
-  }
 
   return (
     <motion.div
@@ -138,23 +123,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               });
             }}
           />
-          {previewUrl && (
-            <div className="relative mt-2 rounded-2xl overflow-hidden border border-white/10">
-              {file?.type.startsWith("video/") ? (
-                <video src={previewUrl} controls className="w-full max-h-80 object-cover" />
-              ) : (
-                <img src={previewUrl} alt="preview" className="w-full max-h-80 object-cover" />
-              )}
-              <button
-                type="button"
-                onClick={() => { setFile(null); setPreviewUrl(null); }}
-                className="absolute top-2 right-2 h-8 w-8 rounded-full glass-strong flex items-center justify-center hover:bg-destructive/20"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
           {quoteId && (
             <div className="relative mt-2">
               <QuoteEmbed postId={quoteId} />
@@ -217,12 +185,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
-              <label className="cursor-pointer">
-                <input type="file" accept="image/*,video/*" hidden onChange={onPickFile} />
-                <div className="h-9 w-9 rounded-full hover:bg-white/5 flex items-center justify-center text-[var(--rizz-pink)]">
-                  <ImagePlus className="h-5 w-5" />
-                </div>
-              </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <button type="button" className="h-9 w-9 rounded-full hover:bg-white/5 flex items-center justify-center text-[var(--rizz-pink)]" aria-label="Insert emoji">
@@ -267,7 +229,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               ref={postBtnRef}
               size="sm"
               onClick={() => mut.mutate()}
-              disabled={mut.isPending || (!caption.trim() && !file && !quoteId && !pollOn)}
+               disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn)}
               className="bg-gradient-primary border-0 shadow-glow hover:opacity-90 px-5"
             >
               {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-1" /> Post</>}

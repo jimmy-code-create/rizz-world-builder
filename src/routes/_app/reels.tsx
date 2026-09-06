@@ -362,8 +362,6 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
-  const [textMode, setTextMode] = useState(false);
-  const [textBg, setTextBg] = useState("linear-gradient(135deg,#ff3ea5,#7c3aed)");
   const [song, setSong] = useState<string | null>(null);
   const [songQuery, setSongQuery] = useState("");
   const [trim, setTrim] = useState<[number, number]>([0, 60]);
@@ -383,7 +381,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   };
 
   const reset = () => {
-    setFile(null); setCaption(""); setSong(null); setOverlay(""); setTextMode(false);
+     setFile(null); setCaption(""); setSong(null); setOverlay("");
     setTrim([0, 60]); setDuration(60);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
@@ -392,16 +390,11 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in first");
-      if (!file && !textMode) throw new Error("Pick a video, or switch to text mode");
+       if (!file) throw new Error("Pick a video to create a reel");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
       const songLine = songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
       const overlayLine = overlay ? `\n${overlay}` : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
-      if (!file) {
-        if (!fullCaption) throw new Error("Write something for your text reel");
-        const textFile = await renderTextReel(caption || overlay, textBg);
-        return createPost({ authorId: user.id, caption: fullCaption, file: textFile, kind: "reel" });
-      }
       return createPost({ authorId: user.id, caption: fullCaption, file, kind: "reel" });
     },
     onSuccess: () => {
@@ -462,12 +455,6 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </div>
                 )}
               </>
-            ) : textMode ? (
-              <div className="h-full w-full grid place-items-center p-6 text-center" style={{ background: textBg }}>
-                <p className="text-white font-black text-xl leading-snug drop-shadow-lg break-words">
-                  {caption || overlay || "Type your text reel…"}
-                </p>
-              </div>
             ) : (
               <div className="flex flex-col items-center gap-3 text-white/70 px-6 py-10 text-center">
                 <label className="cursor-pointer flex flex-col items-center gap-3">
@@ -478,30 +465,11 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <p className="font-bold text-white">Tap to upload video</p>
                   <p className="text-xs">MP4, MOV · up to 50MB</p>
                 </label>
-                <button onClick={() => setTextMode(true)} className="text-xs underline text-white/80">
-                  or post a text-only reel
-                </button>
               </div>
             )}
           </div>
 
           <div className="p-4 overflow-y-auto">
-            {textMode && !file && (
-              <div className="mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                {[
-                  "linear-gradient(135deg,#ff3ea5,#7c3aed)",
-                  "linear-gradient(135deg,#0ea5e9,#22d3ee)",
-                  "linear-gradient(135deg,#f97316,#ef4444)",
-                  "linear-gradient(135deg,#10b981,#22d3ee)",
-                  "linear-gradient(135deg,#111,#333)",
-                ].map((g) => (
-                  <button key={g} onClick={() => setTextBg(g)}
-                    className={`h-8 w-14 shrink-0 rounded-lg border ${textBg === g ? "border-white" : "border-white/10"}`}
-                    style={{ background: g }} aria-label="Background" />
-                ))}
-                <button onClick={() => setTextMode(false)} className="text-[11px] text-muted-foreground underline shrink-0 ml-1">use video</button>
-              </div>
-            )}
             <Tabs defaultValue="caption">
               <TabsList className="w-full glass border border-white/10">
                 <TabsTrigger value="caption" className="flex-1"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption</TabsTrigger>
@@ -596,10 +564,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           className="flex items-center justify-between gap-2 px-5 py-3 border-t border-white/10 shrink-0"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
-          <Button variant="ghost" onClick={reset} disabled={(!file && !textMode) || mut.isPending}>Reset</Button>
+           <Button variant="ghost" onClick={reset} disabled={!file || mut.isPending}>Reset</Button>
           <Button
             onClick={() => mut.mutate()}
-            disabled={(!file && !(textMode && (caption.trim() || overlay.trim()))) || mut.isPending}
+             disabled={!file || mut.isPending}
             className="bg-gradient-primary border-0 shadow-glow px-6"
           >
             {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}
@@ -608,45 +576,4 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Renders a text-only reel as a 1080x1920 gradient image so it can be posted like any media. */
-async function renderTextReel(text: string, bg: string): Promise<File> {
-  const W = 1080, H = 1920;
-  const canvas = document.createElement("canvas");
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext("2d")!;
-  const m = bg.match(/linear-gradient\([^,]+,\s*([^,]+),\s*([^)]+)\)/);
-  if (m) {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, m[1].trim());
-    g.addColorStop(1, m[2].trim());
-    ctx.fillStyle = g;
-  } else {
-    ctx.fillStyle = bg;
-  }
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "800 76px system-ui, sans-serif";
-  ctx.shadowColor = "rgba(0,0,0,0.35)";
-  ctx.shadowBlur = 24;
-
-  const words = (text || "").split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const w of words) {
-    const next = line ? `${line} ${w}` : w;
-    if (ctx.measureText(next).width > W - 160 && line) { lines.push(line); line = w; }
-    else line = next;
-  }
-  if (line) lines.push(line);
-  const lh = 96;
-  const startY = H / 2 - ((lines.length - 1) * lh) / 2;
-  lines.slice(0, 12).forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
-
-  const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.92));
-  return new File([blob], `text-reel-${Date.now()}.jpg`, { type: "image/jpeg" });
 }
