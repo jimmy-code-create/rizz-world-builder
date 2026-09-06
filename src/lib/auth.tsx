@@ -55,10 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) loadProfile(data.session.user.id);
+      if (data.session?.user) await loadProfile(data.session.user.id);
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();

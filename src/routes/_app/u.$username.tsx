@@ -180,6 +180,17 @@ function ProfilePage() {
   if (profileQ.isLoading) {
     return <div className="h-64 animate-pulse rounded-3xl glass" />;
   }
+  if (profileQ.isError) {
+    return (
+      <div className="py-20 text-center">
+        <h1 className="font-display text-2xl font-bold">Profile couldn’t load</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Check your connection and try again.</p>
+        <Button variant="outline" className="mt-5 glass border-white/10" onClick={() => profileQ.refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (!profile) {
     return (
       <div className="text-center py-20">
