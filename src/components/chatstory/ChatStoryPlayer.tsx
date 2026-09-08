@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronsRight, Play, Pause, Heart, RotateCcw, GitBranch } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AudioLines,
+  ChevronsRight,
+  GitBranch,
+  Heart,
+  Pause,
+  Play,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import panelOne from "@/assets/chatstory/room4b-panel-1.jpg";
+import panelTwo from "@/assets/chatstory/room4b-panel-2.jpg";
+import panelThree from "@/assets/chatstory/room4b-panel-3.jpg";
+import panelFour from "@/assets/chatstory/room4b-panel-4.jpg";
 
 export type StoryLine = {
   idx: number;
@@ -10,6 +25,7 @@ export type StoryLine = {
   next_idx?: number | null;
   chapter?: string | null;
 };
+
 export type StoryChoice = {
   at_idx: number;
   position: number;
@@ -17,8 +33,10 @@ export type StoryChoice = {
   reply_body: string;
   goto_idx: number;
 };
+
 export type ChatStory = {
   id: string;
+  slug?: string;
   title: string;
   hook: string;
   emoji: string;
@@ -28,16 +46,18 @@ export type ChatStory = {
   me_name: string;
 };
 
-type Bubble = { key: string; speaker: string; body: string };
+type Bubble = { key: string; speaker: string; body: string; idx: number };
+type Scene = { id: string; label: string; image: string };
 
-/**
- * Tap-to-advance chat story reader with branching chapters.
- *
- * Playback walks a path of line indices rather than a simple counter: a line
- * may declare `next_idx` to jump to another chapter, and a story may offer
- * viewer replies at certain indices (`choices`). Picking a reply appends it as
- * your own bubble and continues from that branch's `goto_idx`.
- */
+const ROOM_4B_SCENES: Scene[] = [
+  { id: "scene-1", label: "2:13 AM · The message", image: panelOne },
+  { id: "scene-2", label: "4th floor · The hallway", image: panelTwo },
+  { id: "scene-3", label: "Room 4B · The threshold", image: panelThree },
+  { id: "scene-4", label: "Room 4B · Don't look back", image: panelFour },
+];
+
+const SPEEDS = [0.8, 1, 1.2] as const;
+
 export function ChatStoryPlayer({
   story,
   lines,
@@ -53,90 +73,139 @@ export function ChatStoryPlayer({
   onLike: () => void;
   onClose: () => void;
 }) {
-  const byIdx = useMemo(() => new Map(lines.map((l) => [l.idx, l])), [lines]);
+  const byIdx = useMemo(() => new Map(lines.map((line) => [line.idx, line])), [lines]);
   const sorted = useMemo(() => [...lines].sort((a, b) => a.idx - b.idx), [lines]);
   const first = sorted[0]?.idx;
+  const isRoom4B = story.slug === "room-4b" || story.title.toLowerCase().includes("room 4b");
+  const scenes = isRoom4B ? ROOM_4B_SCENES : [];
 
   const choicesAt = useMemo(() => {
-    const m = new Map<number, StoryChoice[]>();
-    for (const c of choices) {
-      const arr = m.get(c.at_idx) ?? [];
-      arr.push(c);
-      m.set(c.at_idx, arr);
+    const grouped = new Map<number, StoryChoice[]>();
+    for (const choice of choices) {
+      const current = grouped.get(choice.at_idx) ?? [];
+      current.push(choice);
+      grouped.set(choice.at_idx, current);
     }
-    for (const arr of m.values()) arr.sort((a, b) => a.position - b.position);
-    return m;
+    for (const current of grouped.values()) current.sort((a, b) => a.position - b.position);
+    return grouped;
   }, [choices]);
-
-  /** Next index after `idx`: explicit jump, else the next line in the same chapter block. */
-  const nextOf = (idx: number): number | null => {
-    const line = byIdx.get(idx);
-    if (line?.next_idx != null) return line.next_idx;
-    const pos = sorted.findIndex((l) => l.idx === idx);
-    const nxt = sorted[pos + 1];
-    if (!nxt) return null;
-    return Math.floor(nxt.idx / 100) === Math.floor(idx / 100) ? nxt.idx : null;
-  };
 
   const [path, setPath] = useState<Bubble[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [typing, setTyping] = useState(false);
   const [auto, setAuto] = useState(true);
+  const [narration, setNarration] = useState(true);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const endRef = useRef<HTMLDivElement>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const reset = () => {
-    if (first == null) return;
-    const l = byIdx.get(first)!;
-    setPath([{ key: `l-${first}`, speaker: l.speaker, body: l.body }]);
-    setCursor(first);
-    setPicked(new Set());
+  const stopNarration = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    speechRef.current = null;
   };
 
-  useEffect(() => { reset(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [story.id, first]);
+  const speak = (text: string) => {
+    if (!narration || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    stopNarration();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = /[\u0900-\u097F]/.test(text) ? "hi-IN" : "en-IN";
+    utterance.rate = speed;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find((voice) => voice.lang.toLowerCase().startsWith("hi-in")) ??
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("hi"));
+    if (preferred) utterance.voice = preferred;
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
 
-  const pending = cursor != null && !picked.has(cursor) ? (choicesAt.get(cursor) ?? []) : [];
+  const reset = () => {
+    stopNarration();
+    if (first == null) return;
+    const line = byIdx.get(first);
+    if (!line) return;
+    setPath([{ key: `line-${first}`, speaker: line.speaker, body: line.body, idx: first }]);
+    setCursor(first);
+    setPicked(new Set());
+    setTyping(false);
+  };
+
+  useEffect(() => {
+    reset();
+    // The story ID and first line define a new playback session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [story.id, first]);
+
+  useEffect(() => () => stopNarration(), []);
+
+  const nextOf = (idx: number): number | null => {
+    const line = byIdx.get(idx);
+    if (line?.next_idx != null) return line.next_idx;
+    const position = sorted.findIndex((item) => item.idx === idx);
+    const next = sorted[position + 1];
+    if (!next) return null;
+    return Math.floor(next.idx / 100) === Math.floor(idx / 100) ? next.idx : null;
+  };
+
+  const pending = cursor != null && !picked.has(cursor) ? choicesAt.get(cursor) ?? [] : [];
   const nextIdx = cursor == null ? null : nextOf(cursor);
   const done = pending.length === 0 && nextIdx == null;
   const nextSpeaker = nextIdx != null ? byIdx.get(nextIdx)?.speaker : undefined;
-  const total = sorted.length;
+  const activeLine = cursor != null ? byIdx.get(cursor) : undefined;
+  const activeScene = scenes.find((scene) => scene.id === activeLine?.chapter) ?? scenes[0];
+  const sceneIndex = Math.max(0, scenes.findIndex((scene) => scene.id === activeScene?.id));
+
+  const addLine = (idx: number) => {
+    const line = byIdx.get(idx);
+    if (!line) return;
+    setPath((current) => [...current, { key: `line-${idx}-${current.length}`, speaker: line.speaker, body: line.body, idx }]);
+    setCursor(idx);
+    speak(line.body);
+  };
 
   const advance = () => {
     if (typing || done || pending.length > 0 || nextIdx == null) return;
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
-      const l = byIdx.get(nextIdx);
-      if (!l) return;
-      setPath((p) => [...p, { key: `l-${nextIdx}-${p.length}`, speaker: l.speaker, body: l.body }]);
-      setCursor(nextIdx);
-    }, 520);
+      addLine(nextIdx);
+    }, 420);
   };
 
-  const choose = (c: StoryChoice) => {
+  const choose = (choice: StoryChoice) => {
     if (cursor == null) return;
-    setPicked((s) => new Set(s).add(cursor));
-    const target = byIdx.get(c.goto_idx);
-    setPath((p) => [
-      ...p,
-      { key: `r-${c.at_idx}-${c.position}-${p.length}`, speaker: "me", body: c.reply_body },
-      ...(target ? [{ key: `l-${c.goto_idx}-${p.length + 1}`, speaker: target.speaker, body: target.body }] : []),
+    setPicked((current) => new Set(current).add(cursor));
+    setPath((current) => [
+      ...current,
+      { key: `reply-${choice.at_idx}-${choice.position}-${current.length}`, speaker: "me", body: choice.reply_body, idx: choice.at_idx },
     ]);
-    if (target) setCursor(c.goto_idx);
+    addLine(choice.goto_idx);
   };
 
   useEffect(() => {
     if (!auto || done || typing || pending.length > 0) return;
-    const t = window.setTimeout(advance, 900);
-    return () => window.clearTimeout(t);
+    const timeout = window.setTimeout(advance, 1250);
+    return () => window.clearTimeout(timeout);
   }, [auto, done, typing, cursor, pending.length]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [path.length, typing, pending.length]);
 
-  const visible = path;
-  const chapter = cursor != null ? byIdx.get(cursor)?.chapter : null;
+  useEffect(() => {
+    const line = activeLine;
+    if (line && path.length === 1) speak(line.body);
+  }, [activeLine?.idx]);
+
+  const toggleNarration = () => {
+    setNarration((current) => {
+      const next = !current;
+      if (!next) stopNarration();
+      else if (activeLine) speak(activeLine.body);
+      return next;
+    });
+  };
 
   return (
     <FullScreenLayer open>
@@ -144,145 +213,165 @@ export function ChatStoryPlayer({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[130] flex flex-col bg-background"
+        className="fixed inset-0 z-[130] flex flex-col overflow-hidden bg-background"
       >
-        {/* Header */}
-        <div
-          className="relative shrink-0 px-4 pb-4"
-          style={{ background: story.gradient, paddingTop: "calc(env(safe-area-inset-top,0px) + 14px)" }}
-        >
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              aria-label="Close story"
-              className="h-9 w-9 rounded-full glass-strong flex items-center justify-center shrink-0"
-            >
+        <div className="relative min-h-0 flex-1 overflow-y-auto">
+          <div className="pointer-events-none absolute inset-0 bg-aurora opacity-20" />
+
+          <header
+            className="relative z-10 flex items-center gap-3 px-4 pb-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 12px)" }}
+          >
+            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
               <X className="h-5 w-5" />
             </button>
-            <div className="h-10 w-10 rounded-full bg-background/25 backdrop-blur flex items-center justify-center text-xl shrink-0">
-              {story.emoji}
-            </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold truncate">{story.them_name}</p>
-              <p className="text-[11px] opacity-80 truncate">{story.title}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{story.emoji}</span>
+                <p className="truncate text-sm font-bold">{story.title}</p>
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground">{activeScene?.label ?? story.them_name}</p>
             </div>
             <button
-              onClick={() => setAuto((a) => !a)}
+              onClick={() => setAuto((current) => !current)}
               aria-label={auto ? "Pause autoplay" : "Play autoplay"}
-              className="h-9 w-9 rounded-full glass-strong flex items-center justify-center shrink-0"
+              className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
             >
               {auto ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
+          </header>
+
+          <div className="relative z-10 mx-4 overflow-hidden rounded-[1.25rem] border border-border/60 bg-card shadow-glow-lg">
+            <div className="relative aspect-[2/3] max-h-[54dvh] overflow-hidden bg-muted">
+              <AnimatePresence mode="wait">
+                {activeScene ? (
+                  <motion.img
+                    key={activeScene.id}
+                    src={activeScene.image}
+                    alt={activeScene.label}
+                    initial={{ opacity: 0, scale: 1.08, x: sceneIndex % 2 === 0 ? 24 : -24 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 1.04, x: sceneIndex % 2 === 0 ? -24 : 24 }}
+                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center p-8 text-center" style={{ background: story.gradient }}>
+                    <p className="text-lg font-semibold">{story.hook}</p>
+                  </div>
+                )}
+              </AnimatePresence>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-background/10" />
+              <div className="absolute inset-x-3 top-3 flex gap-1.5">
+                {(scenes.length ? scenes : [{ id: "story", label: story.title, image: "" }]).map((scene, index) => (
+                  <div key={scene.id} className="h-1 flex-1 overflow-hidden rounded-full bg-background/30">
+                    <motion.div
+                      className="h-full bg-foreground"
+                      initial={false}
+                      animate={{ width: index <= sceneIndex ? "100%" : "0%" }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70">Anime chat story</p>
+                  <p className="mt-1 text-sm font-bold">{activeScene?.label ?? story.them_name}</p>
+                </div>
+                <span className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-semibold backdrop-blur">Scene {sceneIndex + 1}</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-3 h-1 rounded-full bg-background/25 overflow-hidden">
-            <div
-              className="h-full bg-background/90 transition-all duration-300"
-              style={{ width: `${Math.round((path.length / Math.max(total, 1)) * 100)}%` }}
-            />
+
+          <div className="relative z-10 px-4 pb-5 pt-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                <AudioLines className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">Hindi narration {narration ? "on" : "off"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full">
+                  {narration ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </button>
+                <div className="glass flex h-8 items-center gap-0.5 rounded-full px-1">
+                  {SPEEDS.map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setSpeed(value)}
+                      aria-label={`Narration speed ${value}x`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      {value}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <AnimatePresence initial={false}>
+                {path.map((line) => (
+                  <motion.div
+                    key={line.key}
+                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                    className={line.speaker === "narrator" ? "flex justify-center" : line.speaker === "me" ? "flex justify-end" : "flex justify-start"}
+                  >
+                    {line.speaker === "narrator" ? (
+                      <span className="rounded-full border border-border/60 bg-card/80 px-3 py-1 text-center text-[11px] text-muted-foreground backdrop-blur">{line.body}</span>
+                    ) : (
+                      <div className={`max-w-[88%] rounded-2xl px-3.5 py-2 text-[15px] leading-snug whitespace-pre-wrap break-words ${line.speaker === "me" ? "rounded-br-md bg-primary text-primary-foreground" : "glass-strong rounded-bl-md"}`}>
+                        {line.body}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {typing && (
+                <div className={nextSpeaker === "me" ? "flex justify-end" : "flex justify-start"}>
+                  <div className="glass-strong flex gap-1 rounded-2xl px-4 py-3">
+                    {[0, 1, 2].map((index) => <span key={index} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: `${index * 120}ms` }} />)}
+                  </div>
+                </div>
+              )}
+              <div ref={endRef} />
+            </div>
           </div>
         </div>
 
-        {/* Transcript — tap anywhere to advance */}
-        <button
-          onClick={advance}
-          className="flex-1 overflow-y-auto text-left px-3 py-4 space-y-2 cursor-pointer"
-        >
-          <AnimatePresence initial={false}>
-            {visible.map((l) => (
-              <motion.div
-                key={l.key}
-                initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ type: "spring", stiffness: 420, damping: 30 }}
-                className={
-                  l.speaker === "narrator"
-                    ? "flex justify-center"
-                    : l.speaker === "me"
-                      ? "flex justify-end"
-                      : "flex justify-start"
-                }
-              >
-                {l.speaker === "narrator" ? (
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground px-3 py-1 rounded-full glass">
-                    {l.body}
-                  </span>
-                ) : (
-                  <div
-                    className={`max-w-[82%] px-3.5 py-2 text-[15px] leading-snug whitespace-pre-wrap break-words rounded-2xl ${
-                      l.speaker === "me"
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "glass-strong rounded-bl-md"
-                    }`}
-                  >
-                    {l.body}
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {typing && (
-            <div className={nextSpeaker === "me" ? "flex justify-end" : "flex justify-start"}>
-              <div className="glass-strong rounded-2xl px-4 py-3 flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce"
-                    style={{ animationDelay: `${i * 120}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          <div ref={endRef} />
-        </button>
-
-        {/* Footer */}
-        <div
-          className="shrink-0 border-t border-white/5 glass-strong px-4 pt-3 flex items-center gap-2"
+        <footer
+          className="glass-strong shrink-0 border-t border-border/60 px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 12px)" }}
         >
           {done ? (
-            <>
-              <button
-                onClick={reset}
-                className="h-11 flex-1 rounded-full glass flex items-center justify-center gap-2 text-sm font-semibold"
-              >
+            <div className="flex gap-2">
+              <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold">
                 <RotateCcw className="h-4 w-4" /> Replay
               </button>
-              <button
-                onClick={onLike}
-                className={`h-11 flex-1 rounded-full flex items-center justify-center gap-2 text-sm font-semibold ${
-                  liked ? "bg-primary text-primary-foreground" : "glass"
-                }`}
-              >
+              <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
               </button>
-            </>
+            </div>
           ) : pending.length > 0 ? (
-            <div className="flex-1 space-y-2">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                <GitBranch className="h-3 w-3" /> Your reply
-              </p>
-              {pending.map((c) => (
-                <button
-                  key={`${c.at_idx}-${c.position}`}
-                  onClick={() => choose(c)}
-                  className="w-full h-11 rounded-full glass text-sm font-semibold px-4 text-left"
-                >
-                  {c.label}
-                </button>
-              ))}
+            <div className="space-y-2">
+              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><GitBranch className="h-3 w-3" /> Choose the scene</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {pending.map((choice) => (
+                  <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold">
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
-            <button
-              onClick={advance}
-              className="h-11 w-full rounded-full bg-gradient-primary flex items-center justify-center gap-2 text-sm font-bold"
-            >
-              Tap for next <ChevronsRight className="h-4 w-4" />
+            <button onClick={advance} className="bg-gradient-primary flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold">
+              Tap for next scene <ChevronsRight className="h-4 w-4" />
             </button>
           )}
-        </div>
+        </footer>
       </motion.div>
     </FullScreenLayer>
   );
