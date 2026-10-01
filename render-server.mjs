@@ -3,12 +3,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 
-const distDir = path.resolve("dist");
-const clientDir = path.join(distDir, "client");
-const serverEntry = path.join(distDir, "server", "index.mjs");
+const buildRoots = [path.resolve(".output"), path.resolve("dist")];
+const serverEntry = [
+  ...buildRoots.map((root) => path.join(root, "server", "index.mjs")),
+  ...buildRoots.map((root) => path.join(root, "server", "index.js")),
+].find((filePath) => fs.existsSync(filePath));
+const clientDir = [
+  path.join(buildRoots[0], "public"),
+  path.join(buildRoots[1], "client"),
+].find((directory) => fs.existsSync(directory));
 
-if (!fs.existsSync(serverEntry)) {
-  console.error(`Server entry not found at ${serverEntry}. Run npm run build first.`);
+if (!serverEntry || !clientDir) {
+  console.error("Build output not found. Run npm run build first.");
   process.exit(1);
 }
 
