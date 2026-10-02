@@ -360,6 +360,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
+  const [uploadStage, setUploadStage] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [song, setSong] = useState<string | null>(null);
@@ -390,26 +391,38 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in first");
-       if (!file) throw new Error("Pick a video to create a reel");
+      if (!file) throw new Error("Pick a video to create a reel");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
-      const songLine = songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
-      const overlayLine = overlay ? `\n${overlay}` : "";
+      const songLine = songTag ? "
+🎵 " + songTag.title + " — " + songTag.artist : "";
+      const overlayLine = overlay ? "
+" + overlay : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
-      return createPost({ authorId: user.id, caption: fullCaption, file, kind: "reel" });
+      return createPost({
+        authorId: user.id,
+        caption: fullCaption,
+        file,
+        kind: "reel",
+        onProgress: (stage) => {
+          setUploadStage(stage);
+          toast.loading(stage, { id: "reel-upload-progress" });
+        },
+      });
     },
+    onMutate: () => toast.loading("Preparing reel…", { id: "reel-upload-progress" }),
     onSuccess: () => {
+      setUploadStage("");
       qc.invalidateQueries({ queryKey: ["reels"] });
       qc.invalidateQueries({ queryKey: ["feed"] });
-      toast.success("Reel posted 🎬");
+      toast.success("Reel posted 🎬", { id: "reel-upload-progress" });
       reset();
       onClose();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setUploadStage("");
+      toast.error(e.message, { id: "reel-upload-progress" });
+    },
   });
-
-  const filteredSongs = SONG_LIBRARY.filter((s) =>
-    !songQuery || (s.title + s.artist + s.mood).toLowerCase().includes(songQuery.toLowerCase())
-  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -570,7 +583,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
              disabled={!file || mut.isPending}
             className="bg-gradient-primary border-0 shadow-glow px-6"
           >
-            {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}
+            {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {uploadStage || "Preparing reel…"}</> : "Post reel 🎬"}
           </Button>
         </div>
       </DialogContent>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createPost } from "@/lib/posts";
+import { createPost, deletePost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [pollHours, setPollHours] = useState(24);
   const [visibility, setVisibility] = useState<"public" | "close_friends">("public");
   const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [progressLabel, setProgressLabel] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const postBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -51,7 +52,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
-       if (!caption.trim() && !quoteId && !pollOn) throw new Error("Write something before posting");
+      if (!caption.trim() && !quoteId && !pollOn) throw new Error("Write something before posting");
       if (pollOn && pollOptions.filter((o) => o.trim()).length < 2) {
         throw new Error("A poll needs at least 2 options");
       }
@@ -60,11 +61,37 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
         caption,
         visibility,
         quotePostId: quoteId,
+        allowEmpty: pollOn,
+        onProgress: (stage) => {
+          setProgressLabel(stage);
+          toast.loading(stage, { id: "post-composer-progress" });
+        },
       });
       if (pollOn && row?.id) {
-        await createPoll(row.id, pollQuestion || caption || "Poll", pollOptions, pollHours);
+        try {
+          await createPoll(row.id, pollQuestion || caption || "Poll", pollOptions, pollHours);
+        } catch (pollError: any) {
+          try {
+            await deletePost(row.id);
+          } catch (rollbackError: any) {
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ["feed"] }),
+              qc.invalidateQueries({ queryKey: ["user-posts"] }),
+            ]);
+            throw new Error("Poll setup failed (" + (pollError?.message || "unknown error") + ") and the post could not be removed (" + (rollbackError?.message || "unknown error") + "). Check your feed before retrying.");
+          }
+          await Promise.all([
+            qc.invalidateQueries({ queryKey: ["feed"] }),
+            qc.invalidateQueries({ queryKey: ["user-posts"] }),
+          ]);
+          throw new Error("Poll setup failed; the post was removed. " + (pollError?.message || "Please try again."));
+        }
       }
       return row;
+    },
+    onMutate: () => {
+      setProgressLabel("Preparing post…");
+      toast.loading("Preparing post…", { id: "post-composer-progress" });
     },
     onSuccess: () => {
       setCaption("");
@@ -73,16 +100,21 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       setPollQuestion("");
       setPollOptions(["", ""]);
       setVisibility("public");
+      setProgressLabel("");
       if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       onPosted?.();
-      toast.success("Posted to RIZZ ✨");
+      toast.success("Posted to RIZZ ✨", { id: "post-composer-progress" });
       const r = postBtnRef.current?.getBoundingClientRect();
       confettiBurst(r ? r.left + r.width / 2 : undefined, r ? r.top : undefined);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setProgressLabel("");
+      toast.error(e.message, { id: "post-composer-progress" });
+    },
   });
+
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
 
@@ -232,7 +264,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn)}
               className="bg-gradient-primary border-0 shadow-glow hover:opacity-90 px-5"
             >
-              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-1" /> Post</>}
+              {mut.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /><span className="ml-1">{progressLabel || "Publishing…"}</span></> : <><Sparkles className="h-4 w-4 mr-1" /> Post</>}
             </Button>
           </div>
         </div>

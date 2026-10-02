@@ -111,6 +111,37 @@ export async function fetchGroupMessages(groupId: string, limit = 100) {
 }
 
 export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {
-  const { error } = await supabase.from("group_messages").insert(input);
+  const { data: membership, error: membershipError } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("group_id", input.group_id)
+    .eq("user_id", input.author_id)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+
+  if (!membership) {
+    // Group creation normally adds its owner via a database trigger. Repair only
+    // that owner case; do not bypass invite/friends-only join rules.
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .select("owner_id")
+      .eq("id", input.group_id)
+      .maybeSingle();
+    if (groupError) throw groupError;
+    if (group?.owner_id !== input.author_id) {
+      throw new Error("Join this group before sending a message.");
+    }
+    const { error: enrollError } = await supabase
+      .from("group_members")
+      .insert({ group_id: input.group_id, user_id: input.author_id, role: "owner" });
+    if (enrollError && !/duplicate|unique/i.test(enrollError.message)) throw enrollError;
+  }
+
+  const { data, error } = await supabase
+    .from("group_messages")
+    .insert(input)
+    .select("*, author:profiles!group_messages_author_id_fkey(username,display_name,avatar_url,accent_color)")
+    .single();
   if (error) throw error;
+  return data;
 }

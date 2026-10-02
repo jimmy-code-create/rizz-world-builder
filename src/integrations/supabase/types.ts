@@ -1864,10 +1864,14 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      get_post_author_flags: {
+        Args: { _user_ids: string[] }
+        Returns: { is_creator: boolean; is_verified_creator: boolean; user_id: string }[]
+      }
       pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "creator"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       channel_member_role: "owner" | "mod" | "member"
       channel_type: "text" | "announcement" | "drops"
@@ -2002,7 +2006,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "creator"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       channel_member_role: ["owner", "mod", "member"],
       channel_type: ["text", "announcement", "drops"],
