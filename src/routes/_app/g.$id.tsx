@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/g/$id")({
 
 function GroupRoom() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
@@ -31,16 +31,67 @@ function GroupRoom() {
   const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
   const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
   const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id), enabled: !!group.data });
+  const groupReady = Boolean(group.data);
+  const messageKey = ["group-msgs", id] as const;
+  type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
+  const sendMessage = useMutation({
+    mutationFn: (text: string) => {
+      if (!user) throw new Error("Sign in to send a message");
+      return sendGroupMessage({ group_id: id, author_id: user.id, body: text });
+    },
+    onMutate: async (text) => {
+      await qc.cancelQueries({ queryKey: messageKey });
+      const optimisticId = `pending-${crypto.randomUUID()}`;
+      const optimistic = {
+        id: optimisticId,
+        group_id: id,
+        author_id: user!.id,
+        body: text,
+        created_at: new Date().toISOString(),
+        attachment_url: null,
+        audio_url: null,
+        duration_ms: null,
+        reply_to: null,
+        author: {
+          username: profile?.username ?? user?.user_metadata?.username ?? "you",
+          display_name: profile?.display_name ?? null,
+          avatar_url: profile?.avatar_url ?? null,
+          accent_color: profile?.accent_color ?? null,
+        },
+      } as unknown as GroupMessage;
+      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) => [...current, optimistic]);
+      return { optimisticId };
+    },
+    onSuccess: (saved, _text, context) => {
+      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
+        current.map((message) => message.id === context?.optimisticId ? saved : message),
+      );
+    },
+    onError: (error: Error, _text, context) => {
+      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
+        current.filter((message) => message.id !== context?.optimisticId),
+      );
+      toast.error(error.message);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: messageKey }),
+  });
 
   useEffect(() => {
-    if (!group.data) return;
+    if (!groupReady) return;
+    const queryKey = ["group-msgs", id] as const;
     const ch = supabase.channel(`group-${id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+        qc.invalidateQueries({ queryKey });
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          qc.invalidateQueries({ queryKey });
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          qc.invalidateQueries({ queryKey });
+        }
+      });
     return () => { supabase.removeChannel(ch); };
-  }, [id, group.data, qc]);
+  }, [groupReady, id, qc]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
 
@@ -48,8 +99,7 @@ function GroupRoom() {
     if (!user || !body.trim()) return;
     const text = body.trim();
     setBody("");
-    try { await sendGroupMessage({ group_id: id, author_id: user.id, body: text }); }
-    catch (e: any) { toast.error(e.message); }
+    sendMessage.mutate(text);
   };
 
   const makeInvite = async () => {
@@ -121,7 +171,7 @@ function GroupRoom() {
         </Sheet>
       </div>
 
-      <div className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
+        <div className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
         <AnimatePresence initial={false}>
           {(msgs.data ?? []).map((m: any) => {
             const mine = m.author_id === user?.id;
@@ -149,7 +199,7 @@ function GroupRoom() {
 
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
         <div className="max-w-3xl mx-auto flex gap-2">
-          <Input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={`Message ${g.name}…`} maxLength={2000} className="glass border-white/10" />
+          <Input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} placeholder={`Message ${g.name}…`} maxLength={2000} className="glass border-white/10" />
           <Button onClick={send} disabled={!body.trim()} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createPost } from "@/lib/posts";
+import { createPost, rollbackCreatedPost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { toast } from "sonner";
@@ -55,14 +55,24 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       if (pollOn && pollOptions.filter((o) => o.trim()).length < 2) {
         throw new Error("A poll needs at least 2 options");
       }
-      const row: any = await createPost({
+      const row = await createPost({
         authorId: user.id,
         caption,
         visibility,
         quotePostId: quoteId,
       });
       if (pollOn && row?.id) {
-        await createPoll(row.id, pollQuestion || caption || "Poll", pollOptions, pollHours);
+        try {
+          await createPoll(row.id, pollQuestion || caption || "Poll", pollOptions, pollHours);
+        } catch (error) {
+          try {
+            await rollbackCreatedPost(row.id, row.media_url);
+          } catch (rollbackError) {
+            const reason = error instanceof Error ? error.message : "Unknown poll error";
+            throw new Error(`${reason}. ${rollbackError instanceof Error ? rollbackError.message : "The post cleanup also failed."}`);
+          }
+          throw error;
+        }
       }
       return row;
     },

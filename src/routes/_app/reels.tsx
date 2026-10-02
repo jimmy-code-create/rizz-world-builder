@@ -368,6 +368,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [duration, setDuration] = useState(60);
   const [overlay, setOverlay] = useState("");
   const previewRef = useRef<HTMLVideoElement>(null);
+  const uploadToastId = useRef<string | number | undefined>(undefined);
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
@@ -395,16 +396,35 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       const songLine = songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
       const overlayLine = overlay ? `\n${overlay}` : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
-      return createPost({ authorId: user.id, caption: fullCaption, file, kind: "reel" });
+       uploadToastId.current = toast.loading("Uploading your video…");
+       return createPost({
+         authorId: user.id,
+         caption: fullCaption,
+         file,
+         kind: "reel",
+         onProgress: (stage) => {
+           toast.loading(stage === "uploading" ? "Uploading your video…" : "Saving your reel…", {
+             id: uploadToastId.current,
+           });
+         },
+       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reels"] });
       qc.invalidateQueries({ queryKey: ["feed"] });
-      toast.success("Reel posted 🎬");
+       toast.success("Reel posted 🎬", { id: uploadToastId.current });
+       uploadToastId.current = undefined;
       reset();
       onClose();
     },
-    onError: (e: Error) => toast.error(e.message),
+     onError: (e: Error) => {
+       if (uploadToastId.current !== undefined) {
+         toast.error(e.message, { id: uploadToastId.current });
+         uploadToastId.current = undefined;
+       } else {
+         toast.error(e.message);
+       }
+     },
   });
 
   const filteredSongs = SONG_LIBRARY.filter((s) =>

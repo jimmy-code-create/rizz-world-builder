@@ -20,12 +20,13 @@ function DMsPage() {
     queryKey: ["dm-threads", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("direct_messages")
         .select("*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)")
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(100);
+      if (error) throw error;
       // group by other party
       const map = new Map<string, { other: any; last: any; unread: number }>();
       for (const m of data ?? []) {
@@ -39,7 +40,8 @@ function DMsPage() {
       return Array.from(map.values());
     },
     enabled: !!user,
-    refetchInterval: 15000,
+    retry: false,
+    refetchInterval: (query) => query.state.status === "error" ? false : 15000,
   });
 
   const filtered = useMemo(() => {
@@ -72,6 +74,11 @@ function DMsPage() {
       </div>
 
       <div className="space-y-2">
+        {threads.isError && (
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+            Messages couldn’t load. Check your connection, then refresh to try again.
+          </div>
+        )}
         {filtered.map(({ other, last, unread }) => (
           <Link key={other.id} to="/dm/$userId" params={{ userId: other.id }}>
             <motion.div whileHover={{ x: 4 }} className={`glass rounded-2xl p-4 border flex items-center gap-3 ${unread > 0 ? "border-[var(--rizz-pink)]/30 shadow-glow" : "border-white/5"}`}>
@@ -94,7 +101,7 @@ function DMsPage() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!threads.isError && filtered.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
           <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">{q ? "No matches." : "No conversations yet. Go say hi from someone's profile."}</p>

@@ -24,7 +24,13 @@ export async function createPoll(postId: string, question: string, labels: strin
   const { error: oErr } = await supabase
     .from("post_poll_options")
     .insert(clean.map((label, i) => ({ poll_id: poll.id, label, position: i })));
-  if (oErr) throw oErr;
+  if (oErr) {
+    const { error: cleanupError } = await supabase.from("post_polls").delete().eq("id", poll.id);
+    if (cleanupError) {
+      throw new Error(`Couldn't save poll options, and poll cleanup failed: ${cleanupError.message}`);
+    }
+    throw new Error(`Couldn't save poll options: ${oErr.message}`);
+  }
   return poll.id;
 }
 

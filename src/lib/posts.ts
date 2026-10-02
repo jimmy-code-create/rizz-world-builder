@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createPostValidated } from "@/lib/posts.functions";
 import { startTrace } from "@/lib/upload-trace";
 
 export type FeedPost = {
@@ -23,11 +22,32 @@ export type FeedPost = {
     display_name: string | null;
     avatar_url: string | null;
     accent_color: string | null;
+    verified_creator?: boolean;
   } | null;
 };
 
 const FEED_COLS =
   "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edited_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
+
+async function addVerifiedCreatorFlags<T extends { author_id: string; author: FeedPost["author"] }>(posts: T[]): Promise<T[]> {
+  const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
+  if (!authorIds.length) return posts;
+
+  const { data, error } = await supabase
+    .from("user_badges")
+    .select("user_id, badges!inner(slug)")
+    .in("user_id", authorIds)
+    .eq("badges.slug", "verified_creator");
+  if (error) throw error;
+
+  const verifiedIds = new Set((data ?? []).map((badge) => badge.user_id));
+  return posts.map((post) => ({
+    ...post,
+    author: post.author
+      ? { ...post.author, verified_creator: verifiedIds.has(post.author_id) }
+      : null,
+  }));
+}
 
 export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
   const { data, error } = await supabase
@@ -36,13 +56,16 @@ export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as FeedPost[];
+  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
 }
 
 /** Fetch a single post for quote-embeds. */
 export async function fetchPostById(id: string): Promise<FeedPost | null> {
-  const { data } = await supabase.from("posts").select(FEED_COLS).eq("id", id).maybeSingle();
-  return (data as unknown as FeedPost) ?? null;
+  const { data, error } = await supabase.from("posts").select(FEED_COLS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const [post] = await addVerifiedCreatorFlags([data as unknown as FeedPost]);
+  return post;
 }
 
 export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
@@ -56,7 +79,7 @@ export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
     .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as FeedPost[];
+  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
 }
 
 export async function createPost(input: {
@@ -67,9 +90,11 @@ export async function createPost(input: {
   visibility?: "public" | "close_friends";
   quotePostId?: string | null;
   remixOf?: string | null;
+  onProgress?: (stage: "uploading" | "saving") => void;
 }) {
   const trace = startTrace(input.kind ?? "post");
   let media_url: string | null = null;
+  let mediaPath: string | null = null;
   let media_type: "image" | "video" | "none" = "none";
   if (input.file) {
     trace.step("validate file", `${input.file.name} · ${(input.file.size / 1024 / 1024).toFixed(2)}MB · ${input.file.type || "unknown type"}`);
@@ -83,11 +108,12 @@ export async function createPost(input: {
     if (!okType) throw new Error(trace.fail("validate file", "Only image or video files can be uploaded."));
     // Sanitize extension to avoid weird storage paths
     const rawExt = (input.file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin";
-    const path = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${rawExt}`;
-    trace.step("storage upload", `post-media/${path}`);
+    mediaPath = `${input.authorId}/${Date.now()}-${crypto.randomUUID()}.${rawExt}`;
+    trace.step("storage upload", `post-media/${mediaPath}`);
+    input.onProgress?.("uploading");
     const { error: upErr } = await supabase.storage
       .from("post-media")
-      .upload(path, input.file, { contentType: input.file.type, upsert: false });
+      .upload(mediaPath, input.file, { contentType: input.file.type, upsert: false });
     if (upErr) {
       const m = upErr.message || "";
       trace.fail("storage upload", m);
@@ -96,59 +122,62 @@ export async function createPost(input: {
       if (/mime|content.type/i.test(m)) throw new Error("That file type isn't allowed. Use JPG/PNG/MP4/MOV.");
       throw new Error(`Upload failed: ${m}`);
     }
-    const { data: pub } = supabase.storage.from("post-media").getPublicUrl(path);
-    media_url = pub.publicUrl;
+    const { data: pub } = supabase.storage.from("post-media").getPublicUrl(mediaPath);
+    media_url = pub?.publicUrl ?? null;
+    if (!media_url || !/^https?:\/\//i.test(media_url)) {
+      await supabase.storage.from("post-media").remove([mediaPath]);
+      throw new Error(trace.fail("public url", "The upload finished but no public media URL was returned. Please try again."));
+    }
     media_type = input.file.type.startsWith("video/") ? "video" : "image";
     trace.step("public url", media_url);
   }
   const caption = (input.caption ?? "").trim().slice(0, 2000) || null;
   if (!caption && !media_url) throw new Error(trace.fail("validate content", "Add a caption or media before posting"));
 
-  // Server-side validation first; fall back to a direct RLS-scoped insert if
-  // the server function can't be reached (offline SSR worker, expired bearer).
-  try {
-    trace.step("server insert", "createPostValidated");
-    const row = await createPostValidated({
-      data: {
-        caption,
-        media_url,
-        media_type,
-        visibility: input.visibility ?? "public",
-        quote_post_id: input.quotePostId ?? null,
-        remix_of: input.remixOf ?? null,
-      },
-    });
-    trace.done();
-    return row;
-  } catch (e: any) {
-    const m = (e?.message || "").toString();
-    const recoverable = /unauthorized|failed to fetch|network|500|fetch failed|not a function|is not defined/i.test(m);
-    trace.fail("server insert", m);
-    if (!recoverable) throw e;
-    trace.step("fallback insert", "direct RLS insert");
-    const { data: row, error } = await supabase
-      .from("posts")
-      .insert({
-        author_id: input.authorId,
-        caption,
-        media_url,
-        media_type,
-        visibility: input.visibility ?? "public",
-        quote_post_id: input.quotePostId ?? null,
-        remix_of: input.remixOf ?? null,
-      })
-      .select()
-      .single();
-    if (error) {
-      const em = error.message || "";
-      trace.fail("fallback insert", em);
-      if (/out of range|integer|numeric/i.test(em)) throw new Error("A number was too large. Try a shorter caption.");
-      if (/value too long|too long/i.test(em)) throw new Error("Caption or link is too long. Shorten it and try again.");
-      if (/row-level|permission/i.test(em)) throw new Error("Session expired. Sign back in and try again.");
-      throw new Error(`Couldn't post: ${em}`);
+  input.onProgress?.("saving");
+  trace.step("direct authenticated insert", "posts");
+  const { data: row, error } = await supabase
+    .from("posts")
+    .insert({
+      author_id: input.authorId,
+      caption,
+      media_url,
+      media_type,
+      visibility: input.visibility ?? "public",
+      quote_post_id: input.quotePostId ?? null,
+      remix_of: input.remixOf ?? null,
+    })
+    .select()
+    .single();
+  if (error) {
+    trace.fail("direct authenticated insert", error.message);
+    if (mediaPath) {
+      const { error: cleanupError } = await supabase.storage.from("post-media").remove([mediaPath]);
+      if (cleanupError) console.warn("Post upload cleanup failed:", cleanupError.message);
     }
-    trace.done();
-    return row;
+    if (/out of range|integer|numeric/i.test(error.message)) throw new Error("A number was too large. Try a shorter caption.");
+    if (/value too long|too long/i.test(error.message)) throw new Error("Caption or link is too long. Shorten it and try again.");
+    if (/row-level|permission|unauthorized/i.test(error.message)) throw new Error("Your session may have expired. Sign in again and try posting.");
+    throw new Error(`Couldn't post: ${error.message}`);
+  }
+  trace.done();
+  return row;
+}
+
+/** Remove a post created as part of a failed multi-step publish, plus its uploaded media. */
+export async function rollbackCreatedPost(postId: string, mediaUrl?: string | null) {
+  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  if (error) throw new Error(`The poll failed and its post could not be removed: ${error.message}`);
+
+  if (mediaUrl) {
+    const marker = "/post-media/";
+    const suffix = mediaUrl.split(marker)[1]?.split(/[?#]/)[0];
+    if (suffix) {
+      const { error: storageError } = await supabase.storage
+        .from("post-media")
+        .remove([decodeURIComponent(suffix)]);
+      if (storageError) throw new Error(`The post was removed, but uploaded media cleanup failed: ${storageError.message}`);
+    }
   }
 }
 
@@ -284,7 +313,7 @@ export async function fetchReels(limit = 30): Promise<FeedPost[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as FeedPost[];
+  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
 }
 
 /** Reels that remix a given reel. */
@@ -295,5 +324,5 @@ export async function fetchRemixes(postId: string): Promise<FeedPost[]> {
     .eq("remix_of", postId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as FeedPost[];
+  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
 }

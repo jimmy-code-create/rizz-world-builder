@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -240,7 +240,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
+      className="feed-post-card glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
     >
       <header className="flex items-center gap-3 p-4 pb-3">
         <AuthorAvatarLink post={post} accent={accent} initial={initial} />
@@ -602,12 +602,24 @@ function AuthorNameLink({ post }: { post: any }) {
   const np = eq.data?.nameplate;
   const name = post.author?.display_name || post.author?.username || "";
   return (
-    <Link
-      to="/u/$username"
-      params={{ username: post.author?.username ?? "" }}
-      className="font-semibold text-sm hover:underline block truncate"
-    >
-      <Nameplate name={name} slug={np?.slug} />
-    </Link>
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Link
+        to="/u/$username"
+        params={{ username: post.author?.username ?? "" }}
+        className="min-w-0 truncate font-semibold text-sm hover:underline"
+      >
+        <Nameplate name={name} slug={np?.slug} />
+      </Link>
+      {post.author?.verified_creator && (
+        <span
+          title="Verified Creator"
+          aria-label="Verified Creator"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-gradient-to-r from-pink-500/20 to-purple-500/20 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-pink-400"
+        >
+          <BadgeCheck className="h-3 w-3" />
+          Verified Creator
+        </span>
+      )}
+    </div>
   );
 }

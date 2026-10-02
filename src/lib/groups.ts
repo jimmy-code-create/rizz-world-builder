@@ -111,6 +111,45 @@ export async function fetchGroupMessages(groupId: string, limit = 100) {
 }
 
 export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {
-  const { error } = await supabase.from("group_messages").insert(input);
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const currentUser = authData.user;
+  if (!currentUser || currentUser.id !== input.author_id) {
+    throw new Error("Your session expired. Sign in again before sending a message.");
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", input.group_id)
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+
+  if (!membership) {
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .select("owner_id")
+      .eq("id", input.group_id)
+      .maybeSingle();
+    if (groupError) throw groupError;
+    if (group?.owner_id !== currentUser.id) {
+      throw new Error("Join this group before sending messages.");
+    }
+
+    const { error: joinError } = await supabase.from("group_members").insert({
+      group_id: input.group_id,
+      user_id: currentUser.id,
+      role: "owner",
+    });
+    if (joinError && !/duplicate|unique/i.test(joinError.message)) throw joinError;
+  }
+
+  const { data, error } = await supabase
+    .from("group_messages")
+    .insert({ ...input, body: input.body.trim() })
+    .select("*, author:profiles!group_messages_author_id_fkey(username,display_name,avatar_url,accent_color)")
+    .single();
   if (error) throw error;
+  return data;
 }

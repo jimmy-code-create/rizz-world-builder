@@ -464,7 +464,15 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
   color: transparent; animation: name-shimmer 3s linear infinite;
 }
-.np-p-shimmer { composes: np-base; }
+.np-p-shimmer {
+  background: linear-gradient(90deg, var(--nc, #ff2d92), color-mix(in oklab, var(--nc, #ff2d92) 40%, white 60%), var(--nc, #ff2d92));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: name-shimmer 3s linear infinite;
+}
 .np-p-gradient {
   background: linear-gradient(90deg, var(--nc), color-mix(in oklab, var(--nc) 50%, white 50%));
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -498,6 +506,10 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   background: linear-gradient(90deg, var(--nc), #a855f7, #ec4899, #facc15, #22d3ee, var(--nc));
   background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
   color: transparent; animation: name-shimmer 2.5s linear infinite;
+}
+.feed-post-card {
+  contain: layout paint;
+  will-change: transform;
 }
 @keyframes name-wave {
   0%,100% { transform: translateY(0); }
