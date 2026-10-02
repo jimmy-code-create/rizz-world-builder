@@ -36,12 +36,7 @@ export const createPostValidated = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) {
-      const msg = error.message || "";
-      if (/out of range|integer|numeric/i.test(msg)) throw new Error("A number was too large. Try a shorter caption.");
-      if (/value too long|too long/i.test(msg)) throw new Error("Caption or link is too long. Shorten it and try again.");
-      if (/violates.*row-level/i.test(msg)) throw new Error("You don't have permission to post right now. Sign back in.");
-      if (/foreign key/i.test(msg)) throw new Error("Your profile isn't fully set up yet. Reload the page.");
-      throw new Error(`Couldn't post: ${msg}`);
+      throw new Error(error.message);
     }
     return row;
   });

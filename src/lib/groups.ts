@@ -99,15 +99,39 @@ export async function acceptInvite(code: string, userId: string) {
   return inv.group;
 }
 
+type GroupMessageAuthor = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  accent_color: string | null;
+};
+
+async function fetchMessageAuthors(authorIds: string[]): Promise<Map<string, GroupMessageAuthor>> {
+  if (!authorIds.length) return new Map<string, GroupMessageAuthor>();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, accent_color")
+    .in("id", authorIds);
+  if (error) throw error;
+  return new Map<string, GroupMessageAuthor>((data ?? []).map((profile) => [profile.id, profile]));
+}
+
 export async function fetchGroupMessages(groupId: string, limit = 100) {
   const { data, error } = await supabase
     .from("group_messages")
-    .select("*, author:profiles!group_messages_author_id_fkey(username,display_name,avatar_url,accent_color)")
+    .select("*")
     .eq("group_id", groupId)
     .order("created_at", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return data ?? [];
+  const messages = data ?? [];
+  const authors = await fetchMessageAuthors([...new Set(messages.map((message) => message.author_id))]);
+  return messages.map((message) => ({
+    ...message,
+    author: authors.get(message.author_id) ?? null,
+  }));
 }
 
 export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {
@@ -148,8 +172,9 @@ export async function sendGroupMessage(input: { group_id: string; author_id: str
   const { data, error } = await supabase
     .from("group_messages")
     .insert({ ...input, body: input.body.trim() })
-    .select("*, author:profiles!group_messages_author_id_fkey(username,display_name,avatar_url,accent_color)")
+    .select("*")
     .single();
   if (error) throw error;
-  return data;
+  const authors = await fetchMessageAuthors([data.author_id]);
+  return { ...data, author: authors.get(data.author_id) ?? null };
 }

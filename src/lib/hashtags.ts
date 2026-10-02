@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { FeedPost } from "./posts";
+import { addVerifiedCreatorFlags, type FeedPost } from "./posts";
 
 export type Hashtag = { tag: string; post_count: number };
 
@@ -21,7 +21,10 @@ export async function fetchPostsByTag(tag: string, limit = 50): Promise<FeedPost
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return ((data ?? []) as any[]).map((r) => r.post).filter(Boolean) as FeedPost[];
+  const posts = ((data ?? []) as any[])
+    .map((row) => row.post)
+    .filter((post): post is FeedPost => Boolean(post));
+  return addVerifiedCreatorFlags(posts);
 }
 
 export function renderCaptionWithTags(

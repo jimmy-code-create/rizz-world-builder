@@ -4,13 +4,18 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Lock, Check, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth";
 import { fetchAllEffects, fetchUserEffects, acquireEffect, equipEffect, unequipEffect, RARITY_GRADIENT, type ProfileEffect } from "@/lib/effects";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { ProfileEffect as ProfileEffectOverlay } from "@/components/profile/ProfileEffect";
 import { toast } from "sonner";
+
+const EFFECT_TABS = [
+  { id: "avatar_decoration", label: "Rings" },
+  { id: "nameplate", label: "Nameplates" },
+] as const;
+
+type EffectTab = (typeof EFFECT_TABS)[number]["id"];
 
 export const Route = createFileRoute("/_app/effects")({
   head: () => ({ meta: [{ title: "Profile Effects · RIZZ" }] }),
@@ -20,7 +25,7 @@ export const Route = createFileRoute("/_app/effects")({
 function EffectsPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"avatar_decoration" | "profile_effect" | "nameplate">("avatar_decoration");
+  const [tab, setTab] = useState<EffectTab>("avatar_decoration");
 
   const all = useQuery({ queryKey: ["effects-all"], queryFn: fetchAllEffects });
   const mine = useQuery({ queryKey: ["effects-mine", user?.id], queryFn: () => fetchUserEffects(user!.id), enabled: !!user });
@@ -57,18 +62,14 @@ function EffectsPage() {
         <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
           <Wand2 className="h-7 w-7 text-[var(--rizz-pink)]" /> Profile Effects
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Unlock cosmetics with Rizz Score. Stack rings, banners, and nameplates.</p>
+        <p className="text-sm text-muted-foreground mt-1">Unlock rings and nameplates with Rizz Score.</p>
       </motion.div>
 
       <div className="flex gap-1 mb-5 glass rounded-xl p-1 border border-white/5 w-fit">
-        {[
-          { id: "avatar_decoration", label: "Rings" },
-          { id: "profile_effect", label: "Overlays" },
-          { id: "nameplate", label: "Nameplates" },
-        ].map((t) => (
+        {EFFECT_TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id as any)}
+            onClick={() => setTab(t.id)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t.id ? "bg-gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}
           >{t.label}</button>
         ))}
@@ -86,11 +87,6 @@ function EffectsPage() {
               <div className="relative h-20 w-full flex items-center justify-center my-3">
                 {e.type === "avatar_decoration" && (
                   <AvatarDecoration src={null} fallback="R" size={56} effectSlug={e.slug} accent={e.preview_color} />
-                )}
-                {e.type === "profile_effect" && (
-                  <div className="relative h-20 w-full rounded-xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${e.preview_color}33, transparent)` }}>
-                    <ProfileEffectOverlay slug={e.slug} />
-                  </div>
                 )}
                 {e.type === "nameplate" && (
                   <Nameplate name="@yourname" slug={e.slug} className="font-display text-lg font-bold" />
@@ -120,6 +116,3 @@ function EffectsPage() {
     </div>
   );
 }
-
-// silence unused
-void Avatar; void AvatarFallback;

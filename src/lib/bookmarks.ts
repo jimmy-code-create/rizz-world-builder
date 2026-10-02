@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { FeedPost } from "./posts";
+import { addVerifiedCreatorFlags, type FeedPost } from "./posts";
 
 export async function fetchMyBookmarkIds(userId: string): Promise<Set<string>> {
   const { data, error } = await supabase.from("bookmarks").select("post_id").eq("user_id", userId);
@@ -24,5 +24,8 @@ export async function fetchMyBookmarks(userId: string): Promise<FeedPost[]> {
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as any[]).map((r) => r.post).filter(Boolean) as FeedPost[];
+  const posts = ((data ?? []) as any[])
+    .map((row) => row.post)
+    .filter((post): post is FeedPost => Boolean(post));
+  return addVerifiedCreatorFlags(posts);
 }

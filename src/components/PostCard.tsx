@@ -614,7 +614,7 @@ function AuthorNameLink({ post }: { post: any }) {
         <span
           title="Verified Creator"
           aria-label="Verified Creator"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-gradient-to-r from-pink-500/20 to-purple-500/20 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-pink-400"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-pink-400"
         >
           <BadgeCheck className="h-3 w-3" />
           Verified Creator

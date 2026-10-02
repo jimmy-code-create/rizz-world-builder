@@ -29,7 +29,7 @@ export type FeedPost = {
 const FEED_COLS =
   "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edited_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
 
-async function addVerifiedCreatorFlags<T extends { author_id: string; author: FeedPost["author"] }>(posts: T[]): Promise<T[]> {
+export async function addVerifiedCreatorFlags<T extends { author_id: string; author: FeedPost["author"] }>(posts: T[]): Promise<T[]> {
   const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
   if (!authorIds.length) return posts;
 
@@ -53,6 +53,7 @@ export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
     .select(FEED_COLS)
+    .neq("media_type", "video")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -140,9 +141,9 @@ export async function createPost(input: {
     .from("posts")
     .insert({
       author_id: input.authorId,
-      caption,
-      media_url,
-      media_type,
+      caption: caption || null,
+      media_url: media_url || null,
+      media_type: media_type || "none",
       visibility: input.visibility ?? "public",
       quote_post_id: input.quotePostId ?? null,
       remix_of: input.remixOf ?? null,
@@ -155,10 +156,7 @@ export async function createPost(input: {
       const { error: cleanupError } = await supabase.storage.from("post-media").remove([mediaPath]);
       if (cleanupError) console.warn("Post upload cleanup failed:", cleanupError.message);
     }
-    if (/out of range|integer|numeric/i.test(error.message)) throw new Error("A number was too large. Try a shorter caption.");
-    if (/value too long|too long/i.test(error.message)) throw new Error("Caption or link is too long. Shorten it and try again.");
-    if (/row-level|permission|unauthorized/i.test(error.message)) throw new Error("Your session may have expired. Sign in again and try posting.");
-    throw new Error(`Couldn't post: ${error.message}`);
+    throw new Error(error.message);
   }
   trace.done();
   return row;

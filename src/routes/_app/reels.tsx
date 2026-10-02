@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
-  Plus, Upload, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send,
+  Plus, Upload, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
@@ -66,20 +67,6 @@ function ReelsPage() {
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      <div className="fixed top-[calc(env(safe-area-inset-top)+3.75rem)] md:top-4 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-1rem)] flex items-center gap-1.5 glass-strong border border-white/10 rounded-full px-2 py-1 text-[11px] overflow-x-auto no-scrollbar whitespace-nowrap">
-        <Gauge className="h-3.5 w-3.5 opacity-70 shrink-0" />
-        {[0.5, 1, 1.5, 2].map((s) => (
-          <button key={s} onClick={() => setSpeed(s)} className={`shrink-0 px-1.5 py-0.5 rounded-full ${speed === s ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{s}x</button>
-        ))}
-        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
-        <button onClick={() => setCaptions((c) => !c)} className={`shrink-0 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${captions ? "bg-white/20" : "opacity-60"}`} aria-label="Toggle captions"><Captions className="h-3.5 w-3.5" /> CC</button>
-        <span className="w-px h-3 bg-white/10 mx-1 shrink-0" />
-        <Sparkles className="h-3.5 w-3.5 opacity-70 shrink-0" />
-        {(["none", "warm", "cool", "noir", "vivid"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`shrink-0 px-1.5 py-0.5 rounded-full capitalize ${filter === f ? "bg-gradient-primary text-white" : "opacity-60 hover:opacity-100"}`}>{f}</button>
-        ))}
-      </div>
-
       {reels.isLoading && <div className="h-full grid place-items-center text-muted-foreground">Loading reels…</div>}
       {reels.data?.length === 0 && (
         <div className="h-full grid place-items-center text-center px-8">
@@ -102,6 +89,9 @@ function ReelsPage() {
             speed={speed}
             captions={captions}
             filter={filter}
+            setSpeed={setSpeed}
+            setCaptions={setCaptions}
+            setFilter={setFilter}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
           />
@@ -119,7 +109,31 @@ const FILTER_CSS: Record<string, string> = {
   vivid: "saturate(1.55) contrast(1.1)",
 };
 
-function ReelItem({ post, muted, toggleMute, speed, captions, filter, initialLiked, initialSaved }: { post: any; muted: boolean; toggleMute: () => void; speed: number; captions: boolean; filter: string; initialLiked: boolean; initialSaved: boolean }) {
+function ReelItem({
+  post,
+  muted,
+  toggleMute,
+  speed,
+  captions,
+  filter,
+  setSpeed,
+  setCaptions,
+  setFilter,
+  initialLiked,
+  initialSaved,
+}: {
+  post: any;
+  muted: boolean;
+  toggleMute: () => void;
+  speed: number;
+  captions: boolean;
+  filter: string;
+  setSpeed: React.Dispatch<React.SetStateAction<number>>;
+  setCaptions: React.Dispatch<React.SetStateAction<boolean>>;
+  setFilter: React.Dispatch<React.SetStateAction<string>>;
+  initialLiked: boolean;
+  initialSaved: boolean;
+}) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const ref = useRef<HTMLVideoElement>(null);
@@ -229,9 +243,77 @@ function ReelItem({ post, muted, toggleMute, speed, captions, filter, initialLik
       <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>
-      <button onClick={toggleMute} className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 h-10 w-10 rounded-full glass-strong grid place-items-center z-20">
-        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-      </button>
+      <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 z-20 flex items-center gap-2">
+        <button
+          onClick={toggleMute}
+          className="h-10 w-10 rounded-full glass-strong grid place-items-center"
+          aria-label={muted ? "Unmute reel" : "Mute reel"}
+        >
+          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        </button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className="h-10 w-10 rounded-full glass-strong grid place-items-center"
+              aria-label="Reel settings"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-60 p-3 glass-strong border-white/10">
+            <div className="space-y-3 text-foreground">
+              <section>
+                <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
+                  <Gauge className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Playback speed
+                </h3>
+                <div className="grid grid-cols-4 gap-1">
+                  {[0.5, 1, 1.5, 2].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={speed === value}
+                      onClick={() => setSpeed(value)}
+                      className={`rounded-lg px-1.5 py-1.5 text-xs transition-colors ${speed === value ? "bg-gradient-primary text-white" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                    >
+                      {value}x
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="border-t border-white/10 pt-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={captions}
+                  onClick={() => setCaptions((current) => !current)}
+                  className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
+                >
+                  <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-[var(--rizz-pink)]" /> Captions</span>
+                  <span className="text-xs text-muted-foreground">{captions ? "On" : "Off"}</span>
+                </button>
+              </section>
+              <section className="border-t border-white/10 pt-3">
+                <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Visual filter
+                </h3>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["none", "warm", "cool", "noir", "vivid"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={filter === value}
+                      onClick={() => setFilter(value)}
+                      className={`rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${filter === value ? "bg-gradient-primary text-white" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                    >
+                      {value === "none" ? "None" : value}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
       <div className="absolute left-4 right-20 bottom-28 md:bottom-6 text-white drop-shadow">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
