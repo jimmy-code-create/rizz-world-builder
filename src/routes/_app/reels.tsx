@@ -393,10 +393,8 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       if (!user) throw new Error("Sign in first");
       if (!file) throw new Error("Pick a video to create a reel");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
-      const songLine = songTag ? "
-🎵 " + songTag.title + " — " + songTag.artist : "";
-      const overlayLine = overlay ? "
-" + overlay : "";
+      const songLine = songTag ? "\n🎵 " + songTag.title + " — " + songTag.artist : "";
+      const overlayLine = overlay ? "\n" + overlay : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
       return createPost({
         authorId: user.id,
@@ -423,6 +421,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       toast.error(e.message, { id: "reel-upload-progress" });
     },
   });
+
+  const filteredSongs = SONG_LIBRARY.filter((s) =>
+    !songQuery || (s.title + s.artist + s.mood).toLowerCase().includes(songQuery.toLowerCase())
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
