@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2 } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageReactions } from "@/components/DMReactionsBar";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
+import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, muteUser } from "@/lib/social";
 
@@ -116,6 +117,9 @@ function DMPage() {
     if (!user) return;
     const ch = supabase.channel(`dm-${user.id}-${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, () => {
+        qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, () => {
         qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
       })
       .subscribe();
@@ -276,8 +280,24 @@ function DMPage() {
   };
 
   const deleteMsg = async (id: string) => {
-    // direct_messages currently has no delete policy; treat as soft-hide
-    toast("Message hidden for you");
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", id)
+        .eq("sender_id", user.id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("You can only delete messages you sent.");
+      qc.setQueryData<any[]>(["dm", user.id, userId], (current = []) =>
+        current.filter((message) => message.id !== id),
+      );
+      toast.success("Message deleted for everyone");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
+    }
   };
 
   const react = async (messageId: string, emoji: string) => {
@@ -368,6 +388,21 @@ function DMPage() {
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
             if (audioPath) {
+              const audioActions = [
+                {
+                  label: "Reply",
+                  icon: CornerUpLeft,
+                  onSelect: () => setReplyTo({ id: m.id, body: "Voice note", mine }),
+                },
+                ...(mine
+                  ? [{
+                      label: "Delete for everyone",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => { void deleteMsg(m.id); },
+                    }]
+                  : []),
+              ];
               return (
                 <motion.div
                   key={m.id}
@@ -376,7 +411,15 @@ function DMPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
                 >
-                  <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
+                  <MessageActionMenu
+                    open={openMsg === m.id}
+                    onOpenChange={(open) => setOpenMsg(open ? m.id : null)}
+                    align={mine ? "right" : "left"}
+                    triggerRole="group"
+                    actions={audioActions}
+                  >
+                    <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
+                  </MessageActionMenu>
                   <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
                 </motion.div>
               );
@@ -431,7 +474,7 @@ function DMPage() {
                       <button onClick={() => { startCall(true); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Video call</button>
                       <button onClick={() => { toast("Reported"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Report</button>
                       {mine && (
-                        <button onClick={() => { deleteMsg(m.id); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete</button>
+                        <button onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete for everyone</button>
                       )}
                     </div>
                   </PopoverContent>

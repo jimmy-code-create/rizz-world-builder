@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, X } from "lucide-react";
+import { Heart, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
+import { toast } from "sonner";
 
 type Story = {
   id: string;
@@ -110,6 +112,54 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
   const [idx, setIdx] = useState(0);
   const story = group[idx];
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const reactionKey = ["story-reactions", user?.id, story?.id] as const;
+  const quickReactions = ["🔥", "😂", "😮", "😢", "👏"];
+
+  const reactions = useQuery({
+    queryKey: reactionKey,
+    enabled: !!user && !!story,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from as any)("story_reactions")
+        .select("emoji")
+        .eq("story_id", story.id)
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return (data ?? []).map((row: { emoji: string }) => row.emoji) as string[];
+    },
+  });
+  const toggleReaction = useMutation({
+    mutationFn: async ({ storyId, emoji }: { storyId: string; emoji: string }) => {
+      if (!user) throw new Error("Sign in to react to stories");
+      const key = ["story-reactions", user.id, storyId] as const;
+      const selected = (queryClient.getQueryData<string[]>(key) ?? []).includes(emoji);
+      const query = (supabase.from as any)("story_reactions");
+      const result = selected
+        ? await query.delete().eq("story_id", storyId).eq("user_id", user.id).eq("emoji", emoji)
+        : await query.insert({ story_id: storyId, user_id: user.id, emoji });
+      if (result.error) throw result.error;
+    },
+    onMutate: async ({ storyId, emoji }) => {
+      const key = ["story-reactions", user?.id, storyId] as const;
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<string[]>(key) ?? [];
+      queryClient.setQueryData<string[]>(
+        key,
+        previous.includes(emoji) ? previous.filter((item) => item !== emoji) : [...previous, emoji],
+      );
+      return { key, previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context) queryClient.setQueryData(context.key, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: (_data, _error, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["story-reactions", user?.id, variables.storyId] }),
+  });
+  const myReactions = reactions.data ?? [];
+  const reactToStory = (emoji: string) => {
+    if (story) toggleReaction.mutate({ storyId: story.id, emoji });
+  };
 
   useEffect(() => {
     if (user && story) {
@@ -128,37 +178,94 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
       className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
-      <div className="absolute top-4 left-4 right-4 flex gap-1 z-10">
-        {group.map((_, i) => (
-          <div key={i} className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className={`h-full bg-white transition-all ${i < idx ? "w-full" : i === idx ? "w-full animate-[progress_5s_linear]" : "w-0"}`} />
-          </div>
-        ))}
-      </div>
-      <button onClick={onClose} className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full glass-strong flex items-center justify-center">
-        <X className="h-5 w-5" />
-      </button>
-      <div className="absolute top-12 left-4 flex items-center gap-2 z-10">
-        <Avatar className="h-8 w-8 ring-2 ring-white/30">
-          <AvatarImage src={story.author?.avatar_url ?? undefined} />
-          <AvatarFallback>{(story.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <span className="text-sm font-medium">@{story.author?.username}</span>
-      </div>
-
-      <button className="absolute left-0 top-0 bottom-0 w-1/3" onClick={(e) => { e.stopPropagation(); if (idx > 0) setIdx(idx - 1); else onPrev(); }} />
-      <button className="absolute right-0 top-0 bottom-0 w-1/3" onClick={(e) => { e.stopPropagation(); if (idx + 1 < group.length) setIdx(idx + 1); else onNext(); }} />
-
-      {story.media_type === "video" ? (
-        <video src={story.media_url} autoPlay playsInline className="max-h-[85vh] max-w-full rounded-2xl" />
-      ) : (
-        <img src={story.media_url} alt="" className="max-h-[85vh] max-w-full rounded-2xl object-contain" />
-      )}
-      {story.caption && (
-        <div className="absolute bottom-10 left-4 right-4 text-center">
-          <p className="inline-block glass-strong px-4 py-2 rounded-full text-sm">{story.caption}</p>
+      <div
+        className="relative z-10 flex h-[min(78dvh,720px)] w-[min(calc(100vw-2rem),430px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#090710] shadow-[0_24px_80px_-28px_rgba(0,0,0,0.9)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="absolute top-3 left-4 right-4 z-30 flex gap-1">
+          {group.map((_, i) => (
+            <div key={i} className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+              <div className={`h-full bg-white transition-all ${i < idx ? "w-full" : i === idx ? "w-full animate-[progress_5s_linear]" : "w-0"}`} />
+            </div>
+          ))}
         </div>
-      )}
+        <button
+          onClick={onClose}
+          aria-label="Close story"
+          className="absolute top-7 right-3 z-30 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="absolute top-7 left-3 z-30 flex items-center gap-2 rounded-full bg-black/45 px-2 py-1.5 backdrop-blur-md">
+          <Avatar className="h-7 w-7 ring-1 ring-white/35">
+            <AvatarImage src={story.author?.avatar_url ?? undefined} />
+            <AvatarFallback>{(story.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <span className="max-w-36 truncate text-xs font-semibold">@{story.author?.username}</span>
+        </div>
+
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/65 pt-10">
+          {story.media_type === "video" ? (
+            <video src={story.media_url} autoPlay playsInline className="h-full max-h-full max-w-full object-contain" />
+          ) : (
+            <img src={story.media_url} alt={story.caption ?? ""} className="h-full max-h-full w-full object-contain" />
+          )}
+          <button
+            aria-label="Previous story"
+            className="absolute left-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-w-resize"
+            onClick={(event) => { event.stopPropagation(); if (idx > 0) setIdx(idx - 1); else onPrev(); }}
+          />
+          <button
+            aria-label="Next story"
+            className="absolute right-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-e-resize"
+            onClick={(event) => { event.stopPropagation(); if (idx + 1 < group.length) setIdx(idx + 1); else onNext(); }}
+          />
+        </div>
+        {story.caption && (
+          <p className="max-h-20 overflow-y-auto border-t border-white/[0.06] px-4 py-2.5 text-center text-sm leading-snug text-white/90">
+            {story.caption}
+          </p>
+        )}
+        <div className="flex min-h-[62px] items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2">
+          <button
+            type="button"
+            aria-label={myReactions.includes("❤️") ? "Remove like" : "Like story"}
+            aria-pressed={myReactions.includes("❤️")}
+            disabled={!user || reactions.isLoading || toggleReaction.isPending}
+            onClick={() => reactToStory("❤️")}
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${
+              myReactions.includes("❤️")
+                ? "border-[var(--rizz-pink)]/45 bg-[var(--rizz-pink)]/15 text-[var(--rizz-pink)]"
+                : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/10"
+            }`}
+          >
+            <Heart className={`h-5 w-5 ${myReactions.includes("❤️") ? "fill-current" : ""}`} />
+          </button>
+          <span className="mr-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/45">React</span>
+          <div className="flex min-w-0 flex-1 justify-between gap-1">
+            {quickReactions.map((emoji) => {
+              const selected = myReactions.includes(emoji);
+              return (
+                <button
+                  key={emoji}
+                  type="button"
+                  aria-label={`React with ${emoji}`}
+                  aria-pressed={selected}
+                  disabled={!user || reactions.isLoading || toggleReaction.isPending}
+                  onClick={() => reactToStory(emoji)}
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-lg transition ${
+                    selected
+                      ? "border-[var(--rizz-violet)]/55 bg-[var(--rizz-violet)]/20"
+                      : "border-transparent hover:border-white/10 hover:bg-white/[0.07]"
+                  }`}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }

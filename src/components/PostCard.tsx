@@ -349,11 +349,11 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       <PollBlock postId={post.id} />
 
       {post.media_url && (
-        <div className="relative bg-black/40" onClick={doubleTapLike}>
+        <div className="relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50" onClick={doubleTapLike}>
           {post.media_type === "video" ? (
-            <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[600px] object-contain" />
+            <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[min(48dvh,390px)] object-contain" />
           ) : (
-            <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[600px] object-cover" />
+            <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[min(48dvh,390px)] object-contain" />
           )}
           <AnimatePresence>
             {burst > 0 && (

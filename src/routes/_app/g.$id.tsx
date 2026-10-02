@@ -2,10 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown } from "lucide-react";
+import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
+import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ function GroupRoom() {
   const [body, setBody] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
+  const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
@@ -83,6 +85,9 @@ function GroupRoom() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, () => {
         qc.invalidateQueries({ queryKey });
       })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "group_messages" }, () => {
+        qc.invalidateQueries({ queryKey });
+      })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           qc.invalidateQueries({ queryKey });
@@ -100,6 +105,27 @@ function GroupRoom() {
     const text = body.trim();
     setBody("");
     sendMessage.mutate(text);
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("group_messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("author_id", user.id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("You can only delete messages you sent.");
+      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
+        current.filter((message) => message.id !== messageId),
+      );
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
+    }
   };
 
   const makeInvite = async () => {
@@ -176,13 +202,41 @@ function GroupRoom() {
           {(msgs.data ?? []).map((m: any) => {
             const mine = m.author_id === user?.id;
             return (
-              <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+              <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 )}
                 <div className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
                   {!mine && <span className="text-[11px] text-muted-foreground ml-3 mb-0.5">@{m.author?.username}</span>}
-                  <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>{m.body}</div>
+                  <MessageActionMenu
+                    open={openMessageId === m.id}
+                    onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
+                    align={mine ? "right" : "left"}
+                    actions={[
+                      {
+                        label: "Copy message",
+                        icon: Copy,
+                        onSelect: () => {
+                          void navigator.clipboard.writeText(m.body).then(
+                            () => toast.success("Copied"),
+                            () => toast.error("Couldn't copy this message"),
+                          );
+                        },
+                      },
+                      ...(mine && !String(m.id).startsWith("pending-")
+                        ? [{
+                            label: "Delete message",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => { void deleteMessage(m.id); },
+                          }]
+                        : []),
+                    ]}
+                  >
+                    <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
+                      {m.body}
+                    </div>
+                  </MessageActionMenu>
                   <span className="text-[10px] text-muted-foreground mt-0.5 px-2">
                     {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                   </span>

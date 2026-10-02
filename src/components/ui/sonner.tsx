@@ -9,7 +9,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group rizz-toaster"
       position="bottom-center"
       offset={24}
-      mobileOffset={104}
+      mobileOffset={96}
       closeButton
       icons={{
         success: <CheckCircle2 aria-hidden="true" />,

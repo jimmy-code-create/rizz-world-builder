@@ -80,7 +80,7 @@ export function OwnerPanel({ open, onOpenChange }: { open: boolean; onOpenChange
                 {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock"}
               </Button>
             </form>
-            <p className="text-xs text-muted-foreground">Default password is <code className="text-foreground">rizz-owner-2026</code> — change it in your backend secrets (OWNER_PANEL_PASSWORD).</p>
+            <p className="text-xs text-muted-foreground">Owner access is protected by the server-only OWNER_PANEL_PASSWORD secret. Set or reset it in your hosting environment.</p>
           </div>
         ) : (
           <>

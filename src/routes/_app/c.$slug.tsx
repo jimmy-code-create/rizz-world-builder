@@ -7,9 +7,10 @@ import { fetchChannelBySlug, fetchMessages, sendMessage, joinChannel, leaveChann
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, Send, Users, Sparkles } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, Send, Users, Sparkles, Copy, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, drops: Gift };
 
@@ -31,6 +32,7 @@ function ChannelPage() {
   const [joined, setJoined] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,6 +46,9 @@ function ChannelPage() {
     const ch = supabase
       .channel(`messages-${channel.data.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${channel.data.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["messages", channel.data!.id] });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, () => {
         qc.invalidateQueries({ queryKey: ["messages", channel.data!.id] });
       })
       .subscribe();
@@ -68,6 +73,27 @@ function ChannelPage() {
       await sendMessage(c.id, user.id, body.trim());
       setBody("");
     } catch (e: any) { toast.error(e.message); } finally { setSending(false); }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("author_id", user.id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("You can only delete messages you sent.");
+      qc.setQueryData<any[]>(["messages", c.id], (current = []) =>
+        current.filter((message) => message.id !== messageId),
+      );
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
+    }
   };
 
   const handleJoin = async () => {
@@ -109,8 +135,10 @@ function ChannelPage() {
 
       <div className="px-4 py-4 min-h-[60vh] pb-32">
         <AnimatePresence initial={false}>
-          {messages.data?.map((m: any) => (
-            <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 mb-3">
+          {messages.data?.map((m: any) => {
+            const mine = m.author_id === user?.id;
+            return (
+            <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 mb-3">
               <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
                 <AvatarImage src={m.author?.avatar_url ?? undefined} />
                 <AvatarFallback className="bg-gradient-primary text-xs font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
@@ -120,10 +148,38 @@ function ChannelPage() {
                   <span className="font-bold text-sm" style={{ color: m.author?.accent_color || undefined }}>{m.author?.display_name || m.author?.username}</span>
                   <span className="text-[10px] text-muted-foreground">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.body}</p>
+                <MessageActionMenu
+                  open={openMessageId === m.id}
+                  onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
+                  align={mine ? "right" : "left"}
+                  actions={[
+                    {
+                      label: "Copy message",
+                      icon: Copy,
+                      onSelect: () => {
+                        void navigator.clipboard.writeText(m.body).then(
+                          () => toast.success("Copied"),
+                          () => toast.error("Couldn't copy this message"),
+                        );
+                      },
+                    },
+                    ...(mine
+                      ? [{
+                          label: "Delete message",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => { void handleDeleteMessage(m.id); },
+                        }]
+                      : []),
+                  ]}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation">
+                    {m.body}
+                  </p>
+                </MessageActionMenu>
               </div>
             </motion.div>
-          ))}
+          )})}
         </AnimatePresence>
         {messages.data?.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-20">No messages yet. Start the convo 🔥</div>

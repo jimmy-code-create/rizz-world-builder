@@ -269,41 +269,40 @@
 
 /* ============ RIZZ NOTIFICATIONS ============ */
 .rizz-toaster {
-  --width: min(440px, calc(100vw - 24px));
+  --width: min(336px, calc(100vw - 2rem));
   z-index: 100;
 }
 
 .rizz-toaster [data-sonner-toast].rizz-toast {
   width: var(--width);
-  min-height: 58px;
-  gap: 12px;
-  padding: 13px 14px;
-  border: 1px solid oklch(0.98 0.01 320 / 0.12);
-  border-radius: 18px;
-  background: oklch(0.15 0.04 295 / 0.96);
+  min-height: 46px;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid oklch(0.98 0.01 320 / 0.1);
+  border-radius: 14px;
+  background: oklch(0.15 0.04 295 / 0.94);
   color: oklch(0.98 0.01 320);
   box-shadow:
-    0 16px 48px oklch(0.04 0.02 295 / 0.5),
-    0 0 28px oklch(0.68 0.28 5 / 0.12),
+    0 12px 34px oklch(0.04 0.02 295 / 0.44),
+    0 0 20px oklch(0.68 0.28 5 / 0.08),
     inset 0 1px 0 oklch(0.98 0.01 320 / 0.06);
-  backdrop-filter: blur(24px) saturate(145%);
-  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   font-family: var(--font-sans);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
   border-color: oklch(0.72 0.2 20 / 0.3);
   box-shadow:
-    0 16px 48px oklch(0.04 0.02 295 / 0.5),
-    0 0 26px oklch(0.65 0.27 25 / 0.1),
-    inset 3px 0 0 oklch(0.68 0.2 20 / 0.85);
+    0 12px 34px oklch(0.04 0.02 295 / 0.44),
+    inset 2px 0 0 oklch(0.68 0.2 20 / 0.8);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="success"].rizz-toast {
   border-color: oklch(0.78 0.16 155 / 0.28);
   box-shadow:
-    0 16px 48px oklch(0.04 0.02 295 / 0.5),
-    0 0 26px oklch(0.72 0.17 155 / 0.09);
+    0 12px 34px oklch(0.04 0.02 295 / 0.44),
+    0 0 18px oklch(0.72 0.17 155 / 0.07);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="info"].rizz-toast {
@@ -313,9 +312,9 @@
 .rizz-toaster .rizz-toast-title {
   min-width: 0;
   color: oklch(0.98 0.01 320);
-  font-size: 14px;
-  font-weight: 550;
-  line-height: 1.45;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
@@ -329,16 +328,16 @@
 
 .rizz-toaster .rizz-toast-icon {
   display: flex;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
   align-items: center;
   justify-content: center;
 }
 
 .rizz-toaster .rizz-toast-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 17px;
+  height: 17px;
   stroke-width: 2.2;
 }
 
@@ -374,9 +373,9 @@
 }
 
 .rizz-toaster .rizz-toast-close {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border-color: oklch(0.98 0.01 320 / 0.12);
   background: oklch(0.98 0.01 320 / 0.06);
   color: oklch(0.76 0.03 295);
