@@ -1,18 +1,32 @@
 import { Toaster as Sonner } from "sonner";
+import { AlertCircle, CheckCircle2, Info, LoaderCircle, X } from "lucide-react";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      className="toaster group"
+      className="toaster group rizz-toaster"
+      position="bottom-center"
+      offset={24}
+      mobileOffset={104}
+      closeButton
+      icons={{
+        success: <CheckCircle2 aria-hidden="true" />,
+        error: <AlertCircle aria-hidden="true" />,
+        info: <Info aria-hidden="true" />,
+        loading: <LoaderCircle aria-hidden="true" />,
+        close: <X aria-hidden="true" />,
+      }}
       toastOptions={{
         classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          toast: "rizz-toast",
+          title: "rizz-toast-title",
+          description: "rizz-toast-description",
+          icon: "rizz-toast-icon",
+          actionButton: "rizz-toast-action",
+          cancelButton: "rizz-toast-cancel",
+          closeButton: "rizz-toast-close",
         },
       }}
       {...props}
