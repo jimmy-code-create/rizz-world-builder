@@ -20,12 +20,13 @@ function DMsPage() {
     queryKey: ["dm-threads", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("direct_messages")
         .select("*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)")
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(100);
+      if (error) throw error;
       // group by other party
       const map = new Map<string, { other: any; last: any; unread: number }>();
       for (const m of data ?? []) {
@@ -39,7 +40,8 @@ function DMsPage() {
       return Array.from(map.values());
     },
     enabled: !!user,
-    refetchInterval: 15000,
+    retry: 1,
+    refetchInterval: (query) => query.state.status === "error" ? false : 15000,
   });
 
   const filtered = useMemo(() => {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -240,7 +240,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
+      className="feed-post-card glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
     >
       <header className="flex items-center gap-3 p-4 pb-3">
         <AuthorAvatarLink post={post} accent={accent} initial={initial} />
@@ -248,6 +248,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           <AuthorNameLink post={post} />
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
+            {(post.author?.is_verified_creator || post.author?.is_creator) && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-400/25 bg-gradient-to-r from-pink-500/15 to-violet-500/15 px-1.5 py-0.5 text-[9px] font-bold text-pink-200">
+                <BadgeCheck className="h-2.5 w-2.5" />
+                {post.author?.is_verified_creator ? "Verified Creator" : "Creator"}
+              </span>
+            )}
             {(post as any).edited_at && <span className="text-[10px] italic">· edited</span>}
             {post.visibility === "close_friends" && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">

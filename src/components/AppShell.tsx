@@ -71,15 +71,17 @@ export function AppShell() {
     queryKey: ["unread-notifs", user?.id],
     queryFn: async () => {
       if (!user) return 0;
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("notifications" as any)
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("read", false);
+      if (error) throw error;
       return count ?? 0;
     },
     enabled: !!user,
-    refetchInterval: 30000,
+    retry: 1,
+    refetchInterval: (query) => query.state.status === "error" ? false : 30000,
   });
 
   if (loading || !user) {

@@ -26,31 +26,91 @@ function GroupRoom() {
   const [body, setBody] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
+  const [sending, setSending] = useState(false);
+  const [optimisticMessages, setOptimisticMessages] = useState<any[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
 
-  const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
-  const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
-  const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id), enabled: !!group.data });
+  const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id), retry: 1 });
+  const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data, retry: 1 });
+  const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id), enabled: !!group.data, retry: 1 });
 
   useEffect(() => {
     if (!group.data) return;
-    const ch = supabase.channel(`group-${id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    const ch = supabase.channel("group-" + id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: "group_id=eq." + id }, () => {
+        void qc.invalidateQueries({ queryKey: ["group-msgs", id] });
       })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = undefined;
+          void qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+          return;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            void qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+          }, 2000);
+        }
+      });
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      void supabase.removeChannel(ch);
+    };
   }, [id, group.data, qc]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data, optimisticMessages]);
 
   const send = async () => {
-    if (!user || !body.trim()) return;
+    if (!user || !body.trim() || sending) return;
     const text = body.trim();
+    const optimisticId = "optimistic-" + crypto.randomUUID();
+    const member = members.data?.find((entry: any) => entry.user_id === user.id)?.user;
+    const optimistic = {
+      id: optimisticId,
+      group_id: id,
+      author_id: user.id,
+      body: text,
+      created_at: new Date().toISOString(),
+      author: member ?? { username: user.email?.split("@")[0] ?? "you", display_name: null, avatar_url: null },
+    };
+    setSending(true);
     setBody("");
-    try { await sendGroupMessage({ group_id: id, author_id: user.id, body: text }); }
-    catch (e: any) { toast.error(e.message); }
+    setOptimisticMessages((current) => [...current, optimistic]);
+    try {
+      const sent = await sendGroupMessage({ group_id: id, author_id: user.id, body: text });
+      setOptimisticMessages((current) => current.filter((message) => message.id !== optimisticId));
+      qc.setQueryData<any[]>(["group-msgs", id], (current = []) =>
+        current.some((message) => message.id === sent.id) ? current : [...current, sent],
+      );
+      await qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+    } catch (error: any) {
+      setOptimisticMessages((current) => current.filter((message) => message.id !== optimisticId));
+      await qc.invalidateQueries({ queryKey: ["group-msgs", id] });
+      const saved = qc.getQueryData<any[]>(["group-msgs", id]) ?? [];
+      const probablySent = saved.some((message) =>
+        message.author_id === user.id && message.body === text &&
+        Math.abs(new Date(message.created_at).getTime() - new Date(optimistic.created_at).getTime()) < 30000,
+      );
+      if (!probablySent) {
+        setBody((current) => current.trim() ? current : text);
+        toast.error(error?.message || "Message failed to send. Please try again.");
+      }
+    } finally {
+      setSending(false);
+    }
   };
+
+
+  const visibleMessages = [
+    ...(msgs.data ?? []),
+    ...optimisticMessages.filter((pending) => !(msgs.data ?? []).some((saved: any) =>
+      saved.author_id === pending.author_id && saved.body === pending.body &&
+      Math.abs(new Date(saved.created_at).getTime() - new Date(pending.created_at).getTime()) < 30000,
+    )),
+  ].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const makeInvite = async () => {
     if (!user) return;
@@ -123,7 +183,7 @@ function GroupRoom() {
 
       <div className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
         <AnimatePresence initial={false}>
-          {(msgs.data ?? []).map((m: any) => {
+          {visibleMessages.map((m: any) => {
             const mine = m.author_id === user?.id;
             return (
               <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
@@ -141,7 +201,7 @@ function GroupRoom() {
             );
           })}
         </AnimatePresence>
-        {(msgs.data ?? []).length === 0 && (
+        {visibleMessages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-12">Say hi to start the conversation 👋</p>
         )}
         <div ref={endRef} />
@@ -150,7 +210,7 @@ function GroupRoom() {
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
         <div className="max-w-3xl mx-auto flex gap-2">
           <Input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={`Message ${g.name}…`} maxLength={2000} className="glass border-white/10" />
-          <Button onClick={send} disabled={!body.trim()} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
+          <Button onClick={send} disabled={!body.trim() || sending} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
 
