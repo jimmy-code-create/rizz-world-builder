@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
-  Plus, Upload, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
+  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addCom
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { parseExternalReelLink, REDNOTE_UNAVAILABLE } from "@/lib/external-reels";
 
 const SONG_LIBRARY = [
   { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
@@ -137,6 +139,11 @@ function ReelItem({
   const { user } = useAuth();
   const qc = useQueryClient();
   const ref = useRef<HTMLVideoElement>(null);
+  const externalLink =
+    post.media_type === "video" && post.media_url
+      ? parseExternalReelLink(post.media_url)
+      : null;
+  const isExternal = !!externalLink?.ok;
   const [progress, setProgress] = useState(0);
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
@@ -218,21 +225,55 @@ function ReelItem({
   };
 
   return (
-    <section className="relative h-full snap-start grid place-items-center bg-black">
-      <video
-        ref={ref}
-        src={post.media_url}
-        muted={muted}
-        loop
-        playsInline
-        onClick={onVideoTap}
-        onTimeUpdate={(e) => {
-          const v = e.currentTarget;
-          if (v.duration) setProgress((v.currentTime / v.duration) * 100);
-        }}
-        className="h-full w-full object-contain transition-[filter] duration-300"
-        style={{ filter: FILTER_CSS[filter] || "none" }}
-      />
+    <section className={`relative h-full snap-start bg-black ${isExternal ? "flex flex-col" : "grid place-items-center"}`}>
+      {isExternal ? (
+        <>
+          <ExternalVideoEmbed sourceUrl={post.media_url} className="min-h-0 flex-1 w-full" />
+          <div className="shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white">
+            <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
+              <Avatar className="h-9 w-9 ring-2 ring-white/40">
+                <AvatarImage src={post.author?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="font-bold text-sm">@{post.author?.username}</span>
+            </Link>
+            {captions && post.caption && <p className="mb-2 text-sm line-clamp-2 text-white/90">{post.caption}</p>}
+            <div className="flex items-center justify-around gap-1">
+              <ReelAction
+                icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
+                label={String(likeCount)}
+                onClick={() => doLike()}
+                active={liked}
+              />
+              <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={String(post.comment_count ?? 0)} onClick={() => setCommentsOpen(true)} />
+              <ReelAction
+                icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
+                label={saved ? "Saved" : "Save"}
+                onClick={doSave}
+                active={saved}
+              />
+              <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />
+              <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
+            </div>
+          </div>
+          <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+        </>
+      ) : (
+        <>
+        <video
+          ref={ref}
+          src={post.media_url}
+          muted={muted}
+          loop
+          playsInline
+          onClick={onVideoTap}
+          onTimeUpdate={(e) => {
+            const v = e.currentTarget;
+            if (v.duration) setProgress((v.currentTime / v.duration) * 100);
+          }}
+          className="h-full w-full object-contain transition-[filter] duration-300"
+          style={{ filter: FILTER_CSS[filter] || "none" }}
+        />
       {burst > 0 && (
         <Heart
           key={burst}
@@ -240,18 +281,18 @@ function ReelItem({
           style={{ animation: "reel-heart 700ms ease-out forwards" }}
         />
       )}
-      <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
+      {!isExternal && <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
-      </div>
+      </div>}
       <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 z-20 flex items-center gap-2">
-        <button
-          onClick={toggleMute}
-          className="h-10 w-10 rounded-full glass-strong grid place-items-center"
-          aria-label={muted ? "Unmute reel" : "Mute reel"}
-        >
-          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </button>
-        <Popover>
+        {!isExternal && <button
+            onClick={toggleMute}
+            className="h-10 w-10 rounded-full glass-strong grid place-items-center"
+            aria-label={muted ? "Unmute reel" : "Mute reel"}
+          >
+            {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+          </button>}
+        {!isExternal && <Popover>
           <PopoverTrigger asChild>
             <button
               className="h-10 w-10 rounded-full glass-strong grid place-items-center"
@@ -312,7 +353,7 @@ function ReelItem({
               </section>
             </div>
           </PopoverContent>
-        </Popover>
+        </Popover>}
       </div>
       <div className="absolute left-4 right-20 bottom-28 md:bottom-6 text-white drop-shadow">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
@@ -324,7 +365,7 @@ function ReelItem({
         </Link>
         {captions && post.caption && <p className="text-sm line-clamp-3 bg-black/30 backdrop-blur-sm rounded-lg px-2 py-1 inline-block">{post.caption}</p>}
         <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
-          <Music2 className="h-3.5 w-3.5" /> Original audio · @{post.author?.username}
+          <Music2 className="h-3.5 w-3.5" /> {isExternal ? "Linked video" : `Original audio · @${post.author?.username}`}
         </div>
       </div>
       <div className="absolute right-2 bottom-32 md:bottom-10 flex flex-col items-center gap-3 text-white z-10">
@@ -350,6 +391,8 @@ function ReelItem({
       </div>
 
       <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+        </>
+      )}
 
       <style>{`
         @keyframes reel-heart {
@@ -443,6 +486,9 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sourceMode, setSourceMode] = useState<"upload" | "link">("upload");
+  const [sourceLink, setSourceLink] = useState("");
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [caption, setCaption] = useState("");
   const [song, setSong] = useState<string | null>(null);
   const [songQuery, setSongQuery] = useState("");
@@ -451,6 +497,11 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [overlay, setOverlay] = useState("");
   const previewRef = useRef<HTMLVideoElement>(null);
   const uploadToastId = useRef<string | number | undefined>(undefined);
+  const sourceLinkResult = sourceLink.trim() ? parseExternalReelLink(sourceLink) : null;
+  const canPublishLink =
+    sourceLinkResult?.ok === true &&
+    sourceLinkResult.value.platform !== "rednote" &&
+    rightsConfirmed;
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
@@ -464,7 +515,8 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   };
 
   const reset = () => {
-     setFile(null); setCaption(""); setSong(null); setOverlay("");
+     setFile(null); setSourceLink(""); setRightsConfirmed(false); setSourceMode("upload");
+     setCaption(""); setSong(null); setOverlay("");
     setTrim([0, 60]); setDuration(60);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
@@ -473,19 +525,26 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in first");
-       if (!file) throw new Error("Pick a video to create a reel");
+      const parsedLink = sourceMode === "link" && sourceLinkResult?.ok ? sourceLinkResult.value : null;
+      if (sourceMode === "upload" && !file) throw new Error("Pick a video to create a reel");
+      if (sourceMode === "link" && !parsedLink) {
+        throw new Error(sourceLinkResult && !sourceLinkResult.ok ? sourceLinkResult.error : "Paste a video link.");
+      }
+      if (sourceMode === "link" && parsedLink?.platform === "rednote") throw new Error(REDNOTE_UNAVAILABLE);
+      if (sourceMode === "link" && !rightsConfirmed) throw new Error("Confirm that you have permission to share this video.");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
-      const songLine = songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
-      const overlayLine = overlay ? `\n${overlay}` : "";
+      const songLine = sourceMode === "upload" && songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
+      const overlayLine = sourceMode === "upload" && overlay ? `\n${overlay}` : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
-       uploadToastId.current = toast.loading("Uploading your video…");
+      uploadToastId.current = toast.loading(sourceMode === "link" ? "Publishing reel link…" : "Uploading your video…");
        return createPost({
          authorId: user.id,
          caption: fullCaption,
-         file,
+          file: sourceMode === "upload" ? file : null,
+          externalSourceUrl: parsedLink?.sourceUrl,
          kind: "reel",
          onProgress: (stage) => {
-           toast.loading(stage === "uploading" ? "Uploading your video…" : "Saving your reel…", {
+            toast.loading(stage === "uploading" ? "Uploading your video…" : "Saving your reel…", {
              id: uploadToastId.current,
            });
          },
@@ -525,13 +584,26 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           <DialogTitle className="text-base font-black">Create reel</DialogTitle>
-          <DialogDescription className="sr-only">Upload a video, trim it, add a song and caption.</DialogDescription>
+          <DialogDescription className="sr-only">Upload a video file or add a supported external video link, then write a caption.</DialogDescription>
           <span className="h-8 w-8" aria-hidden />
+        </div>
+
+        <div className="flex gap-2 px-4 pt-3 shrink-0" role="group" aria-label="Reel source">
+          <Button type="button" variant={sourceMode === "upload" ? "default" : "outline"} onClick={() => setSourceMode("upload")} aria-pressed={sourceMode === "upload"}>
+            <Upload className="mr-2 h-4 w-4" /> Video file
+          </Button>
+          <Button type="button" variant={sourceMode === "link" ? "default" : "outline"} onClick={() => setSourceMode("link")} aria-pressed={sourceMode === "link"}>
+            <Link2 className="mr-2 h-4 w-4" /> Add a link
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
           <div className="bg-black grid place-items-center min-h-[240px] md:min-h-[440px] relative">
-            {previewUrl ? (
+            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform !== "rednote" ? (
+              <ExternalVideoEmbed sourceUrl={sourceLinkResult.value.sourceUrl} className="h-full w-full" />
+            ) : sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform === "rednote" ? (
+              <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">{REDNOTE_UNAVAILABLE}</div>
+            ) : sourceMode === "upload" && previewUrl ? (
               <>
                 <video
                   ref={previewRef}
@@ -559,24 +631,67 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
               </>
             ) : (
               <div className="flex flex-col items-center gap-3 text-white/70 px-6 py-10 text-center">
-                <label className="cursor-pointer flex flex-col items-center gap-3">
-                  <input type="file" accept="video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
-                  <div className="h-16 w-16 rounded-full bg-gradient-primary grid place-items-center shadow-glow">
-                    <Upload className="h-7 w-7 text-white" />
+                {sourceMode === "upload" ? (
+                  <label className="cursor-pointer flex flex-col items-center gap-3">
+                    <input type="file" accept="video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+                    <div className="h-16 w-16 rounded-full bg-gradient-primary grid place-items-center shadow-glow">
+                      <Upload className="h-7 w-7 text-white" />
+                    </div>
+                    <p className="font-bold text-white">Tap to upload video</p>
+                    <p className="text-xs">MP4, MOV · up to 50MB</p>
+                  </label>
+                ) : (
+                  <div>
+                    <Link2 className="mx-auto h-8 w-8" />
+                    <p className="mt-2 text-sm">Paste a supported video link to preview it</p>
                   </div>
-                  <p className="font-bold text-white">Tap to upload video</p>
-                  <p className="text-xs">MP4, MOV · up to 50MB</p>
-                </label>
+                )}
               </div>
             )}
           </div>
 
           <div className="p-4 overflow-y-auto">
-            <Tabs defaultValue="caption">
+            {sourceMode === "link" && (
+              <div className="mb-4 space-y-2">
+                <label htmlFor="reel-source-link" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Video link</label>
+                <Input
+                  id="reel-source-link"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  value={sourceLink}
+                  onChange={(e) => setSourceLink(e.target.value)}
+                  placeholder="Paste an Instagram, YouTube, or RedNote link"
+                  className="glass border-white/10"
+                  aria-describedby="reel-source-help reel-source-status"
+                />
+                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform === "rednote")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
+                  {!sourceLinkResult ? "Instagram and YouTube use their official players. RedNote links are recognized but cannot be embedded yet." :
+                    !sourceLinkResult.ok ? sourceLinkResult.error :
+                      sourceLinkResult.value.platform === "rednote" ? REDNOTE_UNAVAILABLE :
+                        `${sourceLinkResult.value.platform === "youtube" ? "YouTube" : "Instagram"} link ready to preview.`}
+                </p>
+                <p id="reel-source-help" className="text-[11px] leading-relaxed text-muted-foreground">
+                  The official player keeps its required attribution. Only public videos that allow embedding can play inside RIZZ.
+                </p>
+                <label className="flex items-start gap-2 text-xs leading-relaxed">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 accent-[var(--rizz-pink)]"
+                    checked={rightsConfirmed}
+                    onChange={(e) => setRightsConfirmed(e.target.checked)}
+                  />
+                  <span>I have permission to share this link on RIZZ.</span>
+                </label>
+              </div>
+            )}
+            <Tabs key={sourceMode} defaultValue="caption">
               <TabsList className="w-full glass border border-white/10">
                 <TabsTrigger value="caption" className="flex-1"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption</TabsTrigger>
-                <TabsTrigger value="song" className="flex-1"><Music2 className="h-3.5 w-3.5 mr-1" /> Song</TabsTrigger>
-                <TabsTrigger value="trim" className="flex-1"><Scissors className="h-3.5 w-3.5 mr-1" /> Trim</TabsTrigger>
+                {sourceMode === "upload" && <>
+                  <TabsTrigger value="song" className="flex-1"><Music2 className="h-3.5 w-3.5 mr-1" /> Song</TabsTrigger>
+                  <TabsTrigger value="trim" className="flex-1"><Scissors className="h-3.5 w-3.5 mr-1" /> Trim</TabsTrigger>
+                </>}
               </TabsList>
 
               <TabsContent value="caption" className="space-y-3 mt-4">
@@ -587,7 +702,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   className="glass border-white/10 min-h-[110px] resize-none"
                 />
                 <p className="text-xs text-muted-foreground text-right">{500 - caption.length} left</p>
-                <div>
+                {sourceMode === "upload" && <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sticker text</p>
                   <Input
                     value={overlay}
@@ -595,10 +710,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                     placeholder="POV: it's Friday"
                     className="glass border-white/10"
                   />
-                </div>
+                </div>}
               </TabsContent>
 
-              <TabsContent value="song" className="space-y-3 mt-4">
+              {sourceMode === "upload" && <TabsContent value="song" className="space-y-3 mt-4">
                 <Input
                   value={songQuery}
                   onChange={(e) => setSongQuery(e.target.value)}
@@ -636,9 +751,9 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </button>
                   ))}
                 </div>
-              </TabsContent>
+              </TabsContent>}
 
-              <TabsContent value="trim" className="space-y-4 mt-4">
+              {sourceMode === "upload" && <TabsContent value="trim" className="space-y-4 mt-4">
                 <div>
                   <div className="flex items-center justify-between text-xs mb-2">
                     <span className="text-muted-foreground">Start</span>
@@ -657,7 +772,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-1">Trim is applied on playback — full clip is uploaded.</p>
                 </div>
-              </TabsContent>
+              </TabsContent>}
             </Tabs>
           </div>
         </div>
@@ -666,10 +781,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           className="flex items-center justify-between gap-2 px-5 py-3 border-t border-white/10 shrink-0"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
-           <Button variant="ghost" onClick={reset} disabled={!file || mut.isPending}>Reset</Button>
+           <Button variant="ghost" onClick={reset} disabled={(!file && !sourceLink) || mut.isPending}>Reset</Button>
           <Button
             onClick={() => mut.mutate()}
-             disabled={!file || mut.isPending}
+            disabled={mut.isPending || (sourceMode === "upload" ? !file : !canPublishLink)}
             className="bg-gradient-primary border-0 shadow-glow px-6"
           >
             {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}

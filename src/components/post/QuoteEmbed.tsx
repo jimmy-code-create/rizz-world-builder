@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Quote } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchPostById } from "@/lib/posts";
+import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { parseExternalReelLink } from "@/lib/external-reels";
 
 export function QuoteEmbed({ postId }: { postId: string }) {
   const q = useQuery({ queryKey: ["post", postId], queryFn: () => fetchPostById(postId) });
@@ -37,7 +39,11 @@ export function QuoteEmbed({ postId }: { postId: string }) {
         <img src={p.media_url} alt="" loading="lazy" decoding="async" className="mt-2 max-h-48 w-full rounded-xl object-cover" />
       )}
       {p.media_url && p.media_type === "video" && (
-        <video src={p.media_url} preload="metadata" muted playsInline className="mt-2 max-h-48 w-full rounded-xl object-cover" />
+        parseExternalReelLink(p.media_url).ok ? (
+          <ExternalVideoEmbed sourceUrl={p.media_url} className="mt-2 h-[220px] min-h-[200px] w-full rounded-xl" />
+        ) : (
+          <video src={p.media_url} preload="metadata" muted playsInline className="mt-2 max-h-48 w-full rounded-xl object-cover" />
+        )
       )}
     </Link>
   );

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { startTrace } from "@/lib/upload-trace";
+import { parseExternalReelLink, type ExternalReelPlatform } from "@/lib/external-reels";
 
 export type FeedPost = {
   id: string;
@@ -87,6 +88,7 @@ export async function createPost(input: {
   authorId: string;
   caption: string;
   file?: File | null;
+  externalSourceUrl?: string | null;
   kind?: "post" | "reel" | "story";
   visibility?: "public" | "close_friends";
   quotePostId?: string | null;
@@ -97,6 +99,19 @@ export async function createPost(input: {
   let media_url: string | null = null;
   let mediaPath: string | null = null;
   let media_type: "image" | "video" | "none" = "none";
+  let sourcePlatform: ExternalReelPlatform | null = null;
+  if (input.externalSourceUrl) {
+    const parsed = parseExternalReelLink(input.externalSourceUrl);
+    if (!parsed.ok) throw new Error(parsed.error);
+    if (parsed.value.platform === "rednote") {
+      throw new Error("RedNote does not currently document an official web video embed, so this link cannot be published inside RIZZ.");
+    }
+    if (input.file) throw new Error("Choose a video file or an external link, not both.");
+    media_url = parsed.value.sourceUrl;
+    media_type = "video";
+    sourcePlatform = parsed.value.platform;
+    trace.step("validate external reel", sourcePlatform);
+  }
   if (input.file) {
     trace.step("validate file", `${input.file.name} · ${(input.file.size / 1024 / 1024).toFixed(2)}MB · ${input.file.type || "unknown type"}`);
     // Client-side guards for a friendly error before hitting the wire.
@@ -144,6 +159,7 @@ export async function createPost(input: {
       caption: caption || null,
       media_url: media_url || null,
       media_type: media_type || "none",
+      ...(sourcePlatform ? { source_platform: sourcePlatform } : {}),
       visibility: input.visibility ?? "public",
       quote_post_id: input.quotePostId ?? null,
       remix_of: input.remixOf ?? null,

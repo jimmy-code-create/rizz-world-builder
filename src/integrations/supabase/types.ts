@@ -1327,6 +1327,7 @@ export type Database = {
           reaction_count: number
           remix_count: number
           remix_of: string | null
+          source_platform: string | null
           updated_at: string
           visibility: Database["public"]["Enums"]["post_visibility"]
         }
@@ -1346,6 +1347,7 @@ export type Database = {
           reaction_count?: number
           remix_count?: number
           remix_of?: string | null
+          source_platform?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["post_visibility"]
         }
@@ -1365,6 +1367,7 @@ export type Database = {
           reaction_count?: number
           remix_count?: number
           remix_of?: string | null
+          source_platform?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["post_visibility"]
         }

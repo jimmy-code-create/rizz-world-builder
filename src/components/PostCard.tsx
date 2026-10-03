@@ -28,6 +28,8 @@ import {
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
+import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
@@ -56,6 +58,10 @@ function timeAgo(iso: string) {
 
 export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
   const isPinned = (post as any).is_pinned === true;
+  const externalVideo =
+    post.media_type === "video" && post.media_url
+      ? parseExternalReelLink(post.media_url)
+      : null;
   const { user } = useAuth();
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
@@ -349,14 +355,21 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       <PollBlock postId={post.id} />
 
       {post.media_url && (
-        <div className="relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50" onClick={doubleTapLike}>
+        <div
+          className="relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
+          onClick={externalVideo?.ok ? undefined : doubleTapLike}
+        >
           {post.media_type === "video" ? (
-            <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[min(48dvh,390px)] object-contain" />
+            externalVideo?.ok ? (
+              <ExternalVideoEmbed sourceUrl={post.media_url} className="mx-auto h-[min(48dvh,390px)] w-full max-w-[390px]" />
+            ) : (
+              <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[min(48dvh,390px)] object-contain" />
+            )
           ) : (
             <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[min(48dvh,390px)] object-contain" />
           )}
           <AnimatePresence>
-            {burst > 0 && (
+            {!externalVideo?.ok && burst > 0 && (
               <motion.div
                 key={burst}
                 initial={{ scale: 0.3, opacity: 0 }}
