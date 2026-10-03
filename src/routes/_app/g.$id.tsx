@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchGroup, fetchMembers, fetchGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
+import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,12 +33,16 @@ function GroupRoom() {
   const [inviteUrl, setInviteUrl] = useState("");
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const messagesListRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const [olderMessages, setOlderMessages] = useState<Awaited<ReturnType<typeof fetchGroupMessages>>>([]);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const draftKey = user?.id ? `rizz:group-draft:${user.id}:${id}` : null;
 
   const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
   const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
-  const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id), enabled: !!group.data });
+  const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id, user?.id), enabled: !!group.data });
   const groupReady = Boolean(group.data);
   const messageKey = ["group-msgs", id] as const;
   type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
@@ -106,6 +110,12 @@ function GroupRoom() {
         const row = message as { id: string };
         qc.setQueryData<CachedGroupMessage[]>(queryKey, (current = []) => current.filter((item) => item.id !== row.id));
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, ({ new: message }) => {
+        const row = message as CachedGroupMessage;
+        qc.setQueryData<CachedGroupMessage[]>(queryKey, (current = []) =>
+          current.map((item) => item.id === row.id ? { ...item, ...row } : item),
+        );
+      })
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") toast.error("Group updates disconnected. Check your internet connection.");
       });
@@ -113,6 +123,13 @@ function GroupRoom() {
   }, [groupReady, id, qc, user?.id]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+  useEffect(() => {
+    setOlderMessages([]);
+    setHasOlderMessages(true);
+  }, [id]);
+  useEffect(() => {
+    if (msgs.data) setHasOlderMessages(msgs.data.length >= 100);
+  }, [id, msgs.data]);
 
   useEffect(() => {
     setDraftReady(false);
@@ -160,21 +177,63 @@ function GroupRoom() {
   const deleteMessage = async (messageId: string) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from("group_messages")
-        .delete()
-        .eq("id", messageId)
-        .eq("author_id", user.id)
-        .select("id")
-        .maybeSingle();
+      const { error } = await (supabase.rpc as any)("unsend_group_message", { _message_id: messageId });
       if (error) throw error;
-      if (!data) throw new Error("You can only delete messages you sent.");
-      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
-        current.filter((message) => message.id !== messageId),
+      const update = (current: CachedGroupMessage[] = []) => current.map((message) =>
+        message.id === messageId
+          ? { ...message, body: "This message was unsent", attachment_url: null, deleted_at: new Date().toISOString() }
+          : message,
       );
-      toast.success("Message deleted");
+      qc.setQueryData<CachedGroupMessage[]>(messageKey, update);
+      setOlderMessages(update);
+      toast.success("Message unsent for everyone");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
+      const message = error instanceof Error ? error.message : "Couldn't delete that message";
+      toast.error(/function|schema cache|does not exist/i.test(message)
+        ? "Unsend needs the Lovable backend setup in BACKEND_REQUIREMENTS.md."
+        : message);
+    }
+  };
+
+  const deleteMessageForMe = async (messageId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await (supabase.rpc as any)("hide_group_message_for_me", { _message_id: messageId });
+      if (error) throw error;
+      const remove = (current: CachedGroupMessage[] = []) => current.filter((message) => message.id !== messageId);
+      qc.setQueryData<CachedGroupMessage[]>(messageKey, remove);
+      setOlderMessages(remove);
+      toast.success("Message deleted for you");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Couldn't delete that message";
+      toast.error(/function|schema cache|does not exist/i.test(message)
+        ? "Delete for me needs the Lovable backend setup in BACKEND_REQUIREMENTS.md."
+        : message);
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!user || loadingOlderMessages || !hasOlderMessages) return;
+    const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
+    const oldest = visibleMessages[0];
+    if (!oldest) return setHasOlderMessages(false);
+    setLoadingOlderMessages(true);
+    const previousHeight = messagesListRef.current?.scrollHeight ?? 0;
+    try {
+      const page = await fetchOlderGroupMessages(id, oldest, user.id);
+      setOlderMessages((current) => {
+        const known = new Set([...current, ...(msgs.data ?? [])].map((message) => message.id));
+        return [...page.messages.filter((message) => !known.has(message.id)), ...current];
+      });
+      setHasOlderMessages(page.hasMore);
+      requestAnimationFrame(() => {
+        const list = messagesListRef.current;
+        if (list) list.scrollTop += list.scrollHeight - previousHeight;
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't load earlier messages");
+    } finally {
+      setLoadingOlderMessages(false);
     }
   };
 
@@ -247,17 +306,25 @@ function GroupRoom() {
         </Sheet>
       </div>
 
-        <div className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
+        <div ref={messagesListRef} className="px-4 py-4 h-[calc(100dvh-14rem)] md:h-[calc(100dvh-8rem)] min-h-0 overflow-y-auto pb-32 space-y-2">
+          {hasOlderMessages && (
+            <div className="flex justify-center pb-2">
+              <Button onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
+              </Button>
+            </div>
+          )}
         <AnimatePresence initial={false}>
-          {(msgs.data ?? []).map((m: any) => {
+          {[...olderMessages, ...(msgs.data ?? [])].map((m: any) => {
             const mine = m.author_id === user?.id;
+            const deletedAt = m.deleted_at as string | null | undefined;
             return (
-              <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+              <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex min-w-0 items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 )}
-                <div className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                  {!mine && <span className="text-[11px] text-muted-foreground ml-3 mb-0.5">@{m.author?.username}</span>}
+                <div className={`max-w-[75%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                  {!mine && <span className="mb-0.5 ml-3 max-w-full truncate text-[11px] text-muted-foreground">@{m.author?.username}</span>}
                   <MessageActionMenu
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -273,18 +340,26 @@ function GroupRoom() {
                           );
                         },
                       },
-                      ...(mine && !String(m.id).startsWith("pending-")
+                      ...(mine && !deletedAt && !String(m.id).startsWith("pending-")
                         ? [{
-                            label: "Delete message",
+                            label: "Delete for everyone",
                             icon: Trash2,
                             destructive: true,
                             onSelect: () => { void deleteMessage(m.id); },
                           }]
                         : []),
+                      ...(!deletedAt && !String(m.id).startsWith("pending-")
+                        ? [{
+                            label: "Delete for me",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => { void deleteMessageForMe(m.id); },
+                          }]
+                        : []),
                     ]}
                   >
-                    <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
-                      {m.body}
+                    <div className={`min-w-0 max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
+                      {deletedAt ? "This message was unsent" : m.body}
                     </div>
                   </MessageActionMenu>
                   {m.delivery_status ? (

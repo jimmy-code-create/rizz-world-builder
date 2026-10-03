@@ -1,3 +1,4 @@
 - [Deployment topology](deployment-topology.md) — backend uses Lovable Cloud; frontend is hosted on Render.
+- [RIZZ scope](rizz-scope.md) — keep work frontend-only; avoid backend/schema edits, secrets, paid services, and AI APIs.
 - [Room 4B narration](room4b-audio.md) — browser speech was too fast and did not distinguish characters; the user wants OpenAI.fm-style voices.
 - [RedNote media embeds](rednote-media-embeds.md) — verify official embed support; never use unofficial downloaders to import RedNote videos.

@@ -29,11 +29,11 @@ import { Route as AppNotificationsRouteImport } from './routes/_app/notification
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
-import { Route as AppJoinCodeRouteImport } from './routes/_app/join.$code'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
@@ -137,6 +137,11 @@ const AppVoiceRoute = AppVoiceRouteImport.update({
   path: '/voice',
   getParentRoute: () => AppRoute,
 } as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppCSlugRoute = AppCSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
@@ -155,11 +160,6 @@ const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
 const AppGIdRoute = AppGIdRouteImport.update({
   id: '/g/$id',
   path: '/g/$id',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppJoinCodeRoute = AppJoinCodeRouteImport.update({
-  id: '/join/$code',
-  path: '/join/$code',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTagTagRoute = AppTagTagRouteImport.update({
@@ -198,11 +198,11 @@ export interface FileRoutesByFullPath {
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
+  '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
-  '/join/$code': typeof AppJoinCodeRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -227,11 +227,11 @@ export interface FileRoutesByTo {
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
+  '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
-  '/join/$code': typeof AppJoinCodeRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -258,11 +258,11 @@ export interface FileRoutesById {
   '/_app/reels': typeof AppReelsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
+  '/join/$code': typeof JoinCodeRoute
   '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/g/$id': typeof AppGIdRoute
-  '/_app/join/$code': typeof AppJoinCodeRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/_app/voice/$id': typeof AppVoiceIdRoute
@@ -289,11 +289,11 @@ export interface FileRouteTypes {
     | '/reels'
     | '/settings'
     | '/voice'
+    | '/join/$code'
     | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
-    | '/join/$code'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -318,11 +318,11 @@ export interface FileRouteTypes {
     | '/reels'
     | '/settings'
     | '/voice'
+    | '/join/$code'
     | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
-    | '/join/$code'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -348,11 +348,11 @@ export interface FileRouteTypes {
     | '/_app/reels'
     | '/_app/settings'
     | '/_app/voice'
+    | '/join/$code'
     | '/_app/c/$slug'
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/g/$id'
-    | '/_app/join/$code'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/_app/voice/$id'
@@ -364,6 +364,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  JoinCodeRoute: typeof JoinCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -508,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVoiceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/c/$slug': {
       id: '/_app/c/$slug'
       path: '/c/$slug'
@@ -534,13 +542,6 @@ declare module '@tanstack/react-router' {
       path: '/g/$id'
       fullPath: '/g/$id'
       preLoaderRoute: typeof AppGIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/join/$code': {
-      id: '/_app/join/$code'
-      path: '/join/$code'
-      fullPath: '/join/$code'
-      preLoaderRoute: typeof AppJoinCodeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/tag/$tag': {
@@ -599,7 +600,6 @@ interface AppRouteChildren {
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
-  AppJoinCodeRoute: typeof AppJoinCodeRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
 }
@@ -624,7 +624,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,
-  AppJoinCodeRoute: AppJoinCodeRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
 }
@@ -637,6 +636,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  JoinCodeRoute: JoinCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

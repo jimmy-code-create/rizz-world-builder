@@ -13,6 +13,16 @@ export type Group = {
   created_at: string;
 };
 
+export type GroupInvitePreview = {
+  status: "valid" | "already_member" | "expired" | "limit_reached" | "revoked_or_invalid";
+  group_id: string | null;
+  group_name: string | null;
+  topic: string | null;
+  icon_url: string | null;
+  accent_color: string | null;
+  member_count: number | null;
+};
+
 function randCode(len = 8) {
   const a = "abcdefghjkmnpqrstuvwxyz23456789";
   let s = "";
@@ -97,6 +107,16 @@ export async function acceptInvite(code: string) {
   return data as unknown as Group;
 }
 
+export async function previewGroupInvite(code: string): Promise<GroupInvitePreview> {
+  const { data, error } = await (supabase.rpc as any)("preview_group_invite", {
+    _code: extractInviteCode(code),
+  }).abortSignal(AbortSignal.timeout(8000));
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("This invite is invalid or has been revoked.");
+  return row as GroupInvitePreview;
+}
+
 type GroupMessageAuthor = {
   id: string;
   username: string;
@@ -116,20 +136,66 @@ async function fetchMessageAuthors(authorIds: string[]): Promise<Map<string, Gro
   return new Map<string, GroupMessageAuthor>((data ?? []).map((profile) => [profile.id, profile]));
 }
 
-export async function fetchGroupMessages(groupId: string, limit = 100) {
+const GROUP_MESSAGE_PAGE_SIZE = 100;
+
+async function removeHiddenGroupMessages(
+  messages: any[],
+  groupId: string,
+  userId?: string,
+) {
+  if (!userId || !messages.length) return messages;
+  const { data, error } = await (supabase.from as any)("group_message_hides")
+    .select("message_id")
+    .eq("user_id", userId)
+    .eq("group_id", groupId)
+    .in("message_id", messages.map((message) => message.id));
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("does not exist") || message.includes("schema cache")) return messages;
+    throw error;
+  }
+  const hiddenIds = new Set((data ?? []).map((row: { message_id: string }) => row.message_id));
+  return messages.filter((message) => !hiddenIds.has(message.id));
+}
+
+async function attachGroupMessageAuthors(messages: any[]) {
+  const authors = await fetchMessageAuthors([...new Set(messages.map((message) => message.author_id))]);
+  return messages.map((message) => ({ ...message, author: authors.get(message.author_id) ?? null }));
+}
+
+export async function fetchGroupMessages(groupId: string, userId?: string) {
   const { data, error } = await supabase
     .from("group_messages")
     .select("*")
     .eq("group_id", groupId)
-    .order("created_at", { ascending: true })
-    .limit(limit);
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(GROUP_MESSAGE_PAGE_SIZE + 1);
   if (error) throw error;
-  const messages = data ?? [];
-  const authors = await fetchMessageAuthors([...new Set(messages.map((message) => message.author_id))]);
-  return messages.map((message) => ({
-    ...message,
-    author: authors.get(message.author_id) ?? null,
-  }));
+  const messages = await removeHiddenGroupMessages((data ?? []).slice(0, GROUP_MESSAGE_PAGE_SIZE), groupId, userId);
+  return attachGroupMessageAuthors(messages.reverse());
+}
+
+export async function fetchOlderGroupMessages(
+  groupId: string,
+  before: { created_at: string; id: string },
+  userId?: string,
+) {
+  const { data, error } = await supabase
+    .from("group_messages")
+    .select("*")
+    .eq("group_id", groupId)
+    .or(`created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(GROUP_MESSAGE_PAGE_SIZE + 1);
+  if (error) throw error;
+  const rows = data ?? [];
+  const messages = await removeHiddenGroupMessages(rows.slice(0, GROUP_MESSAGE_PAGE_SIZE), groupId, userId);
+  return {
+    messages: await attachGroupMessageAuthors(messages.reverse()),
+    hasMore: rows.length > GROUP_MESSAGE_PAGE_SIZE,
+  };
 }
 
 export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {

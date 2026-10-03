@@ -24,7 +24,18 @@ function LoginPage() {
   const [errMsg, setErrMsg] = useState<string>("");
 
   useEffect(() => {
-    if (user) nav({ to: "/feed" });
+    if (!user) return;
+    let pendingCode: string | null = null;
+    try {
+      pendingCode = window.sessionStorage.getItem("rizz:pending-group-invite");
+    } catch {
+      // A blocked session store should not stop a normal login.
+    }
+    if (pendingCode && /^[a-z0-9]{4,64}$/i.test(pendingCode)) {
+      window.location.replace(`/join/${encodeURIComponent(pendingCode)}`);
+      return;
+    }
+    nav({ to: "/feed" });
   }, [user, nav]);
 
   const onEmail = async (e: React.FormEvent) => {
@@ -41,7 +52,6 @@ function LoginPage() {
       return;
     }
     toast.success("Welcome back");
-    nav({ to: "/feed" });
   };
 
   return (

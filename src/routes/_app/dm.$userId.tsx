@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -21,13 +21,32 @@ import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, muteUser } from "@/lib/social";
+import { compressChatImage } from "@/lib/chat-media";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
+const CHAT_WALLPAPERS = [
+  "radial-gradient(ellipse at top right, rgba(255,62,165,.14), transparent 55%)",
+  "radial-gradient(ellipse at bottom left, rgba(124,58,237,.18), transparent 60%)",
+  "none",
+];
 const MESSAGE_PAGE_SIZE = 100;
 const MAX_MESSAGE_LENGTH = 10_000;
 type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"] & {
   delivery_status?: "sending" | "failed";
+  deleted_at?: string | null;
 };
+
+function ownChatImagePath(url: string | null, userId: string) {
+  const marker = "/storage/v1/object/public/chat-media/";
+  const markerIndex = url?.indexOf(marker) ?? -1;
+  if (!url || markerIndex < 0) return null;
+  try {
+    const path = decodeURIComponent(url.slice(markerIndex + marker.length));
+    return path.startsWith(`${userId}/`) ? path : null;
+  } catch {
+    return null;
+  }
+}
 
 export const Route = createFileRoute("/_app/dm/$userId")({
   head: () => ({ meta: [{ title: "DM · RIZZ" }] }),
@@ -68,7 +87,18 @@ function DMPage() {
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
   const [recMs, setRecMs] = useState(0);
   const [sendingVoice, setSendingVoice] = useState(false);
+  const [wallpaperIndex, setWallpaperIndex] = useState(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const pendingMediaRef = useRef(new Map<string, File>());
+  const pendingReplyRef = useRef(new Map<string, string>());
+  const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
+
+  useEffect(() => () => {
+    imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
 
   useEffect(() => {
     setDraftReady(false);
@@ -81,6 +111,16 @@ function DMPage() {
     setBody(saved);
     setDraftReady(true);
   }, [draftKey]);
+
+  useEffect(() => {
+    try {
+      const stored = Number(window.localStorage.getItem(`rizz:dm-wallpaper:${userId}`));
+      if (Number.isInteger(stored) && stored >= 0 && stored < CHAT_WALLPAPERS.length) setWallpaperIndex(stored);
+      else setWallpaperIndex(0);
+    } catch {
+      setWallpaperIndex(0);
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (!draftReady || !draftKey) return;
@@ -162,7 +202,18 @@ function DMPage() {
       if (error) throw error;
       const rows = data ?? [];
       setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
-      return rows.slice(0, MESSAGE_PAGE_SIZE).reverse();
+      const visibleRows = rows.slice(0, MESSAGE_PAGE_SIZE);
+      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)("direct_message_hides")
+        .select("message_id")
+        .eq("user_id", user.id)
+        .in("message_id", visibleRows.map((row) => row.id));
+      if (hiddenError) {
+        const message = String(hiddenError.message ?? "").toLowerCase();
+        if (!message.includes("does not exist") && !message.includes("schema cache")) throw hiddenError;
+        return visibleRows.reverse();
+      }
+      const hidden = new Set((hiddenRows ?? []).map((row: { message_id: string }) => row.message_id));
+      return visibleRows.filter((row) => !hidden.has(row.id)).reverse();
     },
     enabled: !!user,
   });
@@ -183,6 +234,12 @@ function DMPage() {
         const row = message as any;
         qc.setQueryData<any[]>(["dm", user.id, userId], (current) =>
           current?.filter((item) => item.id !== row.id),
+        );
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages" }, ({ new: message }) => {
+        const row = message as CachedDirectMessage;
+        qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current) =>
+          current?.map((item) => item.id === row.id ? { ...item, ...row } : item),
         );
       })
       .subscribe();
@@ -207,11 +264,26 @@ function DMPage() {
       if (error) throw error;
       const rows = data ?? [];
       setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
-      const older = rows.slice(0, MESSAGE_PAGE_SIZE).reverse();
+      const olderRows = rows.slice(0, MESSAGE_PAGE_SIZE);
+      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)("direct_message_hides")
+        .select("message_id")
+        .eq("user_id", user.id)
+        .in("message_id", olderRows.map((row) => row.id));
+      if (hiddenError) {
+        const message = String(hiddenError.message ?? "").toLowerCase();
+        if (!message.includes("does not exist") && !message.includes("schema cache")) throw hiddenError;
+      }
+      const hiddenIds = new Set((hiddenRows ?? []).map((row: { message_id: string }) => row.message_id));
+      const older = olderRows.filter((row) => !hiddenIds.has(row.id)).reverse();
       if (older.length) {
+        const previousHeight = scrollRef.current?.scrollHeight ?? 0;
         qc.setQueryData<any[]>(["dm", user.id, userId], (current = []) => {
           const knownIds = new Set(current.map((item) => item.id));
           return [...older.filter((item) => !knownIds.has(item.id)), ...current];
+        });
+        requestAnimationFrame(() => {
+          const list = scrollRef.current;
+          if (list) list.scrollTop += list.scrollHeight - previousHeight;
         });
       }
     } catch (error) {
@@ -271,12 +343,12 @@ function DMPage() {
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = () => {
-      const near = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+      const near = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
       wasNearBottomRef.current = near;
       setShowJump(!near);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   // Mark incoming messages as read when viewed
@@ -287,17 +359,46 @@ function DMPage() {
     supabase.from("direct_messages").update({ read: true }).in("id", unread).then(() => {});
   }, [user, msgs.data]);
 
-  const deliverPendingMessage = async (pendingId: string, text: string, clearComposerText?: string) => {
+  const deliverPendingMessage = async (
+    pendingId: string,
+    text: string,
+    clearComposerText?: string,
+    pendingPreview?: string | null,
+  ) => {
     if (!user || sendingMessageRef.current) return;
     sendingMessageRef.current = true;
     setSendingMessage(true);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
       current.map((message) => message.id === pendingId ? { ...message, delivery_status: "sending" } : message),
     );
+    let uploadedImagePath: string | null = null;
     try {
+      let attachmentUrl: string | null = null;
+      const pendingImage = pendingMediaRef.current.get(pendingId);
+      if (pendingImage) {
+        const compressed = await compressChatImage(pendingImage);
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        uploadedImagePath = path;
+        const { error: uploadError } = await supabase.storage
+          .from("chat-media")
+          .upload(path, compressed, { contentType: "image/jpeg", upsert: false });
+        if (uploadError) {
+          if (/bucket.*not found|not found.*bucket/i.test(uploadError.message)) {
+            throw new Error("Image sending is not enabled yet. Apply the chat-media setup in BACKEND_REQUIREMENTS.md.");
+          }
+          throw uploadError;
+        }
+        attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+      }
       const { data, error } = await supabase
         .from("direct_messages")
-        .insert({ sender_id: user.id, recipient_id: userId, body: text })
+        .insert({
+          sender_id: user.id,
+          recipient_id: userId,
+          body: text,
+          attachment_url: attachmentUrl,
+          reply_to: pendingReplyRef.current.get(pendingId) ?? null,
+        })
         .select("*")
         .single();
       if (error) throw error;
@@ -307,10 +408,23 @@ function DMPage() {
         return [...withoutPending, data].sort((a, b) => a.created_at.localeCompare(b.created_at));
       });
       setReplyTo(null);
+      pendingMediaRef.current.delete(pendingId);
+      pendingReplyRef.current.delete(pendingId);
+      if (pendingImage && imageFile === pendingImage) {
+        setImageFile(null);
+        setImagePreview((current) => current === pendingPreview ? null : current);
+      }
       if (clearComposerText !== undefined) {
         setBody((current) => current === clearComposerText ? "" : current);
       }
     } catch (error) {
+      if (uploadedImagePath) {
+        try {
+          await supabase.storage.from("chat-media").remove([uploadedImagePath]);
+        } catch {
+          // Upload cleanup is best-effort; keep the failed message retryable.
+        }
+      }
       qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
         current.map((message) => message.id === pendingId ? { ...message, delivery_status: "failed" } : message),
       );
@@ -322,15 +436,16 @@ function DMPage() {
   };
 
   const send = () => {
-    if (!user || !body.trim() || sendingMessageRef.current) return;
+    if (!user || (!body.trim() && !imageFile) || sendingMessageRef.current) return;
     const composerText = body;
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
-    const text = (quoted + body.trim()).trim();
+    const text = (quoted + body.trim()).trim() || "📷 Image";
     if (text.length > MAX_MESSAGE_LENGTH) {
       toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
       return;
     }
     const pendingId = `pending-${crypto.randomUUID()}`;
+    if (replyTo) pendingReplyRef.current.set(pendingId, replyTo.id);
     const optimistic: CachedDirectMessage = {
       id: pendingId,
       sender_id: user.id,
@@ -338,13 +453,14 @@ function DMPage() {
       body: text,
       created_at: new Date().toISOString(),
       read: false,
-      attachment_url: null,
       audio_url: null,
       duration_ms: null,
-      reply_to: null,
+      reply_to: replyTo?.id ?? null,
       story_id: null,
       delivery_status: "sending",
+      attachment_url: imagePreview,
     };
+    if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);
     void deliverPendingMessage(pendingId, text, composerText);
   };
@@ -386,6 +502,22 @@ function DMPage() {
         toast.error("Microphone access denied");
       }
     }
+  };
+
+  const chooseImage = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Images must be smaller than 15 MB before compression.");
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    imageObjectUrlsRef.current.add(preview);
+    setImageFile(file);
+    setImagePreview(preview);
   };
 
   const scheduleSend = () => {
@@ -445,22 +577,60 @@ function DMPage() {
   const deleteMsg = async (id: string) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from("direct_messages")
-        .delete()
-        .eq("id", id)
-        .eq("sender_id", user.id)
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("You can only delete messages you sent.");
-      qc.setQueryData<any[]>(["dm", user.id, userId], (current = []) =>
-        current.filter((message) => message.id !== id),
+      const message = msgs.data?.find((row: any) => row.id === id);
+      const imagePath = ownChatImagePath(message?.attachment_url ?? null, user.id);
+      const { error } = await (supabase.rpc as any)("unsend_direct_message", { _message_id: id });
+      if (error) {
+        const message = String(error.message ?? "").toLowerCase();
+        if (message.includes("does not exist") || message.includes("schema cache") || message.includes("function")) {
+          throw new Error("Unsend needs the Lovable backend setup in BACKEND_REQUIREMENTS.md.");
+        }
+        throw error;
+      }
+      qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+        current.map((message) => message.id === id
+          ? { ...message, body: "This message was unsent", attachment_url: null, audio_url: null, deleted_at: new Date().toISOString() }
+          : message),
       );
-      toast.success("Message deleted for everyone");
+      if (imagePath) {
+        try {
+          const { error: cleanupError } = await supabase.storage.from("chat-media").remove([imagePath]);
+          if (cleanupError) console.warn("Unsent image cleanup failed", cleanupError.message);
+        } catch {
+          console.warn("Unsent image cleanup failed");
+        }
+      }
+      toast.success("Message unsent for everyone");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
     }
+  };
+
+  const deleteMsgForMe = async (id: string) => {
+    if (!user) return;
+    try {
+      const { error } = await (supabase.rpc as any)("hide_direct_message_for_me", { _message_id: id });
+      if (error) {
+        const message = String(error.message ?? "").toLowerCase();
+        if (message.includes("does not exist") || message.includes("schema cache") || message.includes("function")) {
+          throw new Error("Delete for me needs the Lovable backend setup in BACKEND_REQUIREMENTS.md.");
+        }
+        throw error;
+      }
+      qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+        current.filter((message) => message.id !== id),
+      );
+      toast.success("Message deleted for you");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
+    }
+  };
+
+  const changeWallpaper = () => {
+    const next = (wallpaperIndex + 1) % CHAT_WALLPAPERS.length;
+    setWallpaperIndex(next);
+    try { window.localStorage.setItem(`rizz:dm-wallpaper:${userId}`, String(next)); } catch { /* optional */ }
+    toast.success("Chat wallpaper changed");
   };
 
   const react = async (messageId: string, emoji: string) => {
@@ -470,7 +640,10 @@ function DMPage() {
   };
 
   return (
-    <div className="-my-6 md:-my-10">
+    <div
+      className="-my-6 md:-my-10"
+      style={{ backgroundImage: CHAT_WALLPAPERS[wallpaperIndex], backgroundRepeat: "no-repeat" }}
+    >
       <div className="sticky top-0 z-20 glass-strong border-b border-white/5 px-4 py-3 flex items-center gap-2">
         <Link to="/dms"><ArrowLeft className="h-5 w-5" /></Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
@@ -507,7 +680,7 @@ function DMPage() {
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
             <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
             <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Loaded messages copied"); }}>Export loaded messages</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.success("Wallpaper changed ✨")}>Change wallpaper</DropdownMenuItem>
+            <DropdownMenuItem onClick={changeWallpaper}>Change wallpaper</DropdownMenuItem>
             <DropdownMenuItem
               onClick={async () => {
                 if (!user) return;
@@ -543,7 +716,7 @@ function DMPage() {
         </div>
       )}
 
-      <div ref={scrollRef} className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
+      <div ref={scrollRef} className="px-4 py-4 h-[calc(100dvh-14rem)] md:h-[calc(100dvh-9rem)] min-h-0 overflow-y-auto pb-32 space-y-2">
         {hasOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -595,20 +768,21 @@ function DMPage() {
                 </motion.div>
               );
             }
+            const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
               <motion.div
                 key={m.id}
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`group flex items-end gap-1 rounded-2xl transition-shadow duration-500 ${
+                className={`group flex min-w-0 items-end gap-1 rounded-2xl transition-shadow duration-500 ${
                   highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
                 } ${mine ? "justify-end" : "justify-start"}`}
               >
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      className={`min-w-0 max-w-[75%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
                       style={{ WebkitTouchCallout: "none" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
@@ -629,7 +803,15 @@ function DMPage() {
                           <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                         </span>
                       )}
-                      {rest}
+                      {m.attachment_url && (
+                        <img
+                          src={m.attachment_url}
+                          alt="Image shared in chat"
+                          loading="lazy"
+                          className="mb-2 max-h-72 max-w-full rounded-xl object-contain"
+                        />
+                      )}
+                      {deletedAt ? "This message was unsent" : rest}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-2 glass-strong border-white/10" side="top">
@@ -644,7 +826,15 @@ function DMPage() {
                       <button onClick={() => { startCall(false); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Voice call</button>
                       <button onClick={() => { startCall(true); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Video call</button>
                       <button onClick={() => { toast("Reported"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Report</button>
-                      {mine && (
+                      {!deletedAt && (
+                        <button
+                          onClick={() => { void deleteMsgForMe(m.id); setOpenMsg(null); }}
+                          className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive"
+                        >
+                          Delete for me
+                        </button>
+                      )}
+                      {mine && !deletedAt && (
                         <button onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete for everyone</button>
                       )}
                     </div>
@@ -652,7 +842,7 @@ function DMPage() {
                 </Popover>
                 {deliveryStatus === "failed" ? (
                   <button
-                    onClick={() => void deliverPendingMessage(m.id, m.body)}
+                    onClick={() => void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)}
                     disabled={sendingMessage}
                     className="text-[10px] text-amber-200/80 hover:text-amber-100"
                   >
@@ -692,6 +882,21 @@ function DMPage() {
 
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
         <div className="max-w-3xl mx-auto">
+          {imagePreview && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Image compressed before upload</span>
+              <Button
+                type="button"
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                variant="ghost"
+                size="icon"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           {replyTo && (
             <div className="mb-2 flex items-center gap-2 rounded-xl glass border border-white/10 px-3 py-2">
               <CornerUpLeft className="h-3.5 w-3.5 text-[var(--rizz-pink)] shrink-0" />
@@ -707,6 +912,23 @@ function DMPage() {
             </div>
           )}
           <div className="flex gap-2">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+          />
+          <Button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            variant="ghost"
+            size="icon"
+            aria-label="Attach an image"
+            className="shrink-0 text-muted-foreground"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="text-muted-foreground"><Smile className="h-5 w-5" /></Button>
@@ -734,10 +956,14 @@ function DMPage() {
             rows={1}
             className="glass border-white/10 min-h-11 max-h-40 resize-none overflow-y-auto py-3"
           />
-          {body.trim() ? (
+          {body.trim() || imageFile ? (
             <>
-              <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send"><Clock className="h-4 w-4" /></Button>
-              <Button onClick={() => void send()} disabled={sendingMessage} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+              {body.trim() && (
+                <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send">
+                  <Clock className="h-4 w-4" />
+                </Button>
+              )}
+              <Button onClick={() => void send()} disabled={sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
                 <Send className="h-4 w-4" />
               </Button>
             </>

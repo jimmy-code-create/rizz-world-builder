@@ -133,7 +133,7 @@ function ChannelPage() {
         </div>
       )}
 
-      <div className="px-4 py-4 min-h-[60vh] pb-32">
+      <div className="px-4 py-4 h-[calc(100dvh-13rem)] min-h-0 overflow-y-auto overscroll-contain pb-32">
         <AnimatePresence initial={false}>
           {messages.data?.map((m: any) => {
             const mine = m.author_id === user?.id;
@@ -173,7 +173,7 @@ function ChannelPage() {
                       : []),
                   ]}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation">
+                  <p className="w-fit max-w-[min(85vw,42rem)] rounded-2xl bg-white/[0.06] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
                     {m.body}
                   </p>
                 </MessageActionMenu>
