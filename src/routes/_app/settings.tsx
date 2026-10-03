@@ -11,6 +11,8 @@ import { Loader2, Upload, Palette, Check, Bell, Shield, Sliders, Copy, Trash2, D
 import { THEME_PRESETS, applyTheme, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteMyAccount } from "@/lib/account.functions";
 
 const PREF_KEY = "rizz:prefs";
 type Prefs = {
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/_app/settings")({
 function SettingsPage() {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const nav = useNavigate();
+  const deleteAccount = useServerFn(deleteMyAccount);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#ff2d92");
@@ -57,6 +60,7 @@ function SettingsPage() {
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     const p = loadPrefs();
@@ -93,6 +97,23 @@ function SettingsPage() {
   function clearLocalCache() {
     Object.keys(localStorage).filter((k) => k.startsWith("rizz:") && k !== PREF_KEY).forEach((k) => localStorage.removeItem(k));
     toast.success("Local cache cleared");
+  }
+
+  async function permanentlyDeleteAccount() {
+    if (!user || deletingAccount) return;
+    const confirmed = window.confirm("Delete your RIZZ account permanently? Your profile, posts, stories, messages, and media links will be removed. This cannot be undone.");
+    if (!confirmed) return;
+    setDeletingAccount(true);
+    try {
+      await deleteAccount({ data: undefined });
+      await signOut();
+      toast.success("Your account was deleted");
+      nav({ to: "/" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete your account");
+    } finally {
+      setDeletingAccount(false);
+    }
   }
 
   useEffect(() => {
@@ -311,6 +332,14 @@ function SettingsPage() {
         >
           Sign out
         </Button>
+          <Button
+            variant="outline"
+            disabled={deletingAccount}
+            className="mt-2 w-full border-destructive/20 text-destructive/80 hover:bg-destructive/10"
+            onClick={() => void permanentlyDeleteAccount()}
+          >
+            {deletingAccount ? "Deleting account…" : "Delete account permanently"}
+          </Button>
       </section>
 
       {/* Preferences */}

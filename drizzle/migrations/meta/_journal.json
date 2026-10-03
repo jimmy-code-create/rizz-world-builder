@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790986187717,
+      "tag": "0000_restore_post_reaction_trigger_execution",
+      "breakpoints": true
+    }
+  ]
+}

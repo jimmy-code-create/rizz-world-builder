@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { AuthCard } from "@/components/AuthCard";
 import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
@@ -45,17 +44,6 @@ function LoginPage() {
     nav({ to: "/feed" });
   };
 
-  const onGoogle = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/feed" });
-    if (result.error) {
-      const msg = (result.error as Error).message ?? "Google sign-in failed";
-      const kind = classifyAuthError(msg);
-      setErrKind(kind);
-      setErrMsg(msg);
-      if (kind !== "network" && kind !== "rate_limit") toast.error(msg);
-    }
-  };
-
   return (
     <AuthCard
       title="Welcome back"
@@ -66,12 +54,6 @@ function LoginPage() {
         </>
       }
     >
-      <Button type="button" onClick={onGoogle} variant="outline" className="w-full glass border-white/10 hover:bg-white/5 h-11">
-        Continue with Google
-      </Button>
-      <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-        <div className="h-px flex-1 bg-border" />OR<div className="h-px flex-1 bg-border" />
-      </div>
       {errKind && (
         <AuthErrorBanner
           kind={errKind}
