@@ -266,11 +266,33 @@
     animation: float 6s ease-in-out infinite;
   }
 }
+.chat-bar {
+  background: oklch(0.145 0.035 295 / 0.97);
+  backdrop-filter: blur(8px) saturate(115%);
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+}
+.chat-bubble {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.chat-scroll {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
 
 /* ============ RIZZ NOTIFICATIONS ============ */
 .rizz-toaster {
   --width: min(336px, calc(100vw - 2rem));
   z-index: 100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .rizz-toaster [data-sonner-toast].rizz-toast {

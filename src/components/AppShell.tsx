@@ -52,6 +52,7 @@ export function AppShell() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
+  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path);
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -96,10 +97,10 @@ export function AppShell() {
   const isActive = (to: string) => path === to || (to !== "/feed" && path.startsWith(to + "/"));
 
   return (
-    <div className="relative min-h-dvh pb-24 md:pb-0 md:pl-64">
+    <div className={`relative min-h-dvh ${isConversation ? "h-dvh overflow-hidden" : "pb-24 md:pb-0 md:pl-64"}`}>
       <NightclubCanvas />
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
+      {!isConversation && <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
         <button
           type="button"
           onClick={() => setOwnerOpen(true)}
@@ -159,10 +160,10 @@ export function AppShell() {
         </nav>
 
         <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
-      </aside>
+      </aside>}
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between gap-2">
+      {!isConversation && <header className="md:hidden sticky top-0 z-30 glass-strong border-b border-white/5 px-4 py-3 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => setOwnerOpen(true)}
@@ -184,15 +185,15 @@ export function AppShell() {
           </Link>
           <ProfileMenu profile={profile} initial={initial} signOut={signOut} compact />
         </div>
-      </header>
+      </header>}
 
       {/* Content */}
-      <main className="relative z-10 max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-10">
+      <main className={`relative z-10 ${isConversation ? "h-dvh w-full overflow-hidden px-0 py-0" : "max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-10"}`}>
         <Outlet />
       </main>
 
       {/* Mobile bottom nav — 5 items, center FAB */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 glass-strong border-t border-white/5 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+      {!isConversation && <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 glass-strong border-t border-white/5 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
         <div className="flex items-center justify-between gap-1">
           {mobileTabs.slice(0, 2).map((t) => (
             <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
@@ -216,7 +217,7 @@ export function AppShell() {
             <span className="text-[10px] font-medium text-muted-foreground">More</span>
           </button>
         </div>
-      </nav>
+      </nav>}
 
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
         <DialogContent className="glass-strong border-white/10 max-w-lg">
