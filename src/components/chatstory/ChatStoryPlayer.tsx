@@ -67,7 +67,7 @@ const ROOM_4B_SCENES: Scene[] = [
   { id: "scene-4", label: ROOM_4B_SCENE_LABELS["scene-4"].en, image: panelFour },
 ];
 
-const SPEEDS = [0.8, 1, 1.2] as const;
+const SPEEDS = [0.7, 0.8, 0.9] as const;
 const VOICE_PROFILES: Record<string, { voiceSlot: number; pitch: number; pace: number }> = {
   narrator: { voiceSlot: 0, pitch: 0.9, pace: 0.88 },
   me: { voiceSlot: 1, pitch: 1.02, pace: 1 },
@@ -128,14 +128,17 @@ export function ChatStoryPlayer({
   const [auto, setAuto] = useState(true);
   const [narration, setNarration] = useState(true);
   const [language, setLanguage] = useState<"hi" | "en">("hi");
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(0.8);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const stopNarration = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
     speechRef.current = null;
+    setIsSpeaking(false);
   }, []);
 
   const speak = useCallback((text: string, speaker = "narrator") => {
@@ -153,8 +156,22 @@ export function ChatStoryPlayer({
     const exactLocaleVoices = languageVoices.filter((voice) => voice.lang.toLowerCase() === locale.toLowerCase());
     const voicePool = exactLocaleVoices.length > 0 ? exactLocaleVoices : languageVoices;
     if (voicePool.length > 0) utterance.voice = voicePool[profile.voiceSlot % voicePool.length];
+    const finishSpeaking = () => {
+      if (speechRef.current === utterance) {
+        speechRef.current = null;
+        setIsSpeaking(false);
+      }
+    };
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = finishSpeaking;
+    utterance.onerror = finishSpeaking;
     speechRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      finishSpeaking();
+    }
   }, [isRoom4B, language, narration, speed, stopNarration]);
 
   const reset = useCallback(() => {
@@ -232,10 +249,10 @@ export function ChatStoryPlayer({
   };
 
   useEffect(() => {
-    if (!auto || done || typing || pending.length > 0) return;
+    if (!auto || done || typing || pending.length > 0 || isSpeaking) return;
     const timeout = window.setTimeout(advance, 1250);
     return () => window.clearTimeout(timeout);
-  }, [advance, auto, done, pending.length, typing]);
+  }, [advance, auto, done, isSpeaking, pending.length, typing]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

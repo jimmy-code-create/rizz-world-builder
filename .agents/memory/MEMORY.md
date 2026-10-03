@@ -1,1 +1,2 @@
 - [Deployment topology](deployment-topology.md) — backend uses Lovable Cloud; frontend is hosted on Render.
+- [Room 4B narration](room4b-audio.md) — browser speech was too fast and did not distinguish characters; the user wants OpenAI.fm-style voices.
