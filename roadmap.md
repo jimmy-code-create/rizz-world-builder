@@ -6,3 +6,8 @@
 - [ ] Fix DM attachments and wallpaper changes.
 - [ ] Remove banner effects and add the Verified Creator post tag.
 - [ ] Verify text posts, reels, and chat uploads.
+- [ ] Make text posts and reactions work by restoring blocked trigger permissions.
+- [ ] Add self-service account deletion with a secure confirmation flow; do not bulk-delete other users.
+- [ ] Persist per-chat wallpapers, including uploaded backgrounds, across reopen.
+- [ ] Add email OTP signup while removing the Google continuation button.
+- [ ] Upgrade toast popups and stabilize the story canvas.
