@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AudioLines,
@@ -17,20 +17,31 @@ import panelOne from "@/assets/chatstory/room4b-panel-1.jpg";
 import panelTwo from "@/assets/chatstory/room4b-panel-2.jpg";
 import panelThree from "@/assets/chatstory/room4b-panel-3.jpg";
 import panelFour from "@/assets/chatstory/room4b-panel-4.jpg";
+import {
+  ROOM_4B_CHOICES,
+  ROOM_4B_HOOK,
+  ROOM_4B_LINES,
+  ROOM_4B_SCENE_LABELS,
+  ROOM_4B_TITLE,
+} from "@/components/chatstory/room4b-story";
 
 export type StoryLine = {
   idx: number;
   speaker: string;
   body: string;
+  body_en?: string;
   next_idx?: number | null;
   chapter?: string | null;
+  is_terminal?: boolean;
 };
 
 export type StoryChoice = {
   at_idx: number;
   position: number;
   label: string;
+  label_en?: string;
   reply_body: string;
+  reply_body_en?: string;
   goto_idx: number;
 };
 
@@ -46,17 +57,35 @@ export type ChatStory = {
   me_name: string;
 };
 
-type Bubble = { key: string; speaker: string; body: string; idx: number };
+type Bubble = { key: string; speaker: string; body: string; body_en?: string; idx: number };
 type Scene = { id: string; label: string; image: string };
 
 const ROOM_4B_SCENES: Scene[] = [
-  { id: "scene-1", label: "2:13 AM · The message", image: panelOne },
-  { id: "scene-2", label: "4th floor · The hallway", image: panelTwo },
-  { id: "scene-3", label: "Room 4B · The threshold", image: panelThree },
-  { id: "scene-4", label: "Room 4B · Don't look back", image: panelFour },
+  { id: "scene-1", label: ROOM_4B_SCENE_LABELS["scene-1"].en, image: panelOne },
+  { id: "scene-2", label: ROOM_4B_SCENE_LABELS["scene-2"].en, image: panelTwo },
+  { id: "scene-3", label: ROOM_4B_SCENE_LABELS["scene-3"].en, image: panelThree },
+  { id: "scene-4", label: ROOM_4B_SCENE_LABELS["scene-4"].en, image: panelFour },
 ];
 
 const SPEEDS = [0.8, 1, 1.2] as const;
+const VOICE_PROFILES: Record<string, { voiceSlot: number; pitch: number; pace: number }> = {
+  narrator: { voiceSlot: 0, pitch: 0.9, pace: 0.88 },
+  me: { voiceSlot: 1, pitch: 1.02, pace: 1 },
+  Asha: { voiceSlot: 2, pitch: 1.12, pace: 1.02 },
+  Kabir: { voiceSlot: 3, pitch: 0.82, pace: 0.92 },
+  Echo: { voiceSlot: 4, pitch: 0.72, pace: 0.82 },
+};
+
+function storyText(hindi: string, english: string | undefined, language: "hi" | "en") {
+  return language === "hi" ? hindi : english ?? hindi;
+}
+
+function speakerLabel(speaker: string, language: "hi" | "en") {
+  if (speaker === "Asha") return language === "hi" ? "आशा" : "Asha";
+  if (speaker === "Kabir") return language === "hi" ? "कबीर" : "Kabir";
+  if (speaker === "Echo") return language === "hi" ? "तुम्हारा नंबर" : "Your number";
+  return speaker;
+}
 
 export function ChatStoryPlayer({
   story,
@@ -73,22 +102,24 @@ export function ChatStoryPlayer({
   onLike: () => void;
   onClose: () => void;
 }) {
-  const byIdx = useMemo(() => new Map(lines.map((line) => [line.idx, line])), [lines]);
-  const sorted = useMemo(() => [...lines].sort((a, b) => a.idx - b.idx), [lines]);
-  const first = sorted[0]?.idx;
   const isRoom4B = story.slug === "room-4b" || story.title.toLowerCase().includes("room 4b");
+  const storyLines = isRoom4B ? ROOM_4B_LINES : lines;
+  const storyChoices = isRoom4B ? ROOM_4B_CHOICES : choices;
+  const byIdx = useMemo(() => new Map(storyLines.map((line) => [line.idx, line])), [storyLines]);
+  const sorted = useMemo(() => [...storyLines].sort((a, b) => a.idx - b.idx), [storyLines]);
+  const first = sorted[0]?.idx;
   const scenes = isRoom4B ? ROOM_4B_SCENES : [];
 
   const choicesAt = useMemo(() => {
     const grouped = new Map<number, StoryChoice[]>();
-    for (const choice of choices) {
+    for (const choice of storyChoices) {
       const current = grouped.get(choice.at_idx) ?? [];
       current.push(choice);
       grouped.set(choice.at_idx, current);
     }
     for (const current of grouped.values()) current.sort((a, b) => a.position - b.position);
     return grouped;
-  }, [choices]);
+  }, [storyChoices]);
 
   const [path, setPath] = useState<Bubble[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
@@ -96,52 +127,57 @@ export function ChatStoryPlayer({
   const [typing, setTyping] = useState(false);
   const [auto, setAuto] = useState(true);
   const [narration, setNarration] = useState(true);
+  const [language, setLanguage] = useState<"hi" | "en">("hi");
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const endRef = useRef<HTMLDivElement>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const stopNarration = () => {
+  const stopNarration = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     speechRef.current = null;
-  };
+  }, []);
 
-  const speak = (text: string) => {
+  const speak = useCallback((text: string, speaker = "narrator") => {
     if (!narration || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     stopNarration();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = /[\u0900-\u097F]/.test(text) ? "hi-IN" : "en-IN";
-    utterance.rate = speed;
+    const spokenLanguage = isRoom4B ? language : /[\u0900-\u097F]/.test(text) ? "hi" : "en";
+    const locale = spokenLanguage === "hi" ? "hi-IN" : "en-IN";
+    const profile = VOICE_PROFILES[speaker] ?? VOICE_PROFILES.narrator;
+    utterance.lang = locale;
+    utterance.rate = Math.min(1.5, Math.max(0.6, speed * profile.pace));
+    utterance.pitch = profile.pitch;
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find((voice) => voice.lang.toLowerCase().startsWith("hi-in")) ??
-      voices.find((voice) => voice.lang.toLowerCase().startsWith("hi"));
-    if (preferred) utterance.voice = preferred;
+    const languageVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(spokenLanguage));
+    const exactLocaleVoices = languageVoices.filter((voice) => voice.lang.toLowerCase() === locale.toLowerCase());
+    const voicePool = exactLocaleVoices.length > 0 ? exactLocaleVoices : languageVoices;
+    if (voicePool.length > 0) utterance.voice = voicePool[profile.voiceSlot % voicePool.length];
     speechRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  };
+  }, [isRoom4B, language, narration, speed, stopNarration]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     stopNarration();
     if (first == null) return;
     const line = byIdx.get(first);
     if (!line) return;
-    setPath([{ key: `line-${first}`, speaker: line.speaker, body: line.body, idx: first }]);
+    setPath([{ key: `line-${first}`, speaker: line.speaker, body: line.body, body_en: line.body_en, idx: first }]);
     setCursor(first);
     setPicked(new Set());
     setTyping(false);
-  };
+  }, [byIdx, first, stopNarration]);
 
   useEffect(() => {
     reset();
-    // The story ID and first line define a new playback session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story.id, first]);
+  }, [reset, story.id]);
 
-  useEffect(() => () => stopNarration(), []);
+  useEffect(() => () => stopNarration(), [stopNarration]);
 
   const nextOf = (idx: number): number | null => {
     const line = byIdx.get(idx);
     if (line?.next_idx != null) return line.next_idx;
+    if (line?.is_terminal) return null;
     const position = sorted.findIndex((item) => item.idx === idx);
     const next = sorted[position + 1];
     if (!next) return null;
@@ -155,30 +191,42 @@ export function ChatStoryPlayer({
   const activeLine = cursor != null ? byIdx.get(cursor) : undefined;
   const activeScene = scenes.find((scene) => scene.id === activeLine?.chapter) ?? scenes[0];
   const sceneIndex = Math.max(0, scenes.findIndex((scene) => scene.id === activeScene?.id));
+  const title = isRoom4B ? ROOM_4B_TITLE[language] : story.title;
+  const hook = isRoom4B ? ROOM_4B_HOOK[language] : story.hook;
+  const activeSceneLabel = activeScene
+    ? isRoom4B
+      ? ROOM_4B_SCENE_LABELS[activeScene.id]?.[language] ?? activeScene.label
+      : activeScene.label
+    : story.them_name;
 
-  const addLine = (idx: number) => {
+  const addLine = useCallback((idx: number) => {
     const line = byIdx.get(idx);
     if (!line) return;
-    setPath((current) => [...current, { key: `line-${idx}-${current.length}`, speaker: line.speaker, body: line.body, idx }]);
+    setPath((current) => [...current, { key: `line-${idx}-${current.length}`, speaker: line.speaker, body: line.body, body_en: line.body_en, idx }]);
     setCursor(idx);
-    speak(line.body);
-  };
+  }, [byIdx]);
 
-  const advance = () => {
+  const advance = useCallback(() => {
     if (typing || done || pending.length > 0 || nextIdx == null) return;
     setTyping(true);
     window.setTimeout(() => {
       setTyping(false);
       addLine(nextIdx);
     }, 420);
-  };
+  }, [addLine, done, nextIdx, pending.length, typing]);
 
   const choose = (choice: StoryChoice) => {
     if (cursor == null) return;
     setPicked((current) => new Set(current).add(cursor));
     setPath((current) => [
       ...current,
-      { key: `reply-${choice.at_idx}-${choice.position}-${current.length}`, speaker: "me", body: choice.reply_body, idx: choice.at_idx },
+      {
+        key: `reply-${choice.at_idx}-${choice.position}-${current.length}`,
+        speaker: "me",
+        body: choice.reply_body,
+        body_en: choice.reply_body_en,
+        idx: choice.at_idx,
+      },
     ]);
     addLine(choice.goto_idx);
   };
@@ -187,24 +235,27 @@ export function ChatStoryPlayer({
     if (!auto || done || typing || pending.length > 0) return;
     const timeout = window.setTimeout(advance, 1250);
     return () => window.clearTimeout(timeout);
-  }, [auto, done, typing, cursor, pending.length]);
+  }, [advance, auto, done, pending.length, typing]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [path.length, typing, pending.length]);
 
   useEffect(() => {
-    const line = activeLine;
-    if (line && path.length === 1) speak(line.body);
-  }, [activeLine?.idx]);
+    if (activeLine && narration) {
+      speak(storyText(activeLine.body, activeLine.body_en, language), activeLine.speaker);
+    }
+  }, [activeLine, language, narration, speak]);
 
   const toggleNarration = () => {
-    setNarration((current) => {
-      const next = !current;
-      if (!next) stopNarration();
-      else if (activeLine) speak(activeLine.body);
-      return next;
-    });
+    const next = !narration;
+    setNarration(next);
+    if (!next) stopNarration();
+  };
+
+  const changeLanguage = (nextLanguage: "hi" | "en") => {
+    stopNarration();
+    setLanguage(nextLanguage);
   };
 
   return (
@@ -228,9 +279,9 @@ export function ChatStoryPlayer({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-lg">{story.emoji}</span>
-                <p className="truncate text-sm font-bold">{story.title}</p>
+                <p className="truncate text-sm font-bold">{title}</p>
               </div>
-              <p className="truncate text-[11px] text-muted-foreground">{activeScene?.label ?? story.them_name}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{activeSceneLabel}</p>
             </div>
             <button
               onClick={() => setAuto((current) => !current)}
@@ -257,7 +308,7 @@ export function ChatStoryPlayer({
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center p-8 text-center" style={{ background: story.gradient }}>
-                    <p className="text-lg font-semibold">{story.hook}</p>
+                    <p className="text-lg font-semibold">{hook}</p>
                   </div>
                 )}
               </AnimatePresence>
@@ -277,7 +328,7 @@ export function ChatStoryPlayer({
               <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70">Anime chat story</p>
-                  <p className="mt-1 text-sm font-bold">{activeScene?.label ?? story.them_name}</p>
+                  <p className="mt-1 text-sm font-bold">{activeSceneLabel}</p>
                 </div>
                 <span className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-semibold backdrop-blur">Scene {sceneIndex + 1}</span>
               </div>
@@ -285,12 +336,36 @@ export function ChatStoryPlayer({
           </div>
 
           <div className="relative z-10 px-4 pb-5 pt-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                 <AudioLines className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">Hindi narration {narration ? "on" : "off"}</span>
+                <span className="truncate">
+                  {isRoom4B
+                    ? language === "hi"
+                      ? `अलग-अलग किरदारों की आवाज़ें ${narration ? "चालू" : "बंद"}`
+                      : `Character voices ${narration ? "on" : "off"}`
+                    : `Character voices ${narration ? "on" : "off"}`}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
+                {isRoom4B && (
+                  <div role="group" aria-label="Story language" className="glass flex h-8 items-center gap-0.5 rounded-full p-0.5">
+                    <button
+                      onClick={() => changeLanguage("hi")}
+                      aria-pressed={language === "hi"}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${language === "hi" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      हिंदी
+                    </button>
+                    <button
+                      onClick={() => changeLanguage("en")}
+                      aria-pressed={language === "en"}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      English
+                    </button>
+                  </div>
+                )}
                 <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full">
                   {narration ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
@@ -320,10 +395,17 @@ export function ChatStoryPlayer({
                     className={line.speaker === "narrator" ? "flex justify-center" : line.speaker === "me" ? "flex justify-end" : "flex justify-start"}
                   >
                     {line.speaker === "narrator" ? (
-                      <span className="rounded-full border border-border/60 bg-card/80 px-3 py-1 text-center text-[11px] text-muted-foreground backdrop-blur">{line.body}</span>
+                      <span className="rounded-full border border-border/60 bg-card/80 px-3 py-1 text-center text-[11px] text-muted-foreground backdrop-blur">
+                        {storyText(line.body, line.body_en, language)}
+                      </span>
                     ) : (
                       <div className={`max-w-[88%] rounded-2xl px-3.5 py-2 text-[15px] leading-snug whitespace-pre-wrap break-words ${line.speaker === "me" ? "rounded-br-md bg-primary text-primary-foreground" : "glass-strong rounded-bl-md"}`}>
-                        {line.body}
+                        {line.speaker !== "me" && (
+                          <p className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-70">
+                            {speakerLabel(line.speaker, language)}
+                          </p>
+                        )}
+                        {storyText(line.body, line.body_en, language)}
                       </div>
                     )}
                   </motion.div>
@@ -349,7 +431,7 @@ export function ChatStoryPlayer({
           {done ? (
             <div className="flex gap-2">
               <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold">
-                <RotateCcw className="h-4 w-4" /> Replay
+                <RotateCcw className="h-4 w-4" /> {isRoom4B && language === "hi" ? "फिर से पढ़ें" : "Replay"}
               </button>
               <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
@@ -357,18 +439,18 @@ export function ChatStoryPlayer({
             </div>
           ) : pending.length > 0 ? (
             <div className="space-y-2">
-              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><GitBranch className="h-3 w-3" /> Choose the scene</p>
+              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><GitBranch className="h-3 w-3" /> {language === "hi" && isRoom4B ? "रास्ता चुनो" : "Choose the scene"}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {pending.map((choice) => (
                   <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold">
-                    {choice.label}
+                    {storyText(choice.label, choice.label_en, language)}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
             <button onClick={advance} className="bg-gradient-primary flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold">
-              Tap for next scene <ChevronsRight className="h-4 w-4" />
+              {language === "hi" && isRoom4B ? "आगे बढ़ो" : "Tap for next scene"} <ChevronsRight className="h-4 w-4" />
             </button>
           )}
         </footer>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Heart, MessageSquareText, Play } from "lucide-react";
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
+import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 
 export const Route = createFileRoute("/_app/chat-stories")({
   head: () => ({
@@ -133,8 +134,12 @@ function ChatStoriesPage() {
                   {s.category}
                 </span>
               </div>
-              <h2 className="mt-2 font-extrabold leading-tight">{s.title}</h2>
-              <p className="text-xs opacity-85 mt-1 line-clamp-2">{s.hook}</p>
+              <h2 className="mt-2 font-extrabold leading-tight">
+                {s.slug === "room-4b" ? ROOM_4B_TITLE.en : s.title}
+              </h2>
+              <p className="text-xs opacity-85 mt-1 line-clamp-2">
+                {s.slug === "room-4b" ? ROOM_4B_HOOK.en : s.hook}
+              </p>
             </div>
             <div className="relative mt-3 flex items-center justify-between text-xs">
               <span className="inline-flex items-center gap-1 font-semibold">

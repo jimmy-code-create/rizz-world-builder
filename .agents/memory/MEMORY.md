@@ -1,0 +1,1 @@
+- [Deployment topology](deployment-topology.md) — backend uses Lovable Cloud; frontend is hosted on Render.
