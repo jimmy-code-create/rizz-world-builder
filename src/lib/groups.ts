@@ -20,6 +20,18 @@ function randCode(len = 8) {
   return s;
 }
 
+export function extractInviteCode(value: string) {
+  const input = value.trim();
+  if (!input) return "";
+  const withoutQuery = input.split(/[?#]/, 1)[0];
+  const lastSegment = withoutQuery.split("/").filter(Boolean).at(-1) ?? input;
+  try {
+    return decodeURIComponent(lastSegment).replace(/[^a-z0-9]/gi, "").toLowerCase();
+  } catch {
+    return lastSegment.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  }
+}
+
 export async function listMyGroups(userId: string) {
   const { data, error } = await supabase
     .from("group_members")
@@ -74,29 +86,15 @@ export async function createInvite(groupId: string, createdBy: string, opts?: { 
   return data;
 }
 
-export async function fetchInvite(code: string) {
-  const { data, error } = await supabase
-    .from("group_invites")
-    .select("*, group:groups(*)")
-    .eq("code", code)
-    .maybeSingle();
-  if (error) throw error;
-  return data as (any & { group: Group }) | null;
-}
-
-export async function acceptInvite(code: string, userId: string) {
-  const inv = await fetchInvite(code);
-  if (!inv) throw new Error("Invalid invite link");
-  if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) throw new Error("Invite expired");
-  if (inv.max_uses && inv.uses >= inv.max_uses) throw new Error("Invite has reached its limit");
-  const { error } = await supabase.from("group_members").insert({ group_id: inv.group_id, user_id: userId });
+export async function acceptInvite(code: string) {
+  const { data, error } = await supabase.rpc("accept_group_invite", { _code: extractInviteCode(code) });
   if (error) {
-    if (error.message.includes("friends_only")) throw new Error("Friends-only group: you must mutually follow at least one member to join.");
-    if (error.message.includes("duplicate")) return inv.group;
+    if (error.message.includes("friends_only")) {
+      throw new Error("Friends-only group: you must mutually follow at least one member to join.");
+    }
     throw error;
   }
-  await supabase.from("group_invites").update({ uses: (inv.uses ?? 0) + 1 }).eq("id", inv.id);
-  return inv.group;
+  return data as unknown as Group;
 }
 
 type GroupMessageAuthor = {

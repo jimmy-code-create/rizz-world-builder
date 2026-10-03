@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBlocked, unblockUser } from "@/lib/social";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,6 +51,7 @@ export const Route = createFileRoute("/_app/settings")({
 function SettingsPage() {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const deleteAccount = useServerFn(deleteMyAccount);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -61,6 +64,12 @@ function SettingsPage() {
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
+  const blockedUsers = useQuery({
+    queryKey: ["blocked-users", user?.id],
+    queryFn: () => fetchBlocked(user!.id),
+    enabled: !!user,
+  });
 
   useEffect(() => {
     const p = loadPrefs();
@@ -155,6 +164,20 @@ function SettingsPage() {
     if (error) return toast.error(error.message);
     await refreshProfile();
     toast.success("Profile saved");
+  }
+
+  async function unblock(blockedId: string, username: string) {
+    if (!user || unblockingId) return;
+    setUnblockingId(blockedId);
+    try {
+      await unblockUser(user.id, blockedId);
+      await qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
+      toast.success(`@${username} unblocked`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't unblock this user");
+    } finally {
+      setUnblockingId(null);
+    }
   }
 
   async function saveAppearance(next: { preset?: ThemePreset; mode?: ThemeMode; density?: Density; reduced?: boolean }) {
@@ -309,6 +332,49 @@ function SettingsPage() {
           </div>
           <Switch checked={reduced} onCheckedChange={(v) => saveAppearance({ reduced: v })} />
         </div>
+      </section>
+
+      {/* Blocked accounts */}
+      <section className="glass rounded-3xl p-5 space-y-4 border border-white/5">
+        <div>
+          <h2 className="font-display font-semibold text-lg">Blocked accounts</h2>
+          <p className="text-xs text-muted-foreground mt-1">Unblock someone to allow their messages and profile activity again.</p>
+        </div>
+        {blockedUsers.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading blocked accounts…</p>
+        ) : blockedUsers.isError ? (
+          <p className="text-sm text-destructive">Couldn't load blocked accounts: {blockedUsers.error.message}</p>
+        ) : (blockedUsers.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">You haven't blocked anyone.</p>
+        ) : (
+          <div className="space-y-2">
+            {(blockedUsers.data ?? []).map((entry) => {
+              const blockedProfile = entry.blocked;
+              const username = blockedProfile?.username ?? "unknown";
+              return (
+                <div key={entry.blocked_id} className="flex items-center gap-3 rounded-xl glass-strong border border-white/5 p-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={blockedProfile?.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-gradient-primary text-xs font-bold">{username.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{blockedProfile?.display_name || `@${username}`}</p>
+                    {blockedProfile?.display_name && <p className="truncate text-xs text-muted-foreground">@{username}</p>}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={unblockingId !== null}
+                    onClick={() => void unblock(entry.blocked_id, username)}
+                    className="glass border-white/10"
+                  >
+                    {unblockingId === entry.blocked_id ? "Unblocking…" : "Unblock"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Account */}

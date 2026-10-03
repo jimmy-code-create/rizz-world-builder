@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth";
-import { listMyGroups, createGroup, acceptInvite } from "@/lib/groups";
+import { listMyGroups, createGroup, acceptInvite, extractInviteCode } from "@/lib/groups";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/groups")({
@@ -45,8 +45,9 @@ function GroupsPage() {
   const handleJoin = async () => {
     if (!user || !code.trim()) return;
     try {
-      const c = code.trim().split("/").pop()!.replace(/[^a-z0-9]/gi, "");
-      const g = await acceptInvite(c, user.id);
+      const c = extractInviteCode(code);
+      if (!c) throw new Error("Paste a valid group invite code or link.");
+      const g = await acceptInvite(c);
       toast.success("Joined the group ✨");
       setOpenJoin(false); setCode("");
       qc.invalidateQueries({ queryKey: ["my-groups"] });
@@ -130,7 +131,7 @@ function GroupsPage() {
         <DialogContent className="glass-strong border-white/10">
           <DialogTitle className="font-display text-xl">Join with invite</DialogTitle>
           <div className="space-y-3 mt-2">
-            <Input placeholder="Invite code or link" value={code} onChange={(e) => setCode(e.target.value)} className="glass border-white/10" />
+            <Input placeholder="Paste invite code or full link" value={code} onChange={(e) => setCode(e.target.value)} className="glass border-white/10" />
             <p className="text-xs text-muted-foreground">Friends-only: you must mutually follow at least one current member.</p>
             <Button onClick={handleJoin} disabled={!code.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">Join</Button>
           </div>

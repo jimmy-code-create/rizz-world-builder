@@ -10,9 +10,12 @@ import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
+
+const GROUP_MESSAGE_LIMIT = 10_000;
 
 export const Route = createFileRoute("/_app/g/$id")({
   head: () => ({ meta: [{ title: "Group · RIZZ" }] }),
@@ -25,10 +28,13 @@ function GroupRoom() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const draftKey = user?.id ? `rizz:group-draft:${user.id}:${id}` : null;
 
   const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
   const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
@@ -36,14 +42,15 @@ function GroupRoom() {
   const groupReady = Boolean(group.data);
   const messageKey = ["group-msgs", id] as const;
   type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
+  type CachedGroupMessage = GroupMessage & { delivery_status?: "sending" | "failed" };
   const sendMessage = useMutation({
-    mutationFn: (text: string) => {
+    mutationFn: ({ text }: { text: string; retryId?: string }) => {
       if (!user) throw new Error("Sign in to send a message");
       return sendGroupMessage({ group_id: id, author_id: user.id, body: text });
     },
-    onMutate: async (text) => {
+    onMutate: async ({ text, retryId }) => {
       await qc.cancelQueries({ queryKey: messageKey });
-      const optimisticId = `pending-${crypto.randomUUID()}`;
+      const optimisticId = retryId ?? `pending-${crypto.randomUUID()}`;
       const optimistic = {
         id: optimisticId,
         group_id: id,
@@ -60,51 +67,94 @@ function GroupRoom() {
           avatar_url: profile?.avatar_url ?? null,
           accent_color: profile?.accent_color ?? null,
         },
-      } as unknown as GroupMessage;
-      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) => [...current, optimistic]);
+      } as unknown as CachedGroupMessage;
+      qc.setQueryData<CachedGroupMessage[]>(messageKey, (current = []) =>
+        retryId
+          ? current.map((message) => message.id === retryId ? { ...message, delivery_status: "sending" } : message)
+          : [...current, optimistic],
+      );
       return { optimisticId };
     },
     onSuccess: (saved, _text, context) => {
-      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
+      qc.setQueryData<CachedGroupMessage[]>(messageKey, (current = []) =>
         current.map((message) => message.id === context?.optimisticId ? saved : message),
       );
     },
-    onError: (error: Error, _text, context) => {
-      qc.setQueryData<GroupMessage[]>(messageKey, (current = []) =>
-        current.filter((message) => message.id !== context?.optimisticId),
+    onError: (error: Error, variables, context) => {
+      setBody((current) => current.trim() ? current : variables.text);
+      qc.setQueryData<CachedGroupMessage[]>(messageKey, (current = []) =>
+        current.map((message) => message.id === context?.optimisticId
+          ? { ...message, delivery_status: "failed" }
+          : message),
       );
       toast.error(error.message);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: messageKey }),
   });
 
   useEffect(() => {
     if (!groupReady) return;
     const queryKey = ["group-msgs", id] as const;
     const ch = supabase.channel(`group-${id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, () => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${id}` }, ({ new: message }) => {
+        const row = message as { id: string; author_id: string; body: string };
+        const current = qc.getQueryData<CachedGroupMessage[]>(queryKey) ?? [];
+        if (current.some((item) => item.id === row.id)) return;
+        if (row.author_id === user?.id && current.some((item) => item.id.startsWith("pending-") && item.body === row.body)) return;
         qc.invalidateQueries({ queryKey });
       })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "group_messages" }, () => {
-        qc.invalidateQueries({ queryKey });
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "group_messages" }, ({ old: message }) => {
+        const row = message as { id: string };
+        qc.setQueryData<CachedGroupMessage[]>(queryKey, (current = []) => current.filter((item) => item.id !== row.id));
       })
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          qc.invalidateQueries({ queryKey });
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          qc.invalidateQueries({ queryKey });
-        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") toast.error("Group updates disconnected. Check your internet connection.");
       });
     return () => { supabase.removeChannel(ch); };
-  }, [groupReady, id, qc]);
+  }, [groupReady, id, qc, user?.id]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+
+  useEffect(() => {
+    setDraftReady(false);
+    let saved = "";
+    try {
+      saved = draftKey ? window.localStorage.getItem(draftKey) ?? "" : "";
+    } catch {
+      // Local draft persistence is optional.
+    }
+    setBody(saved);
+    setDraftReady(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady || !draftKey) return;
+    const timer = window.setTimeout(() => {
+      try {
+        if (body) window.localStorage.setItem(draftKey, body);
+        else window.localStorage.removeItem(draftKey);
+      } catch {
+        // The composer remains usable when browser storage is unavailable.
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [body, draftKey, draftReady]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+  }, [body]);
 
   const send = async () => {
     if (!user || !body.trim()) return;
     const text = body.trim();
+    if (text.length > GROUP_MESSAGE_LIMIT) {
+      toast.error(`Messages can be up to ${GROUP_MESSAGE_LIMIT.toLocaleString()} characters`);
+      return;
+    }
     setBody("");
-    sendMessage.mutate(text);
+    sendMessage.mutate({ text });
   };
 
   const deleteMessage = async (messageId: string) => {
@@ -233,13 +283,27 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
                       {m.body}
                     </div>
                   </MessageActionMenu>
-                  <span className="text-[10px] text-muted-foreground mt-0.5 px-2">
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                  </span>
+                  {m.delivery_status ? (
+                    m.delivery_status === "failed" ? (
+                      <button
+                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id })}
+                        disabled={sendMessage.isPending}
+                        className="text-[10px] text-amber-200/80 mt-0.5 px-2 hover:text-amber-100"
+                      >
+                        Not sent · tap to retry
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground mt-0.5 px-2">Sending…</span>
+                    )
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground mt-0.5 px-2">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    </span>
+                  )}
                 </div>
               </motion.div>
             );
@@ -253,8 +317,24 @@ function GroupRoom() {
 
       <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
         <div className="max-w-3xl mx-auto flex gap-2">
-          <Input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} placeholder={`Message ${g.name}…`} maxLength={2000} className="glass border-white/10" />
-          <Button onClick={send} disabled={!body.trim()} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
+          <Textarea
+            ref={composerRef}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            placeholder={`Message ${g.name}… (Shift+Enter for a new line)`}
+            maxLength={GROUP_MESSAGE_LIMIT}
+            rows={1}
+            className="glass border-white/10 min-h-11 max-h-40 resize-none overflow-y-auto py-3"
+          />
+          <Button onClick={() => void send()} disabled={!body.trim() || sendMessage.isPending} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
+            <Send className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 

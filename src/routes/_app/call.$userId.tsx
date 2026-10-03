@@ -35,6 +35,9 @@ function CallPage() {
   const [status, setStatus] = useState<"ringing" | "connected" | "ended">("ringing");
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
   const [level, setLevel] = useState(0); // 0..1 local mic level
+  const [peerPresent, setPeerPresent] = useState(false);
+  const [connectionHint, setConnectionHint] = useState("Preparing your microphone…");
+  const [callProblem, setCallProblem] = useState<string | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -45,6 +48,7 @@ function CallPage() {
   const chRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
 
   const other = useQuery({
     queryKey: ["profile-id", userId],
@@ -61,6 +65,10 @@ function CallPage() {
     const meId = user.id;
     const isCaller = meId < userId; // deterministic role
     const roomId = [meId, userId].sort().join("_");
+    let offerInProgress = false;
+    pendingIceCandidatesRef.current = [];
+    setPeerPresent(false);
+    setCallProblem(null);
 
     const pc = new RTCPeerConnection({ iceServers: ICE });
     pcRef.current = pc;
@@ -68,15 +76,41 @@ function CallPage() {
     remoteStreamRef.current = remote;
 
     pc.ontrack = (e) => {
-      e.streams[0]?.getTracks().forEach((t) => remote.addTrack(t));
+      const tracks = e.streams[0]?.getTracks() ?? [e.track];
+      tracks.forEach((t) => {
+        if (!remote.getTracks().some((existing) => existing.id === t.id)) remote.addTrack(t);
+      });
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
       if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remote;
       setRemoteHasVideo(remote.getVideoTracks().some((t) => t.enabled));
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") setStatus("connected");
+      if (pc.connectionState === "connected") {
+        setStatus("connected");
+        setConnectionHint("Call connected");
+        setCallProblem(null);
+      }
       if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        toast("Connection lost");
+        setConnectionHint(
+          pc.connectionState === "failed"
+            ? "The network could not connect this call."
+            : "The connection dropped. Trying to reconnect…",
+        );
+        if (pc.connectionState === "failed") {
+          setCallProblem("Check both internet connections and allow WebRTC/UDP traffic. This app has no TURN relay, so some Wi-Fi, VPN, and mobile networks cannot connect calls.");
+          toast.error("Call connection failed. See the troubleshooting message on screen.");
+        }
+      }
+    };
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+        setStatus("connected");
+        setConnectionHint("Call connected");
+        setCallProblem(null);
+      }
+      if (pc.iceConnectionState === "failed") {
+        setConnectionHint("The two devices could not establish a direct network connection.");
+        setCallProblem("This app currently uses STUN only and has no TURN relay. Some routers, VPNs, and mobile networks require TURN. Try switching networks; reliable support on restrictive networks needs a TURN service.");
       }
     };
 
@@ -89,7 +123,20 @@ function CallPage() {
     chRef.current = ch;
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) ch.send({ type: "broadcast", event: "ice", payload: { from: meId, candidate: e.candidate.toJSON() } });
+      if (e.candidate) {
+        void ch.send({ type: "broadcast", event: "ice", payload: { from: meId, candidate: e.candidate.toJSON() } });
+      }
+    };
+
+    const applyPendingIceCandidates = async () => {
+      const candidates = pendingIceCandidatesRef.current.splice(0);
+      for (const candidate of candidates) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.warn("queued ICE candidate failed", err);
+        }
+      }
     };
 
     ch
@@ -97,22 +144,46 @@ function CallPage() {
         if (payload.from === meId) return;
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          await applyPendingIceCandidates();
           const ans = await pc.createAnswer();
           await pc.setLocalDescription(ans);
-          ch.send({ type: "broadcast", event: "answer", payload: { from: meId, sdp: ans } });
-        } catch (err) { console.warn("offer handling failed", err); }
+          const result = await ch.send({ type: "broadcast", event: "answer", payload: { from: meId, sdp: ans } });
+          if (result !== "ok") setCallProblem("The call reply could not reach the other person. Check your connection and try again.");
+        } catch (err) {
+          console.warn("offer handling failed", err);
+          setCallProblem("The call setup message could not be processed. Try ending the call and calling again.");
+        }
       })
       .on("broadcast", { event: "answer" }, async ({ payload }) => {
         if (payload.from === meId) return;
         try {
           if (pc.signalingState === "have-local-offer") {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            await applyPendingIceCandidates();
           }
-        } catch (err) { console.warn("answer handling failed", err); }
+        } catch (err) {
+          console.warn("answer handling failed", err);
+          setCallProblem("The other person's call reply could not be processed. Try calling again.");
+        }
       })
       .on("broadcast", { event: "ice" }, async ({ payload }) => {
         if (payload.from === meId) return;
-        try { await pc.addIceCandidate(payload.candidate); } catch { /* ignore */ }
+        if (!pc.remoteDescription) {
+          pendingIceCandidatesRef.current.push(payload.candidate);
+          return;
+        }
+        try {
+          await pc.addIceCandidate(payload.candidate);
+        } catch (err) {
+          console.warn("ICE candidate failed", err);
+        }
+      })
+      .on("broadcast", { event: "declined" }, ({ payload }) => {
+        if (payload.from === meId) return;
+        setStatus("ended");
+        setConnectionHint("The other person declined the call.");
+        setCallProblem(null);
+        cleanup();
       })
       .on("broadcast", { event: "bye" }, () => {
         toast("Call ended by peer");
@@ -123,14 +194,25 @@ function CallPage() {
         // Both peers present → caller sends offer once
         const state = ch.presenceState() as Record<string, unknown>;
         const hasPeer = Object.keys(state).some((k) => k !== meId);
-        if (isCaller && hasPeer && pc.signalingState === "stable" && !pc.currentLocalDescription) {
+        setPeerPresent(hasPeer);
+        setConnectionHint(hasPeer ? "Other person joined. Setting up the call…" : "Waiting for the other person to join…");
+        if (isCaller && hasPeer && !offerInProgress && pc.signalingState === "stable" && !pc.currentLocalDescription) {
+          offerInProgress = true;
           try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            ch.send({ type: "broadcast", event: "offer", payload: { from: meId, sdp: offer } });
-          } catch (err) { console.warn("offer create failed", err); }
+            const result = await ch.send({ type: "broadcast", event: "offer", payload: { from: meId, sdp: offer } });
+            if (result !== "ok") setCallProblem("The call invitation could not reach the other person. Check your connection and try again.");
+          } catch (err) {
+            console.warn("offer create failed", err);
+            setCallProblem("The call invitation could not be created. Check your browser and try again.");
+          } finally {
+            offerInProgress = false;
+          }
         }
-      });
+      })
+      .on("presence", { event: "join" }, () => setPeerPresent(true))
+      .on("presence", { event: "leave" }, () => setPeerPresent(false));
 
     (async () => {
       try {
@@ -152,11 +234,16 @@ function CallPage() {
           const an = ac.createAnalyser(); an.fftSize = 256;
           src.connect(an);
           const buf = new Uint8Array(an.frequencyBinCount);
+          let lastMeterUpdate = 0;
           const tick = () => {
-            an.getByteTimeDomainData(buf);
-            let sum = 0;
-            for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
-            setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 3));
+            const now = performance.now();
+            if (now - lastMeterUpdate >= 100) {
+              lastMeterUpdate = now;
+              an.getByteTimeDomainData(buf);
+              let sum = 0;
+              for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+              setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 3));
+            }
             rafRef.current = requestAnimationFrame(tick);
           };
           tick();
@@ -164,11 +251,27 @@ function CallPage() {
 
         await ch.subscribe(async (st) => {
           if (st === "SUBSCRIBED") {
+            setConnectionHint("Connected to call service. Waiting for the other person…");
             await ch.track({ id: meId, at: Date.now() });
+          } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
+            setConnectionHint("Could not connect to the call service.");
+            setCallProblem("Check your internet connection. If the problem continues, the Realtime service may be unavailable.");
           }
         });
       } catch (e: any) {
-        toast.error(e?.message?.includes("Permission") ? "Mic/camera permission denied" : (e?.message ?? "Could not start call"));
+        const name = e?.name;
+        const message = name === "NotAllowedError" || name === "PermissionDeniedError"
+          ? "Allow microphone access in your browser settings, then try the call again."
+          : name === "NotFoundError" || name === "DevicesNotFoundError"
+            ? "No microphone was found. Connect a microphone and try again."
+            : name === "NotReadableError" || name === "TrackStartError"
+              ? "The microphone or camera is being used by another app. Close it and try again."
+              : !navigator.mediaDevices?.getUserMedia
+                ? "This browser cannot access calls here. Open the app in a browser with microphone support over HTTPS."
+                : e?.message ?? "Could not start the call.";
+        setCallProblem(message);
+        setConnectionHint("Microphone or camera setup failed.");
+        toast.error(message);
       }
     })();
 
@@ -177,18 +280,38 @@ function CallPage() {
       audioCtxRef.current?.close().catch(() => {});
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       remoteStreamRef.current?.getTracks().forEach((t) => t.stop());
-      pc.getSenders().forEach((s) => { try { pc.removeTrack(s); } catch {} });
+      pc.getSenders().forEach((s) => {
+        try {
+          pc.removeTrack(s);
+        } catch (error) {
+          console.debug("Could not remove a call track during cleanup", error);
+        }
+      });
       pc.close();
+      pendingIceCandidatesRef.current = [];
       supabase.removeChannel(ch);
     }
 
     return () => {
       cancelled = true;
-      try { ch.send({ type: "broadcast", event: "bye", payload: { from: meId } }); } catch {}
+      void ch.send({ type: "broadcast", event: "bye", payload: { from: meId } }).catch((error) => {
+        console.debug("Couldn't send the call-end signal during cleanup", error);
+      });
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, userId]);
+
+  useEffect(() => {
+    if (status !== "ringing" || callProblem) return;
+    const timer = window.setTimeout(() => {
+      setConnectionHint(peerPresent ? "The other person joined, but the devices are still connecting." : "No one has joined this call yet.");
+      setCallProblem(peerPresent
+        ? "Check both internet connections and allow WebRTC/UDP traffic. This app has no TURN relay, so some Wi-Fi, VPN, and mobile networks cannot connect calls."
+        : "The other person must be online and accept or open this call. Incoming call alerts only reach users with the app open.");
+    }, 20_000);
+    return () => window.clearTimeout(timer);
+  }, [status, peerPresent, callProblem]);
 
   // Toggle mic
   useEffect(() => {
@@ -237,7 +360,12 @@ function CallPage() {
   const time = seconds >= 3600 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
 
   const end = () => {
-    try { chRef.current?.send({ type: "broadcast", event: "bye", payload: { from: user?.id } }); } catch {}
+    const channel = chRef.current;
+    if (channel) {
+      void channel.send({ type: "broadcast", event: "bye", payload: { from: user?.id } }).catch((error) => {
+        console.debug("Couldn't send the call-end signal", error);
+      });
+    }
     toast("Call ended");
     nav({ to: "/dm/$userId", params: { userId } });
   };
@@ -286,13 +414,19 @@ function CallPage() {
         <h1 className={`mt-6 text-3xl font-black ${remoteHasVideo ? "drop-shadow-lg" : ""}`}>{other.data?.display_name || other.data?.username}</h1>
         <p className="text-sm text-white/70 mt-1">@{other.data?.username}</p>
         <p className="mt-4 text-sm text-white/90">
-          {status === "ringing" ? (cam ? "Ringing video call…" : "Ringing voice call…") : (
+          {status === "ringing" ? (cam ? "Video call" : "Voice call") : status === "ended" ? "Call declined" : (
             <>
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 mr-1.5 align-middle animate-pulse" />
               Connected · {time}
             </>
           )}
         </p>
+        {status !== "connected" && (
+          <p className="mt-2 max-w-sm text-xs text-white/70" role="status">
+            {connectionHint}
+            {callProblem && <span className="mt-1 block text-amber-200">{callProblem}</span>}
+          </p>
+        )}
         {hand && <p className="mt-2 text-xs text-yellow-300">✋ Hand raised</p>}
       </div>
 

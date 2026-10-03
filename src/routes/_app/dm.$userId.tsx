@@ -2,10 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2 } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +23,11 @@ import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-not
 import { blockUser, muteUser } from "@/lib/social";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
+const MESSAGE_PAGE_SIZE = 100;
+const MAX_MESSAGE_LENGTH = 10_000;
+type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"] & {
+  delivery_status?: "sending" | "failed";
+};
 
 export const Route = createFileRoute("/_app/dm/$userId")({
   head: () => ({ meta: [{ title: "DM · RIZZ" }] }),
@@ -33,8 +40,16 @@ function DMPage() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const sendingMessageRef = useRef(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const wasNearBottomRef = useRef(true);
+  const previousMessageIdsRef = useRef<string[]>([]);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
   const pressTimer = useRef<number | null>(null);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
@@ -45,6 +60,7 @@ function DMPage() {
   const [showJump, setShowJump] = useState(false);
   const presenceCh = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingTimer = useRef<number | null>(null);
+  const lastTypingBroadcastAtRef = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [recording, setRecording] = useState(false);
@@ -52,6 +68,39 @@ function DMPage() {
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
   const [recMs, setRecMs] = useState(0);
   const [sendingVoice, setSendingVoice] = useState(false);
+  const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
+
+  useEffect(() => {
+    setDraftReady(false);
+    let saved = "";
+    try {
+      saved = draftKey ? window.localStorage.getItem(draftKey) ?? "" : "";
+    } catch {
+      // Keep the composer usable when browser storage is disabled.
+    }
+    setBody(saved);
+    setDraftReady(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady || !draftKey) return;
+    const timer = window.setTimeout(() => {
+      try {
+        if (body) window.localStorage.setItem(draftKey, body);
+        else window.localStorage.removeItem(draftKey);
+      } catch {
+        // Draft storage is best-effort; typing and sending do not depend on it.
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [body, draftKey, draftReady]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+  }, [body]);
 
   // Live elapsed timer while recording
   useEffect(() => {
@@ -103,12 +152,17 @@ function DMPage() {
     queryKey: ["dm", user?.id, userId],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("direct_messages")
         .select("*")
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${user.id})`)
-        .order("created_at");
-      return data ?? [];
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(0, MESSAGE_PAGE_SIZE);
+      if (error) throw error;
+      const rows = data ?? [];
+      setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
+      return rows.slice(0, MESSAGE_PAGE_SIZE).reverse();
     },
     enabled: !!user,
   });
@@ -116,15 +170,56 @@ function DMPage() {
   useEffect(() => {
     if (!user) return;
     const ch = supabase.channel(`dm-${user.id}-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, () => {
-        qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, ({ new: message }) => {
+        const row = message as any;
+        const participants = new Set([user.id, userId]);
+        if (!participants.has(row.sender_id) || !participants.has(row.recipient_id) || row.sender_id === row.recipient_id) return;
+        qc.setQueryData<any[]>(["dm", user.id, userId], (current) => {
+          if (!current || current.some((item) => item.id === row.id)) return current;
+          return [...current, row].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        });
       })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, () => {
-        qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, ({ old: message }) => {
+        const row = message as any;
+        qc.setQueryData<any[]>(["dm", user.id, userId], (current) =>
+          current?.filter((item) => item.id !== row.id),
+        );
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, userId, qc]);
+
+  const loadOlderMessages = async () => {
+    if (!user || loadingOlderMessages || !hasOlderMessages) return;
+    const oldest = msgs.data?.[0] as any;
+    if (!oldest) return;
+    setLoadingOlderMessages(true);
+    try {
+      const { data, error } = await supabase
+        .from("direct_messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${userId},or(created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id}))),and(sender_id.eq.${userId},recipient_id.eq.${user.id},or(created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})))`,
+        )
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(MESSAGE_PAGE_SIZE + 1);
+      if (error) throw error;
+      const rows = data ?? [];
+      setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
+      const older = rows.slice(0, MESSAGE_PAGE_SIZE).reverse();
+      if (older.length) {
+        qc.setQueryData<any[]>(["dm", user.id, userId], (current = []) => {
+          const knownIds = new Set(current.map((item) => item.id));
+          return [...older.filter((item) => !knownIds.has(item.id)), ...current];
+        });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't load earlier messages");
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  };
 
   // Presence + typing channel (deterministic key: sorted pair)
   useEffect(() => {
@@ -153,10 +248,23 @@ function DMPage() {
   }, [user, userId]);
 
   const broadcastTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingBroadcastAtRef.current < 1000) return;
+    lastTypingBroadcastAtRef.current = now;
     presenceCh.current?.send({ type: "broadcast", event: "typing", payload: { user_id: user?.id } });
   };
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+  useEffect(() => {
+    const currentIds = (msgs.data ?? []).map((message: any) => message.id);
+    const previousIds = previousMessageIdsRef.current;
+    const initialLoad = previousIds.length === 0 && currentIds.length > 0;
+    const appended = previousIds.length > 0 &&
+      previousIds.every((id, index) => currentIds[index] === id);
+    if (initialLoad || (appended && wasNearBottomRef.current)) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    previousMessageIdsRef.current = currentIds;
+  }, [msgs.data]);
 
   // Show jump button when not at the bottom
   useEffect(() => {
@@ -164,6 +272,7 @@ function DMPage() {
     if (!el) return;
     const onScroll = () => {
       const near = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+      wasNearBottomRef.current = near;
       setShowJump(!near);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -178,14 +287,66 @@ function DMPage() {
     supabase.from("direct_messages").update({ read: true }).in("id", unread).then(() => {});
   }, [user, msgs.data]);
 
-  const send = async () => {
-    if (!user || !body.trim()) return;
+  const deliverPendingMessage = async (pendingId: string, text: string, clearComposerText?: string) => {
+    if (!user || sendingMessageRef.current) return;
+    sendingMessageRef.current = true;
+    setSendingMessage(true);
+    qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+      current.map((message) => message.id === pendingId ? { ...message, delivery_status: "sending" } : message),
+    );
+    try {
+      const { data, error } = await supabase
+        .from("direct_messages")
+        .insert({ sender_id: user.id, recipient_id: userId, body: text })
+        .select("*")
+        .single();
+      if (error) throw error;
+      qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => {
+        const withoutPending = current.filter((message) => message.id !== pendingId);
+        if (withoutPending.some((message) => message.id === data.id)) return withoutPending;
+        return [...withoutPending, data].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      });
+      setReplyTo(null);
+      if (clearComposerText !== undefined) {
+        setBody((current) => current === clearComposerText ? "" : current);
+      }
+    } catch (error) {
+      qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+        current.map((message) => message.id === pendingId ? { ...message, delivery_status: "failed" } : message),
+      );
+      toast.error(error instanceof Error ? error.message : "Couldn't send your message. Check your connection and try again.");
+    } finally {
+      sendingMessageRef.current = false;
+      setSendingMessage(false);
+    }
+  };
+
+  const send = () => {
+    if (!user || !body.trim() || sendingMessageRef.current) return;
+    const composerText = body;
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
     const text = (quoted + body.trim()).trim();
-    setBody("");
-    setReplyTo(null);
-    const { error } = await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text });
-    if (error) toast.error(error.message);
+    if (text.length > MAX_MESSAGE_LENGTH) {
+      toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
+      return;
+    }
+    const pendingId = `pending-${crypto.randomUUID()}`;
+    const optimistic: CachedDirectMessage = {
+      id: pendingId,
+      sender_id: user.id,
+      recipient_id: userId,
+      body: text,
+      created_at: new Date().toISOString(),
+      read: false,
+      attachment_url: null,
+      audio_url: null,
+      duration_ms: null,
+      reply_to: null,
+      story_id: null,
+      delivery_status: "sending",
+    };
+    qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);
+    void deliverPendingMessage(pendingId, text, composerText);
   };
 
   const toggleRecord = async () => {
@@ -233,7 +394,9 @@ function DMPage() {
     toast.success("Scheduled in 10s");
     setTimeout(() => {
       if (!user) return;
-      supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text });
+      supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text }).then(({ error }) => {
+        if (error) toast.error(`Scheduled message failed: ${error.message}`);
+      });
     }, 10000);
   };
 
@@ -343,7 +506,7 @@ function DMPage() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
             <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Conversation copied"); }}>Export conversation</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Loaded messages copied"); }}>Export loaded messages</DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast.success("Wallpaper changed ✨")}>Change wallpaper</DropdownMenuItem>
             <DropdownMenuItem
               onClick={async () => {
@@ -375,15 +538,23 @@ function DMPage() {
       {searchOpen && (
         <div className="sticky top-[57px] z-20 glass-strong border-b border-white/5 px-4 py-2 flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search messages…" className="glass border-white/10 h-8" />
+          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
           <button onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="text-muted-foreground"><X className="h-4 w-4" /></button>
         </div>
       )}
 
       <div ref={scrollRef} className="px-4 py-4 min-h-[60vh] pb-32 space-y-2">
+        {hasOlderMessages && (
+          <div className="flex justify-center pb-2">
+            <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
+              {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
+            </Button>
+          </div>
+        )}
         <AnimatePresence initial={false}>
           {filteredMsgs.map((m) => {
             const mine = m.sender_id === user?.id;
+            const deliveryStatus = (m as CachedDirectMessage).delivery_status;
             const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
@@ -437,7 +608,7 @@ function DMPage() {
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words text-left select-none touch-manipulation ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap break-words text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
                       style={{ WebkitTouchCallout: "none" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
@@ -479,6 +650,17 @@ function DMPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                {deliveryStatus === "failed" ? (
+                  <button
+                    onClick={() => void deliverPendingMessage(m.id, m.body)}
+                    disabled={sendingMessage}
+                    className="text-[10px] text-amber-200/80 hover:text-amber-100"
+                  >
+                    Retry
+                  </button>
+                ) : deliveryStatus === "sending" ? (
+                  <span className="text-[10px] text-muted-foreground">Sending…</span>
+                ) : null}
                 <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
               </motion.div>
             );
@@ -537,18 +719,27 @@ function DMPage() {
               </div>
             </PopoverContent>
           </Popover>
-          <Input
+          <Textarea
+            ref={composerRef}
             value={body}
             onChange={(e) => { setBody(e.target.value); broadcastTyping(); }}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Message…"
-            maxLength={1000}
-            className="glass border-white/10"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            placeholder="Write a message… (Shift+Enter for a new line)"
+            maxLength={MAX_MESSAGE_LENGTH}
+            rows={1}
+            className="glass border-white/10 min-h-11 max-h-40 resize-none overflow-y-auto py-3"
           />
           {body.trim() ? (
             <>
               <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send"><Clock className="h-4 w-4" /></Button>
-              <Button onClick={send} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Send className="h-4 w-4" /></Button>
+              <Button onClick={() => void send()} disabled={sendingMessage} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+                <Send className="h-4 w-4" />
+              </Button>
             </>
           ) : (
             <Button

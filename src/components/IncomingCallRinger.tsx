@@ -19,16 +19,17 @@ type Incoming = {
 /** Global listener — plays an incoming-call sheet when another user rings this account. */
 export function IncomingCallRinger() {
   const { user } = useAuth();
+  const incomingUserId = user?.id;
   const nav = useNavigate();
   const [call, setCall] = useState<Incoming | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    const ch = supabase.channel(`call:incoming:${user.id}`, {
+    if (!incomingUserId) return;
+    const ch = supabase.channel(`call:incoming:${incomingUserId}`, {
       config: { broadcast: { self: false, ack: false } },
     });
     ch.on("broadcast", { event: "ring" }, ({ payload }) => {
-      if (!payload?.fromId || payload.fromId === user.id) return;
+      if (!payload?.fromId || payload.fromId === incomingUserId) return;
       setCall(payload as Incoming);
       // Auto-dismiss after 30s
       setTimeout(() => setCall((c) => (c?.fromId === payload.fromId ? null : c)), 30_000);
@@ -36,7 +37,7 @@ export function IncomingCallRinger() {
       setCall((c) => (c && c.fromId === payload?.fromId ? null : c));
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user?.id]);
+  }, [incomingUserId]);
 
   const accept = () => {
     if (!call) return;
@@ -46,11 +47,20 @@ export function IncomingCallRinger() {
   };
   const decline = () => {
     if (!call || !user) return;
-    try {
-      supabase.channel(`call:incoming:${call.fromId}`).send({
-        type: "broadcast", event: "declined", payload: { fromId: user.id },
+    const roomId = [user.id, call.fromId].sort().join("_");
+    const ch = supabase.channel(`call:${roomId}`, {
+      config: { broadcast: { self: false, ack: false } },
+    });
+    ch.subscribe((status) => {
+      if (status !== "SUBSCRIBED") return;
+      void ch.send({
+        type: "broadcast",
+        event: "declined",
+        payload: { from: user.id },
+      }).finally(() => {
+        window.setTimeout(() => { void supabase.removeChannel(ch); }, 500);
       });
-    } catch {}
+    });
     setCall(null);
   };
 

@@ -18,7 +18,7 @@ function JoinPage() {
     if (loading || !user) return;
     (async () => {
       try {
-        const g = await acceptInvite(code, user.id);
+        const g = await acceptInvite(code);
         toast.success(`Joined ${g?.name ?? "group"} ✨`);
         if (g?.id) nav({ to: "/g/$id", params: { id: g.id } });
         else nav({ to: "/groups" });
