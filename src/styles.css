@@ -97,6 +97,8 @@
   --rizz-violet: oklch(0.45 0.25 295);
   --rizz-cyan: oklch(0.78 0.18 200);
   --rizz-glow: oklch(0.68 0.28 5 / 0.55);
+  --surface-bar: rgba(13, 10, 20, 0.93);
+  --surface-bubble: rgba(28, 23, 38, 0.96);
 
   --gradient-primary: linear-gradient(135deg, oklch(0.68 0.28 5), oklch(0.45 0.25 295));
   --gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.68 0.28 5 / 0.35), transparent 60%),
@@ -241,15 +243,13 @@
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-glow-lg { box-shadow: var(--shadow-glow-lg); }
   .glass {
-    background: oklch(0.18 0.04 295 / 0.55);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    background: oklch(0.18 0.04 295 / 0.88);
     border: 1px solid oklch(0.98 0.01 320 / 0.08);
   }
   .glass-strong {
-    background: oklch(0.15 0.04 295 / 0.85);
-    backdrop-filter: blur(28px) saturate(160%);
-    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    background: var(--surface-bar);
+    backdrop-filter: blur(20px) saturate(130%);
+    -webkit-backdrop-filter: blur(20px) saturate(130%);
     border: 1px solid oklch(0.98 0.01 320 / 0.1);
   }
   .ring-glow {
@@ -267,9 +267,9 @@
   }
 }
 .chat-bar {
-  background: oklch(0.145 0.035 295 / 0.97);
-  backdrop-filter: blur(8px) saturate(115%);
-  -webkit-backdrop-filter: blur(8px) saturate(115%);
+  background: var(--surface-bar);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
 }
 .chat-bubble {
   backdrop-filter: none !important;
@@ -282,8 +282,12 @@
 
 /* ============ RIZZ NOTIFICATIONS ============ */
 .rizz-toaster {
-  --width: min(336px, calc(100vw - 2rem));
+  --width: min(360px, calc(100vw - 1.25rem));
   z-index: 100;
+}
+
+.rizz-toaster[data-sonner-toaster] {
+  top: max(env(safe-area-inset-top, 0px), 12px) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -297,9 +301,9 @@
 
 .rizz-toaster [data-sonner-toast].rizz-toast {
   width: var(--width);
-  min-height: 46px;
+  min-height: 44px;
   gap: 9px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   border: 1px solid oklch(0.98 0.01 320 / 0.1);
   border-radius: 14px;
   background: oklch(0.15 0.04 295 / 0.94);
@@ -308,8 +312,8 @@
     0 12px 34px oklch(0.04 0.02 295 / 0.44),
     0 0 20px oklch(0.68 0.28 5 / 0.08),
     inset 0 1px 0 oklch(0.98 0.01 320 / 0.06);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
   font-family: var(--font-sans);
 }
 
@@ -333,6 +337,7 @@
 
 .rizz-toaster .rizz-toast-title {
   min-width: 0;
+  white-space: normal;
   color: oklch(0.98 0.01 320);
   font-size: 12px;
   font-weight: 600;
@@ -341,6 +346,7 @@
 }
 
 .rizz-toaster .rizz-toast-description {
+  white-space: normal;
   margin-top: 3px;
   color: oklch(0.76 0.03 295);
   font-size: 12px;
@@ -392,25 +398,6 @@
 .rizz-toaster .rizz-toast-cancel {
   background: oklch(0.98 0.01 320 / 0.08);
   color: oklch(0.86 0.02 295);
-}
-
-.rizz-toaster .rizz-toast-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border-color: oklch(0.98 0.01 320 / 0.12);
-  background: oklch(0.98 0.01 320 / 0.06);
-  color: oklch(0.76 0.03 295);
-}
-
-.rizz-toaster .rizz-toast-close:hover {
-  background: oklch(0.98 0.01 320 / 0.12);
-  color: oklch(0.98 0.01 320);
-}
-
-.rizz-toaster .rizz-toast-close svg {
-  width: 15px;
-  height: 15px;
 }
 
 @keyframes pulse-glow {

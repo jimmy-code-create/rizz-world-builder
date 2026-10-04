@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchChannelBySlug, fetchMessages, sendMessage, joinChannel, leaveChannel, isMember } from "@/lib/channels";
@@ -64,6 +64,7 @@ function ChannelPage() {
 
   const c: any = channel.data;
   const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
+  const messageRows = messages.data ?? [];
 
   const handleSend = async () => {
     if (!user || !body.trim()) return;
@@ -111,9 +112,12 @@ function ChannelPage() {
   };
 
   return (
-    <div className="-my-6 md:-my-10">
-      <div className="sticky top-0 md:top-0 z-20 glass-strong border-b border-white/5 px-4 py-3 flex items-center gap-3" style={{ boxShadow: `0 0 30px ${c.accent_color}22` }}>
-        <Link to="/channels" className="md:hidden"><ArrowLeft className="h-5 w-5" /></Link>
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)", boxShadow: `0 0 18px ${c.accent_color}14` }}
+      >
+        <Link to="/channels" aria-label="Back to channels" className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><ArrowLeft className="h-5 w-5" /></Link>
         <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${c.accent_color}, var(--rizz-violet))` }}>
           <Icon className="h-5 w-5 text-white" />
         </div>
@@ -127,27 +131,38 @@ function ChannelPage() {
       </div>
 
       {c.topic && (
-        <div className="px-4 py-3 border-b border-white/5 text-sm text-muted-foreground flex items-start gap-2">
+        <div className="chat-bar flex shrink-0 items-start gap-2 border-b border-white/5 px-4 py-3 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4 mt-0.5 text-[var(--rizz-pink)] shrink-0" />
           {c.topic}
         </div>
       )}
 
-      <div className="px-4 py-4 h-[calc(100dvh-13rem)] min-h-0 overflow-y-auto overscroll-contain pb-32">
+      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
         <AnimatePresence initial={false}>
-          {messages.data?.map((m: any) => {
+          {messageRows.map((m: any, index: number) => {
             const mine = m.author_id === user?.id;
+            const previous = messageRows[index - 1];
+            const startsGroup = !previous ||
+              previous.author_id !== m.author_id ||
+              new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
             return (
-            <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 mb-3">
-              <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
-                <AvatarImage src={m.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-xs font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-bold text-sm" style={{ color: m.author?.accent_color || undefined }}>{m.author?.display_name || m.author?.username}</span>
-                  <span className="text-[10px] text-muted-foreground">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+              <Fragment key={m.id}>
+              {startsGroup && (
+                <div className="py-1 text-center text-[10px] font-medium text-muted-foreground">
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
+              )}
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-3 flex min-w-0 gap-3">
+              {!mine && (startsGroup ? (
+                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
+                  <AvatarImage src={m.author?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-gradient-primary text-xs font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              ) : <div aria-hidden="true" className="h-9 w-9 shrink-0" />)}
+              <div className="flex-1 min-w-0">
+                {startsGroup && <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-sm" style={{ color: m.author?.accent_color || undefined }}>{m.author?.display_name || m.author?.username}</span>
+                </div>}
                 <MessageActionMenu
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -173,12 +188,13 @@ function ChannelPage() {
                       : []),
                   ]}
                 >
-                  <p className="w-fit max-w-[min(85vw,42rem)] rounded-2xl bg-white/[0.06] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
+                  <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
                     {m.body}
                   </p>
                 </MessageActionMenu>
               </div>
             </motion.div>
+            </Fragment>
           )})}
         </AnimatePresence>
         {messages.data?.length === 0 && (
@@ -187,13 +203,13 @@ function ChannelPage() {
         <div ref={endRef} />
       </div>
 
-      <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
-        <div className="max-w-3xl mx-auto flex gap-2">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        <div className="mx-auto flex w-full max-w-3xl gap-2">
           <Input
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={joined ? `Message #${c.name}` : "Join to chat"}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); } }}
+            placeholder={joined ? "Message" : "Join to chat"}
             disabled={!joined || sending}
             maxLength={500}
             className="glass border-white/10"

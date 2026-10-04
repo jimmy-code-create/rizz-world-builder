@@ -245,14 +245,18 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95"
       onClick={onClose}
     >
       <div
-        className="relative z-10 flex h-[min(86dvh,760px)] w-[min(calc(100vw-2rem),430px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#090710] shadow-[0_24px_80px_-28px_rgba(0,0,0,0.9)]"
+        className="relative z-10 flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#090710] shadow-[0_24px_80px_-28px_rgba(0,0,0,0.9)] sm:h-[min(92dvh,800px)] sm:rounded-3xl sm:border sm:border-white/10"
+        style={{
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="absolute top-3 left-4 right-4 z-30 flex gap-1">
+        <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-30 flex gap-1">
           {group.map((_, i) => (
             <div key={i} className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
               <div
@@ -265,11 +269,11 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
         <button
           onClick={onClose}
           aria-label="Close story"
-          className="absolute top-7 right-3 z-30 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10"
+          className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <div className="absolute top-7 left-3 z-30 flex items-center gap-2 rounded-full bg-black/45 px-2 py-1.5 backdrop-blur-md">
+        <div className="absolute left-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 flex items-center gap-2 rounded-full bg-black/45 px-2 py-1.5 backdrop-blur-md">
           <Avatar className="h-7 w-7 ring-1 ring-white/35">
             <AvatarImage src={story.author?.avatar_url ?? undefined} />
             <AvatarFallback>{(story.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
@@ -281,7 +285,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
             type="button"
             onClick={() => setViewersOpen(true)}
             aria-label="See story viewers"
-            className="absolute right-14 top-7 z-30 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md"
+            className="absolute right-14 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md"
           >
             <Eye className="h-4 w-4" /> Viewers
           </button>
@@ -316,7 +320,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
           {story.media_type === "video" ? (
             <video src={story.media_url} autoPlay playsInline className="h-full max-h-full max-w-full object-contain" />
           ) : (
-            <img src={story.media_url} alt={story.caption ?? ""} className="h-full max-h-full w-full object-contain" />
+            <img src={story.media_url} alt={story.caption ?? ""} className="h-full max-h-full w-full object-cover" />
           )}
           <button
             aria-label="Previous story"

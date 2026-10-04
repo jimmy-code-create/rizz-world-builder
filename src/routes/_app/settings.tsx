@@ -171,7 +171,10 @@ function SettingsPage() {
     setUnblockingId(blockedId);
     try {
       await unblockUser(user.id, blockedId);
-      await qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
+      qc.setQueryData<any[]>(["blocked-users", user.id], (current = []) =>
+        current.filter((entry) => entry.blocked_id !== blockedId),
+      );
+      void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
       toast.success(`@${username} unblocked`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't unblock this user");

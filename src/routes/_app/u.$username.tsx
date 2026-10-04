@@ -14,6 +14,7 @@ import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, H
 import { toast } from "sonner";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { blockUser, isBlocked, unblockUser } from "@/lib/social";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -46,6 +47,12 @@ function ProfilePage() {
 
   const profile = profileQ.data;
   const isMe = profile && user?.id === profile.id;
+  const blockStatusKey = ["block-status", user?.id, profile?.id];
+  const blockStatus = useQuery({
+    queryKey: blockStatusKey,
+    queryFn: () => isBlocked(user!.id, profile!.id),
+    enabled: !!user && !!profile && !isMe,
+  });
 
   useEffect(() => {
     if (!profile) return;
@@ -177,6 +184,27 @@ function ProfilePage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profile", username] }),
   });
 
+  const blockMut = useMutation({
+    mutationFn: async (nextBlocked: boolean) => {
+      if (!user || !profile) throw new Error("Sign in to manage blocked accounts.");
+      if (nextBlocked) await blockUser(user.id, profile.id);
+      else await unblockUser(user.id, profile.id);
+      return nextBlocked;
+    },
+    onMutate: async (nextBlocked) => {
+      await qc.cancelQueries({ queryKey: blockStatusKey });
+      const previous = qc.getQueryData<boolean>(blockStatusKey);
+      qc.setQueryData(blockStatusKey, nextBlocked);
+      return { previous };
+    },
+    onError: (error: Error, _nextBlocked, context) => {
+      if (context?.previous !== undefined) qc.setQueryData(blockStatusKey, context.previous);
+      toast.error(error.message || "Couldn't update this block");
+    },
+    onSuccess: (blocked) => toast.success(blocked ? "User blocked" : "User unblocked"),
+    onSettled: () => { void qc.invalidateQueries({ queryKey: blockStatusKey }); },
+  });
+
   if (profileQ.isLoading) {
     return <div className="h-64 animate-pulse rounded-3xl glass" />;
   }
@@ -252,8 +280,17 @@ function ProfilePage() {
             >
               {isFollowing ? "Following" : "Follow"}
             </Button>
-            <Button size="sm" variant="outline" className="glass border-white/10" onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}>
+            {!blockStatus.data && <Button size="sm" variant="outline" className="glass border-white/10" onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}>
               <MessageCircle className="h-4 w-4" />
+            </Button>}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={blockStatus.isLoading || blockMut.isPending}
+              onClick={() => blockMut.mutate(!blockStatus.data)}
+              className={blockStatus.data ? "border-destructive/30 text-destructive" : "glass border-white/10"}
+            >
+              {blockStatus.data ? "Unblock" : "Block"}
             </Button>
             <Button size="sm" variant="outline" className="glass border-white/10" onClick={shareProfile}>
               <Share2 className="h-4 w-4" />

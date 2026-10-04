@@ -416,7 +416,10 @@ export function ChatStoryPlayer({
                         {storyText(line.body, line.body_en, language)}
                       </span>
                     ) : (
-                      <div className={`max-w-[88%] rounded-2xl px-3.5 py-2 text-[15px] leading-snug whitespace-pre-wrap break-words ${line.speaker === "me" ? "rounded-br-md bg-primary text-primary-foreground" : "glass-strong rounded-bl-md"}`}>
+                      <div
+                        style={{ textShadow: "0 1px 7px rgba(0,0,0,.9)" }}
+                        className={`chat-bubble max-w-[88%] rounded-2xl px-4 py-3 text-[18px] font-medium leading-snug text-white whitespace-pre-wrap break-words ${line.speaker === "me" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-white/10 bg-[var(--surface-bubble)]"}`}
+                      >
                         {line.speaker !== "me" && (
                           <p className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-70">
                             {speakerLabel(line.speaker, language)}
@@ -431,7 +434,7 @@ export function ChatStoryPlayer({
 
               {typing && (
                 <div className={nextSpeaker === "me" ? "flex justify-end" : "flex justify-start"}>
-                  <div className="glass-strong flex gap-1 rounded-2xl px-4 py-3">
+                  <div className="chat-bubble flex gap-1 rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-4 py-3">
                     {[0, 1, 2].map((index) => <span key={index} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: `${index * 120}ms` }} />)}
                   </div>
                 </div>

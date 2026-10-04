@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -20,8 +20,10 @@ import { MessageReactions } from "@/components/DMReactionsBar";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
-import { blockUser, muteUser } from "@/lib/social";
+import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
+import { extractInviteCode } from "@/lib/groups";
+import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
 const CHAT_WALLPAPERS = [
@@ -29,7 +31,7 @@ const CHAT_WALLPAPERS = [
   "radial-gradient(ellipse at bottom left, rgba(124,58,237,.18), transparent 60%)",
   "none",
 ];
-const MESSAGE_PAGE_SIZE = 100;
+const MESSAGE_PAGE_SIZE = 30;
 const MAX_MESSAGE_LENGTH = 10_000;
 type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"] & {
   delivery_status?: "sending" | "failed";
@@ -186,6 +188,11 @@ function DMPage() {
       const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
       return data;
     },
+  });
+  const blockStatus = useQuery({
+    queryKey: ["block-status", user?.id, userId],
+    queryFn: () => isBlocked(user!.id, userId),
+    enabled: !!user,
   });
 
   const msgs = useQuery({
@@ -641,10 +648,13 @@ function DMPage() {
 
   return (
     <div
-      className="-my-6 md:-my-10"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden"
       style={{ backgroundImage: CHAT_WALLPAPERS[wallpaperIndex], backgroundRepeat: "no-repeat" }}
     >
-      <div className="sticky top-0 z-20 glass-strong border-b border-white/5 px-4 py-3 flex items-center gap-2">
+      <div
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+      >
         <Link to="/dms"><ArrowLeft className="h-5 w-5" /></Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
         <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
@@ -657,7 +667,7 @@ function DMPage() {
             {other.data?.display_name || other.data?.username}
             {online && <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />}
           </p>
-          <p className="text-xs text-muted-foreground truncate">{peerTyping ? "typing…" : online ? "Active now" : `@${other.data?.username}`}</p>
+          <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : online ? "Active now" : `@${other.data?.username}`}</p>
         </Link>
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
@@ -693,30 +703,37 @@ function DMPage() {
             <DropdownMenuItem
               onClick={async () => {
                 if (!user) return;
-                if (!confirm(`Block @${other.data?.username}?`)) return;
+                const currentlyBlocked = !!blockStatus.data;
+                if (!currentlyBlocked && !confirm(`Block @${other.data?.username}?`)) return;
                 try {
-                  await blockUser(user.id, userId);
-                  toast.success("User blocked");
-                  nav({ to: "/dms" });
+                  if (currentlyBlocked) {
+                    await unblockUser(user.id, userId);
+                    toast.success("User unblocked");
+                  } else {
+                    await blockUser(user.id, userId);
+                    toast.success("User blocked");
+                  }
+                  qc.setQueryData(["block-status", user.id, userId], !currentlyBlocked);
+                  void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
                 } catch (e: any) { toast.error(e.message); }
               }}
               className="text-destructive focus:text-destructive"
             >
-              Block user
+              {blockStatus.data ? "Unblock user" : "Block user"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
 
       {searchOpen && (
-        <div className="sticky top-[57px] z-20 glass-strong border-b border-white/5 px-4 py-2 flex items-center gap-2">
+        <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
           <button onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="text-muted-foreground"><X className="h-4 w-4" /></button>
         </div>
       )}
 
-      <div ref={scrollRef} className="px-4 py-4 h-[calc(100dvh-14rem)] md:h-[calc(100dvh-9rem)] min-h-0 overflow-y-auto pb-32 space-y-2">
+      <div ref={scrollRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 space-y-2">
         {hasOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -725,12 +742,19 @@ function DMPage() {
           </div>
         )}
         <AnimatePresence initial={false}>
-          {filteredMsgs.map((m) => {
+          {filteredMsgs.map((m, index) => {
             const mine = m.sender_id === user?.id;
             const deliveryStatus = (m as CachedDirectMessage).delivery_status;
             const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
+            const previous = filteredMsgs[index - 1];
+            const startsGroup = !previous ||
+              previous.sender_id !== m.sender_id ||
+              new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
+            const inviteUrl = rest?.match(/(?:https?:\/\/[^\s]+)?\/join\/[a-z0-9_-]+/i)?.[0];
+            const inviteCode = inviteUrl ? extractInviteCode(inviteUrl) : "";
+            const inviteText = inviteUrl ? rest?.replace(inviteUrl, "").trim() : "";
             if (audioPath) {
               const audioActions = [
                 {
@@ -748,30 +772,45 @@ function DMPage() {
                   : []),
               ];
               return (
-                <motion.div
-                  key={m.id}
-                  id={`msg-${m.id}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
-                >
-                  <MessageActionMenu
-                    open={openMsg === m.id}
-                    onOpenChange={(open) => setOpenMsg(open ? m.id : null)}
-                    align={mine ? "right" : "left"}
-                    triggerRole="group"
-                    actions={audioActions}
+                <Fragment key={m.id}>
+                  {startsGroup && !deliveryStatus && (
+                    <div className="flex w-full justify-center py-1">
+                      <span className="rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                        {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  )}
+                  <motion.div
+                    id={`msg-${m.id}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
                   >
-                    <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
-                  </MessageActionMenu>
-                  <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
-                </motion.div>
+                    <MessageActionMenu
+                      open={openMsg === m.id}
+                      onOpenChange={(open) => setOpenMsg(open ? m.id : null)}
+                      align={mine ? "right" : "left"}
+                      triggerRole="group"
+                      actions={audioActions}
+                    >
+                      <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
+                    </MessageActionMenu>
+                    <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                  </motion.div>
+                </Fragment>
               );
             }
             const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
+              <Fragment key={m.id}>
+              {startsGroup && !deliveryStatus && (
+                <div className="flex w-full justify-center py-1">
+                  <span className="rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+              )}
               <motion.div
-                key={m.id}
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -779,10 +818,13 @@ function DMPage() {
                   highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
                 } ${mine ? "justify-end" : "justify-start"}`}
               >
+                {inviteCode && !deletedAt ? (
+                  <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
+                ) : (
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`min-w-0 max-w-[75%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}
+                      className={`chat-bubble min-w-[44px] max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
                       style={{ WebkitTouchCallout: "none" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
@@ -840,6 +882,7 @@ function DMPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                )}
                 {deliveryStatus === "failed" ? (
                   <button
                     onClick={() => void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)}
@@ -853,6 +896,7 @@ function DMPage() {
                 ) : null}
                 <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
               </motion.div>
+              </Fragment>
             );
           })}
         </AnimatePresence>
@@ -873,15 +917,15 @@ function DMPage() {
       {showJump && (
         <button
           onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}
-          className="fixed bottom-36 md:bottom-20 right-4 z-30 h-10 w-10 rounded-full glass-strong border border-white/10 grid place-items-center shadow-glow active:scale-95"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-30 grid h-11 w-11 place-items-center rounded-full chat-bar border border-white/10 shadow-sm active:scale-95"
           aria-label="Scroll to latest"
         >
           <ArrowDown className="h-4 w-4" />
         </button>
       )}
 
-      <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
-        <div className="max-w-3xl mx-auto">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        <div className="mx-auto w-full max-w-3xl">
           {imagePreview && (
             <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
               <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
@@ -944,17 +988,19 @@ function DMPage() {
           <Textarea
             ref={composerRef}
             value={body}
+            disabled={blockStatus.data}
             onChange={(e) => { setBody(e.target.value); broadcastTyping(); }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                 e.preventDefault();
                 void send();
               }
             }}
-            placeholder="Write a message… (Shift+Enter for a new line)"
+            placeholder="Message"
             maxLength={MAX_MESSAGE_LENGTH}
             rows={1}
-            className="glass border-white/10 min-h-11 max-h-40 resize-none overflow-y-auto py-3"
+            enterKeyHint="send"
+            className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
           />
           {body.trim() || imageFile ? (
             <>
@@ -963,14 +1009,14 @@ function DMPage() {
                   <Clock className="h-4 w-4" />
                 </Button>
               )}
-              <Button onClick={() => void send()} disabled={sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
                 <Send className="h-4 w-4" />
               </Button>
             </>
           ) : (
             <Button
               onClick={toggleRecord}
-              disabled={sendingVoice}
+              disabled={blockStatus.data || sendingVoice}
               size="icon"
               className={recording ? "bg-red-500 border-0 animate-pulse min-w-16 px-2" : "bg-gradient-primary border-0 shadow-glow"}
               aria-label={recording ? "Stop and send voice note" : "Record voice note"}

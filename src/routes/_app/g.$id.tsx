@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2 } from "lucide-react";
@@ -84,14 +84,15 @@ function GroupRoom() {
         current.map((message) => message.id === context?.optimisticId ? saved : message),
       );
     },
-    onError: (error: Error, variables, context) => {
+      onError: (error: Error, variables, context) => {
+        console.error("Group message send failed", error);
       setBody((current) => current.trim() ? current : variables.text);
       qc.setQueryData<CachedGroupMessage[]>(messageKey, (current = []) =>
         current.map((message) => message.id === context?.optimisticId
           ? { ...message, delivery_status: "failed" }
           : message),
       );
-      toast.error(error.message);
+        toast.error("Couldn't send this message. Please try again.");
     },
   });
 
@@ -128,7 +129,7 @@ function GroupRoom() {
     setHasOlderMessages(true);
   }, [id]);
   useEffect(() => {
-    if (msgs.data) setHasOlderMessages(msgs.data.length >= 100);
+    if (msgs.data) setHasOlderMessages(msgs.data.length >= 30);
   }, [id, msgs.data]);
 
   useEffect(() => {
@@ -264,10 +265,14 @@ function GroupRoom() {
 
   const g = group.data;
   const isOwner = user?.id === g.owner_id;
+  const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
 
   return (
-    <div className="-my-6 md:-my-10">
-      <div className="sticky top-0 z-20 glass-strong border-b border-white/5 px-4 py-3 flex items-center gap-3">
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+      >
         <Link to="/groups"><ArrowLeft className="h-5 w-5" /></Link>
         <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow shrink-0">
           {g.name.charAt(0).toUpperCase()}
@@ -306,7 +311,7 @@ function GroupRoom() {
         </Sheet>
       </div>
 
-        <div ref={messagesListRef} className="px-4 py-4 h-[calc(100dvh-14rem)] md:h-[calc(100dvh-8rem)] min-h-0 overflow-y-auto pb-32 space-y-2">
+        <div ref={messagesListRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2">
           {hasOlderMessages && (
             <div className="flex justify-center pb-2">
               <Button onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -315,16 +320,26 @@ function GroupRoom() {
             </div>
           )}
         <AnimatePresence initial={false}>
-          {[...olderMessages, ...(msgs.data ?? [])].map((m: any) => {
+          {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
             const deletedAt = m.deleted_at as string | null | undefined;
+            const previous = visibleMessages[index - 1];
+            const startsGroup = !previous ||
+              previous.author_id !== m.author_id ||
+              new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
             return (
-              <motion.div key={m.id} id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex min-w-0 items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
-                {!mine && (
+              <Fragment key={m.id}>
+              {startsGroup && !m.delivery_status && (
+                <div className="py-1 text-center text-[10px] font-medium text-muted-foreground">
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </div>
+              )}
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex min-w-0 items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                {!mine && (startsGroup ? (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                )}
-                <div className={`max-w-[75%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                  {!mine && <span className="mb-0.5 ml-3 max-w-full truncate text-[11px] text-muted-foreground">@{m.author?.username}</span>}
+                ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
+                <div className={`max-w-[78%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                  {!mine && startsGroup && <span className="mb-0.5 ml-3 max-w-full truncate text-[11px] text-muted-foreground">@{m.author?.username}</span>}
                   <MessageActionMenu
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -358,7 +373,7 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`min-w-0 max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"}`}>
+                    <div className={`chat-bubble min-w-[44px] max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
                       {deletedAt ? "This message was unsent" : m.body}
                     </div>
                   </MessageActionMenu>
@@ -375,12 +390,11 @@ function GroupRoom() {
                       <span className="text-[10px] text-muted-foreground mt-0.5 px-2">Sending…</span>
                     )
                   ) : (
-                    <span className="text-[10px] text-muted-foreground mt-0.5 px-2">
-                      {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                    </span>
+                    null
                   )}
                 </div>
               </motion.div>
+              </Fragment>
             );
           })}
         </AnimatePresence>
@@ -390,22 +404,23 @@ function GroupRoom() {
         <div ref={endRef} />
       </div>
 
-      <div className="fixed bottom-20 md:bottom-0 inset-x-0 md:left-64 z-20 p-3 glass-strong border-t border-white/5">
-        <div className="max-w-3xl mx-auto flex gap-2">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        <div className="mx-auto flex w-full max-w-3xl gap-2">
           <Textarea
             ref={composerRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                 e.preventDefault();
                 void send();
               }
             }}
-            placeholder={`Message ${g.name}… (Shift+Enter for a new line)`}
+            placeholder="Message"
             maxLength={GROUP_MESSAGE_LIMIT}
             rows={1}
-            className="glass border-white/10 min-h-11 max-h-40 resize-none overflow-y-auto py-3"
+            enterKeyHint="send"
+            className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
           />
           <Button onClick={() => void send()} disabled={!body.trim() || sendMessage.isPending} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />

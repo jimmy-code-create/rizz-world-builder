@@ -7,10 +7,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group rizz-toaster"
-      position="bottom-center"
+      position="top-center"
       offset={16}
-      mobileOffset={16}
-      duration={3000}
+      duration={3200}
+      closeButton={false}
       icons={{
         success: <CheckCircle2 aria-hidden="true" />,
         error: <AlertCircle aria-hidden="true" />,
@@ -25,7 +25,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
           icon: "rizz-toast-icon",
           actionButton: "rizz-toast-action",
           cancelButton: "rizz-toast-cancel",
-          closeButton: "rizz-toast-close",
         },
       }}
       {...props}

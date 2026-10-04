@@ -97,18 +97,28 @@ export async function createInvite(groupId: string, createdBy: string, opts?: { 
 }
 
 export async function acceptInvite(code: string) {
+  // Backend prerequisite: Lovable Cloud must expose accept_group_invite(_code); this frontend only reports a friendly setup error when it is missing.
   const { data, error } = await supabase.rpc("accept_group_invite", { _code: extractInviteCode(code) });
   if (error) {
-    if (error.message.includes("friends_only")) {
-      throw new Error("Friends-only group: you must mutually follow at least one member to join.");
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("friends_only")) throw new Error("This is a friends-only group. You must mutually follow a current member to join.");
+    if (message.includes("expired")) throw new Error("This invite has expired. Ask a group member for a new link.");
+    if (message.includes("max_uses") || message.includes("use limit")) throw new Error("This invite has reached its use limit.");
+    if (message.includes("invalid") || message.includes("revoked") || message.includes("not found")) {
+      throw new Error("This invite is invalid or has been revoked. Ask for a new link.");
     }
-    throw error;
+    if (message.includes("already")) throw new Error("You are already a member of this group.");
+    if (message.includes("function") || message.includes("schema cache") || message.includes("does not exist")) {
+      throw new Error("Group invites are temporarily unavailable. The Lovable backend needs the invite setup before this can work.");
+    }
+    throw new Error("Couldn't join this group right now. Please try again.");
   }
   return data as unknown as Group;
 }
 
 export async function previewGroupInvite(code: string): Promise<GroupInvitePreview> {
-  const { data, error } = await (supabase.rpc as any)("preview_group_invite", {
+  // Keep preview lookup in the existing helper so the join route and chat cards share the same backend call.
+  const { data, error } = await (supabase.rpc as any)("get_group_invite_preview", {
     _code: extractInviteCode(code),
   }).abortSignal(AbortSignal.timeout(8000));
   if (error) throw error;
@@ -136,7 +146,7 @@ async function fetchMessageAuthors(authorIds: string[]): Promise<Map<string, Gro
   return new Map<string, GroupMessageAuthor>((data ?? []).map((profile) => [profile.id, profile]));
 }
 
-const GROUP_MESSAGE_PAGE_SIZE = 100;
+const GROUP_MESSAGE_PAGE_SIZE = 30;
 
 async function removeHiddenGroupMessages(
   messages: any[],
