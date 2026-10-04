@@ -1836,7 +1836,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_group_invite: { Args: { _code: string }; Returns: Json }
       award_badge: {
         Args: { _slug: string; _user: string }
         Returns: undefined
