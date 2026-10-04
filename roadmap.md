@@ -11,3 +11,5 @@
 - [ ] Persist per-chat wallpapers, including uploaded backgrounds, across reopen.
 - [ ] Add email OTP signup while removing the Google continuation button.
 - [ ] Upgrade toast popups and stabilize the story canvas.
+
+- [ ] Fix group invite RPC/cache, chat overlap, story fullscreen, premium chat/poll/toast polish, and mobile performance.
