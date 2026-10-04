@@ -14,11 +14,11 @@ export type ExternalReelLinkResult =
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const INSTAGRAM_CODE = /^[A-Za-z0-9_-]{1,64}$/;
 const REDNOTE_UNAVAILABLE =
-  "RedNote does not currently document an official web video embed. Importing this link is unavailable until an approved player is supported.";
+  "This video stays on its original site. RIZZ does not download or rehost it.";
 
 function normalizedUrl(value: string): URL {
   const candidate = value.trim();
-  if (!candidate) throw new Error("Paste an Instagram, YouTube, or RedNote link.");
+  if (!candidate) throw new Error("Paste a supported video link.");
   const withProtocol = /^[a-z][a-z\d+.-]*:/i.test(candidate)
     ? candidate
     : `https://${candidate}`;
@@ -67,7 +67,7 @@ export function parseExternalReelLink(value: string): ExternalReelLinkResult {
       const kind = parts[0]?.toLowerCase();
       const shortcode = parts[1];
       if (!["reel", "reels", "p", "tv"].includes(kind ?? "") || !INSTAGRAM_CODE.test(shortcode ?? "")) {
-        throw new Error("Paste a direct Instagram reel or video post link.");
+        throw new Error("This video link isn't supported here.");
       }
       return {
         ok: true,
@@ -88,7 +88,7 @@ export function parseExternalReelLink(value: string): ExternalReelLinkResult {
       };
     }
 
-    throw new Error("Only Instagram, YouTube, and RedNote video links are supported.");
+    throw new Error("Only supported video links can be shared here.");
   } catch (error) {
     return {
       ok: false,

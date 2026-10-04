@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, Loader2 } from "lucide-react";
+import { Pause, Play, Loader2, Volume2 } from "lucide-react";
 import { formatDuration, voiceNoteUrl, waveformBars } from "@/lib/voice-notes";
 import { toast } from "sonner";
 
@@ -27,6 +27,12 @@ export function VoiceNoteBubble({
         const url = await voiceNoteUrl(path);
         const a = new Audio(url);
         a.onended = () => { setPlaying(false); setProgress(0); };
+        a.onpause = () => setPlaying(false);
+        a.onerror = () => {
+          setPlaying(false);
+          setLoading(false);
+          toast.error("Couldn't play that voice note");
+        };
         a.ontimeupdate = () => setProgress(a.duration ? a.currentTime / a.duration : 0);
         audioRef.current = a;
         setLoading(false);
@@ -53,19 +59,33 @@ export function VoiceNoteBubble({
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </button>
-      <div className="flex h-8 flex-1 items-center gap-[2px]">
+      <div
+        className="relative flex h-9 min-w-0 flex-1 items-center gap-[2px]"
+        role="progressbar"
+        aria-label="Voice note playback"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+      >
         {bars.map((b, i) => {
           const played = i / bars.length <= progress;
           return (
             <span
               key={i}
-              className="w-[3px] rounded-full transition-opacity"
-              style={{ height: `${Math.min(100, b * 100)}%`, background: "currentColor", opacity: played ? 1 : 0.35 }}
+              className="min-w-[2px] flex-1 rounded-full transition-opacity duration-150"
+              style={{
+                height: `${Math.max(22, Math.min(100, b * 100))}%`,
+                background: played ? "var(--rizz-pink)" : "currentColor",
+                opacity: played ? 1 : 0.34,
+              }}
             />
           );
         })}
       </div>
-      <span className="shrink-0 text-[11px] tabular-nums opacity-80">{formatDuration(durationMs ?? 0)}</span>
+      <span className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums opacity-80">
+        {playing && <Volume2 aria-hidden="true" className="h-3 w-3" />}
+        {formatDuration(durationMs ?? 0)}
+      </span>
     </div>
   );
 }

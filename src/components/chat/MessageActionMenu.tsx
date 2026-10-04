@@ -117,6 +117,8 @@ export function MessageActionMenu({
           role={triggerRole}
           tabIndex={0}
           aria-label={triggerRole === "button" ? "Open message actions" : "Message actions"}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className="inline-flex max-w-full rounded-[inherit] align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{ touchAction: "pan-y", WebkitTouchCallout: "none" }}
           onPointerDown={handlePointerDown}
@@ -152,7 +154,7 @@ export function MessageActionMenu({
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className="glass-strong relative max-h-[min(70vh,24rem)] w-[min(13rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border-white/10 p-1.5 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.9)]"
+        className="glass-strong relative max-h-[min(70dvh,24rem)] w-[min(13rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border-white/10 p-1.5 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.9)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
       >
         <div
           aria-hidden="true"

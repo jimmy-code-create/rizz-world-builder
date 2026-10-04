@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import {
   AudioLines,
   ChevronsRight,
@@ -277,79 +277,71 @@ export function ChatStoryPlayer({
 
   return (
     <FullScreenLayer open>
+      <MotionConfig reducedMotion="user">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[130] flex flex-col overflow-hidden bg-background"
       >
-        <div className="relative min-h-0 flex-1 overflow-y-auto">
-          <div className="pointer-events-none absolute inset-0 bg-aurora opacity-20" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <AnimatePresence mode="wait">
+            {activeScene ? (
+              <motion.img
+                key={activeScene.id}
+                src={activeScene.image}
+                alt=""
+                initial={{ opacity: 0, scale: 1.04 }}
+                animate={{ opacity: 0.74, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <motion.div
+                key="story-canvas"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0"
+                style={{ background: story.gradient }}
+              />
+            )}
+          </AnimatePresence>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,7,16,.64)_0%,rgba(9,7,16,.62)_40%,rgba(9,7,16,.92)_100%)]" />
+          <div className="absolute inset-0 bg-aurora opacity-20" />
+        </div>
+
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
 
           <header
             className="relative z-10 flex items-center gap-3 px-4 pb-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 12px)" }}
           >
-            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
               <X className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{story.emoji}</span>
-                <p className="truncate text-sm font-bold">{title}</p>
-              </div>
+              <p className="truncate text-sm font-bold">{title}</p>
               <p className="truncate text-[11px] text-muted-foreground">{activeSceneLabel}</p>
             </div>
             <button
               onClick={() => setAuto((current) => !current)}
               aria-label={auto ? "Pause autoplay" : "Play autoplay"}
-              className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
             >
               {auto ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
           </header>
 
-          <div className="relative z-10 mx-4 overflow-hidden rounded-[1.25rem] border border-border/60 bg-card shadow-glow-lg">
-            <div className="relative aspect-[2/3] max-h-[54dvh] overflow-hidden bg-muted">
-              <AnimatePresence mode="wait">
-                {activeScene ? (
-                  <motion.img
-                    key={activeScene.id}
-                    src={activeScene.image}
-                    alt={activeScene.label}
-                    initial={{ opacity: 0, scale: 1.08, x: sceneIndex % 2 === 0 ? 24 : -24 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 1.04, x: sceneIndex % 2 === 0 ? -24 : 24 }}
-                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center p-8 text-center" style={{ background: story.gradient }}>
-                    <p className="text-lg font-semibold">{hook}</p>
-                  </div>
-                )}
-              </AnimatePresence>
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-background/10" />
-              <div className="absolute inset-x-3 top-3 flex gap-1.5">
-                {(scenes.length ? scenes : [{ id: "story", label: story.title, image: "" }]).map((scene, index) => (
-                  <div key={scene.id} className="h-1 flex-1 overflow-hidden rounded-full bg-background/30">
-                    <motion.div
-                      className="h-full bg-foreground"
-                      initial={false}
-                      animate={{ width: index <= sceneIndex ? "100%" : "0%" }}
-                      transition={{ duration: 0.4 }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70">Anime chat story</p>
-                  <p className="mt-1 text-sm font-bold">{activeSceneLabel}</p>
-                </div>
-                <span className="rounded-full bg-background/60 px-2.5 py-1 text-[10px] font-semibold backdrop-blur">Scene {sceneIndex + 1}</span>
-              </div>
+          <div className="relative z-10 mx-4 mb-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 backdrop-blur-md">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/55">Anime chat story</p>
+              <p className="truncate text-xs font-semibold">{activeSceneLabel || hook}</p>
             </div>
+            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold text-foreground/75">
+              Scene {sceneIndex + 1}{scenes.length ? ` / ${scenes.length}` : ""}
+            </span>
           </div>
 
           <div className="relative z-10 px-4 pb-5 pt-4">
@@ -370,20 +362,20 @@ export function ChatStoryPlayer({
                     <button
                       onClick={() => changeLanguage("hi")}
                       aria-pressed={language === "hi"}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${language === "hi" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${language === "hi" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       हिंदी
                     </button>
                     <button
                       onClick={() => changeLanguage("en")}
                       aria-pressed={language === "en"}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       English
                     </button>
                   </div>
                 )}
-                <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full">
+                <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
                   {narration ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
                 <div className="glass flex h-8 items-center gap-0.5 rounded-full px-1">
@@ -392,7 +384,7 @@ export function ChatStoryPlayer({
                       key={value}
                       onClick={() => setSpeed(value)}
                       aria-label={`Narration speed ${value}x`}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       {value}x
                     </button>
@@ -445,15 +437,15 @@ export function ChatStoryPlayer({
         </div>
 
         <footer
-          className="glass-strong shrink-0 border-t border-border/60 px-4 pt-3"
+          className="glass-strong relative z-10 shrink-0 border-t border-border/60 px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 12px)" }}
         >
           {done ? (
             <div className="flex gap-2">
-              <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold">
+              <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
                 <RotateCcw className="h-4 w-4" /> {isRoom4B && language === "hi" ? "फिर से पढ़ें" : "Replay"}
               </button>
-              <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
+              <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
               </button>
             </div>
@@ -462,19 +454,20 @@ export function ChatStoryPlayer({
               <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><GitBranch className="h-3 w-3" /> {language === "hi" && isRoom4B ? "रास्ता चुनो" : "Choose the scene"}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {pending.map((choice) => (
-                  <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold">
+                  <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
                     {storyText(choice.label, choice.label_en, language)}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <button onClick={advance} className="bg-gradient-primary flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold">
+            <button onClick={advance} className="bg-gradient-primary flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
               {language === "hi" && isRoom4B ? "आगे बढ़ो" : "Tap for next scene"} <ChevronsRight className="h-4 w-4" />
             </button>
           )}
         </footer>
       </motion.div>
+      </MotionConfig>
     </FullScreenLayer>
   );
 }

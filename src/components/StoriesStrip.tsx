@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, Plus, X, Eye, Send } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -243,13 +243,14 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
   }, [idx, story, user, group.length, onNext, paused]);
 
   return (
+    <MotionConfig reducedMotion="user">
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95"
       onClick={onClose}
     >
       <div
-        className="relative z-10 flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#090710] shadow-[0_24px_80px_-28px_rgba(0,0,0,0.9)] sm:h-[min(92dvh,800px)] sm:rounded-3xl sm:border sm:border-white/10"
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[#090710]"
         style={{
           paddingTop: "env(safe-area-inset-top, 0px)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -269,7 +270,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
         <button
           onClick={onClose}
           aria-label="Close story"
-          className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10"
+          className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
         >
           <X className="h-4 w-4" />
         </button>
@@ -285,7 +286,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
             type="button"
             onClick={() => setViewersOpen(true)}
             aria-label="See story viewers"
-            className="absolute right-14 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md"
+            className="absolute right-14 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
           >
             <Eye className="h-4 w-4" /> Viewers
           </button>
@@ -324,12 +325,12 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
           )}
           <button
             aria-label="Previous story"
-            className="absolute left-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-w-resize"
+            className="absolute left-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-w-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
             onClick={(event) => { event.stopPropagation(); if (idx > 0) setIdx(idx - 1); else onPrev(); }}
           />
           <button
             aria-label="Next story"
-            className="absolute right-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-e-resize"
+            className="absolute right-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-e-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
             onClick={(event) => { event.stopPropagation(); if (idx + 1 < group.length) setIdx(idx + 1); else onNext(); }}
           />
         </div>
@@ -345,7 +346,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
             aria-pressed={myReactions.includes("❤️")}
             disabled={!user || reactions.isLoading || toggleReaction.isPending}
             onClick={() => reactToStory("❤️")}
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
               myReactions.includes("❤️")
                 ? "border-[var(--rizz-pink)]/45 bg-[var(--rizz-pink)]/15 text-[var(--rizz-pink)]"
                 : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/10"
@@ -365,7 +366,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
                   aria-pressed={selected}
                   disabled={!user || reactions.isLoading || toggleReaction.isPending}
                   onClick={() => reactToStory(emoji)}
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-lg transition ${
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
                     selected
                       ? "border-[var(--rizz-violet)]/55 bg-[var(--rizz-violet)]/20"
                       : "border-transparent hover:border-white/10 hover:bg-white/[0.07]"
@@ -420,5 +421,6 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
         </DialogContent>
       </Dialog>
     </motion.div>
+    </MotionConfig>
   );
 }

@@ -61,6 +61,7 @@ function DMPage() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -97,6 +98,18 @@ function DMPage() {
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const syncHeight = () => setVisualViewportHeight(viewport?.height ?? window.innerHeight);
+    syncHeight();
+    viewport?.addEventListener("resize", syncHeight);
+    window.addEventListener("resize", syncHeight);
+    return () => {
+      viewport?.removeEventListener("resize", syncHeight);
+      window.removeEventListener("resize", syncHeight);
+    };
+  }, []);
 
   useEffect(() => () => {
     imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -158,7 +171,7 @@ function DMPage() {
       if (navigator.vibrate) navigator.vibrate(15);
       setOpenMsg(id);
       pressTimer.current = null;
-    }, 350);
+    }, 480);
   };
   /** Only cancel on a real drag (scroll), not on tiny finger jitter. */
   const movePress = (point: { x: number; y: number }) => {
@@ -642,14 +655,32 @@ function DMPage() {
 
   const react = async (messageId: string, emoji: string) => {
     if (!user) return;
-    const { error } = await (supabase.from as any)("dm_reactions").insert({ message_id: messageId, user_id: user.id, emoji });
-    if (error && !error.message.includes("duplicate")) toast.error(error.message);
+    const queryKey = ["dm-reactions", messageId] as const;
+    await qc.cancelQueries({ queryKey });
+    const previous = qc.getQueryData<{ emoji: string; user_id: string }[]>(queryKey);
+    if (previous?.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id)) return;
+    qc.setQueryData(queryKey, [...(previous ?? []), { emoji, user_id: user.id }]);
+    try {
+      const { error } = await (supabase.from as any)("dm_reactions").insert({ message_id: messageId, user_id: user.id, emoji });
+      if (error && !error.message.includes("duplicate")) throw error;
+    } catch (error) {
+      if (previous) qc.setQueryData(queryKey, previous);
+      else qc.removeQueries({ queryKey, exact: true });
+      toast.error(error instanceof Error ? error.message : "Couldn't add that reaction");
+    }
   };
 
   return (
     <div
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden"
-      style={{ backgroundImage: CHAT_WALLPAPERS[wallpaperIndex], backgroundRepeat: "no-repeat" }}
+      style={{
+        backgroundImage: CHAT_WALLPAPERS[wallpaperIndex],
+        backgroundRepeat: "no-repeat",
+        ...(visualViewportHeight ? {
+          height: `min(100%, ${Math.round(visualViewportHeight)}px)`,
+          maxHeight: `min(100%, ${Math.round(visualViewportHeight)}px)`,
+        } : {}),
+      }}
     >
       <div
         className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
@@ -733,7 +764,7 @@ function DMPage() {
         </div>
       )}
 
-      <div ref={scrollRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 space-y-2">
+      <div ref={scrollRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3 space-y-2">
         {hasOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -824,8 +855,10 @@ function DMPage() {
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
-                      className={`chat-bubble min-w-[44px] max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
-                      style={{ WebkitTouchCallout: "none" }}
+                      aria-haspopup="dialog"
+                      aria-expanded={openMsg === m.id}
+                      className={`chat-bubble min-w-[44px] max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
+                      style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
                       onTouchEnd={cancelPress}
@@ -856,28 +889,29 @@ function DMPage() {
                       {deletedAt ? "This message was unsent" : rest}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2 glass-strong border-white/10" side="top">
+                  <PopoverContent className="max-h-[min(70dvh,24rem)] w-auto overflow-y-auto glass-strong border-white/10 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95" side="top">
                     <div className="flex gap-1 mb-2">
                       {QUICK_EMOJIS.map((e) => (
-                        <button key={e} onClick={() => { react(m.id, e); setOpenMsg(null); }} className="h-9 w-9 rounded-lg hover:bg-white/10 text-lg transition-transform hover:scale-125">{e}</button>
+                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
                       ))}
                     </div>
                     <div className="flex flex-col text-xs">
-                      <button onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Copy text</button>
-                      <button onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Reply</button>
-                      <button onClick={() => { startCall(false); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Voice call</button>
-                      <button onClick={() => { startCall(true); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Video call</button>
-                      <button onClick={() => { toast("Reported"); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded">Report</button>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Copy text</button>
+                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Reply</button>
+                      <button type="button" onClick={() => { startCall(false); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Voice call</button>
+                      <button type="button" onClick={() => { startCall(true); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Video call</button>
+                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Report</button>
                       {!deletedAt && (
                         <button
+                          type="button"
                           onClick={() => { void deleteMsgForMe(m.id); setOpenMsg(null); }}
-                          className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive"
+                          className="min-h-10 rounded px-2 text-left text-destructive hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
                         >
                           Delete for me
                         </button>
                       )}
                       {mine && !deletedAt && (
-                        <button onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="text-left px-2 py-1.5 hover:bg-white/10 rounded text-destructive">Delete for everyone</button>
+                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left text-destructive hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Delete for everyone</button>
                       )}
                     </div>
                   </PopoverContent>
@@ -924,7 +958,7 @@ function DMPage() {
         </button>
       )}
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
         <div className="mx-auto w-full max-w-3xl">
           {imagePreview && (
             <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
@@ -1018,11 +1052,15 @@ function DMPage() {
               onClick={toggleRecord}
               disabled={blockStatus.data || sendingVoice}
               size="icon"
-              className={recording ? "bg-red-500 border-0 animate-pulse min-w-16 px-2" : "bg-gradient-primary border-0 shadow-glow"}
+              className={recording ? "min-w-[5.5rem] gap-2 border border-rose-300/30 bg-rose-600 px-3 text-white shadow-[0_6px_22px_-9px_rgba(244,63,94,.8)] hover:bg-rose-500" : "bg-gradient-primary border-0 shadow-glow"}
               aria-label={recording ? "Stop and send voice note" : "Record voice note"}
+              aria-pressed={recording}
             >
               {recording ? (
-                <span className="text-xs font-semibold tabular-nums">{formatDuration(recMs)}</span>
+                <span className="flex items-center gap-2 text-xs font-semibold tabular-nums">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                  {formatDuration(recMs)}
+                </span>
               ) : (
                 <Mic className="h-4 w-4" />
               )}

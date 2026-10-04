@@ -103,8 +103,8 @@ export async function createPost(input: {
   if (input.externalSourceUrl) {
     const parsed = parseExternalReelLink(input.externalSourceUrl);
     if (!parsed.ok) throw new Error(parsed.error);
-    if (parsed.value.platform === "rednote") {
-      throw new Error("RedNote does not currently document an official web video embed, so this link cannot be published inside RIZZ.");
+    if (parsed.value.platform === "instagram") {
+      throw new Error("This video link isn't supported here.");
     }
     if (input.file) throw new Error("Choose a video file or an external link, not both.");
     media_url = parsed.value.sourceUrl;

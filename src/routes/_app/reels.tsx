@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import {
-  Heart, MessageCircle, Share2, Volume2, VolumeX, Music2,
+  Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
   Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,7 +19,7 @@ import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
-import { parseExternalReelLink, REDNOTE_UNAVAILABLE } from "@/lib/external-reels";
+import { parseExternalReelLink } from "@/lib/external-reels";
 
 const SONG_LIBRARY = [
   { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
@@ -150,6 +150,7 @@ function ReelItem({
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0); // heart burst counter
+  const [paused, setPaused] = useState(false);
   const lastTap = useRef(0);
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
@@ -160,14 +161,14 @@ function ReelItem({
     if (!el) return;
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) el.play().catch(() => {});
+        if (e.isIntersecting && !paused) el.play().catch(() => {});
         else el.pause();
       },
       { threshold: 0.6 }
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [paused]);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
 
   async function doLike(force?: boolean) {
@@ -218,6 +219,27 @@ function ReelItem({
     }
   }
 
+  async function togglePlayback() {
+    const video = ref.current;
+    if (!video) return;
+    if (video.paused) {
+      try {
+        await video.play();
+        setPaused(false);
+      } catch {
+        toast.error("Couldn't play this reel");
+      }
+    } else {
+      video.pause();
+      setPaused(true);
+    }
+  }
+
+  function viewOriginal() {
+    if (!externalLink?.ok) return;
+    window.open(externalLink.value.sourceUrl, "_blank", "noopener,noreferrer");
+  }
+
   const remix = () => toast.success("Remix template saved to your drafts ✨");
   const share = () => {
     navigator.clipboard.writeText(window.location.origin + "/u/" + post.author?.username);
@@ -229,6 +251,29 @@ function ReelItem({
       {isExternal ? (
         <>
           <ExternalVideoEmbed sourceUrl={post.media_url} className="min-h-0 flex-1 w-full" />
+          <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="grid h-10 w-10 place-items-center rounded-full glass-strong text-white"
+                  aria-label="Reel options"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-44 p-1.5 glass-strong border-white/10">
+                <button
+                  type="button"
+                  onClick={viewOriginal}
+                  className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
+                >
+                  <ExternalLink className="h-4 w-4 text-[var(--rizz-violet)]" />
+                  View original
+                </button>
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white">
             <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
@@ -285,6 +330,15 @@ function ReelItem({
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>}
       <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 z-20 flex items-center gap-2">
+        {!isExternal && <button
+          type="button"
+          onClick={() => void togglePlayback()}
+          className="h-10 w-10 rounded-full glass-strong grid place-items-center"
+          aria-label={paused ? "Play reel" : "Pause reel"}
+          aria-pressed={paused}
+        >
+          {paused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+        </button>}
         {!isExternal && <button
             onClick={toggleMute}
             className="h-10 w-10 rounded-full glass-strong grid place-items-center"
@@ -500,7 +554,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const sourceLinkResult = sourceLink.trim() ? parseExternalReelLink(sourceLink) : null;
   const canPublishLink =
     sourceLinkResult?.ok === true &&
-    sourceLinkResult.value.platform !== "rednote" &&
+    sourceLinkResult.value.platform !== "instagram" &&
     rightsConfirmed;
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
@@ -530,7 +584,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       if (sourceMode === "link" && !parsedLink) {
         throw new Error(sourceLinkResult && !sourceLinkResult.ok ? sourceLinkResult.error : "Paste a video link.");
       }
-      if (sourceMode === "link" && parsedLink?.platform === "rednote") throw new Error(REDNOTE_UNAVAILABLE);
+      if (sourceMode === "link" && parsedLink?.platform === "instagram") throw new Error("This video link isn't supported here.");
       if (sourceMode === "link" && !rightsConfirmed) throw new Error("Confirm that you have permission to share this video.");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
       const songLine = sourceMode === "upload" && songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
@@ -599,10 +653,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
           <div className="bg-black grid place-items-center min-h-[240px] md:min-h-[440px] relative">
-            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform !== "rednote" ? (
+            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform !== "instagram" ? (
               <ExternalVideoEmbed sourceUrl={sourceLinkResult.value.sourceUrl} className="h-full w-full" />
-            ) : sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform === "rednote" ? (
-              <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">{REDNOTE_UNAVAILABLE}</div>
+            ) : sourceMode === "link" && sourceLinkResult?.ok ? (
+              <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">This link can’t be shown here. Try a supported video link.</div>
             ) : sourceMode === "upload" && previewUrl ? (
               <>
                 <video
@@ -661,18 +715,19 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   autoComplete="url"
                   value={sourceLink}
                   onChange={(e) => setSourceLink(e.target.value)}
-                  placeholder="Paste an Instagram, YouTube, or RedNote link"
+                  placeholder="Paste a YouTube or RedNote video link"
                   className="glass border-white/10"
                   aria-describedby="reel-source-help reel-source-status"
                 />
-                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform === "rednote")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
-                  {!sourceLinkResult ? "Instagram and YouTube use their official players. RedNote links are recognized but cannot be embedded yet." :
+                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform === "instagram")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
+                  {!sourceLinkResult ? "YouTube previews use the official player. RedNote videos stay on their original site." :
                     !sourceLinkResult.ok ? sourceLinkResult.error :
-                      sourceLinkResult.value.platform === "rednote" ? REDNOTE_UNAVAILABLE :
-                        `${sourceLinkResult.value.platform === "youtube" ? "YouTube" : "Instagram"} link ready to preview.`}
+                      sourceLinkResult.value.platform === "instagram" ? "This link can’t be shared here. Try a supported video link." :
+                        sourceLinkResult.value.platform === "rednote" ? "RedNote link ready. The video will open on its original site." :
+                          "YouTube link ready to preview."}
                 </p>
                 <p id="reel-source-help" className="text-[11px] leading-relaxed text-muted-foreground">
-                  The official player keeps its required attribution. Only public videos that allow embedding can play inside RIZZ.
+                  External videos stay on their original platform. RIZZ does not download or rehost them.
                 </p>
                 <label className="flex items-start gap-2 text-xs leading-relaxed">
                   <input

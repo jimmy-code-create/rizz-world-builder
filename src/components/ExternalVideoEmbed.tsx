@@ -1,91 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { Film } from "lucide-react";
 import { parseExternalReelLink, REDNOTE_UNAVAILABLE } from "@/lib/external-reels";
-
-declare global {
-  interface Window {
-    instgrm?: { Embeds?: { process: () => void } };
-  }
-}
-
-const INSTAGRAM_SCRIPT_ID = "rizz-instagram-embed-script";
-
-function InstagramPostEmbed({ permalink, title }: { permalink: string; title: string }) {
-  const blockquoteRef = useRef<HTMLQuoteElement>(null);
-  const [scriptError, setScriptError] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    let script: HTMLScriptElement | null = null;
-    const onScriptLoad = () => {
-      if (script) script.dataset.loaded = "true";
-      if (active) window.instgrm?.Embeds?.process();
-    };
-    const onScriptError = () => {
-      if (script) script.dataset.failed = "true";
-      if (active) setScriptError(true);
-    };
-
-    setScriptError(false);
-    if (window.instgrm?.Embeds) {
-      requestAnimationFrame(onScriptLoad);
-      return () => {
-        active = false;
-      };
-    }
-
-    script = document.getElementById(INSTAGRAM_SCRIPT_ID) as HTMLScriptElement | null;
-    const needsAppend = !script;
-    if (!script) {
-      script = document.createElement("script");
-      script.id = INSTAGRAM_SCRIPT_ID;
-      script.src = "https://www.instagram.com/embed.js";
-      script.async = true;
-    }
-    if (script.dataset.failed === "true") {
-      setScriptError(true);
-      return () => {
-        active = false;
-      };
-    }
-    script.addEventListener("load", onScriptLoad);
-    script.addEventListener("error", onScriptError);
-    if (window.instgrm?.Embeds || script.dataset.loaded === "true") onScriptLoad();
-    if (needsAppend) document.body.appendChild(script);
-
-    return () => {
-      active = false;
-      script?.removeEventListener("load", onScriptLoad);
-      script?.removeEventListener("error", onScriptError);
-    };
-  }, [permalink]);
-
-  if (scriptError) {
-    return (
-      <div className="grid h-full place-items-center p-5 text-center text-sm text-white/75">
-        <div>
-          <p>Instagram’s official player could not be loaded.</p>
-          <a href={permalink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-white underline">
-            Open original <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full w-full overflow-y-auto bg-white">
-      <blockquote
-        ref={blockquoteRef}
-        className="instagram-media !mx-auto !my-0 !w-full !max-w-[540px]"
-        data-instgrm-permalink={permalink}
-        data-instgrm-version="14"
-        aria-label={title}
-      />
-      <noscript>Enable JavaScript to play this Instagram post.</noscript>
-    </div>
-  );
-}
 
 export function ExternalVideoEmbed({
   sourceUrl,
@@ -97,20 +11,20 @@ export function ExternalVideoEmbed({
   const parsed = parseExternalReelLink(sourceUrl);
   if (!parsed.ok) return null;
 
-  if (parsed.value.platform === "rednote") {
+  if (parsed.value.platform !== "youtube") {
     return (
-      <div className={`grid place-items-center bg-black p-6 text-center text-sm text-white/75 ${className}`} role="status">
-        <div>
-          <p>{REDNOTE_UNAVAILABLE}</p>
+      <div
+        className={`grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,rgba(255,255,255,0.08),transparent_52%),linear-gradient(160deg,#19151f,#070609)] p-6 text-center text-white ${className}`}
+        role="img"
+        aria-label="Video hosted on its original site"
+      >
+        <div className="flex max-w-xs flex-col items-center gap-3">
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/[0.08] shadow-[0_12px_40px_-18px_rgba(0,0,0,0.9)]">
+            <Film className="h-6 w-6 text-white/80" />
+          </span>
+          <span className="text-sm font-semibold">Video hosted on its original site</span>
+          <span className="text-xs leading-relaxed text-white/60">{REDNOTE_UNAVAILABLE}</span>
         </div>
-      </div>
-    );
-  }
-
-  if (parsed.value.platform === "instagram") {
-    return (
-      <div className={`overflow-hidden bg-black ${className}`}>
-        <InstagramPostEmbed permalink={parsed.value.sourceUrl} title="Instagram video player" />
       </div>
     );
   }

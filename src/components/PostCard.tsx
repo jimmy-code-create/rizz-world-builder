@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -113,18 +113,38 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   });
 
   const reactMut = useMutation({
-    mutationFn: async (emoji: string) => {
+    mutationFn: async ({ emoji, mine }: { emoji: string; mine: boolean }) => {
       if (!user) throw new Error("Sign in to react");
-      const mine = grouped[emoji]?.mine;
       if (mine) await removeReaction(post.id, user.id, emoji);
       else await addReaction(post.id, user.id, emoji);
     },
+    onMutate: async ({ emoji, mine }) => {
+      const queryKey = ["reactions", post.id] as const;
+      await qc.cancelQueries({ queryKey });
+      const previous = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(queryKey) ?? [];
+      const next = mine
+        ? previous.filter((reaction) => reaction.emoji !== emoji || reaction.user_id !== user?.id)
+        : [...previous, { emoji, user_id: user?.id ?? "" }];
+      qc.setQueryData(queryKey, next);
+      return { queryKey, previous };
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reactions", post.id] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _variables, context) => {
+      if (context) qc.setQueryData(context.queryKey, context.previous);
+      toast.error(e.message);
+    },
   });
+  const toggleReaction = (emoji: string) => {
+    if (!user) {
+      toast.error("Sign in to react");
+      return;
+    }
+    const current = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(["reactions", post.id]) ?? reactions.data ?? [];
+    const mine = current.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id);
+    reactMut.mutate({ emoji, mine });
+  };
 
   const accent = post.author?.accent_color || "var(--rizz-pink)";
   const initial = (post.author?.display_name || post.author?.username || "?").charAt(0).toUpperCase();
@@ -238,6 +258,14 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     a.href = post.media_url; a.target = "_blank"; a.rel = "noopener";
     a.click(); toast.success("Opening media");
   };
+  const viewOriginal = () => {
+    if (!externalVideo?.ok) return;
+    const link = document.createElement("a");
+    link.href = externalVideo.value.sourceUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
+  };
 
   if (hidden) return null;
 
@@ -286,7 +314,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
               <Languages className="mr-2 h-4 w-4" /> Translate
             </DropdownMenuItem>
-            {post.media_url && (
+            {externalVideo?.ok && (
+              <DropdownMenuItem onClick={viewOriginal}>
+                <ExternalLink className="mr-2 h-4 w-4" /> View original
+              </DropdownMenuItem>
+            )}
+            {post.media_url && !externalVideo?.ok && (
               <DropdownMenuItem onClick={downloadMedia}>
                 <Download className="mr-2 h-4 w-4" /> Download media
               </DropdownMenuItem>
@@ -391,8 +424,10 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
           {Object.entries(grouped).map(([emoji, { count, mine }]) => (
             <button
               key={emoji}
-              onClick={() => reactMut.mutate(emoji)}
-              className={`text-xs px-2 py-1 rounded-full border transition-all ${
+              type="button"
+              aria-pressed={mine}
+              onClick={() => toggleReaction(emoji)}
+              className={`text-xs px-2 py-1 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
                 mine
                   ? "bg-[var(--rizz-pink)]/15 border-[var(--rizz-pink)]/40 shadow-glow"
                   : "bg-white/5 border-white/10 hover:bg-white/10"
@@ -428,7 +463,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
         </Button>
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="React to post">
               <Smile className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
@@ -437,8 +472,10 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
               {QUICK_EMOJIS.map((e) => (
                 <button
                   key={e}
-                  onClick={() => reactMut.mutate(e)}
-                  className="h-9 w-9 rounded-lg hover:bg-white/10 text-lg transition-transform hover:scale-125"
+                  type="button"
+                  onClick={() => toggleReaction(e)}
+                  aria-label={`React with ${e}`}
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] hover:bg-white/10"
                 >
                   {e}
                 </button>
