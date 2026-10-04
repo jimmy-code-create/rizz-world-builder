@@ -8,6 +8,13 @@
       "when": 1790986187717,
       "tag": "0000_restore_post_reaction_trigger_execution",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791072319805,
+      "tag": "0001_repair_group_invites_blocks_and_messages",
+      "breakpoints": true
     }
   ]
 }

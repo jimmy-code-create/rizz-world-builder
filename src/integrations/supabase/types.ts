@@ -619,6 +619,7 @@ export type Database = {
           group_id: string
           id: string
           max_uses: number | null
+          revoked_at: string | null
           uses: number
         }
         Insert: {
@@ -629,6 +630,7 @@ export type Database = {
           group_id: string
           id?: string
           max_uses?: number | null
+          revoked_at?: string | null
           uses?: number
         }
         Update: {
@@ -639,6 +641,7 @@ export type Database = {
           group_id?: string
           id?: string
           max_uses?: number | null
+          revoked_at?: string | null
           uses?: number
         }
         Relationships: [
@@ -1836,6 +1839,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_group_invite: { Args: { _code: string }; Returns: string }
       award_badge: {
         Args: { _slug: string; _user: string }
         Returns: undefined
@@ -1846,6 +1850,18 @@ export type Database = {
           _visibility: Database["public"]["Enums"]["post_visibility"]
         }
         Returns: boolean
+      }
+      get_group_invite_preview: {
+        Args: { _code: string }
+        Returns: {
+          accent_color: string
+          group_id: string
+          group_name: string
+          icon_url: string
+          member_count: number
+          status: string
+          topic: string
+        }[]
       }
       has_role: {
         Args: {
@@ -1868,6 +1884,18 @@ export type Database = {
         Returns: boolean
       }
       pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
+      preview_group_invite: {
+        Args: { _code: string }
+        Returns: {
+          accent_color: string
+          group_id: string
+          group_name: string
+          icon_url: string
+          member_count: number
+          status: string
+          topic: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
