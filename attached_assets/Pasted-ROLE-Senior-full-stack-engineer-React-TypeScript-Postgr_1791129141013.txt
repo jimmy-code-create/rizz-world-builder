@@ -1,0 +1,223 @@
+ROLE
+Senior full-stack engineer (React + TypeScript, PostgreSQL/Supabase,
+WebRTC). Project: RIZZ, a Gen Z social app (feed, stories, reels, DMs,
+groups, calls, chat stories). Frontend: Vite + React + TypeScript on Render
+from this GitHub repo. Backend: Supabase Postgres, which I manage by
+running SQL files myself in the Supabase SQL editor.
+
+HARD RULES
+- You write code and SQL files. You never run SQL, never touch .env or
+  secrets, never commit keys. Keep .env in .gitignore and update
+  .env.example.
+- Learn the REAL schema first: read src/integrations/supabase/types.ts and
+  supabase/migrations/*. Never guess table or column names. If something
+  is missing, create it in SQL.
+- npm run build must pass. Keep the Render SPA rewrite (/* -> /index.html).
+- Free tools only. Don't rewrite what works. Typed, small, reusable
+  components. Mobile first (390px), then desktop.
+- The frontend must degrade gracefully when a SQL file has not been run
+  yet (hide or disable the feature with a friendly message, never crash).
+- Never show raw backend or database error text in the UI.
+
+PHASE 0 - AUDIT
+Report root causes (file and line) for: group invite "invalid link" (the
+RPC accept_group_invite(_code) was reported missing from the schema cache),
+group messages failing, no unblock option, like/comment count glitches,
+calls failing between PC and mobile, overlaps on stories and reels, and
+chat lag. Then fix them.
+
+PHASE 1 - BACKEND AS SQL (folder backend-sql/)
+Rules for every file: idempotent and re-runnable (create ... if not
+exists, create or replace function, drop policy if exists before create),
+wrapped in begin/commit, RLS enabled on every new table, SECURITY DEFINER
+functions use set search_path = public with revoke all from public and
+grant execute to authenticated only, no data loss, no column renames or
+drops, and end with notify pgrst, 'reload schema'. Each file begins with a
+comment saying what it does and ends with commented verification queries
+and a rollback note.
+00_audit.sql: read-only queries listing tables, columns, policies,
+ functions, triggers and realtime publications (so I can paste the output
+ back when something breaks).
+01_group_invites.sql: invite codes with expiry, max_uses, uses, revoked_at.
+ RPC get_group_invite_preview(_code) (name, avatar, member_count; callable
+ by anon and authenticated). RPC accept_group_invite(_code text) returning
+ the group id: validates the code, rejects blocked users and existing
+ members, enforces friends-only (mutual follow with at least one member),
+ inserts the member, increments uses. Stable error codes via raise
+ exception: invalid, expired, revoked, already_member, not_friends,
+ blocked. Admin RPCs to create and revoke invites.
+02_blocks.sql: blocks with insert and delete policies for the blocker,
+ unique (blocker_id, blocked_id), index, helper is_blocked(a, b). Messages,
+ invites, calls and story visibility respect it.
+03_group_messages.sql: members-only SELECT and INSERT RLS, realtime enabled,
+ index (group_id, created_at desc), reply_to_id, edited_at, deleted_at, and
+ a message_deletions table for "delete for me" vs "for everyone".
+04_reactions_counts.sql: unique (user_id, target_id) on likes; like and
+ comment counters kept by triggers or RPCs that return the true count;
+ message reactions table; index on comments(post_id).
+05_stories.sql: story_views, story_reactions (unique per user per story),
+ an RPC that sends a story reply into a DM, audience rules reuse
+ close_friends, 24h expiry via a view or filter.
+06_calls.sql: calls (id, conversation_type dm|group, conversation_id,
+ caller_id, kind audio|video, status ringing|active|ended|missed|declined,
+ created_at, answered_at, ended_at) and call_participants (call_id,
+ user_id, state invited|joined|left|declined). RLS: only participants read,
+ only the caller inserts, users update only their own participant row.
+ RPCs start_call, join_call, decline_call, end_call. A function marks
+ ringing calls older than 45s as missed and inserts a "Missed call"
+ message. Block rules apply. Realtime enabled. Signaling uses Realtime
+ Broadcast on channel call:{id}; if private channels are used, add RLS on
+ realtime.messages so only participants can send or receive.
+07_chat_stories.sql: chat_stories (id, author_id, title, hook, language,
+ cover_url, characters jsonb, status draft|published, created_at),
+ chat_story_chapters (story_id, idx, title, data jsonb, unique
+ (story_id, idx)), chat_story_progress (user_id, story_id, chapter_idx,
+ scene_id, speed, updated_at), chat_story_reactions. RLS: published stories
+ readable by everyone, authors manage their own, each user manages their
+ own progress.
+08_storage.sql: buckets chat-media, story-media, story-audio with policies
+ (public read for story-audio, owner write; chat-media only for
+ conversation members), size and mime limits.
+09_indexes.sql: indexes for every hot path (messages, notifications,
+ follows, stories by expires_at, reels feed).
+README.md: the exact run order, what to expect, and verification queries.
+
+PHASE 2 - WORKER (folder worker/, Cloudflare, free)
+A Worker (wrangler.jsonc + src/index.ts) that returns short-lived TURN
+credentials. It verifies the user's Supabase JWT, limits CORS to my
+frontend origin, rate-limits per user, and reads secrets only from
+wrangler secrets. The frontend uses VITE_WORKER_URL. Document the free
+TURN option and setup in worker/README.md. Skip Web Push.
+
+PHASE 3 - DESIGN SYSTEM "Midnight Neon" AND APP SHELL
+- Tokens: bg #0B0714, surface #150F22, raised #1E1630, border
+  rgba(255,255,255,.08), text #F5F1FF, muted #A79DC2, gradient #FF2E93 to
+  #7B2FF7, success #3DDC97, danger #FF5C7A. Fonts Sora (headings) and Inter.
+  Radii: bubble 20, card 24, button full. 8px grid, 44px tap targets.
+- Gradient only on sent bubbles, primary buttons, story rings, active tab.
+  Received bubbles are solid raised. Less glow.
+- Layout: h-dvh flex column, content flex-1 min-h-0 overflow-y-auto, safe
+  area insets. Inside a DM, group, channel, story or reel, hide the global
+  header and bottom nav. Bars are 0.92 opaque. backdrop-filter only on
+  toasts, menus, modals and top bars, never on list items.
+- TOASTS: one notify API (success, info, error(err, context)). Small
+  premium glass: top-center below the safe area, max-width 340, padding
+  10x14, radius 16, background rgba(21,15,34,.55), blur 16px saturate 1.4,
+  1px border rgba(255,255,255,.12), 3px accent bar by type, 16px icon, 14px
+  title and an optional 12px muted line. Slide down 150ms, auto-dismiss 3s
+  (errors 5s), swipe up to dismiss, max 2 stacked, aria-live, honour
+  prefers-reduced-motion. Map every error to a friendly message (network,
+  not_logged_in, permission, rate_limit, invalid, expired, revoked,
+  already_member, not_friends, blocked, unknown). Raw errors go to the
+  console only.
+
+PHASE 4 - CHAT, GROUPS, BLOCKS
+- Pill bubbles, wrapping (max-width 78%, overflow-wrap anywhere), grouped
+  by sender, input placeholder "Message", auto-growing, no "Shift+Enter"
+  text, pinned above the keyboard.
+- Optimistic send with sending/sent/failed and retry, realtime deduped by
+  id, paginate 30, memoized rows, content-visibility auto.
+- Images: compress, instant preview with progress, fullscreen viewer.
+  Reply with quote, accent line and swipe, tap the quote to jump to it.
+  Wallpaper per chat. Delete for me / for everyone with an "unsent"
+  placeholder.
+- Invite links render as a tappable card (get_group_invite_preview). The
+  Join dialog accepts a full URL or a bare code (take the part after
+  /join/). Logged-out users log in and then auto-join. Clear states for
+  expired, revoked, already member and not friends.
+- Group send failures show a friendly toast and a retry button.
+- Block/Unblock: DM menu and profile show Unblock when blocked. Settings >
+  Privacy > Blocked users with an Unblock button, updating instantly.
+
+PHASE 5 - LONG-PRESS MENU
+Portal above everything. Dim and blur the whole chat so no text shows
+through, and lift the pressed message. Reaction pill above (6 emojis plus
+"+"), action sheet below: Reply, Copy, Forward, Pin, Edit (own), Report,
+Delete (red, for me / for everyone). 48px rows, line icons, glass panel at
+0.9 opacity, clamped inside the viewport, haptic on open. No call items
+here. Desktop: right-click opens it, hover shows quick react and reply.
+
+PHASE 6 - STORIES (content only)
+Full-screen portal above header and nav. Media cover for 9:16, contain over
+a blurred copy for other ratios. Text stories: large centered text. No
+duplicate caption under text stories; real captions are overlays on a soft
+gradient. Progress bars and a small translucent header (avatar, name, time,
+viewers, close). Hold = pause and hide UI, tap left/right, swipe down to
+close. Glass reaction row and reply input pinned above the keyboard
+(visualViewport), never clipped. Reactions and replies use 05_stories.sql.
+Creator: text with fonts and colours, drawing, stickers, poll, question
+box, mentions, filters, audience (Everyone / Close Friends).
+
+PHASE 7 - REELS
+Full-height snap scroll. Hide the global "+" FAB here and fix the Remix chip
+overlap. Right action rail (like, comment, save, share, remix) with counts
+under the icons, neutral icons, pink only when active, no oversized or blue
+heart. External-video placeholder becomes a polished card: thumbnail (oEmbed
+when available), play icon, source domain chip and an "Open original"
+button; use the official embed when allowed; never download or rehost.
+
+PHASE 8 - COUNT GLITCH
+One source of truth per post (React Query). Optimistic toggle with
+rollback, dedupe realtime events by id so an optimistic update and its echo
+never double count, debounce rapid taps, no flicker. Format 1.2K / 3.4M.
+
+PHASE 9 - CALLS (PC-PC, mobile-mobile, PC-mobile, mobile-PC)
+- Remove any userAgent/isMobile branching that blocks combinations.
+- Handshake: caller sends "ring", callee accepts and subscribes, callee
+  sends "ready", then the caller creates the offer. Perfect negotiation,
+  ICE candidate queue, trickle ICE, ICE restart on failure, "Reconnecting"
+  and poor-connection indicators.
+- ICE: STUN + TURN (udp, tcp, tls 443) with credentials from the Worker.
+  If TURN is missing, show a clear error.
+- Video: prefer VP8, H264 fallback; mobile 540p ~800kbps, desktop 720p.
+- Audio: echoCancellation, noiseSuppression, autoGainControl all true, plus
+  an "Enhanced noise cancellation" toggle (RNNoise WASM in an AudioWorklet,
+  safe fallback). Fix "I cannot hear you": remote stream on an <audio
+  autoplay playsinline> element, resume AudioContext on a gesture, and a
+  "Tap to enable sound" button if play() is blocked.
+- Controls: mute, speaker, camera, flip, end, audio level meter. Wake Lock
+  during calls.
+- Not in the app: full-screen incoming sheet on mobile, top banner on
+  desktop, ringtone (vibration fallback), Accept/Decline, 45s timeout.
+  "Call in progress - Join" pill in the chat header, DM list and group
+  header. Deep link /call/:id (login first, then return). Missed calls
+  appear in the chat with a "Call back" button.
+
+PHASE 10 - CHAT STORY PLAYER AND IMPORT
+- Speed pill 1x / 2x / 3x scaling message delays, typing indicators,
+  auto-advance and audio playbackRate (preservesPitch true). Saved per user.
+  If the speech rate cap is reached, shorten pauses.
+- Strongly different voices: each character has voice_profile {provider:
+  "audio_url" | "webspeech", lang, voiceURI, pitch, rate, volume}. Use
+  scene.audio_url when present, otherwise Web Speech (wait for
+  voiceschanged, prefer hi-IN). Auto-assign a different voice to every
+  character with at least a 0.25 pitch gap (narrator low and slow, young
+  female high, villain very low and slow). "Voice cast" screen with a
+  preview per character and a mute toggle.
+- Hook screen before scene 1: cinematic card with a typewriter hook line,
+  genre tag, estimated minutes and a Start button.
+- Long stories (10,000+ words): chapter list, lazy-load per chapter,
+  resume progress, prefetch the next scene's audio, virtualized backlog.
+- Visual: image fills the card, Hindi text white 18px+ over a dark gradient,
+  speaking highlight on the avatar, typing indicator, reactions.
+- Author-only "Import story JSON" screen that inserts through the user's own
+  session under RLS. Schema: {id, title, hook, language, characters:[{id,
+  name, role, voice_profile, bubble_color}], chapters:[{id, title, scenes:
+  [{id, time_label, narration, image_url, audio_url, messages:[{
+  character_id, type, text, emotion, delay_ms}], choice?}]}]}. Add
+  src/data/room4b.json as a placeholder.
+
+PHASE 11 - DESKTOP, COMPATIBILITY, SPEED
+Desktop >=1024px: two-pane messages, centered max-width layouts, Enter to
+send, Esc to close, Ctrl+K search, hover states, right-click menus,
+centered 9:16 story card with side arrows. Lazy routes and images (set
+width and height, decoding=async), virtualized long lists, request dedupe,
+prefetch next story and reel, skeletons. Test Chrome, Safari and Firefox.
+
+OUTPUT (required)
+1. A changelog and docs/TEST_CHECKLIST.md (include the 4 call combinations,
+   invite join, block/unblock, group send, counts, story and reel layouts,
+   chat story speeds and voices).
+2. backend-sql/README.md with the run order and verification queries.
+3. After each phase, 3 simple lines on why the bug happened so I learn.
+4. End with "Safe to push" only if npm run build passes.
