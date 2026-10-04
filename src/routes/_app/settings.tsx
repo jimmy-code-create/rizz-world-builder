@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteMyAccount } from "@/lib/account.functions";
+import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 
 const PREF_KEY = "rizz:prefs";
 type Prefs = {
@@ -381,6 +382,8 @@ function SettingsPage() {
       </section>
 
       {/* Account */}
+      <PushNotificationSettings />
+
       <section className="glass rounded-3xl p-5 border border-white/5">
         <h2 className="font-display font-semibold mb-3">Account</h2>
         <div className="space-y-2 mb-3">

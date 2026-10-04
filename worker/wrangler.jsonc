@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rizz-push-tts",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "SUPABASE_URL": "https://REPLACE_WITH_YOUR_LOVABLE_SUPABASE_PROJECT.supabase.co",
+    "SUPABASE_ANON_KEY": "REPLACE_WITH_YOUR_PUBLIC_SUPABASE_KEY",
+    "VAPID_PUBLIC_KEY": "REPLACE_AFTER_GENERATING_VAPID_KEYS",
+    "VAPID_SUBJECT": "mailto:push@rizz.app",
+    "GEMINI_TTS_MODEL": "gemini-3.8-flash-tts",
+    "ALLOWED_ORIGIN": "https://REPLACE_WITH_YOUR_FRONTEND_DOMAIN"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

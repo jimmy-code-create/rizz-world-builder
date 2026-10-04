@@ -102,7 +102,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       setLiked(!wasLiked);
       setLikeCount((c) => c + (wasLiked ? -1 : 1));
       try {
-        await toggleLike(post.id, user.id, wasLiked);
+        const result = await toggleLike(post.id, user.id, wasLiked);
+        setLiked(result.liked);
+        setLikeCount(result.like_count);
       } catch (e) {
         setLiked(wasLiked);
         setLikeCount((c) => c + (wasLiked ? 1 : -1));
@@ -549,6 +551,7 @@ function CommentsThread({ postId }: { postId: string }) {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [body, setBody] = useState("");
+  const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
   const comments = useQuery({
     queryKey: ["comments", postId],
     queryFn: () => fetchComments(postId),
@@ -557,10 +560,11 @@ function CommentsThread({ postId }: { postId: string }) {
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to comment");
       if (!body.trim()) return;
-      await addComment(postId, user.id, body.trim());
+      await addComment(postId, user.id, body.trim(), replyTo?.id);
     },
     onSuccess: () => {
       setBody("");
+      setReplyTo(null);
       qc.invalidateQueries({ queryKey: ["comments", postId] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     },
@@ -581,8 +585,9 @@ function CommentsThread({ postId }: { postId: string }) {
         )}
         {comments.data?.map((c) => {
           const a = (c as unknown as { author: { username: string; display_name: string | null; avatar_url: string | null } }).author;
+          const comment = c as typeof c & { parent_comment_id?: string | null };
           return (
-            <div key={c.id} className="flex gap-2 text-sm">
+            <div key={c.id} className={`flex gap-2 text-sm ${comment.parent_comment_id ? "ml-8" : ""}`}>
               <Avatar className="h-7 w-7 shrink-0">
                 <AvatarImage src={a?.avatar_url ?? undefined} />
                 <AvatarFallback className="bg-gradient-primary text-[10px]">
@@ -593,34 +598,203 @@ function CommentsThread({ postId }: { postId: string }) {
                 <span className="font-semibold text-xs">@{a?.username}</span>{" "}
                 <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
                 <p className="text-sm leading-snug mt-0.5">{c.body}</p>
+                <div className="mt-1 flex items-center gap-3">
+                  {user && (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-[var(--rizz-pink)]"
+                      onClick={() => setReplyTo({ id: c.id, username: a?.username ?? "user" })}
+                    >
+                      Reply
+                    </button>
+                  )}
+                  {user?.id === c.author_id && (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-destructive"
+                      onClick={async () => {
+                        const { error } = await (supabase.from as any)("post_comments")
+                          .update({ deleted_at: new Date().toISOString() })
+                          .eq("id", c.id)
+                          .eq("author_id", user.id);
+                        if (error) {
+                          toast.error(error.message);
+                          return;
+                        }
+                        void qc.invalidateQueries({ queryKey: ["comments", postId] });
+                        void qc.invalidateQueries({ queryKey: ["feed"] });
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <CommentInteractions commentId={c.id} />
               </div>
             </div>
           );
         })}
       </div>
       {user && (
-        <form
-          onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
-          className="flex items-center gap-2 p-3 border-t border-white/5"
-        >
-          <Avatar className="h-7 w-7 shrink-0">
-            <AvatarImage src={profile?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-[10px]">
-              {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <Input
-            value={body}
-            onChange={(e) => setBody(e.target.value.slice(0, 500))}
-            placeholder="Add a comment…"
-            className="bg-transparent border-white/10 h-9"
-          />
-          <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-gradient-primary border-0 h-9 w-9">
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
+        <div className="border-t border-white/5">
+          {replyTo && (
+            <div className="flex items-center justify-between px-3 pt-2 text-[11px] text-muted-foreground">
+              <span>Replying to @{replyTo.username}</span>
+              <button type="button" onClick={() => setReplyTo(null)} className="hover:text-foreground">Cancel</button>
+            </div>
+          )}
+          <form
+            onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
+            className="flex items-center gap-2 p-3"
+          >
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarImage src={profile?.avatar_url ?? undefined} />
+              <AvatarFallback className="bg-gradient-primary text-[10px]">
+                {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <Input
+              value={body}
+              onChange={(e) => setBody(e.target.value.slice(0, 500))}
+              placeholder={replyTo ? "Write a reply…" : "Add a comment…"}
+              className="bg-transparent border-white/10 h-9"
+            />
+            <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-gradient-primary border-0 h-9 w-9">
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
       )}
     </motion.div>
+  );
+}
+
+type CommentReaction = { emoji: string; user_id: string };
+type CommentInteractions = { reactions: CommentReaction[]; likes: string[] };
+
+function CommentInteractions({ commentId }: { commentId: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const key = ["comment-interactions", commentId] as const;
+  const interactions = useQuery({
+    queryKey: key,
+    enabled: !!user,
+    queryFn: async (): Promise<CommentInteractions> => {
+      const [reactionResult, likeResult] = await Promise.all([
+        (supabase.from as any)("comment_reactions").select("emoji,user_id").eq("comment_id", commentId),
+        (supabase.from as any)("comment_likes").select("user_id").eq("comment_id", commentId),
+      ]);
+      if (reactionResult.error) throw reactionResult.error;
+      if (likeResult.error) throw likeResult.error;
+      return {
+        reactions: reactionResult.data ?? [],
+        likes: (likeResult.data ?? []).map((row: { user_id: string }) => row.user_id),
+      };
+    },
+    staleTime: 10_000,
+  });
+  const current = interactions.data ?? { reactions: [], likes: [] };
+  const grouped = current.reactions.reduce<Record<string, { count: number; mine: boolean }>>((result, reaction) => {
+    result[reaction.emoji] ??= { count: 0, mine: false };
+    result[reaction.emoji].count += 1;
+    result[reaction.emoji].mine ||= reaction.user_id === user?.id;
+    return result;
+  }, {});
+  const liked = current.likes.includes(user?.id ?? "");
+
+  const react = useMutation({
+    mutationFn: async (emoji: string) => {
+      const { data, error } = await (supabase.rpc as any)("toggle_comment_reaction", {
+        _comment_id: commentId,
+        _emoji: emoji,
+      });
+      if (error) throw error;
+      return data as { emoji: string; count: number; mine: boolean }[];
+    },
+    onMutate: async (emoji) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
+      const exists = previous.reactions.some((reaction) => reaction.emoji === emoji && reaction.user_id === user?.id);
+      qc.setQueryData<CommentInteractions>(key, {
+        ...previous,
+        reactions: exists
+          ? previous.reactions.filter((reaction) => reaction.emoji !== emoji || reaction.user_id !== user?.id)
+          : [...previous.reactions, { emoji, user_id: user?.id ?? "" }],
+      });
+      return { previous };
+    },
+    onSuccess: (data) => {
+      qc.setQueryData<CommentInteractions>(key, (previous) => ({
+        reactions: data.flatMap((entry) => Array.from({ length: entry.count }, (_, index) => ({
+          emoji: entry.emoji,
+          user_id: entry.mine && index === 0 ? user?.id ?? "" : `other-${entry.emoji}-${index}`,
+        }))),
+        likes: previous?.likes ?? [],
+      }));
+    },
+    onError: (error: Error, _emoji, context) => {
+      if (context) qc.setQueryData(key, context.previous);
+      toast.error(error.message);
+    },
+  });
+
+  const toggleLike = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("toggle_comment_like", { _comment_id: commentId });
+      if (error) throw error;
+      return data as { liked: boolean; like_count: number };
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
+      qc.setQueryData<CommentInteractions>(key, {
+        ...previous,
+        likes: liked
+          ? previous.likes.filter((id) => id !== user?.id)
+          : [...previous.likes, user?.id ?? ""],
+      });
+      return { previous };
+    },
+    onSuccess: (result) => {
+      qc.setQueryData<CommentInteractions>(key, (previous) => {
+        const likes = (previous?.likes ?? []).filter((id) => id !== user?.id);
+        if (result.liked && user) likes.push(user.id);
+        return { reactions: previous?.reactions ?? [], likes };
+      });
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context) qc.setQueryData(key, context.previous);
+      toast.error(error.message);
+    },
+  });
+
+  if (!user) return null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      <button
+        type="button"
+        aria-pressed={liked}
+        disabled={toggleLike.isPending}
+        onClick={() => toggleLike.mutate()}
+        className={`rounded-full px-1.5 py-0.5 text-[10px] ${liked ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`}
+      >
+        ♥ {current.likes.length || ""}
+      </button>
+      {["❤️", "😂", "🔥"].map((emoji) => (
+        <button
+          type="button"
+          key={emoji}
+          aria-pressed={grouped[emoji]?.mine ?? false}
+          disabled={react.isPending}
+          onClick={() => react.mutate(emoji)}
+          className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
+            grouped[emoji]?.mine ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10" : "border-white/10"
+          }`}
+        >
+          {emoji} {grouped[emoji]?.count || ""}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -78,6 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "RIZZ — Your feed. Your server. Your world." },
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "author", content: "RIZZ" },
+      { name: "theme-color", content: "#ff2d92" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
       { property: "og:description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { property: "og:type", content: "website" },
@@ -90,6 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
@@ -123,6 +126,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+    void navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch((error) => {
+      console.warn("RIZZ service worker registration failed", error);
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

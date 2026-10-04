@@ -1,0 +1,18 @@
+{
+  "name": "RIZZ",
+  "short_name": "RIZZ",
+  "description": "Chat, stories, and real-time connections.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090711",
+  "theme_color": "#ff2d92",
+  "icons": [
+    {
+      "src": "/rizz-pwa.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

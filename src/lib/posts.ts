@@ -29,6 +29,68 @@ export type FeedPost = {
 
 const FEED_COLS =
   "id, author_id, caption, media_url, media_type, like_count, comment_count, reaction_count, created_at, visibility, quote_post_id, remix_of, edited_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
+const FEED_COLS_WITHOUT_COUNTS =
+  "id, author_id, caption, media_url, media_type, reaction_count, created_at, visibility, quote_post_id, remix_of, edited_at, author:profiles!posts_author_id_fkey(username, display_name, avatar_url, accent_color)";
+
+function isMissingCountColumn(error: { message?: string } | null) {
+  const message = (error?.message ?? "").toLowerCase();
+  return (message.includes("like_count") || message.includes("comment_count"))
+    && (message.includes("does not exist") || message.includes("schema cache") || message.includes("column"));
+}
+
+async function countRows(table: "post_likes" | "post_comments", postId: string) {
+  const source = (supabase.from as any)(table);
+  let query = source.select("post_id", { count: "exact", head: true }).eq("post_id", postId);
+  if (table === "post_comments") {
+    const active = await query.is("deleted_at", null);
+    if (!active.error) return active.count ?? 0;
+    const message = String(active.error.message ?? "").toLowerCase();
+    if (!message.includes("deleted_at") && !message.includes("schema cache")) throw active.error;
+    query = source.select("post_id", { count: "exact", head: true }).eq("post_id", postId);
+  }
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function hydrateMissingCounts<T extends { id: string; like_count?: number; comment_count?: number }>(rows: T[]) {
+  const missing = rows.filter((row) => row.like_count == null || row.comment_count == null);
+  if (!missing.length) return rows as (T & Pick<FeedPost, "like_count" | "comment_count">)[];
+  const ids = missing.map((row) => row.id);
+  const { data, error } = await (supabase.rpc as any)("get_post_counts", { _post_ids: ids });
+  const counts = new Map<string, { like_count: number; comment_count: number }>();
+  if (!error && Array.isArray(data)) {
+    for (const row of data) counts.set(row.post_id, {
+      like_count: Number(row.like_count ?? 0),
+      comment_count: Number(row.comment_count ?? 0),
+    });
+  }
+  const fallbackIds = ids.filter((id) => !counts.has(id));
+  await Promise.all(fallbackIds.map(async (id) => {
+    const [like_count, comment_count] = await Promise.all([
+      countRows("post_likes", id),
+      countRows("post_comments", id),
+    ]);
+    counts.set(id, { like_count, comment_count });
+  }));
+  return rows.map((row) => {
+    const count = counts.get(row.id);
+    return {
+      ...row,
+      like_count: row.like_count ?? count?.like_count ?? 0,
+      comment_count: row.comment_count ?? count?.comment_count ?? 0,
+    };
+  }) as (T & Pick<FeedPost, "like_count" | "comment_count">)[];
+}
+
+async function queryFeedPosts<T extends { id: string; like_count?: number; comment_count?: number }>(
+  query: (columns: string) => PromiseLike<{ data: unknown[] | null; error: { message?: string } | null }>,
+) {
+  let result = await query(FEED_COLS);
+  if (isMissingCountColumn(result.error)) result = await query(FEED_COLS_WITHOUT_COUNTS);
+  if (result.error) throw result.error;
+  return hydrateMissingCounts((result.data ?? []) as T[]);
+}
 
 export async function addVerifiedCreatorFlags<T extends { author_id: string; author: FeedPost["author"] }>(posts: T[]): Promise<T[]> {
   const authorIds = [...new Set(posts.map((post) => post.author_id).filter(Boolean))];
@@ -51,37 +113,32 @@ export async function addVerifiedCreatorFlags<T extends { author_id: string; aut
 }
 
 export async function fetchFeed(limit = 30): Promise<FeedPost[]> {
-  const { data, error } = await supabase
+  const data = await queryFeedPosts<FeedPost>((columns) => supabase
     .from("posts")
-    .select(FEED_COLS)
+    .select(columns)
     .neq("media_type", "video")
     .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
+    .limit(limit));
+  return addVerifiedCreatorFlags(data);
 }
 
 /** Fetch a single post for quote-embeds. */
 export async function fetchPostById(id: string): Promise<FeedPost | null> {
-  const { data, error } = await supabase.from("posts").select(FEED_COLS).eq("id", id).maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  const [post] = await addVerifiedCreatorFlags([data as unknown as FeedPost]);
+  const rows = await queryFeedPosts<FeedPost>((columns) => supabase.from("posts").select(columns).eq("id", id));
+  if (!rows.length) return null;
+  const [post] = await addVerifiedCreatorFlags(rows);
   return post;
 }
 
 export async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
-  const { data, error } = await supabase
+  const data = await queryFeedPosts<FeedPost>((columns) => supabase
     .from("posts")
-    .select(
-      FEED_COLS + ", is_pinned, pinned_at"
-    )
+    .select(columns.replace("edited_at,", "edited_at, is_pinned, pinned_at,"))
     .eq("author_id", userId)
     .order("is_pinned", { ascending: false })
     .order("pinned_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
+    .order("created_at", { ascending: false }));
+  return addVerifiedCreatorFlags(data);
 }
 
 export async function createPost(input: {
@@ -196,19 +253,11 @@ export async function rollbackCreatedPost(postId: string, mediaUrl?: string | nu
 }
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
-  if (liked) {
-    const { error } = await supabase
-      .from("post_likes")
-      .delete()
-      .eq("post_id", postId)
-      .eq("user_id", userId);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("post_likes")
-      .insert({ post_id: postId, user_id: userId });
-    if (error) throw error;
-  }
+  void userId;
+  void liked;
+  const { data, error } = await (supabase.rpc as any)("toggle_like", { _post_id: postId });
+  if (error) throw error;
+  return data as { liked: boolean; like_count: number };
 }
 
 export async function fetchMyLikes(userId: string, postIds: string[]) {
@@ -223,20 +272,17 @@ export async function fetchMyLikes(userId: string, postIds: string[]) {
 }
 
 export async function addReaction(postId: string, userId: string, emoji: string) {
-  const { error } = await supabase
-    .from("post_reactions")
-    .insert({ post_id: postId, user_id: userId, emoji });
-  if (error && !error.message.includes("duplicate")) throw error;
+  void userId;
+  const { data, error } = await (supabase.rpc as any)("toggle_post_reaction", {
+    _post_id: postId,
+    _emoji: emoji,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function removeReaction(postId: string, userId: string, emoji: string) {
-  const { error } = await supabase
-    .from("post_reactions")
-    .delete()
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .eq("emoji", emoji);
-  if (error) throw error;
+  return addReaction(postId, userId, emoji);
 }
 
 export async function fetchReactions(postId: string) {
@@ -249,23 +295,53 @@ export async function fetchReactions(postId: string) {
 }
 
 export async function fetchComments(postId: string) {
-  const { data, error } = await supabase
-    .from("post_comments")
-    .select(
-      "id, body, created_at, author_id, author:profiles!post_comments_author_id_fkey(username, display_name, avatar_url)"
-    )
+  const source = (supabase.from as any)("post_comments");
+  const columns =
+    "id, body, created_at, author_id, parent_comment_id, deleted_at, author:profiles!post_comments_author_id_fkey(username, display_name, avatar_url)";
+  let { data, error } = await source
+    .select(columns)
     .eq("post_id", postId)
     .order("created_at", { ascending: true })
     .limit(100);
+  if (error && /deleted_at|parent_comment_id|schema cache/i.test(error.message ?? "")) {
+    ({ data, error } = await source
+      .select("id, body, created_at, author_id, author:profiles!post_comments_author_id_fkey(username, display_name, avatar_url)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true })
+      .limit(100));
+  }
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).filter((comment: { deleted_at?: string | null }) => !comment.deleted_at);
 }
 
-export async function addComment(postId: string, userId: string, body: string) {
-  const { error } = await supabase
-    .from("post_comments")
-    .insert({ post_id: postId, author_id: userId, body });
+export async function addComment(postId: string, userId: string, body: string, parentCommentId?: string) {
+  const payload = {
+    post_id: postId,
+    author_id: userId,
+    body,
+    ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
+  };
+  const { error } = await (supabase.from as any)("post_comments")
+    .insert(payload);
+  if (error && parentCommentId && /parent_comment_id|schema cache/i.test(error.message ?? "")) {
+    throw new Error("Replies need the comment-count setup in backend-sql/12_comment_counts.sql.");
+  }
   if (error) throw error;
+}
+
+export async function toggleCommentLike(commentId: string) {
+  const { data, error } = await (supabase.rpc as any)("toggle_comment_like", { _comment_id: commentId });
+  if (error) throw error;
+  return data as { liked: boolean; like_count: number };
+}
+
+export async function toggleCommentReaction(commentId: string, emoji: string) {
+  const { data, error } = await (supabase.rpc as any)("toggle_comment_reaction", {
+    _comment_id: commentId,
+    _emoji: emoji,
+  });
+  if (error) throw error;
+  return data as { emoji: string; count: number; mine: boolean }[];
 }
 
 export async function deletePost(postId: string) {
@@ -320,23 +396,21 @@ export async function reportPost(input: {
 }
 
 export async function fetchReels(limit = 30): Promise<FeedPost[]> {
-  const { data, error } = await supabase
+  const data = await queryFeedPosts<FeedPost>((columns) => supabase
     .from("posts")
-    .select(FEED_COLS)
+    .select(columns)
     .eq("media_type", "video")
     .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
+    .limit(limit));
+  return addVerifiedCreatorFlags(data);
 }
 
 /** Reels that remix a given reel. */
 export async function fetchRemixes(postId: string): Promise<FeedPost[]> {
-  const { data, error } = await supabase
+  const data = await queryFeedPosts<FeedPost>((columns) => supabase
     .from("posts")
-    .select(FEED_COLS)
+    .select(columns)
     .eq("remix_of", postId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return addVerifiedCreatorFlags((data ?? []) as unknown as FeedPost[]);
+    .order("created_at", { ascending: false }));
+  return addVerifiedCreatorFlags(data);
 }
