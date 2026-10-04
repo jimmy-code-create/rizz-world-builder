@@ -18,3 +18,10 @@
 - Fix: Added a source-branded poster card with an Open original link, moved reel upload to the top of the reel area, and hid the global create-post button on Reels.
 
 No official oEmbed thumbnail is present in the current reel data, so the external card uses a branded poster rather than fetching or rehosting media.
+
+## 2026-10-04 — Room 4B story and narration
+
+- Expanded the four existing Room 4B branches with complete closing sequences and distinct endings.
+- Set story playback to exact 1x, 1.5x, and 2x rates.
+- Prefer different installed system voices by character and language, with separate pitch and volume profiles when devices expose fewer voices.
+- Kept narration on browser-native speech synthesis; this does not require an API key or paid voice service.

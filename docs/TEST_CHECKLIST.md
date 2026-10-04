@@ -7,6 +7,9 @@
 - [ ] In a DM, long-pressing a message dims and blurs the chat while keeping the selected message and menu readable.
 - [ ] The DM menu shows six quick reactions and a working additional-reactions control; it has no voice/video call actions.
 - [ ] Copy, reply, report, and available delete actions still work from the DM menu.
+- [ ] Room 4B can be played in Hindi and English through all four story branches, reaches a distinct ending on each path, and replays from the start.
+- [ ] Room 4B offers exact 1x, 1.5x, and 2x narration rates.
+- [ ] Room 4B selects distinct installed voices for narrator, player, Asha, Kabir, and Echo where available; pitch and volume profiles distinguish characters when only one system voice is available.
 - [ ] On mobile Reels, the global create-post button is hidden and reel upload does not overlap Remix or the action rail.
 - [ ] External Reels show the original source and an Open original link; no video is downloaded or rehosted.
 - [ ] Verify the external-video card at full-screen Reel size and in the compact post-embed size.
@@ -23,7 +26,7 @@
 - [ ] Like and comment counts stay correct after rapid taps and realtime updates.
 - [ ] Story layout works for media and text stories without overlapping captions or global navigation.
 - [ ] Reel layout has no Remix overlap; official embeds and original-site cards remain distinct.
-- [ ] Chat-story playback speeds 1x, 2x, and 3x scale message timing and audio playback.
+- [ ] Chat-story playback offers 1x, 1.5x, and 2x, and each selection changes narration speed exactly.
 - [ ] Chat-story characters use distinct voices, and each voice can be previewed or muted.
 
 ## Build checks

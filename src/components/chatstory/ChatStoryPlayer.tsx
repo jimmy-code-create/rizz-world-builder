@@ -67,14 +67,56 @@ const ROOM_4B_SCENES: Scene[] = [
   { id: "scene-4", label: ROOM_4B_SCENE_LABELS["scene-4"].en, image: panelFour },
 ];
 
-const SPEEDS = [0.7, 0.8, 0.9] as const;
-const VOICE_PROFILES: Record<string, { voiceSlot: number; pitch: number; pace: number }> = {
-  narrator: { voiceSlot: 0, pitch: 0.9, pace: 0.88 },
-  me: { voiceSlot: 1, pitch: 1.02, pace: 1 },
-  Asha: { voiceSlot: 2, pitch: 1.12, pace: 1.02 },
-  Kabir: { voiceSlot: 3, pitch: 0.82, pace: 0.92 },
-  Echo: { voiceSlot: 4, pitch: 0.72, pace: 0.82 },
+const SPEEDS = [1, 1.5, 2] as const;
+type NarrationLanguage = "hi" | "en";
+
+const VOICE_PROFILES: Record<string, { voiceSlot: number; pitch: number; volume: number }> = {
+  narrator: { voiceSlot: 0, pitch: 0.9, volume: 0.88 },
+  me: { voiceSlot: 1, pitch: 1.02, volume: 1 },
+  Asha: { voiceSlot: 2, pitch: 1.26, volume: 0.96 },
+  Kabir: { voiceSlot: 3, pitch: 0.78, volume: 0.94 },
+  Echo: { voiceSlot: 4, pitch: 0.62, volume: 0.78 },
 };
+
+const VOICE_NAME_PREFERENCES: Record<NarrationLanguage, Record<string, string[]>> = {
+  en: {
+    narrator: ["Google UK English Female", "Microsoft Zira", "Samantha"],
+    me: ["Google US English", "Daniel", "Alex", "Microsoft David"],
+    Asha: ["Microsoft Aria", "Samantha", "Google UK English Female"],
+    Kabir: ["Microsoft Ryan", "Daniel", "Google US English"],
+    Echo: ["Microsoft Zira", "Google UK English Female", "Samantha"],
+  },
+  hi: {
+    narrator: ["Google हिन्दी", "Lekha", "Microsoft Hemant"],
+    me: ["Google हिन्दी", "Madhur", "Hemant"],
+    Asha: ["Lekha", "Swara", "Google हिन्दी"],
+    Kabir: ["Hemant", "Madhur", "Google हिन्दी"],
+    Echo: ["Google हिन्दी", "Lekha", "Hemant"],
+  },
+};
+
+function selectNarrationVoice(
+  voices: SpeechSynthesisVoice[],
+  language: NarrationLanguage,
+  speaker: string,
+  voiceSlot: number,
+) {
+  const locale = language === "hi" ? "hi-IN" : "en-IN";
+  const languageVoices = voices
+    .filter((voice) => voice.lang.toLowerCase().startsWith(language))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const exactLocaleVoices = languageVoices.filter((voice) => voice.lang.toLowerCase() === locale.toLowerCase());
+  const pool = exactLocaleVoices.length > 0 ? exactLocaleVoices : languageVoices;
+  if (pool.length === 0) return undefined;
+
+  const preferredNames = VOICE_NAME_PREFERENCES[language][speaker] ?? [];
+  for (const preferredName of preferredNames) {
+    const match = pool.find((voice) => voice.name.toLowerCase().includes(preferredName.toLowerCase()));
+    if (match) return match;
+  }
+
+  return pool[voiceSlot % pool.length];
+}
 
 function storyText(hindi: string, english: string | undefined, language: "hi" | "en") {
   return language === "hi" ? hindi : english ?? hindi;
@@ -128,10 +170,28 @@ export function ChatStoryPlayer({
   const [auto, setAuto] = useState(true);
   const [narration, setNarration] = useState(true);
   const [language, setLanguage] = useState<"hi" | "en">("hi");
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(0.8);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const synthesis = window.speechSynthesis;
+    const refreshVoices = () => {
+      const voices = synthesis.getVoices();
+      if (voices.length > 0) setAvailableVoices(voices);
+    };
+
+    refreshVoices();
+    synthesis.addEventListener("voiceschanged", refreshVoices);
+    const retry = window.setTimeout(refreshVoices, 300);
+    return () => {
+      window.clearTimeout(retry);
+      synthesis.removeEventListener("voiceschanged", refreshVoices);
+    };
+  }, []);
 
   const stopNarration = useCallback(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -149,13 +209,12 @@ export function ChatStoryPlayer({
     const locale = spokenLanguage === "hi" ? "hi-IN" : "en-IN";
     const profile = VOICE_PROFILES[speaker] ?? VOICE_PROFILES.narrator;
     utterance.lang = locale;
-    utterance.rate = Math.min(1.5, Math.max(0.6, speed * profile.pace));
+    utterance.rate = speed;
     utterance.pitch = profile.pitch;
-    const voices = window.speechSynthesis.getVoices();
-    const languageVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(spokenLanguage));
-    const exactLocaleVoices = languageVoices.filter((voice) => voice.lang.toLowerCase() === locale.toLowerCase());
-    const voicePool = exactLocaleVoices.length > 0 ? exactLocaleVoices : languageVoices;
-    if (voicePool.length > 0) utterance.voice = voicePool[profile.voiceSlot % voicePool.length];
+    utterance.volume = profile.volume;
+    const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
+    const voice = selectNarrationVoice(voices, spokenLanguage, speaker, profile.voiceSlot);
+    if (voice) utterance.voice = voice;
     const finishSpeaking = () => {
       if (speechRef.current === utterance) {
         speechRef.current = null;
@@ -172,7 +231,7 @@ export function ChatStoryPlayer({
     } catch {
       finishSpeaking();
     }
-  }, [isRoom4B, language, narration, speed, stopNarration]);
+  }, [availableVoices, isRoom4B, language, narration, speed, stopNarration]);
 
   const reset = useCallback(() => {
     stopNarration();
