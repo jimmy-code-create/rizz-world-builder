@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { MessageReactions } from "@/components/DMReactionsBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -391,6 +392,9 @@ function GroupRoom() {
                     )
                   ) : (
                     null
+                  )}
+                  {!m.delivery_status && !deletedAt && !String(m.id).startsWith("pending-") && (
+                    <MessageReactions messageId={m.id} messageType="group" align={mine ? "right" : "left"} />
                   )}
                 </div>
               </motion.div>

@@ -11,6 +11,7 @@ import { ArrowLeft, Hash, Megaphone, Gift, Send, Users, Sparkles, Copy, Trash2 }
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { MessageReactions } from "@/components/DMReactionsBar";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, drops: Gift };
 
@@ -192,6 +193,9 @@ function ChannelPage() {
                     {m.body}
                   </p>
                 </MessageActionMenu>
+                {joined && user && (
+                  <MessageReactions messageId={m.id} messageType="channel" align={mine ? "right" : "left"} />
+                )}
               </div>
             </motion.div>
             </Fragment>

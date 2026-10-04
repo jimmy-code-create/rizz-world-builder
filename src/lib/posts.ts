@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { callExtraRpc } from "@/lib/extra-rpc";
 import { startTrace } from "@/lib/upload-trace";
 import { parseExternalReelLink, type ExternalReelPlatform } from "@/lib/external-reels";
 
@@ -255,9 +256,7 @@ export async function rollbackCreatedPost(postId: string, mediaUrl?: string | nu
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
   void userId;
   void liked;
-  const { data, error } = await (supabase.rpc as any)("toggle_like", { _post_id: postId });
-  if (error) throw error;
-  return data as { liked: boolean; like_count: number };
+  return callExtraRpc("toggle_like", { _post_id: postId });
 }
 
 export async function fetchMyLikes(userId: string, postIds: string[]) {
@@ -273,12 +272,10 @@ export async function fetchMyLikes(userId: string, postIds: string[]) {
 
 export async function addReaction(postId: string, userId: string, emoji: string) {
   void userId;
-  const { data, error } = await (supabase.rpc as any)("toggle_post_reaction", {
+  return callExtraRpc("toggle_post_reaction", {
     _post_id: postId,
     _emoji: emoji,
   });
-  if (error) throw error;
-  return data;
 }
 
 export async function removeReaction(postId: string, userId: string, emoji: string) {
@@ -330,18 +327,14 @@ export async function addComment(postId: string, userId: string, body: string, p
 }
 
 export async function toggleCommentLike(commentId: string) {
-  const { data, error } = await (supabase.rpc as any)("toggle_comment_like", { _comment_id: commentId });
-  if (error) throw error;
-  return data as { liked: boolean; like_count: number };
+  return callExtraRpc("toggle_comment_like", { _comment_id: commentId });
 }
 
 export async function toggleCommentReaction(commentId: string, emoji: string) {
-  const { data, error } = await (supabase.rpc as any)("toggle_comment_reaction", {
+  return callExtraRpc("toggle_comment_reaction", {
     _comment_id: commentId,
     _emoji: emoji,
   });
-  if (error) throw error;
-  return data as { emoji: string; count: number; mine: boolean }[];
 }
 
 export async function deletePost(postId: string) {

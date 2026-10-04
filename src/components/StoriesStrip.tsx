@@ -8,6 +8,7 @@ import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { toast } from "sonner";
+import { callExtraRpc, reactionErrorMessage } from "@/lib/extra-rpc";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -139,37 +140,69 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
       return (data ?? []).map((row: { emoji: string }) => row.emoji) as string[];
     },
   });
+  useEffect(() => {
+    if (!user || !story) return;
+    const key = ["story-reactions", user.id, story.id] as const;
+    const channel = supabase
+      .channel(`story-reactions:${user.id}:${story.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "story_reactions", filter: `story_id=eq.${story.id}` },
+        (payload) => {
+          const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+            story_id?: string;
+            user_id?: string;
+            emoji?: string;
+          };
+          if (row.story_id !== story.id || row.user_id !== user.id || !row.emoji) return;
+          queryClient.setQueryData<string[]>(key, (current = []) => {
+            if (payload.eventType === "INSERT") {
+              return current.includes(row.emoji!) ? current : [...current, row.emoji!];
+            }
+            if (payload.eventType === "DELETE") {
+              return current.filter((emoji) => emoji !== row.emoji);
+            }
+            return current;
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, story, user]);
+
   const toggleReaction = useMutation({
-    mutationFn: async ({ storyId, emoji }: { storyId: string; emoji: string }) => {
+    mutationFn: async ({ storyId, emoji }: { storyId: string; emoji: string; wasMine: boolean }) => {
       if (!user) throw new Error("Sign in to react to stories");
-      const key = ["story-reactions", user.id, storyId] as const;
-      const selected = (queryClient.getQueryData<string[]>(key) ?? []).includes(emoji);
-      const query = (supabase.from as any)("story_reactions");
-      const result = selected
-        ? await query.delete().eq("story_id", storyId).eq("user_id", user.id).eq("emoji", emoji)
-        : await query.insert({ story_id: storyId, user_id: user.id, emoji });
-      if (result.error) throw result.error;
+      return callExtraRpc("toggle_story_reaction", { _story_id: storyId, _emoji: emoji });
     },
-    onMutate: async ({ storyId, emoji }) => {
+    onMutate: async ({ storyId, emoji, wasMine }) => {
       const key = ["story-reactions", user?.id, storyId] as const;
       await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<string[]>(key) ?? [];
+      const previous = queryClient.getQueryData<string[]>(key) ?? reactions.data ?? [];
       queryClient.setQueryData<string[]>(
         key,
-        previous.includes(emoji) ? previous.filter((item) => item !== emoji) : [...previous, emoji],
+        wasMine
+          ? previous.filter((item) => item !== emoji)
+          : previous.includes(emoji) ? previous : [...previous, emoji],
       );
       return { key, previous };
     },
     onError: (error, _variables, context) => {
       if (context) queryClient.setQueryData(context.key, context.previous);
-      toast.error(error.message);
+      toast.error(reactionErrorMessage(error));
     },
     onSettled: (_data, _error, variables) =>
       queryClient.invalidateQueries({ queryKey: ["story-reactions", user?.id, variables.storyId] }),
   });
   const myReactions = reactions.data ?? [];
   const reactToStory = (emoji: string) => {
-    if (story) toggleReaction.mutate({ storyId: story.id, emoji });
+    if (story) toggleReaction.mutate({
+      storyId: story.id,
+      emoji,
+      wasMine: (queryClient.getQueryData<string[]>(reactionKey) ?? myReactions).includes(emoji),
+    });
   };
 
   const viewers = useQuery({

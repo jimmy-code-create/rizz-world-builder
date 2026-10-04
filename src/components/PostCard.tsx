@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,11 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
-  deletePost, reportPost, updatePostCaption, togglePinPost,
+  deletePost, reportPost, updatePostCaption, togglePinPost, toggleCommentLike, toggleCommentReaction,
   type FeedPost,
 } from "@/lib/posts";
+import { reactionErrorMessage } from "@/lib/extra-rpc";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
@@ -78,6 +80,58 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     if (hp.has(post.id) || (post.author_id && ma.has(post.author_id))) setHidden(true);
   }, [post.id, post.author_id]);
 
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`post-interactions:${post.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "post_reactions", filter: `post_id=eq.${post.id}` },
+        (payload) => {
+          const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+            post_id?: string;
+            user_id?: string;
+            emoji?: string;
+          };
+          if (row.post_id !== post.id || !row.user_id || !row.emoji) return;
+          qc.setQueryData<{ emoji: string; user_id: string }[]>(["reactions", post.id], (current = []) => {
+            const exists = current.some(
+              (item) => item.user_id === row.user_id && item.emoji === row.emoji,
+            );
+            if (payload.eventType === "INSERT") {
+              return exists ? current : [...current, { emoji: row.emoji!, user_id: row.user_id! }];
+            }
+            if (payload.eventType === "DELETE") {
+              return current.filter(
+                (item) => item.user_id !== row.user_id || item.emoji !== row.emoji,
+              );
+            }
+            return current;
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "post_likes", filter: `post_id=eq.${post.id}` },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["feed"] });
+          void qc.invalidateQueries({ queryKey: ["user-posts"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [post.id, qc, user]);
+
+  useEffect(() => {
+    setLikeCount(post.like_count);
+  }, [post.id, post.like_count]);
+
+  useEffect(() => {
+    setLiked(!!initialLiked);
+  }, [initialLiked, post.id]);
+
   const reactions = useQuery({
     queryKey: ["reactions", post.id],
     queryFn: () => fetchReactions(post.id),
@@ -111,7 +165,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
         throw e;
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(
+      e.message === "Sign in to like" ? e.message : reactionErrorMessage(e),
+    ),
   });
 
   const reactMut = useMutation({
@@ -135,7 +191,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     },
     onError: (e: Error, _variables, context) => {
       if (context) qc.setQueryData(context.queryKey, context.previous);
-      toast.error(e.message);
+      toast.error(
+        e.message === "Sign in to react" ? e.message : reactionErrorMessage(e),
+      );
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
     },
   });
   const toggleReaction = (emoji: string) => {
@@ -583,7 +644,7 @@ function CommentsThread({ postId }: { postId: string }) {
         {comments.data?.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">No comments yet — be first ✨</p>
         )}
-        {comments.data?.map((c) => {
+        {comments.data?.map((c: { id: string; author_id: string; created_at: string; body: string }) => {
           const a = (c as unknown as { author: { username: string; display_name: string | null; avatar_url: string | null } }).author;
           const comment = c as typeof c & { parent_comment_id?: string | null };
           return (
@@ -613,6 +674,7 @@ function CommentsThread({ postId }: { postId: string }) {
                       type="button"
                       className="text-[10px] text-muted-foreground hover:text-destructive"
                       onClick={async () => {
+                        if (!user) return;
                         const { error } = await (supabase.from as any)("post_comments")
                           .update({ deleted_at: new Date().toISOString() })
                           .eq("id", c.id)
@@ -675,7 +737,7 @@ type CommentInteractions = { reactions: CommentReaction[]; likes: string[] };
 function CommentInteractions({ commentId }: { commentId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const key = ["comment-interactions", commentId] as const;
+  const key = useMemo(() => ["comment-interactions", commentId] as const, [commentId]);
   const interactions = useQuery({
     queryKey: key,
     enabled: !!user,
@@ -693,6 +755,68 @@ function CommentInteractions({ commentId }: { commentId: string }) {
     },
     staleTime: 10_000,
   });
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`comment-interactions:${commentId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "comment_reactions", filter: `comment_id=eq.${commentId}` },
+        (payload) => {
+          const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+            comment_id?: string;
+            user_id?: string;
+            emoji?: string;
+          };
+          if (row.comment_id !== commentId || !row.user_id || !row.emoji) return;
+          qc.setQueryData<CommentInteractions>(key, (current = { reactions: [], likes: [] }) => {
+            const exists = current.reactions.some(
+              (item) => item.user_id === row.user_id && item.emoji === row.emoji,
+            );
+            if (payload.eventType === "INSERT") {
+              return exists
+                ? current
+                : { ...current, reactions: [...current.reactions, { user_id: row.user_id!, emoji: row.emoji! }] };
+            }
+            if (payload.eventType === "DELETE") {
+              return {
+                ...current,
+                reactions: current.reactions.filter(
+                  (item) => item.user_id !== row.user_id || item.emoji !== row.emoji,
+                ),
+              };
+            }
+            return current;
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "comment_likes", filter: `comment_id=eq.${commentId}` },
+        (payload) => {
+          const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+            comment_id?: string;
+            user_id?: string;
+          };
+          if (row.comment_id !== commentId || !row.user_id) return;
+          qc.setQueryData<CommentInteractions>(key, (current = { reactions: [], likes: [] }) => {
+            const exists = current.likes.includes(row.user_id!);
+            if (payload.eventType === "INSERT") {
+              return exists ? current : { ...current, likes: [...current.likes, row.user_id!] };
+            }
+            if (payload.eventType === "DELETE") {
+              return { ...current, likes: current.likes.filter((id) => id !== row.user_id) };
+            }
+            return current;
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [commentId, key, qc, user]);
+
   const current = interactions.data ?? { reactions: [], likes: [] };
   const grouped = current.reactions.reduce<Record<string, { count: number; mine: boolean }>>((result, reaction) => {
     result[reaction.emoji] ??= { count: 0, mine: false };
@@ -703,14 +827,7 @@ function CommentInteractions({ commentId }: { commentId: string }) {
   const liked = current.likes.includes(user?.id ?? "");
 
   const react = useMutation({
-    mutationFn: async (emoji: string) => {
-      const { data, error } = await (supabase.rpc as any)("toggle_comment_reaction", {
-        _comment_id: commentId,
-        _emoji: emoji,
-      });
-      if (error) throw error;
-      return data as { emoji: string; count: number; mine: boolean }[];
-    },
+    mutationFn: (emoji: string) => toggleCommentReaction(commentId, emoji),
     onMutate: async (emoji) => {
       await qc.cancelQueries({ queryKey: key });
       const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
@@ -723,27 +840,15 @@ function CommentInteractions({ commentId }: { commentId: string }) {
       });
       return { previous };
     },
-    onSuccess: (data) => {
-      qc.setQueryData<CommentInteractions>(key, (previous) => ({
-        reactions: data.flatMap((entry) => Array.from({ length: entry.count }, (_, index) => ({
-          emoji: entry.emoji,
-          user_id: entry.mine && index === 0 ? user?.id ?? "" : `other-${entry.emoji}-${index}`,
-        }))),
-        likes: previous?.likes ?? [],
-      }));
-    },
     onError: (error: Error, _emoji, context) => {
       if (context) qc.setQueryData(key, context.previous);
-      toast.error(error.message);
+      toast.error(reactionErrorMessage(error));
     },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: key }); },
   });
 
   const toggleLike = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("toggle_comment_like", { _comment_id: commentId });
-      if (error) throw error;
-      return data as { liked: boolean; like_count: number };
-    },
+    mutationFn: () => toggleCommentLike(commentId),
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: key });
       const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
@@ -764,8 +869,9 @@ function CommentInteractions({ commentId }: { commentId: string }) {
     },
     onError: (error: Error, _variables, context) => {
       if (context) qc.setQueryData(key, context.previous);
-      toast.error(error.message);
+      toast.error(reactionErrorMessage(error));
     },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: key }); },
   });
 
   if (!user) return null;

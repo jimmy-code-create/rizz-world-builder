@@ -46,6 +46,7 @@ ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dm_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.post_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.story_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_story_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comment_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
@@ -63,7 +64,8 @@ BEGIN
     WHERE schemaname = 'public'
       AND tablename IN (
         'message_reactions', 'dm_reactions', 'post_reactions',
-        'post_likes', 'story_reactions', 'comment_reactions', 'comment_likes'
+        'post_likes', 'story_reactions', 'chat_story_likes',
+        'comment_reactions', 'comment_likes'
       )
   LOOP
     EXECUTE format('DROP POLICY %I ON %I.%I',
@@ -124,6 +126,12 @@ CREATE POLICY story_reactions_block_safe_select ON public.story_reactions
         AND NOT public.is_blocked_pair(s.author_id, auth.uid())
     )
   );
+DROP POLICY IF EXISTS chat_story_likes_own_select ON public.chat_story_likes;
+DROP POLICY IF EXISTS "own likes readable" ON public.chat_story_likes;
+DROP POLICY IF EXISTS "own likes insert" ON public.chat_story_likes;
+DROP POLICY IF EXISTS "own likes delete" ON public.chat_story_likes;
+CREATE POLICY chat_story_likes_own_select ON public.chat_story_likes
+  FOR SELECT TO authenticated USING (user_id = auth.uid());
 DROP POLICY IF EXISTS post_likes_block_safe_select ON public.post_likes;
 CREATE POLICY post_likes_block_safe_select ON public.post_likes
   FOR SELECT TO authenticated USING (
@@ -158,10 +166,10 @@ CREATE POLICY comment_likes_select_members ON public.comment_likes
 
 REVOKE INSERT, UPDATE, DELETE ON public.message_reactions, public.dm_reactions,
   public.post_reactions, public.story_reactions, public.comment_reactions,
-  public.comment_likes, public.post_likes FROM anon, authenticated;
+  public.comment_likes, public.post_likes, public.chat_story_likes FROM anon, authenticated;
 GRANT SELECT ON public.message_reactions, public.dm_reactions, public.post_reactions,
   public.story_reactions, public.comment_reactions, public.comment_likes,
-  public.post_likes TO authenticated;
+  public.post_likes, public.chat_story_likes TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.toggle_message_reaction(
   _message_id uuid,
@@ -451,6 +459,53 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.toggle_chat_story_like(_story_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_liked boolean;
+  v_like_count integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in to like a chat story';
+  END IF;
+
+  PERFORM 1 FROM public.chat_stories
+  WHERE id = _story_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Chat story not found';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.chat_story_likes
+    WHERE story_id = _story_id AND user_id = auth.uid()
+  ) THEN
+    DELETE FROM public.chat_story_likes
+    WHERE story_id = _story_id AND user_id = auth.uid();
+    v_liked := false;
+  ELSE
+    INSERT INTO public.chat_story_likes(story_id, user_id)
+    VALUES (_story_id, auth.uid())
+    ON CONFLICT (story_id, user_id) DO NOTHING;
+    v_liked := true;
+  END IF;
+
+  SELECT count(*)::integer INTO v_like_count
+  FROM public.chat_story_likes
+  WHERE story_id = _story_id;
+
+  UPDATE public.chat_stories
+  SET likes_count = v_like_count
+  WHERE id = _story_id;
+
+  RETURN jsonb_build_object('liked', v_liked, 'like_count', v_like_count);
+END;
+$function$;
+
 REVOKE ALL ON FUNCTION public.toggle_message_reaction(uuid, text, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.toggle_dm_reaction(uuid, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.toggle_post_reaction(uuid, text) FROM PUBLIC, anon;
@@ -458,23 +513,27 @@ REVOKE ALL ON FUNCTION public.toggle_comment_reaction(uuid, text) FROM PUBLIC, a
 REVOKE ALL ON FUNCTION public.toggle_story_reaction(uuid, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.toggle_comment_like(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.toggle_like(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.toggle_chat_story_like(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.toggle_message_reaction(uuid, text, text),
   public.toggle_dm_reaction(uuid, text), public.toggle_post_reaction(uuid, text),
   public.toggle_comment_reaction(uuid, text), public.toggle_story_reaction(uuid, text),
-  public.toggle_comment_like(uuid), public.toggle_like(uuid) TO authenticated;
+  public.toggle_comment_like(uuid), public.toggle_like(uuid),
+  public.toggle_chat_story_like(uuid) TO authenticated;
 
 ALTER TABLE public.message_reactions REPLICA IDENTITY FULL;
 ALTER TABLE public.dm_reactions REPLICA IDENTITY FULL;
+ALTER TABLE public.post_likes REPLICA IDENTITY FULL;
 ALTER TABLE public.post_reactions REPLICA IDENTITY FULL;
 ALTER TABLE public.story_reactions REPLICA IDENTITY FULL;
 ALTER TABLE public.comment_reactions REPLICA IDENTITY FULL;
 ALTER TABLE public.comment_likes REPLICA IDENTITY FULL;
+ALTER TABLE public.chat_story_likes REPLICA IDENTITY FULL;
 DO $publication$
 DECLARE v_table text;
 BEGIN
   FOREACH v_table IN ARRAY ARRAY[
-    'message_reactions', 'dm_reactions', 'post_reactions',
-    'story_reactions', 'comment_reactions', 'comment_likes'
+    'message_reactions', 'dm_reactions', 'post_likes', 'post_reactions',
+    'story_reactions', 'chat_story_likes', 'comment_reactions', 'comment_likes'
   ] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_publication_tables
@@ -491,17 +550,17 @@ NOTIFY pgrst, 'reload schema';
 -- Verification
 SELECT tablename, rowsecurity FROM pg_tables
 WHERE schemaname = 'public' AND tablename IN (
-  'message_reactions', 'dm_reactions', 'post_reactions', 'story_reactions',
-  'comment_reactions', 'comment_likes'
+  'message_reactions', 'dm_reactions', 'post_likes', 'post_reactions', 'story_reactions',
+  'chat_story_likes', 'comment_reactions', 'comment_likes'
 )
 ORDER BY tablename;
 SELECT proname, pg_get_function_identity_arguments(oid) AS arguments
 FROM pg_proc WHERE pronamespace = 'public'::regnamespace
   AND proname IN ('toggle_message_reaction', 'toggle_dm_reaction',
     'toggle_post_reaction', 'toggle_comment_reaction', 'toggle_story_reaction',
-    'toggle_comment_like', 'toggle_like')
+    'toggle_comment_like', 'toggle_like', 'toggle_chat_story_like')
 ORDER BY proname;
 
--- Rollback: drop the seven public RPCs, comment_likes, and comment_reactions;
+-- Rollback: drop the eight public RPCs, comment_likes, and comment_reactions;
 -- restore the prior RLS policies if needed. Keep existing reaction data and
 -- the message_reactions scope column unless a reviewed data migration removes it.

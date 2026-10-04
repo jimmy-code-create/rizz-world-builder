@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageReactions } from "@/components/DMReactionsBar";
+import { callExtraRpc, reactionErrorMessage } from "@/lib/extra-rpc";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
@@ -661,18 +662,18 @@ function DMPage() {
 
   const react = async (messageId: string, emoji: string) => {
     if (!user) return;
-    const queryKey = ["dm-reactions", messageId] as const;
+    const queryKey = ["message-reactions", "dm", messageId] as const;
     await qc.cancelQueries({ queryKey });
     const previous = qc.getQueryData<{ emoji: string; user_id: string }[]>(queryKey);
     if (previous?.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id)) return;
     qc.setQueryData(queryKey, [...(previous ?? []), { emoji, user_id: user.id }]);
     try {
-      const { error } = await (supabase.from as any)("dm_reactions").insert({ message_id: messageId, user_id: user.id, emoji });
-      if (error && !error.message.includes("duplicate")) throw error;
+      await callExtraRpc("toggle_dm_reaction", { _message_id: messageId, _emoji: emoji });
+      void qc.invalidateQueries({ queryKey });
     } catch (error) {
       if (previous) qc.setQueryData(queryKey, previous);
       else qc.removeQueries({ queryKey, exact: true });
-      toast.error(error instanceof Error ? error.message : "Couldn't add that reaction");
+      toast.error(reactionErrorMessage(error));
     }
   };
 

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { callExtraRpc, reactionErrorMessage } from "@/lib/extra-rpc";
 import { motion } from "framer-motion";
 import { Heart, MessageSquareText, Play } from "lucide-react";
 import { toast } from "sonner";
@@ -51,6 +52,33 @@ function ChatStoriesPage() {
     enabled: !!user,
   });
 
+  useEffect(() => {
+    if (!user) return;
+    const likesKey = ["chat-story-likes", user.id] as const;
+    const channel = supabase
+      .channel(`chat-story-likes:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_story_likes" }, (payload) => {
+        const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as {
+          story_id?: string;
+          user_id?: string;
+        };
+        if (!row.story_id || !row.user_id) return;
+        if (row.user_id === user.id) {
+          qc.setQueryData<Set<string>>(likesKey, (current = new Set()) => {
+            const next = new Set(current);
+            if (payload.eventType === "INSERT") next.add(row.story_id!);
+            if (payload.eventType === "DELETE") next.delete(row.story_id!);
+            return next;
+          });
+        }
+        void qc.invalidateQueries({ queryKey: ["chat-stories"] });
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [qc, user]);
+
   const lines = useQuery({
     queryKey: ["chat-story-lines", openId],
     queryFn: async () => {
@@ -77,12 +105,63 @@ function ChatStoriesPage() {
     enabled: !!openId,
   });
 
-  const toggleLike = async (storyId: string) => {
-    if (!user) return toast.info("Sign in to like stories");
-    const isLiked = likes.data?.has(storyId);
-    if (isLiked) await supabase.from("chat_story_likes").delete().eq("story_id", storyId).eq("user_id", user.id);
-    else await supabase.from("chat_story_likes").insert({ story_id: storyId, user_id: user.id });
-    qc.invalidateQueries({ queryKey: ["chat-story-likes", user.id] });
+  const chatStoryLikeKey = ["chat-story-likes", user?.id] as const;
+  const toggleLikeMutation = useMutation({
+    mutationFn: ({ storyId }: { storyId: string }) =>
+      callExtraRpc("toggle_chat_story_like", { _story_id: storyId }),
+    onMutate: async ({ storyId }) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: chatStoryLikeKey }),
+        qc.cancelQueries({ queryKey: ["chat-stories"] }),
+      ]);
+      const previousLikes = qc.getQueryData<Set<string>>(chatStoryLikeKey) ?? likes.data ?? new Set<string>();
+      const nextLikes = new Set(previousLikes);
+      const wasLiked = nextLikes.has(storyId);
+      if (wasLiked) nextLikes.delete(storyId);
+      else nextLikes.add(storyId);
+      qc.setQueryData(chatStoryLikeKey, nextLikes);
+
+      const previousStories = qc.getQueryData<typeof stories.data>(["chat-stories"]) ?? stories.data;
+      if (previousStories) {
+        qc.setQueryData(
+          ["chat-stories"],
+          previousStories.map((story) => story.id === storyId
+            ? { ...story, likes_count: Math.max(0, story.likes_count + (wasLiked ? -1 : 1)) }
+            : story),
+        );
+      }
+      return { previousLikes, previousStories };
+    },
+    onSuccess: (result, { storyId }) => {
+      qc.setQueryData<Set<string>>(chatStoryLikeKey, (current = new Set()) => {
+        const next = new Set(current);
+        if (result.liked) next.add(storyId);
+        else next.delete(storyId);
+        return next;
+      });
+      qc.setQueryData<typeof stories.data>(["chat-stories"], (current) =>
+        current?.map((story) => story.id === storyId
+          ? { ...story, likes_count: result.like_count }
+          : story),
+      );
+    },
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      qc.setQueryData(chatStoryLikeKey, context.previousLikes);
+      if (context.previousStories) qc.setQueryData(["chat-stories"], context.previousStories);
+      toast.error(reactionErrorMessage(_error));
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: chatStoryLikeKey });
+      void qc.invalidateQueries({ queryKey: ["chat-stories"] });
+    },
+  });
+  const toggleLike = (storyId: string) => {
+    if (!user) {
+      toast.info("Sign in to like stories");
+      return;
+    }
+    if (!toggleLikeMutation.isPending) toggleLikeMutation.mutate({ storyId });
   };
 
   const list = (stories.data ?? []).filter((s) => cat === "all" || s.category === cat);
@@ -148,6 +227,8 @@ function ChatStoriesPage() {
               <span
                 role="button"
                 tabIndex={0}
+                aria-pressed={likes.data?.has(s.id) ?? false}
+                aria-disabled={toggleLikeMutation.isPending}
                 onClick={(e) => { e.stopPropagation(); toggleLike(s.id); }}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); toggleLike(s.id); } }}
                 className="inline-flex items-center gap-1"
