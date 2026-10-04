@@ -58,13 +58,14 @@ function ReelsPage() {
   });
 
   return (
-    <div className="-mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
+    <div className="relative -mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
       <button
         onClick={() => setEditorOpen(true)}
-        className="fixed bottom-24 md:bottom-6 right-4 z-30 h-14 w-14 rounded-full bg-gradient-primary shadow-glow grid place-items-center active:scale-95 transition-transform"
+        className="absolute left-4 top-3 z-30 grid h-11 w-11 place-items-center rounded-full bg-gradient-primary shadow-glow transition-transform active:scale-95"
         aria-label="Upload reel"
+        title="Upload reel"
       >
-        <Plus className="h-7 w-7 text-white" />
+        <Plus className="h-6 w-6 text-white" />
       </button>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />

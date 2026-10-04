@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Plus, Copy, Flag } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
+const MORE_REACTIONS = ["😍", "🙌", "💯", "🥹", "🎉", "🤔"];
 const CHAT_WALLPAPERS = [
   "radial-gradient(ellipse at top right, rgba(255,62,165,.14), transparent 55%)",
   "radial-gradient(ellipse at bottom left, rgba(124,58,237,.18), transparent 60%)",
@@ -73,6 +74,7 @@ function DMPage() {
   const wasNearBottomRef = useRef(true);
   const previousMessageIdsRef = useRef<string[]>([]);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
+  const [moreReactionsOpen, setMoreReactionsOpen] = useState(false);
   const pressTimer = useRef<number | null>(null);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
@@ -98,6 +100,10 @@ function DMPage() {
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
+
+  useEffect(() => {
+    setMoreReactionsOpen(false);
+  }, [openMsg]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -682,6 +688,13 @@ function DMPage() {
         } : {}),
       }}
     >
+      {openMsg && (
+        <div
+          aria-hidden="true"
+          onClick={() => setOpenMsg(null)}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[5px]"
+        />
+      )}
       <div
         className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
@@ -846,6 +859,8 @@ function DMPage() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`group flex min-w-0 items-end gap-1 rounded-2xl transition-shadow duration-500 ${
+                  openMsg === m.id ? "relative z-[41]" : ""
+                } ${
                   highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
                 } ${mine ? "justify-end" : "justify-start"}`}
               >
@@ -889,29 +904,57 @@ function DMPage() {
                       {deletedAt ? "This message was unsent" : rest}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="max-h-[min(70dvh,24rem)] w-auto overflow-y-auto glass-strong border-white/10 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95" side="top">
-                    <div className="flex gap-1 mb-2">
+                  <PopoverContent
+                    aria-label="Message actions"
+                    className="z-[60] max-h-[min(70dvh,28rem)] w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-white/15 bg-[#100b18] p-2 text-white shadow-[0_22px_70px_-20px_rgba(0,0,0,0.95)] backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
+                    side="top"
+                    sideOffset={12}
+                    collisionPadding={12}
+                  >
+                    <div className="no-scrollbar mb-2 flex items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-[#08060d] p-1">
                       {QUICK_EMOJIS.map((e) => (
-                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
+                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
                       ))}
+                      <button
+                        type="button"
+                        aria-label={moreReactionsOpen ? "Hide more reactions" : "More reactions"}
+                        aria-expanded={moreReactionsOpen}
+                        onClick={() => setMoreReactionsOpen((open) => !open)}
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
                     </div>
-                    <div className="flex flex-col text-xs">
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Copy text</button>
-                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Reply</button>
-                      <button type="button" onClick={() => { startCall(false); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Voice call</button>
-                      <button type="button" onClick={() => { startCall(true); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Video call</button>
-                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Report</button>
+                    {moreReactionsOpen && (
+                      <div className="mb-2 grid grid-cols-6 gap-1 rounded-xl border border-white/10 bg-[#08060d] p-1">
+                        {MORE_REACTIONS.map((emoji) => (
+                          <button
+                            type="button"
+                            key={emoji}
+                            aria-label={`React with ${emoji}`}
+                            onClick={() => { void react(m.id, emoji); setOpenMsg(null); setMoreReactionsOpen(false); }}
+                            className="grid h-10 w-10 place-items-center rounded-lg text-lg transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Copy className="h-4 w-4 text-white/60" />Copy text</button>
+                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><CornerUpLeft className="h-4 w-4 text-white/60" />Reply</button>
+                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Flag className="h-4 w-4 text-white/60" />Report</button>
                       {!deletedAt && (
                         <button
                           type="button"
                           onClick={() => { void deleteMsgForMe(m.id); setOpenMsg(null); }}
-                          className="min-h-10 rounded px-2 text-left text-destructive hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                          className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
                         >
-                          Delete for me
+                          <Trash2 className="h-4 w-4" />Delete for me
                         </button>
                       )}
                       {mine && !deletedAt && (
-                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="min-h-10 rounded px-2 text-left text-destructive hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Delete for everyone</button>
+                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Trash2 className="h-4 w-4" />Delete for everyone</button>
                       )}
                     </div>
                   </PopoverContent>

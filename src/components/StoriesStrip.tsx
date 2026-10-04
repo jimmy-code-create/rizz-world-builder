@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, Plus, X, Eye, Send } from "lucide-react";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
+import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -243,19 +244,20 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
   }, [idx, story, user, group.length, onNext, paused]);
 
   return (
-    <MotionConfig reducedMotion="user">
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95"
-      onClick={onClose}
-    >
-      <div
-        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[#090710]"
-        style={{
-          paddingTop: "env(safe-area-inset-top, 0px)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-        onClick={(event) => event.stopPropagation()}
+    <FullScreenLayer open>
+      <MotionConfig reducedMotion="user">
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95"
+          onClick={onClose}
+        >
+          <div
+            className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[#090710]"
+            style={{
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            }}
+            onClick={(event) => event.stopPropagation()}
       >
         <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-30 flex gap-1">
           {group.map((_, i) => (
@@ -395,7 +397,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
         )}
       </div>
       <Dialog open={viewersOpen} onOpenChange={setViewersOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong z-[140] border-white/10">
           <DialogTitle>Story viewers</DialogTitle>
           {viewers.isLoading ? (
             <p className="text-sm text-muted-foreground">Loading viewers…</p>
@@ -420,7 +422,8 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
           )}
         </DialogContent>
       </Dialog>
-    </motion.div>
-    </MotionConfig>
+        </motion.div>
+      </MotionConfig>
+    </FullScreenLayer>
   );
 }

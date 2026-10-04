@@ -53,6 +53,7 @@ export function AppShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path);
+  const isReels = path === "/reels" || path === "/_app/reels";
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -205,11 +206,11 @@ export function AppShell() {
           {mobileTabs.slice(0, 2).map((t) => (
             <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
           ))}
-          <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-5" aria-label="New post">
+          {!isReels && <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-5" aria-label="New post">
             <div className="h-12 w-12 rounded-2xl bg-gradient-primary shadow-glow flex items-center justify-center ring-4 ring-background">
               <Plus className="h-6 w-6 text-primary-foreground" />
             </div>
-          </button>
+          </button>}
           {mobileTabs.slice(2).map((t) => (
             <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
           ))}
