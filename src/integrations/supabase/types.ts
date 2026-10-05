@@ -396,6 +396,75 @@ export type Database = {
           },
         ]
       }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          emoji: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          emoji: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          emoji?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direct_message_hides: {
         Row: {
           created_at: string
@@ -868,28 +937,24 @@ export type Database = {
           created_at: string
           emoji: string
           message_id: string
+          message_type: string
           user_id: string
         }
         Insert: {
           created_at?: string
           emoji: string
           message_id: string
+          message_type?: string
           user_id: string
         }
         Update: {
           created_at?: string
           emoji?: string
           message_id?: string
+          message_type?: string
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "message_reactions_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "messages"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "message_reactions_user_id_fkey"
             columns: ["user_id"]
@@ -1096,21 +1161,27 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          deleted_at: string | null
           id: string
+          parent_comment_id: string | null
           post_id: string
         }
         Insert: {
           author_id: string
           body: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          parent_comment_id?: string | null
           post_id: string
         }
         Update: {
           author_id?: string
           body?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          parent_comment_id?: string | null
           post_id?: string
         }
         Relationships: [
@@ -1119,6 +1190,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
             referencedColumns: ["id"]
           },
           {
@@ -1948,6 +2026,14 @@ export type Database = {
           topic: string
         }[]
       }
+      get_post_counts: {
+        Args: { _post_ids: string[] }
+        Returns: {
+          comment_count: number
+          like_count: number
+          post_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1988,6 +2074,16 @@ export type Database = {
           status: string
           topic: string
         }[]
+      }
+      toggle_comment_like: { Args: { _comment_id: string }; Returns: Json }
+      toggle_comment_reaction: {
+        Args: { _comment_id: string; _emoji: string }
+        Returns: Json
+      }
+      toggle_like: { Args: { _post_id: string }; Returns: Json }
+      toggle_post_reaction: {
+        Args: { _emoji: string; _post_id: string }
+        Returns: Json
       }
       unsend_direct_message: {
         Args: { _message_id: string }
