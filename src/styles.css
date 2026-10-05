@@ -301,53 +301,61 @@
 
 .rizz-toaster [data-sonner-toast].rizz-toast {
   width: var(--width);
-  min-height: 44px;
-  gap: 9px;
-  padding: 10px 12px;
-  border: 1px solid oklch(0.98 0.01 320 / 0.1);
-  border-radius: 14px;
-  background: oklch(0.15 0.04 295 / 0.94);
+  min-height: 48px;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid oklch(0.98 0.01 320 / 0.12);
+  border-radius: 18px;
+  background: oklch(0.12 0.04 295 / 0.88);
   color: oklch(0.98 0.01 320);
   box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    0 0 20px oklch(0.68 0.28 5 / 0.08),
-    inset 0 1px 0 oklch(0.98 0.01 320 / 0.06);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+    0 20px 40px -10px oklch(0.04 0.02 295 / 0.6),
+    0 0 24px -4px oklch(0.68 0.28 5 / 0.14),
+    inset 0 1px 0 oklch(0.98 0.01 320 / 0.12);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
   font-family: var(--font-sans);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
 }
 
 .rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
-  border-color: oklch(0.72 0.2 20 / 0.3);
+  border-color: oklch(0.72 0.2 20 / 0.35);
   box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    inset 2px 0 0 oklch(0.68 0.2 20 / 0.8);
+    0 20px 40px -10px oklch(0.04 0.02 295 / 0.6),
+    0 0 20px -2px oklch(0.68 0.22 20 / 0.2),
+    inset 3px 0 0 oklch(0.68 0.2 20 / 0.9);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="success"].rizz-toast {
-  border-color: oklch(0.78 0.16 155 / 0.28);
+  border-color: oklch(0.78 0.18 155 / 0.35);
   box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    0 0 18px oklch(0.72 0.17 155 / 0.07);
+    0 20px 40px -10px oklch(0.04 0.02 295 / 0.6),
+    0 0 20px -2px oklch(0.78 0.18 155 / 0.18),
+    inset 3px 0 0 oklch(0.72 0.18 155 / 0.9);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="info"].rizz-toast {
-  border-color: oklch(0.78 0.18 200 / 0.25);
+  border-color: oklch(0.78 0.18 200 / 0.35);
+  box-shadow:
+    0 20px 40px -10px oklch(0.04 0.02 295 / 0.6),
+    0 0 20px -2px oklch(0.78 0.18 200 / 0.18),
+    inset 3px 0 0 oklch(0.78 0.18 200 / 0.9);
 }
 
 .rizz-toaster .rizz-toast-title {
   min-width: 0;
   white-space: normal;
   color: oklch(0.98 0.01 320);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .rizz-toaster .rizz-toast-description {
   white-space: normal;
-  margin-top: 3px;
+  margin-top: 2px;
   color: oklch(0.76 0.03 295);
   font-size: 12px;
   line-height: 1.45;

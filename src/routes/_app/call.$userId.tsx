@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, MonitorUp, Hand, SwitchCamera } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, MonitorUp, Hand, SwitchCamera, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -33,6 +33,7 @@ function CallPage() {
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [seconds, setSeconds] = useState(0);
   const [status, setStatus] = useState<"ringing" | "connected" | "ended">("ringing");
+  const [sendingInvite, setSendingInvite] = useState(false);
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
   const [level, setLevel] = useState(0); // 0..1 local mic level
   const [peerPresent, setPeerPresent] = useState(false);
@@ -370,6 +371,25 @@ function CallPage() {
     nav({ to: "/dm/$userId", params: { userId } });
   };
 
+  const sendCallInviteToDM = async () => {
+    if (!user || sendingInvite) return;
+    setSendingInvite(true);
+    try {
+      const callLink = new URL(`/call/${encodeURIComponent(user.id)}?video=${cam ? "1" : "0"}`, window.location.origin).toString();
+      const { error } = await supabase.from("direct_messages").insert({
+        sender_id: user.id,
+        recipient_id: userId,
+        body: `📞 Join my ${cam ? "video" : "voice"} call: ${callLink}`,
+      });
+      if (error) throw error;
+      toast.success("Call invite sent in chat");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't send the call invite");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
   const flipCam = async () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
   return (
@@ -426,6 +446,17 @@ function CallPage() {
             {connectionHint}
             {callProblem && <span className="mt-1 block text-amber-200">{callProblem}</span>}
           </p>
+        )}
+        {status === "ringing" && (
+          <button
+            type="button"
+            onClick={() => void sendCallInviteToDM()}
+            disabled={sendingInvite}
+            className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] disabled:cursor-wait disabled:opacity-60"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {sendingInvite ? "Sending invite…" : "Send call invite in chat"}
+          </button>
         )}
         {hand && <p className="mt-2 text-xs text-yellow-300">✋ Hand raised</p>}
       </div>
