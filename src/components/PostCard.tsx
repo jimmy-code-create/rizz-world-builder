@@ -33,6 +33,7 @@ import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -583,7 +584,7 @@ function CommentsThread({ postId }: { postId: string }) {
         {comments.data?.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-4">No comments yet — be first ✨</p>
         )}
-        {comments.data?.map((c) => {
+        {comments.data?.map((c: any) => {
           const a = (c as unknown as { author: { username: string; display_name: string | null; avatar_url: string | null } }).author;
           const comment = c as typeof c & { parent_comment_id?: string | null };
           return (
@@ -613,10 +614,12 @@ function CommentsThread({ postId }: { postId: string }) {
                       type="button"
                       className="text-[10px] text-muted-foreground hover:text-destructive"
                       onClick={async () => {
+                        const currentUserId = user?.id;
+                        if (!currentUserId) return;
                         const { error } = await (supabase.from as any)("post_comments")
                           .update({ deleted_at: new Date().toISOString() })
                           .eq("id", c.id)
-                          .eq("author_id", user.id);
+                          .eq("author_id", currentUserId);
                         if (error) {
                           toast.error(error.message);
                           return;

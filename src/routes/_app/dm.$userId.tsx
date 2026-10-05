@@ -483,6 +483,7 @@ function DMPage() {
       duration_ms: null,
       reply_to: replyTo?.id ?? null,
       story_id: null,
+      deleted_at: null,
       delivery_status: "sending",
       attachment_url: imagePreview,
     };
