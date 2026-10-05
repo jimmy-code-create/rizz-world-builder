@@ -7,9 +7,27 @@ import { Sparkles, Radio, Zap, Crown, Mic, Hash, Flame, Users } from "lucide-rea
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
+    links: [{ rel: "canonical", href: "https://rizzapp.onrender.com/" }],
     meta: [
-      { title: "RIZZ — Your feed. Your server. Your world." },
-      { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
+      { title: "Social App for Creators & Live Communities | RIZZ" },
+      {
+        name: "description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
+      { property: "og:title", content: "Social App for Creators & Live Communities | RIZZ" },
+      {
+        property: "og:description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
+      { property: "og:url", content: "https://rizzapp.onrender.com/" },
+      { name: "twitter:title", content: "Social App for Creators & Live Communities | RIZZ" },
+      {
+        name: "twitter:description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
     ],
   }),
 });
@@ -70,8 +88,9 @@ function Index() {
           </h1>
 
           <p className="mt-8 mx-auto max-w-xl text-base md:text-lg text-muted-foreground leading-relaxed">
-            RIZZ fuses Instagram-style content with Discord-style live communities.
-            Every creator has a profile <em>and</em> a server. Following someone means joining their world.
+            RIZZ is a social app for creators that brings posts and live communities together. Every
+            creator has a profile <em>and</em> a server, so following someone means joining their
+            world.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -90,23 +109,40 @@ function Index() {
         </motion.div>
 
         {/* Feature grid */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="glass rounded-2xl p-6 hover:shadow-glow transition-all duration-500 group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center mb-4 group-hover:shadow-glow transition-shadow">
-                <f.icon className="h-5 w-5 text-[var(--rizz-pink)]" />
-              </div>
-              <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
+        <section className="mt-24" aria-labelledby="features-heading">
+          <h2
+            id="features-heading"
+            className="mb-6 text-center font-display text-2xl font-bold md:text-3xl"
+          >
+            Built for creators and their communities
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
+                className="glass rounded-2xl p-6 hover:shadow-glow transition-all duration-500 group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center mb-4 group-hover:shadow-glow transition-shadow">
+                  <f.icon className="h-5 w-5 text-[var(--rizz-pink)]" />
+                </div>
+                <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mt-8 text-center">
+          <Link
+            to="/creators-in-india"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Social app for creators in India
+          </Link>
         </div>
 
         {/* Tagline footer */}
