@@ -136,6 +136,15 @@ function Index() {
           </div>
         </section>
 
+        <div className="mt-8 text-center">
+          <Link
+            to="/creators-in-india"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Social app for creators in India
+          </Link>
+        </div>
+
         {/* Tagline footer */}
         <div className="mt-32 text-center">
           <p className="font-display text-2xl md:text-4xl text-muted-foreground/60">
