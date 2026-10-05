@@ -396,12 +396,39 @@ export type Database = {
           },
         ]
       }
+      direct_message_hides: {
+        Row: {
+          created_at: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_message_hides_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direct_messages: {
         Row: {
           attachment_url: string | null
           audio_url: string | null
           body: string
           created_at: string
+          deleted_at: string | null
           duration_ms: number | null
           id: string
           read: boolean
@@ -415,6 +442,7 @@ export type Database = {
           audio_url?: string | null
           body: string
           created_at?: string
+          deleted_at?: string | null
           duration_ms?: number | null
           id?: string
           read?: boolean
@@ -428,6 +456,7 @@ export type Database = {
           audio_url?: string | null
           body?: string
           created_at?: string
+          deleted_at?: string | null
           duration_ms?: number | null
           id?: string
           read?: boolean
@@ -691,6 +720,42 @@ export type Database = {
           },
         ]
       }
+      group_message_hides: {
+        Row: {
+          created_at: string
+          group_id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_message_hides_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_message_hides_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_messages: {
         Row: {
           attachment_url: string | null
@@ -698,6 +763,7 @@ export type Database = {
           author_id: string
           body: string
           created_at: string
+          deleted_at: string | null
           duration_ms: number | null
           group_id: string
           id: string
@@ -709,6 +775,7 @@ export type Database = {
           author_id: string
           body: string
           created_at?: string
+          deleted_at?: string | null
           duration_ms?: number | null
           group_id: string
           id?: string
@@ -720,6 +787,7 @@ export type Database = {
           author_id?: string
           body?: string
           created_at?: string
+          deleted_at?: string | null
           duration_ms?: number | null
           group_id?: string
           id?: string
@@ -1878,6 +1946,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      hide_direct_message_for_me: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
+      hide_group_message_for_me: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
       is_blocked_pair: { Args: { _a: string; _b: string }; Returns: boolean }
       is_close_friend: {
         Args: { _owner: string; _viewer: string }
@@ -1903,6 +1979,14 @@ export type Database = {
           status: string
           topic: string
         }[]
+      }
+      unsend_direct_message: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
+      unsend_group_message: {
+        Args: { _message_id: string }
+        Returns: undefined
       }
     }
     Enums: {
