@@ -25,6 +25,7 @@ import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
 import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
+import { notifyInApp } from "@/lib/notifications";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
 const MORE_REACTIONS = ["😍", "🙌", "💯", "🥹", "🎉", "🤔"];
@@ -47,6 +48,17 @@ function ownChatImagePath(url: string | null, userId: string) {
   try {
     const path = decodeURIComponent(url.slice(markerIndex + marker.length));
     return path.startsWith(`${userId}/`) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+function firstMessageUrl(value: string | null | undefined) {
+  const rawUrl = value?.match(/https?:\/\/[^\s<>]+/i)?.[0]?.replace(/[),.!?;]+$/, "");
+  if (!rawUrl) return null;
+  try {
+    const url = new URL(rawUrl);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
   } catch {
     return null;
   }
@@ -429,6 +441,14 @@ function DMPage() {
         .select("*")
         .single();
       if (error) throw error;
+      notifyInApp({
+        recipientId: userId,
+        actorId: user.id,
+        type: "dm",
+        title: "sent you a message",
+        body: "Open your chat to reply.",
+        data: { message_id: data.id },
+      });
       qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => {
         const withoutPending = current.filter((message) => message.id !== pendingId);
         if (withoutPending.some((message) => message.id === data.id)) return withoutPending;
@@ -512,6 +532,14 @@ function DMPage() {
           duration_ms: clip.durationMs,
         });
         if (error) throw new Error(error.message);
+        notifyInApp({
+          recipientId: userId,
+          actorId: user.id,
+          type: "dm",
+          title: "sent you a message",
+          body: "Open your chat to listen to a voice note.",
+          data: { message_type: "voice_note" },
+        });
         qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
       } catch (e: any) {
         toast.error(e?.message ?? "Couldn't send that voice note");
@@ -555,6 +583,15 @@ function DMPage() {
       if (!user) return;
       supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text }).then(({ error }) => {
         if (error) toast.error(`Scheduled message failed: ${error.message}`);
+        else {
+          notifyInApp({
+            recipientId: userId,
+            actorId: user.id,
+            type: "dm",
+            title: "sent you a message",
+            body: "Open your chat to reply.",
+          });
+        }
       });
     }, 10000);
   };
@@ -662,6 +699,7 @@ function DMPage() {
 
   const react = async (messageId: string, emoji: string) => {
     if (!user) return;
+    const message = (msgs.data ?? []).find((row: any) => row.id === messageId) as any;
     const queryKey = ["message-reactions", "dm", messageId] as const;
     await qc.cancelQueries({ queryKey });
     const previous = qc.getQueryData<{ emoji: string; user_id: string }[]>(queryKey);
@@ -669,6 +707,16 @@ function DMPage() {
     qc.setQueryData(queryKey, [...(previous ?? []), { emoji, user_id: user.id }]);
     try {
       await callExtraRpc("toggle_dm_reaction", { _message_id: messageId, _emoji: emoji });
+      if (message?.sender_id && message.sender_id !== user.id) {
+        notifyInApp({
+          recipientId: message.sender_id,
+          actorId: user.id,
+          type: "reaction",
+          title: "reacted to your message",
+          body: `Reacted with ${emoji}.`,
+          data: { message_id: messageId, emoji },
+        });
+      }
       void qc.invalidateQueries({ queryKey });
     } catch (error) {
       if (previous) qc.setQueryData(queryKey, previous);
@@ -800,6 +848,7 @@ function DMPage() {
             const inviteUrl = rest?.match(/(?:https?:\/\/[^\s]+)?\/join\/[a-z0-9_-]+/i)?.[0];
             const inviteCode = inviteUrl ? extractInviteCode(inviteUrl) : "";
             const inviteText = inviteUrl ? rest?.replace(inviteUrl, "").trim() : "";
+            const messageUrl = firstMessageUrl(rest);
             if (audioPath) {
               const audioActions = [
                 {
@@ -840,7 +889,7 @@ function DMPage() {
                     >
                       <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
                     </MessageActionMenu>
-                    <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                    <MessageReactions messageId={m.id} ownerId={m.sender_id} align={mine ? "right" : "left"} />
                   </motion.div>
                 </Fragment>
               );
@@ -868,12 +917,13 @@ function DMPage() {
                 {inviteCode && !deletedAt ? (
                   <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
                 ) : (
+                <div className={`flex max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`}>
                 <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
                   <PopoverTrigger asChild>
                     <button
                       aria-haspopup="dialog"
                       aria-expanded={openMsg === m.id}
-                      className={`chat-bubble min-w-[44px] max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
+                      className={`chat-bubble min-w-[44px] max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
                       style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
@@ -960,6 +1010,19 @@ function DMPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                {messageUrl && !deletedAt && !inviteCode && (
+                  <a
+                    href={messageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={new URL(messageUrl).pathname.startsWith("/call/") ? "Join call invite" : "Open shared link"}
+                    className="mt-1 max-w-full break-all px-2 text-[11px] font-medium text-current underline decoration-current/50 underline-offset-2 opacity-80 hover:opacity-100"
+                  >
+                    {new URL(messageUrl).pathname.startsWith("/call/") ? "Join call" : "Open link"}
+                  </a>
+                )}
+                </div>
                 )}
                 {deliveryStatus === "failed" ? (
                   <button
@@ -972,7 +1035,7 @@ function DMPage() {
                 ) : deliveryStatus === "sending" ? (
                   <span className="text-[10px] text-muted-foreground">Sending…</span>
                 ) : null}
-                <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                <MessageReactions messageId={m.id} ownerId={m.sender_id} align={mine ? "right" : "left"} />
               </motion.div>
               </Fragment>
             );

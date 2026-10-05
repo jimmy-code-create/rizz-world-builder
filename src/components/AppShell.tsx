@@ -2,7 +2,7 @@ import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +47,8 @@ const mobileTabs = [
 
 export function AppShell() {
   const { user, profile, loading, signOut } = useAuth();
+  const qc = useQueryClient();
+  const userId = user?.id;
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
@@ -61,6 +63,23 @@ export function AppShell() {
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
   }, [loading, user, nav]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`unread-notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["unread-notifs", userId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [qc, userId]);
 
   // Allow the keyboard shortcut "n" (and other places) to open the composer
   useEffect(() => {

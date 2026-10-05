@@ -14,7 +14,24 @@ export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
 });
 
-const ICON: Record<string, any> = { like: Heart, comment: MessageCircle, follow: UserPlus, reaction: Sparkles };
+const ICON: Record<string, any> = {
+  like: Heart,
+  comment: MessageCircle,
+  follow: UserPlus,
+  reaction: Sparkles,
+  dm: MessageCircle,
+  call_invite: MessageCircle,
+  story_reply: MessageCircle,
+};
+const ACTION: Record<string, string> = {
+  like: "liked your post",
+  comment: "commented on your post",
+  follow: "started following you",
+  reaction: "reacted to your post",
+  dm: "sent you a message",
+  call_invite: "invited you to a call",
+  story_reply: "replied to your story",
+};
 
 function NotificationsPage() {
   const { user } = useAuth();
@@ -87,11 +104,15 @@ function NotificationsPage() {
       <div className="space-y-2">
         {filtered.map((n: any) => {
           const Icon = ICON[n.type] ?? Bell;
+          const actor = n.actor?.username ? `@${n.actor.username}` : n.actor?.display_name || "Someone";
+          const action = n.title?.trim() || ACTION[n.type] || "sent you a notification";
+          const body = n.body?.trim();
           return (
             <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className={`glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3`}>
               <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center"><Icon className="h-5 w-5 text-[var(--rizz-pink)]" /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm"><span className="font-bold">@{n.actor?.username}</span> {n.type === "like" ? "liked your post" : n.type === "comment" ? "commented on your post" : n.type === "follow" ? "started following you" : "reacted to your post"}</p>
+                <p className="text-sm"><span className="font-bold">{actor}</span> {action}</p>
+                {body && <p className="mt-0.5 text-xs text-muted-foreground">{body}</p>}
                 <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
               </div>
             </motion.div>

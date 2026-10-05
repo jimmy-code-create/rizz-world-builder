@@ -35,6 +35,7 @@ import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
+import { notifyInApp } from "@/lib/notifications";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -186,8 +187,19 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       qc.setQueryData(queryKey, next);
       return { queryKey, previous };
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["feed"] });
+      if (!variables.mine && user && post.author_id !== user.id) {
+        notifyInApp({
+          recipientId: post.author_id,
+          actorId: user.id,
+          type: "reaction",
+          title: "reacted to your post",
+          body: `Reacted with ${variables.emoji}.`,
+          postId: post.id,
+          data: { post_id: post.id, emoji: variables.emoji },
+        });
+      }
     },
     onError: (e: Error, _variables, context) => {
       if (context) qc.setQueryData(context.queryKey, context.previous);
@@ -691,7 +703,7 @@ function CommentsThread({ postId }: { postId: string }) {
                     </button>
                   )}
                 </div>
-                <CommentInteractions commentId={c.id} />
+                <CommentInteractions commentId={c.id} commentAuthorId={c.author_id} postId={postId} />
               </div>
             </div>
           );
@@ -734,7 +746,15 @@ function CommentsThread({ postId }: { postId: string }) {
 type CommentReaction = { emoji: string; user_id: string };
 type CommentInteractions = { reactions: CommentReaction[]; likes: string[] };
 
-function CommentInteractions({ commentId }: { commentId: string }) {
+function CommentInteractions({
+  commentId,
+  commentAuthorId,
+  postId,
+}: {
+  commentId: string;
+  commentAuthorId: string;
+  postId: string;
+}) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const key = useMemo(() => ["comment-interactions", commentId] as const, [commentId]);
@@ -838,7 +858,20 @@ function CommentInteractions({ commentId }: { commentId: string }) {
           ? previous.reactions.filter((reaction) => reaction.emoji !== emoji || reaction.user_id !== user?.id)
           : [...previous.reactions, { emoji, user_id: user?.id ?? "" }],
       });
-      return { previous };
+      return { previous, wasMine: exists };
+    },
+    onSuccess: (_data, emoji, context) => {
+      if (context && !context.wasMine && user && commentAuthorId !== user.id) {
+        notifyInApp({
+          recipientId: commentAuthorId,
+          actorId: user.id,
+          type: "reaction",
+          title: "reacted to your comment",
+          body: `Reacted with ${emoji}.`,
+          postId,
+          data: { post_id: postId, comment_id: commentId, emoji },
+        });
+      }
     },
     onError: (error: Error, _emoji, context) => {
       if (context) qc.setQueryData(key, context.previous);

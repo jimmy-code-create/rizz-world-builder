@@ -12,6 +12,7 @@ import { callExtraRpc, reactionErrorMessage } from "@/lib/extra-rpc";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { notifyInApp } from "@/lib/notifications";
 
 type Story = {
   id: string;
@@ -173,7 +174,15 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
   }, [queryClient, story, user]);
 
   const toggleReaction = useMutation({
-    mutationFn: async ({ storyId, emoji }: { storyId: string; emoji: string; wasMine: boolean }) => {
+    mutationFn: async ({
+      storyId,
+      emoji,
+    }: {
+      storyId: string;
+      emoji: string;
+      wasMine: boolean;
+      ownerId: string;
+    }) => {
       if (!user) throw new Error("Sign in to react to stories");
       return callExtraRpc("toggle_story_reaction", { _story_id: storyId, _emoji: emoji });
     },
@@ -189,6 +198,18 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
       );
       return { key, previous };
     },
+    onSuccess: (_result, variables) => {
+      if (!variables.wasMine && user && variables.ownerId !== user.id) {
+        notifyInApp({
+          recipientId: variables.ownerId,
+          actorId: user.id,
+          type: "reaction",
+          title: "reacted to your story",
+          body: `Reacted with ${variables.emoji}.`,
+          data: { story_id: variables.storyId, emoji: variables.emoji },
+        });
+      }
+    },
     onError: (error, _variables, context) => {
       if (context) queryClient.setQueryData(context.key, context.previous);
       toast.error(reactionErrorMessage(error));
@@ -202,6 +223,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
       storyId: story.id,
       emoji,
       wasMine: (queryClient.getQueryData<string[]>(reactionKey) ?? myReactions).includes(emoji),
+      ownerId: story.author_id,
     });
   };
 
@@ -240,13 +262,24 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
     if (story.author_id === user.id) return toast.info("You can’t reply to your own story.");
     setReplying(true);
     try {
-      const { error } = await supabase.from("direct_messages").insert({
-        sender_id: user.id,
-        recipient_id: story.author_id,
-        body: text,
-        story_id: story.id,
-      });
+      const { data: message, error } = await supabase.from("direct_messages")
+        .insert({
+          sender_id: user.id,
+          recipient_id: story.author_id,
+          body: text,
+          story_id: story.id,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      notifyInApp({
+        recipientId: story.author_id,
+        actorId: user.id,
+        type: "story_reply",
+        title: "replied to your story",
+        body: "Open your chat to reply.",
+        data: { message_id: message.id, story_id: story.id },
+      });
       setReplyBody("");
       toast.success("Reply sent in chat");
     } catch (error) {

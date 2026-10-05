@@ -8,6 +8,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, MonitorUp, Hand, Switc
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { notifyInApp } from "@/lib/notifications";
 
 export const Route = createFileRoute("/_app/call/$userId")({
   head: () => ({ meta: [{ title: "Call · RIZZ" }] }),
@@ -376,12 +377,24 @@ function CallPage() {
     setSendingInvite(true);
     try {
       const callLink = new URL(`/call/${encodeURIComponent(user.id)}?video=${cam ? "1" : "0"}`, window.location.origin).toString();
-      const { error } = await supabase.from("direct_messages").insert({
-        sender_id: user.id,
-        recipient_id: userId,
-        body: `📞 Join my ${cam ? "video" : "voice"} call: ${callLink}`,
-      });
+      const { data: message, error } = await supabase
+        .from("direct_messages")
+        .insert({
+          sender_id: user.id,
+          recipient_id: userId,
+          body: `📞 Join my ${cam ? "video" : "voice"} call: ${callLink}`,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      notifyInApp({
+        recipientId: userId,
+        actorId: user.id,
+        type: "call_invite",
+        title: "invited you to a call",
+        body: "Open your chat to join the call.",
+        data: { message_id: message.id, call_url: callLink },
+      });
       toast.success("Call invite sent in chat");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't send the call invite");

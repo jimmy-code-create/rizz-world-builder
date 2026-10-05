@@ -6,6 +6,7 @@ import { callExtraRpc, reactionErrorMessage } from "@/lib/extra-rpc";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { notifyInApp } from "@/lib/notifications";
 
 type MessageReactionType = "dm" | "group" | "channel";
 type ReactionRow = { emoji: string; user_id: string; message_type?: MessageReactionType };
@@ -18,10 +19,12 @@ export function DMReactionsBar({ messageIds }: { messageIds: string[] }) {
 
 export function MessageReactions({
   messageId,
+  ownerId,
   messageType = "dm",
   align = "left",
 }: {
   messageId: string;
+  ownerId?: string;
   messageType?: MessageReactionType;
   align?: "left" | "right";
 }) {
@@ -110,6 +113,18 @@ export function MessageReactions({
           : [...previous, { emoji, user_id: user?.id ?? "", message_type: messageType }];
       qc.setQueryData(queryKey, next);
       return { queryKey, previous };
+    },
+    onSuccess: (_result, variables) => {
+      if (!variables.mine && user && messageType === "dm" && ownerId && ownerId !== user.id) {
+        notifyInApp({
+          recipientId: ownerId,
+          actorId: user.id,
+          type: "reaction",
+          title: "reacted to your message",
+          body: `Reacted with ${variables.emoji}.`,
+          data: { message_id: messageId, emoji: variables.emoji },
+        });
+      }
     },
     onError: (error: Error, _variables, context) => {
       if (context) qc.setQueryData(context.queryKey, context.previous);
