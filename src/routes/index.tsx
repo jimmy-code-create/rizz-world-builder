@@ -10,12 +10,24 @@ export const Route = createFileRoute("/")({
     links: [{ rel: "canonical", href: "https://rizzapp.onrender.com/" }],
     meta: [
       { title: "Social App for Creators & Live Communities | RIZZ" },
-      { name: "description", content: "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access." },
+      {
+        name: "description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
       { property: "og:title", content: "Social App for Creators & Live Communities | RIZZ" },
-      { property: "og:description", content: "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access." },
+      {
+        property: "og:description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
       { property: "og:url", content: "https://rizzapp.onrender.com/" },
       { name: "twitter:title", content: "Social App for Creators & Live Communities | RIZZ" },
-      { name: "twitter:description", content: "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access." },
+      {
+        name: "twitter:description",
+        content:
+          "RIZZ is a social app for creators to share content, build live communities, and connect through channels and voice rooms. Join early access.",
+      },
     ],
   }),
 });
@@ -76,8 +88,9 @@ function Index() {
           </h1>
 
           <p className="mt-8 mx-auto max-w-xl text-base md:text-lg text-muted-foreground leading-relaxed">
-            RIZZ is a social app for creators that brings posts and live communities together.
-            Every creator has a profile <em>and</em> a server, so following someone means joining their world.
+            RIZZ is a social app for creators that brings posts and live communities together. Every
+            creator has a profile <em>and</em> a server, so following someone means joining their
+            world.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -97,26 +110,29 @@ function Index() {
 
         {/* Feature grid */}
         <section className="mt-24" aria-labelledby="features-heading">
-          <h2 id="features-heading" className="mb-6 text-center font-display text-2xl font-bold md:text-3xl">
+          <h2
+            id="features-heading"
+            className="mb-6 text-center font-display text-2xl font-bold md:text-3xl"
+          >
             Built for creators and their communities
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="glass rounded-2xl p-6 hover:shadow-glow transition-all duration-500 group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center mb-4 group-hover:shadow-glow transition-shadow">
-                <f.icon className="h-5 w-5 text-[var(--rizz-pink)]" />
-              </div>
-              <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
+                className="glass rounded-2xl p-6 hover:shadow-glow transition-all duration-500 group"
+              >
+                <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center mb-4 group-hover:shadow-glow transition-shadow">
+                  <f.icon className="h-5 w-5 text-[var(--rizz-pink)]" />
+                </div>
+                <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </section>
 

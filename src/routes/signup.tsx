@@ -11,7 +11,9 @@ import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
-  head: () => ({ meta: [{ title: "Join RIZZ" }, { name: "robots", content: "noindex, nofollow" }] }),
+  head: () => ({
+    meta: [{ title: "Join RIZZ" }, { name: "robots", content: "noindex, nofollow" }],
+  }),
 });
 
 function SignupPage() {
