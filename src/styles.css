@@ -513,34 +513,42 @@
 body.focus-mode [data-focus-hide] { display: none !important; }
 body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 
-/* ============ NIGHTCLUB CANVAS ============ */
+/* ============ NIGHTCLUB CANVAS (GPU OPTIMIZED) ============ */
 .nightclub-canvas {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  transform: translate3d(var(--px, 0), var(--py, 0), 0);
-  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  contain: strict;
 }
 .nc-orb {
-  position: absolute; border-radius: 9999px; filter: blur(80px); opacity: 0.55;
-  mix-blend-mode: screen; will-change: transform;
+  position: absolute; border-radius: 9999px; opacity: 0.35;
+  will-change: transform;
 }
-.nc-orb-1 { width: 55vmax; height: 55vmax; left: -15vmax; top: -20vmax;
-  background: radial-gradient(circle, oklch(0.68 0.28 5 / 0.9), transparent 65%);
-  animation: nc-drift-1 22s ease-in-out infinite; }
-.nc-orb-2 { width: 60vmax; height: 60vmax; right: -20vmax; top: 10vmax;
-  background: radial-gradient(circle, oklch(0.45 0.25 295 / 0.9), transparent 65%);
-  animation: nc-drift-2 28s ease-in-out infinite; }
-.nc-orb-3 { width: 45vmax; height: 45vmax; left: 20vmax; bottom: -20vmax;
-  background: radial-gradient(circle, oklch(0.78 0.18 200 / 0.7), transparent 65%);
-  animation: nc-drift-3 26s ease-in-out infinite; }
-.nc-beam {
-  position: absolute; top: -20%; height: 140%; width: 40vmax;
-  background: linear-gradient(90deg, transparent, oklch(0.95 0.08 320 / 0.06), transparent);
-  transform-origin: 50% 0%;
-  animation: nc-sweep 14s linear infinite;
-  mix-blend-mode: screen;
+.nc-orb-1 {
+  width: 55vmax; height: 55vmax; left: -15vmax; top: -20vmax;
+  background: radial-gradient(circle closest-side, oklch(0.68 0.28 5 / 0.5), transparent 75%);
+  animation: nc-drift-1 26s ease-in-out infinite;
 }
-.nc-beam-1 { left: 20%; animation-duration: 18s; }
-.nc-beam-2 { right: 15%; animation-duration: 22s; animation-direction: reverse; opacity: 0.7; }
+.nc-orb-2 {
+  width: 60vmax; height: 60vmax; right: -20vmax; top: 10vmax;
+  background: radial-gradient(circle closest-side, oklch(0.45 0.25 295 / 0.45), transparent 75%);
+  animation: nc-drift-2 32s ease-in-out infinite;
+}
+.nc-orb-3 {
+  width: 45vmax; height: 45vmax; left: 20vmax; bottom: -20vmax;
+  background: radial-gradient(circle closest-side, oklch(0.78 0.18 200 / 0.35), transparent 75%);
+  animation: nc-drift-3 30s ease-in-out infinite;
+}
+.nc-beam { display: none; }
+@media (min-width: 1024px) {
+  .nc-beam {
+    display: block; position: absolute; top: -20%; height: 140%; width: 35vmax;
+    background: linear-gradient(90deg, transparent, oklch(0.95 0.08 320 / 0.04), transparent);
+    transform-origin: 50% 0%;
+    animation: nc-sweep 20s linear infinite;
+  }
+  .nc-beam-1 { left: 20%; }
+  .nc-beam-2 { right: 15%; animation-direction: reverse; }
+}
 .nc-grain {
   position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
   background-image: radial-gradient(oklch(1 0 0) 0.5px, transparent 0.5px);
@@ -550,6 +558,17 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @keyframes nc-drift-2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-5vmax,6vmax) scale(1.08); } }
 @keyframes nc-drift-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4vmax,-5vmax) scale(1.12); } }
 @keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
+
+/* ============ SOUND WAVE VISUALIZER ============ */
+@keyframes soundwave {
+  0% { transform: scaleY(0.25); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0.35); opacity: 0.5; }
+}
+.animate-soundwave {
+  animation: soundwave 0.7s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
 
 /* ============ PROCEDURAL EFFECT CLASSES ============
    All effect classes here consume `--ec` (edge color) so a single class can

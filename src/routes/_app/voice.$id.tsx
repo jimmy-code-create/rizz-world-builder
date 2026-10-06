@@ -107,7 +107,24 @@ function RoomPage() {
                   {p.muted && <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-destructive flex items-center justify-center border-2 border-background"><MicOff className="h-3 w-3" /></div>}
                   {p.role === "host" && <div className="absolute -top-1 -right-1 text-[10px] bg-[var(--rizz-pink)] text-primary-foreground px-1.5 rounded-full font-bold">HOST</div>}
                 </div>
-                <p className="text-xs font-bold mt-2 truncate w-full">@{p.user?.username}</p>
+                {!p.muted ? (
+                  <div className="flex items-end justify-center gap-[3px] h-4 mt-2 px-2" aria-label="Speaking sound wave">
+                    {[0.35, 0.8, 1.0, 0.6, 0.95, 0.5, 0.75].map((scale, idx) => (
+                      <span
+                        key={idx}
+                        className="w-1 rounded-full bg-[var(--rizz-pink)] animate-soundwave shadow-[0_0_6px_var(--rizz-pink)]"
+                        style={{
+                          height: `${16 * scale}px`,
+                          animationDelay: `${idx * 0.1}s`,
+                          animationDuration: `${0.55 + (idx % 3) * 0.15}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground mt-2">Muted</span>
+                )}
+                <p className="text-xs font-bold mt-1 truncate w-full">@{p.user?.username}</p>
               </motion.div>
             ))}
           </AnimatePresence>
