@@ -362,6 +362,7 @@ function ReelItem({
             className="min-h-0 flex-1 w-full"
             caption={captions ? post.caption : undefined}
             creator={post.author?.username}
+            minimalControls
           />
           <div className="absolute right-3 top-3 z-20">
             <Popover>

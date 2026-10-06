@@ -6,11 +6,13 @@ export function ExternalVideoEmbed({
   className = "",
   caption,
   creator,
+  minimalControls = false,
 }: {
   sourceUrl: string;
   className?: string;
   caption?: string | null;
   creator?: string | null;
+  minimalControls?: boolean;
 }) {
   const parsed = parseExternalReelLink(sourceUrl);
   if (!parsed.ok) return null;
@@ -83,11 +85,14 @@ export function ExternalVideoEmbed({
     );
   }
 
+  const youtubeEmbedUrl = new URL(parsed.value.embedUrl!);
+  if (minimalControls) youtubeEmbedUrl.searchParams.set("controls", "0");
+
   return (
     <div className={`overflow-hidden bg-black ${className}`}>
       <iframe
         className="h-full w-full border-0"
-        src={parsed.value.embedUrl ?? undefined}
+        src={youtubeEmbedUrl.toString()}
         title="YouTube video player"
         loading="lazy"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
