@@ -98,21 +98,6 @@ function ReelsPage() {
         >
           <Plus className="h-5 w-5 text-white" />
         </button>
-        <button
-          type="button"
-          role="switch"
-          aria-label="Autoplay uploaded videos"
-          aria-checked={autoplay}
-          title="Autoplay controls uploaded videos. Linked embeds keep their own playback behavior."
-          onClick={() => setAutoplay((value) => !value)}
-          className="pointer-events-auto flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 text-xs font-semibold text-white backdrop-blur-md"
-        >
-          <span>Autoplay</span>
-          <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-[var(--rizz-pink)]" : "bg-white/25"}`}>
-            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
-          </span>
-          <span className="sr-only">{autoplay ? "On" : "Off"}</span>
-        </button>
       </div>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
@@ -153,6 +138,7 @@ function ReelsPage() {
             setFilter={setFilter}
             isActive={activeIndex === index}
             autoplay={autoplay}
+            setAutoplay={setAutoplay}
             onEnded={() => advanceReel(index)}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
@@ -206,6 +192,7 @@ function ReelItem({
   initialSaved,
   isActive,
   autoplay,
+  setAutoplay,
   onEnded,
 }: {
   post: any;
@@ -222,6 +209,7 @@ function ReelItem({
   initialSaved: boolean;
   isActive: boolean;
   autoplay: boolean;
+  setAutoplay: React.Dispatch<React.SetStateAction<boolean>>;
   onEnded: () => void;
 }) {
   const { user } = useAuth();
@@ -241,6 +229,7 @@ function ReelItem({
   const [paused, setPaused] = useState(true);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
   const cueTimer = useRef<number | null>(null);
+  const tapTimer = useRef<number | null>(null);
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
@@ -266,12 +255,16 @@ function ReelItem({
         .catch(() => {
           if (!cancelled) setPaused(video.paused);
         });
+    } else {
+      video.pause();
+      setPaused(true);
     }
     return () => { cancelled = true; };
   }, [isActive, autoplay]);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
   useEffect(() => () => {
     if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
+    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
   }, []);
 
   async function doLike(force?: boolean) {
@@ -331,7 +324,16 @@ function ReelItem({
 
   function handleVideoTap(event: React.MouseEvent<HTMLVideoElement>) {
     event.preventDefault();
-    void togglePlayback();
+    if (tapTimer.current !== null) {
+      window.clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+      void doLike(true);
+      return;
+    }
+    tapTimer.current = window.setTimeout(() => {
+      tapTimer.current = null;
+      void togglePlayback();
+    }, 260);
   }
 
   function viewOriginal() {
@@ -347,6 +349,12 @@ function ReelItem({
 
   return (
       <section data-reel-index={reelIndex} className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}>
+      {!isExternal && (
+        <>
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-36 bg-gradient-to-b from-black/45 via-black/15 to-transparent" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-44 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+        </>
+      )}
       {isExternal ? (
         <>
           <ExternalVideoEmbed sourceUrl={post.media_url} className="min-h-0 flex-1 w-full" />
@@ -361,7 +369,18 @@ function ReelItem({
                   <MoreVertical className="h-5 w-5" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-44 p-1.5 glass-strong border-white/10">
+              <PopoverContent align="end" className="w-56 p-1.5 glass-strong border-white/10">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Autoplay uploaded videos"
+                  aria-checked={autoplay}
+                  onClick={() => setAutoplay((current) => !current)}
+                  className="w-full flex min-h-10 items-center justify-between rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
+                >
+                  Autoplay uploads
+                  <span className="text-xs text-muted-foreground">{autoplay ? "On" : "Off"}</span>
+                </button>
                 <button
                   type="button"
                   onClick={viewOriginal}
@@ -467,6 +486,21 @@ function ReelItem({
           <PopoverContent align="end" className="w-60 p-3 glass-strong border-white/10">
             <div className="space-y-3 text-foreground">
               <section>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Autoplay uploaded videos"
+                  aria-checked={autoplay}
+                  onClick={() => setAutoplay((current) => !current)}
+                  className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
+                >
+                  <span className="flex items-center gap-2"><Play className="h-4 w-4 text-[var(--rizz-pink)]" /> Autoplay</span>
+                  <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-[var(--rizz-pink)]" : "bg-white/25"}`}>
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </span>
+                </button>
+              </section>
+              <section className="border-t border-white/10 pt-3">
                 <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
                   <Gauge className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Playback speed
                 </h3>
