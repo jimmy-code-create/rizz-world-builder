@@ -13,3 +13,4 @@
 - [ ] Upgrade toast popups and stabilize the story canvas.
 
 - [ ] Fix group invite RPC/cache, chat overlap, story fullscreen, premium chat/poll/toast polish, and mobile performance.
+- [ ] Add distinct narrator/character voices across story playback and make valid group invites bypass mutual-friend gating.
