@@ -211,6 +211,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          created_by: string | null
           emoji: string
           gradient: string
           hook: string
@@ -222,11 +223,14 @@ export type Database = {
           slug: string
           them_name: string
           title: string
+          video_type: string | null
+          video_url: string | null
           word_count: number
         }
         Insert: {
           category?: string
           created_at?: string
+          created_by?: string | null
           emoji?: string
           gradient?: string
           hook: string
@@ -238,11 +242,14 @@ export type Database = {
           slug: string
           them_name: string
           title: string
+          video_type?: string | null
+          video_url?: string | null
           word_count?: number
         }
         Update: {
           category?: string
           created_at?: string
+          created_by?: string | null
           emoji?: string
           gradient?: string
           hook?: string
@@ -254,6 +261,8 @@ export type Database = {
           slug?: string
           them_name?: string
           title?: string
+          video_type?: string | null
+          video_url?: string | null
           word_count?: number
         }
         Relationships: []
@@ -265,8 +274,10 @@ export type Database = {
           goto_idx: number
           id: string
           label: string
+          label_en: string
           position: number
           reply_body: string
+          reply_body_en: string
           story_id: string
         }
         Insert: {
@@ -275,8 +286,10 @@ export type Database = {
           goto_idx: number
           id?: string
           label: string
+          label_en?: string
           position?: number
           reply_body: string
+          reply_body_en?: string
           story_id: string
         }
         Update: {
@@ -285,8 +298,10 @@ export type Database = {
           goto_idx?: number
           id?: string
           label?: string
+          label_en?: string
           position?: number
           reply_body?: string
+          reply_body_en?: string
           story_id?: string
         }
         Relationships: [
@@ -328,6 +343,7 @@ export type Database = {
       chat_story_lines: {
         Row: {
           body: string
+          body_en: string
           chapter: string | null
           id: string
           idx: number
@@ -337,6 +353,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          body_en?: string
           chapter?: string | null
           id?: string
           idx: number
@@ -346,6 +363,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          body_en?: string
           chapter?: string | null
           id?: string
           idx?: number

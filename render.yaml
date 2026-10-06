@@ -20,3 +20,5 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
