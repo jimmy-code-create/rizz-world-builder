@@ -6,15 +6,33 @@ export function GifContent({ children, className }: { children: string; classNam
   return (
     <span className={className}>
       {parts.map((part, index) => {
-        if (part.isGif) {
+        if (part.isSticker && part.value.endsWith(".webm")) {
+          return (
+            <video
+              key={`sticker-${index}`}
+              src={part.value}
+              poster={part.value.replace(/\.webm$/i, ".png")}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-label="Animated sticker"
+              className="my-2 inline-block max-h-40 max-w-full rounded-xl object-contain align-middle"
+            />
+          );
+        }
+        if (part.isGif || part.isSticker) {
           return (
             <img
-              key={`gif-${index}`}
+              key={`media-${index}`}
               src={part.value}
-              alt="GIF"
+              alt={part.isSticker ? "Sticker" : "GIF"}
               loading="lazy"
               decoding="async"
-              className="my-2 max-h-64 max-w-full rounded-xl object-contain"
+              className={`my-2 inline-block max-w-full rounded-xl object-contain align-middle ${
+                part.isSticker ? "max-h-40" : "max-h-64"
+              }`}
             />
           );
         }

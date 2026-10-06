@@ -377,8 +377,8 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
       {post.caption && (
         <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
-          {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif
-            ? <GifContent key={`gif-${segmentIndex}`}>{`![gif](${segment.value})`}</GifContent>
+          {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
+            ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
             : renderCaptionWithTags(segment.value).map((p, i) => {
             if (p.tag) {
               return (

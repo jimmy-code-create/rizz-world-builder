@@ -198,8 +198,8 @@ const FILTER_CSS: Record<string, string> = {
 function CaptionText({ caption }: { caption: string }) {
   return (
     <>
-      {renderGifSegments(caption).map((segment, segmentIndex) => segment.isGif
-        ? <GifContent key={`gif-${segmentIndex}`}>{`![gif](${segment.value})`}</GifContent>
+      {renderGifSegments(caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
+        ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
         : renderCaptionWithTags(segment.value).map((part, index) => {
         if (part.mention) {
           return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;

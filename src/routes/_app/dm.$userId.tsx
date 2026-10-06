@@ -1054,18 +1054,6 @@ function DMPage() {
           >
             <ImagePlus className="h-5 w-5" />
           </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground"><Smile className="h-5 w-5" /></Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2 glass-strong border-white/10" side="top">
-              <div className="flex gap-1">
-                {QUICK_EMOJIS.map((e) => (
-                  <button key={e} onClick={() => setBody((b) => b + e)} className="h-9 w-9 rounded-lg hover:bg-white/10 text-lg">{e}</button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
           <Textarea
             ref={composerRef}
             value={body}

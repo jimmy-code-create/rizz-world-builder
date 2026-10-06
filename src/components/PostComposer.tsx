@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, X, Loader2, Smile, BarChart3, Globe, Lock, Plus } from "lucide-react";
+import { Sparkles, X, Loader2, BarChart3, Globe, Lock, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createPost, rollbackCreatedPost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
@@ -16,7 +15,6 @@ import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
 
 const DRAFT_KEY = "rizz:post-draft";
-const QUICK_EMOJIS = ["🔥","💖","😂","✨","👀","💀","🥶","👑","🎉","💯","🙌","😎","🥹","🫶","🤝","🤩"];
 
 export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const { user, profile } = useAuth();
@@ -196,23 +194,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button type="button" className="h-9 w-9 rounded-full hover:bg-white/5 flex items-center justify-center text-[var(--rizz-pink)]" aria-label="Insert emoji">
-                    <Smile className="h-5 w-5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="glass-strong border-white/10 w-56 p-2">
-                  <div className="grid grid-cols-8 gap-1">
-                    {QUICK_EMOJIS.map((e) => (
-                      <button key={e} type="button" onClick={() => setCaption((c) => (c + e).slice(0, 600))}
-                        className="h-7 w-7 grid place-items-center rounded hover:bg-white/10 text-base">
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
               <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 600))} />
               <button
                 type="button"
