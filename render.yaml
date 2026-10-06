@@ -2,7 +2,7 @@ services:
   - type: web
     name: rizz
     runtime: node
-    buildCommand: npm ci --registry=https://registry.npmjs.org/ --replace-registry-host=always && npm run build
+    buildCommand: node scripts/normalize-npm-lockfile.mjs && npm ci --registry=https://registry.npmjs.org/ && npm run build
     startCommand: npm run preview
     healthCheckPath: /
     envVars:
