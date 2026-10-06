@@ -2224,6 +2224,7 @@ export type Database = {
           topic: string
         }[]
       }
+      send_test_push: { Args: never; Returns: undefined }
       set_call_status: {
         Args: { _call_id: string; _status: string }
         Returns: undefined
