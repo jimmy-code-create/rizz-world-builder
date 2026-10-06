@@ -11,6 +11,8 @@ import { ArrowLeft, Hash, Megaphone, Gift, Send, Users, Sparkles, Copy, Trash2 }
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { GifPicker } from "@/components/GifPicker";
+import { GifContent } from "@/components/GifContent";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, drops: Gift };
 
@@ -189,7 +191,7 @@ function ChannelPage() {
                   ]}
                 >
                   <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
-                    {m.body}
+                    <GifContent>{m.body}</GifContent>
                   </p>
                 </MessageActionMenu>
               </div>
@@ -205,6 +207,7 @@ function ChannelPage() {
 
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         <div className="mx-auto flex w-full max-w-3xl gap-2">
+          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <Input
             value={body}
             onChange={(e) => setBody(e.target.value)}

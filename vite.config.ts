@@ -13,6 +13,11 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    server: {
+      watch: {
+        ignored: ["**/.cache/**"],
+      },
+    },
     preview: {
       allowedHosts: true,
     },

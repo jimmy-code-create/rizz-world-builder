@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { GifPicker } from "@/components/GifPicker";
+import { GifContent } from "@/components/GifContent";
 
 const GROUP_MESSAGE_LIMIT = 10_000;
 
@@ -374,7 +376,7 @@ function GroupRoom() {
                     ]}
                   >
                     <div className={`chat-bubble min-w-[44px] max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
-                      {deletedAt ? "This message was unsent" : m.body}
+                      {deletedAt ? "This message was unsent" : <GifContent>{m.body}</GifContent>}
                     </div>
                   </MessageActionMenu>
                   {m.delivery_status ? (
@@ -406,6 +408,7 @@ function GroupRoom() {
 
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         <div className="mx-auto flex w-full max-w-3xl gap-2">
+          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
           <Textarea
             ref={composerRef}
             value={body}

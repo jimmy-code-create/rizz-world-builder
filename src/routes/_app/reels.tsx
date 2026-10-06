@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
   Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
@@ -8,6 +9,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GifPicker } from "@/components/GifPicker";
+import { GifContent } from "@/components/GifContent";
+import { renderGifSegments } from "@/lib/gif-content";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -194,7 +198,9 @@ const FILTER_CSS: Record<string, string> = {
 function CaptionText({ caption }: { caption: string }) {
   return (
     <>
-      {renderCaptionWithTags(caption).map((part, index) => {
+      {renderGifSegments(caption).map((segment, segmentIndex) => segment.isGif
+        ? <GifContent key={`gif-${segmentIndex}`}>{`![gif](${segment.value})`}</GifContent>
+        : renderCaptionWithTags(segment.value).map((part, index) => {
         if (part.mention) {
           return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
         }
@@ -205,7 +211,7 @@ function CaptionText({ caption }: { caption: string }) {
           return <a key={index} href={part.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="underline decoration-white/60 underline-offset-2">{part.text}</a>;
         }
         return <span key={index}>{part.text}</span>;
-      })}
+      }))}
     </>
   );
 }
@@ -247,6 +253,7 @@ function ReelItem({
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLVideoElement>(null);
   const externalLink =
     post.media_type === "video" && post.media_url
@@ -258,8 +265,8 @@ function ReelItem({
   const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [burst, setBurst] = useState(0); // heart burst counter
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number } | null>(null);
+  const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
   const [paused, setPaused] = useState(true);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
   const cueTimer = useRef<number | null>(null);
@@ -307,10 +314,9 @@ function ReelItem({
   async function doLike(force?: boolean) {
     if (!user) { toast.error("Sign in to like"); return; }
     const next = force ?? !liked;
-    if (next === liked) { setBurst((n) => n + 1); return; }
+    if (next === liked) return;
     setLiked(next);
     setLikeCount((c) => Math.max(0, c + (next ? 1 : -1)));
-    if (next) setBurst((n) => n + 1);
     try {
       await toggleLike(post.id, user.id, !next);
       qc.invalidateQueries({ queryKey: ["reel-likes"] });
@@ -365,9 +371,17 @@ function ReelItem({
       window.clearTimeout(tapTimer.current);
       tapTimer.current = null;
       void doLike(true);
+      if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
+      setStaticLikeFeedback(false);
+      if (reduceMotion) {
+        setStickerBurst(null);
+        setStaticLikeFeedback(true);
+        stickerTimer.current = window.setTimeout(() => setStaticLikeFeedback(false), 700);
+        return;
+      }
       const bounds = event.currentTarget.getBoundingClientRect();
-      const insetX = Math.min(24, (78 / bounds.width) * 100);
-      const insetY = Math.min(24, (78 / bounds.height) * 100);
+      const insetX = Math.min(12, (42 / bounds.width) * 100);
+      const insetY = Math.min(12, (42 / bounds.height) * 100);
       const x = Math.max(insetX, Math.min(100 - insetX, ((event.clientX - bounds.left) / bounds.width) * 100));
       const y = Math.max(insetY, Math.min(100 - insetY, ((event.clientY - bounds.top) / bounds.height) * 100));
       const id = ++stickerId.current;
@@ -376,7 +390,7 @@ function ReelItem({
       if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
       stickerTimer.current = window.setTimeout(() => {
         setStickerBurst((current) => current?.id === id ? null : current);
-      }, 1250);
+      }, 900);
       return;
     }
     tapTimer.current = window.setTimeout(() => {
@@ -493,27 +507,32 @@ function ReelItem({
           className="absolute inset-0 h-full w-full object-cover transition-[filter] duration-300"
           style={{ filter: FILTER_CSS[filter] || "none" }}
         />
-      {burst > 0 && (
-        <Heart
-          key={burst}
-          className="pointer-events-none absolute inset-0 m-auto h-32 w-32 text-[var(--rizz-pink)] fill-[var(--rizz-pink)] drop-shadow-2xl animate-ping-once"
-          style={{ animation: "reel-heart 700ms ease-out forwards" }}
-        />
-      )}
       {stickerBurst && (
-        <img
+        <span
           key={stickerBurst.id}
-          src={stickerBurst.src}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          className="pointer-events-none absolute z-[15] h-auto w-[clamp(96px,36vw,156px)] select-none object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+          className="pointer-events-none absolute z-[15] grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-black/35 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-sm"
           style={{
             left: `${stickerBurst.x}%`,
             top: `${stickerBurst.y}%`,
-            animation: "reel-sticker-pop 1250ms cubic-bezier(0.2,0.7,0.2,1) forwards",
+            animation: "reel-sticker-pop 900ms cubic-bezier(0.2,0.7,0.2,1) forwards",
           }}
-        />
+        >
+          <img
+            src={stickerBurst.src}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="h-11 w-11 select-none object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
+          />
+        </span>
+      )}
+      {staticLikeFeedback && (
+        <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
+            <Heart className="h-3.5 w-3.5 fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" />
+            Liked
+          </span>
+        </span>
       )}
       {playCue && (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-live="polite">
@@ -729,7 +748,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold">@{c.author?.username}</p>
-                <p className="text-sm break-words">{c.body}</p>
+                <p className="text-sm break-words whitespace-pre-wrap"><GifContent>{c.body}</GifContent></p>
               </div>
             </div>
           ))}
@@ -738,6 +757,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
           onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
           className="flex items-center gap-2 pt-2 border-t border-white/5"
         >
+          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 500))} />
           <Input
             value={body}
             onChange={(e) => setBody(e.target.value.slice(0, 500))}

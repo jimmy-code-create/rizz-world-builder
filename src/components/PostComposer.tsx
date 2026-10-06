@@ -13,6 +13,7 @@ import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { toast } from "sonner";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
+import { GifPicker } from "@/components/GifPicker";
 
 const DRAFT_KEY = "rizz:post-draft";
 const QUICK_EMOJIS = ["🔥","💖","😂","✨","👀","💀","🥶","👑","🎉","💯","🙌","😎","🥹","🫶","🤝","🤩"];
@@ -212,6 +213,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                   </div>
                 </PopoverContent>
               </Popover>
+              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 600))} />
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}

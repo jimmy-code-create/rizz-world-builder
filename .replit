@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["web", "nodejs-22", "bun-1.3"]
 
 [nix]
 channel = "stable-25_05"
@@ -22,13 +22,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev -- --host 0.0.0.0 --port 5000"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bun run dev -- --host 0.0.0.0 --port 5000"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000

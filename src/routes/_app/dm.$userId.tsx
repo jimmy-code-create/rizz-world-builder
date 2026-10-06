@@ -24,6 +24,8 @@ import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
 import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
+import { GifPicker } from "@/components/GifPicker";
+import { GifContent } from "@/components/GifContent";
 
 const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
 const MORE_REACTIONS = ["😍", "🙌", "💯", "🥹", "🎉", "🤔"];
@@ -902,7 +904,7 @@ function DMPage() {
                           className="mb-2 max-h-72 max-w-full rounded-xl object-contain"
                         />
                       )}
-                      {deletedAt ? "This message was unsent" : rest}
+                      {deletedAt ? "This message was unsent" : <GifContent>{rest}</GifContent>}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -1034,6 +1036,7 @@ function DMPage() {
             </div>
           )}
           <div className="flex gap-2">
+          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <input
             ref={imageInputRef}
             type="file"

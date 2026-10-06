@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
@@ -28,6 +28,9 @@ import {
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
+import { GifPicker } from "@/components/GifPicker";
+import { GifContent } from "@/components/GifContent";
+import { renderGifSegments } from "@/lib/gif-content";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
@@ -72,6 +75,12 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   const [hidden, setHidden] = useState(false);
   const [burst, setBurst] = useState(0);
   const lastTap = useRef(0);
+  const burstTimer = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => () => {
+    if (burstTimer.current !== null) window.clearTimeout(burstTimer.current);
+  }, []);
 
   useEffect(() => {
     const hp = readSet(HIDDEN_KEY);
@@ -224,6 +233,8 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     if (now - lastTap.current < 280) {
       if (!liked) likeMut.mutate();
       setBurst((b) => b + 1);
+        if (burstTimer.current !== null) window.clearTimeout(burstTimer.current);
+        burstTimer.current = window.setTimeout(() => setBurst(0), 650);
     }
     lastTap.current = now;
   };
@@ -366,7 +377,9 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
       {post.caption && (
         <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
-          {renderCaptionWithTags(post.caption).map((p, i) => {
+          {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif
+            ? <GifContent key={`gif-${segmentIndex}`}>{`![gif](${segment.value})`}</GifContent>
+            : renderCaptionWithTags(segment.value).map((p, i) => {
             if (p.tag) {
               return (
                 <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
@@ -383,7 +396,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
               );
             }
             return <span key={i}>{p.text}</span>;
-          })}
+          }))}
         </p>
       )}
 
@@ -408,14 +421,16 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             {!externalVideo?.ok && burst > 0 && (
               <motion.div
                 key={burst}
-                initial={{ scale: 0.3, opacity: 0 }}
-                animate={{ scale: 1.4, opacity: 1 }}
-                exit={{ scale: 1.8, opacity: 0 }}
-                transition={{ duration: 0.55 }}
-                className="pointer-events-none absolute inset-0 grid place-items-center"
-                onAnimationComplete={() => setBurst(0)}
+                initial={{ scale: reduceMotion ? 1 : 0.88, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
+                className="pointer-events-none absolute inset-0 z-10 grid place-items-center"
               >
-                <Heart className="h-24 w-24 text-[var(--rizz-pink)] fill-current drop-shadow-[0_0_30px_rgba(255,45,146,0.8)]" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
+                  <Heart className="h-3.5 w-3.5 fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" />
+                  Liked
+                </span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -598,7 +613,7 @@ function CommentsThread({ postId }: { postId: string }) {
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-xs">@{a?.username}</span>{" "}
                 <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
-                <p className="text-sm leading-snug mt-0.5">{c.body}</p>
+                <p className="text-sm leading-snug mt-0.5 whitespace-pre-wrap"><GifContent>{c.body}</GifContent></p>
                 <div className="mt-1 flex items-center gap-3">
                   {user && (
                     <button
@@ -650,6 +665,7 @@ function CommentsThread({ postId }: { postId: string }) {
             onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
             className="flex items-center gap-2 p-3"
           >
+            <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 500))} />
             <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={profile?.avatar_url ?? undefined} />
               <AvatarFallback className="bg-gradient-primary text-[10px]">
