@@ -9,7 +9,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/join/$code")({
-  head: () => ({ meta: [{ title: "Join group · RIZZ" }] }),
+  head: () => ({
+    meta: [
+      { title: "Join a RIZZ group" },
+      { name: "description", content: "Join your friends in a RIZZ group chat." },
+      { property: "og:title", content: "Join a RIZZ group" },
+      { property: "og:description", content: "Open your group invitation and join the conversation." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: JoinPage,
 });
 
