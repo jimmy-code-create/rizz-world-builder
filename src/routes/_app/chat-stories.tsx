@@ -8,7 +8,8 @@ import { Heart, Loader2, MessageSquareText, Play, Sparkles, Wand2 } from "lucide
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
-import { generateGeminiStory, saveGeneratedStoryToSupabase, type StoryCategory } from "@/lib/gemini-story";
+const generateGeminiStory = async (..._args: unknown[]): Promise<any> => { throw new Error("Story generation is disabled"); };
+const saveGeneratedStoryToSupabase = async (..._args: unknown[]): Promise<string> => { throw new Error("Story saving is disabled"); };
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ const QUICK_PROMPTS = [
   "A wrong number texting from my own contact",
   "Gym crush disaster",
 ] as const;
+type StoryCategory = "horror" | "funny" | "chaos" | "cringe";
 const GENRES: StoryCategory[] = ["horror", "funny", "chaos", "cringe"];
 
 function ChatStoriesPage() {
