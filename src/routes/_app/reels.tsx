@@ -702,7 +702,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const sourceLinkResult = sourceLink.trim() ? parseExternalReelLink(sourceLink) : null;
   const canPublishLink =
     sourceLinkResult?.ok === true &&
-    sourceLinkResult.value.platform !== "instagram" &&
+    sourceLinkResult.value.platform === "youtube" &&
     rightsConfirmed;
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
@@ -732,6 +732,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
       if (sourceMode === "link" && !parsedLink) {
         throw new Error(sourceLinkResult && !sourceLinkResult.ok ? sourceLinkResult.error : "Paste a video link.");
       }
+      if (sourceMode === "link" && parsedLink?.platform === "rednote") throw new Error("RedNote links aren't supported in Reels.");
       if (sourceMode === "link" && parsedLink?.platform === "instagram") throw new Error("This video link isn't supported here.");
       if (sourceMode === "link" && !rightsConfirmed) throw new Error("Confirm that you have permission to share this video.");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
@@ -786,7 +787,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           <DialogTitle className="text-base font-black">Create reel</DialogTitle>
-          <DialogDescription className="sr-only">Upload a video file or add a supported external video link, then write a caption.</DialogDescription>
+          <DialogDescription className="sr-only">Upload a video file or add a YouTube video link, then write a caption.</DialogDescription>
           <span className="h-8 w-8" aria-hidden />
         </div>
 
@@ -801,10 +802,14 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
           <div className="bg-black grid place-items-center min-h-[240px] md:min-h-[440px] relative">
-            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform !== "instagram" ? (
+            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform === "youtube" ? (
               <ExternalVideoEmbed sourceUrl={sourceLinkResult.value.sourceUrl} className="h-full w-full" />
             ) : sourceMode === "link" && sourceLinkResult?.ok ? (
-              <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">This link can’t be shown here. Try a supported video link.</div>
+              <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">
+                {sourceLinkResult.value.platform === "rednote"
+                  ? "RedNote links aren’t supported in Reels."
+                  : "This link can’t be shown here. Try a YouTube video link."}
+              </div>
             ) : sourceMode === "upload" && previewUrl ? (
               <>
                 <video
@@ -863,15 +868,15 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   autoComplete="url"
                   value={sourceLink}
                   onChange={(e) => setSourceLink(e.target.value)}
-                  placeholder="Paste a YouTube or RedNote video link"
+                  placeholder="Paste a YouTube video link"
                   className="glass border-white/10"
                   aria-describedby="reel-source-help reel-source-status"
                 />
-                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform === "instagram")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
-                  {!sourceLinkResult ? "YouTube previews use the official player. RedNote videos stay on their original site." :
+                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform !== "youtube")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
+                  {!sourceLinkResult ? "YouTube previews use the official player. RedNote and Instagram links aren’t supported in Reels." :
                     !sourceLinkResult.ok ? sourceLinkResult.error :
-                      sourceLinkResult.value.platform === "instagram" ? "This link can’t be shared here. Try a supported video link." :
-                        sourceLinkResult.value.platform === "rednote" ? "RedNote link ready. The video will open on its original site." :
+                      sourceLinkResult.value.platform === "instagram" ? "This link can’t be shared here. Try a YouTube video link." :
+                        sourceLinkResult.value.platform === "rednote" ? "RedNote links aren’t supported in Reels." :
                           "YouTube link ready to preview."}
                 </p>
                 <p id="reel-source-help" className="text-[11px] leading-relaxed text-muted-foreground">

@@ -402,7 +402,12 @@ export async function fetchReels(limit = 30): Promise<FeedPost[]> {
     .eq("media_type", "video")
     .order("created_at", { ascending: false })
     .limit(limit));
-  return addVerifiedCreatorFlags(data);
+  const supportedReels = data.filter((post) => {
+    if (!post.media_url) return true;
+    const externalLink = parseExternalReelLink(post.media_url);
+    return !(externalLink.ok && externalLink.value.platform === "rednote");
+  });
+  return addVerifiedCreatorFlags(supportedReels);
 }
 
 /** Reels that remix a given reel. */
