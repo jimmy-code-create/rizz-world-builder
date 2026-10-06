@@ -357,7 +357,12 @@ function ReelItem({
       )}
       {isExternal ? (
         <>
-          <ExternalVideoEmbed sourceUrl={post.media_url} className="min-h-0 flex-1 w-full" />
+          <ExternalVideoEmbed
+            sourceUrl={post.media_url}
+            className="min-h-0 flex-1 w-full"
+            caption={captions ? post.caption : undefined}
+            creator={post.author?.username}
+          />
           <div className="absolute right-3 top-3 z-20">
             <Popover>
               <PopoverTrigger asChild>
@@ -400,7 +405,6 @@ function ReelItem({
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
             </Link>
-            {captions && post.caption && <p className="mb-2 text-sm line-clamp-2 text-white/90"><CaptionText caption={post.caption} /></p>}
             <div className="flex items-center justify-around gap-1">
               <ReelAction
                 icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
