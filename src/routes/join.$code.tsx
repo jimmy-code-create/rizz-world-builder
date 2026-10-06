@@ -9,7 +9,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/join/$code")({
-  head: () => ({ meta: [{ title: "Join group · RIZZ" }] }),
+  head: () => ({
+    meta: [
+      { title: "Join a RIZZ group" },
+      { name: "description", content: "Join your friends in a RIZZ group chat." },
+      { property: "og:title", content: "Join a RIZZ group" },
+      { property: "og:description", content: "Open your group invitation and join the conversation." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: JoinPage,
 });
 
@@ -35,8 +44,8 @@ function JoinPage() {
     },
     onError: (error: Error) => {
       const text = error.message.toLowerCase();
-      const message = text.includes("friends_only")
-        ? "This is a friends-only group. Follow a current member both ways to join."
+      const message = text.includes("blocked")
+        ? "You can’t join this group because it includes someone you’ve blocked."
         : text.includes("expired")
           ? "This invite has expired. Ask a group member for a new link."
           : text.includes("already")
