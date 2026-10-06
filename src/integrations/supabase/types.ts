@@ -118,6 +118,51 @@ export type Database = {
           },
         ]
       }
+      calls: {
+        Row: {
+          callee_id: string
+          caller_id: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          video: boolean
+        }
+        Insert: {
+          callee_id: string
+          caller_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          video?: boolean
+        }
+        Update: {
+          callee_id?: string
+          caller_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          video?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_callee_id_fkey"
+            columns: ["callee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -1064,6 +1109,47 @@ export type Database = {
           },
         ]
       }
+      notification_prefs: {
+        Row: {
+          calls: boolean
+          dms: boolean
+          group_mentions: boolean
+          muted_conversations: string[]
+          quiet_end: string | null
+          quiet_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calls?: boolean
+          dms?: boolean
+          group_mentions?: boolean
+          muted_conversations?: string[]
+          quiet_end?: string | null
+          quiet_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calls?: boolean
+          dms?: boolean
+          group_mentions?: boolean
+          muted_conversations?: string[]
+          quiet_end?: string | null
+          quiet_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -1669,6 +1755,50 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string
+          p256dh: string
+          platform: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string
+          p256dh: string
+          platform?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string
+          p256dh?: string
+          platform?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           author_id: string
@@ -2022,6 +2152,10 @@ export type Database = {
         Args: { _slug: string; _user: string }
         Returns: undefined
       }
+      begin_call: {
+        Args: { _callee_id: string; _video?: boolean }
+        Returns: string
+      }
       can_view_author: {
         Args: {
           _author: string
@@ -2089,6 +2223,10 @@ export type Database = {
           status: string
           topic: string
         }[]
+      }
+      set_call_status: {
+        Args: { _call_id: string; _status: string }
+        Returns: undefined
       }
       toggle_comment_like: { Args: { _comment_id: string }; Returns: Json }
       toggle_comment_reaction: {
