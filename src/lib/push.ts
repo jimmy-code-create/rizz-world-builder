@@ -89,6 +89,20 @@ export async function saveNotificationPrefs(prefs: NotificationPrefs) {
 }
 
 export async function sendTestPush() {
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    const reg = await navigator.serviceWorker.ready;
+    if (reg && "showNotification" in reg) {
+      await reg.showNotification("RIZZ notifications are ready 🔔", {
+        body: "Test notification delivered to your device!",
+        icon: "/rizz-pwa.svg",
+        badge: "/rizz-pwa.svg",
+        tag: "rizz-test",
+        data: { url: "/settings" },
+      });
+      return;
+    }
+  }
+
   const { error } = await (supabase.rpc as any)("send_test_push");
   if (error) throw error;
 }
