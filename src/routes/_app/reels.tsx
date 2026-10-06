@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { parseExternalReelLink } from "@/lib/external-reels";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 const SONG_LIBRARY = [
   { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
@@ -45,6 +46,9 @@ function ReelsPage() {
   const [speed, setSpeed] = useState(1);
   const [captions, setCaptions] = useState(true);
   const [filter, setFilter] = useState<string>("none");
+  const [autoplay, setAutoplay] = useState(true);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const likes = useQuery({
     queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
@@ -57,24 +61,74 @@ function ReelsPage() {
     enabled: !!user,
   });
 
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const visibility = new Map<Element, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          visibility.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+        });
+        const mostVisible = [...visibility.entries()].sort((a, b) => b[1] - a[1])[0];
+        const index = mostVisible?.[1]
+          ? Number((mostVisible[0] as HTMLElement).dataset.reelIndex)
+          : -1;
+        if (Number.isFinite(index)) setActiveIndex(index);
+      },
+      { root: scroller, threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
+    );
+    scroller.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, [reels.data]);
+
+  const advanceReel = (index: number) => {
+    const next = scrollerRef.current?.querySelector<HTMLElement>(`[data-reel-index="${index + 1}"]`);
+    next?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <div className="relative -mx-4 md:-mx-8 -my-6 md:-my-10 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-2.5rem)]">
-      <button
-        onClick={() => setEditorOpen(true)}
-        className="absolute left-4 top-3 z-30 grid h-11 w-11 place-items-center rounded-full bg-gradient-primary shadow-glow transition-transform active:scale-95"
-        aria-label="Upload reel"
-        title="Upload reel"
-      >
-        <Plus className="h-6 w-6 text-white" />
-      </button>
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-black">
+      <div className="absolute inset-x-3 top-3 z-30 flex items-center gap-2 pointer-events-none">
+        <button
+          onClick={() => setEditorOpen(true)}
+          className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-gradient-primary shadow-glow transition-transform active:scale-95"
+          aria-label="Upload reel"
+          title="Upload reel"
+        >
+          <Plus className="h-5 w-5 text-white" />
+        </button>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Autoplay uploaded videos"
+          aria-checked={autoplay}
+          title="Autoplay controls uploaded videos. Linked embeds keep their own playback behavior."
+          onClick={() => setAutoplay((value) => !value)}
+          className="pointer-events-auto flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 text-xs font-semibold text-white backdrop-blur-md"
+        >
+          <span>Autoplay</span>
+          <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-[var(--rizz-pink)]" : "bg-white/25"}`}>
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
+          </span>
+          <span className="sr-only">{autoplay ? "On" : "Off"}</span>
+        </button>
+      </div>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      {reels.isLoading && <div className="h-full grid place-items-center text-muted-foreground">Loading reels…</div>}
-      {reels.data?.length === 0 && (
-        <div className="h-full grid place-items-center text-center px-8">
+      {reels.isLoading && <div className="grid min-h-0 flex-1 place-items-center text-muted-foreground">Loading reels…</div>}
+      {reels.isError && (
+        <div className="grid min-h-0 flex-1 place-items-center px-6 text-center">
           <div>
-            <div className="text-5xl mb-3">🎬</div>
+            <p className="mb-3 text-sm text-muted-foreground">Reels could not be loaded.</p>
+            <Button variant="outline" onClick={() => void reels.refetch()}>Try again</Button>
+          </div>
+        </div>
+      )}
+      {reels.data?.length === 0 && (
+        <div className="grid min-h-0 flex-1 place-items-center px-8 text-center">
+          <div>
             <p className="text-muted-foreground mb-4">No reels yet — be the first to drop a vibe.</p>
             <Button onClick={() => setEditorOpen(true)} className="bg-gradient-primary border-0 shadow-glow">
               <Upload className="h-4 w-4 mr-2" /> Upload a reel
@@ -82,11 +136,13 @@ function ReelsPage() {
           </div>
         </div>
       )}
-      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar">
-        {reels.data?.map((r) => (
+      {!!reels.data?.length && (
+        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain snap-y snap-mandatory no-scrollbar">
+          {reels.data.map((r, index) => (
           <ReelItem
             key={r.id}
             post={r}
+            reelIndex={index}
             muted={muted}
             toggleMute={() => setMuted((m) => !m)}
             speed={speed}
@@ -95,11 +151,15 @@ function ReelsPage() {
             setSpeed={setSpeed}
             setCaptions={setCaptions}
             setFilter={setFilter}
+            isActive={activeIndex === index}
+            autoplay={autoplay}
+            onEnded={() => advanceReel(index)}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
           />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -112,8 +172,28 @@ const FILTER_CSS: Record<string, string> = {
   vivid: "saturate(1.55) contrast(1.1)",
 };
 
+function CaptionText({ caption }: { caption: string }) {
+  return (
+    <>
+      {renderCaptionWithTags(caption).map((part, index) => {
+        if (part.mention) {
+          return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
+        }
+        if (part.tag) {
+          return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
+        }
+        if (part.url) {
+          return <a key={index} href={part.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="underline decoration-white/60 underline-offset-2">{part.text}</a>;
+        }
+        return <span key={index}>{part.text}</span>;
+      })}
+    </>
+  );
+}
+
 function ReelItem({
   post,
+  reelIndex,
   muted,
   toggleMute,
   speed,
@@ -124,8 +204,12 @@ function ReelItem({
   setFilter,
   initialLiked,
   initialSaved,
+  isActive,
+  autoplay,
+  onEnded,
 }: {
   post: any;
+  reelIndex: number;
   muted: boolean;
   toggleMute: () => void;
   speed: number;
@@ -136,6 +220,9 @@ function ReelItem({
   setFilter: React.Dispatch<React.SetStateAction<string>>;
   initialLiked: boolean;
   initialSaved: boolean;
+  isActive: boolean;
+  autoplay: boolean;
+  onEnded: () => void;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -151,26 +238,41 @@ function ReelItem({
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0); // heart burst counter
-  const [paused, setPaused] = useState(false);
-  const lastTap = useRef(0);
+  const [paused, setPaused] = useState(true);
+  const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
+  const cueTimer = useRef<number | null>(null);
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting && !paused) el.play().catch(() => {});
-        else el.pause();
-      },
-      { threshold: 0.6 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [paused]);
+    const video = ref.current;
+    if (!video) return;
+    let cancelled = false;
+    if (!isActive) {
+      video.pause();
+      setPaused(true);
+      return () => { cancelled = true; };
+    }
+    if (autoplay) {
+      video.play()
+        .then(() => {
+          if (cancelled) {
+            video.pause();
+            return;
+          }
+          setPaused(false);
+        })
+        .catch(() => {
+          if (!cancelled) setPaused(video.paused);
+        });
+    }
+    return () => { cancelled = true; };
+  }, [isActive, autoplay]);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
+  useEffect(() => () => {
+    if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
+  }, []);
 
   async function doLike(force?: boolean) {
     if (!user) { toast.error("Sign in to like"); return; }
@@ -203,37 +305,33 @@ function ReelItem({
     }
   }
 
-  function onVideoTap() {
-    const now = Date.now();
-    if (now - lastTap.current < 300) {
-      doLike(true);
-      lastTap.current = 0;
-    } else {
-      lastTap.current = now;
-      // single-tap: toggle mute after a short delay unless a double tap follows
-      setTimeout(() => {
-        if (lastTap.current && Date.now() - lastTap.current >= 280) {
-          toggleMute();
-          lastTap.current = 0;
-        }
-      }, 300);
-    }
+  function showPlaybackCue(type: "play" | "pause") {
+    setPlayCue(type);
+    if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
+    cueTimer.current = window.setTimeout(() => setPlayCue(null), 650);
   }
 
   async function togglePlayback() {
     const video = ref.current;
-    if (!video) return;
+    if (!video || !isActive) return;
     if (video.paused) {
       try {
         await video.play();
         setPaused(false);
+        showPlaybackCue("play");
       } catch {
         toast.error("Couldn't play this reel");
       }
     } else {
       video.pause();
       setPaused(true);
+      showPlaybackCue("pause");
     }
+  }
+
+  function handleVideoTap(event: React.MouseEvent<HTMLVideoElement>) {
+    event.preventDefault();
+    void togglePlayback();
   }
 
   function viewOriginal() {
@@ -248,11 +346,11 @@ function ReelItem({
   };
 
   return (
-    <section className={`relative h-full snap-start bg-black ${isExternal ? "flex flex-col" : "grid place-items-center"}`}>
+      <section data-reel-index={reelIndex} className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}>
       {isExternal ? (
         <>
           <ExternalVideoEmbed sourceUrl={post.media_url} className="min-h-0 flex-1 w-full" />
-          <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20">
+          <div className="absolute right-3 top-3 z-20">
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -275,7 +373,7 @@ function ReelItem({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white">
+          <div className="shrink-0 px-4 py-3 text-white">
             <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
                 <AvatarImage src={post.author?.avatar_url ?? undefined} />
@@ -283,7 +381,7 @@ function ReelItem({
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
             </Link>
-            {captions && post.caption && <p className="mb-2 text-sm line-clamp-2 text-white/90">{post.caption}</p>}
+            {captions && post.caption && <p className="mb-2 text-sm line-clamp-2 text-white/90"><CaptionText caption={post.caption} /></p>}
             <div className="flex items-center justify-around gap-1">
               <ReelAction
                 icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
@@ -310,14 +408,16 @@ function ReelItem({
           ref={ref}
           src={post.media_url}
           muted={muted}
-          loop
           playsInline
-          onClick={onVideoTap}
+          onClick={handleVideoTap}
+          onPlay={() => setPaused(false)}
+          onPause={() => setPaused(true)}
+          onEnded={() => { if (autoplay && isActive) onEnded(); }}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
             if (v.duration) setProgress((v.currentTime / v.duration) * 100);
           }}
-          className="h-full w-full object-contain transition-[filter] duration-300"
+          className="absolute inset-0 h-full w-full object-cover transition-[filter] duration-300"
           style={{ filter: FILTER_CSS[filter] || "none" }}
         />
       {burst > 0 && (
@@ -327,16 +427,24 @@ function ReelItem({
           style={{ animation: "reel-heart 700ms ease-out forwards" }}
         />
       )}
+      {playCue && (
+        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-live="polite">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150">
+            {playCue === "play" ? <Play className="h-7 w-7 fill-current" /> : <Pause className="h-7 w-7 fill-current" />}
+            <span className="sr-only">{playCue === "play" ? "Playing" : "Paused"}</span>
+          </span>
+        </div>
+      )}
       {!isExternal && <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
       </div>}
-      <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] md:top-4 right-4 z-20 flex items-center gap-2">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
         {!isExternal && <button
           type="button"
           onClick={() => void togglePlayback()}
           className="h-10 w-10 rounded-full glass-strong grid place-items-center"
           aria-label={paused ? "Play reel" : "Pause reel"}
-          aria-pressed={paused}
+          aria-pressed={!paused}
         >
           {paused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
         </button>}
@@ -410,7 +518,7 @@ function ReelItem({
           </PopoverContent>
         </Popover>}
       </div>
-      <div className="absolute left-4 right-20 bottom-28 md:bottom-6 text-white drop-shadow">
+      <div className="absolute left-3 right-[5.5rem] bottom-3 z-10 text-white drop-shadow md:left-6 md:bottom-5">
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
@@ -418,12 +526,12 @@ function ReelItem({
           </Avatar>
           <span className="font-bold text-sm">@{post.author?.username}</span>
         </Link>
-        {captions && post.caption && <p className="text-sm line-clamp-3 bg-black/30 backdrop-blur-sm rounded-lg px-2 py-1 inline-block">{post.caption}</p>}
+        {captions && post.caption && <p className="max-w-full text-[13px] leading-snug line-clamp-3 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 inline-block break-words"><CaptionText caption={post.caption} /></p>}
         <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
           <Music2 className="h-3.5 w-3.5" /> {isExternal ? "Linked video" : `Original audio · @${post.author?.username}`}
         </div>
       </div>
-      <div className="absolute right-2 bottom-32 md:bottom-10 flex flex-col items-center gap-3 text-white z-10">
+      <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
         <ReelAction
           icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
           label={String(likeCount)}

@@ -193,7 +193,7 @@ export function AppShell() {
 
       {/* Content */}
       <main className={`relative z-10 flex min-h-0 flex-1 flex-col ${
-        isConversation
+        isConversation || isReels
           ? "w-full overflow-hidden"
           : "mx-auto w-full max-w-3xl overflow-y-auto px-4 py-6 md:px-8 md:py-10"
       }`}>
