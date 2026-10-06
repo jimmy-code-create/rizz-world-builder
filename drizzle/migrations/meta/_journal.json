@@ -15,6 +15,13 @@
       "when": 1791072319805,
       "tag": "0001_repair_group_invites_blocks_and_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791245325641,
+      "tag": "0002_allow_group_invite_join_without_mutual_follow",
+      "breakpoints": true
     }
   ]
 }
