@@ -35,8 +35,8 @@ function JoinPage() {
     },
     onError: (error: Error) => {
       const text = error.message.toLowerCase();
-      const message = text.includes("friends_only")
-        ? "This is a friends-only group. Follow a current member both ways to join."
+      const message = text.includes("blocked")
+        ? "You can’t join this group because it includes someone you’ve blocked."
         : text.includes("expired")
           ? "This invite has expired. Ask a group member for a new link."
           : text.includes("already")

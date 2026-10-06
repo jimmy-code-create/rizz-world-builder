@@ -97,13 +97,12 @@ export async function createInvite(groupId: string, createdBy: string, opts?: { 
 }
 
 export async function acceptInvite(code: string) {
-  // Backend prerequisite: Lovable Cloud must expose accept_group_invite(_code); this frontend only reports a friendly setup error when it is missing.
   const { data, error } = await supabase.rpc("accept_group_invite", { _code: extractInviteCode(code) });
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
-    if (message.includes("friends_only")) throw new Error("This is a friends-only group. You must mutually follow a current member to join.");
     if (message.includes("expired")) throw new Error("This invite has expired. Ask a group member for a new link.");
     if (message.includes("max_uses") || message.includes("use limit")) throw new Error("This invite has reached its use limit.");
+    if (message.includes("blocked")) throw new Error("You can’t join this group because it includes someone you’ve blocked.");
     if (message.includes("invalid") || message.includes("revoked") || message.includes("not found")) {
       throw new Error("This invite is invalid or has been revoked. Ask for a new link.");
     }
@@ -113,7 +112,13 @@ export async function acceptInvite(code: string) {
     }
     throw new Error("Couldn't join this group right now. Please try again.");
   }
-  return data as unknown as Group;
+  if (typeof data === "string") {
+    const joinedGroup = await fetchGroup(data);
+    if (!joinedGroup) throw new Error("You joined, but this group is temporarily unavailable. Open your groups and try again.");
+    return joinedGroup;
+  }
+  if (data && typeof data === "object" && "id" in data) return data as unknown as Group;
+  throw new Error("You joined, but this group is temporarily unavailable. Open your groups and try again.");
 }
 
 export async function previewGroupInvite(code: string): Promise<GroupInvitePreview> {

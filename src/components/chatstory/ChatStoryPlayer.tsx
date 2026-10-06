@@ -70,12 +70,21 @@ const ROOM_4B_SCENES: Scene[] = [
 const SPEEDS = [1, 1.5, 2] as const;
 type NarrationLanguage = "hi" | "en";
 
-const VOICE_PROFILES: Record<string, { voiceSlot: number; pitch: number; volume: number }> = {
-  narrator: { voiceSlot: 0, pitch: 0.9, volume: 0.88 },
-  me: { voiceSlot: 1, pitch: 1.02, volume: 1 },
-  Asha: { voiceSlot: 2, pitch: 1.26, volume: 0.96 },
-  Kabir: { voiceSlot: 3, pitch: 0.78, volume: 0.94 },
-  Echo: { voiceSlot: 4, pitch: 0.62, volume: 0.78 },
+type VoiceProfile = {
+  voiceSlot: number;
+  pitch: number;
+  rateMultiplier: number;
+  volume: number;
+  gender: "female" | "male" | "neutral";
+};
+
+const VOICE_PROFILES: Record<string, VoiceProfile> = {
+  narrator: { voiceSlot: 0, pitch: 0.78, rateMultiplier: 0.92, volume: 0.9, gender: "neutral" },
+  me: { voiceSlot: 1, pitch: 1.06, rateMultiplier: 1.02, volume: 1, gender: "neutral" },
+  them: { voiceSlot: 2, pitch: 1.38, rateMultiplier: 1.08, volume: 1, gender: "female" },
+  Asha: { voiceSlot: 2, pitch: 1.44, rateMultiplier: 1.08, volume: 1, gender: "female" },
+  Kabir: { voiceSlot: 3, pitch: 0.7, rateMultiplier: 0.94, volume: 0.96, gender: "male" },
+  Echo: { voiceSlot: 4, pitch: 0.52, rateMultiplier: 0.82, volume: 0.86, gender: "neutral" },
 };
 
 const VOICE_NAME_PREFERENCES: Record<NarrationLanguage, Record<string, string[]>> = {
@@ -95,11 +104,37 @@ const VOICE_NAME_PREFERENCES: Record<NarrationLanguage, Record<string, string[]>
   },
 };
 
+function characterHash(value: string) {
+  return [...value.toLowerCase()].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
+}
+
+function resolveVoiceProfile(speaker: string, story: ChatStory): VoiceProfile {
+  const normalized = speaker.trim().toLowerCase();
+  const key = normalized === story.me_name.trim().toLowerCase()
+    ? "me"
+    : normalized === story.them_name.trim().toLowerCase()
+      ? "them"
+      : speaker;
+  const known = VOICE_PROFILES[key];
+  if (known) return known;
+
+  const hash = characterHash(speaker);
+  const female = /\b(asha|she|her|girl|woman|female|mom|mother|sister)\b/i.test(speaker);
+  const male = /\b(kabir|he|him|boy|man|male|dad|father|brother)\b/i.test(speaker);
+  return {
+    voiceSlot: hash,
+    pitch: 0.82 + (hash % 7) * 0.09,
+    rateMultiplier: 0.94 + (hash % 5) * 0.035,
+    volume: 0.96,
+    gender: female ? "female" : male ? "male" : "neutral",
+  };
+}
+
 function selectNarrationVoice(
   voices: SpeechSynthesisVoice[],
   language: NarrationLanguage,
   speaker: string,
-  voiceSlot: number,
+  profile: VoiceProfile,
 ) {
   const locale = language === "hi" ? "hi-IN" : "en-IN";
   const languageVoices = voices
@@ -115,7 +150,15 @@ function selectNarrationVoice(
     if (match) return match;
   }
 
-  return pool[voiceSlot % pool.length];
+  const genderNames = profile.gender === "female"
+    ? ["female", "woman", "zira", "aria", "samantha", "lekha", "swara", "victoria", "karen", "cynthia", "heera"]
+    : profile.gender === "male"
+      ? ["male", "man", "david", "ryan", "daniel", "hemant", "madhur", "george", "guy"]
+      : [];
+  const genderVoice = genderNames.length
+    ? pool.find((voice) => genderNames.some((name) => voice.name.toLowerCase().includes(name)))
+    : undefined;
+  return genderVoice ?? pool[profile.voiceSlot % pool.length];
 }
 
 function storyText(hindi: string, english: string | undefined, language: "hi" | "en") {
@@ -207,13 +250,13 @@ export function ChatStoryPlayer({
     const utterance = new SpeechSynthesisUtterance(text);
     const spokenLanguage = isRoom4B ? language : /[\u0900-\u097F]/.test(text) ? "hi" : "en";
     const locale = spokenLanguage === "hi" ? "hi-IN" : "en-IN";
-    const profile = VOICE_PROFILES[speaker] ?? VOICE_PROFILES.narrator;
+    const profile = resolveVoiceProfile(speaker, story);
     utterance.lang = locale;
-    utterance.rate = speed;
+    utterance.rate = Math.min(2, Math.max(0.5, speed * profile.rateMultiplier));
     utterance.pitch = profile.pitch;
     utterance.volume = profile.volume;
     const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
-    const voice = selectNarrationVoice(voices, spokenLanguage, speaker, profile.voiceSlot);
+    const voice = selectNarrationVoice(voices, spokenLanguage, speaker, profile);
     if (voice) utterance.voice = voice;
     const finishSpeaking = () => {
       if (speechRef.current === utterance) {
@@ -231,7 +274,7 @@ export function ChatStoryPlayer({
     } catch {
       finishSpeaking();
     }
-  }, [availableVoices, isRoom4B, language, narration, speed, stopNarration]);
+  }, [availableVoices, isRoom4B, language, narration, speed, stopNarration, story.me_name, story.them_name]);
 
   const reset = useCallback(() => {
     stopNarration();
