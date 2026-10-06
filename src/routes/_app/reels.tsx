@@ -33,6 +33,39 @@ const SONG_LIBRARY = [
   { id: "hyper", title: "Hyperpop Crush", artist: "Glitch", bpm: 160, mood: "Hyper" },
 ];
 
+const REEL_LIKE_EFFECTS = [
+  "2319-whitebouncingcat.gif",
+  "6770-pastelpinkbouncingkitty.gif",
+  "8710-bluebouncingcat.gif",
+  "2322-hellokittybounce.gif",
+  "2870-bear-heartbounce.gif",
+  "7770-catbounce.gif",
+  "4478-hellokittypogostick.gif",
+  "1326-pinkbouncingcat.gif",
+  "4810-bounce-heart.gif",
+  "5509_ablobcongarollbounce.gif",
+  "2607_kirby_bounce.gif",
+  "4964-trolltv-bounce.gif",
+  "7918-twitchstreaming.gif",
+  "3456-yellowbouncingcat.gif",
+  "1394-pichubounce.gif",
+  "2720-jumping-kitty.gif",
+  "5046_bounce_pink.gif",
+  "3339-mymelodybounce.gif",
+  "5996-pastelbluebouncybunny.gif",
+  "4744-witch.gif",
+  "6146-lightpinkbouncingcat.gif",
+  "7494_bounce_blue.gif",
+  "8368-peachandmochiok.gif",
+  "6842-orangebouncingcat.gif",
+  "4393-bearbounce.gif",
+  "3017-nookbounce.gif",
+  "6770-pinkbouncybun.gif",
+  "8188-bread-bounce.gif",
+  "4880-treepupbounce.gif",
+  "8847-blobcat-bounce.gif",
+];
+
 export const Route = createFileRoute("/_app/reels")({
   head: () => ({ meta: [{ title: "Reels · RIZZ" }] }),
   component: ReelsPage,
@@ -226,10 +259,13 @@ function ReelItem({
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0); // heart burst counter
+  const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number } | null>(null);
   const [paused, setPaused] = useState(true);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
   const cueTimer = useRef<number | null>(null);
   const tapTimer = useRef<number | null>(null);
+  const stickerTimer = useRef<number | null>(null);
+  const stickerId = useRef(0);
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
@@ -265,6 +301,7 @@ function ReelItem({
   useEffect(() => () => {
     if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
     if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+    if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
   }, []);
 
   async function doLike(force?: boolean) {
@@ -328,6 +365,18 @@ function ReelItem({
       window.clearTimeout(tapTimer.current);
       tapTimer.current = null;
       void doLike(true);
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const insetX = Math.min(24, (78 / bounds.width) * 100);
+      const insetY = Math.min(24, (78 / bounds.height) * 100);
+      const x = Math.max(insetX, Math.min(100 - insetX, ((event.clientX - bounds.left) / bounds.width) * 100));
+      const y = Math.max(insetY, Math.min(100 - insetY, ((event.clientY - bounds.top) / bounds.height) * 100));
+      const id = ++stickerId.current;
+      const effect = REEL_LIKE_EFFECTS[Math.floor(Math.random() * REEL_LIKE_EFFECTS.length)];
+      setStickerBurst({ id, src: `/reel-effects/${effect}`, x, y });
+      if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
+      stickerTimer.current = window.setTimeout(() => {
+        setStickerBurst((current) => current?.id === id ? null : current);
+      }, 1250);
       return;
     }
     tapTimer.current = window.setTimeout(() => {
@@ -449,6 +498,21 @@ function ReelItem({
           key={burst}
           className="pointer-events-none absolute inset-0 m-auto h-32 w-32 text-[var(--rizz-pink)] fill-[var(--rizz-pink)] drop-shadow-2xl animate-ping-once"
           style={{ animation: "reel-heart 700ms ease-out forwards" }}
+        />
+      )}
+      {stickerBurst && (
+        <img
+          key={stickerBurst.id}
+          src={stickerBurst.src}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="pointer-events-none absolute z-[15] h-auto w-[clamp(96px,36vw,156px)] select-none object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+          style={{
+            left: `${stickerBurst.x}%`,
+            top: `${stickerBurst.y}%`,
+            animation: "reel-sticker-pop 1250ms cubic-bezier(0.2,0.7,0.2,1) forwards",
+          }}
         />
       )}
       {playCue && (
@@ -602,6 +666,12 @@ function ReelItem({
           25% { transform: scale(1.2); opacity: 1; }
           70% { transform: scale(1); opacity: 1; }
           100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes reel-sticker-pop {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-14deg); }
+          16% { opacity: 1; transform: translate(-50%, -60%) scale(1.08) rotate(5deg); }
+          55% { opacity: 1; transform: translate(-50%, -88%) scale(1) rotate(-4deg); }
+          100% { opacity: 0; transform: translate(-50%, -145%) scale(0.92) rotate(7deg); }
         }
       `}</style>
     </section>
