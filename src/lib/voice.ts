@@ -10,6 +10,19 @@ export async function fetchLiveRooms() {
   return data ?? [];
 }
 
+export async function fetchChannelLiveRoom(channelId: string) {
+  const { data, error } = await supabase
+    .from("voice_rooms")
+    .select("*, host:profiles!voice_rooms_host_id_fkey(username,display_name,avatar_url,accent_color)")
+    .eq("channel_id", channelId)
+    .eq("is_live", true)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchRoom(id: string) {
   const { data, error } = await supabase
     .from("voice_rooms")
@@ -30,17 +43,28 @@ export async function fetchParticipants(roomId: string) {
   return data ?? [];
 }
 
-export async function createRoom(input: { host_id: string; title: string; topic?: string }) {
+export async function createRoom(input: { host_id: string; title: string; topic?: string; channel_id?: string }) {
   const { data, error } = await supabase.from("voice_rooms").insert(input).select().single();
   if (error) throw error;
-  // Auto-join host
-  await supabase.from("voice_participants").insert({ room_id: data.id, user_id: input.host_id, role: "host", muted: false });
+  const { error: participantError } = await supabase.from("voice_participants").insert({
+    room_id: data.id,
+    user_id: input.host_id,
+    role: "host",
+    muted: false,
+  });
+  if (participantError) {
+    await supabase
+      .from("voice_rooms")
+      .update({ is_live: false, ended_at: new Date().toISOString() })
+      .eq("id", data.id);
+    throw participantError;
+  }
   return data;
 }
 
 export async function joinRoom(roomId: string, userId: string, role: "speaker" | "listener" = "listener") {
   const { error } = await supabase.from("voice_participants").insert({ room_id: roomId, user_id: userId, role, muted: true });
-  if (error && !error.message.includes("duplicate")) throw error;
+  if (error && error.code !== "23505") throw error;
 }
 
 export async function leaveRoom(roomId: string, userId: string) {

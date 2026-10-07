@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchChannelBySlug, fetchMessages, sendMessage, joinChannel, leaveChannel, isMember } from "@/lib/channels";
+import { createRoom, fetchChannelLiveRoom } from "@/lib/voice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,14 @@ function ChannelPage() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const channel = useQuery({ queryKey: ["channel", slug], queryFn: () => fetchChannelBySlug(slug) });
+  const voiceRoom = useQuery({
+    queryKey: ["channel-voice-room", channel.data?.id],
+    queryFn: () => fetchChannelLiveRoom(channel.data!.id),
+    enabled: channel.data?.type === "voice",
+    refetchInterval: 15_000,
+  });
   const messages = useQuery({
     queryKey: ["messages", channel.data?.id],
     queryFn: () => fetchMessages(channel.data!.id),
@@ -34,6 +42,7 @@ function ChannelPage() {
   const [joined, setJoined] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [startingVoice, setStartingVoice] = useState(false);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +122,37 @@ function ChannelPage() {
     qc.invalidateQueries({ queryKey: ["channel", slug] });
   };
 
+  const handleVoiceStage = async () => {
+    if (!user) {
+      toast.error("Sign in to join this voice channel");
+      return;
+    }
+    if (voiceRoom.isLoading || startingVoice) return;
+    setStartingVoice(true);
+    try {
+      let liveRoom = voiceRoom.data;
+      if (voiceRoom.isError) {
+        const refreshed = await voiceRoom.refetch();
+        if (refreshed.error) throw refreshed.error;
+        liveRoom = refreshed.data;
+      }
+      if (!liveRoom) {
+        liveRoom = await createRoom({
+          host_id: user.id,
+          title: c.name,
+          topic: c.topic || undefined,
+          channel_id: c.id,
+        });
+        await qc.invalidateQueries({ queryKey: ["channel-voice-room", c.id] });
+      }
+      await nav({ to: "/voice/$id", params: { id: liveRoom.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't open this voice channel");
+    } finally {
+      setStartingVoice(false);
+    }
+  };
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
@@ -140,28 +180,34 @@ function ChannelPage() {
       )}
 
       {c.type === "voice" && (
-        <div className="mx-4 my-3 p-4 rounded-2xl glass-strong border border-[var(--rizz-pink)]/30 bg-gradient-to-r from-[var(--rizz-pink)]/10 via-[var(--rizz-violet)]/10 to-transparent flex flex-col sm:flex-row items-center justify-between gap-3 shadow-glow">
+        <div className="mx-4 my-3 flex flex-col items-center justify-between gap-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong sm:flex-row">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-white shadow-glow">
-              <Mic className="h-6 w-6 animate-pulse" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </span>
+            <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl text-white ${voiceRoom.data ? "bg-gradient-primary shadow-glow" : "border border-white/10 bg-white/[0.06]"}`}>
+              <Mic className={`h-6 w-6 ${voiceRoom.data ? "animate-pulse" : "text-white/70"}`} />
+              {voiceRoom.data && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
             </div>
             <div>
               <h3 className="font-display font-bold text-base flex items-center gap-2">
-                Voice Stage Live
-                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">Online</span>
+                Voice channel
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${voiceRoom.data ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300" : "border-white/10 bg-white/[0.04] text-white/55"}`}>
+                  {voiceRoom.data ? "Live" : "Ready"}
+                </span>
               </h3>
-              <p className="text-xs text-muted-foreground">Jump in to talk live with members or listen in.</p>
+              <p className="text-xs text-muted-foreground">
+                {voiceRoom.data ? "Join the live room for this channel." : "Start a room for members to talk or listen."}
+              </p>
+              {voiceRoom.isError && <p role="alert" className="mt-1 text-xs text-destructive">Couldn't check for a live room. Try again.</p>}
             </div>
           </div>
-          <Link to="/voice" className="w-full sm:w-auto">
-            <Button className="w-full bg-gradient-primary border-0 shadow-glow flex items-center gap-2">
-              <Mic className="h-4 w-4" /> Join Voice Room
-            </Button>
-          </Link>
+          <Button
+            type="button"
+            disabled={voiceRoom.isLoading || startingVoice}
+            onClick={() => void handleVoiceStage()}
+            className="w-full gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
+          >
+            <Mic className="h-4 w-4" />
+            {startingVoice ? "Opening…" : voiceRoom.isLoading ? "Checking…" : voiceRoom.data ? "Join live room" : voiceRoom.isError ? "Retry" : "Start voice room"}
+          </Button>
         </div>
       )}
 

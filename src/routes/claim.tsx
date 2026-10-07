@@ -29,6 +29,14 @@ function ClaimUsernamePage() {
     else if (!profileError && profile?.username) nav({ to: getPostAuthPath(profile) });
   }, [loading, user, profile, profileError, nav]);
 
+  if (loading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" aria-label="Loading account" />
+      </div>
+    );
+  }
+
   const claim = async (event: React.FormEvent) => {
     event.preventDefault();
     const normalized = username.trim().toLowerCase();

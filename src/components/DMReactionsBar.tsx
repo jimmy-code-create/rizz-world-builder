@@ -34,18 +34,12 @@ export function MessageReactions({ messageId, align = "left" }: { messageId: str
   const toggle = useMutation({
     mutationFn: async ({ emoji, mine }: { emoji: string; mine: boolean }) => {
       if (!user) throw new Error("Sign in to react");
-      if (mine) {
-        const { error } = await (supabase.from as any)("dm_reactions")
-          .delete()
-          .eq("message_id", messageId)
-          .eq("user_id", user.id)
-          .eq("emoji", emoji);
-        if (error) throw error;
-      } else {
-        const { error } = await (supabase.from as any)("dm_reactions")
-          .insert({ message_id: messageId, user_id: user.id, emoji });
-        if (error) throw error;
-      }
+      void mine;
+      const { error } = await (supabase.rpc as any)("toggle_dm_reaction", {
+        _message_id: messageId,
+        _emoji: emoji,
+      });
+      if (error) throw error;
     },
     onMutate: async ({ emoji, mine }) => {
       const queryKey = ["dm-reactions", messageId] as const;

@@ -288,7 +288,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="feed-post-card glass rounded-3xl border border-white/5 overflow-hidden mb-4 hover:border-white/10 transition-colors"
+      className="feed-post-card glass relative isolate mb-4 overflow-hidden rounded-[1.75rem] border border-white/[0.075] shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--rizz-pink)]/20 hover:shadow-[0_20px_54px_rgba(236,72,153,0.1)]"
     >
       <header className="flex items-center gap-3 p-4 pb-3">
         <AuthorAvatarLink post={post} accent={accent} initial={initial} />
