@@ -50,7 +50,7 @@ export async function isMember(channelId: string, userId: string) {
   return !!data;
 }
 
-export async function createChannel(input: { owner_id: string; name: string; slug: string; topic?: string; type?: "text" | "announcement" | "drops"; accent_color?: string }) {
+export async function createChannel(input: { owner_id: string; name: string; slug: string; topic?: string; type?: "text" | "announcement" | "voice" | "drops"; accent_color?: string }) {
   const { data, error } = await supabase.from("channels").insert(input).select().single();
   if (error) throw error;
   return data;

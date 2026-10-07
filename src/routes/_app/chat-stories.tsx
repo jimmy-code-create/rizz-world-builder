@@ -8,8 +8,7 @@ import { Heart, Loader2, MessageSquareText, Play, Sparkles, Wand2 } from "lucide
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
-const generateGeminiStory = async (..._args: unknown[]): Promise<any> => { throw new Error("Story generation is disabled"); };
-const saveGeneratedStoryToSupabase = async (..._args: unknown[]): Promise<string> => { throw new Error("Story saving is disabled"); };
+import { generateGeminiStory, saveGeneratedStoryToSupabase } from "@/lib/gemini-story";
 import {
   Dialog,
   DialogContent,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Hash, Megaphone, Gift, Users, Plus, Loader2 } from "lucide-react";
+import { Hash, Megaphone, Mic, Users, Plus, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_app/channels")({
   component: ChannelsPage,
 });
 
-const TYPE_ICON = { text: Hash, announcement: Megaphone, drops: Gift };
+const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic };
 
 function ChannelsPage() {
   const { user, profile } = useAuth();
@@ -26,7 +26,7 @@ function ChannelsPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
-  const [type, setType] = useState<"text" | "announcement" | "drops">("text");
+  const [type, setType] = useState<"text" | "announcement" | "voice">("text");
   const [accent, setAccent] = useState("#ff2d92");
   const [creating, setCreating] = useState(false);
 
@@ -68,7 +68,7 @@ function ChannelsPage() {
               <Input placeholder="Channel name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="glass border-white/10" />
               <Textarea placeholder="What's it about?" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={160} className="glass border-white/10 min-h-20" />
               <div className="flex gap-2">
-                {(["text", "announcement", "drops"] as const).map((t) => {
+                {(["text", "announcement", "voice"] as const).map((t) => {
                   const Icon = TYPE_ICON[t];
                   return (
                     <button key={t} onClick={() => setType(t)} className={`flex-1 p-3 rounded-xl border transition-all ${type === t ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>

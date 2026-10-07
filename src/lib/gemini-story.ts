@@ -8,6 +8,13 @@ export type StoryCategory = (typeof STORY_CATEGORIES)[number];
 export type StoryLanguage = "hi" | "en";
 export type StoryVideoType = "horror_hallway" | "cyberpunk_neon" | "rain_window" | "cozy_room";
 
+export const STORY_PRESET_VIDEOS: Record<StoryVideoType, string> = {
+  horror_hallway: "https://assets.mixkit.co/videos/preview/mixkit-creepy-dark-hallway-with-flickering-lights-42938-large.mp4",
+  cyberpunk_neon: "https://assets.mixkit.co/videos/preview/mixkit-neon-city-lights-at-night-42962-large.mp4",
+  rain_window: "https://assets.mixkit.co/videos/preview/mixkit-rain-falling-on-a-window-pane-at-night-42861-large.mp4",
+  cozy_room: "https://assets.mixkit.co/videos/preview/mixkit-fire-burning-in-a-fireplace-43103-large.mp4",
+};
+
 export type GeneratedStoryLine = {
   idx: number;
   speaker: "me" | "them" | "narrator";
@@ -369,6 +376,11 @@ export async function generateStory(input: StoryGenerationInput): Promise<Genera
   return generateStoryServer({ data: input });
 }
 
+export async function generateGeminiStory(input: StoryGenerationInput): Promise<GeneratedStory> {
+  const result = await generateStory(input);
+  return result.story;
+}
+
 const STORY_GRADIENTS: Record<StoryCategory, string> = {
   horror: "linear-gradient(135deg,#0f172a,#ef4444)",
   funny: "linear-gradient(135deg,#ff2e88,#ff9a3c)",
@@ -405,9 +417,9 @@ export async function saveGeneratedStoryToSupabase(story: GeneratedStory): Promi
       me_name: story.me_name,
       word_count: wordCount,
       is_branching: story.choices.length > 0,
-      created_by: user.id,
-      video_type: story.video_type,
-    })
+      creator_id: user.id,
+      video_url: STORY_PRESET_VIDEOS[story.video_type] ?? null,
+    } as any)
     .select("id")
     .single();
 

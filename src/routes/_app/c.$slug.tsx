@@ -7,14 +7,14 @@ import { fetchChannelBySlug, fetchMessages, sendMessage, joinChannel, leaveChann
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, Send, Users, Sparkles, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, Mic, Send, Users, Sparkles, Copy, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 
-const TYPE_ICON = { text: Hash, announcement: Megaphone, drops: Gift };
+const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
 
 export const Route = createFileRoute("/_app/c/$slug")({
   head: ({ params }) => ({ meta: [{ title: `#${params.slug} · RIZZ` }] }),
@@ -136,6 +136,32 @@ function ChannelPage() {
         <div className="chat-bar flex shrink-0 items-start gap-2 border-b border-white/5 px-4 py-3 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4 mt-0.5 text-[var(--rizz-pink)] shrink-0" />
           {c.topic}
+        </div>
+      )}
+
+      {c.type === "voice" && (
+        <div className="mx-4 my-3 p-4 rounded-2xl glass-strong border border-[var(--rizz-pink)]/30 bg-gradient-to-r from-[var(--rizz-pink)]/10 via-[var(--rizz-violet)]/10 to-transparent flex flex-col sm:flex-row items-center justify-between gap-3 shadow-glow">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary text-white shadow-glow">
+              <Mic className="h-6 w-6 animate-pulse" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-base flex items-center gap-2">
+                Voice Stage Live
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">Online</span>
+              </h3>
+              <p className="text-xs text-muted-foreground">Jump in to talk live with members or listen in.</p>
+            </div>
+          </div>
+          <Link to="/voice" className="w-full sm:w-auto">
+            <Button className="w-full bg-gradient-primary border-0 shadow-glow flex items-center gap-2">
+              <Mic className="h-4 w-4" /> Join Voice Room
+            </Button>
+          </Link>
         </div>
       )}
 
