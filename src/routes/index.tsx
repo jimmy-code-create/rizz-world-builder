@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Radio, Zap, Crown, Mic, Hash, Flame, Users } from "lucide-react";
-import { CustomEmoji } from "@/components/CustomEmoji";
 import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
 import { useNavigate } from "@tanstack/react-router";
@@ -99,7 +98,35 @@ function Index() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="bg-gradient-primary border-0 shadow-glow-lg hover:opacity-90 text-base px-8 h-12">
-                <CustomEmoji name="ideas" className="mr-2 h-4 w-4" />
+                <span className="rizz-claim-cat mr-2" aria-hidden="true">
+                  <svg viewBox="0 0 32 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="rizz-cat-fill" x1="5" y1="4" x2="26" y2="25" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#FF6AB6" />
+                        <stop offset="0.55" stopColor="#D946EF" />
+                        <stop offset="1" stopColor="#8B5CF6" />
+                      </linearGradient>
+                      <linearGradient id="rizz-cat-stroke" x1="5" y1="4" x2="26" y2="24" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#FFD1EB" />
+                        <stop offset="0.55" stopColor="#FF67C2" />
+                        <stop offset="1" stopColor="#BCA2FF" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M7.4 11.1 6.1 4.7l6 3.2a10.5 10.5 0 0 1 7.8 0l6-3.2-1.3 6.4a8.5 8.5 0 0 1 1.2 4.3c0 5.3-4 8.5-9.8 8.5s-9.8-3.2-9.8-8.5c0-1.6.4-3.1 1.2-4.3Z"
+                      fill="url(#rizz-cat-fill)"
+                      fillOpacity=".26"
+                      stroke="url(#rizz-cat-stroke)"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M11.2 14.2h.02m9.56 0h.02" stroke="white" strokeWidth="2.3" strokeLinecap="round" />
+                    <path d="m15.1 16.1.9.7.9-.7-.9-.7-.9.7Z" fill="#FFE1F2" />
+                    <path d="M14.2 18c.6.8 1.2 1.1 1.8 1.1s1.2-.3 1.8-1.1" stroke="#FFD1EB" strokeWidth="1.1" strokeLinecap="round" />
+                    <path className="rizz-claim-cat-sparkle" d="M28 3.2v5m-2.5-2.5h5" stroke="#FFF1FA" strokeWidth="1.5" strokeLinecap="round" />
+                    <circle className="rizz-claim-cat-glint" cx="3.8" cy="17.5" r="1" fill="#7DEBFF" />
+                  </svg>
+                </span>
                 Claim your @
               </Button>
             </Link>
