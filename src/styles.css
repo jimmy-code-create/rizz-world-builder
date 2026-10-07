@@ -669,6 +669,76 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .feed-post-card {
   contain: layout paint;
   will-change: transform;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(236, 72, 153, 0.12), transparent 58%),
+    radial-gradient(100% 80% at 100% 0%, rgba(124, 58, 237, 0.13), transparent 55%),
+    linear-gradient(145deg, rgba(31, 23, 43, 0.96), rgba(17, 13, 25, 0.97));
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  box-shadow:
+    0 18px 54px rgba(4, 2, 10, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025);
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+.feed-post-card:focus-within {
+  border-color: color-mix(in oklab, var(--rizz-pink) 48%, transparent);
+  box-shadow:
+    0 18px 54px rgba(4, 2, 10, 0.3),
+    0 0 0 2px color-mix(in oklab, var(--rizz-pink) 24%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.post-media-frame {
+  border-block: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.feed-post-card > footer {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(12, 9, 19, 0.28));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.feed-post-card > footer > button {
+  border-radius: 9999px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+.feed-post-card > footer > button:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: var(--foreground);
+}
+.feed-post-card > footer > button:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .feed-post-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--rizz-pink) 27%, rgba(255, 255, 255, 0.1));
+    box-shadow:
+      0 24px 62px rgba(4, 2, 10, 0.38),
+      0 8px 28px color-mix(in oklab, var(--rizz-pink) 12%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .feed-post-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background:
+      radial-gradient(120% 90% at 0% 0%, rgba(236, 72, 153, 0.1), transparent 58%),
+      radial-gradient(100% 80% at 100% 0%, rgba(124, 58, 237, 0.1), transparent 55%),
+      rgb(24, 18, 33);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-post-card,
+  .feed-post-card > footer > button {
+    transition: none;
+  }
 }
 @keyframes name-wave {
   0%,100% { transform: translateY(0); }
