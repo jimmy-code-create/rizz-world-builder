@@ -875,7 +875,7 @@ function DMPage() {
                     <button
                       aria-haspopup="dialog"
                       aria-expanded={openMsg === m.id}
-                      className={`chat-bubble w-fit max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
+                      className={`chat-bubble w-fit max-w-[78%] flex-none [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}
                       style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}

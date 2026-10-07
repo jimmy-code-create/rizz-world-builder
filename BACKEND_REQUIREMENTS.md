@@ -6,6 +6,35 @@ unsending, or DM image uploads. Do not drop or rename existing tables or data.
 The frontend uses only browser APIs and the existing Supabase connection; no
 paid APIs or AI services are required.
 
+## 0. Account onboarding fields required by `/api/me`
+
+The authenticated profile endpoint selects `tutorial_seen` and `interests`.
+The migration `supabase/migrations/20261007100000_profile_onboarding_preferences.sql`
+must be applied to the Supabase project used by the deployed app. If it is not,
+the profile query fails and the app cannot route the signed-in user past the
+account-loading screen.
+
+The expected profile fields are:
+
+```sql
+ALTER TABLE public.profiles
+  ALTER COLUMN username DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS tutorial_seen boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS interests text[] NOT NULL DEFAULT '{}';
+```
+
+Apply the existing migration through the project's normal Supabase deployment
+process; do not use browser storage as a substitute for these account fields.
+
+## Voice relay configuration
+
+The existing `/api/turn-credentials` route can return TURN credentials when the
+deployment has `TURN_SERVER_URLS` and `TURN_SHARED_SECRET` configured. The TURN
+service must support time-limited HMAC credentials. Without both settings, the
+app uses STUN only, which may fail on restrictive mobile networks. Keep the
+shared secret in the deployment's secret manager, never in frontend code or
+committed files.
+
 ## 1. Safe group-invite previews
 
 **Why:** The invite page must show the group and distinguish a usable, expired,

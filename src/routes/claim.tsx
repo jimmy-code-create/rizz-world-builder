@@ -24,9 +24,9 @@ function ClaimUsernamePage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (loading || profileError) return;
-    if (!user) nav({ to: "/login" });
-    else if (profile?.username) nav({ to: getPostAuthPath(profile) });
+    if (loading) return;
+    if (!user) nav({ to: "/" });
+    else if (!profileError && profile?.username) nav({ to: getPostAuthPath(profile) });
   }, [loading, user, profile, profileError, nav]);
 
   const claim = async (event: React.FormEvent) => {

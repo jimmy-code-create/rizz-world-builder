@@ -288,7 +288,7 @@
 
 .rizz-toaster[data-sonner-toaster] {
   top: auto !important;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
 }
 
 @media (min-width: 768px) {

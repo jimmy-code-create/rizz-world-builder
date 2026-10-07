@@ -54,7 +54,17 @@ async function fetchMe(session: Session | null): Promise<Profile | null> {
       continue;
     }
     if (!response.ok) {
-      throw new Error(response.status === 401 ? "Your session expired. Please sign in again." : "Couldn't load your account.");
+      if (response.status === 401) {
+        throw new Error("Your session expired. Please sign in again.");
+      }
+      let message = "";
+      try {
+        const body = (await response.json()) as { error?: unknown };
+        if (typeof body.error === "string") message = body.error;
+      } catch {
+        // Some proxy/server failures return a non-JSON response.
+      }
+      throw new Error(message || `Couldn't load your account (HTTP ${response.status}).`);
     }
     const result = (await response.json()) as { profile: Profile | null };
     return result.profile ?? null;
@@ -107,12 +117,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === "INITIAL_SESSION" && !initialized) return;
-      setTimeout(() => {
-        if (mounted) void applySession(nextSession);
-      }, 0);
-    });
+    let unsubscribe = () => {};
+    try {
+      const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+        if (event === "INITIAL_SESSION" && !initialized) return;
+        setTimeout(() => {
+          if (mounted) void applySession(nextSession);
+        }, 0);
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
+    } catch (error) {
+      if (mounted) {
+        setProfileError(error instanceof Error ? error.message : "Couldn't initialize account access.");
+        setLoading(false);
+      }
+      return () => {
+        mounted = false;
+      };
+    }
 
     void supabase.auth.getSession().then(({ data }) => {
       initialized = true;
@@ -126,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
