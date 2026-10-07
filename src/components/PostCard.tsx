@@ -70,12 +70,15 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
   const [likeCount, setLikeCount] = useState(post.like_count);
+  const localLikeChange = useRef(false);
   const [showComments, setShowComments] = useState(false);
   const [saved, setSaved] = useState(!!initialSaved);
   const [hidden, setHidden] = useState(false);
   const [burst, setBurst] = useState(0);
   const lastTap = useRef(0);
   const burstTimer = useRef<number | null>(null);
+  const cardRef = useRef<HTMLElement | null>(null);
+  const [reactionsNearViewport, setReactionsNearViewport] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => () => {
@@ -88,10 +91,30 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     if (hp.has(post.id) || (post.author_id && ma.has(post.author_id))) setHidden(true);
   }, [post.id, post.author_id]);
 
+  useEffect(() => {
+    if (hidden || post.reaction_count < 1 || !cardRef.current) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setReactionsNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setReactionsNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [hidden, post.reaction_count]);
+
   const reactions = useQuery({
     queryKey: ["reactions", post.id],
     queryFn: () => fetchReactions(post.id),
-    enabled: post.reaction_count > 0,
+    enabled: post.reaction_count > 0 && reactionsNearViewport,
+    staleTime: 30_000,
   });
 
   const grouped = (reactions.data ?? []).reduce<Record<string, { count: number; mine: boolean }>>(
@@ -109,20 +132,42 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to like");
       const wasLiked = liked;
+      localLikeChange.current = true;
       setLiked(!wasLiked);
       setLikeCount((c) => c + (wasLiked ? -1 : 1));
       try {
         const result = await toggleLike(post.id, user.id, wasLiked);
         setLiked(result.liked);
         setLikeCount(result.like_count);
+        return result;
       } catch (e) {
+        localLikeChange.current = false;
         setLiked(wasLiked);
         setLikeCount((c) => c + (wasLiked ? 1 : -1));
         throw e;
       }
     },
+    onSuccess: (result) => {
+      if (!user) return;
+      qc.setQueriesData<Set<string>>({ queryKey: ["my-likes", user.id] }, (previous) => {
+        if (!previous) return previous;
+        const next = new Set(previous);
+        if (result.liked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  useEffect(() => {
+    if (initialLiked === undefined) return;
+    if (!localLikeChange.current) {
+      setLiked(initialLiked);
+    } else if (initialLiked === liked) {
+      localLikeChange.current = false;
+    }
+  }, [initialLiked, liked]);
 
   const reactMut = useMutation({
     mutationFn: async ({ emoji, mine }: { emoji: string; mine: boolean }) => {
@@ -285,7 +330,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
 
   return (
     <motion.article
-      layout
+      ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="feed-post-card relative isolate mb-4 overflow-hidden rounded-[1.75rem]"

@@ -25,12 +25,16 @@ function FeedPage() {
   const feed = useQuery({
     queryKey: ["feed"],
     queryFn: () => fetchFeed(50),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const likes = useQuery({
     queryKey: ["my-likes", user?.id, feed.data?.map((p) => p.id).join(",")],
     queryFn: () => fetchMyLikes(user!.id, feed.data!.map((p) => p.id)),
     enabled: !!user && !!feed.data && feed.data.length > 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
