@@ -203,7 +203,7 @@ function SettingsPage() {
   }
 
   if (!profile) return null;
-  const initial = (profile.display_name || profile.username).charAt(0).toUpperCase();
+  const initial = (profile.display_name || profile.username || "?").charAt(0).toUpperCase();
 
   return (
     <div className="max-w-xl space-y-6">
@@ -238,7 +238,7 @@ function SettingsPage() {
 
         <div>
           <Label className="text-xs text-muted-foreground">Username</Label>
-          <Input value={profile.username} readOnly className="mt-1 bg-transparent border-white/10 text-muted-foreground" />
+          <Input value={profile.username ?? ""} readOnly className="mt-1 bg-transparent border-white/10 text-muted-foreground" />
         </div>
 
         <div>

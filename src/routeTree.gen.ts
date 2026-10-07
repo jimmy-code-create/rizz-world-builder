@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as ClaimRouteImport } from './routes/claim'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppChannelsRouteImport } from './routes/_app/channels'
@@ -29,6 +31,8 @@ import { Route as AppNotificationsRouteImport } from './routes/_app/notification
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
+import { Route as ApiMeRouteImport } from './routes/api.me'
+import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
@@ -47,6 +51,11 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClaimRoute = ClaimRouteImport.update({
+  id: '/claim',
+  path: '/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -60,6 +69,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TutorialRoute = TutorialRouteImport.update({
+  id: '/tutorial',
+  path: '/tutorial',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppBadgesRoute = AppBadgesRouteImport.update({
@@ -137,6 +151,16 @@ const AppVoiceRoute = AppVoiceRouteImport.update({
   path: '/voice',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiMeRoute = ApiMeRouteImport.update({
+  id: '/api/me',
+  path: '/api/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTurnCredentialsRoute = ApiTurnCredentialsRouteImport.update({
+  id: '/api/turn-credentials',
+  path: '/api/turn-credentials',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
@@ -180,9 +204,11 @@ const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
@@ -198,6 +224,8 @@ export interface FileRoutesByFullPath {
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
+  '/api/me': typeof ApiMeRoute
+  '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
@@ -209,9 +237,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/channels': typeof AppChannelsRoute
@@ -227,6 +257,8 @@ export interface FileRoutesByTo {
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
+  '/api/me': typeof ApiMeRoute
+  '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
@@ -240,9 +272,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/tutorial': typeof TutorialRoute
   '/_app/badges': typeof AppBadgesRoute
   '/_app/bookmarks': typeof AppBookmarksRoute
   '/_app/channels': typeof AppChannelsRoute
@@ -258,6 +292,8 @@ export interface FileRoutesById {
   '/_app/reels': typeof AppReelsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
+  '/api/me': typeof ApiMeRoute
+  '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
@@ -271,9 +307,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/claim'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/tutorial'
     | '/badges'
     | '/bookmarks'
     | '/channels'
@@ -289,6 +327,8 @@ export interface FileRouteTypes {
     | '/reels'
     | '/settings'
     | '/voice'
+    | '/api/me'
+    | '/api/turn-credentials'
     | '/join/$code'
     | '/c/$slug'
     | '/call/$userId'
@@ -300,9 +340,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/claim'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/tutorial'
     | '/badges'
     | '/bookmarks'
     | '/channels'
@@ -318,6 +360,8 @@ export interface FileRouteTypes {
     | '/reels'
     | '/settings'
     | '/voice'
+    | '/api/me'
+    | '/api/turn-credentials'
     | '/join/$code'
     | '/c/$slug'
     | '/call/$userId'
@@ -330,9 +374,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/claim'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/tutorial'
     | '/_app/badges'
     | '/_app/bookmarks'
     | '/_app/channels'
@@ -348,6 +394,8 @@ export interface FileRouteTypes {
     | '/_app/reels'
     | '/_app/settings'
     | '/_app/voice'
+    | '/api/me'
+    | '/api/turn-credentials'
     | '/join/$code'
     | '/_app/c/$slug'
     | '/_app/call/$userId'
@@ -361,9 +409,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  ClaimRoute: typeof ClaimRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  TutorialRoute: typeof TutorialRoute
+  ApiMeRoute: typeof ApiMeRoute
+  ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   JoinCodeRoute: typeof JoinCodeRoute
 }
 
@@ -381,6 +433,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/claim': {
+      id: '/claim'
+      path: '/claim'
+      fullPath: '/claim'
+      preLoaderRoute: typeof ClaimRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -402,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tutorial': {
+      id: '/tutorial'
+      path: '/tutorial'
+      fullPath: '/tutorial'
+      preLoaderRoute: typeof TutorialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/badges': {
@@ -508,6 +574,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/voice'
       preLoaderRoute: typeof AppVoiceRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/me': {
+      id: '/api/me'
+      path: '/api/me'
+      fullPath: '/api/me'
+      preLoaderRoute: typeof ApiMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/turn-credentials': {
+      id: '/api/turn-credentials'
+      path: '/api/turn-credentials'
+      fullPath: '/api/turn-credentials'
+      preLoaderRoute: typeof ApiTurnCredentialsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/join/$code': {
       id: '/join/$code'
@@ -633,9 +713,13 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  ClaimRoute: ClaimRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  TutorialRoute: TutorialRoute,
+  ApiMeRoute: ApiMeRoute,
+  ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   JoinCodeRoute: JoinCodeRoute,
 }
 export const routeTree = rootRouteImport

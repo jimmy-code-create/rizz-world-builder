@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Hand, Mic, MicOff, PhoneOff, Radio } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
+import { useVoiceRoomAudio } from "@/lib/voice-room-audio";
 import { fetchRoom, fetchParticipants, joinRoom, leaveRoom, updateParticipant, endRoom } from "@/lib/voice";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,15 +18,35 @@ export const Route = createFileRoute("/_app/voice/$id")({
 
 function RoomPage() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const room = useQuery({ queryKey: ["voice-room", id], queryFn: () => fetchRoom(id) });
-  const parts = useQuery({ queryKey: ["voice-parts", id], queryFn: () => fetchParticipants(id) });
+  const room = useQuery({
+    queryKey: ["voice-room", id],
+    queryFn: () => fetchRoom(id),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(700 * 2 ** attempt, 5000),
+  });
+  const parts = useQuery({
+    queryKey: ["voice-parts", id],
+    queryFn: () => fetchParticipants(id),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(700 * 2 ** attempt, 5000),
+  });
   const [joined, setJoined] = useState(false);
 
   const me = parts.data?.find((p: any) => p.user_id === user?.id);
   const isHost = room.data?.host_id === user?.id;
+  const listeners = (parts.data ?? []).filter((p: any) => p.role === "listener");
+  const audio = useVoiceRoomAudio({
+    roomId: id,
+    userId: user?.id ?? "",
+    accessToken: session?.access_token ?? "",
+    participants: parts.data ?? [],
+    canSpeak: !!me && me.role !== "listener",
+    muted: me?.muted ?? true,
+    listenerCount: listeners.length,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -64,8 +85,6 @@ function RoomPage() {
   );
 
   const speakers = (parts.data ?? []).filter((p: any) => p.role !== "listener");
-  const listeners = (parts.data ?? []).filter((p: any) => p.role === "listener");
-
   const toggleMute = () => me && user && updateParticipant(id, user.id, { muted: !me.muted });
   const toggleHand = () => me && user && updateParticipant(id, user.id, { hand_raised: !me.hand_raised });
   const promote = (uid: string) => updateParticipant(id, uid, { role: "speaker", muted: false, hand_raised: false });
@@ -90,8 +109,22 @@ function RoomPage() {
             <h1 className="font-display font-bold text-lg leading-tight truncate">{r.title}</h1>
           </div>
           {r.topic && <p className="text-xs text-muted-foreground truncate">{r.topic}</p>}
+          <div className="mt-1 flex items-center gap-2">
+            <p role={audio.error ? "alert" : undefined} className={`text-xs ${audio.error ? "text-destructive" : "text-muted-foreground"}`}>
+              {audio.status}
+            </p>
+            {audio.error && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void audio.retry()}>
+                {audio.error.toLowerCase().includes("microphone") ? "Retry microphone" : "Retry"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {audio.remoteStreams.map(({ peerId, stream }) => (
+        <RemoteAudio key={peerId} stream={stream} onBlocked={audio.markPlaybackBlocked} />
+      ))}
 
       <div className="px-4 py-6 pb-32">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Speakers · {speakers.length}</h2>
@@ -173,8 +206,21 @@ function RoomPage() {
             </Button>
           )}
         </div>
-        <p className="text-center text-[10px] text-muted-foreground mt-2">Audio streaming in beta · Mute state syncs live</p>
+        <p className="text-center text-[10px] text-muted-foreground mt-2">Audio streaming · Mute state syncs live</p>
       </div>
     </div>
   );
+}
+
+function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const element = audioRef.current;
+    if (!element) return;
+    element.srcObject = stream;
+    void element.play().catch(onBlocked);
+  }, [stream, onBlocked]);
+
+  return <audio ref={audioRef} autoPlay playsInline className="hidden" />;
 }

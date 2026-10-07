@@ -15,7 +15,7 @@ import {
   ownerGiftRizz, ownerGrantAdmin,
 } from "@/lib/owner.functions";
 
-type UserRow = { id: string; username: string; display_name: string | null; avatar_url: string | null; rizz_score: number };
+type UserRow = { id: string; username: string | null; display_name: string | null; avatar_url: string | null; rizz_score: number };
 
 const PASS_KEY = "rizz:owner-pass";
 
@@ -161,10 +161,10 @@ function OwnerBody({ password, onLock }: { password: string; onLock: () => void 
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage src={u.avatar_url ?? undefined} />
-                <AvatarFallback className="text-xs bg-gradient-primary">{(u.display_name || u.username).charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-xs bg-gradient-primary">{(u.display_name || u.username || "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{u.display_name || u.username}</p>
+                <p className="text-sm font-medium truncate">{u.display_name || u.username || "New member"}</p>
                 <p className="text-[11px] text-muted-foreground truncate">@{u.username} · {u.rizz_score} rizz</p>
               </div>
             </button>
@@ -184,10 +184,10 @@ function OwnerBody({ password, onLock }: { password: string; onLock: () => void 
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12 ring-2 ring-[var(--rizz-pink)]/40">
                 <AvatarImage src={selected.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary">{(selected.display_name || selected.username).charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-gradient-primary">{(selected.display_name || selected.username || "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-bold">{selected.display_name || selected.username}</p>
+                <p className="font-bold">{selected.display_name || selected.username || "New member"}</p>
                 <p className="text-xs text-muted-foreground">@{selected.username}</p>
               </div>
             </div>

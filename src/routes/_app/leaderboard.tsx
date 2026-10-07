@@ -17,9 +17,10 @@ function LeaderboardPage() {
         .from("profiles")
         .select("id, username, display_name, avatar_url, rizz_score, accent_color")
         .order("rizz_score", { ascending: false })
+        .not("username", "is", null)
         .limit(50);
       if (error) throw error;
-      return data;
+      return (data ?? []).filter((profile) => profile.username !== null);
     },
   });
 

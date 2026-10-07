@@ -46,7 +46,7 @@ const mobileTabs = [
 ] as const;
 
 export function AppShell() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
@@ -59,8 +59,11 @@ export function AppShell() {
   useEffect(() => { setMoreOpen(false); }, [path]);
 
   useEffect(() => {
-    if (!loading && !user) nav({ to: "/login" });
-  }, [loading, user, nav]);
+    if (loading || profileError) return;
+    if (!user) nav({ to: "/" });
+    else if (!profile?.username) nav({ to: "/claim" });
+    else if (!profile.tutorial_seen) nav({ to: "/tutorial" });
+  }, [loading, user, profile, profileError, nav]);
 
   // Allow the keyboard shortcut "n" (and other places) to open the composer
   useEffect(() => {
@@ -86,7 +89,16 @@ export function AppShell() {
     refetchInterval: (query) => query.state.status === "error" ? false : 30000,
   });
 
-  if (loading || !user) {
+  if (profileError) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-muted-foreground">{profileError}</p>
+        <Button variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
+      </div>
+    );
+  }
+
+  if (loading || !user || !profile?.username || !profile.tutorial_seen) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
         <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" />
@@ -335,7 +347,7 @@ function ProfileMenu({
   signOut,
   compact,
 }: {
-  profile: { username: string; display_name: string | null; avatar_url: string | null } | null;
+  profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
   initial: string;
   signOut: () => Promise<void>;
   compact?: boolean;

@@ -18,10 +18,15 @@ export const Route = createFileRoute("/_app/voice")({
 });
 
 function VoicePage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const rooms = useQuery({ queryKey: ["voice-rooms"], queryFn: fetchLiveRooms });
+  const rooms = useQuery({
+    queryKey: ["voice-rooms"],
+    queryFn: fetchLiveRooms,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(700 * 2 ** attempt, 5000),
+  });
 
   useEffect(() => {
     const ch = supabase.channel("voice-rooms-live")
@@ -29,6 +34,23 @@ function VoicePage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
+
+  const interests = profile?.interests ?? [];
+  const sortedRooms = [...(rooms.data ?? [])].sort((left, right) => {
+    const score = (room: { title: string; topic: string | null }) => {
+      const details = `${room.title} ${room.topic ?? ""}`.toLowerCase();
+      return interests.reduce((total, interest) => {
+        const normalized = interest.toLowerCase();
+        const terms = normalized === "just chatting"
+          ? ["chat", "talk", "hangout"]
+          : normalized === "gaming"
+            ? ["game", "gaming", "stream"]
+            : [normalized];
+        return total + (terms.some((term) => details.includes(term)) ? 1 : 0);
+      }, 0);
+    };
+    return score(right) - score(left);
+  });
 
   return (
     <div>
@@ -45,7 +67,7 @@ function VoicePage() {
       {rooms.isLoading && <div className="h-32 skeleton-shimmer rounded-3xl" />}
 
       <div className="grid gap-3 md:grid-cols-2">
-        {rooms.data?.map((r: any) => (
+        {!rooms.isLoading && !rooms.isError && sortedRooms.map((r: any) => (
           <Link key={r.id} to="/voice/$id" params={{ id: r.id }}>
             <motion.div whileHover={{ y: -3 }} className="glass rounded-3xl p-5 border border-white/5 hover:shadow-glow transition-all relative overflow-hidden">
               <div className="absolute top-3 right-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
@@ -73,7 +95,16 @@ function VoicePage() {
         ))}
       </div>
 
-      {rooms.data?.length === 0 && (
+      {rooms.isError && (
+        <div role="alert" className="glass rounded-3xl p-8 text-center">
+          <Mic className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <h2 className="font-display text-xl font-bold">Couldn't load live rooms</h2>
+          <p className="text-sm text-muted-foreground mt-1 mb-5">Check your connection and try again.</p>
+          <Button variant="outline" onClick={() => void rooms.refetch()} disabled={rooms.isFetching}>Retry</Button>
+        </div>
+      )}
+
+      {!rooms.isLoading && !rooms.isError && rooms.data?.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
           <Mic className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <h2 className="font-display text-xl font-bold">No live rooms</h2>

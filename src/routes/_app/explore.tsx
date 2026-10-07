@@ -39,11 +39,12 @@ function ExplorePage() {
         .from("profiles")
         .select("id, username, display_name, avatar_url, bio, rizz_score, accent_color")
         .order("rizz_score", { ascending: false })
+        .not("username", "is", null)
         .limit(30);
       if (q.trim()) query.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return (data ?? []).filter((profile) => profile.username !== null);
     },
   });
 
@@ -53,7 +54,7 @@ function ExplorePage() {
       const { data, error } = await supabase
         .from("posts")
         .select("id, media_url, media_type, like_count, author:profiles!posts_author_id_fkey(username)")
-        .not("media_url", "is", null)
+            .not("media_url", "is", null)
         .order("like_count", { ascending: false })
         .limit(9);
       if (error) throw error;

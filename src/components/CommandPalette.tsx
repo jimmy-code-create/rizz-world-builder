@@ -34,6 +34,7 @@ export function CommandPalette() {
   const [hits, setHits] = useState<Hit[]>([]);
   const nav = useNavigate();
   const { profile, signOut } = useAuth();
+  const profileUsername = profile?.username;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -61,7 +62,9 @@ export function CommandPalette() {
       ]);
       if (cancelled) return;
       const list: Hit[] = [];
-      (u.data ?? []).forEach((r: any) => list.push({ kind: "user", ...r }));
+      (u.data ?? []).forEach((r: any) => {
+        if (r.username) list.push({ kind: "user", ...r });
+      });
       (t.data ?? []).forEach((r: any) => list.push({ kind: "tag", tag: r.tag, post_count: r.post_count }));
       setHits(list);
     };
@@ -100,8 +103,8 @@ export function CommandPalette() {
               <p.icon className="mr-2 h-4 w-4" /> {p.label}
             </CommandItem>
           ))}
-          {profile && (
-            <CommandItem value="goto profile" onSelect={() => go(() => nav({ to: "/u/$username", params: { username: profile.username } }))}>
+          {profileUsername && (
+            <CommandItem value="goto profile" onSelect={() => go(() => nav({ to: "/u/$username", params: { username: profileUsername } }))}>
               <UserIcon className="mr-2 h-4 w-4" /> My profile
             </CommandItem>
           )}
@@ -109,7 +112,7 @@ export function CommandPalette() {
         <CommandSeparator />
         <CommandGroup heading="Actions">
           <CommandItem value="copy profile link" onSelect={() => go(() => {
-            if (profile) navigator.clipboard.writeText(`${location.origin}/u/${profile.username}`);
+            if (profileUsername) navigator.clipboard.writeText(`${location.origin}/u/${profileUsername}`);
           })}>
             <Sparkles className="mr-2 h-4 w-4" /> Copy my profile link
           </CommandItem>

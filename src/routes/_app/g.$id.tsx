@@ -375,7 +375,7 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble min-w-[44px] max-w-full [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
+                    <div className={`chat-bubble w-fit max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
                       {deletedAt ? "This message was unsent" : <GifContent>{m.body}</GifContent>}
                     </div>
                   </MessageActionMenu>

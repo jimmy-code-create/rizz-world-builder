@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { getPostAuthPath } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/signup")({
 
 function SignupPage() {
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading, profileError } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +28,9 @@ function SignupPage() {
   const [errKind, setErrKind] = useState<AuthErrorKind | null>(null);
   const [errMsg, setErrMsg] = useState<string>("");
 
-  useEffect(() => { if (user) nav({ to: "/feed" }); }, [user, nav]);
+  useEffect(() => {
+    if (user && !authLoading && !profileError) nav({ to: getPostAuthPath(profile) });
+  }, [user, profile, authLoading, profileError, nav]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +57,7 @@ function SignupPage() {
       return;
     }
     toast.success("You're in. Welcome to RIZZ.");
-    nav({ to: "/feed" });
+    nav({ to: "/" });
   };
 
   const verifyOtp = async () => {
@@ -64,7 +67,7 @@ function SignupPage() {
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("You're in. Welcome to RIZZ.");
-    nav({ to: "/feed" });
+    nav({ to: "/" });
   };
 
   return (

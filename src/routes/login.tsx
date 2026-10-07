@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { getPostAuthPath } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading, profileError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ function LoginPage() {
   const [errMsg, setErrMsg] = useState<string>("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || authLoading || profileError) return;
     let pendingCode: string | null = null;
     try {
       pendingCode = window.sessionStorage.getItem("rizz:pending-group-invite");
@@ -35,8 +36,8 @@ function LoginPage() {
       window.location.replace(`/join/${encodeURIComponent(pendingCode)}`);
       return;
     }
-    nav({ to: "/feed" });
-  }, [user, nav]);
+    nav({ to: getPostAuthPath(profile) });
+  }, [user, profile, authLoading, profileError, nav]);
 
   const onEmail = async (e: React.FormEvent) => {
     e.preventDefault();

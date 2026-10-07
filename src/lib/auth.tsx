@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Profile = {
   id: string;
-  username: string;
+  username: string | null;
   display_name: string | null;
   avatar_url: string | null;
   banner_url: string | null;
@@ -17,6 +17,8 @@ type Profile = {
   reduced_motion: boolean | null;
   trial_active: boolean | null;
   trial_ends_at: string | null;
+  tutorial_seen: boolean;
+  interests: string[];
 };
 
 type AuthCtx = {
@@ -24,44 +26,108 @@ type AuthCtx = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | undefined>(undefined);
 
+const retryDelay = (attempt: number) => new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+
+async function fetchMe(session: Session | null): Promise<Profile | null> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch("/api/me", {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+    } catch (error) {
+      if (attempt === 3) throw error;
+      await retryDelay(attempt);
+      continue;
+    }
+
+    if (response.status === 401 && !session) return null;
+    if ([502, 503, 504].includes(response.status) && attempt < 3) {
+      await retryDelay(attempt);
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(response.status === 401 ? "Your session expired. Please sign in again." : "Couldn't load your account.");
+    }
+    const result = (await response.json()) as { profile: Profile | null };
+    return result.profile ?? null;
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const loadProfile = async (uid: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url, banner_url, bio, rizz_score, accent_color, theme_preset, theme_mode, ui_density, reduced_motion, trial_active, trial_ends_at")
-      .eq("id", uid)
-      .maybeSingle();
-    setProfile(data ?? null);
-  };
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(() => loadProfile(s.user.id), 0);
-      } else {
+    let mounted = true;
+    let requestId = 0;
+    let initialized = false;
+
+    const applySession = async (nextSession: Session | null) => {
+      const currentRequest = ++requestId;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setProfileError(null);
+
+      if (!nextSession) {
         setProfile(null);
+        setLoading(true);
+        try {
+          await fetchMe(null);
+        } catch {
+          // An unauthenticated visitor still belongs on the public welcome screen.
+        } finally {
+          if (mounted && currentRequest === requestId) setLoading(false);
+        }
+        return;
       }
+
+      setLoading(true);
+      try {
+        const nextProfile = await fetchMe(nextSession);
+        if (mounted && currentRequest === requestId) setProfile(nextProfile);
+      } catch (error) {
+        if (mounted && currentRequest === requestId) {
+          setProfile(null);
+          setProfileError(error instanceof Error ? error.message : "Couldn't load your account.");
+        }
+      } finally {
+        if (mounted && currentRequest === requestId) setLoading(false);
+      }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "INITIAL_SESSION" && !initialized) return;
+      setTimeout(() => {
+        if (mounted) void applySession(nextSession);
+      }, 0);
     });
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) await loadProfile(data.session.user.id);
+
+    void supabase.auth.getSession().then(({ data }) => {
+      initialized = true;
+      if (mounted) void applySession(data.session);
+    }).catch((error: unknown) => {
+      initialized = true;
+      if (!mounted) return;
+      setProfileError(error instanceof Error ? error.message : "Couldn't check your session.");
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -71,8 +137,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         loading,
+        profileError,
         refreshProfile: async () => {
-          if (user) await loadProfile(user.id);
+          if (!session) return;
+          setProfileError(null);
+          try {
+            setProfile(await fetchMe(session));
+          } catch (error) {
+            setProfileError(error instanceof Error ? error.message : "Couldn't load your account.");
+            throw error;
+          }
         },
         signOut: async () => {
           await supabase.auth.signOut();

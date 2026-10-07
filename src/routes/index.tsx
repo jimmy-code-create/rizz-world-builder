@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Radio, Zap, Crown, Mic, Hash, Flame, Users } from "lucide-react";
+import { CustomEmoji } from "@/components/CustomEmoji";
+import { useAuth } from "@/lib/auth";
+import { getPostAuthPath } from "@/lib/onboarding";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -15,6 +20,23 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const { user, profile, loading, profileError, refreshProfile } = useAuth();
+  const nav = useNavigate();
+
+  useEffect(() => {
+    if (loading || !user || profileError) return;
+    void nav({ to: getPostAuthPath(profile) });
+  }, [loading, user, profile, profileError, nav]);
+
+  if (user && profileError) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-muted-foreground">{profileError}</p>
+        <Button variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-dvh overflow-hidden">
       {/* Aurora orbs */}
@@ -77,7 +99,7 @@ function Index() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="bg-gradient-primary border-0 shadow-glow-lg hover:opacity-90 text-base px-8 h-12">
-                <Sparkles className="mr-2 h-4 w-4" />
+                <CustomEmoji name="ideas" className="mr-2 h-4 w-4" />
                 Claim your @
               </Button>
             </Link>

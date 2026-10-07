@@ -1707,15 +1707,17 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          interests: string[]
           reduced_motion: boolean
           rizz_score: number
           theme_mode: string
           theme_preset: string
+          tutorial_seen: boolean
           trial_active: boolean
           trial_ends_at: string
           ui_density: string
           updated_at: string
-          username: string
+          username: string | null
         }
         Insert: {
           accent_color?: string | null
@@ -1725,15 +1727,17 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          interests?: string[]
           reduced_motion?: boolean
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
+          tutorial_seen?: boolean
           trial_active?: boolean
           trial_ends_at?: string
           ui_density?: string
           updated_at?: string
-          username: string
+          username?: string | null
         }
         Update: {
           accent_color?: string | null
@@ -1743,15 +1747,17 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          interests?: string[]
           reduced_motion?: boolean
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
+          tutorial_seen?: boolean
           trial_active?: boolean
           trial_ends_at?: string
           ui_density?: string
           updated_at?: string
-          username?: string
+          username?: string | null
         }
         Relationships: []
       }

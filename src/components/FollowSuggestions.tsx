@@ -8,11 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function FollowSuggestions() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
 
   const { data } = useQuery({
-    queryKey: ["follow-suggestions", user?.id],
+    queryKey: ["follow-suggestions", user?.id, profile?.interests.join(",")],
     enabled: !!user,
     queryFn: async () => {
       const { data: following } = await supabase
@@ -22,11 +22,22 @@ export function FollowSuggestions() {
       const excludeIds = [user!.id, ...(following ?? []).map((r: any) => r.following_id)];
       const { data: profs } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, rizz_score, accent_color")
+        .select("id, username, display_name, avatar_url, rizz_score, accent_color, interests")
         .not("id", "in", `(${excludeIds.join(",")})`)
         .order("rizz_score", { ascending: false })
-        .limit(5);
-      return profs ?? [];
+        .not("username", "is", null)
+        .limit(40);
+      const interests = new Set((profile?.interests ?? []).map((item) => item.toLowerCase()));
+      return (profs ?? [])
+        .map((person) => ({
+          ...person,
+          interestScore: (person.interests ?? []).reduce(
+            (score, interest) => score + (interests.has(interest.toLowerCase()) ? 1 : 0),
+            0,
+          ),
+        }))
+        .sort((left, right) => right.interestScore - left.interestScore || right.rizz_score - left.rizz_score)
+        .slice(0, 5);
     },
     staleTime: 60_000,
   });

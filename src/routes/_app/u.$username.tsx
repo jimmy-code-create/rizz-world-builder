@@ -156,8 +156,9 @@ function ProfilePage() {
   });
 
   const shareProfile = async () => {
-    const url = `${window.location.origin}/u/${profile!.username}`;
-    const shareData = { title: `@${profile!.username} on RIZZ`, text: profile!.bio || `Check out @${profile!.username} on RIZZ`, url };
+    const profileUsername = profile!.username ?? username;
+    const url = `${window.location.origin}/u/${profileUsername}`;
+    const shareData = { title: `@${profileUsername} on RIZZ`, text: profile!.bio || `Check out @${profileUsername} on RIZZ`, url };
     try {
       if (navigator.share) await navigator.share(shareData);
       else {
@@ -229,7 +230,8 @@ function ProfilePage() {
   }
 
   const accent = profile.accent_color || "var(--rizz-pink)";
-  const initial = (profile.display_name || profile.username).charAt(0).toUpperCase();
+  const profileUsername = profile.username ?? username;
+  const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
 
   return (
@@ -256,9 +258,9 @@ function ProfilePage() {
       <div className="px-1 md:px-2 mt-4 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h1 className="font-display text-2xl font-bold tracking-tight truncate">
-            {profile.display_name || profile.username}
+            {profile.display_name || profileUsername}
           </h1>
-          <p className="text-sm text-muted-foreground">@{profile.username}</p>
+          <p className="text-sm text-muted-foreground">@{profileUsername}</p>
         </div>
         {isMe ? (
           <div className="flex gap-2">

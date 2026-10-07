@@ -287,7 +287,14 @@
 }
 
 .rizz-toaster[data-sonner-toaster] {
-  top: max(env(safe-area-inset-top, 0px), 12px) !important;
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
+}
+
+@media (min-width: 768px) {
+  .rizz-toaster[data-sonner-toaster] {
+    bottom: 16px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

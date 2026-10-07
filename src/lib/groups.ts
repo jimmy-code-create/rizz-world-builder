@@ -134,7 +134,7 @@ export async function previewGroupInvite(code: string): Promise<GroupInvitePrevi
 
 type GroupMessageAuthor = {
   id: string;
-  username: string;
+  username: string | null;
   display_name: string | null;
   avatar_url: string | null;
   accent_color: string | null;
