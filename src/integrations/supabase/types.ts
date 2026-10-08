@@ -1712,9 +1712,9 @@ export type Database = {
           rizz_score: number
           theme_mode: string
           theme_preset: string
-          tutorial_seen: boolean
           trial_active: boolean
           trial_ends_at: string
+          tutorial_seen: boolean
           ui_density: string
           updated_at: string
           username: string | null
@@ -1732,9 +1732,9 @@ export type Database = {
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
-          tutorial_seen?: boolean
           trial_active?: boolean
           trial_ends_at?: string
+          tutorial_seen?: boolean
           ui_density?: string
           updated_at?: string
           username?: string | null
@@ -1752,9 +1752,9 @@ export type Database = {
           rizz_score?: number
           theme_mode?: string
           theme_preset?: string
-          tutorial_seen?: boolean
           trial_active?: boolean
           trial_ends_at?: string
+          tutorial_seen?: boolean
           ui_density?: string
           updated_at?: string
           username?: string | null
@@ -2107,6 +2107,13 @@ export type Database = {
             referencedRelation: "voice_rooms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "voice_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       voice_rooms: {
@@ -2146,7 +2153,15 @@ export type Database = {
           title?: string
           topic?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "voice_rooms_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -2245,6 +2260,10 @@ export type Database = {
         Args: { _emoji: string; _post_id: string }
         Returns: Json
       }
+      toggle_story_reaction: {
+        Args: { _emoji: string; _story_id: string }
+        Returns: boolean
+      }
       unsend_direct_message: {
         Args: { _message_id: string }
         Returns: undefined
@@ -2258,7 +2277,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       channel_member_role: "owner" | "mod" | "member"
-      channel_type: "text" | "announcement" | "drops"
+      channel_type: "text" | "announcement" | "drops" | "voice"
       group_member_role: "owner" | "admin" | "member"
       post_visibility: "public" | "close_friends"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
@@ -2393,7 +2412,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       channel_member_role: ["owner", "mod", "member"],
-      channel_type: ["text", "announcement", "drops"],
+      channel_type: ["text", "announcement", "drops", "voice"],
       group_member_role: ["owner", "admin", "member"],
       post_visibility: ["public", "close_friends"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
