@@ -32,6 +32,7 @@ import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { RizzVideoPlayer } from "@/components/RizzVideoPlayer";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -457,7 +458,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             externalVideo?.ok ? (
               <ExternalVideoEmbed sourceUrl={post.media_url} className="mx-auto h-[min(48dvh,390px)] w-full max-w-[390px]" />
             ) : (
-              <video src={post.media_url} controls preload="metadata" playsInline className="w-full max-h-[min(48dvh,390px)] object-contain" />
+              <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
             <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[min(48dvh,390px)] object-contain" />

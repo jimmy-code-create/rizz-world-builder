@@ -417,7 +417,7 @@ export async function saveGeneratedStoryToSupabase(story: GeneratedStory): Promi
       me_name: story.me_name,
       word_count: wordCount,
       is_branching: story.choices.length > 0,
-      creator_id: user.id,
+      created_by: user.id,
       video_url: STORY_PRESET_VIDEOS[story.video_type] ?? null,
     } as any)
     .select("id")
