@@ -55,7 +55,9 @@ export type ChatStory = {
   gradient: string;
   them_name: string;
   me_name: string;
+  video_url?: string | null;
 };
+
 
 type Bubble = { key: string; speaker: string; body: string; body_en?: string; idx: number };
 type Scene = { id: string; label: string; image: string };
