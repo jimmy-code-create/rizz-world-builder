@@ -388,9 +388,27 @@ export function ChatStoryPlayer({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[130] flex flex-col overflow-hidden bg-background"
       >
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <AnimatePresence mode="wait">
-            {activeScene ? (
+            {story.video_url ? (
+              <motion.div
+                key="story-video"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.85 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0"
+              >
+                <video
+                  src={story.video_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+              </motion.div>
+            ) : activeScene ? (
               <motion.img
                 key={activeScene.id}
                 src={activeScene.image}
@@ -412,9 +430,11 @@ export function ChatStoryPlayer({
               />
             )}
           </AnimatePresence>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,7,16,.64)_0%,rgba(9,7,16,.62)_40%,rgba(9,7,16,.92)_100%)]" />
-          <div className="absolute inset-0 bg-aurora opacity-20" />
+          {/* Cinematic vignette to ensure chat bubbles remain crisp and readable */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,7,16,.72)_0%,rgba(9,7,16,.65)_40%,rgba(9,7,16,.94)_100%)]" />
+          <div className="absolute inset-0 bg-aurora opacity-15" />
         </div>
+        
 
         <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
 
