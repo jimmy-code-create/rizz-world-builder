@@ -377,8 +377,14 @@ export async function generateStory(input: StoryGenerationInput): Promise<Genera
 }
 
 export async function generateGeminiStory(input: StoryGenerationInput): Promise<GeneratedStory> {
-  const result = await generateStory(input);
-  return result.story;
+  const raw: unknown = await generateStory(input);
+  const r = raw as { story?: GeneratedStory; title?: string; lines?: unknown } | null | undefined;
+  const story = r?.story ?? (r?.title && r?.lines ? (raw as GeneratedStory) : undefined);
+  if (!story) {
+    console.error("Story generation returned an unexpected result:", raw);
+    throw new Error("STORY_EMPTY");
+  }
+  return story;
 }
 
 const STORY_GRADIENTS: Record<StoryCategory, string> = {

@@ -141,7 +141,13 @@ function ChatStoriesPage() {
       toast.success("Your story is ready.");
       setOpenId(storyId);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Could not generate your story. Please try again.");
+      console.error("Create story failed:", error);
+      const msg = error instanceof Error ? error.message : "";
+      let friendly = "Couldn't create your story right now. Please try again in a moment.";
+      if (/sign in/i.test(msg)) friendly = msg;
+      else if (/STORY_EMPTY/.test(msg)) friendly = "The story writer didn't answer. Please try again.";
+      else if (/row-level security|permission denied|created_by/i.test(msg)) friendly = "Couldn't save your story. Please try again later.";
+      toast.error(friendly);
     } finally {
       setIsGenerating(false);
     }
