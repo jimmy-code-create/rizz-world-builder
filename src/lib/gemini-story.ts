@@ -9,10 +9,10 @@ export type StoryLanguage = "hi" | "en";
 export type StoryVideoType = "horror_hallway" | "cyberpunk_neon" | "rain_window" | "cozy_room";
 
 export const STORY_PRESET_VIDEOS: Record<StoryVideoType, string> = {
-  horror_hallway: "https://assets.mixkit.co/videos/preview/mixkit-creepy-dark-hallway-with-flickering-lights-42938-large.mp4",
-  cyberpunk_neon: "https://assets.mixkit.co/videos/preview/mixkit-neon-city-lights-at-night-42962-large.mp4",
-  rain_window: "https://assets.mixkit.co/videos/preview/mixkit-rain-falling-on-a-window-pane-at-night-42861-large.mp4",
-  cozy_room: "https://assets.mixkit.co/videos/preview/mixkit-fire-burning-in-a-fireplace-43103-large.mp4",
+  horror_hallway: "https://upload.wikimedia.org/wikipedia/commons/2/28/Traffic_at_dusk_%28time_lapse%29.webm",
+  cyberpunk_neon: "https://upload.wikimedia.org/wikipedia/commons/2/28/Traffic_at_dusk_%28time_lapse%29.webm",
+  rain_window: "https://upload.wikimedia.org/wikipedia/commons/2/2e/Radevormwald_-_Raindrops_on_a_window_10_%281%29_ies.webm",
+  cozy_room: "https://upload.wikimedia.org/wikipedia/commons/2/2e/Radevormwald_-_Raindrops_on_a_window_10_%281%29_ies.webm",
 };
 
 export type GeneratedStoryLine = {
@@ -61,55 +61,6 @@ const inputSchema = z.object({
   prompt: z.string().trim().min(4).max(500),
   category: z.enum(STORY_CATEGORIES),
   language: z.enum(["hi", "en"]),
-});
-
-const generatedStorySchema = z.object({
-  title: z.string().min(1).max(100),
-  hook: z.string().min(1).max(240),
-  emoji: z.string().min(1).max(16),
-  category: z.enum(STORY_CATEGORIES),
-  them_name: z.string().min(1).max(40),
-  me_name: z.string().min(1).max(40),
-  video_type: z.enum(["horror_hallway", "cyberpunk_neon", "rain_window", "cozy_room"]),
-  lines: z.array(z.object({
-    idx: z.number().int().nonnegative(),
-    speaker: z.enum(["me", "them", "narrator"]),
-    body: z.string().min(1).max(800),
-    body_en: z.string().min(1).max(800),
-    chapter: z.string().min(1).max(60),
-    next_idx: z.number().int().nonnegative().nullable(),
-  }).strict()).min(6).max(36),
-  choices: z.array(z.object({
-    at_idx: z.number().int().nonnegative(),
-    position: z.number().int().nonnegative(),
-    label: z.string().min(1).max(120),
-    label_en: z.string().min(1).max(120),
-    reply_body: z.string().min(1).max(500),
-    reply_body_en: z.string().min(1).max(500),
-    goto_idx: z.number().int().nonnegative(),
-  }).strict()).min(2).max(8),
-}).strict().superRefine((story, context) => {
-  const indices = new Set<number>();
-  for (const line of story.lines) {
-    if (indices.has(line.idx)) {
-      context.addIssue({ code: "custom", message: `Duplicate line index ${line.idx}` });
-    }
-    indices.add(line.idx);
-  }
-
-  for (const line of story.lines) {
-    if (line.next_idx != null && !indices.has(line.next_idx)) {
-      context.addIssue({ code: "custom", message: `Missing next line ${line.next_idx}` });
-    }
-  }
-  for (const choice of story.choices) {
-    if (!indices.has(choice.at_idx)) {
-      context.addIssue({ code: "custom", message: `Missing choice line ${choice.at_idx}` });
-    }
-    if (!indices.has(choice.goto_idx)) {
-      context.addIssue({ code: "custom", message: `Missing choice destination ${choice.goto_idx}` });
-    }
-  }
 });
 
 const geminiResponseSchema = {
@@ -304,6 +255,109 @@ function makeFallbackStory(input: StoryGenerationInput): GeneratedStory {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function storyText(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function normalizeGeminiStory(rawValue: unknown, input: StoryGenerationInput): GeneratedStory {
+  const raw = isRecord(rawValue) ? rawValue : {};
+  const fallback = makeFallbackStory(input);
+  const rawLines = Array.isArray(raw.lines) ? raw.lines.filter(isRecord) : [];
+  const usedIndexes = new Set<number>();
+  const originalToNormalized = new Map<number, number>();
+
+  const indexedLines = rawLines.map((line, position) => {
+    const originalIndex = line.idx;
+    let idx = typeof originalIndex === "number" && Number.isInteger(originalIndex) && originalIndex >= 0
+      ? originalIndex
+      : position + 1;
+    while (usedIndexes.has(idx)) idx += 1;
+    usedIndexes.add(idx);
+    if (typeof originalIndex === "number" && Number.isInteger(originalIndex) && originalIndex >= 0 && !originalToNormalized.has(originalIndex)) {
+      originalToNormalized.set(originalIndex, idx);
+    }
+    return { line, idx };
+  });
+
+  const lines: GeneratedStoryLine[] = indexedLines.map(({ line, idx }, position) => {
+    const nextLine = indexedLines[position + 1];
+    const rawNext = line.next_idx;
+    let inferredNext: number | null = null;
+    if (position < 3) {
+      inferredNext = nextLine?.idx ?? null;
+    } else if (position >= 4 && (position - 4) % 2 === 0) {
+      inferredNext = nextLine?.idx ?? null;
+    }
+    const mappedNext = typeof rawNext === "number" && Number.isInteger(rawNext) && rawNext >= 0
+      ? originalToNormalized.get(rawNext)
+      : undefined;
+    const next_idx = mappedNext !== undefined && mappedNext !== idx ? mappedNext : inferredNext;
+    const speaker = line.speaker === "me" || line.speaker === "them" || line.speaker === "narrator"
+      ? line.speaker
+      : position % 2 === 0 ? "me" : "them";
+    const body = storyText(line.body, storyText(line.body_en, input.prompt));
+
+    return {
+      idx,
+      speaker,
+      body,
+      body_en: storyText(line.body_en, body),
+      chapter: storyText(line.chapter, "chapter"),
+      next_idx,
+    };
+  });
+
+  const rawChoices = Array.isArray(raw.choices) ? raw.choices.filter(isRecord) : [];
+  const storyLines = lines.length ? lines : fallback.lines;
+  const choicePoint = indexedLines[3]?.idx ?? indexedLines.at(-1)?.idx ?? storyLines[3]?.idx ?? 4;
+  const choices: GeneratedStoryChoice[] = rawChoices.map((choice, position) => {
+    const generatedLabel = `Choice ${position + 1}`;
+    const fallbackBranch = indexedLines[4 + position * 2]?.idx
+      ?? storyLines[4 + position * 2]?.idx
+      ?? storyLines[4]?.idx
+      ?? choicePoint;
+    const atIdx = typeof choice.at_idx === "number"
+      ? originalToNormalized.get(choice.at_idx) ?? choicePoint
+      : choicePoint;
+    const gotoIdx = typeof choice.goto_idx === "number"
+      ? originalToNormalized.get(choice.goto_idx) ?? fallbackBranch
+      : fallbackBranch;
+    const label = storyText(choice.label, storyText(choice.label_en, generatedLabel));
+    const reply = storyText(choice.reply_body, storyText(choice.reply_body_en, "..."));
+
+    return {
+      at_idx: atIdx,
+      position,
+      label,
+      label_en: storyText(choice.label_en, label),
+      reply_body: reply,
+      reply_body_en: storyText(choice.reply_body_en, reply),
+      goto_idx: gotoIdx,
+    };
+  });
+
+  const videoTypes: StoryVideoType[] = ["horror_hallway", "cyberpunk_neon", "rain_window", "cozy_room"];
+  const videoType = videoTypes.includes(raw.video_type as StoryVideoType)
+    ? raw.video_type as StoryVideoType
+    : input.category === "horror" ? "horror_hallway" : "rain_window";
+
+  return {
+    title: storyText(raw.title, input.prompt.slice(0, 30)),
+    hook: storyText(raw.hook, input.prompt),
+    emoji: storyText(raw.emoji, "✨"),
+    category: input.category,
+    them_name: storyText(raw.them_name, "Friend"),
+    me_name: storyText(raw.me_name, "You"),
+    video_type: videoType,
+    lines: storyLines,
+    choices,
+  };
+}
+
 const generateStoryServer = createServerFn({ method: "POST" })
   .inputValidator((input: StoryGenerationInput) => inputSchema.parse(input))
 
@@ -329,7 +383,7 @@ const generateStoryServer = createServerFn({ method: "POST" })
 
     try {
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
 
         {
           method: "POST",
@@ -364,9 +418,8 @@ const generateStoryServer = createServerFn({ method: "POST" })
         .trim();
       if (!text) throw new Error("Gemini returned no story text");
 
-      const parsed = generatedStorySchema.parse(JSON.parse(text));
-      parsed.category = data.category;
-      return { story: parsed, source: "gemini" as const };
+      const story = normalizeGeminiStory(JSON.parse(text) as unknown, data);
+      return { story, source: "gemini" as const };
     } catch (error) {
       console.error("Gemini story generation failed; using a built-in template.", error);
       return { story: makeFallbackStory(data), source: "template" as const };
