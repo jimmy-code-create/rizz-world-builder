@@ -60,7 +60,7 @@ export type ChatStory = {
 
 
 type Bubble = { key: string; speaker: string; body: string; body_en?: string; idx: number };
-type Scene = { id: string; label: string; image: string };
+type Scene = { id: string; label: string; image?: string };
 
 const ROOM_4B_SCENES: Scene[] = [
   { id: "scene-1", label: ROOM_4B_SCENE_LABELS["scene-1"].en, image: panelOne },
@@ -174,6 +174,22 @@ function speakerLabel(speaker: string, language: "hi" | "en") {
   return speaker;
 }
 
+function chapterLabel(chapter: string) {
+  return chapter
+    .trim()
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+const CHAPTER_BACKDROPS = [
+  "linear-gradient(135deg, rgba(42, 55, 80, .78), rgba(20, 32, 54, .22) 58%, rgba(89, 49, 79, .58))",
+  "linear-gradient(135deg, rgba(25, 77, 80, .72), rgba(21, 35, 62, .24) 55%, rgba(116, 65, 66, .58))",
+  "linear-gradient(135deg, rgba(91, 58, 37, .72), rgba(37, 34, 65, .28) 55%, rgba(56, 76, 96, .62))",
+  "linear-gradient(135deg, rgba(74, 43, 80, .72), rgba(24, 40, 62, .25) 55%, rgba(104, 73, 44, .58))",
+];
+
 export function ChatStoryPlayer({
   story,
   lines,
@@ -181,6 +197,7 @@ export function ChatStoryPlayer({
   liked,
   onLike,
   onClose,
+  initialLanguage = "hi",
 }: {
   story: ChatStory;
   lines: StoryLine[];
@@ -188,14 +205,24 @@ export function ChatStoryPlayer({
   liked: boolean;
   onLike: () => void;
   onClose: () => void;
+  initialLanguage?: "hi" | "en";
 }) {
-  const isRoom4B = story.slug === "room-4b" || story.title.toLowerCase().includes("room 4b");
+  const isRoom4B = story.slug === "room-4b";
   const storyLines = isRoom4B ? ROOM_4B_LINES : lines;
   const storyChoices = isRoom4B ? ROOM_4B_CHOICES : choices;
   const byIdx = useMemo(() => new Map(storyLines.map((line) => [line.idx, line])), [storyLines]);
   const sorted = useMemo(() => [...storyLines].sort((a, b) => a.idx - b.idx), [storyLines]);
   const first = sorted[0]?.idx;
-  const scenes = isRoom4B ? ROOM_4B_SCENES : [];
+  const chapterIds = useMemo(
+    () => [...new Set(sorted.flatMap((line) => typeof line.chapter === "string" && line.chapter.trim() ? [line.chapter] : []))],
+    [sorted],
+  );
+  const scenes = useMemo<Scene[]>(
+    () => isRoom4B
+      ? ROOM_4B_SCENES
+      : chapterIds.map((id) => ({ id, label: chapterLabel(id) })),
+    [chapterIds, isRoom4B],
+  );
 
   const choicesAt = useMemo(() => {
     const grouped = new Map<number, StoryChoice[]>();
@@ -214,7 +241,7 @@ export function ChatStoryPlayer({
   const [typing, setTyping] = useState(false);
   const [auto, setAuto] = useState(true);
   const [narration, setNarration] = useState(true);
-  const [language, setLanguage] = useState<"hi" | "en">("hi");
+  const [language, setLanguage] = useState<"hi" | "en">(initialLanguage);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -250,7 +277,7 @@ export function ChatStoryPlayer({
     if (!narration || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     stopNarration();
     const utterance = new SpeechSynthesisUtterance(text);
-    const spokenLanguage = isRoom4B ? language : /[\u0900-\u097F]/.test(text) ? "hi" : "en";
+    const spokenLanguage = language;
     const locale = spokenLanguage === "hi" ? "hi-IN" : "en-IN";
     const profile = resolveVoiceProfile(speaker, story);
     utterance.lang = locale;
@@ -297,7 +324,7 @@ export function ChatStoryPlayer({
 
   const nextOf = (idx: number): number | null => {
     const line = byIdx.get(idx);
-    if (line?.next_idx != null) return line.next_idx;
+    if (line && line.next_idx !== undefined) return line.next_idx;
     if (line?.is_terminal) return null;
     const position = sorted.findIndex((item) => item.idx === idx);
     const next = sorted[position + 1];
@@ -310,7 +337,7 @@ export function ChatStoryPlayer({
   const done = pending.length === 0 && nextIdx == null;
   const nextSpeaker = nextIdx != null ? byIdx.get(nextIdx)?.speaker : undefined;
   const activeLine = cursor != null ? byIdx.get(cursor) : undefined;
-  const activeScene = scenes.find((scene) => scene.id === activeLine?.chapter) ?? scenes[0];
+  const activeScene = scenes.find((scene) => scene.id === activeLine?.chapter) ?? (isRoom4B ? scenes[0] : undefined);
   const sceneIndex = Math.max(0, scenes.findIndex((scene) => scene.id === activeScene?.id));
   const title = isRoom4B ? ROOM_4B_TITLE[language] : story.title;
   const hook = isRoom4B ? ROOM_4B_HOOK[language] : story.hook;
