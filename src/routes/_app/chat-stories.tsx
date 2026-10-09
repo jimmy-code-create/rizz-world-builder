@@ -4,11 +4,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
-import { Heart, Loader2, MessageSquareText, Play, Sparkles, Wand2 } from "lucide-react";
+import { Heart, Loader2, MessageSquareText, Play, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 import { generateGeminiStory, saveGeneratedStoryToSupabase } from "@/lib/gemini-story";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +51,7 @@ const QUICK_PROMPTS = [
   "Gym crush disaster",
 ] as const;
 type StoryCategory = "horror" | "funny" | "chaos" | "cringe";
+type ListedChatStory = ChatStory & { likes_count: number; created_by: string | null };
 const GENRES: StoryCategory[] = ["horror", "funny", "chaos", "cringe"];
 
 function ChatStoriesPage() {
@@ -56,13 +66,15 @@ function ChatStoriesPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStoryId, setGeneratedStoryId] = useState<string | null>(null);
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
+  const [storyToDelete, setStoryToDelete] = useState<ListedChatStory | null>(null);
+  const [isDeletingStory, setIsDeletingStory] = useState(false);
 
   const stories = useQuery({
     queryKey: ["chat-stories"],
     queryFn: async () => {
       const { data, error } = await supabase.from("chat_stories").select("*").order("created_at");
       if (error) throw error;
-      return (data ?? []) as unknown as (ChatStory & { likes_count: number })[];
+      return (data ?? []) as unknown as ListedChatStory[];
     },
   });
 
@@ -109,6 +121,35 @@ function ChatStoriesPage() {
     if (isLiked) await supabase.from("chat_story_likes").delete().eq("story_id", storyId).eq("user_id", user.id);
     else await supabase.from("chat_story_likes").insert({ story_id: storyId, user_id: user.id });
     qc.invalidateQueries({ queryKey: ["chat-story-likes", user.id] });
+  };
+
+  const deleteStory = async () => {
+    const story = storyToDelete;
+    if (!story || !user || isDeletingStory) return;
+
+    setIsDeletingStory(true);
+    try {
+      const { data, error } = await supabase
+        .from("chat_stories")
+        .delete()
+        .eq("id", story.id)
+        .eq("created_by", user.id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("This story could not be deleted or is no longer available.");
+
+      await qc.invalidateQueries({ queryKey: ["chat-stories"] });
+      if (openId === story.id) setOpenId(null);
+      if (generatedStoryId === story.id) setGeneratedStoryId(null);
+      setStoryToDelete(null);
+      toast.success("Story deleted.");
+    } catch (error) {
+      console.error("Delete story failed:", error);
+      toast.error(error instanceof Error ? error.message : "Couldn't delete this story. Please try again.");
+    } finally {
+      setIsDeletingStory(false);
+    }
   };
 
   const generateStory = async () => {
@@ -312,48 +353,93 @@ function ChatStoriesPage() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         {list.map((s, i) => (
-          <motion.button
+          <motion.div
             key={s.id}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            onClick={() => setOpenId(s.id)}
-            className="relative text-left rounded-2xl overflow-hidden p-4 min-h-[132px] flex flex-col justify-between"
+            className="relative min-h-[132px] overflow-hidden rounded-2xl"
             style={{ background: s.gradient }}
           >
-            <div className="absolute inset-0 bg-black/25" />
-            <div className="relative">
-              <div className="flex items-start gap-2">
-                <span className="text-2xl">{s.emoji}</span>
-                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">
-                  {s.category}
-                </span>
+            <div className="pointer-events-none absolute inset-0 bg-black/25" />
+            <button
+              type="button"
+              aria-label={`Read ${s.title}`}
+              onClick={() => setOpenId(s.id)}
+              className="absolute inset-0 z-0 flex w-full flex-col justify-between p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
+            >
+              <div className="relative">
+                <div className="flex items-start gap-2">
+                  <span className="text-2xl">{s.emoji}</span>
+                  <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">
+                    {s.category}
+                  </span>
+                </div>
+                <h2 className="mt-2 font-extrabold leading-tight">
+                  {s.slug === "room-4b" ? ROOM_4B_TITLE.en : s.title}
+                </h2>
+                <p className="text-xs opacity-85 mt-1 line-clamp-2">
+                  {s.slug === "room-4b" ? ROOM_4B_HOOK.en : s.hook}
+                </p>
               </div>
-              <h2 className="mt-2 font-extrabold leading-tight">
-                {s.slug === "room-4b" ? ROOM_4B_TITLE.en : s.title}
-              </h2>
-              <p className="text-xs opacity-85 mt-1 line-clamp-2">
-                {s.slug === "room-4b" ? ROOM_4B_HOOK.en : s.hook}
-              </p>
-            </div>
-            <div className="relative mt-3 flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1 font-semibold">
+              <span className="relative inline-flex items-center gap-1 font-semibold text-xs">
                 <Play className="h-3.5 w-3.5" /> Read
               </span>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); toggleLike(s.id); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); toggleLike(s.id); } }}
-                className="inline-flex items-center gap-1"
+            </button>
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-3 text-xs">
+              {user && s.created_by === user.id && (
+                <button
+                  type="button"
+                  aria-label={`Delete ${s.title}`}
+                  title="Delete this story"
+                  onClick={() => setStoryToDelete(s)}
+                  className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 text-destructive-foreground transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              )}
+              <button
+                type="button"
+                aria-pressed={likes.data?.has(s.id) ?? false}
+                onClick={() => toggleLike(s.id)}
+                className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
               >
                 <Heart className={`h-3.5 w-3.5 ${likes.data?.has(s.id) ? "fill-current" : ""}`} />
                 {likes.data?.has(s.id) ? "Liked" : "Like"}
-              </span>
+              </button>
             </div>
-          </motion.button>
+          </motion.div>
         ))}
       </div>
+
+      <AlertDialog
+        open={!!storyToDelete}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isDeletingStory) setStoryToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this story?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{storyToDelete?.title}” and its story lines, choices, and likes will be permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingStory}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={deleteStory}
+              disabled={isDeletingStory}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeletingStory && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeletingStory ? "Deleting…" : "Delete story"}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {openId && (lines.isError || choices.isError) && (
         <div role="alert" className="fixed inset-x-4 bottom-5 z-[140] mx-auto max-w-md rounded-xl border border-destructive/35 bg-background/95 p-4 shadow-xl backdrop-blur">
