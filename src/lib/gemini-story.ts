@@ -305,8 +305,8 @@ function makeFallbackStory(input: StoryGenerationInput): GeneratedStory {
 }
 
 const generateStoryServer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: StoryGenerationInput) => inputSchema.parse(input))
+
   .handler(async ({ data }) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
