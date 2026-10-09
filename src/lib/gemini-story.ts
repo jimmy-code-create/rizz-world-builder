@@ -378,15 +378,17 @@ export async function generateStory(input: StoryGenerationInput): Promise<Genera
 }
 
 export async function generateGeminiStory(input: StoryGenerationInput): Promise<GeneratedStory> {
-  const raw: unknown = await generateStory(input);
-  const r = raw as { story?: GeneratedStory; title?: string; lines?: unknown } | null | undefined;
-  const story = r?.story ?? (r?.title && r?.lines ? (raw as GeneratedStory) : undefined);
-  if (!story) {
-    console.error("Story generation returned an unexpected result:", raw);
-    throw new Error("STORY_EMPTY");
+  try {
+    const raw: unknown = await generateStory(input);
+    const r = raw as { story?: GeneratedStory; title?: string; lines?: unknown } | null | undefined;
+    const story = r?.story ?? (r?.title && r?.lines ? (raw as GeneratedStory) : undefined);
+    if (story) return story;
+  } catch (err) {
+    console.warn("Using built-in story generator:", err);
   }
-  return story;
+  return makeFallbackStory(input);
 }
+
 
 const STORY_GRADIENTS: Record<StoryCategory, string> = {
   horror: "linear-gradient(135deg,#0f172a,#ef4444)",
