@@ -256,6 +256,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          created_by: string | null
           creator_id: string | null
           emoji: string
           gradient: string
@@ -268,12 +269,14 @@ export type Database = {
           slug: string
           them_name: string
           title: string
+          video_type: string | null
           video_url: string | null
           word_count: number
         }
         Insert: {
           category?: string
           created_at?: string
+          created_by?: string | null
           creator_id?: string | null
           emoji?: string
           gradient?: string
@@ -286,12 +289,14 @@ export type Database = {
           slug: string
           them_name: string
           title: string
+          video_type?: string | null
           video_url?: string | null
           word_count?: number
         }
         Update: {
           category?: string
           created_at?: string
+          created_by?: string | null
           creator_id?: string | null
           emoji?: string
           gradient?: string
@@ -304,6 +309,7 @@ export type Database = {
           slug?: string
           them_name?: string
           title?: string
+          video_type?: string | null
           video_url?: string | null
           word_count?: number
         }
