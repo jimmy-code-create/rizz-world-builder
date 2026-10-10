@@ -368,7 +368,7 @@ export function AppShell() {
   );
 }
 
-function NavBtn({ to, label, Icon, active, onMouseEnter, onTouchStart }: {
+function NavBtn({ to, label, Icon, active, onMouseEnter, onTouchStart, onClick }: {
   to: string;
   label: string;
   Icon: any;
