@@ -413,12 +413,19 @@ const generateStoryServer = createServerFn({ method: "POST" })
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
       const text = payload.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text ?? "")
-        .join("")
-        .trim();
-      if (!text) throw new Error("Gemini returned no story text");
+  ?.map((part) => part.text ?? "")
+  .join("")
+  .trim();
+if (!text) throw new Error("Gemini returned no story text");
 
-      const story = normalizeGeminiStory(JSON.parse(text) as unknown, data);
+// Strip any ```json ... ``` code blocks Gemini sends
+const cleanedText = text
+  .replace(/^```(?:json)?\s*/i, "")
+  .replace(/\s*```$/i, "")
+  .trim();
+
+const story = normalizeGeminiStory(JSON.parse(cleanedText) as unknown, data);
+      
       return { story, source: "gemini" as const };
     } catch (error) {
       console.error("Gemini story generation failed; using a built-in template.", error);
