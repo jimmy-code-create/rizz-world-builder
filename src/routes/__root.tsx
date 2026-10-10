@@ -84,6 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "RIZZ — Your feed. Your server. Your world." },
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
+      { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },
       { name: "author", content: "RIZZ" },
       { name: "theme-color", content: "#ff2d92" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
