@@ -23,6 +23,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
 import { IncomingCallRinger } from "@/components/IncomingCallRinger";
 import { NightclubCanvas } from "@/components/NightclubCanvas";
+import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -326,6 +327,7 @@ export function AppShell() {
       <AppOverlays />
       <KeyboardShortcuts profileUsername={profile?.username} />
       <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
+      <LilRizzCompanion />
     </div>
   );
 }

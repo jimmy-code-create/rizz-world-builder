@@ -411,6 +411,18 @@
   0%, 100% { box-shadow: 0 0 20px -4px var(--rizz-glow); }
   50% { box-shadow: 0 0 50px -2px var(--rizz-pink); }
 }
+@keyframes rizz-companion-poof {
+  to { opacity: 0; filter: blur(8px); transform: scale(0.72) rotate(8deg); }
+}
+@keyframes rizz-cat-purr {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.025); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rizz-companion-poof {
+    to { opacity: 0; }
+  }
+}
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
