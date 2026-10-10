@@ -35,10 +35,16 @@ export function useSpeechToText({ continuousConversation = true }: UseSpeechToTe
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const wantsListeningRef = useRef(false);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interimFinalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearRestartTimer = useCallback(() => {
     if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     restartTimerRef.current = null;
+  }, []);
+
+  const clearInterimFinalTimer = useCallback(() => {
+    if (interimFinalTimerRef.current) clearTimeout(interimFinalTimerRef.current);
+    interimFinalTimerRef.current = null;
   }, []);
 
   const startListening = useCallback(() => {
@@ -71,11 +77,18 @@ export function useSpeechToText({ continuousConversation = true }: UseSpeechToTe
           else interim += `${phrase} `;
         }
         if (finalized.trim()) {
+          clearInterimFinalTimer();
           const finalText = finalized.trim();
           setTranscript((current) => `${current} ${finalText}`.trim());
           setFinalTranscript(finalText);
-        } else if (interim.trim()) {
+        }
+        if (interim.trim()) {
           setTranscript((current) => `${current.replace(/\s*\([^)]*\)$/, "")} (${interim.trim()})`.trim());
+          clearInterimFinalTimer();
+          interimFinalTimerRef.current = setTimeout(() => {
+            interimFinalTimerRef.current = null;
+            if (wantsListeningRef.current) setFinalTranscript(interim.trim());
+          }, 1200);
         }
       };
       recognition.onerror = (event) => {
@@ -117,18 +130,19 @@ export function useSpeechToText({ continuousConversation = true }: UseSpeechToTe
         setError("The microphone could not be started. Check browser permissions and try again.");
       }
     }
-  }, [clearRestartTimer, continuousConversation]);
+  }, [clearInterimFinalTimer, clearRestartTimer, continuousConversation]);
 
   const stopListening = useCallback(() => {
     wantsListeningRef.current = false;
     clearRestartTimer();
+    clearInterimFinalTimer();
     try {
       recognitionRef.current?.stop();
     } catch {
       recognitionRef.current?.abort();
     }
     setIsListening(false);
-  }, [clearRestartTimer]);
+  }, [clearInterimFinalTimer, clearRestartTimer]);
 
   const clearTranscript = useCallback(() => {
     setTranscript("");
@@ -138,9 +152,10 @@ export function useSpeechToText({ continuousConversation = true }: UseSpeechToTe
   useEffect(() => () => {
     wantsListeningRef.current = false;
     clearRestartTimer();
+    clearInterimFinalTimer();
     recognitionRef.current?.abort();
     recognitionRef.current = null;
-  }, [clearRestartTimer]);
+  }, [clearInterimFinalTimer, clearRestartTimer]);
 
   return { isListening, transcript, finalTranscript, error, startListening, stopListening, clearTranscript };
 }
