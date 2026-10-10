@@ -237,7 +237,9 @@ export function AppShell() {
           ? "w-full overflow-hidden"
           : "mx-auto w-full max-w-3xl overflow-y-auto px-4 py-6 md:px-8 md:py-10"
       }`}>
-        <Outlet />
+        <div key={path} className="ios-page-transition contents">
+          <Outlet />
+        </div>
       </main>
 
       {/* Mobile bottom nav — 5 items, center FAB */}

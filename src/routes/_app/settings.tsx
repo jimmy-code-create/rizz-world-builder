@@ -60,7 +60,11 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   const [preset, setPreset] = useState<ThemePreset>((profile?.theme_preset as ThemePreset) || "nightclub");
-  const [mode, setMode] = useState<ThemeMode>((profile?.theme_mode as ThemeMode) || "dark");
+  const [mode, setMode] = useState<ThemeMode>(
+    (profile?.theme_mode as ThemeMode)
+      || (typeof window !== "undefined" ? (localStorage.getItem("rizz.mode") as ThemeMode) : null)
+      || "auto",
+  );
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
@@ -132,7 +136,7 @@ function SettingsPage() {
       setBio(profile.bio ?? "");
       setAccent(profile.accent_color ?? "#ff2d92");
       setPreset((profile.theme_preset as ThemePreset) || "nightclub");
-      setMode((profile.theme_mode as ThemeMode) || "dark");
+      setMode((profile.theme_mode as ThemeMode) || (localStorage.getItem("rizz.mode") as ThemeMode) || "auto");
       setDensity((profile.ui_density as Density) || "comfy");
       setReduced(!!profile.reduced_motion);
     }

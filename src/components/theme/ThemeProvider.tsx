@@ -8,7 +8,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Read from profile or localStorage fallback
     const preset = (profile?.theme_preset as ThemePreset) || (localStorage.getItem("rizz.theme") as ThemePreset) || "nightclub";
-    const mode = (profile?.theme_mode as ThemeMode) || (localStorage.getItem("rizz.mode") as ThemeMode) || "dark";
+    const mode = (profile?.theme_mode as ThemeMode) || (localStorage.getItem("rizz.mode") as ThemeMode) || "auto";
     const density = (profile?.ui_density as Density) || (localStorage.getItem("rizz.density") as Density) || "comfy";
     const reduced = profile?.reduced_motion ?? (localStorage.getItem("rizz.reduced") === "1");
     applyTheme(preset, mode, density, reduced);
