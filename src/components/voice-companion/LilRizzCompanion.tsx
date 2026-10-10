@@ -6,30 +6,21 @@ import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  const status = message.match(/HTTP\s+(\d{3})/i)?.[1];
+  const status = message.match(/GROQ_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
 
-  if (/XAI_API_KEY|not configured/i.test(message)) {
-    return "Grok is not configured on this server. Add XAI_API_KEY in Render and redeploy.";
+  if (/GROQ_API_KEY|not configured/i.test(message)) {
+    return "Groq is not configured on this server. Set GROQ_API_KEY in Render.";
   }
-  if (status === "401" || status === "403") {
-    return "Grok rejected this request. Check the XAI_API_KEY saved in Render.";
+  if (status?.[1] === "401" || status?.[2] === "401") {
+    return "The Groq API key is invalid. Check GROQ_API_KEY in Render.";
   }
-  if (status === "404") {
-    return "Grok could not find the requested model. Check the model setting in the server logs.";
-  }
-  if (status === "429") {
-    return "Grok is rate-limited or out of API quota. Check your xAI usage.";
-  }
-  if (status?.startsWith("5")) {
-    return "Grok is temporarily unavailable. Try again in a moment.";
+  if (status?.[1] === "429" || status?.[2] === "429") {
+    return "The Groq free limit is reached. Please try again later.";
   }
   if (/unauthorized|supabase|session|token/i.test(message)) {
     return "Your RIZZ sign-in expired. Sign in again, then retry.";
   }
-  if (/fetch|network|timeout/i.test(message)) {
-    return "Lil Rizz could not reach Grok. Check the Render service and try again.";
-  }
-  return "Lil Rizz could not get a reply. Check the Render service logs, then try again.";
+  return "I couldn't answer right now, please try again.";
 }
 
 export function LilRizzCompanion() {
@@ -44,7 +35,7 @@ export function LilRizzCompanion() {
   const requestPendingRef = useRef(false);
   const historyRef = useRef<LilRizzTurn[]>([]);
   const speech = useSpeechToText({ continuousConversation: true });
-  const tts = useKokoroTTS({ browserFirst: true });
+  const tts = useKokoroTTS();
   const {
     clearTranscript,
     error: speechError,
@@ -61,33 +52,37 @@ export function LilRizzCompanion() {
       const message = text.trim().slice(0, 400);
       if (!message || requestPendingRef.current) return;
       requestPendingRef.current = true;
+      unlockAudio();
       setLastUserMessage(message);
       setReply("");
       stopListening();
       setIsThinking(true);
       setError(null);
 
-      let answer: string;
       try {
-        const result = await generateLilRizzReply({
-          message,
-          history: historyRef.current.slice(-6),
-        });
-        answer = result.reply;
-        const nextHistory: LilRizzTurn[] = [
-          ...historyRef.current,
-          { role: "user", text: message },
-          { role: "model", text: answer },
-        ];
-        historyRef.current = nextHistory.slice(-6);
-      } catch (requestError) {
-        answer = "Mera connection abhi off hai. Thodi der mein phir try kar.";
-        setError(getLilRizzFailureMessage(requestError));
-      }
+        let answer: string;
+        try {
+          const result = await generateLilRizzReply({
+            message,
+            history: historyRef.current.slice(-6),
+          });
+          answer = result.reply;
+          const nextHistory: LilRizzTurn[] = [
+            ...historyRef.current,
+            { role: "user", text: message },
+            { role: "model", text: answer },
+          ];
+          historyRef.current = nextHistory.slice(-6);
+        } catch (requestError) {
+          answer = getLilRizzFailureMessage(requestError);
+        }
 
-      setReply(answer);
-      try {
-        await speak(answer, "af_bella");
+        setReply(answer);
+        try {
+          await speak(answer, "af_bella");
+        } catch (speechError) {
+          console.error("[Lil Rizz] Speech playback failed", speechError);
+        }
       } finally {
         requestPendingRef.current = false;
         setIsThinking(false);
@@ -98,7 +93,7 @@ export function LilRizzCompanion() {
         }
       }
     },
-    [clearTranscript, speak, startListening, stopListening],
+    [clearTranscript, speak, startListening, stopListening, unlockAudio],
   );
 
   const handleFinalTranscript = useCallback(
