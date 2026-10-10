@@ -46,6 +46,15 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const errorDetails = error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : typeof error === "string"
+      ? error
+      : "No additional error message was provided.";
+  const safeErrorDetails = errorDetails
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/((?:api[_-]?key|token|secret)\s*[:=]\s*)[^\s&]+/gi, "$1[redacted]")
+    .slice(0, 400);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -73,6 +82,14 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
             Go home
           </a>
         </div>
+        <details className="mt-5 text-left">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Show error details
+          </summary>
+          <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/20 p-3 text-left text-xs text-muted-foreground">
+            {safeErrorDetails}
+          </pre>
+        </details>
       </div>
     </div>
   );
