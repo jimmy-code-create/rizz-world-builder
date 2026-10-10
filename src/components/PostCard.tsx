@@ -26,6 +26,7 @@ import {
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { GifPicker } from "@/components/GifPicker";
@@ -46,11 +47,10 @@ const HIDDEN_KEY = "rizz:hidden-posts";
 const MUTED_KEY = "rizz:muted-authors";
 const readSet = (k: string): Set<string> => {
   if (typeof window === "undefined") return new Set();
-  try { return new Set(JSON.parse(localStorage.getItem(k) || "[]")); } catch { return new Set(); }
+  try { return new Set(JSON.parse(readLocalStorage(k) || "[]")); } catch { return new Set(); }
 };
 const writeSet = (k: string, s: Set<string>) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(k, JSON.stringify([...s]));
+  writeLocalStorage(k, JSON.stringify([...s]));
 };
 
 function timeAgo(iso: string) {

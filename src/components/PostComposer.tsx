@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
 
 const DRAFT_KEY = "rizz:post-draft";
 
@@ -21,7 +22,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const qc = useQueryClient();
   const [caption, setCaption] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    return localStorage.getItem(DRAFT_KEY) ?? "";
+    return readLocalStorage(DRAFT_KEY) ?? "";
   });
   const [caret, setCaret] = useState(0);
   const [pollOn, setPollOn] = useState(false);
@@ -36,8 +37,8 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   // Autosave caption draft to localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (caption) localStorage.setItem(DRAFT_KEY, caption);
-    else localStorage.removeItem(DRAFT_KEY);
+    if (caption) writeLocalStorage(DRAFT_KEY, caption);
+    else removeLocalStorage(DRAFT_KEY);
   }, [caption]);
 
   // Another surface (a post's "Quote post" action) can preload a quote target.
@@ -82,7 +83,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       setPollQuestion("");
       setPollOptions(["", ""]);
       setVisibility("public");
-      if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
+      removeLocalStorage(DRAFT_KEY);
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       onPosted?.();
