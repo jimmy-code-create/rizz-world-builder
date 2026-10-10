@@ -383,21 +383,25 @@ const generateStoryServer = createServerFn({ method: "POST" })
     ].join(" ");
 
     try {
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-
+            const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-goog-api-key": apiKey,
           },
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: "user", parts: [{ text: inputSchema.parse(data).prompt }] }],
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: `${systemPrompt}\n\nUser Premise: "${data.prompt}"\n\nGenerate the complete JSON story for genre "${data.category}". Include title, hook, emoji, them_name, me_name, video_type, lines array, and choices array. Output ONLY clean JSON. Do not output markdown.`
+                  }
+                ]
+              }
+            ],
             generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: geminiResponseSchema,
               temperature: 0.8,
               maxOutputTokens: 4096,
             },
@@ -405,6 +409,7 @@ const generateStoryServer = createServerFn({ method: "POST" })
           signal: AbortSignal.timeout(45_000),
         },
       );
+      
       if (!response.ok) {
         console.error("Gemini story generation failed with status", response.status);
         return { story: makeFallbackStory(data), source: "template" as const };
