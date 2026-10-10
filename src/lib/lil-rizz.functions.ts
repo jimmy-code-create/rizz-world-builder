@@ -9,12 +9,14 @@ export type LilRizzTurn = {
 
 const requestSchema = z.object({
   message: z.string().trim().min(1).max(400),
-  history: z.array(
-    z.object({
-      role: z.enum(["user", "model"]),
-      text: z.string().trim().min(1).max(400),
-    }),
-  ).max(6),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "model"]),
+        text: z.string().trim().min(1).max(400),
+      }),
+    )
+    .max(6),
 });
 
 const SYSTEM_PROMPT = `You are Lil Rizz, a witty, sassy black cat and charismatic wingman on the Rizz social platform.
@@ -34,7 +36,9 @@ type GrokResponse = {
 
 const generateLilRizzReplyServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { message: string; history: LilRizzTurn[] }) => requestSchema.parse(input))
+  .inputValidator((input: { message: string; history: LilRizzTurn[] }) =>
+    requestSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const apiKey = process.env.XAI_API_KEY;
     if (!apiKey) {
@@ -50,27 +54,24 @@ const generateLilRizzReplyServer = createServerFn({ method: "POST" })
       { role: "user", content: data.message },
     ];
 
-    const response = await fetch(
-      "https://api.x.ai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "grok-4.7",
-          messages,
-          max_tokens: 100,
-          temperature: 0.85,
-        }),
-        signal: AbortSignal.timeout(15_000),
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
       },
-    );
+      body: JSON.stringify({
+        model: "grok-4.7",
+        messages,
+        max_tokens: 100,
+        temperature: 0.85,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
 
     if (!response.ok) {
       console.error("[Lil Rizz] Grok request failed with status", response.status);
-      throw new Error("Lil Rizz’s reply service is temporarily unavailable.");
+      throw new Error(`Grok request failed with HTTP ${response.status}.`);
     }
 
     const payload = (await response.json()) as GrokResponse;

@@ -4,6 +4,34 @@ import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { generateLilRizzReply, type LilRizzTurn } from "@/lib/lil-rizz.functions";
 import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
+function getLilRizzFailureMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const status = message.match(/HTTP\s+(\d{3})/i)?.[1];
+
+  if (/XAI_API_KEY|not configured/i.test(message)) {
+    return "Grok is not configured on this server. Add XAI_API_KEY in Render and redeploy.";
+  }
+  if (status === "401" || status === "403") {
+    return "Grok rejected this request. Check the XAI_API_KEY saved in Render.";
+  }
+  if (status === "404") {
+    return "Grok could not find the requested model. Check the model setting in the server logs.";
+  }
+  if (status === "429") {
+    return "Grok is rate-limited or out of API quota. Check your xAI usage.";
+  }
+  if (status?.startsWith("5")) {
+    return "Grok is temporarily unavailable. Try again in a moment.";
+  }
+  if (/unauthorized|supabase|session|token/i.test(message)) {
+    return "Your RIZZ sign-in expired. Sign in again, then retry.";
+  }
+  if (/fetch|network|timeout/i.test(message)) {
+    return "Lil Rizz could not reach Grok. Check the Render service and try again.";
+  }
+  return "Lil Rizz could not get a reply. Check the Render service logs, then try again.";
+}
+
 export function LilRizzCompanion() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -52,9 +80,9 @@ export function LilRizzCompanion() {
           { role: "model", text: answer },
         ];
         historyRef.current = nextHistory.slice(-6);
-      } catch {
+      } catch (requestError) {
         answer = "Mera connection abhi off hai. Thodi der mein phir try kar.";
-        setError("Couldn’t reach Lil Rizz’s brain. Check the connection and try again.");
+        setError(getLilRizzFailureMessage(requestError));
       }
 
       setReply(answer);
