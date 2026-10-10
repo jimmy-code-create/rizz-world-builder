@@ -9,11 +9,12 @@ export type StoryLanguage = "hi" | "en";
 export type StoryVideoType = "horror_hallway" | "cyberpunk_neon" | "rain_window" | "cozy_room";
 
 export const STORY_PRESET_VIDEOS: Record<StoryVideoType, string> = {
-  horror_hallway: "https://upload.wikimedia.org/wikipedia/commons/2/28/Traffic_at_dusk_%28time_lapse%29.webm",
+  horror_hallway: "https://upload.wikimedia.org/wikipedia/commons/9/9e/Misty_river_47_seconds.webm",
   cyberpunk_neon: "https://upload.wikimedia.org/wikipedia/commons/2/28/Traffic_at_dusk_%28time_lapse%29.webm",
   rain_window: "https://upload.wikimedia.org/wikipedia/commons/2/2e/Radevormwald_-_Raindrops_on_a_window_10_%281%29_ies.webm",
-  cozy_room: "https://upload.wikimedia.org/wikipedia/commons/2/2e/Radevormwald_-_Raindrops_on_a_window_10_%281%29_ies.webm",
+  cozy_room: "https://upload.wikimedia.org/wikipedia/commons/6/65/Fire_burning_in_a_fireplace_in_Bosnia_and_Herzegovina_%282026%29-bs.webm",
 };
+
 
 export type GeneratedStoryLine = {
   idx: number;
