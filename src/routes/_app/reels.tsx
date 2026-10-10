@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/_app/reels")({
 });
 
 function ReelsPage() {
-  const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
+  const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40), staleTime: 30_000 });
   const { user } = useAuth();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -86,6 +86,15 @@ function ReelsPage() {
   const [autoplay, setAutoplay] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [contentVisible, setContentVisible] = useState(false);
+  const [firstVideoReady, setFirstVideoReady] = useState(false);
+  const onFirstVideoReady = useCallback(() => setFirstVideoReady(true), []);
+
+  useEffect(() => {
+    if (!reels.data?.length || !firstVideoReady) return;
+    const frame = window.requestAnimationFrame(() => setContentVisible(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [reels.data?.length, firstVideoReady]);
 
   const likes = useQuery({
     queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
@@ -139,7 +148,9 @@ function ReelsPage() {
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      {reels.isLoading && <div className="grid min-h-0 flex-1 place-items-center text-muted-foreground">Loading reels…</div>}
+      {(reels.isLoading || (!!reels.data?.length && !contentVisible)) && (
+        <ReelSkeleton visible={!contentVisible} />
+      )}
       {reels.isError && (
         <div className="grid min-h-0 flex-1 place-items-center px-6 text-center">
           <div>
@@ -159,7 +170,7 @@ function ReelsPage() {
         </div>
       )}
       {!!reels.data?.length && (
-        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain snap-y snap-mandatory no-scrollbar">
+        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain snap-y snap-mandatory no-scrollbar transition-opacity duration-200" style={{ opacity: contentVisible ? 1 : 0 }}>
           {reels.data.map((r, index) => (
           <ReelItem
             key={r.id}
@@ -179,10 +190,34 @@ function ReelsPage() {
             onEnded={() => advanceReel(index)}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
+            onMediaReady={index === 0 ? onFirstVideoReady : undefined}
           />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ReelSkeleton({ visible }: { visible: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-end bg-zinc-950 p-5 transition-opacity duration-200"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-950 to-zinc-900" />
+      <div className="absolute right-5 bottom-28 flex flex-col gap-5">
+        <span className="h-11 w-11 animate-pulse rounded-full bg-white/10" />
+        <span className="h-11 w-11 animate-pulse rounded-full bg-white/10" />
+        <span className="h-11 w-11 animate-pulse rounded-full bg-white/10" />
+      </div>
+      <div className="relative z-10 flex items-center gap-3">
+        <span className="h-10 w-10 animate-pulse rounded-full bg-white/15" />
+        <span className="h-3 w-28 animate-pulse rounded bg-white/15" />
+      </div>
+      <span className="relative z-10 mt-4 h-3 w-3/5 animate-pulse rounded bg-white/10" />
+      <span className="relative z-10 mt-2 h-3 w-2/5 animate-pulse rounded bg-white/10" />
     </div>
   );
 }
@@ -233,6 +268,7 @@ function ReelItem({
   autoplay,
   setAutoplay,
   onEnded,
+  onMediaReady,
 }: {
   post: any;
   reelIndex: number;
@@ -250,6 +286,7 @@ function ReelItem({
   autoplay: boolean;
   setAutoplay: React.Dispatch<React.SetStateAction<boolean>>;
   onEnded: () => void;
+  onMediaReady?: () => void;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -276,6 +313,9 @@ function ReelItem({
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
+  useEffect(() => {
+    if (reelIndex === 0 && (isExternal || !post.media_url)) onMediaReady?.();
+  }, [isExternal, onMediaReady, post.media_url, reelIndex]);
 
   useEffect(() => {
     const video = ref.current;
@@ -493,10 +533,13 @@ function ReelItem({
         <>
         <video
           ref={ref}
-          src={post.media_url}
+          src={reelIndex === 0 || isActive ? post.media_url : undefined}
+          preload={reelIndex === 0 || isActive ? "auto" : "none"}
           muted={muted}
           playsInline
           onClick={handleVideoTap}
+          onLoadedData={onMediaReady}
+          onError={onMediaReady}
           onPlay={() => setPaused(false)}
           onPause={() => setPaused(true)}
           onEnded={() => { if (autoplay && isActive) onEnded(); }}

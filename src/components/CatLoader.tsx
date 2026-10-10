@@ -5,8 +5,9 @@ export type CatMode = 'running' | 'sleeping';
 export const catLoaderCss = `
 .cat-loader {
   position: relative;
-  width: 280px;
-  height: 200px;
+  width: 140px;
+  height: 100px;
+  isolation: isolate;
   display: grid;
   place-items: center;
   background: transparent;
@@ -21,12 +22,27 @@ export const catLoaderCss = `
   animation: cat-aura 2.6s ease-in-out infinite;
   pointer-events: none;
 }
+.cat-loader::after {
+  content: "";
+  position: absolute;
+  left: 34%;
+  top: 72%;
+  width: 34px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(139, 94, 60, 0.38), transparent);
+  filter: blur(5px);
+  animation: cat-smoke 1.28s ease-out infinite;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
 .cat-svg {
   position: relative;
-  width: 260px;
-  height: 216px;
+  z-index: 1;
+  width: 130px;
+  height: 108px;
   overflow: visible;
-  filter: drop-shadow(0 6px 18px rgba(255, 45, 146, 0.3));
 }
 @keyframes cat-aura {
   50% { opacity: 0.55; transform: scale(0.9); }
@@ -38,38 +54,33 @@ export const catLoaderCss = `
 .cat-line { fill: none; stroke: var(--background, #09090b); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .cat-whisker { fill: none; stroke: var(--muted-foreground, #94a3b8); stroke-width: 1.5; stroke-linecap: round; }
 .cat-outline { fill: none; stroke: var(--primary, #ff2d92); stroke-linecap: round; }
-.cat-character { transform-origin: 120px 133px; animation: cat-bound 0.64s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.cat-character { transform-origin: 120px 133px; animation: cat-bound 0.64s cubic-bezier(0.45, 0, 0.55, 1) infinite; will-change: transform; }
 .cat-leg { transform-box: fill-box; transform-origin: 50% 10%; animation: cat-stride 0.64s ease-in-out infinite; }
 .cat-leg.back { animation-delay: -0.32s; opacity: 0.5; }
 .cat-leg.front-right { animation-delay: -0.32s; }
-.cat-tail { transform-origin: 93px 110px; animation: cat-swish 0.64s ease-in-out infinite; }
+.cat-tail { transform-origin: 93px 110px; animation: cat-swish 0.64s ease-in-out infinite; will-change: transform; }
 .cat-ear-twitch { transform-box: fill-box; transform-origin: 50% 90%; animation: cat-ear 3.2s ease-in-out infinite; }
 .cat-eye { transform-box: fill-box; transform-origin: center; animation: cat-blink 4.8s infinite; }
-.cat-shadow { fill: var(--primary, #ff2d92); opacity: 0.14; transform-origin: 120px 165px; animation: cat-shadow 0.64s ease-in-out infinite; }
+.cat-shadow { fill: var(--primary, #ff2d92); opacity: 0.14; transform-origin: 120px 165px; animation: cat-shadow 0.64s ease-in-out infinite; will-change: transform, opacity; }
 .cat-trail { stroke-width: 2; opacity: 0; animation: cat-trail 1.28s ease-out infinite; }
 .cat-trail.second { animation-delay: -0.42s; }
 .cat-trail.third { animation-delay: -0.85s; }
 .cat-track { stroke-width: 1; opacity: 0.2; }
-.cat-track-light { stroke-width: 2; stroke-dasharray: 25 180; animation: cat-track 1.8s linear infinite; filter: drop-shadow(0 0 3px var(--primary, #ff2d92)); }
-.cat-dust { fill: var(--primary, #ff2d92); opacity: 0; transform-box: fill-box; transform-origin: center; animation: cat-dust 1.28s ease-out infinite; }
+.cat-track-light { stroke-width: 2; stroke-dasharray: 25 180; animation: cat-track 1.8s ease-in-out infinite; }
+.cat-dust { fill: #8B5E3C; opacity: 0; transform-box: fill-box; transform-origin: center; animation: cat-dust 1.28s ease-out infinite; will-change: transform, opacity; }
+.cat-dust.d2, .cat-dust.d4, .cat-dust.d6, .cat-dust.d8 { fill: #A67B5B; }
 .cat-dust.d2 { animation-delay: -0.21s; }
 .cat-dust.d3 { animation-delay: -0.43s; }
 .cat-dust.d4 { animation-delay: -0.64s; }
 .cat-dust.d5 { animation-delay: -0.85s; }
 .cat-dust.d6 { animation-delay: -1.07s; }
-.cat-spark { fill: var(--neon-violet, #a855f7); opacity: 0; transform-box: fill-box; transform-origin: center; animation: cat-spark 1.6s ease-out infinite; }
-.cat-spark.s2 { animation-delay: -0.53s; }
-.cat-spark.s3 { animation-delay: -1.06s; }
+.cat-dust.d7 { animation-delay: -0.32s; }
+.cat-dust.d8 { animation-delay: -0.96s; }
 
 @keyframes cat-dust {
   0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
   18% { opacity: 0.75; }
   100% { opacity: 0; transform: translate(-34px, -16px) scale(1.4); }
-}
-@keyframes cat-spark {
-  0% { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(0deg); }
-  20% { opacity: 0.9; }
-  100% { opacity: 0; transform: translate(-46px, -30px) scale(0.1) rotate(120deg); }
 }
 @keyframes cat-bound {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
@@ -101,7 +112,12 @@ export const catLoaderCss = `
   100% { opacity: 0; transform: translateX(-18px); }
 }
 @keyframes cat-track {
-  to { stroke-dashoffset: -205; }
+  50% { opacity: 0.65; }
+}
+@keyframes cat-smoke {
+  0% { opacity: 0; transform: translateY(5px) scale(0.65); }
+  28% { opacity: 0.55; }
+  100% { opacity: 0; transform: translateY(-12px) scale(1.2); }
 }
 @keyframes cat-sleep {
   50% { transform: scale(1.025, 0.975); }
@@ -110,8 +126,9 @@ export const catLoaderCss = `
 .is-sleeping .cat-tail { animation: cat-swish 3s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .cat-loader * { animation: none !important; }
+  .cat-loader::before, .cat-loader::after { animation: none !important; }
   .cat-track-light { opacity: 0.6; }
-  .cat-dust, .cat-spark { opacity: 0; }
+  .cat-dust { opacity: 0; }
 }
 `;
 
@@ -135,9 +152,8 @@ export function CatLoader({ mode = 'running', label = 'Loading' }: { mode?: CatM
             <circle className="cat-dust d4" cx="112" cy="161" r="3" />
             <circle className="cat-dust d5" cx="99" cy="164" r="1.8" />
             <circle className="cat-dust d6" cx="92" cy="162" r="2.6" />
-            <path className="cat-spark" d="M84 150 l2.2 2.2 -2.2 2.2 -2.2 -2.2Z" />
-            <path className="cat-spark s2" d="M104 155 l1.8 1.8 -1.8 1.8 -1.8 -1.8Z" />
-            <path className="cat-spark s3" d="M93 148 l1.6 1.6 -1.6 1.6 -1.6 -1.6Z" />
+            <circle className="cat-dust d7" cx="103" cy="157" r="2.2" />
+            <circle className="cat-dust d8" cx="85" cy="163" r="1.7" />
             <g className="cat-character">
               <path className="cat-fur cat-tail" d="M94 115 C67 117 59 98 62 81 C63 73 72 73 72 81 C69 97 78 103 96 102Z" />
               <path className="cat-shade cat-leg back" d="M96 126 Q104 136 98 145 L90 153 Q82 157 79 151 Q78 148 83 144 L89 138 L85 129Z" />

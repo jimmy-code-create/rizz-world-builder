@@ -13,7 +13,7 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
     defaultPendingComponent: FullScreenLoader,
     defaultPendingMs: 0,
-    defaultPendingMinMs: 0,
+    defaultPendingMinMs: 300,
   });
 
   return router;
