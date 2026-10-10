@@ -59,7 +59,7 @@ export function useSpeechToText({ continuousConversation = true }: UseSpeechToTe
       const recognition = new Recognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = "en-US";
+       recognition.lang = "en-IN";
       recognition.onresult = (event) => {
         let interim = "";
         let finalized = "";
