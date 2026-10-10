@@ -7,13 +7,14 @@ import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 export function LilRizzCompanion() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [isConversationActive, setIsConversationActive] = useState(false);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const conversationActiveRef = useRef(false);
   const handledTranscriptRef = useRef("");
   const historyRef = useRef<LilRizzTurn[]>([]);
   const speech = useSpeechToText({ continuousConversation: true });
-  const tts = useKokoroTTS();
+  const tts = useKokoroTTS({ browserFirst: true });
 
   const handleFinalTranscript = useCallback(async (text: string) => {
     const message = text.trim().slice(0, 400);
@@ -60,11 +61,13 @@ export function LilRizzCompanion() {
   const toggleListening = useCallback(() => {
     if (speech.isListening) {
       conversationActiveRef.current = false;
+      setIsConversationActive(false);
       speech.stopListening();
       return;
     }
     if (tts.isSpeaking) tts.stopSpeaking();
     conversationActiveRef.current = true;
+    setIsConversationActive(true);
     handledTranscriptRef.current = "";
     setError(null);
     tts.unlockAudio();
@@ -85,12 +88,14 @@ export function LilRizzCompanion() {
       status={status}
       transcript={speech.transcript}
       reply={reply}
+      isConversationActive={isConversationActive}
       isMinimized={isMinimized}
       loadingProgress={tts.loadingProgress}
       audioLevel={tts.audioLevel}
       error={error ?? speech.error ?? tts.error}
       onDismiss={() => {
         conversationActiveRef.current = false;
+        setIsConversationActive(false);
         speech.stopListening();
         tts.stopSpeaking();
         setIsMinimized(true);

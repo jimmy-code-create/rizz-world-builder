@@ -20,7 +20,7 @@ type SpeechSynthesisWindow = Window & {
 
 const WORKER_TIMEOUT_MS = 180_000;
 
-export function useKokoroTTS() {
+export function useKokoroTTS({ browserFirst = false }: { browserFirst?: boolean } = {}) {
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -197,6 +197,22 @@ export function useKokoroTTS() {
     setIsLoading(false);
     setLoadingProgress(0);
 
+    if (browserFirst) {
+      try {
+        await playBrowserVoice(trimmedText);
+        setIsReady(true);
+        return true;
+      } catch (browserError) {
+        setError(browserError instanceof Error ? browserError.message : "Browser speech playback failed.");
+        return false;
+      } finally {
+        if (mountedRef.current) {
+          setIsSpeaking(false);
+          setAudioLevel(0);
+        }
+      }
+    }
+
     try {
       const worker = ensureWorker();
       const requestId = ++requestIdRef.current;
@@ -236,7 +252,7 @@ export function useKokoroTTS() {
       }
     }
     return true;
-  }, [clearPending, ensureWorker, playBrowserVoice, playGeneratedAudio]);
+  }, [browserFirst, clearPending, ensureWorker, playBrowserVoice, playGeneratedAudio]);
 
   const stopSpeaking = useCallback(() => {
     sourceRef.current?.stop();

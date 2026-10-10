@@ -26,9 +26,9 @@ const SYSTEM_PROMPT = `You are Lil Rizz, a witty, sassy black cat and charismati
   * Voice-first: Keep responses under 2-3 sentences max. Speak punchy lines that sound natural when read aloud.
   * Never lecture or sound like a corporate AI assistant.`;
 
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
+type GrokResponse = {
+  choices?: Array<{
+    message?: { content?: string };
   }>;
 };
 
@@ -36,46 +36,45 @@ const generateLilRizzReplyServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { message: string; history: LilRizzTurn[] }) => requestSchema.parse(input))
   .handler(async ({ data }) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.XAI_API_KEY;
     if (!apiKey) {
-      throw new Error("Lil Rizz’s Gemini brain is not configured on the server.");
+      throw new Error("Lil Rizz’s Grok brain is not configured on the server.");
     }
 
-    const contents = [
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
       ...data.history.map((turn) => ({
-        role: turn.role,
-        parts: [{ text: turn.text }],
+        role: turn.role === "model" ? "assistant" : "user",
+        content: turn.text,
       })),
-      { role: "user", parts: [{ text: data.message }] },
+      { role: "user", content: data.message },
     ];
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      "https://api.x.ai/v1/chat/completions",
       {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-goog-api-key": apiKey,
+          authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents,
-          generationConfig: { maxOutputTokens: 60, temperature: 0.85 },
+          model: "grok-4.7",
+          messages,
+          max_tokens: 100,
+          temperature: 0.85,
         }),
         signal: AbortSignal.timeout(15_000),
       },
     );
 
     if (!response.ok) {
-      console.error("[Lil Rizz] Gemini request failed with status", response.status);
+      console.error("[Lil Rizz] Grok request failed with status", response.status);
       throw new Error("Lil Rizz’s reply service is temporarily unavailable.");
     }
 
-    const payload = (await response.json()) as GeminiResponse;
-    const reply = payload.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim();
+    const payload = (await response.json()) as GrokResponse;
+    const reply = payload.choices?.[0]?.message?.content?.trim();
 
     if (!reply) throw new Error("Lil Rizz’s reply service returned an empty response.");
     return { reply: reply.slice(0, 800) };
