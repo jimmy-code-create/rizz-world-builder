@@ -7,12 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { FullScreenLoader, LoadingOverlay } from "@/components/FullScreenLoader";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -145,7 +146,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <Outlet />
+          <Suspense fallback={<FullScreenLoader />}>
+            <Outlet />
+          </Suspense>
+          <LoadingOverlay />
           <Toaster />
         </ThemeProvider>
       </AuthProvider>

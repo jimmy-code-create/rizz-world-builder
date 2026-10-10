@@ -23,6 +23,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
 import { IncomingCallRinger } from "@/components/IncomingCallRinger";
 import { NightclubCanvas } from "@/components/NightclubCanvas";
+import { FullScreenLoader } from "@/components/FullScreenLoader";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -99,11 +100,7 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center">
-        <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" />
-      </div>
-    );
+    return <FullScreenLoader />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
