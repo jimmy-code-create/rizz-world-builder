@@ -252,6 +252,47 @@ export type Database = {
           },
         ]
       }
+      realm_rooms: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          kind: string
+          name: string
+          position: number
+          realm_id: string
+          topic: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          kind?: string
+          name: string
+          position?: number
+          realm_id: string
+          topic?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          kind?: string
+          name?: string
+          position?: number
+          realm_id?: string
+          topic?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_rooms_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_stories: {
         Row: {
           category: string
@@ -1037,6 +1078,7 @@ export type Database = {
           created_at: string
           id: string
           realm_id: string
+          realm_room_id: string | null
           reply_to: string | null
           sender_id: string
         }
@@ -1046,6 +1088,7 @@ export type Database = {
           created_at?: string
           id?: string
           realm_id: string
+          realm_room_id?: string | null
           reply_to?: string | null
           sender_id: string
         }
@@ -1055,6 +1098,7 @@ export type Database = {
           created_at?: string
           id?: string
           realm_id?: string
+          realm_room_id?: string | null
           reply_to?: string | null
           sender_id?: string
         }
@@ -2131,6 +2175,7 @@ export type Database = {
           is_live: boolean
           listener_count: number
           realm_id: string | null
+          realm_room_id: string | null
           started_at: string
           title: string
           topic: string | null
@@ -2143,6 +2188,7 @@ export type Database = {
           is_live?: boolean
           listener_count?: number
           realm_id?: string | null
+          realm_room_id?: string | null
           started_at?: string
           title: string
           topic?: string | null
@@ -2155,6 +2201,7 @@ export type Database = {
           is_live?: boolean
           listener_count?: number
           realm_id?: string | null
+          realm_room_id?: string | null
           started_at?: string
           title?: string
           topic?: string | null

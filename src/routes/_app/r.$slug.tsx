@@ -3,15 +3,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { MoreVertical, Shield, UserMinus, UserX } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow } from "@/lib/realms";
+import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember } from "@/lib/realms";
+import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom } from "@/lib/realms";
 import { createRoom, fetchRealmLiveRoom } from "@/lib/voice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, Mic, Send, Users, Sparkles, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, Mic, Send, Users, Sparkles, Copy, Trash2, Plus, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
@@ -48,11 +48,32 @@ function RealmPage() {
   const [startingVoice, setStartingVoice] = useState(false);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [roomsOpen, setRoomsOpen] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomKind, setNewRoomKind] = useState<RealmRoomKind>("text");
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
     enabled: !!realm.data && membersOpen,
     queryFn: () => listRealmMembers(realm.data!.id),
+  });
+
+  const rooms = useQuery({
+    queryKey: ["realm-rooms", realm.data?.id],
+    enabled: !!realm.data && joined,
+    queryFn: () => fetchRealmRooms(realm.data!.id),
+  });
+
+  const activeRoom = (rooms.data ?? []).find((r) => r.id === activeRoomId) ?? null;
+  const textRooms = (rooms.data ?? []).filter((r) => r.kind !== "voice");
+  const voiceRoomsList = (rooms.data ?? []).filter((r) => r.kind === "voice");
+
+  const roomMessages = useQuery({
+    queryKey: ["realm-room-messages", activeRoomId],
+    enabled: !!activeRoomId && activeRoom?.kind !== "voice",
+    queryFn: () => fetchRealmRoomMessages(activeRoomId!),
   });
 
   const myRole = (members.data ?? []).find((m) => m.user_id === user?.id)?.role ?? null;
@@ -71,13 +92,24 @@ function RealmPage() {
       .channel(`realm-messages-${realm.data.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `realm_id=eq.${realm.data.id}` }, () => {
         qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
+        if (activeRoomId) qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, () => {
         qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
+        if (activeRoomId) qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [realm.data, qc]);
+  }, [realm.data, activeRoomId, qc]);
+
+  // Default to the realm's default/first room once rooms load.
+  useEffect(() => {
+    if (activeRoomId) return;
+    const list = rooms.data ?? [];
+    if (list.length === 0) return;
+    const def = list.find((r) => r.is_default) ?? list[0];
+    setActiveRoomId(def.id);
+  }, [rooms.data, activeRoomId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -88,14 +120,19 @@ function RealmPage() {
 
   const c: any = realm.data;
   const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
-  const messageRows = messages.data ?? [];
+  const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
 
   const handleSend = async () => {
     if (!user || !body.trim()) return;
     if (!joined) { toast.error("Join the realm to send messages"); return; }
     setSending(true);
     try {
-      await sendRealmMessage(c.id, user.id, body.trim());
+      if (activeRoomId && activeRoom?.kind !== "voice") {
+        await sendRealmRoomMessage(activeRoomId, user.id, body.trim());
+        await qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
+      } else {
+        await sendRealmMessage(c.id, user.id, body.trim());
+      }
       setBody("");
     } catch (e: any) { toast.error(e.message); } finally { setSending(false); }
   };
@@ -133,6 +170,23 @@ function RealmPage() {
       toast.success("Joined!");
     }
     qc.invalidateQueries({ queryKey: ["realm", slug] });
+  };
+
+  const handleCreateRoom = async () => {
+    if (!user || !newRoomName.trim()) return;
+    setCreatingRoom(true);
+    try {
+      const room = await createRealmRoom({ realmId: c.id, name: newRoomName.trim(), kind: newRoomKind });
+      await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
+      setActiveRoomId(room.id);
+      setRoomsOpen(false);
+      setNewRoomName("");
+      toast.success(`${newRoomKind === "voice" ? "Voice" : "Text"} room created`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't create the room");
+    } finally {
+      setCreatingRoom(false);
+    }
   };
 
   const handleVoiceStage = async () => {
@@ -280,7 +334,69 @@ function RealmPage() {
         </div>
       )}
 
-      {c.type === "voice" && (
+      {joined && rooms.data && rooms.data.length > 0 && (
+        <div className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/5 px-3 py-2">
+          {(rooms.data as RealmRoom[]).map((room) => {
+            const RoomIcon = room.kind === "voice" ? Volume2 : TYPE_ICON[room.kind as keyof typeof TYPE_ICON] ?? Hash;
+            const isActive = room.id === activeRoomId;
+            return (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => setActiveRoomId(room.id)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  isActive
+                    ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10 text-[var(--rizz-pink)]"
+                    : "border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                }`}
+              >
+                <RoomIcon className="h-3.5 w-3.5" />
+                {room.name}
+              </button>
+            );
+          })}
+          <Dialog open={roomsOpen} onOpenChange={setRoomsOpen}>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                aria-label="New room"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="glass-strong border-white/10">
+              <DialogHeader>
+                <DialogTitle className="font-display">New room</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Room name" maxLength={40} className="glass border-white/10" />
+                <div className="flex gap-2">
+                  {(["text", "announcement", "voice"] as RealmRoomKind[]).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setNewRoomKind(k)}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold capitalize transition-colors ${
+                        newRoomKind === k
+                          ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10 text-[var(--rizz-pink)]"
+                          : "border-white/10 bg-white/[0.03] text-white/70"
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+                <Button onClick={handleCreateRoom} disabled={!newRoomName.trim() || creatingRoom} className="w-full bg-gradient-primary border-0 shadow-glow">
+                  {creatingRoom ? "Creating…" : "Create room"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
+      {activeRoom?.kind === "voice" && (
         <div className="mx-4 my-3 flex flex-col items-center justify-between gap-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong sm:flex-row">
           <div className="flex items-center gap-3">
             <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl text-white ${voiceRoom.data ? "bg-gradient-primary shadow-glow" : "border border-white/10 bg-white/[0.06]"}`}>
@@ -289,7 +405,7 @@ function RealmPage() {
             </div>
             <div>
               <h3 className="font-display font-bold text-base flex items-center gap-2">
-                Voice room
+                {activeRoom.name || "Voice room"}
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${voiceRoom.data ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300" : "border-white/10 bg-white/[0.04] text-white/55"}`}>
                   {voiceRoom.data ? "Live" : "Ready"}
                 </span>

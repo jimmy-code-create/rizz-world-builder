@@ -45,6 +45,19 @@ export type RealmInvitePreview = {
   member_count: number | null;
 };
 
+export type RealmRoomKind = "text" | "announcement" | "voice";
+
+export type RealmRoom = {
+  id: string;
+  realm_id: string;
+  name: string;
+  kind: RealmRoomKind;
+  topic: string | null;
+  position: number;
+  is_default: boolean;
+  created_at: string;
+};
+
 export type RealmRole = "owner" | "mod" | "member";
 
 const REALM_OWNER_SELECT = "owner:profiles!realms_owner_id_fkey(username,display_name,avatar_url)";
@@ -235,6 +248,74 @@ export async function listRealmMembers(realmId: string) {
     .order("joined_at");
   if (error) throw error;
   return (data ?? []) as RealmMember[];
+}
+
+// ---------- Realm rooms ----------
+
+export async function fetchRealmRooms(realmId: string): Promise<RealmRoom[]> {
+  const { data, error } = await supabase
+    .from("realm_rooms")
+    .select("*")
+    .eq("realm_id", realmId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as RealmRoom[];
+}
+
+export async function createRealmRoom(input: {
+  realmId: string;
+  name: string;
+  kind: RealmRoomKind;
+  topic?: string;
+}) {
+  const { data, error } = await supabase
+    .from("realm_rooms")
+    .insert({
+      realm_id: input.realmId,
+      name: input.name,
+      kind: input.kind,
+      topic: input.topic || null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RealmRoom;
+}
+
+export async function deleteRealmRoom(roomId: string) {
+  const { error } = await supabase.from("realm_rooms").delete().eq("id", roomId);
+  if (error) throw error;
+}
+
+export async function fetchRealmRoomMessages(roomId: string, limit = 100) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select(`*, ${MESSAGE_SENDER_SELECT}`)
+    .eq("realm_room_id", roomId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as RealmMessage[]).reverse();
+}
+
+export async function sendRealmRoomMessage(roomId: string, senderId: string, body: string) {
+  const { data: room, error: roomError } = await supabase
+    .from("realm_rooms")
+    .select("realm_id")
+    .eq("id", roomId)
+    .maybeSingle();
+  if (roomError) throw roomError;
+  if (!room) throw new Error("Room not found");
+  const { error } = await supabase
+    .from("messages")
+    .insert({
+      realm_id: room.realm_id,
+      realm_room_id: roomId,
+      sender_id: senderId,
+      body,
+    });
+  if (error) throw error;
 }
 
 export async function kickRealmMember(realmId: string, userId: string) {
