@@ -100,7 +100,7 @@
   --surface-bar: rgba(13, 10, 20, 0.93);
   --surface-bubble: rgba(28, 23, 38, 0.96);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.68 0.28 5), oklch(0.45 0.25 295));
+  --gradient-primary: linear-gradient(135deg, var(--rizz-pink), var(--rizz-violet));
   --gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.68 0.28 5 / 0.35), transparent 60%),
     radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.45 0.25 295 / 0.45), transparent 65%),
     radial-gradient(ellipse 60% 50% at 50% 100%, oklch(0.55 0.25 320 / 0.3), transparent 70%);
@@ -183,6 +183,8 @@
   --muted: oklch(0.95 0.02 295);
   --muted-foreground: oklch(0.45 0.04 295);
   --border: oklch(0.15 0.03 295 / 0.1);
+  --surface-bar: rgb(255 255 255 / 0.93);
+  --surface-bubble: rgb(255 255 255 / 0.96);
   color-scheme: light;
 }
 
@@ -274,6 +276,30 @@
 .chat-bubble {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+.message-bubble {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.message-bubble--outgoing {
+  background: var(--gradient-primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
+}
+.message-bubble--incoming {
+  border: 1px solid color-mix(in srgb, var(--rizz-pink) 18%, transparent);
+  background: var(--surface-bubble);
+  color: var(--foreground);
+}
+.message-bubble--unsent {
+  border: 1px solid color-mix(in srgb, var(--rizz-pink) 22%, transparent);
+  background: color-mix(in srgb, var(--surface-bubble) 82%, transparent);
+  color: var(--muted-foreground);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--rizz-pink) 45%, transparent);
+  font-style: italic;
 }
 .mention-highlight {
   color: var(--rizz-mention-color, #5865f2);

@@ -52,7 +52,7 @@ export function AppShell() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
-  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path);
+  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/|r\/)/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
 
   // Close the More sheet whenever the route changes

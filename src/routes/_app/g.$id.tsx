@@ -379,7 +379,7 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble w-fit max-w-full min-w-[44px] rounded-2xl px-4 py-2.5 text-[15px] leading-[1.55] whitespace-pre-wrap break-words select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "border border-white/10 bg-white/[0.04] text-muted-foreground italic opacity-70" : mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
+                    <div className={`chat-bubble message-bubble w-fit max-w-full min-w-[44px] rounded-2xl px-4 py-2 select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "message-bubble--unsent opacity-80" : mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}>
                       {deletedAt ? "This message was unsent" : (
                         <>
                           {renderGifSegments(m.body).map((seg, si) =>

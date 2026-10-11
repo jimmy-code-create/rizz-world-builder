@@ -494,7 +494,7 @@ function RealmPage() {
         </div>
       )}
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
         {activeRoom?.kind !== "voice" && activeRoom && (
           <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Hash className="h-3 w-3" />{activeRoom.name}
@@ -514,7 +514,7 @@ function RealmPage() {
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-3 flex gap-3">
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-2 flex gap-2 sm:gap-3">
               {!mine && (startsGroup ? (
                 <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
                   <AvatarImage src={m.author?.avatar_url ?? undefined} />
@@ -550,7 +550,7 @@ function RealmPage() {
                       : []),
                   ]}
                 >
-                  <p className="chat-bubble min-w-[44px] w-fit max-w-[88%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3.5 py-2.5 text-sm leading-[1.55] whitespace-pre-wrap break-words select-none touch-manipulation">
+                  <p className={`chat-bubble message-bubble min-w-[44px] w-fit max-w-[88%] rounded-2xl px-3.5 py-2 select-none touch-manipulation ${mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}>
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
