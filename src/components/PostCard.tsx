@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -61,7 +61,7 @@ function timeAgo(iso: string) {
   return `${Math.floor(s / 86400)}d`;
 }
 
-export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
+function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
   const isPinned = (post as any).is_pinned === true;
   const externalVideo =
     post.media_type === "video" && post.media_url
@@ -915,3 +915,7 @@ function AuthorNameLink({ post }: { post: any }) {
     </div>
   );
 }
+
+// Memoized: a PostCard owns a lot of subtree (media, polls, comment composer),
+// so parent re-renders (typing, likes elsewhere) must not re-render every card.
+export const PostCard = memo(PostCardImpl);

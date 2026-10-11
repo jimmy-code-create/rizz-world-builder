@@ -131,7 +131,7 @@ function ExplorePage() {
                 {p.media_type === "video" ? (
                   <video src={p.media_url ?? ""} className="w-full h-full object-cover" muted />
                 ) : (
-                  <img src={p.media_url ?? ""} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                  <img src={p.media_url ?? ""} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                   <span className="text-xs font-medium">❤ {p.like_count}</span>

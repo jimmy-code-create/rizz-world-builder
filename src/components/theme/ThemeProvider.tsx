@@ -1,9 +1,16 @@
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { applyTheme, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
+import { applyPrefs, loadPrefs } from "@/lib/prefs";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
+
+  // Reading preferences here means the saved text size (92% by default) applies
+  // to every screen, not only after someone opens Settings.
+  useEffect(() => {
+    applyPrefs(loadPrefs());
+  }, []);
 
   useEffect(() => {
     // Read from profile or localStorage fallback

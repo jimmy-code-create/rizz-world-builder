@@ -80,7 +80,7 @@ function DropsPage() {
             <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-3xl overflow-hidden border border-white/5">
               {d.media_url && (
                 <div className="aspect-video bg-black overflow-hidden">
-                  <img src={d.media_url} alt={d.title} className="w-full h-full object-cover" />
+                  <img src={d.media_url} alt={d.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="p-5">

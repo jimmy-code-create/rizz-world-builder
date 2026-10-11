@@ -1,24 +1,63 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle, Search, X, Check, Users, UsersRound, Camera, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { listMyGroups, type Group } from "@/lib/groups";
+import { MAX_GROUP_PICKS, createGroupChat } from "@/lib/groups.functions";
+import { squareImageFile } from "@/lib/image-square";
 
 export const Route = createFileRoute("/_app/dms")({
   head: () => ({ meta: [{ title: "Messages · RIZZ" }] }),
   component: DMsPage,
 });
 
+const DOUBLE_TAP_MS = 280;
+
+type Thread = {
+  other: { id: string; username: string | null; display_name: string | null; avatar_url: string | null };
+  last: { body: string | null; created_at: string };
+  unread: number;
+};
+
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return "now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 function DMsPage() {
   const { user } = useAuth();
+  const nav = useNavigate();
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [groupSheetOpen, setGroupSheetOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupPhoto, setGroupPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const navTimer = useRef<number | null>(null);
+  const lastTap = useRef<{ id: string; at: number } | null>(null);
+
   const threads = useQuery({
     queryKey: ["dm-threads", user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<Thread[]> => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("direct_messages")
@@ -28,7 +67,7 @@ function DMsPage() {
         .limit(100);
       if (error) throw error;
       // group by other party
-      const map = new Map<string, { other: any; last: any; unread: number }>();
+      const map = new Map<string, Thread>();
       for (const m of data ?? []) {
         const other = m.sender_id === user.id ? m.recipient : m.sender;
         if (!other) continue;
@@ -41,8 +80,63 @@ function DMsPage() {
     },
     enabled: !!user,
     retry: false,
-    refetchInterval: (query) => query.state.status === "error" ? false : 15000,
   });
+
+  const groups = useQuery({
+    queryKey: ["my-groups", user?.id],
+    queryFn: () => listMyGroups(user!.id),
+    enabled: !!user,
+    retry: false,
+  });
+
+  // Realtime replaces the old 15s poll: the thread list now refreshes when a
+  // message actually lands. Two channels because each only filters one column.
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () => qc.invalidateQueries({ queryKey: ["dm-threads", user.id] });
+    const asSender = supabase
+      .channel(`dm-threads-sent-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `sender_id=eq.${user.id}` }, refresh)
+      .subscribe();
+    const asRecipient = supabase
+      .channel(`dm-threads-received-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `recipient_id=eq.${user.id}` }, refresh)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(asSender);
+      supabase.removeChannel(asRecipient);
+    };
+  }, [user, qc]);
+
+  // Members see a new group in their DMs list the moment they're added.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`dms-groups-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "group_members", filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ["my-groups", user.id] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
+
+  // Leaving the page (or pressing back) cancels selection mode.
+  useEffect(() => {
+    if (!selecting) return;
+    const cancel = () => { setSelecting(false); setSelected([]); };
+    window.addEventListener("popstate", cancel);
+    return () => window.removeEventListener("popstate", cancel);
+  }, [selecting]);
+
+  useEffect(() => () => {
+    if (navTimer.current) window.clearTimeout(navTimer.current);
+  }, []);
+
+  useEffect(() => () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
   const filtered = useMemo(() => {
     const list = threads.data ?? [];
@@ -53,25 +147,179 @@ function DMsPage() {
     );
   }, [threads.data, q]);
 
-  const fmtTime = (iso: string) => {
-    const d = new Date(iso);
-    const diff = (Date.now() - d.getTime()) / 1000;
-    if (diff < 60) return "now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
-    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const exitSelection = () => {
+    setSelecting(false);
+    setSelected([]);
+  };
+
+  const toggleSelected = (userId: string) => {
+    if (selected.includes(userId)) {
+      const next = selected.filter((id) => id !== userId);
+      setSelected(next);
+      // Unselecting everyone leaves selection mode.
+      if (!next.length) setSelecting(false);
+      return;
+    }
+    if (selected.length >= MAX_GROUP_PICKS) {
+      toast.error(`You can add up to ${MAX_GROUP_PICKS} members`);
+      return;
+    }
+    setSelected([...selected, userId]);
+  };
+
+  const startSelecting = (userId: string) => {
+    setSelecting(true);
+    setSelected([userId]);
+  };
+
+  /** Double tap toggles selection mode; single tap still opens the conversation. */
+  const handleRowTap = (other: Thread["other"]) => {
+    if (selecting) {
+      toggleSelected(other.id);
+      return;
+    }
+    const now = Date.now();
+    const isDoubleTap = lastTap.current?.id === other.id && now - lastTap.current.at < DOUBLE_TAP_MS;
+    lastTap.current = { id: other.id, at: now };
+    if (isDoubleTap) {
+      if (navTimer.current) { window.clearTimeout(navTimer.current); navTimer.current = null; }
+      lastTap.current = null;
+      startSelecting(other.id);
+      return;
+    }
+    if (navTimer.current) window.clearTimeout(navTimer.current);
+    navTimer.current = window.setTimeout(() => {
+      navTimer.current = null;
+      nav({ to: "/dm/$userId", params: { userId: other.id } });
+    }, DOUBLE_TAP_MS);
+  };
+
+  const pickGroupPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPreparingPhoto(true);
+    try {
+      const squared = await squareImageFile(file, { label: "photo" });
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setGroupPhoto(squared);
+      setPhotoPreview(URL.createObjectURL(squared));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't use that photo.");
+    } finally {
+      setPreparingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
+  const createTheGroup = async () => {
+    if (!user) return;
+    const name = groupName.trim();
+    if (!name) { toast.error("Give the group a name."); return; }
+    if (selected.length < 2) { toast.error("Pick at least 2 people to start a group."); return; }
+    setCreating(true);
+    try {
+      let iconUrl: string | null = null;
+      if (groupPhoto) {
+        const path = `${user.id}/group-icons/${crypto.randomUUID()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(path, groupPhoto, { contentType: groupPhoto.type || "image/jpeg", upsert: true, cacheControl: "31536000" });
+        if (uploadError) throw uploadError;
+        iconUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      }
+      const group = await createGroupChat({ name, iconUrl, memberIds: selected });
+      toast.success(`${group.name} is ready ✨`);
+      qc.invalidateQueries({ queryKey: ["my-groups"] });
+      setGroupSheetOpen(false);
+      setGroupName("");
+      setGroupPhoto(null);
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
+      exitSelection();
+      nav({ to: "/g/$id", params: { id: group.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't create that group.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
-    <div>
-      <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="font-display text-3xl font-bold tracking-tight mb-1">Messages</motion.h1>
-      <p className="text-sm text-muted-foreground mb-6">Slide in those DMs.</p>
+    <div className="pb-2">
+      {selecting ? (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 flex items-center gap-2 rounded-2xl glass border border-white/10 p-2"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={exitSelection}
+            aria-label="Cancel selection"
+            className="h-12 w-12 shrink-0 rounded-xl"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <span className="min-w-0 flex-1 text-sm font-semibold">
+            {selected.length} selected <span className="font-normal text-muted-foreground">(max {MAX_GROUP_PICKS})</span>
+          </span>
+          <Button
+            onClick={() => setGroupSheetOpen(true)}
+            disabled={selected.length < 2}
+            className="min-h-12 shrink-0 rounded-xl border-0 bg-gradient-primary shadow-glow px-4"
+          >
+            <UsersRound className="h-4 w-4" /> Create group
+          </Button>
+        </motion.div>
+      ) : (
+        <>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl font-bold tracking-tight mb-1">Messages</h1>
+              <p className="text-sm text-muted-foreground">Slide in those DMs.</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setGroupSheetOpen(true)}
+              className="glass border-white/10 min-h-12 rounded-xl gap-2 shrink-0"
+            >
+              <Plus className="h-4 w-4" /> New group
+            </Button>
+          </motion.div>
+          <p className="mt-2 mb-4 text-xs text-muted-foreground/80">Double tap a conversation to pick people and start a group.</p>
+        </>
+      )}
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search conversations…" className="pl-9 glass border-white/10" />
       </div>
+
+      {!selecting && (groups.data ?? []).length > 0 && (
+        <div className="mb-5">
+          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Groups</h2>
+          <div className="space-y-2">
+            {(groups.data ?? []).map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
+                className="glass w-full rounded-2xl p-4 border border-white/5 flex items-center gap-3 text-left transition-colors hover:border-white/15"
+              >
+                <GroupAvatar group={g} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{g.name}</p>
+                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                    <Users className="h-3 w-3 shrink-0" /> {g.member_count} member{g.member_count === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         {threads.isError && (
@@ -79,13 +327,38 @@ function DMsPage() {
             Messages couldn’t load. Check your connection, then refresh to try again.
           </div>
         )}
-        {filtered.map(({ other, last, unread }) => (
-          <Link key={other.id} to="/dm/$userId" params={{ userId: other.id }}>
-            <motion.div whileHover={{ x: 4 }} className={`glass rounded-2xl p-4 border flex items-center gap-3 ${unread > 0 ? "border-[var(--rizz-pink)]/30 shadow-glow" : "border-white/5"}`}>
-              <Avatar className="h-12 w-12 ring-2 ring-[var(--rizz-pink)]/40">
-                <AvatarImage src={other.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
+        {threads.isPending && !threads.isError && (
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+          </div>
+        )}
+        {filtered.map(({ other, last, unread }) => {
+          const isSelected = selectedSet.has(other.id);
+          return (
+            <button
+              key={other.id}
+              type="button"
+              onClick={() => handleRowTap(other)}
+              aria-pressed={selecting ? isSelected : undefined}
+              className={`glass w-full min-h-12 rounded-2xl p-4 border flex items-center gap-3 text-left transition-colors ${
+                isSelected
+                  ? "border-[var(--rizz-pink)]/60 shadow-glow"
+                  : unread > 0
+                    ? "border-[var(--rizz-pink)]/30 shadow-glow"
+                    : "border-white/5 hover:border-white/15"
+              }`}
+            >
+              <div className="relative shrink-0">
+                <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-[var(--rizz-pink)]" : "ring-[var(--rizz-pink)]/40"}`}>
+                  <AvatarImage src={other.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-gradient-primary font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                {isSelected && (
+                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--rizz-pink)] text-white ring-2 ring-background">
+                    <Check className="h-3 w-3" strokeWidth={3} />
+                  </span>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate">{other.display_name || other.username}</p>
                 <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{last.body}</p>
@@ -96,16 +369,120 @@ function DMsPage() {
                   <span className="text-[10px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
                 )}
               </div>
-            </motion.div>
-          </Link>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
-      {!threads.isError && filtered.length === 0 && (
+      {!threads.isError && !threads.isPending && filtered.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
           <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">{q ? "No matches." : "No conversations yet. Go say hi from someone's profile."}</p>
         </div>
+      )}
+
+      <Sheet open={groupSheetOpen} onOpenChange={setGroupSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="glass-strong border-white/10 rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-xl">New group</SheetTitle>
+          </SheetHeader>
+
+          <div className="mt-4 space-y-5">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden glass border border-white/10 grid place-items-center"
+                aria-label="Add a group photo"
+              >
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Group photo preview" className="h-full w-full object-cover" />
+                ) : preparingPhoto ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <Camera className="h-5 w-5 text-muted-foreground" />
+                )}
+              </button>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Group photo <span className="text-muted-foreground">(optional)</span></p>
+                <p className="text-xs text-muted-foreground">Square crop, compressed before upload.</p>
+                {photoPreview && (
+                  <button
+                    type="button"
+                    onClick={() => { if (photoPreview) URL.revokeObjectURL(photoPreview); setPhotoPreview(null); setGroupPhoto(null); }}
+                    className="mt-1 text-xs font-medium text-[var(--rizz-pink)]"
+                  >
+                    Remove photo
+                  </button>
+                )}
+              </div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => void pickGroupPhoto(e.target.files?.[0])}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground" htmlFor="group-name">Group name</label>
+              <Input
+                id="group-name"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value.slice(0, 40))}
+                placeholder="e.g. The Group Chat"
+                className="mt-1 glass border-white/10"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">{groupName.trim() ? `${groupName.trim().length}/40` : "Required"}</p>
+            </div>
+
+            <div className="rounded-2xl glass border border-white/5 p-3">
+              <p className="text-xs text-muted-foreground">
+                {selected.length} selected ({selected.length}/{MAX_GROUP_PICKS}) · needs at least 2
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selected.map((id) => {
+                  const person = (threads.data ?? []).find((t) => t.other.id === id)?.other;
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 pl-1 pr-2 py-1 text-xs">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={person?.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-gradient-primary text-[9px] font-bold">
+                          {(person?.username ?? "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-24 truncate">{person?.display_name || person?.username || "Member"}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Button
+              onClick={() => void createTheGroup()}
+              disabled={creating || preparingPhoto || !groupName.trim() || selected.length < 2}
+              className="w-full min-h-12 rounded-xl border-0 bg-gradient-primary shadow-glow"
+            >
+              {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> : "Create group"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function GroupAvatar({ group }: { group: Group }) {
+  return (
+    <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-400 to-blue-700 grid place-items-center font-display font-bold text-lg ring-1 ring-white/15">
+      {group.icon_url ? (
+        <img src={group.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+      ) : (
+        group.name.charAt(0).toUpperCase()
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
@@ -18,9 +18,14 @@ export const Route = createFileRoute("/_app/feed")({
   component: FeedPage,
 });
 
+// The feed paginates instead of mounting every post at once; each PostCard is a
+// heavy tree, so we render a page of them and grow the window on demand.
+const FEED_PAGE_SIZE = 6;
+
 function FeedPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [visible, setVisible] = useState(FEED_PAGE_SIZE);
 
   const feed = useQuery({
     queryKey: ["feed"],
@@ -79,17 +84,27 @@ function FeedPage() {
         </div>
       )}
 
-      {feed.data?.map((p, i) => (
+      {feed.data?.slice(0, visible).map((p, i) => (
         <motion.div
           key={p.id}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35, ease: "easeOut" }}
+          transition={{ delay: Math.min(i * 0.04, 0.24), duration: 0.3, ease: "easeOut" }}
         >
           <PostCard post={p} liked={likes.data?.has(p.id)} />
           {i === 2 && <FollowSuggestions />}
         </motion.div>
       ))}
+
+      {feed.data && feed.data.length > visible && (
+        <button
+          type="button"
+          onClick={() => setVisible((v) => v + FEED_PAGE_SIZE)}
+          className="mt-1 w-full min-h-12 rounded-2xl glass border border-white/10 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-white/20 transition-colors"
+        >
+          Show {(feed.data.length - visible) > FEED_PAGE_SIZE ? FEED_PAGE_SIZE : feed.data.length - visible} more posts
+        </button>
+      )}
     </div>
   );
 }

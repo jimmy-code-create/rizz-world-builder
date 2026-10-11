@@ -616,6 +616,23 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @keyframes nc-drift-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4vmax,-5vmax) scale(1.12); } }
 @keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
 
+/* ============ EFFECT BUDGET — MOBILE ============
+   Same palette and layout, but the animated dotted grain, the drifting orbs and
+   the long-running composited animations are paused on phones, where they were
+   the main source of scroll jank and battery drain. */
+@media (max-width: 767.98px) {
+  .nc-grain { display: none; }
+  .nc-orb { animation: none !important; will-change: auto; }
+  .nightclub-canvas { contain: strict; }
+  .feed-post-card { transition: border-color 200ms ease, box-shadow 200ms ease; }
+  .shadow-glow { box-shadow: 0 2px 10px oklch(0.68 0.28 5 / 0.22); }
+  .shadow-glow-lg { box-shadow: 0 4px 18px oklch(0.68 0.28 5 / 0.26); }
+}
+/* The app's own "Reduced motion" setting also stops the decorative layers. */
+[data-reduced-motion="true"] .nc-grain,
+[data-reduced-motion="true"] .nc-beam { display: none; }
+[data-reduced-motion="true"] .nc-orb { animation: none !important; }
+
 /* ============ SOUND WAVE VISUALIZER ============ */
 @keyframes soundwave {
   0% { transform: scaleY(0.25); opacity: 0.4; }
@@ -717,15 +734,18 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   color: transparent; animation: name-shimmer 2.5s linear infinite;
 }
 .feed-post-card {
+  /* Offscreen cards skip layout/paint entirely — the cheap alternative to
+     virtualizing the feed (contain-intrinsic-size keeps the scrollbar stable). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
   contain: layout paint;
-  will-change: transform;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background:
     radial-gradient(120% 90% at 0% 0%, rgba(236, 72, 153, 0.12), transparent 58%),
     radial-gradient(100% 80% at 100% 0%, rgba(124, 58, 237, 0.13), transparent 55%),
-    linear-gradient(145deg, rgba(31, 23, 43, 0.96), rgba(17, 13, 25, 0.97));
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  backdrop-filter: blur(24px) saturate(140%);
+    linear-gradient(145deg, rgb(31, 23, 43), rgb(17, 13, 25));
+  /* No backdrop-filter: the card background is already opaque, so blurring 50
+     cards behind each other cost GPU time for a look nobody could see. */
   box-shadow:
     0 18px 54px rgba(4, 2, 10, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.11),

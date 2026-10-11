@@ -398,7 +398,7 @@ function ProfilePage() {
               <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   {g.icon_url ? (
-                    <img src={g.icon_url} className="h-10 w-10 rounded-xl object-cover" alt="" />
+                    <img src={g.icon_url} width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-xl object-cover" alt="" />
                   ) : (
                     <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--rizz-violet))` }}>
                       {g.name.charAt(0).toUpperCase()}

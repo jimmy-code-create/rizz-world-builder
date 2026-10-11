@@ -323,7 +323,7 @@ function StoryViewer({ group, onClose, onNext, onPrev }: { group: Story[]; onClo
           {story.media_type === "video" ? (
             <video src={story.media_url} autoPlay playsInline className="h-full max-h-full max-w-full object-contain" />
           ) : (
-            <img src={story.media_url} alt={story.caption ?? ""} className="h-full max-h-full w-full object-cover" />
+            <img src={story.media_url} alt={story.caption ?? ""} loading="lazy" decoding="async" className="h-full max-h-full w-full object-cover" />
           )}
           <button
             aria-label="Previous story"

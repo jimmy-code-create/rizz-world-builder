@@ -99,9 +99,13 @@ function PreferencesSettingsPage() {
             type="range"
             min={0.9}
             max={1.2}
-            step={0.05}
+            step={0.01}
             value={prefs.textScale}
-            onChange={(e) => updatePref("textScale", parseFloat(e.target.value))}
+            onChange={(e) => {
+              // Mark it as an explicit choice so the 90% → 92% migration never touches it.
+              updatePref("textScaleCustom", true);
+              updatePref("textScale", parseFloat(e.target.value));
+            }}
             className="mt-1 w-full accent-[var(--rizz-pink)]"
           />
         </div>

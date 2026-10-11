@@ -1,8 +1,8 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,16 +14,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PostComposer } from "@/components/PostComposer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { CommandPalette } from "@/components/CommandPalette";
-import { AppOverlays } from "@/components/AppOverlays";
-import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
-import { OwnerPanel } from "@/components/OwnerPanel";
-import { IncomingCallRinger } from "@/components/IncomingCallRinger";
-import { NightclubCanvas } from "@/components/NightclubCanvas";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
+
+// Secondary UI and the decorative background are split out of the initial shell
+// bundle: they load in their own chunks when first used instead of before paint.
+const NightclubCanvas = lazy(() => import("@/components/NightclubCanvas").then((m) => ({ default: m.NightclubCanvas })));
+const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
+const AppOverlays = lazy(() => import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })));
+const KeyboardShortcuts = lazy(() => import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })));
+const OwnerPanel = lazy(() => import("@/components/OwnerPanel").then((m) => ({ default: m.OwnerPanel })));
+const IncomingCallRinger = lazy(() => import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })));
+const PostComposer = lazy(() => import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })));
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -49,6 +52,7 @@ const mobileTabs = [
 export function AppShell() {
   const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -87,8 +91,23 @@ export function AppShell() {
     },
     enabled: !!user,
     retry: false,
-    refetchInterval: (query) => query.state.status === "error" ? false : 30000,
+    staleTime: 30_000,
   });
+
+  // Realtime replaces the old 30s poll for the unread badge, so the shell stops
+  // refetching (and re-rendering) on a timer while nothing is happening.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`unread-notifs-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => { qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] }); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
 
   if (profileError) {
     return (
@@ -112,7 +131,7 @@ export function AppShell() {
 
   return (
     <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
-      {!isConversation && <NightclubCanvas />}
+      {!isConversation && <Suspense fallback={null}><NightclubCanvas /></Suspense>}
       {/* Desktop sidebar */}
       {!isConversation && <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
         <button
@@ -246,7 +265,9 @@ export function AppShell() {
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
         <DialogContent className="glass-strong border-white/10 max-w-lg">
           <DialogTitle className="font-display text-xl">Create post</DialogTitle>
-          <PostComposer onPosted={() => setComposerOpen(false)} />
+          <Suspense fallback={<div className="h-24 rounded-2xl skeleton-shimmer" />}>
+            <PostComposer onPosted={() => setComposerOpen(false)} />
+          </Suspense>
         </DialogContent>
       </Dialog>
 
@@ -324,12 +345,13 @@ export function AppShell() {
           </button>
         </SheetContent>
       </Sheet>
-      <IncomingCallRinger />
-
-      <CommandPalette />
-      <AppOverlays />
-      <KeyboardShortcuts profileUsername={profile?.username} />
-      <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
+      <Suspense fallback={null}>
+        <IncomingCallRinger />
+        <CommandPalette />
+        <AppOverlays />
+        <KeyboardShortcuts profileUsername={profile?.username} />
+        <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
+      </Suspense>
     </div>
   );
 }

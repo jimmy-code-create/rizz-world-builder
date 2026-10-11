@@ -293,7 +293,7 @@ function RealmsPage() {
                 <motion.div whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
                   <div className="flex items-start gap-3">
                     <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
-                      {realm.icon_url ? <img src={realm.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
+                      {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-display font-bold text-lg leading-tight truncate flex items-center gap-1.5">
@@ -328,7 +328,7 @@ function RealmsPage() {
               <motion.div key={realm.id} whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
                 <div className="flex items-start gap-3">
                   <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
-                    {realm.icon_url ? <img src={realm.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
+                    {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold text-lg leading-tight truncate">{realm.name}</h3>

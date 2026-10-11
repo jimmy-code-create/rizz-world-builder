@@ -13,7 +13,8 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, MicOff, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
@@ -24,6 +25,9 @@ import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocom
 import { renderCaptionWithTags } from "@/lib/hashtags";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
+
+/** Member lists paginate instead of mounting every row of a big realm at once. */
+const MEMBER_PAGE_SIZE = 25;
 
 type RealmChannelCall = {
   room: { id: string; realm_room_id: string | null; host_id: string; title: string };
@@ -62,6 +66,8 @@ function RealmPage() {
   const [deleting, setDeleting] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [visibleMembers, setVisibleMembers] = useState(MEMBER_PAGE_SIZE);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -247,7 +253,7 @@ function RealmPage() {
       >
         <Link to="/realms" aria-label="Back to realms" className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><ArrowLeft className="h-5 w-5" /></Link>
         <div className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}>
-          {c.icon_url ? <img src={c.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-white" />}
+          {c.icon_url ? <img src={c.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
@@ -269,7 +275,12 @@ function RealmPage() {
             </DialogHeader>
             <div className="max-h-[60dvh] space-y-2 overflow-y-auto">
               {members.isLoading && <div className="h-24 animate-pulse rounded-2xl glass" />}
-              {(members.data ?? []).map((m: RealmMemberRow) => (
+              {!members.isLoading && (members.data ?? []).length > MEMBER_PAGE_SIZE && (
+                <p className="text-[11px] text-muted-foreground">
+                  Showing {visibleMembers} of {(members.data ?? []).length} members
+                </p>
+              )}
+              {(members.data ?? []).slice(0, visibleMembers).map((m: RealmMemberRow) => (
                 <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-white/10 glass p-3">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={m.profile?.avatar_url ?? undefined} />
@@ -341,6 +352,15 @@ function RealmPage() {
               {!members.isLoading && (members.data ?? []).length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">No members found.</p>
               )}
+              {(members.data ?? []).length > visibleMembers && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleMembers((v) => v + MEMBER_PAGE_SIZE)}
+                  className="w-full min-h-12 rounded-2xl glass border border-white/10 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-white/20 transition-colors"
+                >
+                  Show more members
+                </button>
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -363,6 +383,11 @@ function RealmPage() {
             <SheetRowButton onClick={() => { setOptionsOpen(false); setMembersOpen(true); }}>
               <Shield className="h-4 w-4" /> Moderation
             </SheetRowButton>
+            {canModerate && (
+              <SheetRowButton onClick={() => { setOptionsOpen(false); setEditOpen(true); }}>
+                <Pencil className="h-4 w-4" /> Edit realm
+              </SheetRowButton>
+            )}
             {joined ? (
               <SheetRowButton destructive onClick={() => { setOptionsOpen(false); setLeaveOpen(true); }}>
                 <LogOut className="h-4 w-4" />
@@ -382,6 +407,14 @@ function RealmPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {c && (
+        <EditRealmSheet
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          realm={{ id: c.id, slug: c.slug ?? slug, name: c.name, topic: c.topic ?? null, icon_url: c.icon_url ?? null }}
+        />
+      )}
 
       <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
         <AlertDialogContent className="glass-strong border-white/10">

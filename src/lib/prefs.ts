@@ -8,7 +8,9 @@ export type Prefs = {
   focusMode: boolean;
   colorBlind: boolean;
   mentionColor: string;
-  textScale: number; // 0.9 - 1.2
+  textScale: number; // 0.92 - 1.2
+  /** Set the moment someone moves the text-size slider, so their choice is never migrated again. */
+  textScaleCustom?: boolean;
   language: string;
 };
 
@@ -20,14 +22,28 @@ export const DEFAULT_PREFS: Prefs = {
   focusMode: false,
   colorBlind: false,
   mentionColor: "#5865f2",
-  textScale: 1,
+  textScale: 0.92,
   language: "en",
 };
+
+/** The text size the app used to ship as its default, before it moved to 92%. */
+const LEGACY_DEFAULT_TEXT_SCALE = 0.9;
 
 export function loadPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") };
+    const stored = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as Partial<Prefs>;
+    const merged = { ...DEFAULT_PREFS, ...stored };
+    // New users get 92%. Existing users who never touched the slider still sit on
+    // the old 90% default and are moved up; anyone who chose their own size keeps it.
+    if (
+      stored.textScaleCustom !== true &&
+      typeof stored.textScale === "number" &&
+      Math.abs(stored.textScale - LEGACY_DEFAULT_TEXT_SCALE) < 1e-9
+    ) {
+      merged.textScale = DEFAULT_PREFS.textScale;
+    }
+    return merged;
   } catch {
     return DEFAULT_PREFS;
   }
