@@ -2,13 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchRealms, createRealmSecure, joinRealmPublic, previewRealmInvite, acceptRealmInvite } from "@/lib/realms";
+import { fetchRealms, createRealmSecure, joinRealmPublic, previewRealmInvite, acceptRealmInvite, updateRealm } from "@/lib/realms";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound } from "lucide-react";
+import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ type RealmRow = {
   slug: string;
   name: string;
   topic: string | null;
+  icon_url: string | null;
   accent_color: string | null;
   kind: "text" | "announcement" | "voice" | "drops";
   is_public: boolean;
@@ -41,6 +42,8 @@ function RealmsPage() {
   const [topic, setTopic] = useState("");
   const [kind, setKind] = useState<"text" | "announcement" | "voice">("text");
   const [accent, setAccent] = useState("#ff2d92");
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -60,7 +63,7 @@ function RealmsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("realm_members")
-        .select("realm_id, role, realm:realms!realm_members_realm_id_fkey(id,slug,name,topic,accent_color,kind,is_public,member_count,owner:profiles!realms_owner_id_fkey(username))")
+        .select("realm_id, role, realm:realms!realm_members_realm_id_fkey(id,slug,name,topic,icon_url,accent_color,kind,is_public,member_count,owner:profiles!realms_owner_id_fkey(username))")
         .eq("user_id", user!.id);
       if (error) throw error;
       return (data ?? []) as Array<{ realm_id: string; role: "owner" | "mod" | "member"; realm: RealmRow | null }>;
@@ -69,6 +72,10 @@ function RealmsPage() {
 
   const handleCreate = async () => {
     if (!user || !name.trim()) return;
+    if (iconFile && (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(iconFile.type) || iconFile.size > 5 * 1024 * 1024)) {
+      toast.error("Choose a PNG, JPG, WebP, or GIF under 5 MB");
+      return;
+    }
     setCreating(true);
     try {
       const realm = await createRealmSecure({
@@ -78,11 +85,30 @@ function RealmsPage() {
         accent_color: accent,
         is_public: isPublic,
       });
+      if (iconFile) {
+        const extension = ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" } as const)[iconFile.type as "image/png" | "image/jpeg" | "image/webp" | "image/gif"];
+        const path = `${user.id}/realm-icons/${realm.id}.${extension}`;
+        try {
+          const { error: uploadError } = await supabase.storage.from("avatars").upload(path, iconFile, {
+            contentType: iconFile.type,
+            upsert: true,
+          });
+          if (uploadError) throw uploadError;
+          const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+          await updateRealm({ realmId: realm.id, iconUrl: data.publicUrl });
+        } catch (iconError) {
+          toast.error(`Realm created, but its icon couldn't be saved: ${iconError instanceof Error ? iconError.message : "upload failed"}`);
+        }
+      }
       toast.success("Realm created");
       qc.invalidateQueries({ queryKey: ["realms"] });
       qc.invalidateQueries({ queryKey: ["my-realms", user.id] });
       setCreateOpen(false);
-      setName(""); setTopic("");
+      setName("");
+      setTopic("");
+      setIconFile(null);
+      if (iconPreview) URL.revokeObjectURL(iconPreview);
+      setIconPreview(null);
       nav({ to: "/r/$slug", params: { slug: realm.slug } });
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't create the realm");
@@ -130,6 +156,17 @@ function RealmsPage() {
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't join this realm");
     }
+  };
+
+  const handlePickRealmIcon = (file?: File) => {
+    if (iconPreview) URL.revokeObjectURL(iconPreview);
+    if (!file) {
+      setIconFile(null);
+      setIconPreview(null);
+      return;
+    }
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
   };
 
   const myRealmIds = new Set((myMemberships.data ?? []).map((m) => m.realm_id));
@@ -185,8 +222,24 @@ function RealmsPage() {
             <DialogTrigger asChild>
               <Button className="h-11 bg-gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4 mr-1.5" />New realm</Button>
             </DialogTrigger>
-            <DialogContent className="glass-strong border-white/10">
+            <DialogContent className="glass-strong border-sky-300/20 shadow-[0_0_48px_rgba(59,130,246,0.14)]">
               <DialogHeader><DialogTitle className="font-display">Create a realm</DialogTitle></DialogHeader>                <div className="grid grid-cols-1 gap-3">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/[0.06] p-3 transition-colors hover:bg-sky-400/[0.1]">
+                    <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-400/20 to-blue-600/20">
+                      {iconPreview ? <img src={iconPreview} alt="Realm icon preview" className="h-full w-full object-cover" /> : <ImagePlus className="h-5 w-5 text-sky-200" />}
+                    </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">Realm icon</span>
+                      <span className="block text-xs text-muted-foreground">GIF, PNG, JPG, or WebP · up to 5 MB</span>
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      aria-label="Upload realm icon"
+                      className="sr-only"
+                      onChange={(event) => handlePickRealmIcon(event.target.files?.[0])}
+                    />
+                  </label>
                   <Input placeholder="Realm name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="glass h-11 border-white/10" />
                   <Textarea placeholder="Description — what is this realm about? (optional)" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={160} className="glass border-white/10 min-h-20" />
                 <div className="flex gap-2">
@@ -237,10 +290,10 @@ function RealmsPage() {
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             return (
               <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }} className="block min-h-[44px] rounded-3xl">
-                <motion.div whileHover={{ y: -2 }} className="glass rounded-3xl p-5 border border-white/5" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33` }}>
+                <motion.div whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
                   <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${realm.accent_color}, var(--rizz-violet))` }}>
-                      <Icon className="h-6 w-6 text-white" />
+                    <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
+                      {realm.icon_url ? <img src={realm.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-display font-bold text-lg leading-tight truncate flex items-center gap-1.5">
@@ -272,10 +325,10 @@ function RealmsPage() {
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             const joined = myRealmIds.has(realm.id);
             return (
-              <motion.div key={realm.id} whileHover={{ y: -2 }} className="glass rounded-3xl p-5 border border-white/5" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33` }}>
+              <motion.div key={realm.id} whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
                 <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${realm.accent_color}, var(--rizz-violet))` }}>
-                    <Icon className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
+                    {realm.icon_url ? <img src={realm.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold text-lg leading-tight truncate">{realm.name}</h3>

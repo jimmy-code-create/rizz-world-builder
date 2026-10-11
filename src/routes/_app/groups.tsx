@@ -56,9 +56,9 @@ function GroupsPage() {
   };
 
   return (
-    <div>
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start justify-between gap-3">
-        <div>
+    <div className="space-y-6 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
             <Users className="h-7 w-7 text-[var(--rizz-pink)]" /> Groups
           </h1>
@@ -69,11 +69,11 @@ function GroupsPage() {
             Want public, open rooms instead? Browse <Link to="/realms" className="text-[var(--rizz-pink)] font-medium">Realms</Link>.
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" className="glass border-white/10 rounded-xl gap-2" onClick={() => setOpenJoin(true)}>
+        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:shrink-0">
+          <Button variant="outline" className="glass min-h-11 rounded-xl border-sky-300/15 gap-2" onClick={() => setOpenJoin(true)}>
             <Link2 className="h-4 w-4" /> Join
           </Button>
-          <Button className="bg-gradient-primary border-0 shadow-glow rounded-xl gap-2" onClick={() => setOpenCreate(true)}>
+          <Button className="min-h-11 rounded-xl border-0 bg-gradient-primary shadow-glow gap-2" onClick={() => setOpenCreate(true)}>
             <Plus className="h-4 w-4" /> Create
           </Button>
         </div>
@@ -84,7 +84,7 @@ function GroupsPage() {
           {[0,1,2,3].map((i) => <div key={i} className="h-28 rounded-2xl skeleton-shimmer" />)}
         </div>
       ) : (groups.data ?? []).length === 0 ? (
-        <div className="text-center py-20 glass rounded-3xl border border-white/5">
+        <div className="text-center py-20 glass rounded-3xl border border-sky-300/10 shadow-[0_16px_48px_rgba(37,99,235,.08)]">
           <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <h2 className="font-display text-xl font-bold">No groups yet</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-5">Create your first group or join one with an invite link.</p>
@@ -99,10 +99,10 @@ function GroupsPage() {
             <button
               key={g.id}
               onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
-              className="glass rounded-2xl p-4 border border-white/5 hover:border-[var(--rizz-pink)]/30 hover:shadow-glow transition-all flex items-center gap-3 text-left"
+              className="glass min-h-[92px] rounded-3xl border border-sky-300/10 p-4 shadow-[0_12px_36px_rgba(37,99,235,.06)] transition-all hover:-translate-y-0.5 hover:border-sky-300/25 hover:shadow-[0_14px_40px_rgba(37,99,235,.14)] flex items-center gap-3 text-left"
               style={{ ["--ec" as any]: g.accent_color ?? "#ff2d92" }}
             >
-              <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center font-display font-bold text-lg shadow-glow shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-700 flex items-center justify-center font-display font-bold text-lg shadow-[0_0_22px_rgba(59,130,246,.28)] ring-1 ring-white/15 shrink-0">
                 {g.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">

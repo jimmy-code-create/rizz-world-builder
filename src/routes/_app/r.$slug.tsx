@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, deleteRealm } from "@/lib/realms";
+import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm } from "@/lib/realms";
 import { createRoom, fetchRealmLiveRoom } from "@/lib/voice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -247,6 +247,17 @@ function RealmPage() {
     }
   };
 
+  const copyRealmCode = async () => {
+    if (!c.id) return;
+    try {
+      const inviteCode = await createRealmInvite({ realmId: c.id, expiresInDays: 7 });
+      await navigator.clipboard.writeText(inviteCode);
+      toast.success("7-day realm invite code copied");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't copy the realm code");
+    }
+  };
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
@@ -254,13 +265,18 @@ function RealmPage() {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)", boxShadow: `0 0 18px ${c.accent_color}14` }}
       >
         <Link to="/realms" aria-label="Back to realms" className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><ArrowLeft className="h-5 w-5" /></Link>
-        <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${c.accent_color}, var(--rizz-violet))` }}>
-          <Icon className="h-5 w-5 text-white" />
+        <div className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}>
+          {c.icon_url ? <img src={c.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="font-display font-bold text-lg leading-tight truncate">{c.name}</h1>
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><Users className="h-3 w-3" /> {c.member_count}</p>
         </div>
+        {joined && (
+          <Button size="sm" variant="outline" className="glass shrink-0 border-sky-300/20 px-2.5 text-xs" onClick={() => void copyRealmCode()}>
+            <Copy className="mr-1.5 h-3.5 w-3.5" />Copy code
+          </Button>
+        )}
         <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" className="glass border-white/10" aria-label="Realm members">
@@ -383,7 +399,7 @@ function RealmPage() {
 
       {joined && rooms.data && rooms.data.length > 0 && (
         <div
-          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-white/5 px-3 py-2 no-scrollbar"
+          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-sky-300/10 bg-sky-500/[0.025] px-3 py-2.5 no-scrollbar"
           style={{ paddingTop: "calc(0.5rem + 0px)" }}
         >
           {(rooms.data as RealmRoom[]).map((room) => {
@@ -396,8 +412,8 @@ function RealmPage() {
                 onClick={() => setActiveRoomId(room.id)}
                 className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
                   isActive
-                    ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10 text-[var(--rizz-pink)]"
-                    : "border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                    ? "border-sky-300/40 bg-sky-400/10 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,.1)]"
+                    : "border-white/10 bg-white/[0.035] text-white/70 hover:border-sky-200/25 hover:text-white"
                 }`}
               >
                 <RoomIcon className="h-3.5 w-3.5" />
@@ -534,13 +550,13 @@ function RealmPage() {
                       : []),
                   ]}
                 >
-                  <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:break-word] select-none touch-manipulation">
+                  <p className="chat-bubble min-w-[44px] w-fit max-w-[88%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3.5 py-2.5 text-sm leading-[1.55] whitespace-pre-wrap break-words select-none touch-manipulation">
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                         : renderCaptionWithTags(seg.value).map((p, pi) =>
                             p.mention
-                              ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                              ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
                               : p.tag
                                 ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
                                 : p.url

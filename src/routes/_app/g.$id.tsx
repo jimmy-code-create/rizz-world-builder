@@ -344,7 +344,7 @@ function GroupRoom() {
                 {!mine && (startsGroup ? (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
-                <div className={`max-w-[78%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                <div className={`w-fit max-w-[88%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
                   {!mine && startsGroup && <span className="mb-0.5 ml-3 max-w-full truncate text-[11px] text-muted-foreground">@{m.author?.username}</span>}
                   <MessageActionMenu
                     open={openMessageId === m.id}
@@ -379,7 +379,7 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble w-fit max-w-[78%] min-w-[44px] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation [overflow-wrap:break-word] ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "border border-white/10 bg-white/[0.04] text-muted-foreground italic opacity-70" : mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
+                    <div className={`chat-bubble w-fit max-w-full min-w-[44px] rounded-2xl px-4 py-2.5 text-[15px] leading-[1.55] whitespace-pre-wrap break-words select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "border border-white/10 bg-white/[0.04] text-muted-foreground italic opacity-70" : mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
                       {deletedAt ? "This message was unsent" : (
                         <>
                           {renderGifSegments(m.body).map((seg, si) =>
@@ -387,7 +387,7 @@ function GroupRoom() {
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                               : renderCaptionWithTags(seg.value).map((p, pi) =>
                                   p.mention
-                                    ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline font-medium"}>{p.text}</Link>
+                                    ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
                                     : p.url
                                       ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline" : "text-sky-400 hover:underline break-all"}>{p.text}</a>
                                       : <span key={`${si}-${pi}`}>{p.text}</span>

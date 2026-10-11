@@ -25,12 +25,13 @@ type Prefs = {
   blurSensitive: boolean;
   focusMode: boolean;
   colorBlind: boolean;
+  mentionColor: string;
   textScale: number; // 0.9 - 1.2
   language: string;
 };
 const DEFAULT_PREFS: Prefs = {
   autoplay: true, dataSaver: false, sounds: true, blurSensitive: true,
-  focusMode: false, colorBlind: false, textScale: 1, language: "en",
+  focusMode: false, colorBlind: false, mentionColor: "#5865f2", textScale: 1, language: "en",
 };
 function loadPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
@@ -42,6 +43,7 @@ function applyPrefs(p: Prefs) {
   document.documentElement.style.fontSize = `${Math.round(p.textScale * 100)}%`;
   document.documentElement.classList.toggle("focus-mode", p.focusMode);
   document.documentElement.classList.toggle("color-blind", p.colorBlind);
+  document.documentElement.style.setProperty("--rizz-mention-color", p.mentionColor);
 }
 
 export const Route = createFileRoute("/_app/settings")({
@@ -426,6 +428,23 @@ function SettingsPage() {
         <PrefRow label="Blur sensitive media" desc="Hide flagged content behind a tap" checked={prefs.blurSensitive} onChange={(v) => updatePref("blurSensitive", v)} icon={<Shield className="h-4 w-4" />} />
         <PrefRow label="Focus mode" desc="Hide like and view counts everywhere" checked={prefs.focusMode} onChange={(v) => updatePref("focusMode", v)} />
         <PrefRow label="Color-blind friendly" desc="Tweak palette for better contrast" checked={prefs.colorBlind} onChange={(v) => updatePref("colorBlind", v)} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Label htmlFor="mention-highlight-color" className="text-sm font-medium">Mention highlight color</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">Choose how @mentions stand out in chats.</p>
+          </div>
+          <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+            <span className="rounded-md px-2 py-1 text-sm font-semibold" style={{ color: prefs.mentionColor, backgroundColor: `color-mix(in srgb, ${prefs.mentionColor} 18%, transparent)` }}>@mention</span>
+            <input
+              id="mention-highlight-color"
+              aria-label="Mention highlight color"
+              type="color"
+              value={prefs.mentionColor}
+              onChange={(event) => updatePref("mentionColor", event.target.value)}
+              className="h-8 w-9 cursor-pointer rounded-md border-0 bg-transparent p-0"
+            />
+          </label>
+        </div>
         <div>
           <Label className="text-xs text-muted-foreground">Text size · {Math.round(prefs.textScale * 100)}%</Label>
           <input type="range" min={0.9} max={1.2} step={0.05} value={prefs.textScale} onChange={(e) => updatePref("textScale", parseFloat(e.target.value))} className="w-full mt-1 accent-[var(--rizz-pink)]" />

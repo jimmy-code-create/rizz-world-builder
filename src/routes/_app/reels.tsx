@@ -204,7 +204,7 @@ function CaptionText({ caption }: { caption: string }) {
         ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
         : renderCaptionWithTags(segment.value).map((part, index) => {
         if (part.mention) {
-          return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
+          return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="mention-highlight font-semibold underline underline-offset-2">{part.text}</Link>;
         }
         if (part.tag) {
           return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;

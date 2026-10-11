@@ -433,7 +433,7 @@ export function PostCard({ post, liked: initialLiked, saved: initialSaved }: { p
             }
             if (p.mention) {
               return (
-                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>
               );
             }
             if (p.url) {
