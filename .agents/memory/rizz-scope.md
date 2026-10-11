@@ -3,17 +3,13 @@ name: RIZZ scope
 description: User's standing constraints for RIZZ frontend work.
 ---
 
-For this RIZZ work, edit only frontend code under `src/`, `public/`, and frontend configuration. Do not edit `supabase/`, migrations, `.env`, or secrets, and do not run database commands. Use no paid services or AI/API calls. Keep costs and credits low.
+For this RIZZ work, edit only frontend code under `src/`, `public/`, and frontend configuration. Do not edit `supabase/`, migrations, `.env`, or secrets, and do not run database commands. Keep costs and credits low.
 
-Exception for Lil Rizz: the user explicitly wants Grok to generate assistant text through the existing server-side function with their own `XAI_API_KEY`. Keep speech output on the browser's built-in voice so it does not make separate TTS API calls. This exception does not authorize other AI APIs or backend/schema work.
+Lil Rizz's intended production setup is Gemini 1.5 Flash for replies through the existing Render server and browser-native speech for voice. Do not ask the user to copy production API keys into Replit; do not change the backend/provider unless explicitly requested.
 
-**Why:** The user stated these boundaries to keep this work frontend-only and low-cost.
+**Why:** The user clarified that the production server is already on Render, Gemini 1.5 Flash is the companion's brain, and voice uses the browser. They corrected an earlier mistaken assumption that a Replit Groq key was needed.
 
-**How to apply:** Leave backend-dependent behavior as explicit requirements in `BACKEND_REQUIREMENTS.md`; never apply that SQL or read/change `.env`.
-
-**Why:** The user later made a feature-specific exception for Lil Rizz's conversation brain while still asking to minimize usage cost.
-
-**How to apply:** Use the user's key only through the existing server-side Lil Rizz function; keep the key in Replit Secrets and browser speech synthesis free and local.
+**How to apply:** Keep frontend work frontend-only and low-cost. For Lil Rizz issues, compare this checkout with the stated Render configuration before diagnosing; use built-in browser speech rather than a separate TTS API.
 
 For Rizz Coach, the user explicitly authorized Gemini for short spoken coaching replies. Keep the Gemini key server-side, use TTS only for replies of two sentences or fewer, and do not persist session conversations.
 
