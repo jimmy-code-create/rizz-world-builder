@@ -10,11 +10,11 @@ export async function fetchLiveRooms() {
   return data ?? [];
 }
 
-export async function fetchChannelLiveRoom(channelId: string) {
+export async function fetchRealmLiveRoom(realmId: string) {
   const { data, error } = await supabase
     .from("voice_rooms")
     .select("*, host:profiles!voice_rooms_host_id_fkey(username,display_name,avatar_url,accent_color)")
-    .eq("channel_id", channelId)
+    .eq("realm_id", realmId)
     .eq("is_live", true)
     .order("started_at", { ascending: false })
     .limit(1)
@@ -43,7 +43,7 @@ export async function fetchParticipants(roomId: string) {
   return data ?? [];
 }
 
-export async function createRoom(input: { host_id: string; title: string; topic?: string; channel_id?: string }) {
+export async function createRoom(input: { host_id: string; title: string; topic?: string; realm_id?: string }) {
   const { data, error } = await supabase.from("voice_rooms").insert(input).select().single();
   if (error) throw error;
   const { error: participantError } = await supabase.from("voice_participants").insert({

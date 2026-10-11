@@ -13,7 +13,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "RIZZ — Your feed. Your server. Your world." },
-      { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
+      { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
     ],
   }),
 });
@@ -170,11 +170,11 @@ function Index() {
 }
 
 const features = [
-  { icon: Hash, title: "Channels in profiles", desc: "Every user has #vibes, #drops, #art-dump where followers chat in real time around posted content." },
+  { icon: Hash, title: "Realms in profiles", desc: "Every user has #vibes, #drops, #art-dump where followers chat in real time around posted content." },
   { icon: Radio, title: "Live presence", desc: "Stories show who's active right now. Passive scrolling becomes live moments." },
   { icon: Crown, title: "Rizz Score", desc: "Reputation that rewards engagement quality, consistency, and energy — not just follower counts." },
   { icon: Zap, title: "Drop System", desc: "Creators drop exclusive files, links, or content that vanishes on a timer or claim limit." },
-  { icon: Mic, title: "Voice Rooms", desc: "Spontaneous audio spaces that attach to any post or channel." },
+  { icon: Mic, title: "Voice Rooms", desc: "Spontaneous audio spaces that attach to any post or realm." },
   { icon: Flame, title: "Public reactions", desc: "Discord-style emoji on every post, visible to everyone. Pile on the energy." },
   { icon: Users, title: "Badges", desc: "Earn glowing badges for streaks, drops, voice time, and being early. Wear them everywhere." },
   { icon: Sparkles, title: "Built-in vibes", desc: "Dark, electric, expressive UI. Nothing is static — everything pulses, reacts, glows." },

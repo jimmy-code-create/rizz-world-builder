@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const ROUTES: Record<string, string> = {
   f: "/feed", r: "/reels", e: "/explore", d: "/dms", n: "/notifications",
-  b: "/bookmarks", g: "/groups", c: "/channels", p: "/effects", t: "/leaderboard",
+  b: "/bookmarks", g: "/groups", c: "/realms", p: "/effects", t: "/leaderboard",
   s: "/settings",
 };
 

@@ -170,7 +170,7 @@ async function handleCoachRequest(request: Request): Promise<Response> {
         })),
       ],
       temperature: 0.9,
-      max_completion_tokens: 128,
+      max_completion_tokens: 768,
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -201,10 +201,12 @@ async function handleCoachRequest(request: Request): Promise<Response> {
 
     if (!response.ok) return groqError(response);
     const result: unknown = await response.json().catch(() => null);
-    const candidate = (
-      result as { choices?: Array<{ message?: { content?: string } }> } | null
-    )?.choices?.[0]?.message?.content;
+    const choice = (result as { choices?: Array<{ message?: { content?: string; reasoning?: string } }> } | null)?.choices?.[0];
+    const candidate = choice?.message?.content;
     if (!candidate) {
+      // gpt-oss burns completion tokens on hidden reasoning; log the split so a
+      // starved reply is visible in hosted logs instead of a silent empty string.
+      console.error("Coach reply empty. finish_reason:", (result as { choices?: Array<{ finish_reason?: string }> } | null)?.choices?.[0]?.finish_reason, "reasoning chars:", choice?.message?.reasoning?.length ?? 0, "raw:", JSON.stringify(result).slice(0, 400));
       return Response.json(
         { error: "The coach couldn't find the words just now." },
         { status: 502 },

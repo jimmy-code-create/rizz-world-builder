@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
+import { ReelsRealmRail } from "@/components/ReelsRealmRail";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -135,6 +136,7 @@ function ReelsPage() {
         >
           <Plus className="h-5 w-5 text-white" />
         </button>
+        <ReelsRealmRail />
       </div>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />

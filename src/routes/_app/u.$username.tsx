@@ -101,11 +101,11 @@ function ProfilePage() {
     enabled: !!profile,
   });
 
-  const channelsQ = useQuery({
-    queryKey: ["user-channels", profile?.id],
+  const realmsQ = useQuery({
+    queryKey: ["user-realms", profile?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("channels")
+        .from("realms")
         .select("id,name,slug,topic,accent_color,member_count,icon_url")
         .eq("owner_id", profile!.id)
         .order("member_count", { ascending: false });
@@ -331,7 +331,7 @@ function ProfilePage() {
         <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-2xl p-1">
           <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
           <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
-          <TabsTrigger value="channels" className="gap-1.5"><Hash className="h-4 w-4" />Channels</TabsTrigger>
+          <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
           <TabsTrigger value="servers" className="gap-1.5"><Users className="h-4 w-4" />Servers</TabsTrigger>
           <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
         </TabsList>
@@ -365,14 +365,14 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="channels" className="mt-6 space-y-2">
-          {channelsQ.isLoading ? (
+        <TabsContent value="realms" className="mt-6 space-y-2">
+          {realmsQ.isLoading ? (
             <div className="h-24 animate-pulse rounded-3xl glass" />
-          ) : channelsQ.data?.length === 0 ? (
-            <EmptyState label="No channels owned" />
+          ) : realmsQ.data?.length === 0 ? (
+            <EmptyState label="No realms owned" />
           ) : (
-            channelsQ.data?.map((c) => (
-              <Link key={c.id} to="/c/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+            realmsQ.data?.map((c) => (
+              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--rizz-violet))` }}>
                     #

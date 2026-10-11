@@ -19,7 +19,6 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
-import { Route as AppChannelsRouteImport } from './routes/_app/channels'
 import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
@@ -29,6 +28,7 @@ import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
@@ -36,10 +36,11 @@ import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
-import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
+import { Route as AppJoinRealmCodeRouteImport } from './routes/_app/join-realm.$code'
+import { Route as AppRSlugRouteImport } from './routes/_app/r.$slug'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
@@ -93,11 +94,6 @@ const AppBookmarksRoute = AppBookmarksRouteImport.update({
   path: '/bookmarks',
   getParentRoute: () => AppRoute,
 } as any)
-const AppChannelsRoute = AppChannelsRouteImport.update({
-  id: '/channels',
-  path: '/channels',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppChatStoriesRoute = AppChatStoriesRouteImport.update({
   id: '/chat-stories',
   path: '/chat-stories',
@@ -143,6 +139,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRealmsRoute = AppRealmsRouteImport.update({
+  id: '/realms',
+  path: '/realms',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReelsRoute = AppReelsRouteImport.update({
   id: '/reels',
   path: '/reels',
@@ -178,11 +179,6 @@ const JoinCodeRoute = JoinCodeRouteImport.update({
   path: '/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppCSlugRoute = AppCSlugRouteImport.update({
-  id: '/c/$slug',
-  path: '/c/$slug',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppCallUserIdRoute = AppCallUserIdRouteImport.update({
   id: '/call/$userId',
   path: '/call/$userId',
@@ -196,6 +192,16 @@ const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
 const AppGIdRoute = AppGIdRouteImport.update({
   id: '/g/$id',
   path: '/g/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppJoinRealmCodeRoute = AppJoinRealmCodeRouteImport.update({
+  id: '/join-realm/$code',
+  path: '/join-realm/$code',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRSlugRoute = AppRSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTagTagRoute = AppTagTagRouteImport.update({
@@ -224,7 +230,6 @@ export interface FileRoutesByFullPath {
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
-  '/channels': typeof AppChannelsRoute
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
@@ -234,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
@@ -241,10 +247,11 @@ export interface FileRoutesByFullPath {
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
-  '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
+  '/join-realm/$code': typeof AppJoinRealmCodeRoute
+  '/r/$slug': typeof AppRSlugRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -259,7 +266,6 @@ export interface FileRoutesByTo {
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
-  '/channels': typeof AppChannelsRoute
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
@@ -269,6 +275,7 @@ export interface FileRoutesByTo {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
@@ -276,10 +283,11 @@ export interface FileRoutesByTo {
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
-  '/c/$slug': typeof AppCSlugRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
+  '/join-realm/$code': typeof AppJoinRealmCodeRoute
+  '/r/$slug': typeof AppRSlugRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
@@ -296,7 +304,6 @@ export interface FileRoutesById {
   '/tutorial': typeof TutorialRoute
   '/_app/badges': typeof AppBadgesRoute
   '/_app/bookmarks': typeof AppBookmarksRoute
-  '/_app/channels': typeof AppChannelsRoute
   '/_app/chat-stories': typeof AppChatStoriesRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/drops': typeof AppDropsRoute
@@ -306,6 +313,7 @@ export interface FileRoutesById {
   '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
@@ -313,10 +321,11 @@ export interface FileRoutesById {
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
-  '/_app/c/$slug': typeof AppCSlugRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/g/$id': typeof AppGIdRoute
+  '/_app/join-realm/$code': typeof AppJoinRealmCodeRoute
+  '/_app/r/$slug': typeof AppRSlugRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/_app/voice/$id': typeof AppVoiceIdRoute
@@ -333,7 +342,6 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/badges'
     | '/bookmarks'
-    | '/channels'
     | '/chat-stories'
     | '/dms'
     | '/drops'
@@ -343,6 +351,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/realms'
     | '/reels'
     | '/settings'
     | '/voice'
@@ -350,10 +359,11 @@ export interface FileRouteTypes {
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
-    | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
+    | '/join-realm/$code'
+    | '/r/$slug'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -368,7 +378,6 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/badges'
     | '/bookmarks'
-    | '/channels'
     | '/chat-stories'
     | '/dms'
     | '/drops'
@@ -378,6 +387,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/realms'
     | '/reels'
     | '/settings'
     | '/voice'
@@ -385,10 +395,11 @@ export interface FileRouteTypes {
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
-    | '/c/$slug'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
+    | '/join-realm/$code'
+    | '/r/$slug'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
@@ -404,7 +415,6 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/_app/badges'
     | '/_app/bookmarks'
-    | '/_app/channels'
     | '/_app/chat-stories'
     | '/_app/dms'
     | '/_app/drops'
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/_app/groups'
     | '/_app/leaderboard'
     | '/_app/notifications'
+    | '/_app/realms'
     | '/_app/reels'
     | '/_app/settings'
     | '/_app/voice'
@@ -421,10 +432,11 @@ export interface FileRouteTypes {
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
-    | '/_app/c/$slug'
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/g/$id'
+    | '/_app/join-realm/$code'
+    | '/_app/r/$slug'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/_app/voice/$id'
@@ -517,13 +529,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBookmarksRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/channels': {
-      id: '/_app/channels'
-      path: '/channels'
-      fullPath: '/channels'
-      preLoaderRoute: typeof AppChannelsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/chat-stories': {
       id: '/_app/chat-stories'
       path: '/chat-stories'
@@ -587,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/realms': {
+      id: '/_app/realms'
+      path: '/realms'
+      fullPath: '/realms'
+      preLoaderRoute: typeof AppRealmsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/reels': {
       id: '/_app/reels'
       path: '/reels'
@@ -636,13 +648,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/c/$slug': {
-      id: '/_app/c/$slug'
-      path: '/c/$slug'
-      fullPath: '/c/$slug'
-      preLoaderRoute: typeof AppCSlugRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/call/$userId': {
       id: '/_app/call/$userId'
       path: '/call/$userId'
@@ -662,6 +667,20 @@ declare module '@tanstack/react-router' {
       path: '/g/$id'
       fullPath: '/g/$id'
       preLoaderRoute: typeof AppGIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/join-realm/$code': {
+      id: '/_app/join-realm/$code'
+      path: '/join-realm/$code'
+      fullPath: '/join-realm/$code'
+      preLoaderRoute: typeof AppJoinRealmCodeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/r/$slug': {
+      id: '/_app/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof AppRSlugRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/tag/$tag': {
@@ -703,7 +722,6 @@ const AppVoiceRouteWithChildren = AppVoiceRoute._addFileChildren(
 interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
   AppBookmarksRoute: typeof AppBookmarksRoute
-  AppChannelsRoute: typeof AppChannelsRoute
   AppChatStoriesRoute: typeof AppChatStoriesRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDropsRoute: typeof AppDropsRoute
@@ -713,13 +731,15 @@ interface AppRouteChildren {
   AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppVoiceRoute: typeof AppVoiceRouteWithChildren
-  AppCSlugRoute: typeof AppCSlugRoute
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
+  AppJoinRealmCodeRoute: typeof AppJoinRealmCodeRoute
+  AppRSlugRoute: typeof AppRSlugRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
 }
@@ -727,7 +747,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppBadgesRoute: AppBadgesRoute,
   AppBookmarksRoute: AppBookmarksRoute,
-  AppChannelsRoute: AppChannelsRoute,
   AppChatStoriesRoute: AppChatStoriesRoute,
   AppDmsRoute: AppDmsRoute,
   AppDropsRoute: AppDropsRoute,
@@ -737,13 +756,15 @@ const AppRouteChildren: AppRouteChildren = {
   AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppVoiceRoute: AppVoiceRouteWithChildren,
-  AppCSlugRoute: AppCSlugRoute,
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,
+  AppJoinRealmCodeRoute: AppJoinRealmCodeRoute,
+  AppRSlugRoute: AppRSlugRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
 }

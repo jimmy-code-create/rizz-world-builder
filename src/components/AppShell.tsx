@@ -29,7 +29,7 @@ const sideTabs = [
   { to: "/reels", label: "Reels", icon: Film },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/groups", label: "Groups", icon: Users },
-  { to: "/channels", label: "Channels", icon: Hash },
+  { to: "/realms", label: "Realms", icon: Hash },
   { to: "/drops", label: "Giveaways", icon: Gift },
   { to: "/dms", label: "DMs", icon: MessageCircle },
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },

@@ -66,7 +66,7 @@ function GroupsPage() {
             Private hangouts — invite link only, friends of a member.
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
-            Want public, open rooms instead? Browse <Link to="/channels" className="text-[var(--rizz-pink)] font-medium">Channels</Link>.
+            Want public, open rooms instead? Browse <Link to="/realms" className="text-[var(--rizz-pink)] font-medium">Realms</Link>.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
