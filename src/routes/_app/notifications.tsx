@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Heart, MessageCircle, UserPlus, Sparkles, CheckCheck } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Sparkles, CheckCheck, AtSign } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,12 @@ export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
 });
 
-const ICON: Record<string, any> = { like: Heart, comment: MessageCircle, follow: UserPlus, reaction: Sparkles };
+const ICON: Record<string, any> = { like: Heart, comment: MessageCircle, follow: UserPlus, reaction: Sparkles, mention: AtSign };
 
 function NotificationsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow">("all");
+  const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow" | "mention">("all");
   const items = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -81,6 +81,7 @@ function NotificationsPage() {
           <TabsTrigger value="like">Likes</TabsTrigger>
           <TabsTrigger value="comment">Comments</TabsTrigger>
           <TabsTrigger value="follow">Follows</TabsTrigger>
+          <TabsTrigger value="mention">Mentions</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -91,7 +92,17 @@ function NotificationsPage() {
             <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className={`glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3`}>
               <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center"><Icon className="h-5 w-5 text-[var(--rizz-pink)]" /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm"><span className="font-bold">@{n.actor?.username}</span> {n.type === "like" ? "liked your post" : n.type === "comment" ? "commented on your post" : n.type === "follow" ? "started following you" : "reacted to your post"}</p>
+                <p className="text-sm flex-1 min-w-0">
+                  <span className="font-bold">@{n.actor?.username}</span>{" "}
+                  {n.type === "like" ? "liked your post"
+                    : n.type === "comment" ? "commented on your post"
+                    : n.type === "follow" ? "started following you"
+                    : n.type === "mention" ? "mentioned you"
+                    : "reacted to your post"}
+                  {n.type === "mention" && n.body && (
+                    <span className="block text-xs text-muted-foreground truncate mt-0.5">“{n.body}”</span>
+                  )}
+                </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
               </div>
             </motion.div>

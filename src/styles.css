@@ -539,7 +539,9 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 /* ============ NIGHTCLUB CANVAS (GPU OPTIMIZED) ============ */
 .nightclub-canvas {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  transform: translate3d(0, 0, 0);
+  /* Parallax vars set by NightclubCanvas on pointer move (desktop only).
+     scale(1.04) hides the up-to-±10px parallax shift at the edges. */
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0) scale(1.04);
   contain: strict;
 }
 .nc-orb {

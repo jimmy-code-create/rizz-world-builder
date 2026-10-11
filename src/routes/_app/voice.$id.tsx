@@ -33,7 +33,7 @@ function RoomPage() {
     retry: 3,
     retryDelay: (attempt) => Math.min(700 * 2 ** attempt, 5000),
   });
-  const [joined, setJoined] = useState(false);
+  const joinedRef = useRef(false);
 
   const me = parts.data?.find((p: any) => p.user_id === user?.id);
   const isHost = room.data?.host_id === user?.id;
@@ -48,16 +48,36 @@ function RoomPage() {
     listenerCount: listeners.length,
   });
 
+  // Join once per room mount; surface real errors instead of swallowing them.
   useEffect(() => {
     if (!user) return;
-    if (!joined) {
-      joinRoom(id, user.id).then(() => setJoined(true)).catch(() => {});
-    }
+    joinedRef.current = false;
+    joinRoom(id, user.id)
+      .then(() => {
+        joinedRef.current = true;
+        void qc.invalidateQueries({ queryKey: ["voice-parts", id] });
+      })
+      .catch((error: unknown) => {
+        console.warn("Joining this voice room failed", error);
+        toast.error("Couldn't join this room. Try again.");
+      });
     return () => {
-      if (user) leaveRoom(id, user.id).catch(() => {});
+      if (joinedRef.current) {
+        joinRoomCleanup(id, user.id);
+      }
+      joinedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user?.id]);
+  }, [id, user, qc]);
+
+  // Heartbeat-style safety: if the join landed but parts refetch lagged,
+  // invalidate once after a beat. Uses invalidation, not duplicate joins.
+  useEffect(() => {
+    if (!user) return;
+    const t = window.setTimeout(() => {
+      void qc.invalidateQueries({ queryKey: ["voice-parts", id] });
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [id, user, qc]);
 
   useEffect(() => {
     const ch = supabase.channel(`voice-${id}`)
@@ -210,6 +230,13 @@ function RoomPage() {
       </div>
     </div>
   );
+}
+
+// Best-effort cleanup; debounce-guarded so double unmounts don't thrash.
+function joinRoomCleanup(roomId: string, userId: string) {
+  void leaveRoom(roomId, userId).catch((error: unknown) => {
+    console.warn("Leaving the room during cleanup failed", error);
+  });
 }
 
 function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {

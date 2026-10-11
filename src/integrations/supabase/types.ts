@@ -2222,6 +2222,7 @@ export type Database = {
     }
     Functions: {
       accept_group_invite: { Args: { _code: string }; Returns: string }
+      end_stale_voice_rooms: { Args: { _max_host_absence_minutes?: number }; Returns: number }
       accept_realm_invite: { Args: { _code: string }; Returns: string }
       ban_realm_member: { Args: { _realm_id: string; _user_id: string; _reason?: string }; Returns: undefined }
       create_realm_invite: {

@@ -16,6 +16,9 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { toast } from "sonner";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { renderGifSegments } from "@/lib/gif-content";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 const GROUP_MESSAGE_LIMIT = 10_000;
 
@@ -37,6 +40,7 @@ function GroupRoom() {
   const endRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const [caret, setCaret] = useState(0);
   const [olderMessages, setOlderMessages] = useState<Awaited<ReturnType<typeof fetchGroupMessages>>>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -376,7 +380,21 @@ function GroupRoom() {
                     ]}
                   >
                     <div className={`chat-bubble w-fit max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
-                      {deletedAt ? "This message was unsent" : <GifContent>{m.body}</GifContent>}
+                      {deletedAt ? "This message was unsent" : (
+                        <>
+                          {renderGifSegments(m.body).map((seg, si) =>
+                            seg.isGif || seg.isSticker
+                              ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
+                              : renderCaptionWithTags(seg.value).map((p, pi) =>
+                                  p.mention
+                                    ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline font-medium"}>{p.text}</Link>
+                                    : p.url
+                                      ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline" : "text-sky-400 hover:underline break-all"}>{p.text}</a>
+                                      : <span key={`${si}-${pi}`}>{p.text}</span>
+                                )
+                          )}
+                        </>
+                      )}
                     </div>
                   </MessageActionMenu>
                   {m.delivery_status ? (
@@ -412,7 +430,12 @@ function GroupRoom() {
           <Textarea
             ref={composerRef}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              setBody(e.target.value);
+              setCaret(e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+            onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                 e.preventDefault();
@@ -425,6 +448,19 @@ function GroupRoom() {
             enterKeyHint="send"
             className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
           />
+          <div className="absolute left-3 right-3 bottom-full mb-1 max-w-3xl mx-auto">
+            <MentionAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(username) => {
+                const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+          </div>
           <Button onClick={() => void send()} disabled={!body.trim() || sendMessage.isPending} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />
           </Button>

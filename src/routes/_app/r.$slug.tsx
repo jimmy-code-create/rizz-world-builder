@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { MoreVertical, Shield, UserMinus, UserX } from "lucide-react";
+import { MoreVertical, Shield, UserMinus, UserX, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom } from "@/lib/realms";
+import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, deleteRealm } from "@/lib/realms";
 import { createRoom, fetchRealmLiveRoom } from "@/lib/voice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,9 @@ import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { renderGifSegments } from "@/lib/gif-content";
+import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
 
@@ -53,6 +58,10 @@ function RealmPage() {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomKind, setNewRoomKind] = useState<RealmRoomKind>("text");
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [caret, setCaret] = useState(0);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -221,6 +230,23 @@ function RealmPage() {
     }
   };
 
+  const handleDeleteRealm = async () => {
+    if (!c.id) return;
+    setDeleting(true);
+    try {
+      await deleteRealm(c.id);
+      toast.success("Realm deleted");
+      setDeleteOpen(false);
+      await qc.invalidateQueries({ queryKey: ["realms"] });
+      await qc.invalidateQueries({ queryKey: ["realms-rail"] });
+      nav({ to: "/realms" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't delete this realm");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
@@ -322,6 +348,27 @@ function RealmPage() {
             </div>
           </DialogContent>
         </Dialog>
+        {myRole === "owner" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="glass border-white/10" aria-label="Realm owner menu">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-strong border-white/10">
+              <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete realm
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <Button size="sm" variant={joined ? "outline" : "default"} onClick={handleJoin} className={joined ? "glass border-white/10" : "bg-gradient-primary border-0 shadow-glow"}>
           {joined ? "Joined" : "Join"}
         </Button>
@@ -488,7 +535,19 @@ function RealmPage() {
                   ]}
                 >
                   <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
-                    <GifContent>{m.body}</GifContent>
+                    {renderGifSegments(m.body).map((seg, si) =>
+                      seg.isGif || seg.isSticker
+                        ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
+                        : renderCaptionWithTags(seg.value).map((p, pi) =>
+                            p.mention
+                              ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                              : p.tag
+                                ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                                : p.url
+                                  ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+                                  : <span key={`${si}-${pi}`}>{p.text}</span>
+                          )
+                    )}
                   </p>
                 </MessageActionMenu>
               </div>
@@ -502,18 +561,64 @@ function RealmPage() {
         <div ref={endRef} />
       </div>
 
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="glass-strong border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" /> Delete “{c.name}”?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the realm for everyone — including all rooms,
+              messages, invites and voice rooms. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); void handleDeleteRealm(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         <div className="mx-auto flex w-full max-w-3xl gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <Input
+            ref={inputRef}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); } }}
+            onChange={(e) => {
+              setBody(e.target.value);
+              setCaret(e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+            onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); }
+            }}
             placeholder={joined ? "Message" : "Join to chat"}
             disabled={!joined || sending}
             maxLength={500}
             className="glass border-white/10"
           />
+          <div className="absolute left-3 right-3 bottom-full mb-1 max-w-3xl mx-auto">
+            <MentionAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(username) => {
+                const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = inputRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+          </div>
           <Button onClick={handleSend} disabled={!joined || !body.trim() || sending} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
             <Send className="h-4 w-4" />
           </Button>

@@ -79,3 +79,13 @@ export async function updateParticipant(roomId: string, userId: string, patch: {
 export async function endRoom(roomId: string) {
   await supabase.from("voice_rooms").update({ is_live: false, ended_at: new Date().toISOString() }).eq("id", roomId);
 }
+
+// Ends live rooms whose host is gone and prunes their participant rows.
+// Safe for anon callers; failures are non-fatal (the list just stays as-is).
+export async function endStaleVoiceRooms(maxHostAbsenceMinutes = 10): Promise<number | null> {
+  const { data, error } = await supabase.rpc("end_stale_voice_rooms", {
+    _max_host_absence_minutes: maxHostAbsenceMinutes,
+  });
+  if (error) return null;
+  return (data as number) ?? null;
+}

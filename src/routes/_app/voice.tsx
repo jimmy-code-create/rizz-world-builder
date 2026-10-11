@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Mic, Plus, Radio, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth";
-import { fetchLiveRooms, createRoom } from "@/lib/voice";
+import { fetchLiveRooms, createRoom, endStaleVoiceRooms } from "@/lib/voice";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -33,6 +33,13 @@ function VoicePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "voice_rooms" }, () => qc.invalidateQueries({ queryKey: ["voice-rooms"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
+  // Sweep dead rooms once per visit so stale duplicates disappear from the list.
+  useEffect(() => {
+    void endStaleVoiceRooms().then((ended) => {
+      if (ended && ended > 0) qc.invalidateQueries({ queryKey: ["voice-rooms"] });
+    });
   }, [qc]);
 
   const interests = profile?.interests ?? [];

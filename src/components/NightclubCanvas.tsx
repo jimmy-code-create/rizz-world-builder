@@ -16,6 +16,7 @@ export function NightclubCanvas() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (window.matchMedia("(pointer: coarse)").matches) return;
     let raf = 0;
     let tx = 0, ty = 0;
@@ -31,7 +32,12 @@ export function NightclubCanvas() {
       });
     };
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => { window.removeEventListener("pointermove", onMove); cancelAnimationFrame(raf); };
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(raf);
+      el.style.setProperty("--px", "0px");
+      el.style.setProperty("--py", "0px");
+    };
   }, []);
 
   return (
