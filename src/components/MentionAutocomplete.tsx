@@ -40,6 +40,7 @@ export function MentionAutocomplete({
   const [hits, setHits] = useState<ProfileHit[]>([]);
   const [active, setActive] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (query === null) { setHits([]); return; }
@@ -79,10 +80,22 @@ export function MentionAutocomplete({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [query, hits, active, onPick]);
 
+  useEffect(() => {
+    if (query === null || hits.length === 0) return;
+    const onDown = (e: PointerEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setHits([]);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [query, hits]);
+
   if (query === null || hits.length === 0) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-full mt-1 z-40 glass-strong border border-white/10 rounded-2xl p-1 shadow-glow max-h-64 overflow-y-auto">
+    <div
+      ref={popupRef}
+      className="absolute inset-x-0 bottom-full mb-2 z-50 glass-strong border border-white/10 rounded-2xl p-1 shadow-glow max-h-[200px] overflow-y-auto"
+    >
       {hits.map((p, i) => (
         <button
           key={p.id}

@@ -498,7 +498,7 @@ function RealmPage() {
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-3 flex min-w-0 gap-3">
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-3 flex gap-3">
               {!mine && (startsGroup ? (
                 <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
                   <AvatarImage src={m.author?.avatar_url ?? undefined} />
@@ -534,7 +534,7 @@ function RealmPage() {
                       : []),
                   ]}
                 >
-                  <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-none touch-manipulation">
+                  <p className="chat-bubble min-w-[44px] w-fit max-w-[78%] rounded-2xl border border-white/10 bg-[var(--surface-bubble)] px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:break-word] select-none touch-manipulation">
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
@@ -606,19 +606,17 @@ function RealmPage() {
             maxLength={500}
             className="glass border-white/10"
           />
-          <div className="absolute left-3 right-3 bottom-full mb-1 max-w-3xl mx-auto">
-            <MentionAutocomplete
-              value={body}
-              caret={caret}
-              onPick={(username) => {
-                const next = replaceMention(body, caret, username);
-                setBody(next.value);
-                setCaret(next.caret);
-                const el = inputRef.current;
-                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
-              }}
-            />
-          </div>
+          <MentionAutocomplete
+            value={body}
+            caret={caret}
+            onPick={(username) => {
+              const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = inputRef.current;
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+            }}
+          />
           <Button onClick={handleSend} disabled={!joined || !body.trim() || sending} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
             <Send className="h-4 w-4" />
           </Button>

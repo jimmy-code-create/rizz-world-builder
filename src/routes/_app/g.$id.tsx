@@ -340,7 +340,7 @@ function GroupRoom() {
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex min-w-0 items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (startsGroup ? (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
@@ -379,7 +379,7 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble w-fit max-w-[78%] [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
+                    <div className={`chat-bubble w-fit max-w-[78%] min-w-[44px] px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap select-none touch-manipulation [overflow-wrap:break-word] ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "border border-white/10 bg-white/[0.04] text-muted-foreground italic opacity-70" : mine ? "bg-gradient-primary text-primary-foreground shadow-sm" : "border border-white/10 bg-[var(--surface-bubble)]"}`}>
                       {deletedAt ? "This message was unsent" : (
                         <>
                           {renderGifSegments(m.body).map((seg, si) =>
@@ -448,19 +448,17 @@ function GroupRoom() {
             enterKeyHint="send"
             className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
           />
-          <div className="absolute left-3 right-3 bottom-full mb-1 max-w-3xl mx-auto">
-            <MentionAutocomplete
-              value={body}
-              caret={caret}
-              onPick={(username) => {
-                const next = replaceMention(body, caret, username);
-                setBody(next.value);
-                setCaret(next.caret);
-                const el = composerRef.current;
-                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
-              }}
-            />
-          </div>
+          <MentionAutocomplete
+            value={body}
+            caret={caret}
+            onPick={(username) => {
+              const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = composerRef.current;
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+            }}
+          />
           <Button onClick={() => void send()} disabled={!body.trim() || sendMessage.isPending} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />
           </Button>
