@@ -65,13 +65,7 @@ function JoinRealmPage() {
     <div className="glass rounded-3xl p-8 mt-8 max-w-md mx-auto text-center">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
         {preview?.status === "valid" && preview.realm_name ? (
-          <>
-            <div
-              className="mx-auto h-16 w-16 rounded-2xl flex items-center justify-center text-2xl"
-              style={{ background: `linear-gradient(135deg, ${preview.accent_color}, var(--rizz-violet))` }}
-            >
-              🚪
-            </div>
+          <>              <div className="mx-auto h-16 w-16 rounded-2xl flex items-center justify-center text-2xl">🧭</div>
             <h1 className="font-display text-2xl font-bold mt-4">You're invited to {preview.realm_name}</h1>
             <p className="text-sm text-muted-foreground mt-1">{preview.topic || "No description"}</p>
             <p className="text-xs text-muted-foreground mt-1">{preview.member_count} members</p>
@@ -87,7 +81,7 @@ function JoinRealmPage() {
           </>
         ) : (
           <>
-            <div className="mx-auto h-16 w-16 rounded-2xl glass flex items-center justify-center text-2xl">🚫</div>
+            <div className="mx-auto h-16 w-16 rounded-2xl glass flex items-center justify-center text-2xl">🕳️</div>
             <h1 className="font-display text-2xl font-bold mt-4">
               {preview?.status === "expired" && "Invite expired"}
               {preview?.status === "limit_reached" && "Invite used up"}

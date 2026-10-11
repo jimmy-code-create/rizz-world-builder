@@ -299,7 +299,7 @@ function RealmsPage() {
         </div>
         {!realms.isLoading && publicRealms.length === 0 && (
           <div className="glass rounded-3xl p-10 text-center">
-            <div className="text-5xl mb-3">🎧</div>
+            <div className="text-5xl mb-3">🏰</div>
             <h2 className="font-display text-xl font-bold">No public realms yet</h2>
             <p className="text-sm text-muted-foreground mt-1">Be the first to start one.</p>
           </div>
