@@ -170,6 +170,8 @@ export function useRizzCoach() {
       utterance.pitch = preset.pitch;
       utterance.rate = preset.rate;
       utterance.lang = "en-US";
+      setEmotion(replyEmotion);
+      setState("speaking");
       utterance.onend = () => {
         if (token === outputTokenRef.current) resumeListening();
       };
@@ -185,7 +187,6 @@ export function useRizzCoach() {
   const playReply = useCallback(
     async (reply: CoachReply) => {
       const token = ++outputTokenRef.current;
-      setEmotion(reply.emotion);
       setReplyCaption(reply.text);
       if (replyTimerRef.current !== undefined) window.clearTimeout(replyTimerRef.current);
       replyTimerRef.current = window.setTimeout(() => setReplyCaption(""), 8_000);
@@ -220,8 +221,9 @@ export function useRizzCoach() {
           clearAudio();
           speakWithBrowser(reply.text, reply.emotion, token);
         };
+        setEmotion(reply.emotion);
+        setState("speaking");
         await audio.play();
-        if (token === outputTokenRef.current) setState("speaking");
       } catch {
         if (token === outputTokenRef.current) {
           clearAudio();

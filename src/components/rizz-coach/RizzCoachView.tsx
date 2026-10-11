@@ -30,11 +30,13 @@ export function RizzCoachView({
   onOrbClick,
 }: RizzCoachViewProps) {
   const accessibleAction =
-    state === "listening"
-      ? "Interrupt listening"
-      : state === "speaking"
-        ? "Interrupt the coach"
-        : "Start voice practice";
+    state === "speaking"
+      ? "Interrupt the coach"
+      : state === "thinking"
+        ? "The coach is preparing a reply"
+        : state === "listening"
+          ? "The coach is listening"
+          : "Start voice practice";
 
   return (
     <main
