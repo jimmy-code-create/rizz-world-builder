@@ -17,6 +17,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 import { areRizzSoundsMuted, setRizzSoundsMuted as persistRizzSoundsMuted } from "@/lib/rizz-sounds";
+import { RIZZ_COMPANION_PREF_KEY, setRizzCompanionEnabled, useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 
 const PREF_KEY = "rizz:prefs";
 type Prefs = {
@@ -67,6 +68,7 @@ function SettingsPage() {
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const companionEnabled = useRizzCompanionEnabled();
   const [rizzSoundsMutedState, setRizzSoundsMutedState] = useState(areRizzSoundsMuted);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
@@ -109,7 +111,7 @@ function SettingsPage() {
   }
 
   function clearLocalCache() {
-    Object.keys(localStorage).filter((k) => k.startsWith("rizz:") && k !== PREF_KEY).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.startsWith("rizz:") && k !== PREF_KEY && k !== RIZZ_COMPANION_PREF_KEY).forEach((k) => localStorage.removeItem(k));
     toast.success("Local cache cleared");
   }
 
@@ -425,6 +427,18 @@ function SettingsPage() {
           <h2 className="font-display font-semibold text-lg">Preferences</h2>
         </div>
         <PrefRow label="Autoplay videos" desc="Play reels and clips automatically" checked={prefs.autoplay} onChange={(v) => updatePref("autoplay", v)} />
+        <PrefRow
+          label="RIZZ Companion"
+          desc="Show Lil Rizz for chat and voice help. Saved in this browser."
+          checked={companionEnabled}
+          onChange={(enabled) => {
+            try {
+              setRizzCompanionEnabled(enabled);
+            } catch {
+              toast.error("Couldn't save the companion setting. Allow browser storage and try again.");
+            }
+          }}
+        />
         <PrefRow label="Data saver" desc="Lower quality media on cellular" checked={prefs.dataSaver} onChange={(v) => updatePref("dataSaver", v)} />
         <PrefRow label="Notification sounds" desc="Play a chime on new pings" checked={prefs.sounds} onChange={(v) => updatePref("sounds", v)} icon={<Bell className="h-4 w-4" />} />
         <PrefRow label="Rizz voice sounds" desc="Soft start/stop chime while listening" checked={!rizzSoundsMutedState} onChange={(v) => { persistRizzSoundsMuted(!v); setRizzSoundsMutedState(!v); }} icon={<Bell className="h-4 w-4" />} />
@@ -479,7 +493,7 @@ function PrefRow({ label, desc, checked, onChange, icon }: { label: string; desc
           <p className="text-[11px] text-muted-foreground">{desc}</p>
         </div>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch aria-label={label} checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

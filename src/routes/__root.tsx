@@ -15,6 +15,7 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
+import { useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -136,6 +137,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
+  const companionEnabled = useRizzCompanionEnabled();
   // Lil Rizz floats over every signed-in screen (hands-free mode), but not on
   // the auth/landing routes where it would get in the way.
   const showLilRizz = !/^\/(?:login|signup|reset|onboarding|_app\/auth)/.test(location.pathname);
@@ -152,7 +154,7 @@ function RootComponent() {
       <AuthProvider>
         <ThemeProvider>
           <Outlet />
-          {showLilRizz && <LilRizzCompanion />}
+          {showLilRizz && companionEnabled && <LilRizzCompanion />}
           <Toaster />
         </ThemeProvider>
       </AuthProvider>

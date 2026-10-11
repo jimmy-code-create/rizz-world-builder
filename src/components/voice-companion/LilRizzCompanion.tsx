@@ -41,6 +41,7 @@ export function LilRizzCompanion() {
   const [lastUserMessage, setLastUserMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const conversationActiveRef = useRef(false);
+  const mountedRef = useRef(true);
   const handledTranscriptRef = useRef("");
   const requestPendingRef = useRef(false);
   const historyRef = useRef<LilRizzTurn[]>([]);
@@ -69,6 +70,15 @@ export function LilRizzCompanion() {
   } = speech;
   const { error: ttsError, isLoading, isSpeaking, speak: ttsSpeak, stopSpeaking, unlockAudio } = tts;
   speak.current = ttsSpeak;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      conversationActiveRef.current = false;
+      // The speech hooks stop recognition and audio on unmount.
+    };
+  }, []);
 
   /**
    * Execute a matched voice command: perform the navigation/action, then speak
@@ -126,6 +136,7 @@ export function LilRizzCompanion() {
         }
       }
       // Spoken confirmation (short, Hinglish).
+      if (!mountedRef.current) return true;
       unlockAudio();
       try {
         await speak.current?.(command.speak, "af_bella");
@@ -140,7 +151,7 @@ export function LilRizzCompanion() {
   const handleUserMessage = useCallback(
     async (text: string, speakReply = false) => {
       const message = text.trim().slice(0, 400);
-      if (!message || !user || requestPendingRef.current) return;
+      if (!mountedRef.current || !message || !user || requestPendingRef.current) return;
       requestPendingRef.current = true;
       setLastUserMessage(message);
       setReply("");
@@ -155,6 +166,7 @@ export function LilRizzCompanion() {
             message,
             history: historyRef.current.slice(-6),
           });
+          if (!mountedRef.current) return;
           answer = result.reply;
           const nextHistory: LilRizzTurn[] = [
             ...historyRef.current,
@@ -163,6 +175,7 @@ export function LilRizzCompanion() {
           ];
           historyRef.current = nextHistory.slice(-6);
         } catch (requestError) {
+          if (!mountedRef.current) return;
           setError(getLilRizzFailureMessage(requestError));
           return;
         }
@@ -178,7 +191,7 @@ export function LilRizzCompanion() {
         }
       } finally {
         requestPendingRef.current = false;
-        setIsThinking(false);
+        if (mountedRef.current) setIsThinking(false);
         if (conversationActiveRef.current) {
           handledTranscriptRef.current = "";
           resumeListening();
@@ -199,6 +212,7 @@ export function LilRizzCompanion() {
       handledTranscriptRef.current = message;
       try {
         const match = await resolveVoiceCommand(message);
+        if (!mountedRef.current) return;
         if (match) {
           setLastUserMessage(message);
           pauseListening();
@@ -230,6 +244,7 @@ export function LilRizzCompanion() {
     unlockAudio();
     pauseListening();
     void speak.current?.(reply, "af_bella").then((played) => {
+      if (!mountedRef.current) return;
       if (!played) setError("I couldn’t play that reply aloud. Try again or read it here.");
       if (conversationActiveRef.current) resumeListening();
     });
