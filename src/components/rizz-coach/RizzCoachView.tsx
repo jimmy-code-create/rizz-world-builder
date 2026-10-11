@@ -9,15 +9,14 @@ export interface RizzCoachViewProps {
   heardCaption?: string;
   replyCaption?: string;
   statusMessage?: string;
-  micLevel?: number;
-  onOrbClick: () => void;
+  onCatClick: () => void;
 }
 
 const statePrompts: Record<RizzCoachState, string> = {
-  idle: "Tap the glow when you’re ready",
+  idle: "Tap the cat when you’re ready",
   listening: "I’m listening",
   thinking: "Putting a good one together",
-  speaking: "Tap to jump in",
+  speaking: "Tap the cat to interrupt",
 };
 
 export function RizzCoachView({
@@ -26,8 +25,7 @@ export function RizzCoachView({
   heardCaption,
   replyCaption,
   statusMessage,
-  micLevel = 0,
-  onOrbClick,
+  onCatClick,
 }: RizzCoachViewProps) {
   const accessibleAction =
     state === "speaking"
@@ -39,14 +37,7 @@ export function RizzCoachView({
           : "Start voice practice";
 
   return (
-    <main
-      className="rizz-coach"
-      data-state={state}
-      data-emotion={emotion}
-      style={{ "--voice-level": String(Math.max(0, Math.min(1, micLevel))) } as React.CSSProperties}
-    >
-      <div className="rizz-coach__atmosphere" aria-hidden="true" />
-
+    <main className="rizz-coach" data-state={state} data-emotion={emotion}>
       <header className="rizz-coach__heading">
         <p className="rizz-coach__eyebrow">RIZZ COACH</p>
         <p className="rizz-coach__intro">Your private little practice room.</p>
@@ -58,22 +49,17 @@ export function RizzCoachView({
         </p>
 
         <button
-          className="rizz-coach__orb-button"
+          className="rizz-coach__cat-button"
           type="button"
-          onClick={onOrbClick}
+          onClick={onCatClick}
           aria-label={accessibleAction}
         >
-          <span className="rizz-coach__orb-field" aria-hidden="true">
-            <span className="rizz-coach__orb-halo" />
-            <span className="rizz-coach__orb-ripple rizz-coach__orb-ripple--one" />
-            <span className="rizz-coach__orb-ripple rizz-coach__orb-ripple--two" />
-            <span className="rizz-coach__orb-wave rizz-coach__orb-wave--one" />
-            <span className="rizz-coach__orb-wave rizz-coach__orb-wave--two" />
-            <span className="rizz-coach__orb-wave rizz-coach__orb-wave--three" />
-            <span className="rizz-coach__orb">
-              <span className="rizz-coach__orb-light" />
-            </span>
-          </span>
+          <img
+            className="rizz-coach__cat-image"
+            src="/rizz-coach-cat.png"
+            alt=""
+            draggable={false}
+          />
         </button>
         <span className="rizz-coach__private-note">JUST YOU &amp; ME</span>
       </section>

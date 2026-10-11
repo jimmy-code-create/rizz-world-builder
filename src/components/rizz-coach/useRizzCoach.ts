@@ -66,7 +66,6 @@ export function useRizzCoach() {
   const [heardCaption, setHeardCaption] = useState("");
   const [replyCaption, setReplyCaption] = useState("");
   const [statusMessage, setStatusMessage] = useState<string>();
-  const [micLevel, setMicLevel] = useState(0);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const activeRef = useRef(false);
@@ -79,9 +78,6 @@ export function useRizzCoach() {
   const replyTimerRef = useRef<number | undefined>(undefined);
   const outputTokenRef = useRef(0);
   const audioRef = useRef<{ audio: HTMLAudioElement; url: string } | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const animationFrameRef = useRef<number | undefined>(undefined);
 
   const clearAudio = useCallback(() => {
     const current = audioRef.current;
@@ -90,53 +86,6 @@ export function useRizzCoach() {
     current.audio.removeAttribute("src");
     URL.revokeObjectURL(current.url);
     audioRef.current = null;
-  }, []);
-
-  const stopMicrophoneVisualizer = useCallback(() => {
-    if (animationFrameRef.current !== undefined) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined;
-    }
-    micStreamRef.current?.getTracks().forEach((track) => track.stop());
-    micStreamRef.current = null;
-    void audioContextRef.current?.close();
-    audioContextRef.current = null;
-    setMicLevel(0);
-  }, []);
-
-  const startMicrophoneVisualizer = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!activeRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-
-      const context = new AudioContext();
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 256;
-      context.createMediaStreamSource(stream).connect(analyser);
-      const samples = new Uint8Array(analyser.fftSize);
-      micStreamRef.current = stream;
-      audioContextRef.current = context;
-
-      const sampleLevel = () => {
-        analyser.getByteTimeDomainData(samples);
-        let energy = 0;
-        for (const sample of samples) {
-          const normalized = (sample - 128) / 128;
-          energy += normalized * normalized;
-        }
-        if (!pausedRef.current && activeRef.current) {
-          setMicLevel(Math.min(1, Math.sqrt(energy / samples.length) * 5.5));
-        }
-        animationFrameRef.current = requestAnimationFrame(sampleLevel);
-      };
-      animationFrameRef.current = requestAnimationFrame(sampleLevel);
-    } catch {
-      // SpeechRecognition still works if the optional ripple visualizer is unavailable.
-    }
   }, []);
 
   const startRecognition = useCallback(() => {
@@ -271,10 +220,9 @@ export function useRizzCoach() {
         setState("idle");
         pausedRef.current = true;
         activeRef.current = false;
-        stopMicrophoneVisualizer();
       }
     },
-    [playReply, stopMicrophoneVisualizer],
+    [playReply],
   );
 
   replyRef.current = processTranscript;
@@ -324,7 +272,6 @@ export function useRizzCoach() {
         pausedRef.current = true;
         setState("idle");
         setStatusMessage("Allow mic access, then tap the glow to try again.");
-        stopMicrophoneVisualizer();
       } else {
         setStatusMessage("I lost the mic for a moment. Checking again…");
       }
@@ -347,11 +294,10 @@ export function useRizzCoach() {
       }
       window.speechSynthesis?.cancel();
       clearAudio();
-      stopMicrophoneVisualizer();
     };
-  }, [clearAudio, startRecognition, stopMicrophoneVisualizer]);
+  }, [clearAudio, startRecognition]);
 
-  const onOrbClick = useCallback(() => {
+  const onCatClick = useCallback(() => {
     if (state === "speaking") {
       outputTokenRef.current += 1;
       window.speechSynthesis?.cancel();
@@ -371,8 +317,7 @@ export function useRizzCoach() {
     setEmotion("warm");
     setState("listening");
     startRecognition();
-    void startMicrophoneVisualizer();
-  }, [clearAudio, resumeListening, startMicrophoneVisualizer, startRecognition, state]);
+  }, [clearAudio, resumeListening, startRecognition, state]);
 
-  return { state, emotion, heardCaption, replyCaption, statusMessage, micLevel, onOrbClick };
+  return { state, emotion, heardCaption, replyCaption, statusMessage, onCatClick };
 }
