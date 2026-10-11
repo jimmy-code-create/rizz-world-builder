@@ -70,10 +70,6 @@ $function$;
 -- NOTE: `public.messages.author_id` was renamed to `sender_id` in
 -- 20261011120000_rename_channels_to_realms.sql; the trigger auth check uses
 -- that column below.
-  );
-  RETURN NEW;
-END;
-$function$;
 
 -- ------------------------------------------------------- group chat messages --
 
@@ -106,17 +102,13 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $function$
 DECLARE
-  v_author uuid;
+  v_author uuid := NEW.author_id;
 BEGIN
-  SELECT author_id INTO v_author FROM public.posts WHERE id = NEW.post_id;
-  IF v_author IS NULL THEN
-    RETURN NEW;
-  END IF;
   PERFORM public.notify_mentions(
     COALESCE(NEW.caption, ''),
     v_author,
     'mention',
-    jsonb_build_object('source', 'post', 'post_id', NEW.post_id)
+    jsonb_build_object('source', 'post', 'post_id', NEW.id)
   );
   RETURN NEW;
 END;
