@@ -55,6 +55,8 @@ export type RealmRoom = {
   topic: string | null;
   position: number;
   is_default: boolean;
+  /** "Mods only": everyone can read, only owner/admins/mods can write or join. */
+  mods_only: boolean;
   created_at: string;
 };
 
@@ -286,6 +288,19 @@ export async function createRealmRoom(input: {
 export async function deleteRealmRoom(roomId: string) {
   const { error } = await supabase.from("realm_rooms").delete().eq("id", roomId);
   if (error) throw error;
+}
+
+/**
+ * Flips a channel's "Mods only" switch. The RPC re-checks the caller's role
+ * server-side and empties a newly locked voice channel of non-mods.
+ */
+export async function setRealmRoomLock(roomId: string, locked: boolean): Promise<boolean> {
+  const { data, error } = await (supabase.rpc as any)("set_realm_room_lock", {
+    _room_id: roomId,
+    _locked: locked,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 export async function fetchRealmRoomMessages(roomId: string, limit = 100) {

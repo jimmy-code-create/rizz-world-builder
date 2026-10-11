@@ -8,16 +8,21 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm } from "@/lib/realms";
+import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm, setRealmRoomLock } from "@/lib/realms";
+import { Switch } from "@/components/ui/switch";
 import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } from "@/components/voice/VoiceCallProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { MessageReactions } from "@/components/chat/MessageReactions";
+import { useChatReactions } from "@/lib/useChatReactions";
+import { useMediaViewer } from "@/components/media/useMediaViewer";
+import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
@@ -149,10 +154,45 @@ function RealmPage() {
   const c: any = realm.data;
   const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
+  const reactions = useChatReactions("realm", messageRows.map((message: { id: string }) => message.id));
+  // "Mods only" applies per channel: readers keep reading, non-mods can't send
+  // or join. The real rule is enforced in Postgres (see the migration).
+  const roomLockedForMe = !!activeRoom?.mods_only && !canModerate;
+  const media = useMediaViewer();
+  const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
+
+  const toggleRoomLock = async (room: RealmRoom, locked: boolean) => {
+    setLockingRoomId(room.id);
+    try {
+      await setRealmRoomLock(room.id, locked);
+      await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
+      toast.success(locked ? `${room.name} is mods only now` : `${room.name} is open to everyone`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't change that channel");
+    } finally {
+      setLockingRoomId(null);
+    }
+  };
+
+  // The lock reaches everybody live: realm_rooms is in the realtime publication.
+  useEffect(() => {
+    if (!realm.data) return;
+    const realmId = realm.data.id;
+    const channel = supabase
+      .channel(`realm-rooms-${realmId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "realm_rooms", filter: `realm_id=eq.${realmId}` },
+        () => { void qc.invalidateQueries({ queryKey: ["realm-rooms", realmId] }); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [realm.data, qc]);
 
   const handleSend = async () => {
     if (!user || !body.trim()) return;
     if (!joined) { toast.error("Join the realm to send messages"); return; }
+    if (roomLockedForMe) { toast.error("Only mods can send messages here"); return; }
     setSending(true);
     try {
       if (activeRoomId && activeRoom?.kind !== "voice") {
@@ -482,6 +522,7 @@ function RealmPage() {
                   <RoomIcon className="h-3.5 w-3.5" />
                 )}
                 {room.name}
+                {room.mods_only && <Lock className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-label="Mods only" />}
                 {room.kind === "voice" && people.length > 0 && (
                   <span className="text-[10px] font-bold text-emerald-300">{people.length}</span>
                 )}
@@ -498,10 +539,37 @@ function RealmPage() {
                 <Plus className="h-4 w-4" />
               </button>
             </DialogTrigger>
-            <DialogContent className="glass-strong border-white/10">
+            <DialogContent className="glass-strong max-h-[85dvh] overflow-y-auto border-white/10">
               <DialogHeader>
-                <DialogTitle className="font-display">New room</DialogTitle>
+                <DialogTitle className="font-display">Rooms & channels</DialogTitle>
               </DialogHeader>
+
+              {/* Channel settings — the lock switch is only rendered for the
+                  owner and admins, and re-checked server-side either way. */}
+              {canModerate && (rooms.data ?? []).length > 0 && (
+                <div className="space-y-2">
+                  {(rooms.data as RealmRoom[]).map((room) => (
+                    <div key={room.id} className="flex min-h-14 items-center gap-3 rounded-xl border border-white/10 glass px-3 py-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5">
+                        {room.kind === "voice" ? <Volume2 className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{room.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {room.mods_only ? "Mods only" : "Everyone can post"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={room.mods_only}
+                        disabled={lockingRoomId === room.id}
+                        aria-label={`Mods only for ${room.name}`}
+                        onCheckedChange={(checked) => void toggleRoomLock(room, checked)} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="space-y-3">
                 <Input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Room name" maxLength={40} className="glass border-white/10" />
                 <div className="flex gap-2">
@@ -551,18 +619,28 @@ function RealmPage() {
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              disabled={joiningVoice}
-              onClick={() => {
-                if (activeCall?.channelId === activeRoom.id) openCallView();
-                else joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name });
-              }}
-              className="min-h-12 w-full shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
-            >
-              <Mic className="h-4 w-4" />
-              {activeCall?.channelId === activeRoom.id ? "Return to call" : joiningVoice ? "Joining…" : "Join voice"}
-            </Button>
+            {activeRoom.mods_only && !canModerate ? (
+              <Button
+                type="button"
+                disabled
+                className="min-h-12 w-full shrink-0 gap-2 glass border-white/10 sm:w-auto"
+              >
+                <Lock className="h-4 w-4" /> Mods only
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={joiningVoice}
+                onClick={() => {
+                  if (activeCall?.channelId === activeRoom.id) openCallView();
+                  else joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name });
+                }}
+                className="min-h-12 w-full shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
+              >
+                <Mic className="h-4 w-4" />
+                {activeCall?.channelId === activeRoom.id ? "Return to call" : joiningVoice ? "Joining…" : "Join voice"}
+              </Button>
+            )}
           </div>
 
           {activeChannelPeople.length > 0 && (
@@ -596,7 +674,11 @@ function RealmPage() {
         </div>
       )}
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3">
+      <div
+        onClick={media.onMediaClick}
+        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
+      >
+        {media.viewer}
         {activeRoom?.kind !== "voice" && activeRoom && (
           <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Hash className="h-3 w-3" />{activeRoom.name}
@@ -631,6 +713,8 @@ function RealmPage() {
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                   align={mine ? "right" : "left"}
+                  reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
+                  onDoubleTap={() => { void reactions.toggle(m.id, DOUBLE_TAP_REACTION); }}
                   actions={[
                     {
                       label: "Copy message",
@@ -668,6 +752,14 @@ function RealmPage() {
                     )}
                   </p>
                 </MessageActionMenu>
+                <MessageReactions
+                  scope="realm"
+                  messageId={m.id}
+                  groups={reactions.groupsFor(m.id)}
+                  reactorsFor={reactions.reactorsFor}
+                  align={mine ? "right" : "left"}
+                  onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                />
               </div>
             </motion.div>
             </Fragment>
@@ -719,8 +811,8 @@ function RealmPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); }
             }}
-            placeholder={joined ? "Message" : "Join to chat"}
-            disabled={!joined || sending}
+            placeholder={roomLockedForMe ? "Only mods can send messages here" : joined ? "Message" : "Join to chat"}
+            disabled={!joined || sending || roomLockedForMe}
             maxLength={500}
             className="glass border-white/10"
           />
@@ -735,7 +827,7 @@ function RealmPage() {
               if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
             }}
           />
-          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
+          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>

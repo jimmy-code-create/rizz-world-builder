@@ -16,7 +16,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { MessageReactions } from "@/components/DMReactionsBar";
+import { MessageReactions } from "@/components/chat/MessageReactions";
+import { useChatReactions } from "@/lib/useChatReactions";
+import { useMediaViewer } from "@/components/media/useMediaViewer";
+import { DOUBLE_TAP_REACTION, MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
@@ -27,8 +30,8 @@ import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 
-const QUICK_EMOJIS = ["❤️", "🔥", "😂", "😮", "😢", "👏"];
-const MORE_REACTIONS = ["😍", "🙌", "💯", "🥹", "🎉", "🤔"];
+// Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
+// and group chat stay in sync.
 const CHAT_WALLPAPERS = [
   "radial-gradient(ellipse at top right, rgba(255,62,165,.14), transparent 55%)",
   "radial-gradient(ellipse at bottom left, rgba(124,58,237,.18), transparent 60%)",
@@ -79,6 +82,8 @@ function DMPage() {
   const [moreReactionsOpen, setMoreReactionsOpen] = useState(false);
   const pressTimer = useRef<number | null>(null);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
+  const longPressFired = useRef(false);
+  const lastTap = useRef<{ id: string; at: number } | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
@@ -177,6 +182,7 @@ function DMPage() {
     pressStart.current = point ?? null;
     pressTimer.current = window.setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(15);
+      longPressFired.current = true;
       setOpenMsg(id);
       pressTimer.current = null;
     }, 480);
@@ -187,12 +193,27 @@ function DMPage() {
     if (!s || !pressTimer.current) return;
     if (Math.hypot(point.x - s.x, point.y - s.y) > 12) cancelPress();
   };
-  const cancelPress = () => {
+  /**
+   * Ends a press. A press that never became a long press is a tap; the second
+   * tap within 300ms reacts with a heart instead of opening the chat menu.
+   */
+  const cancelPress = (id?: string) => {
+    const wasLongPress = longPressFired.current;
+    longPressFired.current = false;
     if (pressTimer.current) {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
     pressStart.current = null;
+    if (wasLongPress || !id || !user || openMsg) return;
+    const previous = lastTap.current;
+    const now = Date.now();
+    if (previous && previous.id === id && now - previous.at < 300) {
+      lastTap.current = null;
+      void doubleTapHeart(id);
+      return;
+    }
+    lastTap.current = { id, at: now };
   };
 
   const jumpToMessage = (id: string) => {
@@ -570,6 +591,10 @@ function DMPage() {
     toast.success("Marked unread");
   };
 
+  // Reactions for every loaded message: one request, one realtime channel.
+  const reactions = useChatReactions("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
+  const media = useMediaViewer();
+
   const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
     !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase())
   );
@@ -662,21 +687,14 @@ function DMPage() {
     toast.success("Chat wallpaper changed");
   };
 
+  // Every reaction write goes through toggle_dm_reaction (see the reactions
+  // migration) with an optimistic chip and a friendly failure toast.
   const react = async (messageId: string, emoji: string) => {
-    if (!user) return;
-    const queryKey = ["dm-reactions", messageId] as const;
-    await qc.cancelQueries({ queryKey });
-    const previous = qc.getQueryData<{ emoji: string; user_id: string }[]>(queryKey);
-    if (previous?.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id)) return;
-    qc.setQueryData(queryKey, [...(previous ?? []), { emoji, user_id: user.id }]);
-    try {
-      const { error } = await (supabase.from as any)("dm_reactions").insert({ message_id: messageId, user_id: user.id, emoji });
-      if (error && !error.message.includes("duplicate")) throw error;
-    } catch (error) {
-      if (previous) qc.setQueryData(queryKey, previous);
-      else qc.removeQueries({ queryKey, exact: true });
-      toast.error(error instanceof Error ? error.message : "Couldn't add that reaction");
-    }
+    await reactions.toggle(messageId, emoji);
+  };
+
+  const doubleTapHeart = async (messageId: string) => {
+    await reactions.toggle(messageId, DOUBLE_TAP_REACTION);
   };
 
   return (
@@ -780,7 +798,12 @@ function DMPage() {
         </div>
       )}
 
-      <div ref={scrollRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3 space-y-2">
+      <div
+        ref={scrollRef}
+        onClick={media.onMediaClick}
+        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3 space-y-2"
+      >
+        {media.viewer}
         {hasOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -842,7 +865,14 @@ function DMPage() {
                     >
                       <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
                     </MessageActionMenu>
-                    <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                    <MessageReactions
+                      scope="dm"
+                      messageId={m.id}
+                      groups={reactions.groupsFor(m.id)}
+                      reactorsFor={reactions.reactorsFor}
+                      align={mine ? "right" : "left"}
+                      onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                    />
                   </motion.div>
                 </Fragment>
               );
@@ -879,12 +909,12 @@ function DMPage() {
                       style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
-                      onTouchEnd={cancelPress}
-                      onTouchCancel={cancelPress}
+                      onTouchEnd={() => cancelPress(m.id)}
+                      onTouchCancel={() => cancelPress()}
                       onTouchMove={(e) => movePress({ x: e.touches[0].clientX, y: e.touches[0].clientY })}
                       onMouseDown={(e) => startPress(m.id, { x: e.clientX, y: e.clientY })}
-                      onMouseUp={cancelPress}
-                      onMouseLeave={cancelPress}
+                      onMouseUp={() => cancelPress(m.id)}
+                      onMouseLeave={() => cancelPress()}
                     >
                       {quote && (
                         <span
@@ -915,15 +945,15 @@ function DMPage() {
                     collisionPadding={12}
                   >
                     <div className="no-scrollbar mb-2 flex items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-[#08060d] p-1">
-                      {QUICK_EMOJIS.map((e) => (
-                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
+                      {QUICK_REACTIONS.map((e) => (
+                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-xl transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
                       ))}
                       <button
                         type="button"
                         aria-label={moreReactionsOpen ? "Hide more reactions" : "More reactions"}
                         aria-expanded={moreReactionsOpen}
                         onClick={() => setMoreReactionsOpen((open) => !open)}
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
                       >
                         <Plus className="h-5 w-5" />
                       </button>
@@ -936,7 +966,7 @@ function DMPage() {
                             key={emoji}
                             aria-label={`React with ${emoji}`}
                             onClick={() => { void react(m.id, emoji); setOpenMsg(null); setMoreReactionsOpen(false); }}
-                            className="grid h-10 w-10 place-items-center rounded-lg text-lg transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                            className="grid h-12 w-12 place-items-center rounded-lg text-xl transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
                           >
                             {emoji}
                           </button>
@@ -974,7 +1004,14 @@ function DMPage() {
                 ) : deliveryStatus === "sending" ? (
                   <span className="text-[10px] text-muted-foreground">Sending…</span>
                 ) : null}
-                <MessageReactions messageId={m.id} align={mine ? "right" : "left"} />
+                <MessageReactions
+                  scope="dm"
+                  messageId={m.id}
+                  groups={reactions.groupsFor(m.id)}
+                  reactorsFor={reactions.reactorsFor}
+                  align={mine ? "right" : "left"}
+                  onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                />
               </motion.div>
               </Fragment>
             );

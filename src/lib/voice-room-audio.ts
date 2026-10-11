@@ -452,7 +452,8 @@ export function useVoiceCall({
     retryRef.current = retryConnection;
 
     const start = async () => {
-      const ice = await getRoomIceConfiguration(accessToken);
+      // Pass the room id so the endpoint can refuse locked "mods only" channels.
+      const ice = await getRoomIceConfiguration(accessToken, roomId);
       if (disposed) return;
       iceServersRef.current = ice.iceServers;
       turnConfiguredRef.current = ice.turnConfigured;

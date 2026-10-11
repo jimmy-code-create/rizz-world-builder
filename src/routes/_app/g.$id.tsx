@@ -7,6 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { MessageReactions } from "@/components/chat/MessageReactions";
+import { useChatReactions } from "@/lib/useChatReactions";
+import { useMediaViewer } from "@/components/media/useMediaViewer";
+import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -272,6 +276,8 @@ function GroupRoom() {
   const g = group.data;
   const isOwner = user?.id === g.owner_id;
   const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
+  const reactions = useChatReactions("group", visibleMessages.map((message: { id: string }) => message.id));
+  const media = useMediaViewer();
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -317,7 +323,12 @@ function GroupRoom() {
         </Sheet>
       </div>
 
-        <div ref={messagesListRef} className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2">
+        <div
+          ref={messagesListRef}
+          onClick={media.onMediaClick}
+          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2"
+        >
+          {media.viewer}
           {hasOlderMessages && (
             <div className="flex justify-center pb-2">
               <Button onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -350,6 +361,8 @@ function GroupRoom() {
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                     align={mine ? "right" : "left"}
+                    reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
+                    onDoubleTap={() => { void reactions.toggle(m.id, DOUBLE_TAP_REACTION); }}
                     actions={[
                       {
                         label: "Copy message",
@@ -397,6 +410,14 @@ function GroupRoom() {
                       )}
                     </div>
                   </MessageActionMenu>
+                  <MessageReactions
+                    scope="group"
+                    messageId={m.id}
+                    groups={reactions.groupsFor(m.id)}
+                    reactorsFor={reactions.reactorsFor}
+                    align={mine ? "right" : "left"}
+                    onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                  />
                   {m.delivery_status ? (
                     m.delivery_status === "failed" ? (
                       <button

@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ReactionQuickBar } from "@/components/chat/ReactionQuickBar";
 
 export type MessageActionDescriptor = {
   label: string;
@@ -22,6 +23,10 @@ export type MessageActionMenuProps = {
   align: "left" | "right";
   actions: readonly MessageActionDescriptor[];
   triggerRole?: "button" | "group";
+  /** Adds the six quick emojis + "+" reaction bar at the top of the menu. */
+  reactionBar?: { onPick: (emoji: string) => void };
+  /** Double tapping the message (not the menu) fires this. */
+  onDoubleTap?: () => void;
 };
 
 type PressOrigin = {
@@ -32,6 +37,8 @@ type PressOrigin = {
 
 const LONG_PRESS_DELAY = 480;
 const MOVEMENT_TOLERANCE = 10;
+/** Two taps within this window count as a double tap (react with a heart). */
+const DOUBLE_TAP_WINDOW = 300;
 
 export function MessageActionMenu({
   children,
@@ -40,12 +47,18 @@ export function MessageActionMenu({
   align,
   actions,
   triggerRole = "button",
+  reactionBar,
+  onDoubleTap,
 }: MessageActionMenuProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<PressOrigin | null>(null);
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
+  const longPressFired = useRef(false);
+  const lastTap = useRef(0);
+  const onDoubleTapRef = useRef(onDoubleTap);
+  onDoubleTapRef.current = onDoubleTap;
 
   const clearPress = () => {
     if (pressTimer.current !== null) {
@@ -71,6 +84,7 @@ export function MessageActionMenu({
     }
 
     clearPress();
+    longPressFired.current = false;
     pressOrigin.current = {
       x: event.clientX,
       y: event.clientY,
@@ -79,8 +93,22 @@ export function MessageActionMenu({
     pressTimer.current = setTimeout(() => {
       pressTimer.current = null;
       if (!pressOrigin.current) return;
+      longPressFired.current = true;
       onOpenChangeRef.current(true);
     }, LONG_PRESS_DELAY);
+  };
+
+  /** A tap that never became a long press: the second one within the window is a
+   *  double tap (heart reaction), and it must not also open the menu. */
+  const handleTapEnd = () => {
+    if (!onDoubleTapRef.current) return;
+    const now = Date.now();
+    if (now - lastTap.current < DOUBLE_TAP_WINDOW) {
+      lastTap.current = 0;
+      onDoubleTapRef.current();
+      return;
+    }
+    lastTap.current = now;
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
@@ -123,8 +151,16 @@ export function MessageActionMenu({
           style={{ touchAction: "pan-y", WebkitTouchCallout: "none" }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-          onPointerUp={clearPress}
-          onPointerCancel={clearPress}
+          onPointerUp={() => {
+            const wasLongPress = longPressFired.current;
+            longPressFired.current = false;
+            clearPress();
+            if (!wasLongPress) handleTapEnd();
+          }}
+          onPointerCancel={() => {
+            longPressFired.current = false;
+            clearPress();
+          }}
           onPointerLeave={clearPress}
           onContextMenu={(event) => {
             event.preventDefault();
@@ -150,16 +186,31 @@ export function MessageActionMenu({
         collisionPadding={12}
         aria-label="Message actions"
         onOpenAutoFocus={(event) => {
-          if (!actions.length) return;
+          // With a reaction bar the first control is an emoji button; leave focus
+          // alone so phones don't scroll or jump when the menu opens.
+          if (reactionBar || !actions.length) {
+            event.preventDefault();
+            if (!reactionBar) firstActionRef.current?.focus();
+            return;
+          }
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className="glass-strong relative max-h-[min(70dvh,24rem)] w-[min(13rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border-white/10 p-1.5 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.9)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
+        className={`glass-strong relative max-h-[min(70dvh,26rem)] w-[min(${reactionBar ? "19rem" : "13rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-xl border-white/10 p-1.5 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.9)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-[var(--rizz-pink)]/45 to-transparent"
         />
+        {reactionBar && (
+          <ReactionQuickBar
+            className="mb-2"
+            onPick={(emoji) => {
+              onOpenChange(false);
+              reactionBar.onPick(emoji);
+            }}
+          />
+        )}
         <div role="group" aria-label="Available actions" className="flex flex-col gap-0.5">
           {actions.map((action, index) => {
             const Icon = action.icon;

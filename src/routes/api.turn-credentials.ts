@@ -28,6 +28,22 @@ export const Route = createFileRoute("/api/turn-credentials")({
         const auth = await getAuthorizedSupabase(request);
         if (auth instanceof Response) return auth;
 
+        // "Mods only" voice channels: the token endpoint refuses non-mods here as
+        // well as in the voice_participants / voice_rooms insert policies.
+        const requestedRoomId = new URL(request.url).searchParams.get("roomId");
+        if (requestedRoomId) {
+          const { data: locked } = await auth.client.rpc("is_locked_voice_room_for" as never, {
+            _room: requestedRoomId,
+            _user: auth.userId,
+          } as never);
+          if (locked === true) {
+            return Response.json(
+              { error: "This voice channel is mods only." },
+              { status: 403, headers: { "Cache-Control": "no-store" } },
+            );
+          }
+        }
+
         const turnUrls = (process.env.TURN_SERVER_URLS ?? "")
           .split(",")
           .map((url) => url.trim())

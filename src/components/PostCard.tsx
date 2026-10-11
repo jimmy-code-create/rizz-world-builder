@@ -38,6 +38,7 @@ import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useMediaViewer } from "@/components/media/useMediaViewer";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -274,6 +275,9 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     toast.success("Link copied");
   };
 
+  // Tapping the photo (not the caption) opens the full-screen viewer.
+  const media = useMediaViewer();
+
   const doubleTapLike = () => {
     const now = Date.now();
     if (now - lastTap.current < 280) {
@@ -452,8 +456,17 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       {post.media_url && (
         <div
           className="post-media-frame relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
-          onClick={externalVideo?.ok ? undefined : doubleTapLike}
+          onClick={
+            externalVideo?.ok
+              ? undefined
+              : (event) => {
+                  // Photos and GIFs open the viewer; anything else keeps the like tap.
+                  if (media.onMediaClick(event)) return;
+                  doubleTapLike();
+                }
+          }
         >
+          {media.viewer}
           {post.media_type === "video" ? (
             externalVideo?.ok ? (
               <ExternalVideoEmbed sourceUrl={post.media_url} className="mx-auto h-[min(48dvh,390px)] w-full max-w-[390px]" />
