@@ -8,16 +8,16 @@ import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  const status = message.match(/GROQ_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
+  const status = message.match(/GEMINI_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
 
-  if (/GROQ_API_KEY|not configured/i.test(message)) {
-    return "Groq is not configured on this server. Set GROQ_API_KEY in Render.";
+  if (/GEMINI_API_KEY|not configured/i.test(message)) {
+    return "Gemini is not configured on this server. Check GEMINI_API_KEY in Render.";
   }
-  if (status?.[1] === "401" || status?.[2] === "401") {
-    return "The Groq API key is invalid. Check GROQ_API_KEY in Render.";
+  if (["400", "401", "403"].includes(status?.[1] ?? status?.[2] ?? "")) {
+    return "Gemini rejected the request. Check the server's Gemini API key and model access.";
   }
   if (status?.[1] === "429" || status?.[2] === "429") {
-    return "The Groq free limit is reached. Please try again later.";
+    return "Gemini's usage limit is reached. Please try again later.";
   }
   if (/unauthorized|supabase|session|token/i.test(message)) {
     return "Your RIZZ sign-in expired. Sign in again, then retry.";
@@ -38,7 +38,7 @@ export function LilRizzCompanion() {
   const historyRef = useRef<LilRizzTurn[]>([]);
   const { user, loading: authLoading } = useAuth();
   const speech = useSpeechToText({ continuousConversation: true });
-  const tts = useKokoroTTS();
+  const tts = useKokoroTTS({ browserFirst: true });
   const {
     clearTranscript,
     error: speechError,
