@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as ClaimRouteImport } from './routes/claim'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RizzCoachRouteImport } from './routes/rizz-coach'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
@@ -32,6 +33,7 @@ import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as ApiMeRouteImport } from './routes/api.me'
+import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppCSlugRouteImport } from './routes/_app/c.$slug'
@@ -64,6 +66,11 @@ const LoginRoute = LoginRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RizzCoachRoute = RizzCoachRouteImport.update({
+  id: '/rizz-coach',
+  path: '/rizz-coach',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -156,6 +163,11 @@ const ApiMeRoute = ApiMeRouteImport.update({
   path: '/api/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRizzCoachRoute = ApiRizzCoachRouteImport.update({
+  id: '/api/rizz-coach',
+  path: '/api/rizz-coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTurnCredentialsRoute = ApiTurnCredentialsRouteImport.update({
   id: '/api/turn-credentials',
   path: '/api/turn-credentials',
@@ -207,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rizz-coach': typeof RizzCoachRoute
   '/signup': typeof SignupRoute
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
@@ -225,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
+  '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
@@ -240,6 +254,7 @@ export interface FileRoutesByTo {
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rizz-coach': typeof RizzCoachRoute
   '/signup': typeof SignupRoute
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
@@ -258,6 +273,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
+  '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/c/$slug': typeof AppCSlugRoute
@@ -275,6 +291,7 @@ export interface FileRoutesById {
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rizz-coach': typeof RizzCoachRoute
   '/signup': typeof SignupRoute
   '/tutorial': typeof TutorialRoute
   '/_app/badges': typeof AppBadgesRoute
@@ -293,6 +310,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
+  '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
   '/_app/c/$slug': typeof AppCSlugRoute
@@ -310,6 +328,7 @@ export interface FileRouteTypes {
     | '/claim'
     | '/login'
     | '/reset-password'
+    | '/rizz-coach'
     | '/signup'
     | '/tutorial'
     | '/badges'
@@ -328,6 +347,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/api/me'
+    | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
     | '/c/$slug'
@@ -343,6 +363,7 @@ export interface FileRouteTypes {
     | '/claim'
     | '/login'
     | '/reset-password'
+    | '/rizz-coach'
     | '/signup'
     | '/tutorial'
     | '/badges'
@@ -361,6 +382,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/api/me'
+    | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
     | '/c/$slug'
@@ -377,6 +399,7 @@ export interface FileRouteTypes {
     | '/claim'
     | '/login'
     | '/reset-password'
+    | '/rizz-coach'
     | '/signup'
     | '/tutorial'
     | '/_app/badges'
@@ -395,6 +418,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/voice'
     | '/api/me'
+    | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
     | '/_app/c/$slug'
@@ -412,9 +436,11 @@ export interface RootRouteChildren {
   ClaimRoute: typeof ClaimRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RizzCoachRoute: typeof RizzCoachRoute
   SignupRoute: typeof SignupRoute
   TutorialRoute: typeof TutorialRoute
   ApiMeRoute: typeof ApiMeRoute
+  ApiRizzCoachRoute: typeof ApiRizzCoachRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   JoinCodeRoute: typeof JoinCodeRoute
 }
@@ -454,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rizz-coach': {
+      id: '/rizz-coach'
+      path: '/rizz-coach'
+      fullPath: '/rizz-coach'
+      preLoaderRoute: typeof RizzCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -580,6 +613,13 @@ declare module '@tanstack/react-router' {
       path: '/api/me'
       fullPath: '/api/me'
       preLoaderRoute: typeof ApiMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rizz-coach': {
+      id: '/api/rizz-coach'
+      path: '/api/rizz-coach'
+      fullPath: '/api/rizz-coach'
+      preLoaderRoute: typeof ApiRizzCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/turn-credentials': {
@@ -716,9 +756,11 @@ const rootRouteChildren: RootRouteChildren = {
   ClaimRoute: ClaimRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RizzCoachRoute: RizzCoachRoute,
   SignupRoute: SignupRoute,
   TutorialRoute: TutorialRoute,
   ApiMeRoute: ApiMeRoute,
+  ApiRizzCoachRoute: ApiRizzCoachRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   JoinCodeRoute: JoinCodeRoute,
 }

@@ -14,3 +14,9 @@ Exception for Lil Rizz: the user explicitly wants Grok to generate assistant tex
 **Why:** The user later made a feature-specific exception for Lil Rizz's conversation brain while still asking to minimize usage cost.
 
 **How to apply:** Use the user's key only through the existing server-side Lil Rizz function; keep the key in Replit Secrets and browser speech synthesis free and local.
+
+For Rizz Coach, the user explicitly authorized Gemini for short spoken coaching replies. Keep the Gemini key server-side, use TTS only for replies of two sentences or fewer, and do not persist session conversations.
+
+**Why:** The user asked for expressive Gemini speech while limiting credit use and starting every session fresh.
+
+**How to apply:** This exception is limited to Rizz Coach; do not generalize Gemini or other paid AI services to unrelated RIZZ features.

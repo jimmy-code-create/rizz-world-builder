@@ -1,0 +1,368 @@
+.rizz-coach {
+  --voice-level: 0;
+  --coach-color: #ff74b9;
+  --coach-color-soft: rgba(255, 116, 185, 0.24);
+  --coach-color-faint: rgba(255, 116, 185, 0.1);
+  --coach-highlight: #ffe0f2;
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  grid-template-rows: auto 1fr auto;
+  padding: max(2.35rem, env(safe-area-inset-top)) 1.5rem
+    max(2rem, env(safe-area-inset-bottom));
+  color: #f7edf4;
+  background:
+    radial-gradient(ellipse 42rem 34rem at 50% 47%, rgba(79, 30, 72, 0.2), transparent 72%),
+    radial-gradient(ellipse 34rem 28rem at 12% 95%, rgba(52, 31, 81, 0.14), transparent 75%),
+    #100d17;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  text-align: center;
+}
+
+.rizz-coach[data-emotion="warm"] {
+  --coach-color: #ffc18b;
+  --coach-color-soft: rgba(255, 193, 139, 0.24);
+  --coach-color-faint: rgba(255, 193, 139, 0.1);
+  --coach-highlight: #fff0d7;
+}
+
+.rizz-coach[data-emotion="excited"] {
+  --coach-color: #ff80a9;
+  --coach-color-soft: rgba(255, 128, 169, 0.27);
+  --coach-color-faint: rgba(255, 128, 169, 0.11);
+  --coach-highlight: #ffe2eb;
+}
+
+.rizz-coach[data-emotion="teasing"] {
+  --coach-color: #d39cff;
+  --coach-color-soft: rgba(211, 156, 255, 0.25);
+  --coach-color-faint: rgba(211, 156, 255, 0.1);
+  --coach-highlight: #f1e0ff;
+}
+
+.rizz-coach[data-emotion="calm"] {
+  --coach-color: #93dce0;
+  --coach-color-soft: rgba(147, 220, 224, 0.22);
+  --coach-color-faint: rgba(147, 220, 224, 0.09);
+  --coach-highlight: #d9ffff;
+}
+
+.rizz-coach[data-emotion="surprised"] {
+  --coach-color: #ffbd72;
+  --coach-color-soft: rgba(255, 189, 114, 0.27);
+  --coach-color-faint: rgba(255, 189, 114, 0.11);
+  --coach-highlight: #fff0cf;
+}
+
+.rizz-coach__atmosphere {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    radial-gradient(ellipse 22rem 24rem at 50% 48%, var(--coach-color-faint), transparent 74%),
+    radial-gradient(ellipse 42rem 20rem at 50% 110%, rgba(109, 57, 110, 0.13), transparent 78%);
+}
+
+.rizz-coach__heading {
+  align-self: start;
+  animation: rizz-coach-arrive 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.rizz-coach__eyebrow {
+  margin: 0;
+  color: rgba(255, 232, 246, 0.78);
+  font-family: var(--font-display, system-ui, sans-serif);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+}
+
+.rizz-coach__intro {
+  margin: 0.58rem 0 0;
+  color: rgba(227, 211, 226, 0.56);
+  font-size: 0.84rem;
+  letter-spacing: 0.015em;
+}
+
+.rizz-coach__center {
+  display: flex;
+  min-height: 20rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-block: 1.5rem;
+}
+
+.rizz-coach__status {
+  min-height: 1.35rem;
+  margin: 0 0 2.1rem;
+  color: rgba(244, 226, 241, 0.68);
+  font-family: var(--font-display, system-ui, sans-serif);
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  animation: rizz-coach-arrive 800ms 100ms both;
+}
+
+.rizz-coach__orb-button {
+  display: grid;
+  width: min(66vw, 21rem);
+  aspect-ratio: 1;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rizz-coach__orb-button:focus-visible {
+  outline: 1px solid rgba(255, 232, 246, 0.86);
+  outline-offset: 1.1rem;
+}
+
+.rizz-coach__orb-field {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  isolation: isolate;
+}
+
+.rizz-coach__orb,
+.rizz-coach__orb-halo,
+.rizz-coach__orb-ripple,
+.rizz-coach__orb-wave {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.rizz-coach__orb-halo {
+  inset: 5%;
+  z-index: -1;
+  opacity: 0.55;
+  background: radial-gradient(circle, var(--coach-color-soft), transparent 67%);
+  animation: rizz-coach-halo-breathe 5.2s ease-in-out infinite;
+}
+
+.rizz-coach__orb {
+  width: 57%;
+  height: 57%;
+  overflow: hidden;
+  transform: translateZ(0);
+  background:
+    radial-gradient(ellipse 54% 38% at 34% 23%, rgba(255, 250, 255, 0.92), transparent 68%),
+    radial-gradient(ellipse 86% 74% at 69% 78%, color-mix(in srgb, var(--coach-color) 86%, #713f9f), transparent 77%),
+    radial-gradient(circle at 40% 38%, var(--coach-highlight), var(--coach-color) 48%, #9a56bc 100%);
+  box-shadow:
+    inset -1.2rem -1.4rem 2.3rem rgba(30, 10, 42, 0.28),
+    inset 0.55rem 0.45rem 1.2rem rgba(255, 255, 255, 0.25),
+    0 0 2.8rem var(--coach-color-soft),
+    0 0 8rem var(--coach-color-faint);
+  animation: rizz-coach-breathe 5.1s ease-in-out infinite;
+}
+
+.rizz-coach__orb-light {
+  position: absolute;
+  top: 13%;
+  left: 19%;
+  width: 39%;
+  height: 19%;
+  border-radius: 50%;
+  transform: rotate(-31deg);
+  background: rgba(255, 255, 255, 0.36);
+  filter: blur(0.75rem);
+}
+
+.rizz-coach__orb-ripple {
+  inset: 19%;
+  border: 1px solid color-mix(in srgb, var(--coach-color) 64%, transparent);
+  opacity: 0;
+}
+
+.rizz-coach__orb-ripple--two {
+  inset: 19%;
+}
+
+.rizz-coach__orb-wave {
+  inset: 15%;
+  border: 1px solid color-mix(in srgb, var(--coach-color) 55%, transparent);
+  opacity: 0;
+}
+
+.rizz-coach__orb-wave--two {
+  inset: 20%;
+}
+
+.rizz-coach__orb-wave--three {
+  inset: 25%;
+}
+
+.rizz-coach__private-note {
+  margin-top: 2.25rem;
+  color: rgba(222, 198, 218, 0.37);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+.rizz-coach__captions {
+  display: flex;
+  width: min(100%, 38rem);
+  min-height: 5.15rem;
+  flex-direction: column;
+  justify-content: end;
+  gap: 0.68rem;
+  margin: 0 auto;
+  padding-bottom: 0.55rem;
+}
+
+.rizz-coach__caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.7rem;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(0.35rem);
+  transition: opacity 460ms ease, transform 460ms ease;
+  overflow-wrap: anywhere;
+  font-size: clamp(0.88rem, 2.7vw, 1rem);
+  line-height: 1.55;
+}
+
+.rizz-coach__caption.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rizz-coach__caption--heard {
+  color: rgba(221, 205, 221, 0.48);
+}
+
+.rizz-coach__caption--reply {
+  color: rgba(255, 241, 250, 0.89);
+}
+
+.rizz-coach__caption-label {
+  flex: none;
+  color: var(--coach-color);
+  font-size: 0.57rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  opacity: 0.8;
+}
+
+.rizz-coach[data-state="listening"] .rizz-coach__orb {
+  animation: rizz-coach-listen 2.4s ease-in-out infinite;
+}
+
+.rizz-coach[data-state="listening"] .rizz-coach__orb-ripple {
+  animation: none;
+  opacity: calc(0.12 + var(--voice-level) * 0.62);
+  transform: scale(calc(0.66 + var(--voice-level) * 0.72));
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
+}
+
+.rizz-coach[data-state="listening"] .rizz-coach__orb-ripple--two {
+  opacity: calc(0.08 + var(--voice-level) * 0.48);
+  transform: scale(calc(0.78 + var(--voice-level) * 0.62));
+}
+
+.rizz-coach[data-state="thinking"] .rizz-coach__orb {
+  animation: rizz-coach-think 1.25s ease-in-out infinite;
+}
+
+.rizz-coach[data-state="thinking"] .rizz-coach__orb-halo {
+  animation-duration: 1.8s;
+}
+
+.rizz-coach[data-state="speaking"] .rizz-coach__orb {
+  animation: rizz-coach-speak 1.35s ease-in-out infinite;
+}
+
+.rizz-coach[data-state="speaking"] .rizz-coach__orb-wave {
+  animation: rizz-coach-wave 1.8s ease-out infinite;
+}
+
+.rizz-coach[data-state="speaking"] .rizz-coach__orb-wave--two {
+  animation-delay: 0.42s;
+}
+
+.rizz-coach[data-state="speaking"] .rizz-coach__orb-wave--three {
+  animation-delay: 0.84s;
+}
+
+@keyframes rizz-coach-arrive {
+  from { opacity: 0; transform: translateY(0.45rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rizz-coach-breathe {
+  0%, 100% { transform: scale(0.97); }
+  50% { transform: scale(1.025); }
+}
+
+@keyframes rizz-coach-halo-breathe {
+  0%, 100% { opacity: 0.38; transform: scale(0.94); }
+  50% { opacity: 0.7; transform: scale(1.06); }
+}
+
+@keyframes rizz-coach-listen {
+  0%, 100% { transform: scale(0.98); }
+  50% { transform: scale(1.015); }
+}
+
+@keyframes rizz-coach-ripple {
+  0% { opacity: 0.62; transform: scale(0.66); }
+  85%, 100% { opacity: 0; transform: scale(1.72); }
+}
+
+@keyframes rizz-coach-think {
+  0%, 100% { transform: scale(0.94); }
+  50% { transform: scale(1.065); }
+}
+
+@keyframes rizz-coach-speak {
+  0%, 100% { transform: scale(0.99); }
+  50% { transform: scale(1.055); }
+}
+
+@keyframes rizz-coach-wave {
+  0% { opacity: 0; transform: scale(0.76); }
+  22% { opacity: 0.4; }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+@media (max-width: 480px) {
+  .rizz-coach {
+    padding-inline: 1.1rem;
+  }
+
+  .rizz-coach__orb-button {
+    width: min(72vw, 18rem);
+  }
+
+  .rizz-coach__status {
+    margin-bottom: 1.6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rizz-coach *,
+  .rizz-coach *::before,
+  .rizz-coach *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
