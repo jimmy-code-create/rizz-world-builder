@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useKokoroTTS } from "@/hooks/useKokoroTTS";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { generateLilRizzReply, type LilRizzTurn } from "@/lib/lil-rizz.functions";
+import { useAuth } from "@/lib/auth";
 import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
@@ -24,7 +26,7 @@ function getLilRizzFailureMessage(error: unknown) {
 }
 
 export function LilRizzCompanion() {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [isConversationActive, setIsConversationActive] = useState(false);
   const [reply, setReply] = useState("");
@@ -34,6 +36,7 @@ export function LilRizzCompanion() {
   const handledTranscriptRef = useRef("");
   const requestPendingRef = useRef(false);
   const historyRef = useRef<LilRizzTurn[]>([]);
+  const { user, loading: authLoading } = useAuth();
   const speech = useSpeechToText({ continuousConversation: true });
   const tts = useKokoroTTS();
   const {
@@ -48,11 +51,10 @@ export function LilRizzCompanion() {
   const { error: ttsError, isLoading, isSpeaking, speak, stopSpeaking, unlockAudio } = tts;
 
   const handleUserMessage = useCallback(
-    async (text: string) => {
+    async (text: string, speakReply = false) => {
       const message = text.trim().slice(0, 400);
-      if (!message || requestPendingRef.current) return;
+      if (!message || !user || requestPendingRef.current) return;
       requestPendingRef.current = true;
-      unlockAudio();
       setLastUserMessage(message);
       setReply("");
       stopListening();
@@ -74,14 +76,18 @@ export function LilRizzCompanion() {
           ];
           historyRef.current = nextHistory.slice(-6);
         } catch (requestError) {
-          answer = getLilRizzFailureMessage(requestError);
+          setError(getLilRizzFailureMessage(requestError));
+          return;
         }
 
         setReply(answer);
-        try {
-          await speak(answer, "af_bella");
-        } catch (speechError) {
-          console.error("[Lil Rizz] Speech playback failed", speechError);
+        if (speakReply) {
+          unlockAudio();
+          try {
+            await speak(answer, "af_bella");
+          } catch (speechError) {
+            console.error("[Lil Rizz] Speech playback failed", speechError);
+          }
         }
       } finally {
         requestPendingRef.current = false;
@@ -93,7 +99,7 @@ export function LilRizzCompanion() {
         }
       }
     },
-    [clearTranscript, speak, startListening, stopListening, unlockAudio],
+    [clearTranscript, speak, startListening, stopListening, unlockAudio, user],
   );
 
   const handleFinalTranscript = useCallback(
@@ -101,7 +107,7 @@ export function LilRizzCompanion() {
       const message = text.trim().slice(0, 400);
       if (!message || handledTranscriptRef.current === message) return;
       handledTranscriptRef.current = message;
-      void handleUserMessage(message);
+      void handleUserMessage(message, true);
     },
     [handleUserMessage],
   );
@@ -162,6 +168,9 @@ export function LilRizzCompanion() {
       isMinimized={isMinimized}
       error={error ?? speechError ?? ttsError}
       isBusy={isThinking || isLoading}
+      isGuest={!user && !authLoading}
+      isAuthLoading={authLoading}
+      signInLink={<Link to="/login" className="font-semibold text-cyan-100 underline decoration-cyan-100/40 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">Sign in</Link>}
       onDismiss={() => {
         conversationActiveRef.current = false;
         setIsConversationActive(false);

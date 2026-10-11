@@ -8,7 +8,8 @@ import {
   Sparkles,
   Volume2,
 } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 export type LilRizzWidgetProps = {
   status: "idle" | "listening" | "thinking" | "speaking";
@@ -19,6 +20,9 @@ export type LilRizzWidgetProps = {
   isMinimized: boolean;
   isBusy: boolean;
   error: string | null;
+  isGuest: boolean;
+  isAuthLoading: boolean;
+  signInLink: ReactNode;
   onDismiss(): void;
   onSummon(): void;
   onToggleListening(): void;
@@ -42,6 +46,9 @@ export function LilRizzOrbWidget({
   isMinimized,
   isBusy,
   error,
+  isGuest,
+  isAuthLoading,
+  signInLink,
   onDismiss,
   onSummon,
   onToggleListening,
@@ -50,6 +57,10 @@ export function LilRizzOrbWidget({
 }: LilRizzWidgetProps) {
   const [message, setMessage] = useState("");
   const conversationRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const panelId = "lil-rizz-panel";
   const listening = status === "listening";
   const thinking = status === "thinking";
   const speaking = status === "speaking";
@@ -61,10 +72,31 @@ export function LilRizzOrbWidget({
     });
   }, [transcript, lastUserMessage, reply]);
 
+  useEffect(() => {
+    if (isMinimized) {
+      launcherRef.current?.focus();
+      return;
+    }
+    if (messageInputRef.current) messageInputRef.current.focus();
+    else panelRef.current?.focus();
+  }, [isMinimized]);
+
+  useEffect(() => {
+    if (isMinimized) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onDismiss();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMinimized, onDismiss]);
+
   const sendMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextMessage = message.trim();
-    if (!nextMessage || isBusy) return;
+    if (!nextMessage || isBusy || isGuest || isAuthLoading) return;
     onSendMessage(nextMessage);
     setMessage("");
   };
@@ -72,10 +104,13 @@ export function LilRizzOrbWidget({
   if (isMinimized) {
     return (
       <button
+        ref={launcherRef}
         type="button"
         onClick={onSummon}
         aria-label="Open Lil Rizz chat"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-40 flex items-center gap-2 rounded-full border border-pink-300/25 bg-[#17101f]/95 p-2 pr-4 text-left text-white shadow-[0_8px_32px_rgba(0,0,0,.42),0_0_28px_rgba(255,45,146,.22)] backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 motion-reduce:transition-none md:bottom-5"
+        aria-expanded={false}
+        aria-controls={panelId}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex items-center gap-2 rounded-full border border-pink-300/35 bg-[#21172a]/95 p-2 pr-4 text-left text-white shadow-[0_8px_32px_rgba(0,0,0,.42),0_0_28px_rgba(255,45,146,.22)] backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 motion-reduce:transition-none md:bottom-5"
       >
         <CatAvatar className="h-9 w-9" />
         <span>
@@ -88,10 +123,26 @@ export function LilRizzOrbWidget({
   }
 
   return (
-    <section
-      aria-label="Lil Rizz voice assistant"
-      className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-40 flex max-h-[min(34rem,calc(100dvh-7rem))] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#120e19]/95 text-white shadow-[0_18px_70px_rgba(0,0,0,.54),0_0_46px_rgba(179,49,188,.12)] backdrop-blur-2xl md:bottom-5 md:right-5"
-    >
+    <>
+      <button
+        ref={launcherRef}
+        type="button"
+        onClick={onDismiss}
+        aria-label="Minimize Lil Rizz chat"
+        aria-expanded={true}
+        aria-controls={panelId}
+        tabIndex={-1}
+        className="sr-only"
+      />
+      <section
+        ref={panelRef}
+        id={panelId}
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="lil-rizz-title"
+        tabIndex={-1}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-50 flex max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#120e19]/95 text-white shadow-[0_18px_70px_rgba(0,0,0,.54),0_0_46px_rgba(179,49,188,.12)] backdrop-blur-2xl md:bottom-5 md:right-5 md:max-h-[min(34rem,calc(100dvh-2.5rem))]"
+      >
       <header className="flex items-center gap-3 border-b border-white/[.08] bg-gradient-to-r from-[#28152a] via-[#1b1424] to-[#111521] px-4 py-3.5">
         <div className="relative shrink-0">
           <CatAvatar className="h-11 w-11" />
@@ -108,7 +159,7 @@ export function LilRizzOrbWidget({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <h2 className="truncate text-sm font-extrabold tracking-tight">Lil Rizz</h2>
+            <h2 id="lil-rizz-title" className="truncate text-sm font-extrabold tracking-tight">Lil Rizz</h2>
             <Sparkles aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-pink-300" />
           </div>
           <p className="mt-0.5 text-[11px] text-white/55" aria-live="polite">
@@ -132,7 +183,24 @@ export function LilRizzOrbWidget({
         aria-relevant="additions text"
         className="min-h-28 space-y-3 overflow-y-auto px-4 py-4"
       >
-        {!lastUserMessage && !transcript && !reply && (
+        {isGuest && !authLoading && !lastUserMessage && !transcript && !reply && (
+          <div className="flex min-h-24 flex-col items-center justify-center text-center">
+            <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-pink-300/15 bg-pink-400/[.08]">
+              <MessageCircle aria-hidden="true" className="h-5 w-5 text-pink-200" />
+            </div>
+            <p className="text-sm font-semibold">Come chat with me.</p>
+            <p className="mt-1 max-w-52 text-xs leading-relaxed text-white/55">
+              Sign in to start a conversation with Lil Rizz.
+            </p>
+            <div className="mt-3 text-xs">{signInLink}</div>
+          </div>
+        )}
+        {isAuthLoading && !lastUserMessage && !transcript && !reply && (
+          <div className="flex min-h-24 items-center justify-center text-xs text-white/55" role="status">
+            Checking your sign-in…
+          </div>
+        )}
+        {!isGuest && !isAuthLoading && !lastUserMessage && !transcript && !reply && (
           <div className="flex min-h-24 flex-col items-center justify-center text-center">
             <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-pink-300/15 bg-pink-400/[.08]">
               <MessageCircle aria-hidden="true" className="h-5 w-5 text-pink-200" />
@@ -191,7 +259,7 @@ export function LilRizzOrbWidget({
 
       {error && (
         <p
-          role="status"
+          role="alert"
           className="mx-4 mb-2 rounded-xl border border-rose-300/15 bg-rose-400/[.08] px-3 py-2 text-[11px] leading-relaxed text-rose-100/90"
         >
           {error}
@@ -202,9 +270,17 @@ export function LilRizzOrbWidget({
         onSubmit={sendMessage}
         className="flex items-center gap-2 border-t border-white/[.08] bg-white/[.025] p-3"
       >
+        {isGuest || isAuthLoading ? (
+          <div className="flex w-full items-center justify-between gap-3 px-1 py-1 text-xs text-white/55">
+            <span>{isGuest ? "Sign in to use chat and voice." : "Checking sign-in…"}</span>
+            {isGuest && signInLink}
+          </div>
+        ) : (
+          <>
         <button
           type="button"
           onClick={onToggleListening}
+          disabled={isGuest || isAuthLoading}
           aria-label={
             listening
               ? "Stop listening"
@@ -229,6 +305,7 @@ export function LilRizzOrbWidget({
           Message Lil Rizz
         </label>
         <input
+          ref={messageInputRef}
           id="lil-rizz-message"
           value={message}
           maxLength={400}
@@ -252,8 +329,11 @@ export function LilRizzOrbWidget({
             <Send aria-hidden="true" className="h-4 w-4" />
           )}
         </button>
+          </>
+        )}
       </form>
-    </section>
+      </section>
+    </>
   );
 }
 

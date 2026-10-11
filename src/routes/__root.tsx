@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useLocation,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
@@ -13,6 +14,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -133,6 +135,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const showLilRizz = location.pathname === "/" || location.pathname === "/_app/feed";
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
@@ -146,6 +150,7 @@ function RootComponent() {
       <AuthProvider>
         <ThemeProvider>
           <Outlet />
+          {showLilRizz && <LilRizzCompanion />}
           <Toaster />
         </ThemeProvider>
       </AuthProvider>
