@@ -39,10 +39,12 @@ BEGIN
     WHERE c.conrelid = 'public.dm_reactions'::regclass
       AND c.contype IN ('p', 'u')
       AND (
-        SELECT array_agg(a.attname ORDER BY a.attname)
-        FROM unnest(c.conkey) AS k
-        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k
-      ) = ARRAY['emoji', 'message_id', 'user_id']
+        -- attname is of type `name`: cast to text or this compares name[] = text[]
+        -- and Postgres raises 42883 "operator does not exist".
+        SELECT array_agg(a.attname::text ORDER BY a.attname::text)
+        FROM unnest(c.conkey) AS cols(attnum)
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = cols.attnum
+      ) = ARRAY['emoji', 'message_id', 'user_id']::text[]
   ) INTO v_has_unique;
 
   IF NOT v_has_unique THEN
