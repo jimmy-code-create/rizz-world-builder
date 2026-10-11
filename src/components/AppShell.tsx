@@ -306,7 +306,7 @@ export function AppShell() {
               <Settings className="h-5 w-5" />
               <span className="text-[11px] font-medium">Settings</span>
             </Link>
-            <Link to="/settings" hash="appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+            <Link to="/settings/appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
               <Palette className="h-5 w-5" />
               <span className="text-[11px] font-medium">Theme</span>
             </Link>
@@ -390,7 +390,7 @@ function ProfileMenu({
           <Link to="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/settings" hash="appearance"><Palette className="mr-2 h-4 w-4" /> Appearance</Link>
+          <Link to="/settings/appearance"><Palette className="mr-2 h-4 w-4" /> Appearance</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive">

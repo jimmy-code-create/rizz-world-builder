@@ -30,7 +30,6 @@ import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
@@ -41,6 +40,13 @@ import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
 import { Route as AppJoinRealmCodeRouteImport } from './routes/_app/join-realm.$code'
 import { Route as AppRSlugRouteImport } from './routes/_app/r.$slug'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppSettingsAccountRouteImport } from './routes/_app/settings/account'
+import { Route as AppSettingsAppearanceRouteImport } from './routes/_app/settings/appearance'
+import { Route as AppSettingsBlockedRouteImport } from './routes/_app/settings/blocked'
+import { Route as AppSettingsNotificationsRouteImport } from './routes/_app/settings/notifications'
+import { Route as AppSettingsPreferencesRouteImport } from './routes/_app/settings/preferences'
+import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
@@ -149,11 +155,6 @@ const AppReelsRoute = AppReelsRouteImport.update({
   path: '/reels',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppVoiceRoute = AppVoiceRouteImport.update({
   id: '/voice',
   path: '/voice',
@@ -204,6 +205,42 @@ const AppRSlugRoute = AppRSlugRouteImport.update({
   path: '/r/$slug',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsAccountRoute = AppSettingsAccountRouteImport.update({
+  id: '/settings/account',
+  path: '/settings/account',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
+  id: '/settings/appearance',
+  path: '/settings/appearance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsBlockedRoute = AppSettingsBlockedRouteImport.update({
+  id: '/settings/blocked',
+  path: '/settings/blocked',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsNotificationsRoute =
+  AppSettingsNotificationsRouteImport.update({
+    id: '/settings/notifications',
+    path: '/settings/notifications',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSettingsPreferencesRoute = AppSettingsPreferencesRouteImport.update({
+  id: '/settings/preferences',
+  path: '/settings/preferences',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
+  id: '/settings/profile',
+  path: '/settings/profile',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTagTagRoute = AppTagTagRouteImport.update({
   id: '/tag/$tag',
   path: '/tag/$tag',
@@ -241,7 +278,6 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
-  '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -252,9 +288,16 @@ export interface FileRoutesByFullPath {
   '/g/$id': typeof AppGIdRoute
   '/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/r/$slug': typeof AppRSlugRoute
+  '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/blocked': typeof AppSettingsBlockedRoute
+  '/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/settings/preferences': typeof AppSettingsPreferencesRoute
+  '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
+  '/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -277,7 +320,6 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
-  '/settings': typeof AppSettingsRoute
   '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -288,9 +330,16 @@ export interface FileRoutesByTo {
   '/g/$id': typeof AppGIdRoute
   '/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/r/$slug': typeof AppRSlugRoute
+  '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/blocked': typeof AppSettingsBlockedRoute
+  '/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/settings/preferences': typeof AppSettingsPreferencesRoute
+  '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/voice/$id': typeof AppVoiceIdRoute
+  '/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -315,7 +364,6 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
-  '/_app/settings': typeof AppSettingsRoute
   '/_app/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -326,9 +374,16 @@ export interface FileRoutesById {
   '/_app/g/$id': typeof AppGIdRoute
   '/_app/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/_app/r/$slug': typeof AppRSlugRoute
+  '/_app/settings/account': typeof AppSettingsAccountRoute
+  '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/_app/settings/blocked': typeof AppSettingsBlockedRoute
+  '/_app/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/_app/settings/preferences': typeof AppSettingsPreferencesRoute
+  '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/_app/voice/$id': typeof AppVoiceIdRoute
+  '/_app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -353,7 +408,6 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
-    | '/settings'
     | '/voice'
     | '/api/me'
     | '/api/rizz-coach'
@@ -364,9 +418,16 @@ export interface FileRouteTypes {
     | '/g/$id'
     | '/join-realm/$code'
     | '/r/$slug'
+    | '/settings/account'
+    | '/settings/appearance'
+    | '/settings/blocked'
+    | '/settings/notifications'
+    | '/settings/preferences'
+    | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -389,7 +450,6 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
-    | '/settings'
     | '/voice'
     | '/api/me'
     | '/api/rizz-coach'
@@ -400,9 +460,16 @@ export interface FileRouteTypes {
     | '/g/$id'
     | '/join-realm/$code'
     | '/r/$slug'
+    | '/settings/account'
+    | '/settings/appearance'
+    | '/settings/blocked'
+    | '/settings/notifications'
+    | '/settings/preferences'
+    | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
     | '/voice/$id'
+    | '/settings'
   id:
     | '__root__'
     | '/'
@@ -426,7 +493,6 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/realms'
     | '/_app/reels'
-    | '/_app/settings'
     | '/_app/voice'
     | '/api/me'
     | '/api/rizz-coach'
@@ -437,9 +503,16 @@ export interface FileRouteTypes {
     | '/_app/g/$id'
     | '/_app/join-realm/$code'
     | '/_app/r/$slug'
+    | '/_app/settings/account'
+    | '/_app/settings/appearance'
+    | '/_app/settings/blocked'
+    | '/_app/settings/notifications'
+    | '/_app/settings/preferences'
+    | '/_app/settings/profile'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/_app/voice/$id'
+    | '/_app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -606,13 +679,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReelsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/voice': {
       id: '/_app/voice'
       path: '/voice'
@@ -683,6 +749,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRSlugRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/account': {
+      id: '/_app/settings/account'
+      path: '/settings/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof AppSettingsAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/appearance': {
+      id: '/_app/settings/appearance'
+      path: '/settings/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof AppSettingsAppearanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/blocked': {
+      id: '/_app/settings/blocked'
+      path: '/settings/blocked'
+      fullPath: '/settings/blocked'
+      preLoaderRoute: typeof AppSettingsBlockedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/notifications': {
+      id: '/_app/settings/notifications'
+      path: '/settings/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/preferences': {
+      id: '/_app/settings/preferences'
+      path: '/settings/preferences'
+      fullPath: '/settings/preferences'
+      preLoaderRoute: typeof AppSettingsPreferencesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/profile': {
+      id: '/_app/settings/profile'
+      path: '/settings/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof AppSettingsProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/tag/$tag': {
       id: '/_app/tag/$tag'
       path: '/tag/$tag'
@@ -733,15 +848,21 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
   AppJoinRealmCodeRoute: typeof AppJoinRealmCodeRoute
   AppRSlugRoute: typeof AppRSlugRoute
+  AppSettingsAccountRoute: typeof AppSettingsAccountRoute
+  AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
+  AppSettingsBlockedRoute: typeof AppSettingsBlockedRoute
+  AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
+  AppSettingsPreferencesRoute: typeof AppSettingsPreferencesRoute
+  AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -758,15 +879,21 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,
   AppJoinRealmCodeRoute: AppJoinRealmCodeRoute,
   AppRSlugRoute: AppRSlugRoute,
+  AppSettingsAccountRoute: AppSettingsAccountRoute,
+  AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
+  AppSettingsBlockedRoute: AppSettingsBlockedRoute,
+  AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
+  AppSettingsPreferencesRoute: AppSettingsPreferencesRoute,
+  AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

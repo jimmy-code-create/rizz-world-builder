@@ -1,0 +1,132 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Loader2, Upload, UserRound } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
+
+export const Route = createFileRoute("/_app/settings/profile")({
+  head: () => ({ meta: [{ title: "Profile · Settings · RIZZ" }] }),
+  component: ProfileSettingsPage,
+});
+
+function ProfileSettingsPage() {
+  const { user, profile, refreshProfile } = useAuth();
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [accent, setAccent] = useState("#ff2d92");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    setDisplayName(profile.display_name ?? "");
+    setBio(profile.bio ?? "");
+    setAccent(profile.accent_color ?? "#ff2d92");
+  }, [profile]);
+
+  async function uploadAvatar(file: File, kind: "avatar" | "banner") {
+    if (!user) return;
+    const ext = file.name.split(".").pop() ?? "png";
+    const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (upErr) return toast.error(upErr.message);
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    const { error } = await supabase
+      .from("profiles")
+      .update(kind === "avatar" ? { avatar_url: data.publicUrl } : { banner_url: data.publicUrl })
+      .eq("id", user.id);
+    if (error) return toast.error(error.message);
+    await refreshProfile();
+    toast.success("Updated ✨");
+  }
+
+  async function save() {
+    if (!user) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: displayName.trim() || null, bio: bio.trim() || null, accent_color: accent })
+      .eq("id", user.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await refreshProfile();
+    toast.success("Profile saved");
+  }
+
+  if (!profile) return null;
+  const initial = (profile.display_name || profile.username || "?").charAt(0).toUpperCase();
+
+  return (
+    <SettingsSubPage
+      title="Profile"
+      description="How the rest of RIZZ sees you."
+      icon={<UserRound className="h-5 w-5" />}
+    >
+      <SettingsCard className="space-y-5">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-20 w-20 ring-2 ring-[var(--rizz-pink)]/40">
+            <AvatarImage src={profile.avatar_url ?? undefined} />
+            <AvatarFallback className="bg-gradient-primary text-2xl font-bold">{initial}</AvatarFallback>
+          </Avatar>
+          <label className="cursor-pointer">
+            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")} />
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 glass-strong px-4 py-2 text-sm font-medium hover:bg-white/5">
+              <Upload className="h-4 w-4" /> Change avatar
+            </span>
+          </label>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Banner</Label>
+          <label className="mt-1 block cursor-pointer">
+            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "banner")} />
+            <div
+              className="flex h-24 items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-muted-foreground hover:bg-white/5"
+              style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+            >
+              {!profile.banner_url && (
+                <>
+                  <Upload className="mr-2 h-4 w-4" /> Upload banner
+                </>
+              )}
+            </div>
+          </label>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Username</Label>
+          <Input value={profile.username ?? ""} readOnly className="mt-1 border-white/10 bg-transparent text-muted-foreground" />
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Display name</Label>
+          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value.slice(0, 40))} className="mt-1 border-white/10 bg-transparent" />
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Bio</Label>
+          <Textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 240))} rows={3} className="mt-1 resize-none border-white/10 bg-transparent" />
+          <p className="mt-1 text-[10px] text-muted-foreground">{240 - bio.length} chars left</p>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Accent glow color</Label>
+          <div className="mt-1 flex items-center gap-3">
+            <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-16 cursor-pointer rounded-lg border border-white/10 bg-transparent" />
+            <span className="text-sm font-mono">{accent}</span>
+          </div>
+        </div>
+
+        <Button onClick={save} disabled={saving} className="w-full border-0 bg-gradient-primary shadow-glow">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save profile"}
+        </Button>
+      </SettingsCard>
+    </SettingsSubPage>
+  );
+}
