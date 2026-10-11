@@ -136,18 +136,21 @@ function RealmsPage() {
   const publicRealms = (realms.data ?? []).filter((r: RealmRow) => r.is_public !== false);
 
   return (
-    <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between gap-3">
-        <div>
+    <div
+      className="space-y-6 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
+      style={{ paddingTop: "max(0.25rem, env(safe-area-inset-top, 0px))" }}
+    >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight">Realms</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Public spaces anyone can join — topics, announcements and drops.
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
           <Dialog open={joinOpen} onOpenChange={(next) => { setJoinOpen(next); if (!next) { setCode(""); setPreview(null); } }}>
-            <Button variant="outline" className="glass border-white/10" onClick={() => setJoinOpen(true)}>
-              <KeyRound className="h-4 w-4 mr-1" />Join by code
+            <Button variant="outline" className="glass h-11 border-white/10" onClick={() => setJoinOpen(true)}>
+              <KeyRound className="h-4 w-4 mr-1.5" />Join by code
             </Button>
             <DialogContent className="glass-strong border-white/10">
               <DialogHeader><DialogTitle className="font-display">Join a realm</DialogTitle></DialogHeader>
@@ -180,18 +183,17 @@ function RealmsPage() {
           </Dialog>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4 mr-1" />New</Button>
+              <Button className="h-11 bg-gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4 mr-1.5" />New realm</Button>
             </DialogTrigger>
             <DialogContent className="glass-strong border-white/10">
-              <DialogHeader><DialogTitle className="font-display">Create a realm</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <Input placeholder="Realm name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="glass border-white/10" />
-                <Textarea placeholder="Description — what is this realm about? (optional)" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={160} className="glass border-white/10 min-h-20" />
+              <DialogHeader><DialogTitle className="font-display">Create a realm</DialogTitle></DialogHeader>                <div className="grid grid-cols-1 gap-3">
+                  <Input placeholder="Realm name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className="glass h-11 border-white/10" />
+                  <Textarea placeholder="Description — what is this realm about? (optional)" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={160} className="glass border-white/10 min-h-20" />
                 <div className="flex gap-2">
                   {(["text", "announcement", "voice"] as const).map((k) => {
                     const Icon = KIND_ICON[k];
                     return (
-                      <button key={k} onClick={() => setKind(k)} className={`flex-1 p-3 rounded-xl border transition-all ${kind === k ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                      <button key={k} onClick={() => setKind(k)} className={`flex-1 p-3 rounded-xl border transition-all min-h-11 ${kind === k ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
                         <Icon className="h-4 w-4 mx-auto mb-1" />
                         <span className="text-xs capitalize">{k}</span>
                       </button>
@@ -199,16 +201,16 @@ function RealmsPage() {
                   })}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setIsPublic(true)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                  <button onClick={() => setIsPublic(true)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
                     <Globe className="h-4 w-4" /><span className="text-xs">Public</span>
                   </button>
-                  <button onClick={() => setIsPublic(false)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${!isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                  <button onClick={() => setIsPublic(false)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${!isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
                     <Lock className="h-4 w-4" /><span className="text-xs">Private (invite-only)</span>
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="text-xs text-muted-foreground">Accent</label>
-                  <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-9 w-14 rounded-md bg-transparent border border-white/10" />
+                  <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-11 w-14 rounded-md bg-transparent border border-white/10" />
                 </div>
                 <Button onClick={handleCreate} disabled={creating || !name.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">
                   {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create realm"}
@@ -234,7 +236,7 @@ function RealmsPage() {
             if (!realm) return null;
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             return (
-              <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }}>
+              <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }} className="block min-h-[44px] rounded-3xl">
                 <motion.div whileHover={{ y: -2 }} className="glass rounded-3xl p-5 border border-white/5" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33` }}>
                   <div className="flex items-start gap-3">
                     <div className="h-12 w-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${realm.accent_color}, var(--rizz-violet))` }}>
@@ -249,7 +251,7 @@ function RealmsPage() {
                     </div>
                     <span className="text-[10px] uppercase tracking-wide rounded-full border border-white/10 px-2 py-0.5 text-white/60">{m.role}</span>
                   </div>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Users className="h-3 w-3" />
                     <span>{realm.member_count} members</span>
                   </div>

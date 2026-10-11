@@ -335,7 +335,10 @@ function RealmPage() {
       )}
 
       {joined && rooms.data && rooms.data.length > 0 && (
-        <div className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/5 px-3 py-2">
+        <div
+          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-white/5 px-3 py-2 no-scrollbar"
+          style={{ paddingTop: "calc(0.5rem + 0px)" }}
+        >
           {(rooms.data as RealmRoom[]).map((room) => {
             const RoomIcon = room.kind === "voice" ? Volume2 : TYPE_ICON[room.kind as keyof typeof TYPE_ICON] ?? Hash;
             const isActive = room.id === activeRoomId;
@@ -344,7 +347,7 @@ function RealmPage() {
                 key={room.id}
                 type="button"
                 onClick={() => setActiveRoomId(room.id)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
                   isActive
                     ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10 text-[var(--rizz-pink)]"
                     : "border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
@@ -359,7 +362,7 @@ function RealmPage() {
             <DialogTrigger asChild>
               <button
                 type="button"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                className="grid h-9 min-h-[36px] w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
                 aria-label="New room"
               >
                 <Plus className="h-4 w-4" />
@@ -429,6 +432,11 @@ function RealmPage() {
       )}
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        {activeRoom?.kind !== "voice" && activeRoom && (
+          <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Hash className="h-3 w-3" />{activeRoom.name}
+          </div>
+        )}
         <AnimatePresence initial={false}>
           {messageRows.map((m: any, index: number) => {
             const mine = m.sender_id === user?.id;
