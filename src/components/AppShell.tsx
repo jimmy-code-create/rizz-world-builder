@@ -1,8 +1,8 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,8 +23,6 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
 import { IncomingCallRinger } from "@/components/IncomingCallRinger";
 import { NightclubCanvas } from "@/components/NightclubCanvas";
-import { FullScreenLoader } from "@/components/FullScreenLoader";
-import { fetchReels } from "@/lib/posts";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -49,40 +47,13 @@ const mobileTabs = [
 
 export function AppShell() {
   const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
-  const queryClient = useQueryClient();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
-  const [reelsNavigationLoading, setReelsNavigationLoading] = useState(false);
-  const reelsLoaderStartedAt = useRef(0);
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
-  const prefetchReels = () => void queryClient.prefetchQuery({
-    queryKey: ["reels"],
-    queryFn: () => fetchReels(40),
-    staleTime: 30_000,
-  });
-  const showReelsNavigationLoader = () => {
-    if (isReels || reelsLoaderStartedAt.current) return;
-    reelsLoaderStartedAt.current = performance.now();
-    setReelsNavigationLoading(true);
-  };
-  const prepareReelsTouch = () => {
-    prefetchReels();
-    showReelsNavigationLoader();
-  };
-
-  useEffect(() => {
-    if (!reelsNavigationLoading) return;
-    const remaining = Math.max(0, 300 - (performance.now() - reelsLoaderStartedAt.current));
-    const timer = window.setTimeout(() => {
-      reelsLoaderStartedAt.current = 0;
-      setReelsNavigationLoading(false);
-    }, remaining);
-    return () => window.clearTimeout(timer);
-  }, [path, reelsNavigationLoading]);
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -128,7 +99,11 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return <FullScreenLoader />;
+    return (
+      <div className="min-h-dvh flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" />
+      </div>
+    );
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
@@ -159,9 +134,6 @@ export function AppShell() {
             <Link
               key={t.to}
               to={t.to}
-              onMouseEnter={t.to === "/reels" ? prefetchReels : undefined}
-              onTouchStart={t.to === "/reels" ? prepareReelsTouch : undefined}
-              onClick={t.to === "/reels" ? showReelsNavigationLoader : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                 isActive(t.to)
                   ? "bg-gradient-primary text-primary-foreground shadow-glow"
@@ -237,20 +209,14 @@ export function AppShell() {
           ? "w-full overflow-hidden"
           : "mx-auto w-full max-w-3xl overflow-y-auto px-4 py-6 md:px-8 md:py-10"
       }`}>
-        <div key={path} className="ios-page-transition contents">
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
 
       {/* Mobile bottom nav — 5 items, center FAB */}
       {!isConversation && <nav className="md:hidden z-30 shrink-0 glass-strong border-t border-white/5 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
         <div className="flex items-center justify-between gap-1">
           {mobileTabs.slice(0, 2).map((t) => (
-            <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)}
-              onMouseEnter={t.to === "/reels" ? prefetchReels : undefined}
-              onTouchStart={t.to === "/reels" ? prepareReelsTouch : undefined}
-              onClick={t.to === "/reels" ? showReelsNavigationLoader : undefined}
-            />
+            <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
           ))}
           {!isReels && <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-5" aria-label="New post">
             <div className="h-12 w-12 rounded-2xl bg-gradient-primary shadow-glow flex items-center justify-center ring-4 ring-background">
@@ -312,9 +278,6 @@ export function AppShell() {
               <Link
                 key={t.to}
                 to={t.to}
-                onMouseEnter={t.to === "/reels" ? prefetchReels : undefined}
-                onTouchStart={t.to === "/reels" ? prepareReelsTouch : undefined}
-                onClick={t.to === "/reels" ? showReelsNavigationLoader : undefined}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
                   isActive(t.to) ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
                 }`}
@@ -363,22 +326,13 @@ export function AppShell() {
       <AppOverlays />
       <KeyboardShortcuts profileUsername={profile?.username} />
       <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
-      {reelsNavigationLoading && <FullScreenLoader />}
     </div>
   );
 }
 
-function NavBtn({ to, label, Icon, active, onMouseEnter, onTouchStart, onClick }: {
-  to: string;
-  label: string;
-  Icon: any;
-  active: boolean;
-  onMouseEnter?: () => void;
-  onTouchStart?: () => void;
-  onClick?: () => void;
-}) {
+function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
   return (
-    <Link to={to} onMouseEnter={onMouseEnter} onTouchStart={onTouchStart} onClick={onClick} className="flex-1 flex flex-col items-center gap-0.5 py-1.5">
+    <Link to={to} className="flex-1 flex flex-col items-center gap-0.5 py-1.5">
       <div className={`p-1.5 rounded-xl transition-all ${active ? "bg-white/10" : ""}`}>
         <Icon className={`h-5 w-5 ${active ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`} />
       </div>

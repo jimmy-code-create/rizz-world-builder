@@ -7,13 +7,12 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { FullScreenLoader, LoadingOverlay } from "@/components/FullScreenLoader";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -46,15 +45,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  const errorDetails = error instanceof Error
-    ? `${error.name}: ${error.message}`
-    : typeof error === "string"
-      ? error
-      : "No additional error message was provided.";
-  const safeErrorDetails = errorDetails
-    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
-    .replace(/((?:api[_-]?key|token|secret)\s*[:=]\s*)[^\s&]+/gi, "$1[redacted]")
-    .slice(0, 400);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -82,14 +72,6 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
             Go home
           </a>
         </div>
-        <details className="mt-5 text-left">
-          <summary className="cursor-pointer text-xs text-muted-foreground">
-            Show error details
-          </summary>
-          <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/20 p-3 text-left text-xs text-muted-foreground">
-            {safeErrorDetails}
-          </pre>
-        </details>
       </div>
     </div>
   );
@@ -100,14 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { title: "RIZZ — Your feed. Your server. Your world." },
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },
       { name: "author", content: "RIZZ" },
-      { name: "theme-color", content: "#09090b", media: "(prefers-color-scheme: dark)" },
-      { name: "theme-color", content: "#f5f5f7", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#ff2d92" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
       { property: "og:description", content: "RIZZ is the social app for Gen Z creators: live feeds, channels, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { property: "og:type", content: "website" },
@@ -162,26 +141,11 @@ function RootComponent() {
     });
   }, []);
 
-  useEffect(() => {
-    const handleTap = (event: PointerEvent) => {
-      if (event.pointerType === "mouse" || typeof navigator.vibrate !== "function") return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const control = target.closest('button:not(:disabled):not([aria-disabled="true"]), [role="button"]:not([aria-disabled="true"]), [role="switch"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"])');
-      if (control) navigator.vibrate(10);
-    };
-    document.addEventListener("pointerdown", handleTap, { passive: true });
-    return () => document.removeEventListener("pointerdown", handleTap);
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <Suspense fallback={<FullScreenLoader />}>
-            <Outlet />
-          </Suspense>
-          <LoadingOverlay />
+          <Outlet />
           <Toaster />
         </ThemeProvider>
       </AuthProvider>

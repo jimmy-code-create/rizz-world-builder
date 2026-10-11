@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { ArrowUp, WifiOff, Wifi, Download, X, Focus } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
 
 const ROUTES: Record<string, string> = {
   f: "/feed", r: "/reels", e: "/explore", d: "/dms", n: "/notifications",
@@ -37,18 +36,18 @@ export function AppOverlays() {
   const [installEvt, setInstallEvt] = useState<any>(null);
   const [installDismissed, setInstallDismissed] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
-    return readLocalStorage("rizz:install-dismissed") === "1";
+    return localStorage.getItem("rizz:install-dismissed") === "1";
   });
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return readLocalStorage("rizz:focus-mode") === "1";
+    return localStorage.getItem("rizz:focus-mode") === "1";
   });
 
   // Apply focus mode class + persist
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.classList.toggle("focus-mode", focusMode);
-    writeLocalStorage("rizz:focus-mode", focusMode ? "1" : "0");
+    localStorage.setItem("rizz:focus-mode", focusMode ? "1" : "0");
   }, [focusMode]);
 
   // Vim-style "g then x" navigation + ? help + . scroll-to-top
@@ -161,7 +160,7 @@ export function AppOverlays() {
               className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gradient-primary"
             >Install</button>
             <button
-              onClick={() => { setInstallDismissed(true); writeLocalStorage("rizz:install-dismissed", "1"); }}
+              onClick={() => { setInstallDismissed(true); localStorage.setItem("rizz:install-dismissed","1"); }}
               className="h-7 w-7 grid place-items-center rounded-full hover:bg-white/5" aria-label="Dismiss"
             ><X className="h-3.5 w-3.5" /></button>
           </motion.div>
