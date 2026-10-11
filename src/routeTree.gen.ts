@@ -30,7 +30,6 @@ import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
-import { Route as AppVoiceRouteImport } from './routes/_app/voice'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
@@ -49,7 +48,6 @@ import { Route as AppSettingsPreferencesRouteImport } from './routes/_app/settin
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
-import { Route as AppVoiceIdRouteImport } from './routes/_app/voice.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -155,11 +153,6 @@ const AppReelsRoute = AppReelsRouteImport.update({
   path: '/reels',
   getParentRoute: () => AppRoute,
 } as any)
-const AppVoiceRoute = AppVoiceRouteImport.update({
-  id: '/voice',
-  path: '/voice',
-  getParentRoute: () => AppRoute,
-} as any)
 const ApiMeRoute = ApiMeRouteImport.update({
   id: '/api/me',
   path: '/api/me',
@@ -251,11 +244,6 @@ const AppUUsernameRoute = AppUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AppRoute,
 } as any)
-const AppVoiceIdRoute = AppVoiceIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppVoiceRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -278,7 +266,6 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
-  '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -296,7 +283,6 @@ export interface FileRoutesByFullPath {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
-  '/voice/$id': typeof AppVoiceIdRoute
   '/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -320,7 +306,6 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
-  '/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -338,7 +323,6 @@ export interface FileRoutesByTo {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
-  '/voice/$id': typeof AppVoiceIdRoute
   '/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -364,7 +348,6 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
-  '/_app/voice': typeof AppVoiceRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -382,7 +365,6 @@ export interface FileRoutesById {
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
-  '/_app/voice/$id': typeof AppVoiceIdRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -408,7 +390,6 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
-    | '/voice'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -426,7 +407,6 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
-    | '/voice/$id'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -450,7 +430,6 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
-    | '/voice'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -468,7 +447,6 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
-    | '/voice/$id'
     | '/settings'
   id:
     | '__root__'
@@ -493,7 +471,6 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/realms'
     | '/_app/reels'
-    | '/_app/voice'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -511,7 +488,6 @@ export interface FileRouteTypes {
     | '/_app/settings/profile'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
-    | '/_app/voice/$id'
     | '/_app/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -679,13 +655,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReelsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/voice': {
-      id: '/_app/voice'
-      path: '/voice'
-      fullPath: '/voice'
-      preLoaderRoute: typeof AppVoiceRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/api/me': {
       id: '/api/me'
       path: '/api/me'
@@ -812,27 +781,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUUsernameRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/voice/$id': {
-      id: '/_app/voice/$id'
-      path: '/$id'
-      fullPath: '/voice/$id'
-      preLoaderRoute: typeof AppVoiceIdRouteImport
-      parentRoute: typeof AppVoiceRoute
-    }
   }
 }
-
-interface AppVoiceRouteChildren {
-  AppVoiceIdRoute: typeof AppVoiceIdRoute
-}
-
-const AppVoiceRouteChildren: AppVoiceRouteChildren = {
-  AppVoiceIdRoute: AppVoiceIdRoute,
-}
-
-const AppVoiceRouteWithChildren = AppVoiceRoute._addFileChildren(
-  AppVoiceRouteChildren,
-)
 
 interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
@@ -848,7 +798,6 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
-  AppVoiceRoute: typeof AppVoiceRouteWithChildren
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
@@ -879,7 +828,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
-  AppVoiceRoute: AppVoiceRouteWithChildren,
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,

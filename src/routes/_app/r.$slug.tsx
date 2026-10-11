@@ -9,11 +9,11 @@ import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm } from "@/lib/realms";
-import { createRoom, fetchRealmLiveRoom } from "@/lib/voice";
+import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } from "@/components/voice/VoiceCallProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, MicOff, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
@@ -24,6 +24,11 @@ import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocom
 import { renderCaptionWithTags } from "@/lib/hashtags";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
+
+type RealmChannelCall = {
+  room: { id: string; realm_room_id: string | null; host_id: string; title: string };
+  participants: CallParticipantRow[];
+};
 
 export const Route = createFileRoute("/_app/r/$slug")({
   head: ({ params }) => ({ meta: [{ title: `#${params.slug} · RIZZ` }] }),
@@ -36,12 +41,6 @@ function RealmPage() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const realm = useQuery({ queryKey: ["realm", slug], queryFn: () => fetchRealmBySlug(slug) });
-  const voiceRoom = useQuery({
-    queryKey: ["realm-voice-room", realm.data?.id],
-    queryFn: () => fetchRealmLiveRoom(realm.data!.id),
-    enabled: realm.data?.kind === "voice",
-    refetchInterval: 15_000,
-  });
   const messages = useQuery({
     queryKey: ["realm-messages", realm.data?.id],
     queryFn: () => fetchRealmMessages(realm.data!.id),
@@ -50,7 +49,6 @@ function RealmPage() {
   const [joined, setJoined] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
-  const [startingVoice, setStartingVoice] = useState(false);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -80,6 +78,19 @@ function RealmPage() {
   const activeRoom = (rooms.data ?? []).find((r) => r.id === activeRoomId) ?? null;
   const textRooms = (rooms.data ?? []).filter((r) => r.kind !== "voice");
   const voiceRoomsList = (rooms.data ?? []).filter((r) => r.kind === "voice");
+
+  // Voice calls live in the root provider so they keep running across pages.
+  const {
+    call: activeCall,
+    joinChannel,
+    busy: joiningVoice,
+    openView: openCallView,
+  } = useVoiceCallContext();
+  const channelCalls = useRealmVoiceChannels(realm.data?.id);
+  const channelCallsByRoom = new Map<string, RealmChannelCall>(
+    ((channelCalls.data ?? []) as RealmChannelCall[]).map((entry) => [entry.room.realm_room_id ?? "", entry]),
+  );
+  const activeChannelPeople = activeRoom?.kind === "voice" ? channelCallsByRoom.get(activeRoom.id)?.participants ?? [] : [];
 
   const roomMessages = useQuery({
     queryKey: ["realm-room-messages", activeRoomId],
@@ -197,38 +208,6 @@ function RealmPage() {
       toast.error(e?.message ?? "Couldn't create the room");
     } finally {
       setCreatingRoom(false);
-    }
-  };
-
-  const handleVoiceStage = async () => {
-    if (!user) {
-      toast.error("Sign in to join this voice room");
-      return;
-    }
-    if (voiceRoom.isLoading || startingVoice) return;
-    setStartingVoice(true);
-    try {
-      let roomId = voiceRoom.data?.id;
-      if (voiceRoom.isError) {
-        const refreshed = await voiceRoom.refetch();
-        if (refreshed.error) throw refreshed.error;
-        roomId = refreshed.data?.id;
-      }
-      if (!roomId) {
-        const created = await createRoom({
-          host_id: user.id,
-          title: c.name,
-          topic: c.topic || undefined,
-          realm_id: c.id,
-        });
-        roomId = created.id;
-        await qc.invalidateQueries({ queryKey: ["realm-voice-room", c.id] });
-      }
-      await nav({ to: "/voice/$id", params: { id: roomId } });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't open this voice room");
-    } finally {
-      setStartingVoice(false);
     }
   };
 
@@ -439,19 +418,40 @@ function RealmPage() {
           {(rooms.data as RealmRoom[]).map((room) => {
             const RoomIcon = room.kind === "voice" ? Volume2 : TYPE_ICON[room.kind as keyof typeof TYPE_ICON] ?? Hash;
             const isActive = room.id === activeRoomId;
+            const channelCall = room.kind === "voice" ? channelCallsByRoom.get(room.id) : undefined;
+            const people: CallParticipantRow[] = channelCall?.participants ?? [];
+            const inThisCall = activeCall?.channelId === room.id;
             return (
               <button
                 key={room.id}
                 type="button"
                 onClick={() => setActiveRoomId(room.id)}
                 className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
-                  isActive
-                    ? "border-sky-300/40 bg-sky-400/10 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,.1)]"
-                    : "border-white/10 bg-white/[0.035] text-white/70 hover:border-sky-200/25 hover:text-white"
+                  inThisCall
+                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                    : isActive
+                      ? "border-sky-300/40 bg-sky-400/10 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,.1)]"
+                      : "border-white/10 bg-white/[0.035] text-white/70 hover:border-sky-200/25 hover:text-white"
                 }`}
               >
-                <RoomIcon className="h-3.5 w-3.5" />
+                {room.kind === "voice" && people.length > 0 ? (
+                  <span className="flex -space-x-1.5">
+                    {people.slice(0, 3).map((person) => (
+                      <Avatar key={person.user_id} className="h-4 w-4 ring-1 ring-background">
+                        <AvatarImage src={person.user?.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-gradient-primary text-[8px] font-bold">
+                          {(person.user?.username ?? "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </span>
+                ) : (
+                  <RoomIcon className="h-3.5 w-3.5" />
+                )}
                 {room.name}
+                {room.kind === "voice" && people.length > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-300">{people.length}</span>
+                )}
               </button>
             );
           })}
@@ -497,34 +497,69 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="mx-4 my-3 flex flex-col items-center justify-between gap-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong sm:flex-row">
-          <div className="flex items-center gap-3">
-            <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl text-white ${voiceRoom.data ? "bg-gradient-primary shadow-glow" : "border border-white/10 bg-white/[0.06]"}`}>
-              <Mic className={`h-6 w-6 ${voiceRoom.data ? "animate-pulse" : "text-white/70"}`} />
-              {voiceRoom.data && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
+        <div className="mx-4 my-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-primary text-white shadow-glow">
+                <Mic className="h-6 w-6" />
+                {activeChannelPeople.length > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
+              </div>
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 font-display text-base font-bold">
+                  <span className="truncate">{activeRoom.name || "Voice channel"}</span>
+                  {activeChannelPeople.length > 0 && (
+                    <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                      {activeChannelPeople.length} in call
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {activeChannelPeople.length > 0 ? "Jump in — everyone can talk." : "No one is here yet. Be the first voice."}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-display font-bold text-base flex items-center gap-2">
-                {activeRoom.name || "Voice room"}
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${voiceRoom.data ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300" : "border-white/10 bg-white/[0.04] text-white/55"}`}>
-                  {voiceRoom.data ? "Live" : "Ready"}
-                </span>
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {voiceRoom.data ? "Join the live room for this realm." : "Start a room for members to talk or listen."}
-              </p>
-              {voiceRoom.isError && <p role="alert" className="mt-1 text-xs text-destructive">Couldn't check for a live room. Try again.</p>}
-            </div>
+            <Button
+              type="button"
+              disabled={joiningVoice}
+              onClick={() => {
+                if (activeCall?.channelId === activeRoom.id) openCallView();
+                else joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name });
+              }}
+              className="min-h-12 w-full shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
+            >
+              <Mic className="h-4 w-4" />
+              {activeCall?.channelId === activeRoom.id ? "Return to call" : joiningVoice ? "Joining…" : "Join voice"}
+            </Button>
           </div>
-          <Button
-            type="button"
-            disabled={voiceRoom.isLoading || startingVoice}
-            onClick={() => void handleVoiceStage()}
-            className="w-full gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
-          >
-            <Mic className="h-4 w-4" />
-            {startingVoice ? "Opening…" : voiceRoom.isLoading ? "Checking…" : voiceRoom.data ? "Join live room" : voiceRoom.isError ? "Retry" : "Start voice room"}
-          </Button>
+
+          {activeChannelPeople.length > 0 && (
+            <ul className="mt-4 space-y-2">
+              {activeChannelPeople.map((person) => {
+                const username = person.user?.username ?? "member";
+                return (
+                  <li key={person.user_id} className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-2.5">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={person.user?.avatar_url ?? undefined} />
+                      <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                        {(person.user?.display_name || username).charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{person.user?.display_name || `@${username}`}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">@{username}</p>
+                    </div>
+                    {person.muted ? (
+                      <MicOff className="h-4 w-4 shrink-0 text-destructive" aria-label="Muted" />
+                    ) : (
+                      <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> live
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
 

@@ -15,6 +15,7 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
+import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 
 function NotFoundComponent() {
@@ -153,8 +154,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <Outlet />
-          {showLilRizz && companionEnabled && <LilRizzCompanion />}
+          {/* Owns the live voice call so it survives navigation between pages. */}
+          <VoiceCallProvider>
+            <Outlet />
+            {showLilRizz && companionEnabled && <LilRizzCompanion />}
+          </VoiceCallProvider>
           <Toaster />
         </ThemeProvider>
       </AuthProvider>

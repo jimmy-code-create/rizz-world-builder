@@ -23,6 +23,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OwnerPanel } from "@/components/OwnerPanel";
 import { IncomingCallRinger } from "@/components/IncomingCallRinger";
 import { NightclubCanvas } from "@/components/NightclubCanvas";
+import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
 
 const sideTabs = [
   { to: "/feed", label: "Feed", icon: Home },
@@ -211,6 +212,9 @@ export function AppShell() {
       }`}>
         <Outlet />
       </main>
+
+      {/* Global voice call bar — sits above the nav, never over the composer */}
+      <VoiceCallBar />
 
       {/* Mobile bottom nav — 5 items, center FAB */}
       {!isConversation && <nav className="md:hidden z-30 shrink-0 glass-strong border-t border-white/5 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
