@@ -130,7 +130,7 @@ export async function createRealmSecure(input: {
 }) {
   const { data, error } = await supabase.rpc("create_realm_secure", {
     _name: input.name,
-    _topic: input.topic ?? null,
+    _topic: input.topic,
     _accent_color: input.accent_color ?? "#ff2d92",
     _kind: input.kind ?? "text",
     _is_public: input.is_public ?? true,
@@ -180,11 +180,11 @@ export async function createRealmInvite(input: {
   const expiresAt =
     input.expiresInDays && input.expiresInDays > 0
       ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-      : null;
+      : undefined;
   const { data, error } = await supabase.rpc("create_realm_invite", {
     _realm_id: input.realmId,
     _expires_at: expiresAt,
-    _max_uses: input.maxUses ?? null,
+    _max_uses: input.maxUses ?? undefined,
   });
   if (error) throw error;
   return data as string;
@@ -218,11 +218,11 @@ export async function updateRealm(input: {
 }) {
   const { error } = await supabase.rpc("update_realm", {
     _realm_id: input.realmId,
-    _name: input.name ?? null,
-    _topic: input.topic ?? null,
-    _icon_url: input.iconUrl ?? null,
-    _accent_color: input.accentColor ?? null,
-    _is_public: input.isPublic ?? null,
+    _name: input.name,
+    _topic: input.topic,
+    _icon_url: input.iconUrl,
+    _accent_color: input.accentColor,
+    _is_public: input.isPublic,
   });
   if (error) throw error;
 }
