@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const GEMINI_CONFIG = {
-  endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+  endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
   apiKeyEnv: "GEMINI_API_KEY",
   temperature: 0.7,
   maxOutputTokens: 400,

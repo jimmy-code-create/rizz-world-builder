@@ -9,14 +9,18 @@ import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 function getLilRizzFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const status = message.match(/GEMINI_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
+  const statusCode = status?.[1] ?? status?.[2];
 
   if (/GEMINI_API_KEY|not configured/i.test(message)) {
     return "Gemini is not configured on this server. Check GEMINI_API_KEY in Render.";
   }
-  if (["400", "401", "403"].includes(status?.[1] ?? status?.[2] ?? "")) {
+  if (statusCode === "404") {
+    return "The configured Gemini model is unavailable. Check the model ID in the server.";
+  }
+  if (["400", "401", "403"].includes(statusCode ?? "")) {
     return "Gemini rejected the request. Check the server's Gemini API key and model access.";
   }
-  if (status?.[1] === "429" || status?.[2] === "429") {
+  if (statusCode === "429") {
     return "Gemini's usage limit is reached. Please try again later.";
   }
   if (/unauthorized|supabase|session|token/i.test(message)) {
