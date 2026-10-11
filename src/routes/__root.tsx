@@ -136,7 +136,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
-  const showLilRizz = location.pathname === "/" || location.pathname === "/_app/feed";
+  const showLilRizz = location.pathname === "/feed" || location.pathname === "/_app/feed";
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;

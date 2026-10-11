@@ -183,7 +183,7 @@ export function LilRizzOrbWidget({
         aria-relevant="additions text"
         className="min-h-28 space-y-3 overflow-y-auto px-4 py-4"
       >
-        {isGuest && !authLoading && !lastUserMessage && !transcript && !reply && (
+        {isGuest && !isAuthLoading && !lastUserMessage && !transcript && !reply && (
           <div className="flex min-h-24 flex-col items-center justify-center text-center">
             <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-pink-300/15 bg-pink-400/[.08]">
               <MessageCircle aria-hidden="true" className="h-5 w-5 text-pink-200" />

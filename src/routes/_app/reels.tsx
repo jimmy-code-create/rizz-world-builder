@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
@@ -265,7 +265,8 @@ function ReelItem({
   const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number } | null>(null);
+  const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
+  const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
   const [paused, setPaused] = useState(true);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
@@ -273,6 +274,27 @@ function ReelItem({
   const tapTimer = useRef<number | null>(null);
   const stickerTimer = useRef<number | null>(null);
   const stickerId = useRef(0);
+  const warmStickerEffect = useCallback(() => {
+    const effect = REEL_LIKE_EFFECTS[Math.floor(Math.random() * REEL_LIKE_EFFECTS.length)];
+    const src = `/reel-effects/${effect}`;
+    const prepared = { src, loaded: false };
+    const image = new Image();
+    preparedStickerRef.current = prepared;
+    image.onload = () => {
+      if (preparedStickerRef.current === prepared) {
+        preparedStickerRef.current = { ...prepared, loaded: true };
+      }
+    };
+    image.onerror = () => {
+      if (preparedStickerRef.current === prepared) preparedStickerRef.current = null;
+    };
+    image.src = src;
+    return () => {
+      image.onload = null;
+      image.onerror = null;
+      if (preparedStickerRef.current === prepared) preparedStickerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
@@ -305,6 +327,10 @@ function ReelItem({
     return () => { cancelled = true; };
   }, [isActive, autoplay]);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
+  useEffect(() => {
+    if (!isActive) return;
+    return warmStickerEffect();
+  }, [isActive, warmStickerEffect]);
   useEffect(() => () => {
     if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
     if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
@@ -385,8 +411,13 @@ function ReelItem({
       const x = Math.max(insetX, Math.min(100 - insetX, ((event.clientX - bounds.left) / bounds.width) * 100));
       const y = Math.max(insetY, Math.min(100 - insetY, ((event.clientY - bounds.top) / bounds.height) * 100));
       const id = ++stickerId.current;
-      const effect = REEL_LIKE_EFFECTS[Math.floor(Math.random() * REEL_LIKE_EFFECTS.length)];
-      setStickerBurst({ id, src: `/reel-effects/${effect}`, x, y });
+      const preparedSticker = preparedStickerRef.current;
+      const effect = preparedSticker ?? {
+        src: `/reel-effects/${REEL_LIKE_EFFECTS[Math.floor(Math.random() * REEL_LIKE_EFFECTS.length)]}`,
+        loaded: false,
+      };
+      setStickerBurst({ id, src: effect.src, x, y, imageLoaded: effect.loaded });
+      warmStickerEffect();
       if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
       stickerTimer.current = window.setTimeout(() => {
         setStickerBurst((current) => current?.id === id ? null : current);
@@ -517,12 +548,25 @@ function ReelItem({
             animation: "reel-sticker-pop 900ms cubic-bezier(0.2,0.7,0.2,1) forwards",
           }}
         >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-0 grid place-items-center text-4xl transition-opacity duration-100 ${
+              stickerBurst.imageLoaded ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            💖
+          </span>
           <img
             src={stickerBurst.src}
             alt=""
             aria-hidden="true"
             draggable={false}
-            className="h-11 w-11 select-none object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
+            onLoad={() => setStickerBurst((current) =>
+              current?.id === stickerBurst.id ? { ...current, imageLoaded: true } : current
+            )}
+            className={`h-11 w-11 select-none object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] transition-opacity duration-100 ${
+              stickerBurst.imageLoaded ? "opacity-100" : "opacity-0"
+            }`}
           />
         </span>
       )}
