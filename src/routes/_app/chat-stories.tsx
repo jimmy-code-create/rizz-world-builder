@@ -8,7 +8,7 @@ import { Heart, Loader2, MessageSquareText, Play, Sparkles, Trash2, Wand2 } from
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
-import { generateGeminiStory, saveGeneratedStoryToSupabase } from "@/lib/gemini-story";
+import { generateChatStory, saveGeneratedStoryToSupabase } from "@/lib/story-generation";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -166,7 +166,7 @@ function ChatStoriesPage() {
 
     setIsGenerating(true);
     try {
-      const generatedStory = await generateGeminiStory({
+      const generatedStory = await generateChatStory({
         prompt,
         category: genCategory,
         language: genLang,
@@ -215,7 +215,7 @@ function ChatStoriesPage() {
         >
           <span className="absolute inset-0 -z-10 bg-gradient-to-r from-[var(--rizz-pink)]/15 via-transparent to-fuchsia-400/10 opacity-80" />
           <Sparkles className="h-4 w-4 text-[var(--rizz-pink)]" />
-          <span className="hidden sm:inline">Generate with Gemini</span>
+          <span className="hidden sm:inline">Generate with AI</span>
           <span className="sm:hidden">Generate</span>
         </button>
       </header>
@@ -237,7 +237,7 @@ function ChatStoriesPage() {
               <Wand2 className="h-5 w-5 text-[var(--rizz-pink)]" /> Make a chat story
             </DialogTitle>
             <DialogDescription className="text-left">
-              Give Gemini a premise. It will turn it into a branching conversation.
+              Give the AI a premise. It will turn it into a branching conversation.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5">

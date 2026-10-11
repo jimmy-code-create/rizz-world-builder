@@ -8,20 +8,20 @@ import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  const status = message.match(/GEMINI_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
+  const status = message.match(/GROQ_HTTP_(\d{3})|HTTP\s+(\d{3})/i);
   const statusCode = status?.[1] ?? status?.[2];
 
-  if (/GEMINI_API_KEY|not configured/i.test(message)) {
-    return "Gemini is not configured on this server. Check GEMINI_API_KEY in Render.";
+  if (/GROQ_API_KEY|not configured/i.test(message)) {
+    return "The AI brain is not configured on this server. Check GROQ_API_KEY in Render.";
   }
   if (statusCode === "404") {
-    return "The configured Gemini model is unavailable. Check the model ID in the server.";
+    return "The configured AI model is unavailable. Check the model ID in the server.";
   }
   if (["400", "401", "403"].includes(statusCode ?? "")) {
-    return "Gemini rejected the request. Check the server's Gemini API key and model access.";
+    return "The AI rejected the request. Check the server's Groq API key and model access.";
   }
   if (statusCode === "429") {
-    return "Gemini's usage limit is reached. Please try again later.";
+    return "The AI's usage limit is reached. Please try again later.";
   }
   if (/unauthorized|supabase|session|token/i.test(message)) {
     return "Your RIZZ sign-in expired. Sign in again, then retry.";

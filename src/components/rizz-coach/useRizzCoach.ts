@@ -192,7 +192,6 @@ export function useRizzCoach() {
       setStatusMessage(undefined);
       setState("thinking");
       pausedRef.current = true;
-      setMicLevel(0);
       try {
         recognitionRef.current?.stop();
       } catch {

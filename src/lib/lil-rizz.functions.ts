@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const GEMINI_CONFIG = {
-  endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
-  apiKeyEnv: "GEMINI_API_KEY",
+const GROQ_CONFIG = {
+  endpoint: "https://api.groq.com/openai/v1/chat/completions",
+  apiKeyEnv: "GROQ_API_KEY",
+  defaultModel: "openai/gpt-oss-20b",
   temperature: 0.7,
   maxOutputTokens: 400,
 };
@@ -35,10 +36,8 @@ const SYSTEM_PROMPT = `You are Lil Rizz, a witty, sassy black cat and charismati
   * Voice-first: Keep responses under 2-3 sentences max. Speak punchy lines that sound natural when read aloud.
   * Never lecture or sound like a corporate AI assistant.`;
 
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
-  }>;
+type GroqChatResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
 };
 
 const generateLilRizzReplyServer = createServerFn({ method: "POST" })
@@ -47,57 +46,58 @@ const generateLilRizzReplyServer = createServerFn({ method: "POST" })
     requestSchema.parse(input),
   )
   .handler(async ({ data }) => {
-    const apiKey = process.env[GEMINI_CONFIG.apiKeyEnv];
+    const apiKey = process.env[GROQ_CONFIG.apiKeyEnv];
     if (!apiKey) {
-      throw new Error(`${GEMINI_CONFIG.apiKeyEnv} is not configured on the server.`);
+      throw new Error(`${GROQ_CONFIG.apiKeyEnv} is not configured on the server.`);
     }
 
-    const contents = [
+    const model = process.env.GROQ_MODEL?.trim() || GROQ_CONFIG.defaultModel;
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
       ...data.history.map((turn) => ({
-        role: turn.role,
-        parts: [{ text: turn.text }],
+        role: turn.role === "user" ? "user" : "assistant",
+        content: turn.text,
       })),
-      { role: "user", parts: [{ text: data.message }] },
+      { role: "user", content: data.message },
     ];
 
-    const response = await fetch(GEMINI_CONFIG.endpoint, {
+    const payload: Record<string, unknown> = {
+      model,
+      messages,
+      temperature: GROQ_CONFIG.temperature,
+      max_completion_tokens: GROQ_CONFIG.maxOutputTokens,
+    };
+    // The default brain is gpt-oss; skipping its reasoning pass keeps replies snappy.
+    if (model.includes("gpt-oss")) payload.reasoning_effort = "low";
+
+    const response = await fetch(GROQ_CONFIG.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: {
-          temperature: GEMINI_CONFIG.temperature,
-          maxOutputTokens: GEMINI_CONFIG.maxOutputTokens,
-        },
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15_000),
     });
 
     const responseBody = await response.text();
     if (!response.ok) {
-      console.error("[Lil Rizz] Gemini request failed", response.status);
-      throw new Error(`GEMINI_HTTP_${response.status}`);
+      console.error("[Lil Rizz] Groq request failed", response.status);
+      throw new Error(`GROQ_HTTP_${response.status}`);
     }
 
-    let payload: GeminiResponse;
+    let chat: GroqChatResponse;
     try {
-      payload = JSON.parse(responseBody) as GeminiResponse;
+      chat = JSON.parse(responseBody) as GroqChatResponse;
     } catch {
-      console.error("[Lil Rizz] Gemini returned an invalid response", response.status);
-      throw new Error("GEMINI_EMPTY_RESPONSE");
+      console.error("[Lil Rizz] Groq returned an invalid response", response.status);
+      throw new Error("GROQ_EMPTY_RESPONSE");
     }
-    const reply = payload.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim();
+    const reply = chat.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
-      console.error("[Lil Rizz] Gemini returned an empty response", response.status);
-      throw new Error("GEMINI_EMPTY_RESPONSE");
+      console.error("[Lil Rizz] Groq returned an empty response", response.status);
+      throw new Error("GROQ_EMPTY_RESPONSE");
     }
     return { reply: reply.slice(0, 800) };
   });

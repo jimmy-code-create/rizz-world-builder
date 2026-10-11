@@ -20,7 +20,9 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
         sync: false
       - key: XAI_API_KEY
         sync: false

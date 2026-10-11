@@ -130,22 +130,23 @@ function ChannelPage() {
     if (voiceRoom.isLoading || startingVoice) return;
     setStartingVoice(true);
     try {
-      let liveRoom = voiceRoom.data;
+      let roomId = voiceRoom.data?.id;
       if (voiceRoom.isError) {
         const refreshed = await voiceRoom.refetch();
         if (refreshed.error) throw refreshed.error;
-        liveRoom = refreshed.data;
+        roomId = refreshed.data?.id;
       }
-      if (!liveRoom) {
-        liveRoom = await createRoom({
+      if (!roomId) {
+        const created = await createRoom({
           host_id: user.id,
           title: c.name,
           topic: c.topic || undefined,
           channel_id: c.id,
         });
+        roomId = created.id;
         await qc.invalidateQueries({ queryKey: ["channel-voice-room", c.id] });
       }
-      await nav({ to: "/voice/$id", params: { id: liveRoom.id } });
+      await nav({ to: "/voice/$id", params: { id: roomId } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't open this voice channel");
     } finally {

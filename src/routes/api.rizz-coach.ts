@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-const TEXT_MODEL = "gemini-3.5-flash-lite";
-const SPEECH_MODEL = "gemini-3.8-flash-lite-tts";
-const VOICE = "Puck";
+const GROQ_API_URL = "https://api.groq.com/openai/v1";
+const DEFAULT_TEXT_MODEL = "openai/gpt-oss-20b";
+const DEFAULT_SPEECH_MODEL = "canopylabs/orpheus-v1-english";
+const SPEECH_INPUT_LIMIT = 200;
 
 const EMOTIONS = ["playful", "warm", "excited", "teasing", "calm", "surprised"] as const;
 type Emotion = (typeof EMOTIONS)[number];
@@ -12,13 +12,14 @@ type Turn = { role: "user" | "model"; text: string };
 const SYSTEM_PROMPT = `You are Rizz Coach, a confident, funny, warm friend who helps me practice talking to people and gives quick, real tips. Talk the way people actually talk: short sentences, 'haha', 'hmm', 'ohh', 'wait...' and '...' for pauses. Keep every reply to 1-2 short sentences. No emojis, no markdown, no lists, because everything is read aloud. React to my mood first, then help. When I practice a conversation, play the other person naturally, then give one quick tip. Be respectful and consent-aware. Never teach manipulation or pressure.
 Return JSON only in this exact shape: {"emotion":"playful|warm|excited|teasing|calm|surprised","text":"your spoken reply"}.`;
 
-const STYLE_INSTRUCTIONS: Record<Emotion, string> = {
-  playful: "Say this in a playful, teasing tone.",
-  warm: "Say this warmly and softly.",
-  excited: "Say this with bright, natural excitement.",
-  teasing: "Say this in a lightly teasing, affectionate tone.",
-  calm: "Say this calmly and gently.",
-  surprised: "Say this with friendly, genuine surprise.",
+// The spoken voice is chosen from the emotion, since the TTS model has no style control.
+const EMOTION_VOICES: Record<Emotion, string> = {
+  playful: "troy",
+  warm: "hannah",
+  excited: "autumn",
+  teasing: "daniel",
+  calm: "austin",
+  surprised: "diana",
 };
 
 const requestCounts = new Map<string, { count: number; resetsAt: number }>();
@@ -60,30 +61,47 @@ function isRateLimited(request: Request, mode: string): boolean {
   return false;
 }
 
-async function callGemini(model: string, body: unknown, apiKey: string): Promise<Response> {
-  return fetch(`${GEMINI_API_URL}/${model}:generateContent`, {
+function textModel(): string {
+  return process.env.GROQ_MODEL?.trim() || DEFAULT_TEXT_MODEL;
+}
+
+function speechModel(): string {
+  return process.env.GROQ_TTS_MODEL?.trim() || DEFAULT_SPEECH_MODEL;
+}
+
+async function callGroq(path: string, body: unknown, apiKey: string): Promise<Response> {
+  return fetch(`${GROQ_API_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(25_000),
   });
 }
 
-async function geminiError(response: Response): Promise<Response> {
+async function groqError(response: Response): Promise<Response> {
   if (response.status === 429) {
     return Response.json(
-      { error: "The coach has hit its Gemini usage limit for now." },
+      { error: "The coach has hit its usage limit for now." },
       { status: 429 },
     );
   }
   if (response.status === 401 || response.status === 403) {
-    return Response.json({ error: "The Gemini key needs attention." }, { status: 502 });
+    return Response.json({ error: "The coach's AI key needs attention." }, { status: 502 });
   }
-  console.error("Gemini request failed with status", response.status);
+  console.error("Groq request failed with status", response.status);
   return Response.json({ error: "The coach couldn't connect right now." }, { status: 502 });
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
 }
 
 async function handleCoachRequest(request: Request): Promise<Response> {
@@ -110,10 +128,10 @@ async function handleCoachRequest(request: Request): Promise<Response> {
     );
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "The coach's Gemini connection isn't set up yet." },
+      { error: "The coach's AI connection isn't set up yet." },
       { status: 503 },
     );
   }
@@ -141,42 +159,51 @@ async function handleCoachRequest(request: Request): Promise<Response> {
       : [];
     const turns: Turn[] = [...context, { role: "user", text: message }];
 
-    let response: Response;
-    try {
-      response = await callGemini(
-        TEXT_MODEL,
-        {
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: turns.map((turn) => ({
-            role: turn.role,
-            parts: [{ text: turn.text }],
-          })),
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                emotion: { type: "STRING", enum: [...EMOTIONS] },
-                text: { type: "STRING" },
-              },
-              required: ["emotion", "text"],
+    const model = textModel();
+    const replyPayload: Record<string, unknown> = {
+      model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...turns.map((turn) => ({
+          role: turn.role === "user" ? "user" : "assistant",
+          content: turn.text,
+        })),
+      ],
+      temperature: 0.9,
+      max_completion_tokens: 128,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "coach_reply",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              emotion: { type: "string", enum: [...EMOTIONS] },
+              text: { type: "string" },
             },
-            maxOutputTokens: 128,
-            temperature: 0.9,
+            required: ["emotion", "text"],
+            additionalProperties: false,
           },
         },
-        apiKey,
-      );
+      },
+    };
+    // The default brain is gpt-oss; skipping its reasoning pass keeps replies snappy.
+    if (model.includes("gpt-oss")) replyPayload.reasoning_effort = "low";
+
+    let response: Response;
+    try {
+      response = await callGroq("/chat/completions", replyPayload, apiKey);
     } catch (error) {
-      console.error("Gemini reply request failed", error);
+      console.error("Coach reply request failed", error);
       return Response.json({ error: "The coach couldn't connect right now." }, { status: 502 });
     }
 
-    if (!response.ok) return geminiError(response);
+    if (!response.ok) return groqError(response);
     const result: unknown = await response.json().catch(() => null);
     const candidate = (
-      result as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> } | null
-    )?.candidates?.[0]?.content?.parts?.find((part) => typeof part.text === "string")?.text;
+      result as { choices?: Array<{ message?: { content?: string } }> } | null
+    )?.choices?.[0]?.message?.content;
     if (!candidate) {
       return Response.json(
         { error: "The coach couldn't find the words just now." },
@@ -185,14 +212,18 @@ async function handleCoachRequest(request: Request): Promise<Response> {
     }
 
     try {
-      const parsed: unknown = JSON.parse(candidate);
+      const cleaned = candidate
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+      const parsed: unknown = JSON.parse(cleaned);
       if (
         !parsed ||
         typeof parsed !== "object" ||
         typeof (parsed as { text?: unknown }).text !== "string" ||
         !isEmotion((parsed as { emotion?: unknown }).emotion)
       ) {
-        throw new Error("Unexpected Gemini reply format");
+        throw new Error("Unexpected coach reply format");
       }
 
       const reply = parsed as { emotion: Emotion; text: string };
@@ -208,7 +239,7 @@ async function handleCoachRequest(request: Request): Promise<Response> {
         { headers: { "Cache-Control": "no-store" } },
       );
     } catch {
-      console.error("Gemini returned an invalid coach reply");
+      console.error("Groq returned an invalid coach reply");
       return Response.json(
         { error: "The coach couldn't find the words just now." },
         { status: 502 },
@@ -224,47 +255,27 @@ async function handleCoachRequest(request: Request): Promise<Response> {
 
   let response: Response;
   try {
-    response = await callGemini(
-      SPEECH_MODEL,
+    response = await callGroq(
+      "/audio/speech",
       {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text,
-                speech_metadata: { style: STYLE_INSTRUCTIONS[emotion] },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { voice: VOICE },
-          },
-        },
+        model: speechModel(),
+        voice: EMOTION_VOICES[emotion],
+        input: text.slice(0, SPEECH_INPUT_LIMIT),
+        response_format: "wav",
       },
       apiKey,
     );
   } catch (error) {
-    console.error("Gemini speech request failed", error);
+    console.error("Coach speech request failed", error);
     return Response.json(
       { error: "The coach's voice isn't available right now." },
       { status: 502 },
     );
   }
 
-  if (!response.ok) return geminiError(response);
-  const result: unknown = await response.json().catch(() => null);
-  const part = (
-    result as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
-      }>;
-    } | null
-  )?.candidates?.[0]?.content?.parts?.find((candidate) => candidate.inlineData?.data)?.inlineData;
-  if (!part?.data) {
+  if (!response.ok) return groqError(response);
+  const bytes = new Uint8Array(await response.arrayBuffer().catch(() => new ArrayBuffer(0)));
+  if (!bytes.byteLength) {
     return Response.json(
       { error: "The coach's voice isn't available right now." },
       { status: 502 },
@@ -272,7 +283,7 @@ async function handleCoachRequest(request: Request): Promise<Response> {
   }
 
   return Response.json(
-    { audio: part.data, mimeType: part.mimeType ?? "audio/wav" },
+    { audio: toBase64(bytes), mimeType: "audio/wav" },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

@@ -55,7 +55,7 @@ export type StoryGenerationInput = {
 
 export type GeneratedStoryResult = {
   story: GeneratedStory;
-  source: "gemini" | "template";
+  source: "ai" | "template";
 };
 
 const inputSchema = z.object({
@@ -63,72 +63,6 @@ const inputSchema = z.object({
   category: z.enum(STORY_CATEGORIES),
   language: z.enum(["hi", "en"]),
 });
-
-const geminiResponseSchema = {
-  type: "OBJECT",
-  properties: {
-    title: { type: "STRING" },
-    hook: { type: "STRING" },
-    emoji: { type: "STRING" },
-    category: { type: "STRING", enum: [...STORY_CATEGORIES] },
-    them_name: { type: "STRING" },
-    me_name: { type: "STRING" },
-    video_type: {
-      type: "STRING",
-      enum: ["horror_hallway", "cyberpunk_neon", "rain_window", "cozy_room"],
-    },
-    lines: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          idx: { type: "INTEGER" },
-          speaker: { type: "STRING", enum: ["me", "them", "narrator"] },
-          body: { type: "STRING" },
-          body_en: { type: "STRING" },
-          chapter: { type: "STRING" },
-          next_idx: { type: "INTEGER", nullable: true },
-        },
-        required: ["idx", "speaker", "body", "body_en", "chapter", "next_idx"],
-      },
-    },
-    choices: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          at_idx: { type: "INTEGER" },
-          position: { type: "INTEGER" },
-          label: { type: "STRING" },
-          label_en: { type: "STRING" },
-          reply_body: { type: "STRING" },
-          reply_body_en: { type: "STRING" },
-          goto_idx: { type: "INTEGER" },
-        },
-        required: [
-          "at_idx",
-          "position",
-          "label",
-          "label_en",
-          "reply_body",
-          "reply_body_en",
-          "goto_idx",
-        ],
-      },
-    },
-  },
-  required: [
-    "title",
-    "hook",
-    "emoji",
-    "category",
-    "them_name",
-    "me_name",
-    "video_type",
-    "lines",
-    "choices",
-  ],
-};
 
 const FALLBACKS: Record<StoryCategory, {
   title: Record<StoryLanguage, string>;
@@ -264,7 +198,7 @@ function storyText(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function normalizeGeminiStory(rawValue: unknown, input: StoryGenerationInput): GeneratedStory {
+function normalizeStory(rawValue: unknown, input: StoryGenerationInput): GeneratedStory {
   const raw = isRecord(rawValue) ? rawValue : {};
   const fallback = makeFallbackStory(input);
   const rawLines = Array.isArray(raw.lines) ? raw.lines.filter(isRecord) : [];
@@ -363,7 +297,7 @@ const generateStoryServer = createServerFn({ method: "POST" })
   .inputValidator((input: StoryGenerationInput) => inputSchema.parse(input))
 
   .handler(async ({ data }) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       return { story: makeFallbackStory(data), source: "template" as const };
     }
@@ -382,59 +316,56 @@ const generateStoryServer = createServerFn({ method: "POST" })
       "Return only the JSON matching the provided schema. Do not include markdown.",
     ].join(" ");
 
-    try {
-            const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    const model = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
+    const payload: Record<string, unknown> = {
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
         {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `${systemPrompt}\n\nUser Premise: "${data.prompt}"\n\nGenerate the complete JSON story for genre "${data.category}". Include title, hook, emoji, them_name, me_name, video_type, lines array, and choices array. Output ONLY clean JSON. Do not output markdown.`
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.8,
-              maxOutputTokens: 4096,
-            },
-          }),
-          signal: AbortSignal.timeout(45_000),
+          role: "user",
+          content: `User Premise: "${data.prompt}"\n\nGenerate the complete JSON story for genre "${data.category}". Include title, hook, emoji, them_name, me_name, video_type, lines array, and choices array. Output ONLY clean JSON. Do not output markdown.`,
         },
-      );
+      ],
+      temperature: 0.8,
+      max_completion_tokens: 4096,
+      response_format: { type: "json_object" },
+    };
+    // The default brain is gpt-oss; skipping its reasoning pass keeps generation fast.
+    if (model.includes("gpt-oss")) payload.reasoning_effort = "low";
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(45_000),
+      });
       
       if (!response.ok) {
-        console.error("Gemini story generation failed with status", response.status);
+        console.error("Story generation failed with status", response.status);
         return { story: makeFallbackStory(data), source: "template" as const };
       }
 
-      const payload = await response.json() as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      const completion = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
       };
-      const text = payload.candidates?.[0]?.content?.parts
-  ?.map((part) => part.text ?? "")
-  .join("")
-  .trim();
-if (!text) throw new Error("Gemini returned no story text");
+      const text = completion.choices?.[0]?.message?.content?.trim();
+if (!text) throw new Error("Groq returned no story text");
 
-// Strip any ```json ... ``` code blocks Gemini sends
+// Strip any ```json ... ``` code fences the model sends
 const cleanedText = text
   .replace(/^```(?:json)?\s*/i, "")
   .replace(/\s*```$/i, "")
   .trim();
 
-const story = normalizeGeminiStory(JSON.parse(cleanedText) as unknown, data);
+const story = normalizeStory(JSON.parse(cleanedText) as unknown, data);
       
-      return { story, source: "gemini" as const };
+      return { story, source: "ai" as const };
     } catch (error) {
-      console.error("Gemini story generation failed; using a built-in template.", error);
+      console.error("Story generation failed; using a built-in template.", error);
       return { story: makeFallbackStory(data), source: "template" as const };
     }
   });
@@ -443,7 +374,7 @@ export async function generateStory(input: StoryGenerationInput): Promise<Genera
   return generateStoryServer({ data: input });
 }
 
-export async function generateGeminiStory(input: StoryGenerationInput): Promise<GeneratedStory> {
+export async function generateChatStory(input: StoryGenerationInput): Promise<GeneratedStory> {
   try {
     const raw: unknown = await generateStory(input);
     const r = raw as { story?: GeneratedStory; title?: string; lines?: unknown } | null | undefined;
@@ -473,7 +404,7 @@ export async function saveGeneratedStoryToSupabase(story: GeneratedStory): Promi
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40) || "story";
-  const slug = `gemini-${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
+  const slug = `story-${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
   const wordCount = story.lines.reduce(
     (total, line) => total + line.body.trim().split(/\s+/).filter(Boolean).length,
     0,
