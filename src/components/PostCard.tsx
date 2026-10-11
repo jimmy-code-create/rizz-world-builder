@@ -901,12 +901,15 @@ function AuthorNameLink({ post }: { post: any }) {
       </Link>
       {post.author?.verified_creator && (
         <span
+          role="img"
           title="Verified Creator"
-          aria-label="Verified Creator"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-pink-400"
+          aria-label="Verified creator"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-cyan-300/30 bg-gradient-to-r from-cyan-400/15 via-sky-400/10 to-violet-400/15 px-1.5 py-1 text-[10px] font-bold leading-none text-cyan-100 shadow-[0_0_12px_rgba(56,189,248,0.16)] backdrop-blur-sm"
         >
-          <BadgeCheck className="h-3 w-3" />
-          Verified Creator
+          <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-cyan-300/15 ring-1 ring-cyan-200/20">
+            <BadgeCheck className="h-3 w-3 text-cyan-200 drop-shadow-[0_0_4px_rgba(103,232,249,0.65)]" aria-hidden="true" />
+          </span>
+          Creator
         </span>
       )}
     </div>
