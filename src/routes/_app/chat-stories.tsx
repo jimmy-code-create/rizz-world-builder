@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -68,6 +68,13 @@ function ChatStoriesPage() {
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
   const [storyToDelete, setStoryToDelete] = useState<ListedChatStory | null>(null);
   const [isDeletingStory, setIsDeletingStory] = useState(false);
+
+  // Rizz voice command "ek story bana do" opens the generator dialog.
+  useEffect(() => {
+    const onOpenGenerator = () => setIsGenOpen(true);
+    window.addEventListener("rizz:create-story", onOpenGenerator);
+    return () => window.removeEventListener("rizz:create-story", onOpenGenerator);
+  }, []);
 
   const stories = useQuery({
     queryKey: ["chat-stories"],

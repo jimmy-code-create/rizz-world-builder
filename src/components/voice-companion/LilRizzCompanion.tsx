@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useKokoroTTS } from "@/hooks/useKokoroTTS";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { generateLilRizzReply, type LilRizzTurn } from "@/lib/lil-rizz.functions";
+import { resolveVoiceCommand, type CommandMatch } from "@/lib/rizz-commands";
+import { playListeningStartSound, playListeningStopSound } from "@/lib/rizz-sounds";
 import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
@@ -33,6 +36,7 @@ export function LilRizzCompanion() {
   const [isMinimized, setIsMinimized] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [isConversationActive, setIsConversationActive] = useState(false);
+  const [isHandsFree, setIsHandsFree] = useState(false);
   const [reply, setReply] = useState("");
   const [lastUserMessage, setLastUserMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,19 +44,98 @@ export function LilRizzCompanion() {
   const handledTranscriptRef = useRef("");
   const requestPendingRef = useRef(false);
   const historyRef = useRef<LilRizzTurn[]>([]);
+  const handleUtteranceRef = useRef<(text: string) => void>(() => {});
   const { user, loading: authLoading } = useAuth();
-  const speech = useSpeechToText({ continuousConversation: true });
+  const nav = useNavigate();
+  const router = useRouter();
+
+  const speak = useRef<((text: string, voice?: "af_bella") => Promise<boolean>) | null>(null);
+
+  const speech = useSpeechToText({
+    continuousConversation: true,
+    endOfSpeechMs: 1800,
+    maxSilenceMs: 5 * 60 * 1000,
+    onUtterance: (text) => handleUtteranceRef.current(text),
+  });
   const tts = useKokoroTTS({ browserFirst: true });
   const {
-    clearTranscript,
     error: speechError,
-    finalTranscript,
     isListening,
     startListening,
     stopListening,
+    pauseListening,
+    resumeListening,
     transcript,
   } = speech;
-  const { error: ttsError, isLoading, isSpeaking, speak, stopSpeaking, unlockAudio } = tts;
+  const { error: ttsError, isLoading, isSpeaking, speak: ttsSpeak, stopSpeaking, unlockAudio } = tts;
+  speak.current = ttsSpeak;
+
+  /**
+   * Execute a matched voice command: perform the navigation/action, then speak
+   * a short confirmation. Returns true when a command was consumed.
+   */
+  const executeCommand = useCallback(
+    async (match: CommandMatch): Promise<boolean> => {
+      const { command } = match;
+      switch (command.id) {
+        case "action:back": {
+          if (typeof window !== "undefined") window.history.back();
+          break;
+        }
+        case "action:close": {
+          conversationActiveRef.current = false;
+          setIsConversationActive(false);
+          setIsHandsFree(false);
+          stopListening();
+          stopSpeaking();
+          setIsMinimized(true);
+          break;
+        }
+        case "action:handsfree-on": {
+          setIsHandsFree(true);
+          conversationActiveRef.current = true;
+          setIsConversationActive(true);
+          break;
+        }
+        case "action:handsfree-off": {
+          setIsHandsFree(false);
+          break;
+        }
+        case "action:create-story": {
+          if (router.state.location.pathname !== "/chat-stories") {
+            await nav({ to: "/chat-stories" });
+          }
+          // Ask the stories screen to open its generator dialog.
+          window.dispatchEvent(new CustomEvent("rizz:create-story"));
+          break;
+        }
+        case "open:profile": {
+          const username = user?.user_metadata?.username ?? user?.email?.split("@")[0] ?? "";
+          if (username) await nav({ to: "/u/$username", params: { username } });
+          else await nav({ to: "/feed" });
+          break;
+        }
+        default: {
+          if (command.path) {
+            if (command.params) {
+              await nav({ to: command.path, params: command.params } as never);
+            } else {
+              await nav({ to: command.path } as never);
+            }
+          }
+        }
+      }
+      // Spoken confirmation (short, Hinglish).
+      unlockAudio();
+      try {
+        await speak.current?.(command.speak, "af_bella");
+      } catch {
+        // Confirmation speech is best-effort.
+      }
+      return true;
+    },
+    [nav, router.state.location.pathname, stopListening, stopSpeaking, unlockAudio, user],
+  );
 
   const handleUserMessage = useCallback(
     async (text: string, speakReply = false) => {
@@ -61,7 +144,7 @@ export function LilRizzCompanion() {
       requestPendingRef.current = true;
       setLastUserMessage(message);
       setReply("");
-      stopListening();
+      pauseListening();
       setIsThinking(true);
       setError(null);
 
@@ -88,7 +171,7 @@ export function LilRizzCompanion() {
         if (speakReply) {
           unlockAudio();
           try {
-            await speak(answer, "af_bella");
+            await speak.current?.(answer, "af_bella");
           } catch (speechError) {
             console.error("[Lil Rizz] Speech playback failed", speechError);
           }
@@ -98,42 +181,66 @@ export function LilRizzCompanion() {
         setIsThinking(false);
         if (conversationActiveRef.current) {
           handledTranscriptRef.current = "";
-          clearTranscript();
-          startListening();
+          resumeListening();
         }
       }
     },
-    [clearTranscript, speak, startListening, stopListening, unlockAudio, user],
+    [pauseListening, resumeListening, unlockAudio, user],
   );
 
-  const handleFinalTranscript = useCallback(
-    (text: string) => {
+  /**
+   * Every utterance goes through the command router first; only unrecognized
+   * speech falls through to the chat AI.
+   */
+  const handleUtterance = useCallback(
+    async (text: string) => {
       const message = text.trim().slice(0, 400);
       if (!message || handledTranscriptRef.current === message) return;
       handledTranscriptRef.current = message;
+      try {
+        const match = await resolveVoiceCommand(message);
+        if (match) {
+          setLastUserMessage(message);
+          pauseListening();
+          await executeCommand(match);
+          if (conversationActiveRef.current) resumeListening();
+          return;
+        }
+      } catch {
+        // Router failure — treat as chat.
+      }
       void handleUserMessage(message, true);
     },
-    [handleUserMessage],
+    [executeCommand, handleUserMessage, pauseListening, resumeListening],
   );
+  handleUtteranceRef.current = handleUtterance;
 
+  // "ek story bana do" → open stories screen and start the generator.
   useEffect(() => {
-    if (finalTranscript) void handleFinalTranscript(finalTranscript);
-  }, [finalTranscript, handleFinalTranscript]);
+    const onOpenStory = () => {
+      toast.info("Story bana rahe hai!");
+    };
+    window.addEventListener("rizz:create-story", onOpenStory);
+    return () => window.removeEventListener("rizz:create-story", onOpenStory);
+  }, []);
 
   const replayReply = useCallback(() => {
     if (!reply) return;
     setError(null);
     unlockAudio();
-    void speak(reply, "af_bella").then((played) => {
+    pauseListening();
+    void speak.current?.(reply, "af_bella").then((played) => {
       if (!played) setError("I couldn’t play that reply aloud. Try again or read it here.");
+      if (conversationActiveRef.current) resumeListening();
     });
-  }, [reply, speak, unlockAudio]);
+  }, [reply, unlockAudio, pauseListening, resumeListening]);
 
   const toggleListening = useCallback(() => {
-    if (isListening) {
+    if (isListening || isConversationActive) {
       conversationActiveRef.current = false;
       setIsConversationActive(false);
       stopListening();
+      playListeningStopSound();
       return;
     }
     if (isSpeaking) stopSpeaking();
@@ -142,11 +249,11 @@ export function LilRizzCompanion() {
     handledTranscriptRef.current = "";
     setError(null);
     unlockAudio();
-    clearTranscript();
+    playListeningStartSound();
     startListening();
   }, [
-    clearTranscript,
     isListening,
+    isConversationActive,
     isSpeaking,
     startListening,
     stopListening,
@@ -170,6 +277,7 @@ export function LilRizzCompanion() {
       reply={reply}
       isConversationActive={isConversationActive}
       isMinimized={isMinimized}
+      isHandsFree={isHandsFree}
       error={error ?? speechError ?? ttsError}
       isBusy={isThinking || isLoading}
       isGuest={!user && !authLoading}

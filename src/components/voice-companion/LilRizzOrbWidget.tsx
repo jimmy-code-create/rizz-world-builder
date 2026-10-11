@@ -8,8 +8,10 @@ import {
   Sparkles,
   Volume2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+
+export type RizzMood = "idle" | "listening" | "thinking" | "talking" | "happy" | "surprised";
 
 export type LilRizzWidgetProps = {
   status: "idle" | "listening" | "thinking" | "speaking";
@@ -19,6 +21,7 @@ export type LilRizzWidgetProps = {
   isConversationActive: boolean;
   isMinimized: boolean;
   isBusy: boolean;
+  isHandsFree: boolean;
   error: string | null;
   isGuest: boolean;
   isAuthLoading: boolean;
@@ -37,6 +40,13 @@ const statusLabels = {
   speaking: "Talking to you",
 } as const;
 
+function moodFrom(status: LilRizzWidgetProps["status"], justSpoke: boolean): RizzMood {
+  if (status === "listening") return "listening";
+  if (status === "thinking") return "thinking";
+  if (status === "speaking") return "talking";
+  return justSpoke ? "happy" : "idle";
+}
+
 export function LilRizzOrbWidget({
   status,
   transcript,
@@ -45,6 +55,7 @@ export function LilRizzOrbWidget({
   isConversationActive,
   isMinimized,
   isBusy,
+  isHandsFree,
   error,
   isGuest,
   isAuthLoading,
@@ -56,6 +67,7 @@ export function LilRizzOrbWidget({
   onReplay,
 }: LilRizzWidgetProps) {
   const [message, setMessage] = useState("");
+  const [justSpoke, setJustSpoke] = useState(false);
   const conversationRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +76,13 @@ export function LilRizzOrbWidget({
   const listening = status === "listening";
   const thinking = status === "thinking";
   const speaking = status === "speaking";
+
+  useEffect(() => {
+    if (status !== "speaking") return;
+    setJustSpoke(true);
+    const t = window.setTimeout(() => setJustSpoke(false), 1400);
+    return () => window.clearTimeout(t);
+  }, [status]);
 
   useEffect(() => {
     conversationRef.current?.scrollTo({
@@ -103,22 +122,14 @@ export function LilRizzOrbWidget({
 
   if (isMinimized) {
     return (
-      <button
+      <DraggableBubble
         ref={launcherRef}
-        type="button"
+        mood={moodFrom(status, justSpoke)}
+        listening={listening}
+        speaking={speaking}
+        isHandsFree={isHandsFree}
         onClick={onSummon}
-        aria-label="Open Lil Rizz chat"
-        aria-expanded={false}
-        aria-controls={panelId}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex items-center gap-2 rounded-full border border-pink-300/35 bg-[#21172a]/95 p-2 pr-4 text-left text-white shadow-[0_8px_32px_rgba(0,0,0,.42),0_0_28px_rgba(255,45,146,.22)] backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 motion-reduce:transition-none md:bottom-5"
-      >
-        <CatAvatar className="h-9 w-9" />
-        <span>
-          <span className="block text-xs font-bold">Lil Rizz</span>
-          <span className="block text-[10px] text-white/55">Your cat sidekick</span>
-        </span>
-        <MessageCircle aria-hidden="true" className="ml-1 h-4 w-4 text-cyan-200" />
-      </button>
+      />
     );
   }
 
@@ -141,11 +152,11 @@ export function LilRizzOrbWidget({
         aria-modal="false"
         aria-labelledby="lil-rizz-title"
         tabIndex={-1}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-50 flex max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#120e19]/95 text-white shadow-[0_18px_70px_rgba(0,0,0,.54),0_0_46px_rgba(179,49,188,.12)] backdrop-blur-2xl md:bottom-5 md:right-5 md:max-h-[min(34rem,calc(100dvh-2.5rem))]"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-[60] flex max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#120e19]/95 text-white shadow-[0_18px_70px_rgba(0,0,0,.54),0_0_46px_rgba(179,49,188,.12)] backdrop-blur-2xl md:bottom-5 md:right-5 md:max-h-[min(34rem,calc(100dvh-2.5rem))]"
       >
       <header className="flex items-center gap-3 border-b border-white/[.08] bg-gradient-to-r from-[#28152a] via-[#1b1424] to-[#111521] px-4 py-3.5">
         <div className="relative shrink-0">
-          <CatAvatar className="h-11 w-11" />
+          <CatAvatar className="h-11 w-11" mood={moodFrom(status, justSpoke)} mouthOpen={speaking ? undefined : 0} />
           <span
             aria-hidden="true"
             className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#191321] ${
@@ -337,7 +348,183 @@ export function LilRizzOrbWidget({
   );
 }
 
-function CatAvatar({ className = "" }: { className?: string }) {
+// ---------------------------------------------------------------------------
+// Floating bubble — a text-less, draggable, animated cat character.
+// ---------------------------------------------------------------------------
+
+const BUBBLE_POS_KEY = "rizz:rizz-bubble-pos";
+
+function DraggableBubble({
+  ref,
+  mood,
+  listening,
+  speaking,
+  isHandsFree,
+  onClick,
+}: {
+  ref: React.Ref<HTMLButtonElement>;
+  mood: RizzMood;
+  listening: boolean;
+  speaking: boolean;
+  isHandsFree: boolean;
+  onClick(): void;
+}) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
+
+  // Restore persisted position once mounted (viewport-aware clamp).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BUBBLE_POS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { x: number; y: number };
+        setPos({
+          x: Math.min(Math.max(parsed.x, 8), window.innerWidth - 76),
+          y: Math.min(Math.max(parsed.y, 8), window.innerHeight - 76),
+        });
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    // Default: bottom-right above the tab bar.
+    setPos({ x: window.innerWidth - 76, y: window.innerHeight - 150 });
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setPos((current) =>
+        current
+          ? {
+              x: Math.min(Math.max(current.x, 8), window.innerWidth - 76),
+              y: Math.min(Math.max(current.y, 8), window.innerHeight - 76),
+            }
+          : current,
+      );
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const persist = useCallback((next: { x: number; y: number }) => {
+    try {
+      localStorage.setItem(BUBBLE_POS_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      origX: pos?.x ?? 0,
+      origY: pos?.y ?? 0,
+      moved: false,
+    };
+  }, [pos]);
+
+  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+    drag.moved = true;
+    const next = {
+      x: Math.min(Math.max(drag.origX + dx, 8), window.innerWidth - 76),
+      y: Math.min(Math.max(drag.origY + dy, 8), window.innerHeight - 76),
+    };
+    setPos(next);
+  }, []);
+
+  const onPointerUp = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (!drag) return;
+    if (drag.moved) {
+      persist(pos ?? { x: drag.origX, y: drag.origY });
+    } else {
+      onClick();
+    }
+  }, [onClick, persist, pos]);
+
+  // Mouth animation while talking: smooth pseudo-random oscillation driven by
+  // rAF so the mouth/face move with the speech (no external audio API needed).
+  const mouthRef = useRef<SVGGElement>(null);
+  const faceRef = useRef<SVGGElement>(null);
+  useEffect(() => {
+    if (!speaking) {
+      if (mouthRef.current) mouthRef.current.style.transform = "scaleY(0.18)";
+      if (faceRef.current) faceRef.current.style.transform = "translateY(0px)";
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const t = (now - t0) / 1000;
+      // Two overlapping sines ≈ syllabic rhythm (fast mouth + slow bob).
+      const mouth = 0.18 + 0.82 * Math.abs(Math.sin(t * 9.2) * 0.7 + Math.sin(t * 5.1) * 0.3);
+      const bob = Math.sin(t * 4.4) * 1.1;
+      if (mouthRef.current) mouthRef.current.style.transform = `scaleY(${mouth.toFixed(3)})`;
+      if (faceRef.current) faceRef.current.style.transform = `translateY(${bob.toFixed(2)}px)`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [speaking]);
+
+  if (!pos) return null;
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-label={listening ? "Rizz is listening — tap to open" : "Open Lil Rizz"}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onContextMenu={(event) => event.preventDefault()}
+      style={{ left: pos.x, top: pos.y, touchAction: "none" }}
+      className="fixed z-[60] h-16 w-16 select-none rounded-full border border-pink-300/30 bg-[#1a1224]/92 shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_30px_rgba(255,45,146,.28)] backdrop-blur-xl transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_38px_rgba(255,45,146,.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+    >
+      {listening && (
+        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border border-pink-400/40 motion-reduce:animate-none" />
+      )}
+      {isHandsFree && (
+        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#1a1224] bg-cyan-300" />
+      )}
+      <CatAvatar className="h-full w-full p-1.5" mood={mood} mouthRef={mouthRef} faceRef={faceRef} />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cat character with mood expressions + animated mouth/face.
+// ---------------------------------------------------------------------------
+
+function CatAvatar({
+  className = "",
+  mood = "idle",
+  mouthOpen,
+  mouthRef,
+  faceRef,
+}: {
+  className?: string;
+  mood?: RizzMood;
+  /** 0..1 override for static (non-animated) mouths. */
+  mouthOpen?: number;
+  mouthRef?: React.RefObject<SVGGElement | null>;
+  faceRef?: React.RefObject<SVGGElement | null>;
+}) {
+  const open = mouthOpen ?? (mood === "surprised" ? 0.8 : mood === "listening" ? 0.35 : 0.18);
   return (
     <svg
       aria-hidden="true"
@@ -368,33 +555,72 @@ function CatAvatar({ className = "" }: { className?: string }) {
           <stop offset="1" stopColor="#c56ae8" />
         </linearGradient>
       </defs>
-      <path
-        d="M8.5 21 12.2 6.5l10.1 8.1c1.2-.2 2.4-.2 3.6 0l10-8.1L40 21c1.1 2.2 1.7 4.3 1.7 6.4 0 9-7.6 14.8-17.7 14.8S6.3 36.4 6.3 27.4c0-2.1.8-4.3 2.2-6.4Z"
-        fill="url(#lil-rizz-fur)"
-        stroke="#f9eaff"
-        strokeOpacity=".9"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m14.3 13.1 5.3 4.2m14.2-4.2-5.3 4.2"
-        stroke="url(#lil-rizz-inner-ear)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0"
-        stroke="#fff5fb"
-        strokeWidth="2.3"
-        strokeLinecap="round"
-      />
-      <path d="m21.5 30.2 2.5 1.8 2.5-1.8-2.5-1.4-2.5 1.4Z" fill="#ff85c8" />
-      <path
-        d="M24 32v1.3m0 0c-1.5 2-3.3 2.2-4.7.8m4.7-.8c1.5 2 3.3 2.2 4.7.8"
-        stroke="#c8f7ff"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+      {/* Ears perk up when listening/surprised. */}
+      <g transform={mood === "listening" || mood === "surprised" ? "translate(0 -1.5)" : undefined}>
+        <path
+          d="M8.5 21 12.2 6.5l10.1 8.1c1.2-.2 2.4-.2 3.6 0l10-8.1L40 21c1.1 2.2 1.7 4.3 1.7 6.4 0 9-7.6 14.8-17.7 14.8S6.3 36.4 6.3 27.4c0-2.1.8-4.3 2.2-6.4Z"
+          fill="url(#lil-rizz-fur)"
+          stroke="#f9eaff"
+          strokeOpacity=".9"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <path
+          d="m14.3 13.1 5.3 4.2m14.2-4.2-5.3 4.2"
+          stroke="url(#lil-rizz-inner-ear)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+      </g>
+      {/* Face group — bobbed during speech. */}
+      <g ref={faceRef} style={{ transition: "transform 120ms ease-out" }}>
+        {mood === "happy" ? (
+          // Closed happy eyes ^ ^
+          <>
+            <path d="M15 26.5c1.4-1.8 3.4-1.8 4.8 0M28.2 26.5c1.4-1.8 3.4-1.8 4.8 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" fill="none" />
+          </>
+        ) : mood === "surprised" ? (
+          // Big wide eyes
+          <>
+            <circle cx="18" cy="25.5" r="3" fill="#fff5fb" />
+            <circle cx="30" cy="25.5" r="3" fill="#fff5fb" />
+            <circle cx="18" cy="25.5" r="1.4" fill="#211629" />
+            <circle cx="30" cy="25.5" r="1.4" fill="#211629" />
+          </>
+        ) : mood === "thinking" ? (
+          // Glance up-left
+          <>
+            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" />
+            <circle cx="17" cy="24.4" r=".8" fill="#c8f7ff" />
+            <circle cx="29" cy="24.4" r=".8" fill="#c8f7ff" />
+          </>
+        ) : (
+          // Default open eyes
+          <>
+            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" />
+            <circle cx="18" cy="25" r=".8" fill="#c8f7ff" />
+            <circle cx="30" cy="25" r=".8" fill="#c8f7ff" />
+          </>
+        )}
+        <path d="m21.5 30.2 2.5 1.8 2.5-1.8-2.5-1.4-2.5 1.4Z" fill="#ff85c8" />
+        {/* Mouth: a small stroked arc scaled on Y for talking. */}
+        <g
+          ref={mouthRef}
+          style={{
+            transformOrigin: "24px 32.5px",
+            transform: `scaleY(${open})`,
+            transition: mouthRef ? "none" : "transform 200ms ease-out",
+          }}
+        >
+          <path
+            d="M20.6 32.5c1 2.4 2.4 3.4 3.4 3.4s2.4-1 3.4-3.4"
+            stroke="#c8f7ff"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </g>
+      </g>
       <path
         d="m10.7 29.8-4.2-.8m4.3 4-3.8.4m30.3-3.6 4.2-.8m-4.3 4 3.8.4"
         stroke="#f9eaff"
@@ -402,8 +628,6 @@ function CatAvatar({ className = "" }: { className?: string }) {
         strokeLinecap="round"
         opacity=".85"
       />
-      <circle cx="18" cy="25" r=".8" fill="#c8f7ff" />
-      <circle cx="30" cy="25" r=".8" fill="#c8f7ff" />
     </svg>
   );
 }

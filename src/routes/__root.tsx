@@ -136,7 +136,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
-  const showLilRizz = location.pathname === "/feed" || location.pathname === "/_app/feed";
+  // Lil Rizz floats over every signed-in screen (hands-free mode), but not on
+  // the auth/landing routes where it would get in the way.
+  const showLilRizz = !/^\/(?:login|signup|reset|onboarding|_app\/auth)/.test(location.pathname);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;

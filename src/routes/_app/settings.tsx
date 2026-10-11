@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
+import { areRizzSoundsMuted, setRizzSoundsMuted as persistRizzSoundsMuted } from "@/lib/rizz-sounds";
 
 const PREF_KEY = "rizz:prefs";
 type Prefs = {
@@ -66,6 +67,7 @@ function SettingsPage() {
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const [rizzSoundsMutedState, setRizzSoundsMutedState] = useState(areRizzSoundsMuted);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const blockedUsers = useQuery({
@@ -425,6 +427,7 @@ function SettingsPage() {
         <PrefRow label="Autoplay videos" desc="Play reels and clips automatically" checked={prefs.autoplay} onChange={(v) => updatePref("autoplay", v)} />
         <PrefRow label="Data saver" desc="Lower quality media on cellular" checked={prefs.dataSaver} onChange={(v) => updatePref("dataSaver", v)} />
         <PrefRow label="Notification sounds" desc="Play a chime on new pings" checked={prefs.sounds} onChange={(v) => updatePref("sounds", v)} icon={<Bell className="h-4 w-4" />} />
+        <PrefRow label="Rizz voice sounds" desc="Soft start/stop chime while listening" checked={!rizzSoundsMutedState} onChange={(v) => { persistRizzSoundsMuted(!v); setRizzSoundsMutedState(!v); }} icon={<Bell className="h-4 w-4" />} />
         <PrefRow label="Blur sensitive media" desc="Hide flagged content behind a tap" checked={prefs.blurSensitive} onChange={(v) => updatePref("blurSensitive", v)} icon={<Shield className="h-4 w-4" />} />
         <PrefRow label="Focus mode" desc="Hide like and view counts everywhere" checked={prefs.focusMode} onChange={(v) => updatePref("focusMode", v)} />
         <PrefRow label="Color-blind friendly" desc="Tweak palette for better contrast" checked={prefs.colorBlind} onChange={(v) => updatePref("colorBlind", v)} />
