@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { MoreVertical, Shield, UserMinus, UserX, Loader2 } from "lucide-react";
+import { Shield, UserMinus, UserX, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -13,7 +13,7 @@ import { createRoom, fetchRealmLiveRoom } from "@/lib/voice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Megaphone, Gift, Mic, Send, Users, Sparkles, Copy, Trash2, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, Megaphone, Gift, LogOut, Mic, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
@@ -62,6 +62,8 @@ function RealmPage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -269,20 +271,19 @@ function RealmPage() {
           {c.icon_url ? <img src={c.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-display font-bold text-lg leading-tight truncate">{c.name}</h1>
+          <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><Users className="h-3 w-3" /> {c.member_count}</p>
         </div>
-        {joined && (
-          <Button size="sm" variant="outline" className="glass shrink-0 border-sky-300/20 px-2.5 text-xs" onClick={() => void copyRealmCode()}>
-            <Copy className="mr-1.5 h-3.5 w-3.5" />Copy code
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Realm options"
+          onClick={() => setOptionsOpen(true)}
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
         <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline" className="glass border-white/10" aria-label="Realm members">
-              <Shield className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
           <DialogContent className="glass-strong border-white/10">
             <DialogHeader>
               <DialogTitle className="font-display">Realm members</DialogTitle>
@@ -364,31 +365,64 @@ function RealmPage() {
             </div>
           </DialogContent>
         </Dialog>
-        {myRole === "owner" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="glass border-white/10" aria-label="Realm owner menu">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass-strong border-white/10">
-              <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete realm
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        <Button size="sm" variant={joined ? "outline" : "default"} onClick={handleJoin} className={joined ? "glass border-white/10" : "bg-gradient-primary border-0 shadow-glow"}>
-          {joined ? "Joined" : "Join"}
-        </Button>
       </div>
+
+      <Sheet open={optionsOpen} onOpenChange={setOptionsOpen}>
+        <SheetContent
+          side="bottom"
+          className="glass-strong max-h-[85dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-xl break-words">{c.name}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {joined && (
+              <SheetRowButton onClick={() => void copyRealmCode()}>
+                <Copy className="h-4 w-4" /> Copy invite code
+              </SheetRowButton>
+            )}
+            <SheetRowButton onClick={() => { setOptionsOpen(false); setMembersOpen(true); }}>
+              <Shield className="h-4 w-4" /> Moderation
+            </SheetRowButton>
+            {joined ? (
+              <SheetRowButton destructive onClick={() => { setOptionsOpen(false); setLeaveOpen(true); }}>
+                <LogOut className="h-4 w-4" />
+                <span className="flex-1">Leave realm</span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Joined</span>
+              </SheetRowButton>
+            ) : (
+              <SheetRowButton onClick={() => { setOptionsOpen(false); void handleJoin(); }}>
+                <UserPlus className="h-4 w-4" /> Join realm
+              </SheetRowButton>
+            )}
+            {(myRole === "owner" || c.owner_id === user?.id) && (
+              <SheetRowButton destructive onClick={() => { setOptionsOpen(false); setDeleteOpen(true); }}>
+                <Trash2 className="h-4 w-4" /> Delete realm
+              </SheetRowButton>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent className="glass-strong border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Leave “{c.name}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll stop seeing this realm's rooms and messages until you join again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); setLeaveOpen(false); void handleJoin(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Leave realm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {c.topic && (
         <div className="chat-bar flex shrink-0 items-start gap-2 border-b border-white/5 px-4 py-3 text-sm text-muted-foreground">
@@ -639,5 +673,29 @@ function RealmPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SheetRowButton({
+  children,
+  onClick,
+  destructive = false,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
+        destructive
+          ? "border-destructive/30 text-destructive hover:bg-destructive/10"
+          : "glass border-white/10 hover:bg-white/5"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
