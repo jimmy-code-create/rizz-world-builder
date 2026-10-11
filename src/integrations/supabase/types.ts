@@ -163,35 +163,35 @@ export type Database = {
           },
         ]
       }
-      realm_members: {
+      channel_members: {
         Row: {
+          channel_id: string
           joined_at: string
-          realm_id: string
-          role: Database["public"]["Enums"]["realm_role"]
+          role: Database["public"]["Enums"]["channel_member_role"]
           user_id: string
         }
         Insert: {
+          channel_id: string
           joined_at?: string
-          realm_id: string
-          role?: Database["public"]["Enums"]["realm_role"]
+          role?: Database["public"]["Enums"]["channel_member_role"]
           user_id: string
         }
         Update: {
+          channel_id?: string
           joined_at?: string
-          realm_id?: string
-          role?: Database["public"]["Enums"]["realm_role"]
+          role?: Database["public"]["Enums"]["channel_member_role"]
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "realm_members_realm_id_fkey"
-            columns: ["realm_id"]
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "realms"
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "realm_members_user_id_fkey"
+            foreignKeyName: "channel_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -199,19 +199,19 @@ export type Database = {
           },
         ]
       }
-      realms: {
+      channels: {
         Row: {
           accent_color: string | null
           created_at: string
           icon_url: string | null
           id: string
           is_public: boolean
-          kind: Database["public"]["Enums"]["realm_type"]
           member_count: number
           name: string
           owner_id: string
           slug: string
           topic: string | null
+          type: Database["public"]["Enums"]["channel_type"]
           updated_at: string
         }
         Insert: {
@@ -220,12 +220,12 @@ export type Database = {
           icon_url?: string | null
           id?: string
           is_public?: boolean
-          kind?: Database["public"]["Enums"]["realm_type"]
           member_count?: number
           name: string
           owner_id: string
           slug: string
           topic?: string | null
+          type?: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
         }
         Update: {
@@ -234,61 +234,20 @@ export type Database = {
           icon_url?: string | null
           id?: string
           is_public?: boolean
-          kind?: Database["public"]["Enums"]["realm_type"]
           member_count?: number
           name?: string
           owner_id?: string
           slug?: string
           topic?: string | null
+          type?: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "realms_owner_id_fkey"
+            foreignKeyName: "channels_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      realm_rooms: {
-        Row: {
-          created_at: string
-          id: string
-          is_default: boolean
-          kind: string
-          name: string
-          position: number
-          realm_id: string
-          topic: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          kind?: string
-          name: string
-          position?: number
-          realm_id: string
-          topic?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          kind?: string
-          name?: string
-          position?: number
-          realm_id?: string
-          topic?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "realm_rooms_realm_id_fkey"
-            columns: ["realm_id"]
-            isOneToOne: false
-            referencedRelation: "realms"
             referencedColumns: ["id"]
           },
         ]
@@ -1074,47 +1033,44 @@ export type Database = {
       messages: {
         Row: {
           attachment_url: string | null
+          author_id: string
           body: string
+          channel_id: string
           created_at: string
           id: string
-          realm_id: string
-          realm_room_id: string | null
           reply_to: string | null
-          sender_id: string
         }
         Insert: {
           attachment_url?: string | null
+          author_id: string
           body: string
+          channel_id: string
           created_at?: string
           id?: string
-          realm_id: string
-          realm_room_id?: string | null
           reply_to?: string | null
-          sender_id: string
         }
         Update: {
           attachment_url?: string | null
+          author_id?: string
           body?: string
+          channel_id?: string
           created_at?: string
           id?: string
-          realm_id?: string
-          realm_room_id?: string | null
           reply_to?: string | null
-          sender_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "messages_author_id_fkey"
-            columns: ["sender_id"]
+            columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "messages_realm_id_fkey"
-            columns: ["realm_id"]
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "realms"
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
@@ -2168,40 +2124,37 @@ export type Database = {
       }
       voice_rooms: {
         Row: {
+          channel_id: string | null
           created_at: string
           ended_at: string | null
           host_id: string
           id: string
           is_live: boolean
           listener_count: number
-          realm_id: string | null
-          realm_room_id: string | null
           started_at: string
           title: string
           topic: string | null
         }
         Insert: {
+          channel_id?: string | null
           created_at?: string
           ended_at?: string | null
           host_id: string
           id?: string
           is_live?: boolean
           listener_count?: number
-          realm_id?: string | null
-          realm_room_id?: string | null
           started_at?: string
           title: string
           topic?: string | null
         }
         Update: {
+          channel_id?: string | null
           created_at?: string
           ended_at?: string | null
           host_id?: string
           id?: string
           is_live?: boolean
           listener_count?: number
-          realm_id?: string | null
-          realm_room_id?: string | null
           started_at?: string
           title?: string
           topic?: string | null
@@ -2222,26 +2175,6 @@ export type Database = {
     }
     Functions: {
       accept_group_invite: { Args: { _code: string }; Returns: string }
-      accept_realm_invite: { Args: { _code: string }; Returns: string }
-      ban_realm_member: { Args: { _realm_id: string; _user_id: string; _reason?: string }; Returns: undefined }
-      create_realm_invite: {
-        Args: { _realm_id: string; _expires_at?: string | null; _max_uses?: number | null }
-        Returns: string
-      }
-      create_realm_secure: {
-        Args: {
-          _name: string
-          _topic?: string | null
-          _accent_color?: string
-          _kind?: string
-          _is_public?: boolean
-        }
-        Returns: string
-      }
-      delete_realm: { Args: { _realm_id: string }; Returns: undefined }
-      join_realm: { Args: { _realm_id: string }; Returns: string }
-      kick_realm_member: { Args: { _realm_id: string; _user_id: string }; Returns: undefined }
-      leave_realm: { Args: { _realm_id: string }; Returns: undefined }
       award_badge: {
         Args: { _slug: string; _user: string }
         Returns: undefined
@@ -2318,36 +2251,6 @@ export type Database = {
           topic: string
         }[]
       }
-      preview_realm_invite: {
-        Args: { _code: string }
-        Returns: {
-          accent_color: string | null
-          member_count: number | null
-          realm_id: string | null
-          realm_name: string | null
-          status: string
-          topic: string | null
-          icon_url: string | null
-        }[]
-      }
-      realm_role_of: { Args: { _realm: string; _user: string }; Returns: string }
-      revoke_realm_invite: { Args: { _invite_id: string }; Returns: undefined }
-      set_realm_member_role: {
-        Args: { _realm_id: string; _user_id: string; _role: string }
-        Returns: undefined
-      }
-      unban_realm_member: { Args: { _realm_id: string; _user_id: string }; Returns: undefined }
-      update_realm: {
-        Args: {
-          _realm_id: string
-          _name?: string | null
-          _topic?: string | null
-          _icon_url?: string | null
-          _accent_color?: string | null
-          _is_public?: boolean | null
-        }
-        Returns: undefined
-      }
       send_test_push: { Args: never; Returns: undefined }
       set_call_status: {
         Args: { _call_id: string; _status: string }
@@ -2379,8 +2282,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
-      realm_role: "owner" | "mod" | "member"
-      realm_type: "text" | "announcement" | "drops" | "voice"
+      channel_member_role: "owner" | "mod" | "member"
+      channel_type: "text" | "announcement" | "drops" | "voice"
       group_member_role: "owner" | "admin" | "member"
       post_visibility: "public" | "close_friends"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
@@ -2514,8 +2417,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
-      realm_role: ["owner", "mod", "member"],
-      realm_type: ["text", "announcement", "drops", "voice"],
+      channel_member_role: ["owner", "mod", "member"],
+      channel_type: ["text", "announcement", "drops", "voice"],
       group_member_role: ["owner", "admin", "member"],
       post_visibility: ["public", "close_friends"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
