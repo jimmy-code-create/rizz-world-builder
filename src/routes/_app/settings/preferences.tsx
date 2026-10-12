@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Bell, Shield, Sliders } from "lucide-react";
+import { Bell, Link2, Shield, Sliders } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PrefRow } from "@/components/settings/PrefRow";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
@@ -55,6 +55,7 @@ function PreferencesSettingsPage() {
           }}
         />
         <PrefRow label="Data saver" desc="Lower quality media on cellular" checked={prefs.dataSaver} onChange={(v) => updatePref("dataSaver", v)} />
+        <PrefRow label="Link previews" desc="Show cards for links in chats" checked={prefs.linkPreviews !== false} onChange={(v) => updatePref("linkPreviews", v)} icon={<Link2 className="h-4 w-4" />} />
         <PrefRow label="Notification sounds" desc="Play a chime on new pings" checked={prefs.sounds} onChange={(v) => updatePref("sounds", v)} icon={<Bell className="h-4 w-4" />} />
         <PrefRow
           label="Rizz voice sounds"

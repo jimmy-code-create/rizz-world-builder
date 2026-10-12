@@ -17,6 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageReactions } from "@/components/chat/MessageReactions";
+import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
+import { useHiddenLinkPreviews } from "@/lib/link-preview";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION, MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
@@ -593,6 +597,10 @@ function DMPage() {
 
   // Reactions for every loaded message: one request, one realtime channel.
   const reactions = useChatReactions("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
+  const removedPreviews = useHiddenLinkPreviews("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
+  const peerPresence = usePresence(other.data?.id);
+  const peerStatus = publicStatusOf(peerPresence);
+  const peerCustom = publicCustomStatus(peerPresence, false);
   const media = useMediaViewer();
 
   const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
@@ -721,18 +729,25 @@ function DMPage() {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
         <Link to="/dms"><ArrowLeft className="h-5 w-5" /></Link>
-        <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
-        <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
-          <AvatarImage src={other.data?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-gradient-primary font-bold text-xs">{(other.data?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="grid min-h-12 min-w-12 place-items-center">
+        <AvatarWithStatus status={peerStatus} dotSize={12}>
+          <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
+            <AvatarImage src={other.data?.avatar_url ?? undefined} />
+            <AvatarFallback className="bg-gradient-primary font-bold text-xs">{(other.data?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </AvatarWithStatus>
         </Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="flex-1 min-w-0">
           <p className="font-bold truncate flex items-center gap-1.5">
             {other.data?.display_name || other.data?.username}
-            {online && <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />}
+            {peerStatus !== "offline" && (
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            )}
           </p>
-          <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : online ? "Active now" : `@${other.data?.username}`}</p>
+          {peerCustom && (
+            <CustomStatusLine status={peerCustom} className="text-[11px] text-[var(--rizz-pink)]/90" />
+          )}
+          <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : peerStatus === "offline" ? `@${other.data?.username}` : statusLabel(peerStatus) === "Idle" ? "Away" : "Active now"}</p>
         </Link>
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
@@ -1011,6 +1026,13 @@ function DMPage() {
                   reactorsFor={reactions.reactorsFor}
                   align={mine ? "right" : "left"}
                   onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                />
+                <MessageLinkPreviews
+                  text={deletedAt ? null : m.body}
+                  messageId={m.id}
+                  scope="dm"
+                  canHide={mine}
+                  removed={removedPreviews.hidden.has(m.id)}
                 />
               </motion.div>
               </Fragment>

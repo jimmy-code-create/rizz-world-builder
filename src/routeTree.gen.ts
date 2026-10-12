@@ -30,6 +30,7 @@ import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
+import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
@@ -48,6 +49,7 @@ import { Route as AppSettingsPreferencesRouteImport } from './routes/_app/settin
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
+import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -153,6 +155,11 @@ const AppReelsRoute = AppReelsRouteImport.update({
   path: '/reels',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiLinkPreviewRoute = ApiLinkPreviewRouteImport.update({
+  id: '/api/link-preview',
+  path: '/api/link-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMeRoute = ApiMeRouteImport.update({
   id: '/api/me',
   path: '/api/me',
@@ -244,6 +251,11 @@ const AppUUsernameRoute = AppUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiLinkPreviewImageRoute = ApiLinkPreviewImageRouteImport.update({
+  id: '/image',
+  path: '/image',
+  getParentRoute: () => ApiLinkPreviewRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -266,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -283,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -306,6 +320,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -323,6 +338,7 @@ export interface FileRoutesByTo {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -348,6 +364,7 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
+  '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
@@ -365,6 +382,7 @@ export interface FileRoutesById {
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
+  '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -390,6 +408,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
+    | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -407,6 +426,7 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
+    | '/api/link-preview/image'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -430,6 +450,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
+    | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -447,6 +468,7 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
+    | '/api/link-preview/image'
     | '/settings'
   id:
     | '__root__'
@@ -471,6 +493,7 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/realms'
     | '/_app/reels'
+    | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
@@ -488,6 +511,7 @@ export interface FileRouteTypes {
     | '/_app/settings/profile'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
+    | '/api/link-preview/image'
     | '/_app/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -500,6 +524,7 @@ export interface RootRouteChildren {
   RizzCoachRoute: typeof RizzCoachRoute
   SignupRoute: typeof SignupRoute
   TutorialRoute: typeof TutorialRoute
+  ApiLinkPreviewRoute: typeof ApiLinkPreviewRouteWithChildren
   ApiMeRoute: typeof ApiMeRoute
   ApiRizzCoachRoute: typeof ApiRizzCoachRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
@@ -655,6 +680,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReelsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/link-preview': {
+      id: '/api/link-preview'
+      path: '/api/link-preview'
+      fullPath: '/api/link-preview'
+      preLoaderRoute: typeof ApiLinkPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/me': {
       id: '/api/me'
       path: '/api/me'
@@ -781,6 +813,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUUsernameRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/link-preview/image': {
+      id: '/api/link-preview/image'
+      path: '/image'
+      fullPath: '/api/link-preview/image'
+      preLoaderRoute: typeof ApiLinkPreviewImageRouteImport
+      parentRoute: typeof ApiLinkPreviewRoute
+    }
   }
 }
 
@@ -846,6 +885,18 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiLinkPreviewRouteChildren {
+  ApiLinkPreviewImageRoute: typeof ApiLinkPreviewImageRoute
+}
+
+const ApiLinkPreviewRouteChildren: ApiLinkPreviewRouteChildren = {
+  ApiLinkPreviewImageRoute: ApiLinkPreviewImageRoute,
+}
+
+const ApiLinkPreviewRouteWithChildren = ApiLinkPreviewRoute._addFileChildren(
+  ApiLinkPreviewRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
@@ -855,6 +906,7 @@ const rootRouteChildren: RootRouteChildren = {
   RizzCoachRoute: RizzCoachRoute,
   SignupRoute: SignupRoute,
   TutorialRoute: TutorialRoute,
+  ApiLinkPreviewRoute: ApiLinkPreviewRouteWithChildren,
   ApiMeRoute: ApiMeRoute,
   ApiRizzCoachRoute: ApiRizzCoachRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,

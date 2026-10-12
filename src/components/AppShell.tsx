@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,11 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
+import { PresenceSheet } from "@/components/presence/PresenceSheet";
+import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
+import { AvatarWithStatus } from "@/components/presence/StatusDot";
+import { useSelfPresence } from "@/lib/presence";
+import { playNotificationPing } from "@/lib/notification-sound";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
@@ -57,6 +62,8 @@ export function AppShell() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const presence = useSelfPresence();
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/|r\/)/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
 
@@ -93,6 +100,19 @@ export function AppShell() {
     retry: false,
     staleTime: 30_000,
   });
+
+  // A new ping chimes softly (never under Do not disturb, never when the
+  // "Notification sounds" preference is off).
+  const lastUnread = useRef<number | null>(null);
+  useEffect(() => {
+    const count = unread.data;
+    if (typeof count !== "number") return;
+    const previous = lastUnread.current;
+    lastUnread.current = count;
+    if (previous === null || count <= previous) return;
+    if (typeof document !== "undefined" && !document.hidden) return;
+    playNotificationPing();
+  }, [unread.data]);
 
   // Realtime replaces the old 30s poll for the unread badge, so the shell stops
   // refetching (and re-rendering) on a timer while nothing is happening.
@@ -150,6 +170,20 @@ export function AppShell() {
         </Button>
 
         <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto -mx-1 px-1">
+          <button
+            type="button"
+            onClick={() => setStatusOpen(true)}
+            className="flex min-h-[48px] items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
+          >
+            <AvatarWithStatus status={presence.status} dotSize={9}>
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={profile?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{initial}</AvatarFallback>
+              </Avatar>
+            </AvatarWithStatus>
+            <span className="font-medium text-sm flex-1 text-left">Status</span>
+            {presence.customStatus?.emoji && <span aria-hidden>{presence.customStatus.emoji}</span>}
+          </button>
           {sideTabs.map((t) => (
             <Link
               key={t.to}
@@ -219,6 +253,19 @@ export function AppShell() {
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[var(--rizz-pink)] shadow-glow" />
             )}
           </Link>
+          <button
+            type="button"
+            onClick={() => setStatusOpen(true)}
+            className="grid h-11 w-11 place-items-center rounded-full hover:bg-white/5"
+            aria-label="Set your status"
+          >
+            <AvatarWithStatus status={presence.status} dotSize={9}>
+              <Avatar className="h-8 w-8 ring-2 ring-[var(--rizz-pink)]/40">
+                <AvatarImage src={profile?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs font-bold">{initial}</AvatarFallback>
+              </Avatar>
+            </AvatarWithStatus>
+          </button>
           <ProfileMenu profile={profile} initial={initial} signOut={signOut} compact />
         </div>
       </header>}
@@ -345,6 +392,9 @@ export function AppShell() {
           </button>
         </SheetContent>
       </Sheet>
+      <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
+      <ExternalLinkGuard />
+
       <Suspense fallback={null}>
         <IncomingCallRinger />
         <CommandPalette />

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
+import { isSelfDoNotDisturb } from "@/lib/presence";
 
 type Incoming = {
   fromId: string;
@@ -30,6 +31,8 @@ export function IncomingCallRinger() {
     });
     ch.on("broadcast", { event: "ring" }, ({ payload }) => {
       if (!payload?.fromId || payload.fromId === incomingUserId) return;
+      // Do not disturb silences calls too.
+      if (isSelfDoNotDisturb()) return;
       setCall(payload as Incoming);
       // Auto-dismiss after 30s
       setTimeout(() => setCall((c) => (c?.fromId === payload.fromId ? null : c)), 30_000);

@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -47,6 +49,10 @@ function ProfilePage() {
 
   const profile = profileQ.data;
   const isMe = profile && user?.id === profile.id;
+  // Presence for this profile: invisible accounts read as offline to others.
+  const presenceRow = usePresence(profile?.id);
+  const presenceStatus = publicStatusOf(presenceRow, Boolean(isMe));
+  const customStatus = publicCustomStatus(presenceRow, Boolean(isMe));
   const blockStatusKey = ["block-status", user?.id, profile?.id];
   const blockStatus = useQuery({
     queryKey: blockStatusKey,
@@ -248,10 +254,12 @@ function ProfilePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
-          <Avatar className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-background" style={{ boxShadow: `0 0 30px ${accent}80` }}>
-            <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-3xl font-bold">{initial}</AvatarFallback>
-          </Avatar>
+          <AvatarWithStatus status={presenceStatus} dotSize={18}>
+            <Avatar className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-background" style={{ boxShadow: `0 0 30px ${accent}80` }}>
+              <AvatarImage src={profile.avatar_url ?? undefined} />
+              <AvatarFallback className="bg-gradient-primary text-3xl font-bold">{initial}</AvatarFallback>
+            </Avatar>
+          </AvatarWithStatus>
         </div>
       </motion.div>
 
@@ -261,6 +269,15 @@ function ProfilePage() {
             {profile.display_name || profileUsername}
           </h1>
           <p className="text-sm text-muted-foreground">@{profileUsername}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {isMe ? "You" : statusLabel(presenceStatus)}
+          </p>
+          {customStatus && (
+            <CustomStatusLine
+              status={customStatus}
+              className="mt-1.5 w-fit rounded-full border border-white/10 glass px-3 py-1.5 text-xs font-medium"
+            />
+          )}
         </div>
         {isMe ? (
           <div className="flex gap-2">

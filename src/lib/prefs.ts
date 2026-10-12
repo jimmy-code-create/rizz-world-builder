@@ -12,7 +12,12 @@ export type Prefs = {
   /** Set the moment someone moves the text-size slider, so their choice is never migrated again. */
   textScaleCustom?: boolean;
   language: string;
+  /** Show cards for links in chats. */
+  linkPreviews: boolean;
 };
+
+/** Fired whenever prefs change, so live UI (like Link previews) updates at once. */
+export const PREFS_EVENT = "rizz:prefs-changed";
 
 export const DEFAULT_PREFS: Prefs = {
   autoplay: true,
@@ -24,6 +29,7 @@ export const DEFAULT_PREFS: Prefs = {
   mentionColor: "#5865f2",
   textScale: 0.92,
   language: "en",
+  linkPreviews: true,
 };
 
 /** The text size the app used to ship as its default, before it moved to 92%. */
@@ -60,4 +66,5 @@ export function applyPrefs(p: Prefs) {
 export function savePrefs(p: Prefs) {
   if (typeof localStorage !== "undefined") localStorage.setItem(PREFS_KEY, JSON.stringify(p));
   applyPrefs(p);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PREFS_EVENT));
 }

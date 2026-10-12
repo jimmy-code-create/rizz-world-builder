@@ -10,9 +10,13 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { applyPrefs, loadPrefs } from "@/lib/prefs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PresenceSheet } from "@/components/presence/PresenceSheet";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { statusLabel, useSelfPresence } from "@/lib/presence";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Settings · RIZZ" }] }),
@@ -37,6 +41,8 @@ const SECTIONS: SettingsSection[] = [
 
 function SettingsHubPage() {
   const { profile } = useAuth();
+  const [statusOpen, setStatusOpen] = useState(false);
+  const presence = useSelfPresence();
 
   useEffect(() => {
     applyPrefs(loadPrefs());
@@ -64,6 +70,27 @@ function SettingsHubPage() {
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </Link>
 
+      <button
+        type="button"
+        onClick={() => setStatusOpen(true)}
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-3xl border border-white/5 glass px-4 text-left transition-colors hover:bg-white/5"
+      >
+        <AvatarWithStatus status={presence.status} dotSize={11}>
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={profile.avatar_url ?? undefined} />
+            <AvatarFallback className="bg-gradient-primary text-sm font-bold">{initial}</AvatarFallback>
+          </Avatar>
+        </AvatarWithStatus>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">Status</span>
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+            <span className="shrink-0">{statusLabel(presence.status)}</span>
+            {presence.customStatus && <CustomStatusLine status={presence.customStatus} className="min-w-0" />}
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+
       <nav className="overflow-hidden rounded-3xl border border-white/5 glass">
         {SECTIONS.map((section, index) => (
           <Link
@@ -84,6 +111,8 @@ function SettingsHubPage() {
           </Link>
         ))}
       </nav>
+
+      <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
     </div>
   );
 }

@@ -20,6 +20,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { MessageReactions } from "@/components/chat/MessageReactions";
+import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
+import { useHiddenLinkPreviews } from "@/lib/link-preview";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { publicCustomStatus, statusLabel, usePresenceMap } from "@/lib/presence";
+import { Pin, PinOff } from "lucide-react";
+import { PinnedBar, PinnedListSheet, PinBadge, SystemLine } from "@/components/chat/PinnedMessages";
+import { togglePin, usePinnedMessages, type PinnedMessageDetails } from "@/lib/pins";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
@@ -73,6 +80,10 @@ function RealmPage() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [visibleMembers, setVisibleMembers] = useState(MEMBER_PAGE_SIZE);
+  const [pinsOpen, setPinsOpen] = useState(false);
+  const [pinIndex, setPinIndex] = useState(0);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [unpinningId, setUnpinningId] = useState<string | null>(null);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -155,6 +166,16 @@ function RealmPage() {
   const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
   const reactions = useChatReactions("realm", messageRows.map((message: { id: string }) => message.id));
+  // Members and voice participants share one presence request.
+  const presence = usePresenceMap([
+    ...(members.data ?? []).map((member) => member.user_id),
+    ...activeChannelPeople.map((person) => person.user_id),
+  ]);
+  // Pins for the channel on screen, live for everyone in the realm.
+  const pinned = usePinnedMessages(realm.data?.id, activeRoomId ?? null);
+  const pins = pinned.pins;
+  const pinnedIds = new Set(pins.map((pin) => pin.message_id));
+  const removedPreviews = useHiddenLinkPreviews("realm", messageRows.map((message: { id: string }) => message.id));
   // "Mods only" applies per channel: readers keep reading, non-mods can't send
   // or join. The real rule is enforced in Postgres (see the migration).
   const roomLockedForMe = !!activeRoom?.mods_only && !canModerate;
@@ -203,6 +224,29 @@ function RealmPage() {
       }
       setBody("");
     } catch (e: any) { toast.error(e.message); } finally { setSending(false); }
+  };
+
+  /** Jumps to a pinned message and flashes it briefly. */
+  const jumpToPin = (pin: PinnedMessageDetails) => {
+    setPinsOpen(false);
+    window.setTimeout(() => {
+      document.getElementById(`msg-${pin.message_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(pin.message_id);
+      window.setTimeout(() => setHighlightId((current) => (current === pin.message_id ? null : current)), 1600);
+    }, 0);
+  };
+
+  const handlePinToggle = async (messageId: string, isPinned: boolean) => {
+    setUnpinningId(messageId);
+    try {
+      await togglePin(messageId, isPinned);
+      toast.success(isPinned ? "Unpinned" : "Pinned for everyone in the realm");
+    } catch (error) {
+      // Nothing was changed locally, so the pin simply stays as it was.
+      toast.error(error instanceof Error ? error.message : "Couldn't update that pin");
+    } finally {
+      setUnpinningId(null);
+    }
   };
 
   const handleDeleteMessage = async (messageId: string) => {
@@ -322,15 +366,24 @@ function RealmPage() {
               )}
               {(members.data ?? []).slice(0, visibleMembers).map((m: RealmMemberRow) => (
                 <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-white/10 glass p-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={m.profile?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-gradient-primary text-xs font-bold">
-                      {(m.profile?.display_name || m.profile?.username || "?").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={m.profile?.avatar_url ?? undefined} />
+                      <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                        {(m.profile?.display_name || m.profile?.username || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </AvatarWithStatus>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{m.profile?.display_name || m.profile?.username || "Member"}</p>
-                    <p className="text-[11px] text-muted-foreground">{m.role}</p>
+                    {publicCustomStatus(presence.rows[m.user_id], false) ? (
+                      <CustomStatusLine
+                        status={publicCustomStatus(presence.rows[m.user_id], false)}
+                        className="text-[11px] text-[var(--rizz-pink)]/90"
+                      />
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">{m.role}</p>
+                    )}
                   </div>
                   {canModerate && m.user_id !== user?.id && m.role !== "owner" && (
                     <div className="flex shrink-0 items-center gap-1">
@@ -597,6 +650,18 @@ function RealmPage() {
         </div>
       )}
 
+      {activeRoom?.kind !== "voice" && (
+        <PinnedBar
+          pins={pins}
+          index={pinIndex}
+          onJump={(pin) => {
+            jumpToPin(pin);
+            setPinIndex((current) => (pins.length ? (current + 1) % pins.length : 0));
+          }}
+          onOpenList={() => setPinsOpen(true)}
+        />
+      )}
+
       {activeRoom?.kind === "voice" && (
         <div className="mx-4 my-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -649,15 +714,17 @@ function RealmPage() {
                 const username = person.user?.username ?? "member";
                 return (
                   <li key={person.user_id} className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-2.5">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={person.user?.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-gradient-primary text-xs font-bold">
-                        {(person.user?.display_name || username).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AvatarWithStatus status={presence.statusOf(person.user_id)} dotSize={11}>
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={person.user?.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                          {(person.user?.display_name || username).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </AvatarWithStatus>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{person.user?.display_name || `@${username}`}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">@{username}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{username === "member" ? statusLabel(presence.statusOf(person.user_id)) : `@${username}`}</p>
                     </div>
                     {person.muted ? (
                       <MicOff className="h-4 w-4 shrink-0 text-destructive" aria-label="Muted" />
@@ -691,6 +758,10 @@ function RealmPage() {
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
+            // "@user pinned a message" reads as a system line, not a bubble.
+            if ((m as { system?: boolean }).system) {
+              return <SystemLine key={m.id} text={m.body} />;
+            }
             return (
               <Fragment key={m.id}>
               {startsGroup && (
@@ -698,7 +769,14 @@ function RealmPage() {
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-2 flex gap-2 sm:gap-3">
+              <motion.div
+                id={`msg-${m.id}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`mb-2 flex gap-2 rounded-2xl sm:gap-3 ${
+                  highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""
+                }`}
+              >
               {!mine && (startsGroup ? (
                 <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
                   <AvatarImage src={m.author?.avatar_url ?? undefined} />
@@ -706,8 +784,9 @@ function RealmPage() {
                 </Avatar>
               ) : <div aria-hidden="true" className="h-9 w-9 shrink-0" />)}
               <div className="flex-1 min-w-0">
-                {startsGroup && <div className="flex items-baseline gap-2">
+                {startsGroup && <div className="flex items-center gap-2">
                   <span className="font-bold text-sm" style={{ color: m.author?.accent_color || undefined }}>{m.author?.display_name || m.author?.username}</span>
+                  {pinnedIds.has(m.id) && <PinBadge />}
                 </div>}
                 <MessageActionMenu
                   open={openMessageId === m.id}
@@ -726,6 +805,13 @@ function RealmPage() {
                         );
                       },
                     },
+                    ...(canModerate
+                      ? [{
+                          label: pinnedIds.has(m.id) ? "Unpin message" : "Pin message",
+                          icon: pinnedIds.has(m.id) ? PinOff : Pin,
+                          onSelect: () => { void handlePinToggle(m.id, pinnedIds.has(m.id)); },
+                        }]
+                      : []),
                     ...(mine
                       ? [{
                           label: "Delete message",
@@ -760,6 +846,13 @@ function RealmPage() {
                   align={mine ? "right" : "left"}
                   onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
                 />
+                <MessageLinkPreviews
+                  text={m.body}
+                  messageId={m.id}
+                  scope="realm"
+                  canHide={mine || canModerate}
+                  removed={removedPreviews.hidden.has(m.id)}
+                />
               </div>
             </motion.div>
             </Fragment>
@@ -770,6 +863,16 @@ function RealmPage() {
         )}
         <div ref={endRef} />
       </div>
+
+      <PinnedListSheet
+        open={pinsOpen}
+        onOpenChange={setPinsOpen}
+        pins={pins}
+        canModerate={canModerate}
+        unpinningId={unpinningId}
+        onJump={jumpToPin}
+        onUnpin={(pin) => void handlePinToggle(pin.message_id, true)}
+      />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="glass-strong border-white/10">

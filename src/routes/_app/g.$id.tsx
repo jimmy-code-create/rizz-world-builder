@@ -7,6 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
+import { useHiddenLinkPreviews } from "@/lib/link-preview";
+import { AvatarWithStatus } from "@/components/presence/StatusDot";
+import { usePresenceMap } from "@/lib/presence";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
@@ -277,6 +281,8 @@ function GroupRoom() {
   const isOwner = user?.id === g.owner_id;
   const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
   const reactions = useChatReactions("group", visibleMessages.map((message: { id: string }) => message.id));
+  const removedPreviews = useHiddenLinkPreviews("group", visibleMessages.map((message: { id: string }) => message.id));
+  const presence = usePresenceMap((members.data ?? []).map((member: any) => member.user_id));
   const media = useMediaViewer();
 
   return (
@@ -307,8 +313,10 @@ function GroupRoom() {
             <SheetTitle className="font-display">Members</SheetTitle>
             <div className="mt-4 space-y-2">
               {(members.data ?? []).map((m: any) => (
-                <Link key={m.user_id} to="/u/$username" params={{ username: m.user?.username ?? "" }} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
-                  <Avatar className="h-9 w-9"><AvatarImage src={m.user?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary font-bold text-xs">{(m.user?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                <Link key={m.user_id} to="/u/$username" params={{ username: m.user?.username ?? "" }} className="flex min-h-12 items-center gap-3 p-2 rounded-xl hover:bg-white/5">
+                  <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
+                    <Avatar className="h-9 w-9"><AvatarImage src={m.user?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary font-bold text-xs">{(m.user?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                  </AvatarWithStatus>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{m.user?.display_name || m.user?.username}</p>
                     <p className="text-xs text-muted-foreground truncate">@{m.user?.username} · {m.role}</p>
@@ -417,6 +425,13 @@ function GroupRoom() {
                     reactorsFor={reactions.reactorsFor}
                     align={mine ? "right" : "left"}
                     onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                  />
+                  <MessageLinkPreviews
+                    text={deletedAt ? null : m.body}
+                    messageId={m.id}
+                    scope="group"
+                    canHide={mine}
+                    removed={removedPreviews.hidden.has(m.id)}
                   />
                   {m.delivery_status ? (
                     m.delivery_status === "failed" ? (

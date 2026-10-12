@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { listMyGroups, type Group } from "@/lib/groups";
 import { MAX_GROUP_PICKS, createGroupChat } from "@/lib/groups.functions";
 import { squareImageFile } from "@/lib/image-square";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { publicCustomStatus, usePresenceMap } from "@/lib/presence";
 
 export const Route = createFileRoute("/_app/dms")({
   head: () => ({ meta: [{ title: "Messages · RIZZ" }] }),
@@ -88,6 +90,9 @@ function DMsPage() {
     enabled: !!user,
     retry: false,
   });
+
+  // One presence request for every conversation, kept fresh by realtime.
+  const presence = usePresenceMap((threads.data ?? []).map((thread) => thread.other.id));
 
   // Realtime replaces the old 15s poll: the thread list now refreshes when a
   // message actually lands. Two channels because each only filters one column.
@@ -334,6 +339,7 @@ function DMsPage() {
         )}
         {filtered.map(({ other, last, unread }) => {
           const isSelected = selectedSet.has(other.id);
+          const peerStatus = publicCustomStatus(presence.rows[other.id], false);
           return (
             <button
               key={other.id}
@@ -349,10 +355,12 @@ function DMsPage() {
               }`}
             >
               <div className="relative shrink-0">
-                <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-[var(--rizz-pink)]" : "ring-[var(--rizz-pink)]/40"}`}>
-                  <AvatarImage src={other.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-gradient-primary font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={12}>
+                  <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-[var(--rizz-pink)]" : "ring-[var(--rizz-pink)]/40"}`}>
+                    <AvatarImage src={other.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-gradient-primary font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </AvatarWithStatus>
                 {isSelected && (
                   <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--rizz-pink)] text-white ring-2 ring-background">
                     <Check className="h-3 w-3" strokeWidth={3} />
@@ -361,6 +369,9 @@ function DMsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate">{other.display_name || other.username}</p>
+                {peerStatus && (
+                  <CustomStatusLine status={peerStatus} className="text-[11px] text-[var(--rizz-pink)]/90" />
+                )}
                 <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{last.body}</p>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
