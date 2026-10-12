@@ -12,6 +12,51 @@
 -- Safe to re-run.
 -- ============================================================================
 
+-- ----------------------------------------------------------------------------
+-- An earlier group-scoped pins feature already owns this table name
+-- (20260810023549), shaped as group_id / message_id -> group_messages. Left
+-- alone, the CREATE TABLE IF NOT EXISTS below would silently keep that group
+-- shape, every following statement would fail on the missing realm_id, and the
+-- old pins_insert_members / pins_delete_members policies plus the
+-- GRANT ... INSERT, DELETE TO authenticated would still let any member write
+-- pins directly, bypassing the owner/mod rule and the 50-pin limit.
+--
+-- So move that table aside rather than dropping it: its rows are preserved, and
+-- nothing in the app reads it. Its constraint-owned indexes keep the old table's
+-- name, and index names are schema-wide, so they are renamed too — otherwise the
+-- new primary key could not be created.
+-- ----------------------------------------------------------------------------
+DO $legacy_group_pins$
+DECLARE
+  v_constraint record;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'pinned_messages'
+      AND column_name = 'group_id'
+  ) THEN
+    ALTER TABLE public.pinned_messages RENAME TO group_pinned_messages;
+
+    FOR v_constraint IN
+      SELECT con.conname
+      FROM pg_constraint AS con
+      JOIN pg_class AS rel ON rel.oid = con.conrelid
+      JOIN pg_namespace AS ns ON ns.oid = rel.relnamespace
+      WHERE ns.nspname = 'public'
+        AND rel.relname = 'group_pinned_messages'
+        AND con.conname LIKE 'pinned\_messages%'
+    LOOP
+      EXECUTE format(
+        'ALTER TABLE public.group_pinned_messages RENAME CONSTRAINT %I TO %I',
+        v_constraint.conname,
+        'group_' || v_constraint.conname
+      );
+    END LOOP;
+  END IF;
+END
+$legacy_group_pins$;
+
 CREATE TABLE IF NOT EXISTS public.pinned_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   realm_id uuid NOT NULL REFERENCES public.realms(id) ON DELETE CASCADE,
