@@ -9,6 +9,11 @@
 ALTER TYPE public.channel_type RENAME TO realm_type;
 ALTER TYPE public.channel_member_role RENAME TO realm_role;
 
+-- "voice" is part of realm_type everywhere the UI and the rooms migration use
+-- it; adding it here (in its own statement, before anything compares against it)
+-- is what makes this history replayable from scratch.
+ALTER TYPE public.realm_type ADD VALUE IF NOT EXISTS 'voice';
+
 -- ---------- 2. Tables + their columns ----------
 ALTER TABLE public.channels RENAME TO realms;
 ALTER TABLE public.channel_members RENAME TO realm_members;

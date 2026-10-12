@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
+import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,9 +18,10 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
+import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
-import { AvatarWithStatus } from "@/components/presence/StatusDot";
-import { useSelfPresence } from "@/lib/presence";
+import { StatusDot } from "@/components/presence/StatusDot";
+import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 
 // Secondary UI and the decorative background are split out of the initial shell
@@ -46,6 +47,7 @@ const sideTabs = [
   { to: "/effects", label: "Effects", icon: Sparkles },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Top", icon: Trophy },
+  { to: "/bots", label: "Bots", icon: Bot },
 ] as const;
 
 const mobileTabs = [
@@ -147,6 +149,8 @@ export function AppShell() {
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
+  const unreadCount = unread.data ?? 0;
+  const unreadBadge = unreadCount > 9 ? "9+" : String(unreadCount);
   const isActive = (to: string) => path === to || (to !== "/feed" && path.startsWith(to + "/"));
 
   return (
@@ -166,7 +170,7 @@ export function AppShell() {
         </button>
 
         <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-gradient-primary border-0 shadow-glow rounded-xl h-10 gap-2">
-          <Plus className="h-4 w-4" /> New post
+          <Plus className="h-5 w-5" /> New post
         </Button>
 
         <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto -mx-1 px-1">
@@ -175,14 +179,15 @@ export function AppShell() {
             onClick={() => setStatusOpen(true)}
             className="flex min-h-[48px] items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
           >
-            <AvatarWithStatus status={presence.status} dotSize={9}>
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{initial}</AvatarFallback>
-              </Avatar>
-            </AvatarWithStatus>
+            {presence.customStatus?.emoji ? (
+              <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
+                {presence.customStatus.emoji}
+              </span>
+            ) : (
+              <StatusDot status={presence.status} size={12} ring={false} />
+            )}
             <span className="font-medium text-sm flex-1 text-left">Status</span>
-            {presence.customStatus?.emoji && <span aria-hidden>{presence.customStatus.emoji}</span>}
+            <span className="text-xs">{statusShortLabel(presence.status)}</span>
           </button>
           {sideTabs.map((t) => (
             <Link
@@ -237,35 +242,42 @@ export function AppShell() {
         <button
           type="button"
           onClick={() => setOwnerOpen(true)}
-          className="flex items-center gap-2 shrink-0"
+          className="flex min-h-12 shrink-0 items-center gap-2"
           aria-label="Open owner panel"
         >
           <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold text-sm shadow-glow">R</div>
-          <span className="font-display text-lg font-bold">RIZZ</span>
+          {/* The wordmark is the first thing the bar gives up when it gets tight. */}
+          <span className="hidden font-display text-lg font-bold min-[480px]:inline">RIZZ</span>
         </button>
-        <Link to="/explore" className="flex-1 max-w-xs flex items-center gap-2 glass rounded-full px-3 py-1.5 text-xs text-muted-foreground border border-white/5">
-          <Search className="h-3.5 w-3.5" /> Search RIZZ
+        {/* The search pill shrinks first: its label goes before anything else moves. */}
+        <Link
+          to="/explore"
+          aria-label="Search RIZZ"
+          className="flex h-12 min-w-12 items-center justify-center gap-2 glass rounded-full border border-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground min-[480px]:max-w-xs min-[480px]:flex-1 min-[480px]:justify-start"
+        >
+          <Search className="h-5 w-5 shrink-0" />
+          <span className="hidden truncate min-[480px]:inline">Search RIZZ</span>
         </Link>
-        <div className="flex items-center gap-1 shrink-0">
-          <Link to="/notifications" className="relative h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-white/5">
+        <div className="flex shrink-0 items-center gap-1">
+          <Link
+            to="/notifications"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+            className="relative grid h-12 w-12 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5"
+          >
             <Bell className="h-5 w-5" />
-            {(unread.data ?? 0) > 0 && (
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[var(--rizz-pink)] shadow-glow" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-background px-1 text-[10px] font-bold leading-none text-foreground ring-1 ring-[var(--rizz-pink)]">
+                {unreadBadge}
+              </span>
             )}
           </Link>
-          <button
-            type="button"
-            onClick={() => setStatusOpen(true)}
-            className="grid h-11 w-11 place-items-center rounded-full hover:bg-white/5"
-            aria-label="Set your status"
-          >
-            <AvatarWithStatus status={presence.status} dotSize={9}>
-              <Avatar className="h-8 w-8 ring-2 ring-[var(--rizz-pink)]/40">
-                <AvatarImage src={profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs font-bold">{initial}</AvatarFallback>
-              </Avatar>
-            </AvatarWithStatus>
-          </button>
+          {/* Status: a pill with the dot and the label — never the avatar, which
+              sits next to it and made the two look like duplicates. */}
+          <StatusPill
+            status={presence.status}
+            emoji={presence.customStatus?.emoji}
+            onOpen={() => setStatusOpen(true)}
+          />
           <ProfileMenu profile={profile} initial={initial} signOut={signOut} compact />
         </div>
       </header>}
@@ -290,7 +302,7 @@ export function AppShell() {
           ))}
           {!isReels && <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-5" aria-label="New post">
             <div className="h-12 w-12 rounded-2xl bg-gradient-primary shadow-glow flex items-center justify-center ring-4 ring-background">
-              <Plus className="h-6 w-6 text-primary-foreground" />
+              <Plus className="h-5 w-5 text-primary-foreground" />
             </div>
           </button>}
           {mobileTabs.slice(2).map((t) => (
@@ -394,6 +406,9 @@ export function AppShell() {
       </Sheet>
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
       <ExternalLinkGuard />
+      {/* Reaction bursts live outside the chats, so playing one never re-renders
+          a message list. */}
+      <ReactionBurstLayer />
 
       <Suspense fallback={null}>
         <IncomingCallRinger />
@@ -406,13 +421,50 @@ export function AppShell() {
   );
 }
 
+/**
+ * The header's status control.
+ *
+ * It shows the status dot (or the custom-status emoji) and the label, never the
+ * avatar: the profile avatar sits directly next to it, and two copies of the
+ * same picture read as a duplicate button.
+ */
+function StatusPill({
+  status,
+  emoji,
+  onOpen,
+}: {
+  status: PublicPresence;
+  emoji?: string | null;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Status: ${statusLabel(status)}. Change your status`}
+      title={`Status: ${statusLabel(status)}`}
+      className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[380px]:h-10 max-[380px]:w-10 max-[380px]:px-0"
+    >
+      {emoji ? (
+        <span aria-hidden className="text-base leading-none">{emoji}</span>
+      ) : (
+        <StatusDot status={status} size={14} ring={false} />
+      )}
+      {/* Capped so a long label can never push the bar past 380px: below the
+          cap it truncates instead of clipping. */}
+      <span className="hidden max-w-[4.5rem] truncate min-[380px]:inline">{statusShortLabel(status)}</span>
+      <ChevronDown className="hidden h-5 w-5 shrink-0 text-muted-foreground min-[380px]:block" />
+    </button>
+  );
+}
+
 function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
   return (
-    <Link to={to} className="flex-1 flex flex-col items-center gap-0.5 py-1.5">
-      <div className={`p-1.5 rounded-xl transition-all ${active ? "bg-white/10" : ""}`}>
+    <Link to={to} className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 py-1.5">
+      <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-[var(--rizz-pink)]/15" : ""}`}>
         <Icon className={`h-5 w-5 ${active ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`} />
       </div>
-      <span className={`text-[10px] font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+      <span className={`text-[10px] font-medium ${active ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`}>{label}</span>
     </Link>
   );
 }
@@ -431,7 +483,10 @@ function ProfileMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={`flex items-center gap-3 rounded-xl ${compact ? "" : "p-2 hover:bg-white/5 w-full"} transition-colors`}>
+        <button
+          aria-label="Your profile"
+          className={`flex items-center gap-3 rounded-xl transition-colors ${compact ? "h-12 w-12 justify-center hover:bg-white/5" : "p-2 hover:bg-white/5 w-full"}`}
+        >
           <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
             <AvatarImage src={profile?.avatar_url ?? undefined} />
             <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>

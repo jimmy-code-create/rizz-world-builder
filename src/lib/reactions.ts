@@ -46,6 +46,26 @@ export function reactorsQueryKey(scope: ReactionScope, messageId: string, emoji:
   return ["chat-reactors", scope, messageId, emoji] as const;
 }
 
+/**
+ * One row per (message, user, emoji).
+ *
+ * The optimistic update and the realtime echo of the same reaction arrive
+ * separately, so both paths run through this: the chip never doubles up and the
+ * chat never flickers between two states.
+ */
+export function dedupeReactionRows(rows: ReactionRow[]): ReactionRow[] {
+  const seen = new Set<string>();
+  const result: ReactionRow[] = [];
+  for (const row of rows) {
+    if (!row?.message_id || !row.user_id || !row.emoji) continue;
+    const key = `${row.message_id}|${row.user_id}|${row.emoji}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(row);
+  }
+  return result;
+}
+
 /** Every reaction for the messages currently on screen, in one request. */
 export async function fetchReactionRows(scope: ReactionScope, messageIds: string[]): Promise<ReactionRow[]> {
   if (!messageIds.length) return [];
@@ -55,7 +75,7 @@ export async function fetchReactionRows(scope: ReactionScope, messageIds: string
   if (scope !== "dm") query = query.eq("message_type", scope);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ReactionRow[];
+  return dedupeReactionRows((data ?? []) as ReactionRow[]);
 }
 
 export async function toggleReaction(scope: ReactionScope, messageId: string, emoji: string): Promise<void> {

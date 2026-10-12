@@ -42,6 +42,15 @@ export function statusLabel(status: PublicPresence) {
   return PRESENCE_STATUSES.find((entry) => entry.value === status)?.label ?? "Offline";
 }
 
+/**
+ * The one-word version, for tight spots like the header pill where
+ * "Do not disturb" would push the rest of the bar off a 390px screen.
+ */
+export function statusShortLabel(status: PublicPresence) {
+  if (status === "dnd") return "DND";
+  return statusLabel(status);
+}
+
 /** The custom status, or null when empty or already expired. */
 export function customStatusOf(row: PresenceRow | undefined | null) {
   if (!row) return null;

@@ -1,13 +1,27 @@
 import type { ReactNode } from "react";
 import { statusColor, statusLabel, type PublicPresence } from "@/lib/presence";
 
-/** Small presence dot. Offline (and anyone invisible) reads as a muted grey dot. */
-export function StatusDot({ status, className = "" }: { status: PublicPresence; className?: string }) {
+/**
+ * Small presence dot. Offline (and anyone invisible) reads as a muted grey dot.
+ * `size` and `ring` exist for the header pill, which wants a slightly larger dot
+ * with no ring because the pill already draws its own border.
+ */
+export function StatusDot({
+  status,
+  className = "",
+  size = 12,
+  ring = true,
+}: {
+  status: PublicPresence;
+  className?: string;
+  size?: number;
+  ring?: boolean;
+}) {
   return (
     <span
       aria-hidden
-      className={`block h-3 w-3 rounded-full ring-2 ring-background ${className}`}
-      style={{ background: statusColor(status) }}
+      className={`block shrink-0 rounded-full ${ring ? "ring-2 ring-background" : ""} ${className}`}
+      style={{ width: size, height: size, background: statusColor(status) }}
     />
   );
 }

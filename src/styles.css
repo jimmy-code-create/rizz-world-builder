@@ -294,18 +294,27 @@
   background: var(--surface-bubble);
   color: var(--foreground);
 }
+/* Unsent: a plain muted italic placeholder. The old inset accent stripe read as
+   a stray left border wrapped around the bubble. */
 .message-bubble--unsent {
-  border: 1px solid color-mix(in srgb, var(--rizz-pink) 22%, transparent);
-  background: color-mix(in srgb, var(--surface-bubble) 82%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+  background: color-mix(in srgb, var(--surface-bubble) 62%, transparent);
   color: var(--muted-foreground);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--rizz-pink) 45%, transparent);
+  box-shadow: none;
   font-style: italic;
+  opacity: 0.85;
 }
+/* Mentions must sit inline with zero added space: no padding, no margin, no
+   inline-block. The padding that used to be here is what opened a gap either
+   side of an @mention. */
 .mention-highlight {
+  display: inline;
+  margin: 0;
+  padding: 0;
   color: var(--rizz-mention-color, #5865f2);
   background-color: color-mix(in srgb, var(--rizz-mention-color, #5865f2) 18%, transparent);
-  border-radius: 0.25rem;
-  padding-inline: 0.125rem;
+  border-radius: 0.2rem;
+  white-space: inherit;
 }
 .chat-scroll {
   overscroll-behavior: contain;

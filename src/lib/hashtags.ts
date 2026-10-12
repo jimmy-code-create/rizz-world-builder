@@ -27,19 +27,34 @@ export async function fetchPostsByTag(tag: string, limit = 50): Promise<FeedPost
   return addVerifiedCreatorFlags(posts);
 }
 
-export function renderCaptionWithTags(
-  caption: string
-): { text: string; tag?: string; mention?: string; url?: string }[] {
-  const parts: { text: string; tag?: string; mention?: string; url?: string }[] = [];
-  // Order matters: URLs first, then mentions, then hashtags
-  const re = /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]{2,32})|#([a-zA-Z0-9_]{2,32})/g;
+export type CaptionPart = {
+  text: string;
+  tag?: string;
+  mention?: string;
+  url?: string;
+  /** `<@uuid>` mention token: the id, rendered as one inline span. */
+  mentionToken?: string;
+};
+
+/**
+ * Splits a message body into plain text, urls, @mentions and #tags.
+ *
+ * Mention tokens (`<@uuid>`) are also understood, so a body written by a bot or
+ * another client renders as a single inline mention instead of leaking the raw
+ * angle brackets. Rendering never adds whitespace between parts.
+ */
+export function renderCaptionWithTags(caption: string): CaptionPart[] {
+  const parts: CaptionPart[] = [];
+  // Order matters: URLs first, then mention tokens, mentions, then hashtags.
+  const re = /(https?:\/\/[^\s]+)|<@([0-9a-fA-F-]{36})>|@([a-zA-Z0-9_]{2,32})|#([a-zA-Z0-9_]{2,32})/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(caption))) {
     if (m.index > last) parts.push({ text: caption.slice(last, m.index) });
     if (m[1]) parts.push({ text: m[0], url: m[1] });
-    else if (m[2]) parts.push({ text: m[0], mention: m[2].toLowerCase() });
-    else if (m[3]) parts.push({ text: m[0], tag: m[3].toLowerCase() });
+    else if (m[2]) parts.push({ text: "@member", mentionToken: m[2] });
+    else if (m[3]) parts.push({ text: m[0], mention: m[3].toLowerCase() });
+    else if (m[4]) parts.push({ text: m[0], tag: m[4].toLowerCase() });
     last = m.index + m[0].length;
   }
   if (last < caption.length) parts.push({ text: caption.slice(last) });

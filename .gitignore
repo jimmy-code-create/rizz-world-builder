@@ -15,6 +15,9 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+
+# TypeScript build info written by `tsc -b`
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

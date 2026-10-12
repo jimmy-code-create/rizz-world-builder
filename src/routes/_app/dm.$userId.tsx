@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Plus, Copy, Flag } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,14 +16,16 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { MessageReactions } from "@/components/chat/MessageReactions";
+import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
+import { ReactionQuickBar } from "@/components/chat/ReactionQuickBar";
+import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
-import { DOUBLE_TAP_REACTION, MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
+import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
@@ -83,7 +85,6 @@ function DMPage() {
   const wasNearBottomRef = useRef(true);
   const previousMessageIdsRef = useRef<string[]>([]);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
-  const [moreReactionsOpen, setMoreReactionsOpen] = useState(false);
   const pressTimer = useRef<number | null>(null);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
   const longPressFired = useRef(false);
@@ -111,10 +112,6 @@ function DMPage() {
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
-
-  useEffect(() => {
-    setMoreReactionsOpen(false);
-  }, [openMsg]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -208,13 +205,15 @@ function DMPage() {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
+    // Keep the second tap's position so the heart bursts under the finger.
+    const tapPoint = pressStart.current;
     pressStart.current = null;
     if (wasLongPress || !id || !user || openMsg) return;
     const previous = lastTap.current;
     const now = Date.now();
     if (previous && previous.id === id && now - previous.at < 300) {
       lastTap.current = null;
-      void doubleTapHeart(id);
+      void doubleTapHeart(id, tapPoint ?? undefined);
       return;
     }
     lastTap.current = { id, at: now };
@@ -596,7 +595,16 @@ function DMPage() {
   };
 
   // Reactions for every loaded message: one request, one realtime channel.
-  const reactions = useChatReactions("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
+  const reactions = useChatReactions(
+    "dm",
+    (msgs.data ?? []).map((message: { id: string }) => message.id),
+    {
+      // Reactions someone else adds to my messages get a small pop, not a burst.
+      myMessageIds: (msgs.data ?? [])
+        .filter((message: { sender_id: string }) => message.sender_id === user?.id)
+        .map((message: { id: string }) => message.id),
+    },
+  );
   const removedPreviews = useHiddenLinkPreviews("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
   const peerPresence = usePresence(other.data?.id);
   const peerStatus = publicStatusOf(peerPresence);
@@ -701,7 +709,10 @@ function DMPage() {
     await reactions.toggle(messageId, emoji);
   };
 
-  const doubleTapHeart = async (messageId: string) => {
+  const doubleTapHeart = async (messageId: string, at?: { x: number; y: number }) => {
+    // A big heart pops at the tap position.
+    burstOverMessage(messageId, DOUBLE_TAP_REACTION, at);
+    reactionHaptic();
     await reactions.toggle(messageId, DOUBLE_TAP_REACTION);
   };
 
@@ -869,7 +880,7 @@ function DMPage() {
                     id={`msg-${m.id}`}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`group flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
+                    className={`group flex min-w-0 flex-col ${mine ? "items-end" : "items-start"}`}
                   >
                     <MessageActionMenu
                       open={openMsg === m.id}
@@ -880,13 +891,15 @@ function DMPage() {
                     >
                       <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
                     </MessageActionMenu>
-                    <MessageReactions
+                    <ReactionChips
                       scope="dm"
                       messageId={m.id}
                       groups={reactions.groupsFor(m.id)}
                       reactorsFor={reactions.reactorsFor}
                       align={mine ? "right" : "left"}
-                      onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                      hidden={String(m.id).startsWith("pending-") || !!(m as CachedDirectMessage).deleted_at}
+                      pulse={reactions.lastPulse}
+                      onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                     />
                   </motion.div>
                 </Fragment>
@@ -906,11 +919,11 @@ function DMPage() {
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`group flex min-w-0 items-end gap-1 rounded-2xl transition-shadow duration-500 ${
+                className={`group flex min-w-0 flex-col rounded-2xl transition-shadow duration-500 ${
                   openMsg === m.id ? "relative z-[41]" : ""
                 } ${
                   highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
-                } ${mine ? "justify-end" : "justify-start"}`}
+                } ${mine ? "items-end" : "items-start"}`}
               >
                 {inviteCode && !deletedAt ? (
                   <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
@@ -959,35 +972,11 @@ function DMPage() {
                     sideOffset={12}
                     collisionPadding={12}
                   >
-                    <div className="no-scrollbar mb-2 flex items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-[#08060d] p-1">
-                      {QUICK_REACTIONS.map((e) => (
-                        <button type="button" key={e} aria-label={`React with ${e}`} onClick={() => { void react(m.id, e); setOpenMsg(null); }} className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-xl transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">{e}</button>
-                      ))}
-                      <button
-                        type="button"
-                        aria-label={moreReactionsOpen ? "Hide more reactions" : "More reactions"}
-                        aria-expanded={moreReactionsOpen}
-                        onClick={() => setMoreReactionsOpen((open) => !open)}
-                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    </div>
-                    {moreReactionsOpen && (
-                      <div className="mb-2 grid grid-cols-6 gap-1 rounded-xl border border-white/10 bg-[#08060d] p-1">
-                        {MORE_REACTIONS.map((emoji) => (
-                          <button
-                            type="button"
-                            key={emoji}
-                            aria-label={`React with ${emoji}`}
-                            onClick={() => { void react(m.id, emoji); setOpenMsg(null); setMoreReactionsOpen(false); }}
-                            className="grid h-12 w-12 place-items-center rounded-lg text-xl transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* One shared reaction picker, identical to groups and realms. */}
+                    <ReactionQuickBar
+                      className="mb-2"
+                      onPick={(emoji) => { void react(m.id, emoji); setOpenMsg(null); }}
+                    />
                     <div className="flex flex-col gap-0.5 text-xs">
                       <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Copy className="h-4 w-4 text-white/60" />Copy text</button>
                       <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><CornerUpLeft className="h-4 w-4 text-white/60" />Reply</button>
@@ -1019,13 +1008,15 @@ function DMPage() {
                 ) : deliveryStatus === "sending" ? (
                   <span className="text-[10px] text-muted-foreground">Sending…</span>
                 ) : null}
-                <MessageReactions
+                <ReactionChips
                   scope="dm"
                   messageId={m.id}
                   groups={reactions.groupsFor(m.id)}
                   reactorsFor={reactions.reactorsFor}
                   align={mine ? "right" : "left"}
-                  onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                  hidden={!!deletedAt || String(m.id).startsWith("pending-")}
+                  pulse={reactions.lastPulse}
+                  onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                 />
                 <MessageLinkPreviews
                   text={deletedAt ? null : m.body}

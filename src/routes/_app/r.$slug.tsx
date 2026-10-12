@@ -14,18 +14,20 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, KeyRound, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Bot as BotIcon, Flag, Hash, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, ShieldCheck, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
-import { MessageReactions } from "@/components/chat/MessageReactions";
+import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
+import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, statusLabel, usePresenceMap } from "@/lib/presence";
-import { ChannelPermissionsSheet, type ChannelMember } from "@/components/realms/ChannelPermissionsSheet";
-import { deniedChannelsOf, useChannelPermissions } from "@/lib/realm-permissions";
+import { ChannelPermissionsSheet } from "@/components/realms/ChannelPermissionsSheet";
+import { deniedChannelsOf, useChannelPermissions, useMyRealmRole } from "@/lib/realm-permissions";
+import { canModerateRealm } from "@/lib/realm-roles";
 import { Pin, PinOff } from "lucide-react";
 import { PinnedBar, PinnedListSheet, PinBadge, SystemLine } from "@/components/chat/PinnedMessages";
 import { togglePin, usePinnedMessages, type PinnedMessageDetails } from "@/lib/pins";
@@ -37,6 +39,13 @@ import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { BotBadge } from "@/components/bots/BotBadge";
+import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
+import { RealmBotsSheet } from "@/components/bots/RealmBotsSheet";
+import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
+import { runBotCommand, useRealmSlashCommands } from "@/lib/bots";
+import { moderateDeleteMessage, reportRealmMessage } from "@/lib/realm-settings";
+import { useMentionLabels } from "@/lib/mention-tokens";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
 
@@ -86,7 +95,12 @@ function RealmPage() {
   const [pinIndex, setPinIndex] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [unpinningId, setUnpinningId] = useState<string | null>(null);
-  const [permissionsMember, setPermissionsMember] = useState<ChannelMember | null>(null);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [botsOpen, setBotsOpen] = useState(false);
+  // Slash-command popup: which row is highlighted, and whether Escape dismissed
+  // it for the text currently in the composer.
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [slashHidden, setSlashHidden] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -123,8 +137,15 @@ function RealmPage() {
     queryFn: () => fetchRealmRoomMessages(activeRoomId!),
   });
 
-  const myRole = (members.data ?? []).find((m) => m.user_id === user?.id)?.role ?? null;
-  const canModerate = myRole === "owner" || myRole === "mod";
+  // The role comes from realm_role_of(), which answers even while the member
+  // list is still loading — that list is what used to hide moderation for the
+  // owner and make the permissions page look like a dead tap. Ownership is also
+  // readable straight off the realm row.
+  const roleQuery = useMyRealmRole(realm.data?.id);
+  const myRole = roleQuery.role ??
+    (members.data ?? []).find((m) => m.user_id === user?.id)?.role ??
+    (realm.data?.owner_id && realm.data.owner_id === user?.id ? "owner" : null);
+  const canModerate = canModerateRealm(myRole, realm.data?.owner_id, user?.id);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -167,7 +188,9 @@ function RealmPage() {
   // render" as soon as the realm query resolves, which blanked this page.
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
   const messageIds = messageRows.map((message: { id: string }) => message.id);
-  const reactions = useChatReactions("realm", messageIds);
+  const reactions = useChatReactions("realm", messageIds, {
+    myMessageIds: messageRows.filter((message: { sender_id: string | null }) => message.sender_id === user?.id).map((message: { id: string }) => message.id),
+  });
   // Members and voice participants share one presence request.
   const presence = usePresenceMap([
     ...(members.data ?? []).map((member) => member.user_id),
@@ -182,6 +205,20 @@ function RealmPage() {
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
   // Who may type where, shared by the moderation sheet and the composer.
   const channelPermissions = useChannelPermissions(realm.data?.id);
+  // Slash commands offered in the channel on screen. Bots live in realms only:
+  // the room id is null for the realm's own channel, and the API re-checks the
+  // realm before running anything.
+  const slashRoomId = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : null;
+  const realmCommands = useRealmSlashCommands(realm.data?.id, slashRoomId);
+  // `<@userId>` tokens in any visible message resolve to a username once.
+  const mentionLabels = useMentionLabels((messageRows as { body?: string }[]).map((row) => row.body));
+  const slashQuery = parseSlashCommand(body);
+  const slashMatches = slashQuery ? filterSlashCommands(realmCommands.commands, slashQuery.name) : [];
+  // The menu only shows while the command word itself is being typed, so the
+  // arguments after the first space never sit under a popup.
+  const slashMenuOpen =
+    !slashHidden && !sending && !!slashQuery && slashQuery.typingName && slashMatches.length > 0;
+  const slashActive = Math.min(slashIndex, Math.max(slashMatches.length - 1, 0));
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -209,6 +246,12 @@ function RealmPage() {
   // The channel the composer would post to: the room on screen, or the realm's
   // own channel when a realm or voice channel is open.
   const sendChannelKey = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : c.id;
+  // The channel's "who can add reactions" setting, enforced again inside
+  // toggle_message_reaction so the browser can't grant itself the permission.
+  const reactionsMode = ((activeRoomId && activeRoom?.kind !== "voice"
+    ? (activeRoom as { reactions_mode?: "everyone" | "mods" }).reactions_mode
+    : (c.reactions_mode as "everyone" | "mods" | undefined)) ?? "everyone");
+  const canAddReactions = reactionsMode !== "mods" || canModerate;
   const myWriteBlocked = !canModerate && deniedChannelsOf(channelPermissions.permissions, c.id, user?.id).has(sendChannelKey);
   // Why the composer is closed, in the order the rules apply.
   const composerBlock = !joined
@@ -232,11 +275,56 @@ function RealmPage() {
     }
   };
 
+  /** Puts the chosen command in the composer with exactly one trailing space. */
+  const pickSlashCommand = (command: { name: string }) => {
+    const next = insertSlashCommand(body, command.name);
+    setBody(next);
+    setCaret(next.length);
+    setSlashIndex(0);
+    setSlashHidden(false);
+    const el = inputRef.current;
+    if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.length, next.length); });
+  };
+
   const handleSend = async () => {
     if (!user || !body.trim()) return;
     if (!joined) { toast.error("Join the realm to send messages"); return; }
     if (roomLockedForMe) { toast.error("Only mods can send messages here"); return; }
     if (myWriteBlocked) { toast.error("A moderator turned off writing here for you"); return; }
+
+    // "/name args" that matches an installed command runs the bot. Any other
+    // text that happens to start with "/" is still just a message.
+    const parsed = parseSlashCommand(body);
+    const command = parsed ? slashMatches.find((entry) => entry.name === parsed.name) : undefined;
+    if (parsed && command) {
+      setSending(true);
+      try {
+        const result = await runBotCommand({
+          command: parsed.name,
+          args: parsed.args.trim(),
+          realmId: c.id,
+          roomId: slashRoomId,
+        });
+        if (result.ok) {
+          toast.success(`/${command.name} · ${command.bot_name}`);
+          setBody("");
+          setCaret(0);
+          setSlashIndex(0);
+          setSlashHidden(false);
+        } else {
+          toast.error(result.error ?? `/${command.name} didn't work`);
+        }
+        // The bot's answer arrives over realtime too; this just makes it instant.
+        await qc.invalidateQueries({ queryKey: ["realm-messages", c.id] });
+        if (slashRoomId) await qc.invalidateQueries({ queryKey: ["realm-room-messages", slashRoomId] });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "That command didn't work");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     setSending(true);
     try {
       if (activeRoomId && activeRoom?.kind !== "voice") {
@@ -410,20 +498,6 @@ function RealmPage() {
                   </div>
                   {canModerate && m.user_id !== user?.id && m.role !== "owner" && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        aria-label={`Choose which channels ${m.profile?.display_name || m.profile?.username || "this member"} can write in`}
-                        onClick={() =>
-                          setPermissionsMember({
-                            user_id: m.user_id,
-                            name: m.profile?.display_name || m.profile?.username || "Member",
-                          })
-                        }
-                      >
-                        <KeyRound className="h-3.5 w-3.5" />
-                      </Button>
                       {myRole === "owner" && (
                         <Button
                           size="sm"
@@ -513,6 +587,26 @@ function RealmPage() {
             <SheetRowButton onClick={() => { setOptionsOpen(false); setMembersOpen(true); }}>
               <Shield className="h-4 w-4" /> Moderation
             </SheetRowButton>
+            {/* The channel permission page opens from here, as its own sheet:
+                opening it from inside the members dialog left it mounted behind
+                that dialog, where every switch was inert. */}
+            <SheetRowButton
+              onClick={() => { setOptionsOpen(false); setPermissionsOpen(true); }}
+            >
+              <ShieldCheck className="h-4 w-4" /> Channels &amp; permissions
+            </SheetRowButton>
+            {/* Bots are a realm-only feature, so this lives on the realm, not in
+                the global app settings. */}
+            <SheetRowButton onClick={() => { setOptionsOpen(false); setBotsOpen(true); }}>
+              <BotIcon className="h-4 w-4" /> Bots
+            </SheetRowButton>
+            {joined && (
+              <SheetRowButton
+                onClick={() => { setOptionsOpen(false); nav({ to: "/r/$slug/settings", params: { slug } }); }}
+              >
+                <Settings className="h-4 w-4" /> Realm settings
+              </SheetRowButton>
+            )}
             {canModerate && (
               <SheetRowButton onClick={() => { setOptionsOpen(false); setEditOpen(true); }}>
                 <Pencil className="h-4 w-4" /> Edit realm
@@ -546,15 +640,24 @@ function RealmPage() {
         />
       )}
 
-      {/* Moderation: which member may write in which channel. */}
+      {/* Moderation → Channels → permissions: who may send and who may react. */}
       <ChannelPermissionsSheet
-        open={!!permissionsMember}
-        onOpenChange={(nextOpen) => { if (!nextOpen) setPermissionsMember(null); }}
+        open={permissionsOpen}
+        onOpenChange={setPermissionsOpen}
         realmId={c.id}
         realmName={c.name}
-        member={permissionsMember}
         rooms={rooms.data ?? []}
         canModerate={canModerate}
+        realmReactionsMode={(c.reactions_mode ?? "everyone") as "everyone" | "mods"}
+      />
+
+      <RealmBotsSheet
+        open={botsOpen}
+        onOpenChange={setBotsOpen}
+        realmId={c.id}
+        realmName={c.name}
+        rooms={(rooms.data ?? []) as RealmRoom[]}
+        isOwner={myRole === "owner" || c.owner_id === user?.id}
       />
 
       <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
@@ -802,6 +905,25 @@ function RealmPage() {
         <AnimatePresence initial={false}>
           {messageRows.map((m: any, index: number) => {
             const mine = m.sender_id === user?.id;
+            // A bot message has no sender at all: it carries bot_id and the joined
+            // bot row instead. Human authors may arrive as `author` or `sender`
+            // depending on which query loaded them, so both are accepted.
+            const botRow = (m.bot ?? null) as { name: string; avatar_url: string | null } | null;
+            const isBot = !!m.bot_id;
+            const authorProfile = (m.author ?? m.sender ?? null) as {
+              username: string | null;
+              display_name: string | null;
+              avatar_url: string | null;
+              accent_color?: string | null;
+            } | null;
+            const authorName = isBot
+              ? botRow?.name ?? "Bot"
+              : authorProfile?.display_name || authorProfile?.username || "Member";
+            const authorAvatar = isBot ? botRow?.avatar_url ?? null : authorProfile?.avatar_url ?? null;
+            const authorAccent = isBot ? null : authorProfile?.accent_color ?? null;
+            const authorInitial = (isBot ? botRow?.name ?? "B" : authorProfile?.username ?? "?")
+              .charAt(0)
+              .toUpperCase();
             const previous = messageRows[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -826,22 +948,33 @@ function RealmPage() {
                 }`}
               >
               {!mine && (startsGroup ? (
-                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${m.author?.accent_color || c.accent_color}66` }}>
-                  <AvatarImage src={m.author?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-gradient-primary text-xs font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${authorAccent || c.accent_color}66` }}>
+                  <AvatarImage src={authorAvatar ?? undefined} />
+                  <AvatarFallback
+                    className={`text-xs font-bold ${isBot ? "bg-[var(--rizz-violet)] text-white" : "bg-gradient-primary"}`}
+                  >
+                    {authorInitial}
+                  </AvatarFallback>
                 </Avatar>
               ) : <div aria-hidden="true" className="h-9 w-9 shrink-0" />)}
               <div className="flex-1 min-w-0">
                 {startsGroup && <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm" style={{ color: m.author?.accent_color || undefined }}>{m.author?.display_name || m.author?.username}</span>
+                  <span className="font-bold text-sm" style={{ color: authorAccent || undefined }}>{authorName}</span>
+                  {isBot && <BotBadge />}
                   {pinnedIds.has(m.id) && <PinBadge />}
                 </div>}
                 <MessageActionMenu
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                   align={mine ? "right" : "left"}
-                  reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
-                  onDoubleTap={() => { void reactions.toggle(m.id, DOUBLE_TAP_REACTION); }}
+                  // The quick bar mirrors the channel's reaction policy; the RPC
+                  // and its trigger enforce it again server-side.
+                  reactionBar={canAddReactions ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
+                  onDoubleTap={() => {
+                    burstOverMessage(m.id, DOUBLE_TAP_REACTION);
+                    reactionHaptic();
+                    void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
+                  }}
                   actions={[
                     {
                       label: "Copy message",
@@ -867,7 +1000,33 @@ function RealmPage() {
                           destructive: true,
                           onSelect: () => { void handleDeleteMessage(m.id); },
                         }]
-                      : []),
+                      : [
+                          ...(canModerate
+                            ? [{
+                                label: "Delete for everyone",
+                                icon: Trash2,
+                                destructive: true,
+                                onSelect: () => {
+                                  void moderateDeleteMessage(m.id, "Removed by a moderator").then(
+                                    () => toast.success("Message removed"),
+                                    (error: unknown) =>
+                                      toast.error(error instanceof Error ? error.message : "Couldn't remove that message"),
+                                  );
+                                },
+                              }]
+                            : []),
+                          {
+                          label: "Report message",
+                          icon: Flag,
+                          onSelect: () => {
+                            void reportRealmMessage(m.id, "Reported from chat").then(
+                              () => toast.success("Thanks — a moderator will take a look"),
+                              (error: unknown) =>
+                                toast.error(error instanceof Error ? error.message : "Couldn't send that report"),
+                            );
+                          },
+                        },
+                        ]),
                   ]}
                 >
                   <p className={`chat-bubble message-bubble min-w-[44px] w-fit max-w-[88%] rounded-2xl px-3.5 py-2 select-none touch-manipulation ${mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}>
@@ -875,7 +1034,9 @@ function RealmPage() {
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                         : renderCaptionWithTags(seg.value).map((p, pi) =>
-                            p.mention
+                            p.mentionToken
+                              ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                              : p.mention
                               ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
                               : p.tag
                                 ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
@@ -886,13 +1047,18 @@ function RealmPage() {
                     )}
                   </p>
                 </MessageActionMenu>
-                <MessageReactions
+                <ReactionChips
                   scope="realm"
                   messageId={m.id}
                   groups={reactions.groupsFor(m.id)}
                   reactorsFor={reactions.reactorsFor}
-                  align={mine ? "right" : "left"}
-                  onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                  // Realm messages all sit on the left of an avatar-padded column,
+                  // so the chips follow the bubble's own left edge.
+                  align="left"
+                  canReact={canAddReactions}
+                  hidden={String(m.id).startsWith("pending-")}
+                  pulse={reactions.lastPulse}
+                  onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                 />
                 <MessageLinkPreviews
                   text={m.body}
@@ -955,17 +1121,49 @@ function RealmPage() {
         )}
         <div className="mx-auto flex w-full max-w-3xl gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
+          {/* The slider and the mention popup both anchor to the input wrapper, so
+              they can never end up on opposite sides of the composer. */}
+          <div className="relative min-w-0 flex-1">
+            <AnimatePresence>
+              {slashMenuOpen && (
+                <div className="absolute inset-x-0 bottom-full z-40 mb-2">
+                  <SlashCommandMenu
+                    commands={slashMatches}
+                    activeIndex={slashActive}
+                    onHover={setSlashIndex}
+                    onSelect={pickSlashCommand}
+                  />
+                </div>
+              )}
+            </AnimatePresence>
           <Input
             ref={inputRef}
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
+              setSlashHidden(false);
+              setSlashIndex(0);
               setCaret(e.target.selectionStart ?? e.target.value.length);
             }}
             onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
             onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); }
+              // Arrow keys and Enter belong to the slash menu while it is open.
+              if (slashMenuOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                e.preventDefault();
+                setSlashIndex((current) =>
+                  wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
+                );
+                return;
+              }
+              if (slashMenuOpen && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))) {
+                e.preventDefault();
+                const chosen = slashMatches[slashActive] ?? slashMatches[0];
+                if (chosen) pickSlashCommand(chosen);
+                return;
+              }
+              if (slashMenuOpen && e.key === "Escape") { e.preventDefault(); setSlashHidden(true); return; }
+              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); void handleSend(); }
             }}
             placeholder={composerBlock ?? "Message"}
             disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
@@ -983,6 +1181,7 @@ function RealmPage() {
               if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
             }}
           />
+          </div>
           <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
             <Send className="h-4 w-4" />
           </Button>

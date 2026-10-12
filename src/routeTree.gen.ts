@@ -19,6 +19,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
+import { Route as AppBotsRouteImport } from './routes/_app/bots'
 import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
@@ -30,11 +31,14 @@ import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
+import { Route as ApiBotRouteImport } from './routes/api.bot'
 import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as AppBotsIndexRouteImport } from './routes/_app/bots.index'
+import { Route as AppBotsDeveloperRouteImport } from './routes/_app/bots.developer'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
@@ -49,7 +53,9 @@ import { Route as AppSettingsPreferencesRouteImport } from './routes/_app/settin
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
+import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
 import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
+import { Route as AppRSlugSettingsRouteImport } from './routes/_app/r.$slug_.settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -98,6 +104,11 @@ const AppBadgesRoute = AppBadgesRouteImport.update({
 const AppBookmarksRoute = AppBookmarksRouteImport.update({
   id: '/bookmarks',
   path: '/bookmarks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBotsRoute = AppBotsRouteImport.update({
+  id: '/bots',
+  path: '/bots',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChatStoriesRoute = AppChatStoriesRouteImport.update({
@@ -155,6 +166,11 @@ const AppReelsRoute = AppReelsRouteImport.update({
   path: '/reels',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiBotRoute = ApiBotRouteImport.update({
+  id: '/api/bot',
+  path: '/api/bot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLinkPreviewRoute = ApiLinkPreviewRouteImport.update({
   id: '/api/link-preview',
   path: '/api/link-preview',
@@ -179,6 +195,16 @@ const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppBotsIndexRoute = AppBotsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppBotsRoute,
+} as any)
+const AppBotsDeveloperRoute = AppBotsDeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
+  getParentRoute: () => AppBotsRoute,
 } as any)
 const AppCallUserIdRoute = AppCallUserIdRouteImport.update({
   id: '/call/$userId',
@@ -251,10 +277,20 @@ const AppUUsernameRoute = AppUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiBotCommandRoute = ApiBotCommandRouteImport.update({
+  id: '/command',
+  path: '/command',
+  getParentRoute: () => ApiBotRoute,
+} as any)
 const ApiLinkPreviewImageRoute = ApiLinkPreviewImageRouteImport.update({
   id: '/image',
   path: '/image',
   getParentRoute: () => ApiLinkPreviewRoute,
+} as any)
+const AppRSlugSettingsRoute = AppRSlugSettingsRouteImport.update({
+  id: '/r/$slug_/settings',
+  path: '/r/$slug/settings',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -267,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/tutorial': typeof TutorialRoute
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
+  '/bots': typeof AppBotsRouteWithChildren
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
   '/drops': typeof AppDropsRoute
@@ -278,11 +315,13 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/api/bot': typeof ApiBotRouteWithChildren
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
+  '/bots/developer': typeof AppBotsDeveloperRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
@@ -296,8 +335,11 @@ export interface FileRoutesByFullPath {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/bots/': typeof AppBotsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/r/$slug/settings': typeof AppRSlugSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -320,11 +362,13 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/api/bot': typeof ApiBotRouteWithChildren
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
+  '/bots/developer': typeof AppBotsDeveloperRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
@@ -338,8 +382,11 @@ export interface FileRoutesByTo {
   '/settings/profile': typeof AppSettingsProfileRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
+  '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/bots': typeof AppBotsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/r/$slug/settings': typeof AppRSlugSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -353,6 +400,7 @@ export interface FileRoutesById {
   '/tutorial': typeof TutorialRoute
   '/_app/badges': typeof AppBadgesRoute
   '/_app/bookmarks': typeof AppBookmarksRoute
+  '/_app/bots': typeof AppBotsRouteWithChildren
   '/_app/chat-stories': typeof AppChatStoriesRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/drops': typeof AppDropsRoute
@@ -364,11 +412,13 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
+  '/api/bot': typeof ApiBotRouteWithChildren
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
   '/join/$code': typeof JoinCodeRoute
+  '/_app/bots/developer': typeof AppBotsDeveloperRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/g/$id': typeof AppGIdRoute
@@ -382,8 +432,11 @@ export interface FileRoutesById {
   '/_app/settings/profile': typeof AppSettingsProfileRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
+  '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/_app/bots/': typeof AppBotsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/r/$slug_/settings': typeof AppRSlugSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -397,6 +450,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/badges'
     | '/bookmarks'
+    | '/bots'
     | '/chat-stories'
     | '/dms'
     | '/drops'
@@ -408,11 +462,13 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
+    | '/api/bot'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
+    | '/bots/developer'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
@@ -426,8 +482,11 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
+    | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/bots/'
     | '/settings/'
+    | '/r/$slug/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -450,11 +509,13 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/realms'
     | '/reels'
+    | '/api/bot'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
+    | '/bots/developer'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
@@ -468,8 +529,11 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/tag/$tag'
     | '/u/$username'
+    | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/bots'
     | '/settings'
+    | '/r/$slug/settings'
   id:
     | '__root__'
     | '/'
@@ -482,6 +546,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/_app/badges'
     | '/_app/bookmarks'
+    | '/_app/bots'
     | '/_app/chat-stories'
     | '/_app/dms'
     | '/_app/drops'
@@ -493,11 +558,13 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/realms'
     | '/_app/reels'
+    | '/api/bot'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
     | '/join/$code'
+    | '/_app/bots/developer'
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/g/$id'
@@ -511,8 +578,11 @@ export interface FileRouteTypes {
     | '/_app/settings/profile'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
+    | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/_app/bots/'
     | '/_app/settings/'
+    | '/_app/r/$slug_/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -524,6 +594,7 @@ export interface RootRouteChildren {
   RizzCoachRoute: typeof RizzCoachRoute
   SignupRoute: typeof SignupRoute
   TutorialRoute: typeof TutorialRoute
+  ApiBotRoute: typeof ApiBotRouteWithChildren
   ApiLinkPreviewRoute: typeof ApiLinkPreviewRouteWithChildren
   ApiMeRoute: typeof ApiMeRoute
   ApiRizzCoachRoute: typeof ApiRizzCoachRoute
@@ -603,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBookmarksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bots': {
+      id: '/_app/bots'
+      path: '/bots'
+      fullPath: '/bots'
+      preLoaderRoute: typeof AppBotsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/chat-stories': {
       id: '/_app/chat-stories'
       path: '/chat-stories'
@@ -680,6 +758,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReelsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/bot': {
+      id: '/api/bot'
+      path: '/api/bot'
+      fullPath: '/api/bot'
+      preLoaderRoute: typeof ApiBotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/link-preview': {
       id: '/api/link-preview'
       path: '/api/link-preview'
@@ -714,6 +799,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/join/$code'
       preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/bots/': {
+      id: '/_app/bots/'
+      path: '/'
+      fullPath: '/bots/'
+      preLoaderRoute: typeof AppBotsIndexRouteImport
+      parentRoute: typeof AppBotsRoute
+    }
+    '/_app/bots/developer': {
+      id: '/_app/bots/developer'
+      path: '/developer'
+      fullPath: '/bots/developer'
+      preLoaderRoute: typeof AppBotsDeveloperRouteImport
+      parentRoute: typeof AppBotsRoute
     }
     '/_app/call/$userId': {
       id: '/_app/call/$userId'
@@ -813,6 +912,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUUsernameRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/bot/command': {
+      id: '/api/bot/command'
+      path: '/command'
+      fullPath: '/api/bot/command'
+      preLoaderRoute: typeof ApiBotCommandRouteImport
+      parentRoute: typeof ApiBotRoute
+    }
     '/api/link-preview/image': {
       id: '/api/link-preview/image'
       path: '/image'
@@ -820,12 +926,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLinkPreviewImageRouteImport
       parentRoute: typeof ApiLinkPreviewRoute
     }
+    '/_app/r/$slug_/settings': {
+      id: '/_app/r/$slug_/settings'
+      path: '/r/$slug/settings'
+      fullPath: '/r/$slug/settings'
+      preLoaderRoute: typeof AppRSlugSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
+
+interface AppBotsRouteChildren {
+  AppBotsDeveloperRoute: typeof AppBotsDeveloperRoute
+  AppBotsIndexRoute: typeof AppBotsIndexRoute
+}
+
+const AppBotsRouteChildren: AppBotsRouteChildren = {
+  AppBotsDeveloperRoute: AppBotsDeveloperRoute,
+  AppBotsIndexRoute: AppBotsIndexRoute,
+}
+
+const AppBotsRouteWithChildren =
+  AppBotsRoute._addFileChildren(AppBotsRouteChildren)
 
 interface AppRouteChildren {
   AppBadgesRoute: typeof AppBadgesRoute
   AppBookmarksRoute: typeof AppBookmarksRoute
+  AppBotsRoute: typeof AppBotsRouteWithChildren
   AppChatStoriesRoute: typeof AppChatStoriesRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDropsRoute: typeof AppDropsRoute
@@ -851,11 +978,13 @@ interface AppRouteChildren {
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+  AppRSlugSettingsRoute: typeof AppRSlugSettingsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppBadgesRoute: AppBadgesRoute,
   AppBookmarksRoute: AppBookmarksRoute,
+  AppBotsRoute: AppBotsRouteWithChildren,
   AppChatStoriesRoute: AppChatStoriesRoute,
   AppDmsRoute: AppDmsRoute,
   AppDropsRoute: AppDropsRoute,
@@ -881,9 +1010,21 @@ const AppRouteChildren: AppRouteChildren = {
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
+  AppRSlugSettingsRoute: AppRSlugSettingsRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface ApiBotRouteChildren {
+  ApiBotCommandRoute: typeof ApiBotCommandRoute
+}
+
+const ApiBotRouteChildren: ApiBotRouteChildren = {
+  ApiBotCommandRoute: ApiBotCommandRoute,
+}
+
+const ApiBotRouteWithChildren =
+  ApiBotRoute._addFileChildren(ApiBotRouteChildren)
 
 interface ApiLinkPreviewRouteChildren {
   ApiLinkPreviewImageRoute: typeof ApiLinkPreviewImageRoute
@@ -906,6 +1047,7 @@ const rootRouteChildren: RootRouteChildren = {
   RizzCoachRoute: RizzCoachRoute,
   SignupRoute: SignupRoute,
   TutorialRoute: TutorialRoute,
+  ApiBotRoute: ApiBotRouteWithChildren,
   ApiLinkPreviewRoute: ApiLinkPreviewRouteWithChildren,
   ApiMeRoute: ApiMeRoute,
   ApiRizzCoachRoute: ApiRizzCoachRoute,

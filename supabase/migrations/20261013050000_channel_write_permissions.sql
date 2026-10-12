@@ -1,5 +1,7 @@
 -- ============================================================================
--- PART 4: per-member, per-channel write permission.
+-- PART 4: per-member, per-channel write permission, plus the per-channel
+-- "who can add reactions" setting the reaction UI reads and the reaction RPC
+-- enforces.
 --
 --  * realm_channel_permissions stores one row per *denied* member and channel.
 --    Allowed is the default, so allowing somebody deletes the row instead of
@@ -46,6 +48,105 @@ DROP POLICY IF EXISTS realm_channel_permissions_read ON public.realm_channel_per
 CREATE POLICY realm_channel_permissions_read ON public.realm_channel_permissions
   FOR SELECT TO authenticated
   USING (public.is_realm_member(realm_id));
+
+-- --------------------------------------------- who can add reactions
+-- Per-channel reaction policy: 'everyone' (default) or 'mods'. Stored on the
+-- channel itself, so it travels with the room list the app already loads and
+-- toggle_message_reaction() can enforce it without another lookup table.
+ALTER TABLE public.realm_rooms
+  ADD COLUMN IF NOT EXISTS reactions_mode text NOT NULL DEFAULT 'everyone';
+
+ALTER TABLE public.realms
+  ADD COLUMN IF NOT EXISTS reactions_mode text NOT NULL DEFAULT 'everyone';
+
+DO $$
+BEGIN
+  ALTER TABLE public.realm_rooms
+    DROP CONSTRAINT IF EXISTS realm_rooms_reactions_mode_check;
+  ALTER TABLE public.realm_rooms
+    ADD CONSTRAINT realm_rooms_reactions_mode_check
+    CHECK (reactions_mode IN ('everyone', 'mods'));
+
+  ALTER TABLE public.realms
+    DROP CONSTRAINT IF EXISTS realms_reactions_mode_check;
+  ALTER TABLE public.realms
+    ADD CONSTRAINT realms_reactions_mode_check
+    CHECK (reactions_mode IN ('everyone', 'mods'));
+END $$;
+
+/**
+ * Can this user add a reaction in this channel?
+ *
+ * Owners and moderators always can; everyone else depends on the channel's
+ * policy, which defaults to everyone.
+ */
+CREATE OR REPLACE FUNCTION public.channel_reactions_allowed(
+  _realm_id uuid,
+  _room_id uuid,
+  _user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+  SELECT
+    public.is_realm_moderator(_realm_id, _user_id)
+    OR coalesce(
+      CASE
+        WHEN _room_id IS NULL THEN (SELECT r.reactions_mode FROM public.realms AS r WHERE r.id = _realm_id)
+        ELSE (SELECT r.reactions_mode FROM public.realm_rooms AS r WHERE r.id = _room_id)
+      END,
+      'everyone'
+    ) = 'everyone';
+$function$;
+
+/**
+ * Sets that policy for one channel. Owners and moderators only.
+ */
+CREATE OR REPLACE FUNCTION public.set_channel_reactions_mode(
+  _realm_id uuid,
+  _room_id uuid,
+  _mode text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in to change channel permissions';
+  END IF;
+
+  IF NOT public.is_realm_moderator(_realm_id, auth.uid()) THEN
+    RAISE EXCEPTION 'Only realm owners and moderators can change who can react';
+  END IF;
+
+  IF coalesce(_mode, '') NOT IN ('everyone', 'mods') THEN
+    RAISE EXCEPTION 'Reactions can only be for everyone or for mods';
+  END IF;
+
+  IF _room_id IS NULL THEN
+    UPDATE public.realms SET reactions_mode = _mode WHERE id = _realm_id;
+    RETURN;
+  END IF;
+
+  UPDATE public.realm_rooms
+  SET reactions_mode = _mode
+  WHERE id = _room_id AND realm_id = _realm_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That channel is not part of this realm';
+  END IF;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.channel_reactions_allowed(uuid, uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.set_channel_reactions_mode(uuid, uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.channel_reactions_allowed(uuid, uuid, uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.set_channel_reactions_mode(uuid, uuid, text) TO authenticated;
 
 -- ------------------------------------------------------------------ the rule
 /**
@@ -155,6 +256,44 @@ REVOKE ALL ON FUNCTION public.channel_write_allowed(uuid, uuid, uuid) FROM PUBLI
 REVOKE ALL ON FUNCTION public.set_channel_write_permission(uuid, uuid, uuid, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.channel_write_allowed(uuid, uuid, uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.set_channel_write_permission(uuid, uuid, uuid, boolean) TO authenticated;
+
+-- ------------------------------------------------- enforce reactions on write
+-- A trigger rather than a function rewrite, so every insert path (today only
+-- toggle_message_reaction) is covered by the same rule.
+CREATE OR REPLACE FUNCTION public.message_reactions_channel_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_realm uuid;
+  v_room uuid;
+BEGIN
+  IF NEW.message_type IS DISTINCT FROM 'realm' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT m.realm_id, m.realm_room_id INTO v_realm, v_room
+  FROM public.messages AS m
+  WHERE m.id = NEW.message_id;
+
+  IF v_realm IS NULL THEN
+    RAISE EXCEPTION 'Message not found or not available to this user';
+  END IF;
+
+  IF NOT public.channel_reactions_allowed(v_realm, v_room, NEW.user_id) THEN
+    RAISE EXCEPTION 'Only owners and moderators can add reactions here';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS message_reactions_channel_guard ON public.message_reactions;
+CREATE TRIGGER message_reactions_channel_guard
+  BEFORE INSERT ON public.message_reactions
+  FOR EACH ROW EXECUTE FUNCTION public.message_reactions_channel_guard();
 
 -- ------------------------------------------------------- enforce it on writes
 -- RESTRICTIVE, so it ANDs with the existing insert policies: a blocked member

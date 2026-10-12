@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Home, Compass, Bell, MessageCircle, Hash, Gift, Bookmark, Sparkles, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut,
+  Bot, Home, Compass, Bell, MessageCircle, Hash, Gift, Bookmark, Sparkles, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -25,6 +25,7 @@ const PAGES = [
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Leaderboard", icon: Flame },
   { to: "/notifications", label: "Inbox", icon: Bell },
+  { to: "/bots", label: "Bots", icon: Bot },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

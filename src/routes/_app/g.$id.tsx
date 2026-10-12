@@ -11,7 +11,8 @@ import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
 import { AvatarWithStatus } from "@/components/presence/StatusDot";
 import { usePresenceMap } from "@/lib/presence";
-import { MessageReactions } from "@/components/chat/MessageReactions";
+import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
+import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
@@ -272,7 +273,11 @@ function GroupRoom() {
   // hooks than during the previous render" once the group query resolves.
   const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
   const visibleIds = visibleMessages.map((message: { id: string }) => message.id);
-  const reactions = useChatReactions("group", visibleIds);
+  const reactions = useChatReactions("group", visibleIds, {
+    myMessageIds: visibleMessages
+      .filter((message: { author_id: string }) => message.author_id === user?.id)
+      .map((message: { id: string }) => message.id),
+  });
   const removedPreviews = useHiddenLinkPreviews("group", visibleIds);
   const presence = usePresenceMap((members.data ?? []).map((member: any) => member.user_id));
   const media = useMediaViewer();
@@ -374,7 +379,11 @@ function GroupRoom() {
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                     align={mine ? "right" : "left"}
                     reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
-                    onDoubleTap={() => { void reactions.toggle(m.id, DOUBLE_TAP_REACTION); }}
+                    onDoubleTap={() => {
+                      burstOverMessage(m.id, DOUBLE_TAP_REACTION);
+                      reactionHaptic();
+                      void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
+                    }}
                     actions={[
                       {
                         label: "Copy message",
@@ -422,13 +431,15 @@ function GroupRoom() {
                       )}
                     </div>
                   </MessageActionMenu>
-                  <MessageReactions
+                  <ReactionChips
                     scope="group"
                     messageId={m.id}
                     groups={reactions.groupsFor(m.id)}
                     reactorsFor={reactions.reactorsFor}
                     align={mine ? "right" : "left"}
-                    onToggle={(emoji) => { void reactions.toggle(m.id, emoji); }}
+                    hidden={!!deletedAt || String(m.id).startsWith("pending-")}
+                    pulse={reactions.lastPulse}
+                    onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                   />
                   <MessageLinkPreviews
                     text={deletedAt ? null : m.body}

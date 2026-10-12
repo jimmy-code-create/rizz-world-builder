@@ -19,7 +19,11 @@ export type Realm = {
 export type RealmMessage = {
   id: string;
   realm_id: string;
-  sender_id: string;
+  /** Null on a bot message: bots have no user account. */
+  sender_id: string | null;
+  /** Set only on a bot message. */
+  bot_id?: string | null;
+  bot?: { id: string; name: string; avatar_url: string | null; is_builtin: boolean } | null;
   body: string;
   created_at: string;
   reply_to: string | null;
@@ -57,6 +61,10 @@ export type RealmRoom = {
   is_default: boolean;
   /** "Mods only": everyone can read, only owner/admins/mods can write or join. */
   mods_only: boolean;
+  /** Seconds between messages for a normal member; 0 is off. */
+  slowmode_seconds?: number;
+  /** Hidden from members who lack the "view private channels" permission. */
+  is_private?: boolean;
   created_at: string;
 };
 
@@ -65,6 +73,9 @@ export type RealmRole = "owner" | "mod" | "member";
 const REALM_OWNER_SELECT = "owner:profiles!realms_owner_id_fkey(username,display_name,avatar_url)";
 const MESSAGE_SENDER_SELECT =
   "sender:profiles!messages_author_id_fkey(username,display_name,avatar_url,accent_color)";
+// Bot messages carry no sender, so the chat joins the bot row for the name and
+// avatar it renders next to a BOT badge.
+const MESSAGE_BOT_SELECT = "bot:bots!messages_bot_id_fkey(id,name,avatar_url,is_builtin)";
 
 export async function fetchRealms() {
   const { data, error } = await supabase
@@ -89,12 +100,14 @@ export async function fetchRealmBySlug(slug: string) {
 export async function fetchRealmMessages(realmId: string, limit = 100) {
   const { data, error } = await supabase
     .from("messages")
-    .select(`*, ${MESSAGE_SENDER_SELECT}`)
+    .select(`*, ${MESSAGE_SENDER_SELECT}, ${MESSAGE_BOT_SELECT}`)
     .eq("realm_id", realmId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return ((data ?? []) as RealmMessage[]).reverse();
+  // `messages.bot_id` and the bots relation are added by the realm-bots
+  // migration; the generated Supabase types still predate them.
+  return ((data ?? []) as unknown as RealmMessage[]).reverse();
 }
 
 export async function sendRealmMessage(realmId: string, senderId: string, body: string) {
@@ -306,12 +319,12 @@ export async function setRealmRoomLock(roomId: string, locked: boolean): Promise
 export async function fetchRealmRoomMessages(roomId: string, limit = 100) {
   const { data, error } = await supabase
     .from("messages")
-    .select(`*, ${MESSAGE_SENDER_SELECT}`)
+    .select(`*, ${MESSAGE_SENDER_SELECT}, ${MESSAGE_BOT_SELECT}`)
     .eq("realm_room_id", roomId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return ((data ?? []) as RealmMessage[]).reverse();
+  return ((data ?? []) as unknown as RealmMessage[]).reverse();
 }
 
 export async function sendRealmRoomMessage(roomId: string, senderId: string, body: string) {

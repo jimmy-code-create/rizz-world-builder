@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Check, CloudMoon, EyeOff, PhoneOff, Smile, Circle as CircleIcon, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Check, CircleDashed, Circle as CircleIcon, Moon, PhoneOff, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,12 @@ const EXPIRY_OPTIONS = [
 
 const QUICK_EMOJI = ["🔥", "🎧", "💤", "🍿", "💪", "📚", "🎮", "✨"];
 
-const STATUS_ICONS = { online: CircleIcon, idle: CloudMoon, dnd: PhoneOff, invisible: EyeOff } as const;
+// Online = dot, Idle = moon, Do not disturb = crossed-out phone (it mutes the
+// ping and the ringer), Invisible = grey ring.
+const STATUS_ICONS = { online: CircleIcon, idle: Moon, dnd: PhoneOff, invisible: CircleDashed } as const;
+
+/** Drag the handle this far down and the sheet closes. */
+const SWIPE_CLOSE_PX = 96;
 
 /** Tapping your avatar opens this: the four statuses and a custom status row. */
 export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -33,14 +38,55 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const [emoji, setEmoji] = useState("");
   const [text, setText] = useState("");
   const [expiry, setExpiry] = useState<(typeof EXPIRY_OPTIONS)[number]["value"]>("1h");
+  const [dragY, setDragY] = useState(0);
+  const dragStartY = useRef<number | null>(null);
 
   // Prefill the form from the saved status whenever the sheet opens.
   useEffect(() => {
+    setDragY(0);
     if (!open) return;
     const current = presence.customStatus;
     setEmoji(current?.emoji ?? "");
     setText(current?.text ?? "");
   }, [open, presence.customStatus]);
+
+  // Swipe down on the handle to dismiss.
+  const onDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    dragStartY.current = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragStartY.current === null) return;
+    setDragY(Math.max(0, event.clientY - dragStartY.current));
+  };
+  const onDragEnd = () => {
+    if (dragStartY.current === null) return;
+    const shouldClose = dragY > SWIPE_CLOSE_PX;
+    dragStartY.current = null;
+    setDragY(0);
+    if (shouldClose) onOpenChange(false);
+  };
+
+  // Back (Android gesture or browser button) closes the sheet rather than
+  // leaving the page: one history entry is pushed while it is open and stepped
+  // back over when it closes some other way, so the next Back still goes where
+  // the user expects.
+  useEffect(() => {
+    if (!open) return;
+    const marker = "rizzStatusSheet";
+    let closedByBack = false;
+    window.history.pushState({ ...(window.history.state ?? {}), [marker]: true }, "");
+    const onPop = () => {
+      closedByBack = true;
+      onOpenChange(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      const state = window.history.state as Record<string, unknown> | null;
+      if (!closedByBack && state?.[marker]) window.history.back();
+    };
+  }, [open, onOpenChange]);
 
   const choose = async (status: PresenceStatus) => {
     try {
@@ -94,11 +140,27 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       <SheetContent
         side="bottom"
         className="glass-strong rounded-t-3xl border-white/10 max-h-[88dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
+        style={
+          dragY
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : { transition: "transform 200ms ease-out" }
+        }
       >
-        <SheetTitle className="font-display text-lg">Status</SheetTitle>
-        <SheetDescription className="text-xs text-muted-foreground">
-          Choose how you appear, or add a short custom status.
-        </SheetDescription>
+        {/* The grabber and the title are the drag surface, so a swipe never
+            fights the sheet's own scrolling. */}
+        <div
+          className="cursor-grab touch-none select-none active:cursor-grabbing"
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
+        >
+          <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
+          <SheetTitle className="font-display text-lg">Status</SheetTitle>
+          <SheetDescription className="text-xs text-muted-foreground">
+            Choose how you appear, or add a short custom status.
+          </SheetDescription>
+        </div>
 
         <div className="mt-4 space-y-1">
           {PRESENCE_STATUSES.map((entry) => {
