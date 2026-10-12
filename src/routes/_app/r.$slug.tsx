@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Hash, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, KeyRound, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -24,6 +24,8 @@ import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, statusLabel, usePresenceMap } from "@/lib/presence";
+import { ChannelPermissionsSheet, type ChannelMember } from "@/components/realms/ChannelPermissionsSheet";
+import { deniedChannelsOf, useChannelPermissions } from "@/lib/realm-permissions";
 import { Pin, PinOff } from "lucide-react";
 import { PinnedBar, PinnedListSheet, PinBadge, SystemLine } from "@/components/chat/PinnedMessages";
 import { togglePin, usePinnedMessages, type PinnedMessageDetails } from "@/lib/pins";
@@ -84,6 +86,7 @@ function RealmPage() {
   const [pinIndex, setPinIndex] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [unpinningId, setUnpinningId] = useState<string | null>(null);
+  const [permissionsMember, setPermissionsMember] = useState<ChannelMember | null>(null);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -159,13 +162,12 @@ function RealmPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.data]);
 
-  if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
-  if (!realm.data) return <div className="text-center py-20"><h1 className="font-display text-2xl font-bold">Realm not found</h1></div>;
-
-  const c: any = realm.data;
-  const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
+  // Every hook must run before the guards below. Calling them after an early
+  // return makes React throw "Rendered more hooks than during the previous
+  // render" as soon as the realm query resolves, which blanked this page.
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
-  const reactions = useChatReactions("realm", messageRows.map((message: { id: string }) => message.id));
+  const messageIds = messageRows.map((message: { id: string }) => message.id);
+  const reactions = useChatReactions("realm", messageIds);
   // Members and voice participants share one presence request.
   const presence = usePresenceMap([
     ...(members.data ?? []).map((member) => member.user_id),
@@ -175,25 +177,11 @@ function RealmPage() {
   const pinned = usePinnedMessages(realm.data?.id, activeRoomId ?? null);
   const pins = pinned.pins;
   const pinnedIds = new Set(pins.map((pin) => pin.message_id));
-  const removedPreviews = useHiddenLinkPreviews("realm", messageRows.map((message: { id: string }) => message.id));
-  // "Mods only" applies per channel: readers keep reading, non-mods can't send
-  // or join. The real rule is enforced in Postgres (see the migration).
-  const roomLockedForMe = !!activeRoom?.mods_only && !canModerate;
+  const removedPreviews = useHiddenLinkPreviews("realm", messageIds);
   const media = useMediaViewer();
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
-
-  const toggleRoomLock = async (room: RealmRoom, locked: boolean) => {
-    setLockingRoomId(room.id);
-    try {
-      await setRealmRoomLock(room.id, locked);
-      await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
-      toast.success(locked ? `${room.name} is mods only now` : `${room.name} is open to everyone`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't change that channel");
-    } finally {
-      setLockingRoomId(null);
-    }
-  };
+  // Who may type where, shared by the moderation sheet and the composer.
+  const channelPermissions = useChannelPermissions(realm.data?.id);
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -210,10 +198,45 @@ function RealmPage() {
     return () => { supabase.removeChannel(channel); };
   }, [realm.data, qc]);
 
+  if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
+  if (!realm.data) return <div className="text-center py-20"><h1 className="font-display text-2xl font-bold">Realm not found</h1></div>;
+
+  const c: any = realm.data;
+  const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
+  // "Mods only" applies per channel: readers keep reading, non-mods can't send
+  // or join. The real rule is enforced in Postgres (see the migration).
+  const roomLockedForMe = !!activeRoom?.mods_only && !canModerate;
+  // The channel the composer would post to: the room on screen, or the realm's
+  // own channel when a realm or voice channel is open.
+  const sendChannelKey = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : c.id;
+  const myWriteBlocked = !canModerate && deniedChannelsOf(channelPermissions.permissions, c.id, user?.id).has(sendChannelKey);
+  // Why the composer is closed, in the order the rules apply.
+  const composerBlock = !joined
+    ? "Join to chat"
+    : roomLockedForMe
+      ? "Only mods can send messages here"
+      : myWriteBlocked
+        ? "A moderator turned off writing here for you"
+        : null;
+
+  const toggleRoomLock = async (room: RealmRoom, locked: boolean) => {
+    setLockingRoomId(room.id);
+    try {
+      await setRealmRoomLock(room.id, locked);
+      await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
+      toast.success(locked ? `${room.name} is mods only now` : `${room.name} is open to everyone`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't change that channel");
+    } finally {
+      setLockingRoomId(null);
+    }
+  };
+
   const handleSend = async () => {
     if (!user || !body.trim()) return;
     if (!joined) { toast.error("Join the realm to send messages"); return; }
     if (roomLockedForMe) { toast.error("Only mods can send messages here"); return; }
+    if (myWriteBlocked) { toast.error("A moderator turned off writing here for you"); return; }
     setSending(true);
     try {
       if (activeRoomId && activeRoom?.kind !== "voice") {
@@ -387,6 +410,20 @@ function RealmPage() {
                   </div>
                   {canModerate && m.user_id !== user?.id && m.role !== "owner" && (
                     <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        aria-label={`Choose which channels ${m.profile?.display_name || m.profile?.username || "this member"} can write in`}
+                        onClick={() =>
+                          setPermissionsMember({
+                            user_id: m.user_id,
+                            name: m.profile?.display_name || m.profile?.username || "Member",
+                          })
+                        }
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
                       {myRole === "owner" && (
                         <Button
                           size="sm"
@@ -508,6 +545,17 @@ function RealmPage() {
           realm={{ id: c.id, slug: c.slug ?? slug, name: c.name, topic: c.topic ?? null, icon_url: c.icon_url ?? null }}
         />
       )}
+
+      {/* Moderation: which member may write in which channel. */}
+      <ChannelPermissionsSheet
+        open={!!permissionsMember}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setPermissionsMember(null); }}
+        realmId={c.id}
+        realmName={c.name}
+        member={permissionsMember}
+        rooms={rooms.data ?? []}
+        canModerate={canModerate}
+      />
 
       <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
         <AlertDialogContent className="glass-strong border-white/10">
@@ -900,6 +948,11 @@ function RealmPage() {
       </AlertDialog>
 
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        {myWriteBlocked && (
+          <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
+            Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A moderator can switch it back on.
+          </p>
+        )}
         <div className="mx-auto flex w-full max-w-3xl gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <Input
@@ -914,8 +967,8 @@ function RealmPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); handleSend(); }
             }}
-            placeholder={roomLockedForMe ? "Only mods can send messages here" : joined ? "Message" : "Join to chat"}
-            disabled={!joined || sending || roomLockedForMe}
+            placeholder={composerBlock ?? "Message"}
+            disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
             maxLength={500}
             className="glass border-white/10"
           />
@@ -930,7 +983,7 @@ function RealmPage() {
               if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
             }}
           />
-          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
+          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>

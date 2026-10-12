@@ -268,6 +268,15 @@ function GroupRoom() {
     catch (e: any) { toast.error(e.message); }
   };
 
+  // Hooks must all run before the guards below, or React throws "Rendered more
+  // hooks than during the previous render" once the group query resolves.
+  const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
+  const visibleIds = visibleMessages.map((message: { id: string }) => message.id);
+  const reactions = useChatReactions("group", visibleIds);
+  const removedPreviews = useHiddenLinkPreviews("group", visibleIds);
+  const presence = usePresenceMap((members.data ?? []).map((member: any) => member.user_id));
+  const media = useMediaViewer();
+
   if (group.isLoading) return <div className="h-40 rounded-2xl skeleton-shimmer" />;
   if (!group.data) return (
     <div className="text-center py-20 glass rounded-3xl border border-white/5">
@@ -279,11 +288,6 @@ function GroupRoom() {
 
   const g = group.data;
   const isOwner = user?.id === g.owner_id;
-  const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
-  const reactions = useChatReactions("group", visibleMessages.map((message: { id: string }) => message.id));
-  const removedPreviews = useHiddenLinkPreviews("group", visibleMessages.map((message: { id: string }) => message.id));
-  const presence = usePresenceMap((members.data ?? []).map((member: any) => member.user_id));
-  const media = useMediaViewer();
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
