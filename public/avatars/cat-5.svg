@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Royal cat avatar">
+  <title>Royal</title>
+  <rect x="0" y="0" width="128" height="128" rx="30" fill="#6C4BFF" />
+  <path d="M34 66 L38 34 L62 56 Z" fill="#12101A" />
+  <path d="M94 66 L90 34 L66 56 Z" fill="#12101A" />
+  <path d="M40 62 L42 43 L56 56 Z" fill="#8B72FF" />
+  <path d="M88 62 L85 43 L72 56 Z" fill="#8B72FF" />
+  <ellipse cx="64" cy="84" rx="38" ry="30" fill="#12101A" />
+  <ellipse cx="46" cy="82" rx="14" ry="16" fill="#FFFFFF" />
+  <ellipse cx="82" cy="82" rx="14" ry="16" fill="#FFFFFF" />
+  <ellipse cx="48" cy="85" rx="7" ry="9" fill="#12101A" />
+  <ellipse cx="84" cy="85" rx="7" ry="9" fill="#12101A" />
+  <circle cx="43" cy="77" r="3" fill="#FFFFFF" />
+  <circle cx="79" cy="77" r="3" fill="#FFFFFF" />
+  <path d="M59 98h10l-5 6z" fill="#8B72FF" />
+  <path d="M32 92H14M32 100l-15 5M96 92h18M96 100l15 5" stroke="#8B72FF" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M44 30l8-10 12 10 12-10 8 10-4 12H48z" fill="#FFFFFF" />
+  <path d="M48 42h32v6H48z" fill="#FFFFFF" />
+  <circle cx="52" cy="27" r="3" fill="#FFFFFF" />
+  <circle cx="64" cy="26" r="3" fill="#FFFFFF" />
+  <circle cx="76" cy="27" r="3" fill="#FFFFFF" />
+</svg>

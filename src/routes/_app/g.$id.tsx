@@ -634,6 +634,8 @@ function GroupRoom() {
             <MentionAutocomplete
               value={body}
               caret={caret}
+              memberIds={(members.data ?? []).map((member: any) => member.user_id as string)}
+              emptyHint="No group member matches that name."
               onPick={(username) => {
                 const next = replaceMention(body, caret, username);
                 setBody(next.value);

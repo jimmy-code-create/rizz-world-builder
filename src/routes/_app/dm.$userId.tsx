@@ -1180,6 +1180,8 @@ function DMPage() {
             <MentionAutocomplete
               value={body}
               caret={caret}
+              memberIds={userId ? [user?.id, userId].filter(Boolean) as string[] : undefined}
+              emptyHint="Only the two of you are in this chat."
               onPick={(username) => {
                 const next = replaceMention(body, caret, username);
                 setBody(next.value);

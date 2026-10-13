@@ -5,11 +5,11 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#090711",
-  "theme_color": "#ff2d92",
+  "background_color": "#12101A",
+  "theme_color": "#6C4BFF",
   "icons": [
     {
-      "src": "/rizz-pwa.svg",
+      "src": "/brand/rizz-cat-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

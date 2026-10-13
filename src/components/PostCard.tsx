@@ -4,11 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
-import { formatCount } from "@/lib/utils";
+import { cn, formatCount } from "@/lib/utils";
+import { emojiTextClass } from "@/lib/text-size";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
+import { PostCommentsButton } from "@/components/PostCommentsSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -428,7 +430,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </header>
 
       {post.caption && (
-        <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
+        <p className={cn("px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(post.caption))}>
           {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
             ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
             : renderCaptionWithTags(segment.value).map((p, i) => {
@@ -540,6 +542,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <MessageCircle className="h-5 w-5" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
+        <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="React to post">
@@ -674,7 +677,7 @@ function CommentsThread({ postId }: { postId: string }) {
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-xs">@{a?.username}</span>{" "}
                 <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
-                <p className="text-sm leading-snug mt-0.5 whitespace-pre-wrap"><GifContent>{c.body}</GifContent></p>
+                <p className={cn("text-sm leading-snug mt-0.5 whitespace-pre-wrap", emojiTextClass(c.body))}><GifContent>{c.body}</GifContent></p>
                 <div className="mt-1 flex items-center gap-3">
                   {user && (
                     <button

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { randomDefaultAvatar } from "@/lib/default-avatars";
 import { AuthCard } from "@/components/AuthCard";
 import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
@@ -45,10 +46,19 @@ function SignupPage() {
     setLoading(true);
     setErrKind(null);
     const { error } = mode === "otp"
-      ? await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true, data: { username, display_name: username } } })
+      ? await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: true,
+            data: { username, display_name: username, avatar_url: randomDefaultAvatar(username) },
+          },
+        })
       : await supabase.auth.signUp({
         email, password,
-        options: { emailRedirectTo: window.location.origin + "/feed", data: { username, display_name: username } },
+        options: {
+          emailRedirectTo: window.location.origin + "/feed",
+          data: { username, display_name: username, avatar_url: randomDefaultAvatar(username) },
+        },
       });
     setLoading(false);
     if (error) {

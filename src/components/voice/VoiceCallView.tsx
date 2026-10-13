@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -7,6 +7,84 @@ import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings } from "@/lib/sound-settings";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import {
+  loadPeerAudio,
+  peerGain,
+  peerVolumeOf,
+  PEER_AUDIO_EVENT,
+  setPeerVolume,
+  togglePeerMute,
+  type PeerAudioState,
+} from "@/lib/peer-audio";
+
+/**
+ * Per-person voice settings, live. Every tile can turn one person up, down or
+ * off for this device only — the same idea as Discord's per-user volume, and it
+ * never touches what they send or what anyone else hears.
+ */
+function usePeerAudio(): PeerAudioState {
+  const [state, setState] = useState(loadPeerAudio);
+  useEffect(() => {
+    const refresh = () => setState(loadPeerAudio());
+    window.addEventListener(PEER_AUDIO_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(PEER_AUDIO_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return state;
+}
+
+function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
+  const peerAudio = usePeerAudio();
+  const muted = peerAudio.muted.includes(userId);
+  const volume = peerVolumeOf(peerAudio, userId);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Volume for @${username}`}
+          className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80 text-muted-foreground transition hover:text-foreground"
+        >
+          {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" side="top" className="w-60 space-y-3 border-white/10 glass-strong">
+        <p className="truncate text-xs font-semibold">@{username}</p>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Your volume</span>
+            <span>{volume}%</span>
+          </div>
+          <Slider
+            value={[volume]}
+            min={0}
+            max={100}
+            step={5}
+            onValueChange={([next]) => setPeerVolume(userId, next)}
+            aria-label={`Volume for @${username}`}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => togglePeerMute(userId)}
+          className="w-full gap-2 border-white/10 bg-white/5"
+        >
+          {muted ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          {muted ? `Unmute @${username}` : `Mute @${username}`}
+        </Button>
+        <p className="text-[10px] text-muted-foreground">Only changes what you hear.</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /**
  * Plays a remote participant's audio. Video tracks are ignored here.
@@ -15,9 +93,10 @@ import { channelVolume, useSoundSettings } from "@/lib/sound-settings";
  * in some browsers, so the picker is best-effort: when it is missing, playback
  * stays on the system default instead of failing.
  */
-function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {
+function RemoteAudio({ stream, onBlocked, peerId }: { stream: MediaStream; onBlocked: () => void; peerId?: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [settings] = useSoundSettings();
+  const peerAudio = usePeerAudio();
   const volume = channelVolume(settings, "voice");
 
   useEffect(() => {
@@ -32,8 +111,8 @@ function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: ()
     if (!element) return;
     // `volume` is capped at 1 by the browser for streamed/live audio, which is
     // why the settings screen says so next to the Voice & TTS slider.
-    element.volume = Math.min(1, Math.max(0, volume));
-  }, [volume]);
+    element.volume = Math.min(1, Math.max(0, volume * peerGain(peerAudio, peerId)));
+  }, [volume, peerAudio, peerId]);
 
   useEffect(() => {
     const element = audioRef.current;
@@ -71,7 +150,7 @@ export function VoiceCallAudio() {
   return (
     <>
       {remoteStreams.map(({ peerId, stream }) => (
-        <RemoteAudio key={peerId} stream={stream} onBlocked={markPlaybackBlocked} />
+        <RemoteAudio key={peerId} stream={stream} peerId={peerId} onBlocked={markPlaybackBlocked} />
       ))}
     </>
   );
@@ -249,6 +328,7 @@ export function VoiceCallView() {
                       <MonitorPlay className="h-3 w-3" /> Sharing
                     </span>
                   )}
+                  {!isMe && <PeerVolumeControl userId={participant.user_id} username={username} />}
                 </div>
               );
             })}

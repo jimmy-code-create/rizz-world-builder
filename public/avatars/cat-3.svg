@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Music cat avatar">
+  <title>Headphones</title>
+  <circle cx="64" cy="64" r="64" fill="#6C4BFF" />
+  <path d="M32 54 L36 22 L60 44 Z" fill="#12101A" />
+  <path d="M96 54 L92 22 L68 44 Z" fill="#12101A" />
+  <path d="M38 50 L40.5 31 L54 44 Z" fill="#8B72FF" />
+  <path d="M90 50 L87.5 31 L74 44 Z" fill="#8B72FF" />
+  <ellipse cx="64" cy="74" rx="39" ry="33" fill="#12101A" />
+  <path d="M68 62c0-4 4-6 7-4" stroke="#8B72FF" stroke-width="3.5" fill="none" stroke-linecap="round" />
+  <path d="M46 72c4-6 12-6 16 0M66 72c4-6 12-6 16 0" stroke="#FFFFFF" stroke-width="4.5" fill="none" stroke-linecap="round" />
+  <path d="M59 88h10l-5 6z" fill="#8B72FF" />
+  <path d="M64 94c3 4 8 4 11 0" stroke="#8B72FF" stroke-width="3.5" fill="none" stroke-linecap="round" />
+  <path d="M32 84H16M32 92l-15 5M96 84h16M96 92l15 5" stroke="#8B72FF" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M28 34c0-20 16-34 36-34s36 14 36 34" stroke="#12101A" stroke-width="9" fill="none" stroke-linecap="round" />
+  <rect x="16" y="60" width="22" height="30" rx="11" fill="#12101A" />
+  <rect x="90" y="60" width="22" height="30" rx="11" fill="#12101A" />
+  <rect x="21" y="65" width="12" height="20" rx="6" fill="#8B72FF" />
+  <rect x="95" y="65" width="12" height="20" rx="6" fill="#8B72FF" />
+</svg>

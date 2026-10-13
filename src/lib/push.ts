@@ -94,8 +94,8 @@ export async function sendTestPush() {
     if (reg && "showNotification" in reg) {
       await reg.showNotification("RIZZ notifications are ready 🔔", {
         body: "Test notification delivered to your device!",
-        icon: "/rizz-pwa.svg",
-        badge: "/rizz-pwa.svg",
+        icon: "/brand/rizz-cat-logo.svg",
+        badge: "/brand/rizz-cat-logo.svg",
         tag: "rizz-test",
         data: { url: "/settings" },
       });

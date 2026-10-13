@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
+import { DEFAULT_AVATARS } from "@/lib/default-avatars";
 
 export const Route = createFileRoute("/_app/settings/profile")({
   head: () => ({ meta: [{ title: "Profile · Settings · RIZZ" }] }),
@@ -46,6 +47,15 @@ function ProfileSettingsPage() {
     toast.success("Updated ✨");
   }
 
+  /** Pick one of the built-in cat avatars — no upload, no storage. */
+  async function chooseAvatar(url: string) {
+    if (!user) return;
+    const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+    if (error) return toast.error(error.message);
+    await refreshProfile();
+    toast.success("Avatar updated ✨");
+  }
+
   async function save() {
     if (!user) return;
     setSaving(true);
@@ -80,6 +90,29 @@ function ProfileSettingsPage() {
               <Upload className="h-4 w-4" /> Change avatar
             </span>
           </label>
+        </div>
+
+        <div>
+          <Label className="text-xs text-muted-foreground">Or pick a cat</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DEFAULT_AVATARS.map((avatar) => {
+              const active = profile.avatar_url === avatar.url;
+              return (
+                <button
+                  key={avatar.id}
+                  type="button"
+                  aria-label={`Use the ${avatar.label} avatar`}
+                  aria-pressed={active}
+                  onClick={() => void chooseAvatar(avatar.url)}
+                  className={`h-14 w-14 overflow-hidden rounded-full border-2 transition ${
+                    active ? "border-[var(--rizz-pink)] shadow-glow" : "border-white/10 hover:border-white/30"
+                  }`}
+                >
+                  <img src={avatar.url} alt="" className="h-full w-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>

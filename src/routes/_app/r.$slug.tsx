@@ -1548,6 +1548,8 @@ function RealmPage() {
           <MentionAutocomplete
             value={body}
             caret={caret}
+            memberIds={(members.data ?? []).map((member) => member.user_id)}
+            emptyHint="No realm member matches that name."
             onPick={(username) => {
               const next = replaceMention(body, caret, username);
               setBody(next.value);

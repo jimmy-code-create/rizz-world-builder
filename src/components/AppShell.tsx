@@ -174,6 +174,7 @@ export function AppShell() {
           title="Owner panel"
         >
           <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow group-hover:scale-105 transition-transform">R</div>
+          <img src="/brand/rizz-cat-logo.svg" alt="" className="h-8 w-8 shrink-0" />
           <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
         </button>
 
