@@ -11,6 +11,7 @@ import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
 import { PostCommentsButton } from "@/components/PostCommentsSheet";
+import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -885,7 +886,7 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
   const eq = useEquipped(post.author_id);
   const deco = eq.data?.avatar_decoration;
   return (
-    <Link to="/u/$username" params={{ username: post.author?.username ?? "" }}>
+    <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
       {deco ? (
         <AvatarDecoration
           src={post.author?.avatar_url}
@@ -900,7 +901,7 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
         </Avatar>
       )}
-    </Link>
+    </ProfilePreviewTrigger>
   );
 }
 
@@ -910,13 +911,12 @@ function AuthorNameLink({ post }: { post: any }) {
   const name = post.author?.display_name || post.author?.username || "";
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <Link
-        to="/u/$username"
-        params={{ username: post.author?.username ?? "" }}
-        className="min-w-0 truncate font-semibold text-sm hover:underline"
+      <ProfilePreviewTrigger
+        username={post.author?.username}
+        className="min-w-0 truncate text-left text-sm font-semibold hover:underline"
       >
         <Nameplate name={name} slug={np?.slug} />
-      </Link>
+      </ProfilePreviewTrigger>
       {post.author?.verified_creator && <VerifiedCreatorTag />}
     </div>
   );

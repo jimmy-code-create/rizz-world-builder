@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +30,9 @@ type Thread = {
   unread: number;
 };
 
+/** Chats deleted on this device are remembered here. */
+const HIDDEN_DMS_KEY = "rizz:hidden-dms";
+
 function fmtTime(iso: string) {
   const d = new Date(iso);
   const diff = (Date.now() - d.getTime()) / 1000;
@@ -45,6 +48,58 @@ function DMsPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  /** Long-pressed inbox row — opens the profile/delete sheet for that person. */
+  const [rowMenu, setRowMenu] = useState<{ id: string; username: string | null; display_name: string | null } | null>(null);
+  /** Chats deleted on this device: hidden here, and the messages you sent are removed. */
+  const [hiddenDms, setHiddenDms] = useState<string[]>(() => {
+    if (typeof localStorage === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(HIDDEN_DMS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const longPressTimer = useRef<number | null>(null);
+  const suppressRowTap = useRef(false);
+
+  const startLongPress = (other: { id: string; username: string | null; display_name: string | null }) => {
+    if (selecting) return;
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      suppressRowTap.current = true;
+      setRowMenu(other);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
+    }, 520);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+  };
+
+  const deleteThread = async (other: { id: string; username: string | null }) => {
+    if (!user) return;
+    // Remove the half of the conversation that is yours…
+    const { error } = await (supabase.from("direct_messages") as any)
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("sender_id", user.id)
+      .eq("recipient_id", other.id);
+    if (error && !/deleted_at|schema cache/i.test(error.message ?? "")) {
+      toast.error(error.message);
+      return;
+    }
+    // …then keep the thread out of your inbox on this device.
+    const next = [...new Set([...hiddenDms, other.id])];
+    setHiddenDms(next);
+    try {
+      localStorage.setItem(HIDDEN_DMS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage off — the messages are still deleted */
+    }
+    setRowMenu(null);
+    await qc.invalidateQueries({ queryKey: ["dm-threads", user.id] });
+    toast.success("Chat deleted");
+  };
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
@@ -337,14 +392,28 @@ function DMsPage() {
             {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
           </div>
         )}
-        {filtered.map(({ other, last, unread }) => {
+        {filtered.filter(({ other }) => !hiddenDms.includes(other.id)).map(({ other, last, unread }) => {
           const isSelected = selectedSet.has(other.id);
           const peerStatus = publicCustomStatus(presence.rows[other.id], false);
           return (
+            <Fragment key={other.id}>
             <button
-              key={other.id}
               type="button"
-              onClick={() => handleRowTap(other)}
+              onClick={() => {
+                if (suppressRowTap.current) {
+                  suppressRowTap.current = false;
+                  return;
+                }
+                handleRowTap(other);
+              }}
+              onPointerDown={() => startLongPress(other)}
+              onPointerUp={cancelLongPress}
+              onPointerMove={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setRowMenu(other);
+              }}
               aria-pressed={selecting ? isSelected : undefined}
               className={`glass w-full min-h-12 rounded-2xl p-4 border flex items-center gap-3 text-left transition-colors ${
                 isSelected
@@ -381,6 +450,47 @@ function DMsPage() {
                 )}
               </div>
             </button>
+            <Sheet
+              open={rowMenu?.id === other.id}
+              onOpenChange={(nextOpen) => {
+                if (!nextOpen) setRowMenu(null);
+              }}
+            >
+              <SheetContent
+                side="bottom"
+                className="glass-strong border-white/10 rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+              >
+                <SheetHeader className="text-left">
+                  <SheetTitle className="font-display text-lg">
+                    {other.display_name || other.username}
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = other.username;
+                      setRowMenu(null);
+                      if (target) nav({ to: "/u/$username", params: { username: target } });
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold transition hover:bg-white/[0.08]"
+                  >
+                    View profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteThread(other)}
+                    className="w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-left text-sm font-semibold text-destructive transition hover:bg-destructive/20"
+                  >
+                    Delete chat
+                  </button>
+                  <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                    Deleting removes the messages you sent and hides this chat from your inbox.
+                  </p>
+                </div>
+              </SheetContent>
+            </Sheet>
+            </Fragment>
           );
         })}
       </div>
