@@ -34,18 +34,19 @@ import { FaceEffectsStudio } from "@/components/story/FaceEffectsStudio";
  * close_friends) so Postgres enforces it — a private story must not be readable
  * by a direct API call, only hidden in the UI.
  */
-type StoryAudience = "everyone" | "followers" | "close_friends";
+type StoryAudience = "everyone" | "followers" | "following" | "close_friends";
 
 const AUDIENCE_OPTIONS: {
   id: StoryAudience;
   label: string;
   hint: string;
-  visibility: "public" | "followers" | "close_friends";
+  visibility: "public" | "followers" | "following" | "close_friends";
   icon: typeof Globe;
 }[] = [
   { id: "everyone", label: "Everyone", hint: "Anyone on RIZZ can see it.", visibility: "public", icon: Globe },
   { id: "followers", label: "Followers only", hint: "Only people who follow you.", visibility: "followers", icon: Users },
-  { id: "close_friends", label: "Close friends", hint: "Only the people on your close friends list.", visibility: "close_friends", icon: UserCheck },
+  { id: "following", label: "People you follow", hint: "Only accounts you are following can see it.", visibility: "following", icon: UserCheck },
+  { id: "close_friends", label: "Close friends", hint: "Only the people on your close friends list.", visibility: "close_friends", icon: Lock },
 ];
 
 type Person = { id: string; username: string; display_name: string | null; avatar_url: string | null };

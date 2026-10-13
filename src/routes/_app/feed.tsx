@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Compass, Film, Flame, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Compass, Film, Flame, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { RizzCat } from "@/components/RizzCat";
@@ -37,6 +37,7 @@ function FeedPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(FEED_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const feed = useQuery({
     queryKey: ["feed"],
@@ -76,6 +77,23 @@ function FeedPage() {
   const initial = name.charAt(0).toUpperCase();
   const shown = posts.slice(0, visible);
   const remaining = posts.length - visible;
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || remaining <= 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => v + FEED_PAGE_SIZE);
+        }
+      },
+      { rootMargin: "400px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [remaining]);
 
   const focusComposer = () => {
     const el = document.getElementById("feed-composer");
@@ -226,14 +244,9 @@ function FeedPage() {
       </div>
 
       {remaining > 0 && (
-        <button
-          type="button"
-          onClick={() => setVisible((v) => v + FEED_PAGE_SIZE)}
-          className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-3xl border border-white/10 glass text-sm font-semibold text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
-        >
-          Show {remaining > FEED_PAGE_SIZE ? FEED_PAGE_SIZE : remaining} more
-          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold">{remaining} left</span>
-        </button>
+        <div ref={sentinelRef} className="py-8 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
+        </div>
       )}
 
       {!feed.isLoading && posts.length > 0 && remaining <= 0 && (
