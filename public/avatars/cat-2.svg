@@ -2,12 +2,12 @@
   <title>Curious</title>
   <circle cx="64" cy="64" r="64" fill="#12101A" />
   <path d="M58 46 L62 16 L86 40 Z" fill="#12101A" />
-  <path d="M62 43 L64.5 25 L78 40 Z" fill="#B8E600" />
+  <path d="M62 43 L64.5 25 L78 40 Z" fill="#8B72FF" />
   <path d="M40 60c-6-14 4-30 22-32 22-2 38 12 38 30 0 24-18 44-42 44-16 0-26-8-30-18-6-14-4-32 12-24z" fill="#12101A" />
   <ellipse cx="78" cy="58" rx="19" ry="21" fill="#FFFFFF" />
   <ellipse cx="82" cy="60" rx="9" ry="11" fill="#12101A" />
   <circle cx="76" cy="52" r="4" fill="#FFFFFF" />
-  <path d="M60 74c4 4 10 4 14 0" stroke="#B8E600" stroke-width="3.5" fill="none" stroke-linecap="round" />
-  <path d="M52 66h-16M52 76l-16 5M100 62h14M102 72l14 4" stroke="#B8E600" stroke-width="3.5" stroke-linecap="round" />
-  <path d="M104 26l4.5-11 4.5 11 11 4.5-11 4.5-4.5 11-4.5-11-11-4.5z" fill="#B8E600" />
+  <path d="M60 74c4 4 10 4 14 0" stroke="#8B72FF" stroke-width="3.5" fill="none" stroke-linecap="round" />
+  <path d="M52 66h-16M52 76l-16 5M100 62h14M102 72l14 4" stroke="#8B72FF" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M104 26l4.5-11 4.5 11 11 4.5-11 4.5-4.5 11-4.5-11-11-4.5z" fill="#8B72FF" />
 </svg>

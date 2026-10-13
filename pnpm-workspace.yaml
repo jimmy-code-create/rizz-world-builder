@@ -1,6 +1,0 @@
-allowBuilds:
-  esbuild: true
-  onnxruntime-node: false
-  protobufjs: true
-  sharp: true
-  workerd: true
