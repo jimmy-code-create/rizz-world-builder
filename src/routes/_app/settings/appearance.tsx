@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { THEME_PRESETS, applyTheme, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
+import { THEME_MODES, THEME_PRESETS, applyTheme, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 
 export const Route = createFileRoute("/_app/settings/appearance")({
@@ -84,16 +84,28 @@ function AppearanceSettingsPage() {
 
         <div>
           <Label className="mb-2 block text-xs text-muted-foreground">Mode</Label>
-          <div className="flex gap-2">
-            {(["dark", "light", "auto"] as ThemeMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => saveAppearance({ mode: m })}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium capitalize ${mode === m ? "border-transparent bg-gradient-primary text-primary-foreground shadow-glow" : "border-white/10 hover:bg-white/5"}`}
-              >
-                {m}
-              </button>
-            ))}
+          {/* Four modes, not three: AMOLED black is what OLED phones ask for, and
+              it is the mode the forum, chat and feed all answer to. */}
+          <div className="grid grid-cols-2 gap-2">
+            {THEME_MODES.map((m) => {
+              const active = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => saveAppearance({ mode: m.id })}
+                  aria-pressed={active}
+                  className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium ${active ? "border-transparent bg-gradient-primary text-primary-foreground shadow-glow" : "border-white/10 hover:bg-white/5"}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{m.label}</span>
+                    <span className={`block truncate text-[10px] font-normal ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                      {m.hint}
+                    </span>
+                  </span>
+                  {active && <Check className="h-3.5 w-3.5 shrink-0" />}
+                </button>
+              );
+            })}
           </div>
         </div>
 

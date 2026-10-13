@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-13 — Realm forums: themed forum surface, per-forum settings, forum notifications
+
+### The forum surface
+- Forum channels (`kind = "forum"`) swap the message list for their own surface under `src/components/forum/`, built from the same tokens as the feed redesign so forums, feed and chat read as one app.
+- **Hero header:** banner with a gradient overlay, forum icon/emoji, name, description, post count and a "New post" button; it collapses into a slim sticky header on scroll.
+- **Sticky filter bar:** search field, sort dropdown and horizontally scrolling tag chips, each tag carrying its own colour and emoji.
+- **Post cards:** 16px radius, soft shadow, thumbnail, title, 2-line preview, tag chips, avatars of recent repliers, reply and like counts, last activity. Pinned posts get a highlighted border, locked ones a lock icon, solved ones a green check badge.
+- **Layout switcher:** Card, Compact list and Gallery (masonry for image posts), remembered per user in `rizz:forum-prefs` — together with comfortable/compact density, font scale and hide-read-posts. The forum's admin defaults apply until a member picks their own, and a per-room override lets a gallery board and a text board differ.
+- **Motion:** staggered card fade-in, press-scale on tap, skeleton loaders, smooth expand/collapse for replies.
+- **Themes:** dark, light and AMOLED black. Ink over an accent colour is chosen by real WCAG contrast (`readableInk` in `forum-content.ts`) instead of a fixed white/black guess, so tags and statuses stay legible on any background.
+
+### Post page
+- Optional cover image, large title, author card (avatar, role colour, badges, join date), tags and a reaction bar.
+- Replies render as a clean thread with thin connector lines for nesting, an "OP" badge on the author's replies, role-coloured names, and the chosen **Best answer** highlighted with a green border pinned under the post.
+- Rich embeds reuse the app's existing players: image galleries open in the media viewer, fenced code becomes a copyable code block, YouTube uses the same official iframe the reels use, and music links play through `MusicPlayer`.
+- The reply box is sticky on mobile and expands when focused.
+
+### Per-forum settings (moderators, with live preview)
+- `ForumSettingsSheet` edits banner, icon, accent colour, description and the pinned guidelines post; default layout, default sort and card density; custom tags (name, colour, emoji) with an optional required-tag rule; custom statuses (Open / In progress / Solved / Closed …) with colours; post templates that render as a form when creating a post; the custom reaction set and allowed attachment types; slowmode, who can post or reply, and auto-archive after N days of inactivity.
+
+### Notifications
+- Two new types — `forum_reply` (someone replied to your thread) and `forum_tag` (a new post in a tag you follow) — rendered on the Notifications screen with a deep link straight to the thread through `?room=` and `?post=`.
+
+### Data
+- `supabase/migrations/20261018000000_realm_forums.sql`: `realm_forums` (per-room appearance and rules), taxonomy (`realm_forum_tags`, `realm_forum_statuses`, `realm_forum_templates`), content (`realm_forum_posts`, `realm_forum_replies`, reactions and likes) and member state (`realm_forum_reads`, `realm_forum_tag_follows`, `realm_forum_mutes`), each with RLS (17 policies).
+
 ## 2026-10-13 — Story likes and privacy, any-source music, Voice & Sound, chat rhythm, 69 face lenses
 
 ### Stories are their own feature, and likes finally save

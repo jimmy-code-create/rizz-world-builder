@@ -66,8 +66,12 @@ import { flushDueScheduledMessages } from "@/lib/realm-schedule";
 import { isMusicCommand } from "@/lib/music";
 import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
+import { RealmForum } from "@/components/forum/RealmForum";
 
-const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
+const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift, forum: MessagesSquare };
+
+/** Room kinds a moderator can create from here, forum included. */
+const CREATABLE_ROOM_KINDS: RealmRoomKind[] = ["text", "announcement", "voice", "forum"];
 
 /** Member lists paginate instead of mounting every row of a big realm at once. */
 const MEMBER_PAGE_SIZE = 25;
@@ -78,12 +82,19 @@ type RealmChannelCall = {
 };
 
 export const Route = createFileRoute("/_app/r/$slug")({
+  // A channel, or a forum thread inside one, is addressable: the room and post
+  // live in the URL so a link lands where it was meant to.
+  validateSearch: (search: Record<string, unknown>): { room?: string; post?: string } => ({
+    room: typeof search.room === "string" && search.room ? search.room : undefined,
+    post: typeof search.post === "string" && search.post ? search.post : undefined,
+  }),
   head: ({ params }) => ({ meta: [{ title: `#${params.slug} · RIZZ` }] }),
   component: RealmPage,
 });
 
 function RealmPage() {
   const { slug } = Route.useParams();
+  const search = Route.useSearch();
   const { user } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -206,14 +217,24 @@ function RealmPage() {
     return () => { supabase.removeChannel(ch); };
   }, [realm.data, activeRoomId, qc]);
 
-  // Default to the realm's default/first room once rooms load.
+  // Default to the room the link named, then the realm's default room.
   useEffect(() => {
     if (activeRoomId) return;
     const list = rooms.data ?? [];
     if (list.length === 0) return;
-    const def = list.find((r) => r.is_default) ?? list[0];
+    const linked = search.room ? list.find((r) => r.id === search.room) : undefined;
+    const def = linked ?? list.find((r) => r.is_default) ?? list[0];
     setActiveRoomId(def.id);
-  }, [rooms.data, activeRoomId]);
+  }, [rooms.data, activeRoomId, search.room]);
+
+  /**
+   * Switching channel writes the choice to the URL, so a channel — and a forum
+   * thread inside it — can be shared, reloaded or opened from a notification.
+   */
+  const selectRoom = (roomId: string) => {
+    setActiveRoomId(roomId);
+    void nav({ to: "/r/$slug", params: { slug }, search: { room: roomId }, replace: true });
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -516,10 +537,12 @@ function RealmPage() {
     try {
       const room = await createRealmRoom({ realmId: c.id, name: newRoomName.trim(), kind: newRoomKind });
       await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
-      setActiveRoomId(room.id);
+      selectRoom(room.id);
       setRoomsOpen(false);
       setNewRoomName("");
-      toast.success(`${newRoomKind === "voice" ? "Voice" : "Text"} room created`);
+      toast.success(
+        newRoomKind === "voice" ? "Voice room created" : newRoomKind === "forum" ? "Forum created" : "Text room created",
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't create the room");
     } finally {
@@ -892,7 +915,7 @@ function RealmPage() {
               <button
                 key={room.id}
                 type="button"
-                onClick={() => setActiveRoomId(room.id)}
+                onClick={() => selectRoom(room.id)}
                 className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
                   inThisCall
                     ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
@@ -967,7 +990,7 @@ function RealmPage() {
               <div className="space-y-3">
                 <Input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Room name" maxLength={40} className="glass border-white/10" />
                 <div className="flex gap-2">
-                  {(["text", "announcement", "voice"] as RealmRoomKind[]).map((k) => (
+                  {CREATABLE_ROOM_KINDS.map((k) => (
                     <button
                       key={k}
                       type="button"
@@ -991,7 +1014,7 @@ function RealmPage() {
         </div>
       )}
 
-      {activeRoom?.kind !== "voice" && (
+      {activeRoom?.kind !== "voice" && activeRoom?.kind !== "forum" && (
         <PinnedBar
           pins={pins}
           index={pinIndex}
@@ -1061,6 +1084,30 @@ function RealmPage() {
         </div>
       )}
 
+      {/* A forum channel swaps the message list for the forum surface: its own
+          hero, sticky filters, thread cards and the thread page. */}
+      {activeRoom?.kind === "forum" && (
+        <RealmForum
+          realmId={c.id}
+          realmName={c.name}
+          room={activeRoom}
+          accentColor={c.accent_color ?? null}
+          userId={user?.id ?? null}
+          canModerate={canModerate}
+          joined={joined}
+          initialPostId={search.post ?? null}
+          onPostChange={(postId) =>
+            void nav({
+              to: "/r/$slug",
+              params: { slug },
+              search: { room: activeRoom.id, post: postId ?? undefined },
+              replace: true,
+            })
+          }
+        />
+      )}
+
+      {activeRoom?.kind !== "forum" && (
       <div
         onClick={media.onMediaClick}
         className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
@@ -1333,6 +1380,7 @@ function RealmPage() {
         )}
         <div ref={endRef} />
       </div>
+      )}
 
       <PinnedListSheet
         open={pinsOpen}
@@ -1408,6 +1456,7 @@ function RealmPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {activeRoom?.kind !== "forum" && (
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         {myWriteBlocked && (
           <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
@@ -1513,6 +1562,7 @@ function RealmPage() {
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }

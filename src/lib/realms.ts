@@ -49,7 +49,12 @@ export type RealmInvitePreview = {
   member_count: number | null;
 };
 
-export type RealmRoomKind = "text" | "announcement" | "voice";
+/**
+ * A room's kind. `forum` is a room like any other, but the realm page renders
+ * the forum surface in its place: threads, tags, statuses and templates instead
+ * of a message list.
+ */
+export type RealmRoomKind = "text" | "announcement" | "voice" | "forum";
 
 export type RealmRoom = {
   id: string;

@@ -1,6 +1,20 @@
 export type ThemePreset = "nightclub" | "midnight" | "sunset" | "cyber" | "mono" | "pastel";
-export type ThemeMode = "dark" | "light" | "auto";
+export type ThemeMode = "dark" | "light" | "amoled" | "auto";
 export type Density = "comfy" | "compact";
+
+/**
+ * The modes someone can pick, in the order the settings screen shows them.
+ *
+ * "amoled" is the true-black variant of dark: on an OLED panel a #000 surface
+ * draws no light at all, so the forum and chat surfaces step up to a visible
+ * near-black and borders carry the separation that shadows used to.
+ */
+export const THEME_MODES: { id: ThemeMode; label: string; hint: string }[] = [
+  { id: "dark", label: "Dark", hint: "The default nightclub dark" },
+  { id: "light", label: "Light", hint: "Bright surfaces, darkened accents" },
+  { id: "amoled", label: "AMOLED black", hint: "True black for OLED screens" },
+  { id: "auto", label: "Auto", hint: "Follow the device setting" },
+];
 
 export const THEME_PRESETS: { id: ThemePreset; name: string; desc: string; colors: string[] }[] = [
   { id: "nightclub", name: "Nightclub", desc: "Hot pink + violet (default)", colors: ["#ff2d92", "#7c3aed", "#22d3ee"] },
@@ -18,6 +32,8 @@ export function applyTheme(preset: ThemePreset, mode: ThemeMode, density: Densit
   const resolvedMode = mode === "auto"
     ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
     : mode;
+  // Styling hangs off `data-mode`, so light, dark and AMOLED are three blocks of
+  // tokens in styles.css and this stays a single attribute assignment.
   root.dataset.mode = resolvedMode;
   root.dataset.density = density;
   root.dataset.reducedMotion = reducedMotion ? "true" : "false";

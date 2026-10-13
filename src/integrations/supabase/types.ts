@@ -1778,6 +1778,667 @@ export type Database = {
           },
         ]
       }
+      realm_forum_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_mutes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string | null
+          realm_id: string
+          room_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          realm_id: string
+          room_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          realm_id?: string
+          room_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_mutes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_mutes_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_mutes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_mutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_posts: {
+        Row: {
+          archived_at: string | null
+          attachments: string[]
+          author_id: string
+          best_reply_id: string | null
+          body: string
+          cover_url: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          fields: Json
+          forum_id: string
+          id: string
+          is_locked: boolean
+          is_pinned: boolean
+          is_solved: boolean
+          last_activity_at: string
+          like_count: number
+          realm_id: string
+          reply_count: number
+          room_id: string
+          status_id: string | null
+          tag_ids: string[]
+          template_id: string | null
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          archived_at?: string | null
+          attachments?: string[]
+          author_id: string
+          best_reply_id?: string | null
+          body?: string
+          cover_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          fields?: Json
+          forum_id: string
+          id?: string
+          is_locked?: boolean
+          is_pinned?: boolean
+          is_solved?: boolean
+          last_activity_at?: string
+          like_count?: number
+          realm_id: string
+          reply_count?: number
+          room_id: string
+          status_id?: string | null
+          tag_ids?: string[]
+          template_id?: string | null
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          archived_at?: string | null
+          attachments?: string[]
+          author_id?: string
+          best_reply_id?: string | null
+          body?: string
+          cover_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          fields?: Json
+          forum_id?: string
+          id?: string
+          is_locked?: boolean
+          is_pinned?: boolean
+          is_solved?: boolean
+          last_activity_at?: string
+          like_count?: number
+          realm_id?: string
+          reply_count?: number
+          room_id?: string
+          status_id?: string | null
+          tag_ids?: string[]
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_posts_forum_id_fkey"
+            columns: ["forum_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_posts_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_posts_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_posts_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_posts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_reads: {
+        Row: {
+          last_seen_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_reads_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_replies: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          id: string
+          like_count: number
+          parent_id: string | null
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          like_count?: number
+          parent_id?: string | null
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          like_count?: number
+          parent_id?: string | null
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_reply_likes: {
+        Row: {
+          created_at: string
+          reply_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reply_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reply_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_reply_likes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_reply_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_reply_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          reply_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          reply_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          reply_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_reply_reactions_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_reply_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          emoji: string | null
+          forum_id: string
+          id: string
+          is_closed: boolean
+          is_default: boolean
+          name: string
+          position: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          forum_id: string
+          id?: string
+          is_closed?: boolean
+          is_default?: boolean
+          name: string
+          position?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          forum_id?: string
+          id?: string
+          is_closed?: boolean
+          is_default?: boolean
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_statuses_forum_id_fkey"
+            columns: ["forum_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_tag_follows: {
+        Row: {
+          created_at: string
+          tag_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          tag_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          tag_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_tag_follows_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_tag_follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_tags: {
+        Row: {
+          color: string
+          created_at: string
+          emoji: string | null
+          forum_id: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          forum_id: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          forum_id?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_tags_forum_id_fkey"
+            columns: ["forum_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          emoji: string | null
+          fields: Json
+          forum_id: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          fields?: Json
+          forum_id: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          fields?: Json
+          forum_id?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_templates_forum_id_fkey"
+            columns: ["forum_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forums: {
+        Row: {
+          accent_color: string | null
+          allowed_attachments: string[]
+          auto_archive_days: number | null
+          banner_url: string | null
+          created_at: string
+          default_density: string
+          default_layout: string
+          default_sort: string
+          description: string | null
+          guidelines: string | null
+          guidelines_post_id: string | null
+          icon_emoji: string | null
+          id: string
+          post_permission: string
+          reactions: string[]
+          realm_id: string
+          reply_permission: string
+          require_tag: boolean
+          room_id: string
+          slowmode_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          allowed_attachments?: string[]
+          auto_archive_days?: number | null
+          banner_url?: string | null
+          created_at?: string
+          default_density?: string
+          default_layout?: string
+          default_sort?: string
+          description?: string | null
+          guidelines?: string | null
+          guidelines_post_id?: string | null
+          icon_emoji?: string | null
+          id?: string
+          post_permission?: string
+          reactions?: string[]
+          realm_id: string
+          reply_permission?: string
+          require_tag?: boolean
+          room_id: string
+          slowmode_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          allowed_attachments?: string[]
+          auto_archive_days?: number | null
+          banner_url?: string | null
+          created_at?: string
+          default_density?: string
+          default_layout?: string
+          default_sort?: string
+          description?: string | null
+          guidelines?: string | null
+          guidelines_post_id?: string | null
+          icon_emoji?: string | null
+          id?: string
+          post_permission?: string
+          reactions?: string[]
+          realm_id?: string
+          reply_permission?: string
+          require_tag?: boolean
+          room_id?: string
+          slowmode_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forums_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forums_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       realm_invites: {
         Row: {
           code: string

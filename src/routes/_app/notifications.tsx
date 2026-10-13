@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Heart, MessageCircle, UserPlus, Sparkles, CheckCheck, AtSign } from "lucide-react";
+import { Bell, Hash, Heart, MessageCircle, MessagesSquare, Sparkles, CheckCheck, AtSign, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,26 @@ export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
 });
 
-const ICON: Record<string, any> = { like: Heart, comment: MessageCircle, follow: UserPlus, reaction: Sparkles, mention: AtSign };
+const ICON: Record<string, any> = {
+  like: Heart,
+  comment: MessageCircle,
+  follow: UserPlus,
+  reaction: Sparkles,
+  mention: AtSign,
+  // Forum notifications: a reply to your thread, or a new post in a tag you follow.
+  forum_reply: MessagesSquare,
+  forum_tag: Hash,
+};
+
+/**
+ * Forum notifications carry where they came from — the realm slug, the channel
+ * and the thread — so tapping one opens that thread instead of the forum root.
+ */
+function forumTarget(n: any): { slug: string; room: string; post: string } | null {
+  const data = n?.data as { realm_slug?: string; room_id?: string; post_id?: string } | null;
+  if (!data?.realm_slug || !data?.room_id || !data?.post_id) return null;
+  return { slug: data.realm_slug, room: data.room_id, post: data.post_id };
+}
 
 function NotificationsPage() {
   const { user } = useAuth();
@@ -88,8 +107,10 @@ function NotificationsPage() {
       <div className="space-y-2">
         {filtered.map((n: any) => {
           const Icon = ICON[n.type] ?? Bell;
-          return (
-            <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className={`glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3`}>
+          const target = forumTarget(n);
+          const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3 w-full text-left`;
+          const inner = (
+            <>
               <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center"><Icon className="h-5 w-5 text-[var(--rizz-pink)]" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm flex-1 min-w-0">
@@ -98,13 +119,34 @@ function NotificationsPage() {
                     : n.type === "comment" ? "commented on your post"
                     : n.type === "follow" ? "started following you"
                     : n.type === "mention" ? "mentioned you"
+                    : n.type === "forum_reply" ? "replied to your thread"
+                    : n.type === "forum_tag" ? "posted in a tag you follow"
                     : "reacted to your post"}
-                  {n.type === "mention" && n.body && (
+                  {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") && n.body && (
                     <span className="block text-xs text-muted-foreground truncate mt-0.5">“{n.body}”</span>
+                  )}
+                  {n.title && n.type !== "mention" && (
+                    <span className="block text-xs text-muted-foreground truncate mt-0.5">{n.title}</span>
                   )}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
               </div>
+            </>
+          );
+          return (
+            <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+              {target ? (
+                <Link
+                  to="/r/$slug"
+                  params={{ slug: target.slug }}
+                  search={{ room: target.room, post: target.post }}
+                  className={shell}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div className={shell}>{inner}</div>
+              )}
             </motion.div>
           );
         })}

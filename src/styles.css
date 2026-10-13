@@ -142,6 +142,39 @@
   --sidebar-accent-foreground: oklch(0.98 0.01 320);
   --sidebar-border: oklch(0.98 0.01 320 / 0.08);
   --sidebar-ring: oklch(0.68 0.28 5);
+
+  /* ---------- Forums ----------
+     A forum is a whole product surface — hero, filter bar, cards, threads,
+     composer, admin preview — so its look lives in tokens too. Change a forum's
+     radius, gap, shadow or accent here and every forum screen follows, the same
+     way chat rhythm and the feed cards are tuned from one place. */
+  --forum-radius: 16px;
+  --forum-radius-lg: 22px;
+  --forum-radius-sm: 10px;
+  --forum-gap: 14px;
+  --forum-pad: 18px;
+  --forum-font-scale: 1;
+  --forum-line: 1.6;
+  --forum-surface: oklch(0.19 0.035 295 / 0.92);
+  --forum-surface-raised: oklch(0.23 0.04 295 / 0.95);
+  --forum-surface-sunken: oklch(0.14 0.03 295 / 0.85);
+  --forum-border: oklch(0.98 0.01 320 / 0.1);
+  --forum-shadow: 0 16px 40px -26px oklch(0.03 0.02 295 / 0.85), 0 2px 6px -4px rgb(0 0 0 / 0.45);
+  --forum-shadow-hover: 0 24px 54px -28px oklch(0.03 0.02 295 / 0.95), 0 0 0 1px oklch(0.98 0.01 320 / 0.08);
+  --forum-accent: var(--rizz-pink);
+  --forum-accent-soft: oklch(0.68 0.28 5 / 0.16);
+  --forum-title-font: var(--font-display);
+  --forum-body-font: var(--font-sans);
+  /* State colours a card renders: pinned, locked, solved, archived. */
+  --forum-pinned: oklch(0.87 0.17 88);
+  --forum-locked: oklch(0.8 0.03 295);
+  --forum-solved: oklch(0.8 0.19 152);
+  --forum-archived: oklch(0.7 0.02 295);
+  /* Thread connector lines and the role colours authors' names carry. */
+  --forum-thread-line: oklch(0.98 0.01 320 / 0.16);
+  --forum-role-owner: oklch(0.86 0.16 85);
+  --forum-role-mod: oklch(0.83 0.17 150);
+  --forum-role-member: var(--muted-foreground);
 }
 
 .dark {
@@ -212,11 +245,62 @@
   --chat-name-4: oklch(0.50 0.12 220);
   --chat-name-5: oklch(0.48 0.17 265);
   --chat-name-6: oklch(0.50 0.18 330);
+  /* Forum surfaces flip with the mode; the header gradient stays readable on a
+     light page, and the thread lines darken instead of lightening. */
+  --forum-surface: oklch(1 0 0 / 0.94);
+  --forum-surface-raised: oklch(1 0 0);
+  --forum-surface-sunken: oklch(0.96 0.01 295 / 0.9);
+  --forum-border: oklch(0.15 0.03 295 / 0.12);
+  --forum-shadow: 0 14px 32px -26px oklch(0.2 0.03 295 / 0.5), 0 1px 3px -2px rgb(0 0 0 / 0.12);
+  --forum-shadow-hover: 0 22px 44px -28px oklch(0.2 0.03 295 / 0.55), 0 0 0 1px oklch(0.15 0.03 295 / 0.08);
+  --forum-thread-line: oklch(0.15 0.03 295 / 0.18);
+  --forum-pinned: oklch(0.62 0.16 80);
+  --forum-solved: oklch(0.58 0.16 152);
+  --forum-locked: oklch(0.5 0.02 295);
+  --forum-archived: oklch(0.55 0.02 295);
+  --forum-role-owner: oklch(0.55 0.14 70);
+  --forum-role-mod: oklch(0.5 0.15 150);
+  --forum-role-member: var(--muted-foreground);
   color-scheme: light;
 }
 
 [data-density="compact"] {
   --radius: 0.75rem;
+  /* Density reaches forums too: tighter radius, gaps and padding. */
+  --forum-radius: 12px;
+  --forum-radius-lg: 16px;
+  --forum-gap: 9px;
+  --forum-pad: 13px;
+}
+
+/* AMOLED black. True #000 for OLED panels, where an elevated surface has to be
+   visible *above* black — so borders and the forum's own surfaces carry the
+   separation instead of a drop shadow. */
+[data-mode="amoled"] {
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.99 0 0);
+  --card: oklch(0.06 0 0 / 0.92);
+  --card-foreground: oklch(0.99 0 0);
+  --popover: oklch(0.06 0 0);
+  --popover-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.3 0.1 295);
+  --muted: oklch(0.12 0 0);
+  --muted-foreground: oklch(0.76 0.006 295);
+  --border: oklch(0.99 0 0 / 0.16);
+  --input: oklch(0.99 0 0 / 0.1);
+  --surface-bar: rgba(0, 0, 0, 0.94);
+  --surface-bubble: rgba(9, 9, 11, 0.96);
+  --sidebar: oklch(0.04 0 0);
+  --sidebar-accent: oklch(0.13 0 0);
+  --forum-surface: oklch(0.08 0.004 295);
+  --forum-surface-raised: oklch(0.12 0.006 295);
+  --forum-surface-sunken: oklch(0.05 0 0);
+  --forum-border: oklch(0.99 0 0 / 0.17);
+  --forum-shadow: 0 18px 44px -30px rgb(0 0 0 / 0.95);
+  --forum-shadow-hover: 0 26px 56px -32px rgb(0 0 0 / 1);
+  --forum-thread-line: oklch(0.99 0 0 / 0.2);
+  --forum-locked: oklch(0.86 0.02 295);
+  color-scheme: dark;
 }
 
 [data-reduced-motion="true"] *,
@@ -1119,4 +1203,145 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   scrollbar-width: none;
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
+}
+
+/* ============ FORUMS ============
+   Structure for the forum surfaces. Every value here comes from a `--forum-*`
+   token (or a semantic token), so the whole forum — cards, hero, chips,
+   threads, composer — restyles from :root, and light/AMOLED/density follow
+   automatically. Nothing in the components hardcodes a color or a radius. */
+
+.forum-shell {
+  font-family: var(--forum-body-font);
+  font-size: calc(1rem * var(--forum-font-scale));
+  line-height: var(--forum-line);
+}
+
+/* The hero banner. The gradient overlay is a real layer so the image stays a
+   plain <img> (cheap to swap, and it can fail without breaking the header). */
+.forum-hero-scrim {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, #0b0a12 18%, transparent) 0%, color-mix(in oklab, #0b0a12 92%, transparent) 100%),
+    radial-gradient(120% 90% at 12% 0%, color-mix(in oklab, var(--forum-accent) 45%, transparent), transparent 62%);
+}
+
+.forum-card {
+  /* Same trick the feed cards use: offscreen cards skip paint entirely, which
+     is what makes a long thread list cheap without virtualization. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
+  contain: layout paint;
+  border: 1px solid var(--forum-border);
+  border-radius: var(--forum-radius);
+  background: var(--forum-surface);
+  box-shadow: var(--forum-shadow);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.forum-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--forum-shadow-hover);
+}
+
+.forum-card:active {
+  transform: scale(0.994);
+}
+
+.forum-card-flat {
+  box-shadow: none;
+  background: var(--forum-surface-sunken);
+}
+
+/* Pinned threads keep a highlighted edge; solved ones a green one. */
+.forum-card-pinned { border-color: color-mix(in oklab, var(--forum-pinned) 55%, var(--forum-border)); }
+.forum-card-solved { border-color: color-mix(in oklab, var(--forum-solved) 45%, var(--forum-border)); }
+
+.forum-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid var(--forum-border);
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.forum-masonry {
+  column-count: 2;
+  column-gap: var(--forum-gap);
+}
+
+@media (min-width: 900px) {
+  .forum-masonry { column-count: 3; }
+}
+
+.forum-masonry > * {
+  break-inside: avoid;
+  margin-bottom: var(--forum-gap);
+}
+
+/* Nested replies: one thin line per level, drawn from the parent's stem to the
+   child, so depth reads at a glance without indenting text off the screen. */
+.forum-branch {
+  position: relative;
+  padding-left: calc(var(--forum-gap) + 0.35rem);
+}
+
+.forum-branch::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--forum-thread-line);
+}
+
+.forum-branch-elbow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1.15rem;
+  width: 0.55rem;
+  height: 1px;
+  background: var(--forum-thread-line);
+}
+
+/* Rich embeds inside a post: code keeps the app's mono rhythm and its own
+   scroll, so a wide snippet never widens the page. */
+.forum-code {
+  background: var(--forum-surface-sunken);
+  border: 1px solid var(--forum-border);
+  border-radius: var(--forum-radius-sm);
+  font-size: 0.8em;
+  line-height: 1.5;
+  max-height: 22rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.forum-prose p { margin-bottom: 0.55em; }
+.forum-prose p:last-child { margin-bottom: 0; }
+
+/* The mobile reply box pins to the bottom of the thread, above the safe area. */
+.forum-sticky-reply {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  background: var(--surface-bar);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border-top: 1px solid var(--forum-border);
+}
+
+[data-reduced-motion="true"] .forum-card:hover,
+[data-reduced-motion="true"] .forum-card:active {
+  transform: none;
 }
