@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { BarChart3, Check, Clock } from "lucide-react";
+import { BarChart3, Clock } from "lucide-react";
 import { toast } from "sonner";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { usePollTallies, voteRealmPoll } from "@/lib/realm-polls";
+import { CheckboxIndicator, RadioIndicator, IconTile } from "@/components/ui/IconTile";
 
 /**
  * The poll renders from the message's own `card` payload, so it reads
@@ -33,11 +34,14 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
   };
 
   return (
-    <div className="mt-1 w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 backdrop-blur-sm">
-      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
-        <BarChart3 className="h-3.5 w-3.5" /> Poll{card.multi ? " · pick any" : ""}
-      </p>
-      <p className="mt-1 text-sm font-semibold leading-snug">{card.question}</p>
+    <div className="mt-1 w-full max-w-md rounded-xl border border-border bg-card p-3.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+        <IconTile size="xs" shape="square" className="text-primary">
+          <BarChart3 className="h-3.5 w-3.5" />
+        </IconTile>
+        <span>Poll{card.multi ? " · pick any" : ""}</span>
+      </div>
+      <p className="mt-1 text-sm font-semibold leading-snug text-foreground">{card.question}</p>
 
       <div className="mt-3 space-y-1.5">
         {card.options.map((option, index) => {
@@ -50,20 +54,24 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
               type="button"
               disabled={!closable}
               onClick={() => void vote(index)}
-              className={`relative block w-full overflow-hidden rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+              className={`relative block w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                 chosen
-                  ? "border-[var(--rizz-pink)]/60 bg-[var(--rizz-pink)]/15"
-                  : "border-white/10 bg-black/20 hover:bg-white/5"
+                  ? "border-primary/60 bg-primary/10"
+                  : "border-border bg-muted/30 hover:bg-muted/50"
               } ${closable ? "cursor-pointer" : "cursor-default"}`}
             >
               <span
-                className="absolute inset-y-0 left-0 bg-[var(--rizz-pink)]/25 transition-all"
+                className="absolute inset-y-0 left-0 bg-primary/15 transition-all"
                 style={{ width: `${share}%` }}
                 aria-hidden="true"
               />
               <span className="relative flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {chosen && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--rizz-pink)]" />}
+                <span className="flex min-w-0 items-center gap-2">
+                  {card.multi ? (
+                    <CheckboxIndicator checked={chosen} />
+                  ) : (
+                    <RadioIndicator checked={chosen} />
+                  )}
                   <span className="truncate">{option}</span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold text-muted-foreground">
@@ -75,21 +83,15 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
         })}
       </div>
 
-      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {closed ? (
-          <>
-            <Clock className="h-3 w-3" /> Voting closed · {total} {total === 1 ? "vote" : "votes"}
-          </>
-        ) : card.closesAt ? (
-          <>
-            <Clock className="h-3 w-3" /> {total} {total === 1 ? "vote" : "votes"} · closes{" "}
-            {new Date(card.closesAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          </>
-        ) : (
-          `${total} ${total === 1 ? "vote" : "votes"}`
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 text-[10px] font-medium text-muted-foreground">
+        <span>{total} {total === 1 ? "vote" : "votes"}</span>
+        {card.endsAt && (
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {closed ? "Closed" : `Ends ${new Date(card.endsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
+          </span>
         )}
-        {tallies.isError && " · live counts unavailable"}
-      </p>
+      </div>
     </div>
   );
 }

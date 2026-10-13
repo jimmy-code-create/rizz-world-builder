@@ -55,54 +55,54 @@
   --color-rizz-violet: var(--rizz-violet);
   --color-rizz-cyan: var(--rizz-cyan);
   --color-rizz-glow: var(--rizz-glow);
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Syne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 0.625rem;
 
-  /* Nightclub dark base */
-  --background: oklch(0.13 0.03 295);
-  --foreground: oklch(0.98 0.01 320);
+  /* Carbon near-black base — solid #0a0b0e */
+  --background: #0a0b0e;
+  --color-background: #0a0b0e;
+  --foreground: #f4f4f6;
 
-  --card: oklch(0.17 0.04 295 / 0.7);
-  --card-foreground: oklch(0.98 0.01 320);
-  --popover: oklch(0.16 0.05 295);
-  --popover-foreground: oklch(0.98 0.01 320);
+  --card: #131418;
+  --card-foreground: #f4f4f6;
+  --popover: #15161b;
+  --popover-foreground: #f4f4f6;
 
-  /* Hot pink primary */
-  --primary: oklch(0.68 0.28 5);
-  --primary-foreground: oklch(0.99 0.01 320);
+  /* Flat acid lime primary — zero gradients */
+  --primary: #d4ff00;
+  --primary-foreground: #0a0b0e;
 
-  /* Deep violet secondary */
-  --secondary: oklch(0.38 0.18 295);
-  --secondary-foreground: oklch(0.98 0.01 320);
+  /* Deep dark secondary */
+  --secondary: #1c1e24;
+  --secondary-foreground: #f4f4f6;
 
-  --muted: oklch(0.22 0.04 295);
-  --muted-foreground: oklch(0.72 0.04 295);
+  --muted: #18191f;
+  --muted-foreground: #9494a3;
 
-  --accent: oklch(0.55 0.25 320);
-  --accent-foreground: oklch(0.99 0.01 320);
+  --accent: #d4ff00;
+  --accent-foreground: #0a0b0e;
 
-  --destructive: oklch(0.65 0.27 25);
-  --destructive-foreground: oklch(0.99 0.01 320);
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
 
-  --border: oklch(0.98 0.01 320 / 0.08);
-  --input: oklch(0.98 0.01 320 / 0.06);
-  --ring: oklch(0.68 0.28 5);
+  --border: rgba(244, 244, 246, 0.12);
+  --input: rgba(244, 244, 246, 0.08);
+  --ring: #d4ff00;
 
   /* Brand tokens */
-  --rizz-pink: oklch(0.68 0.28 5);
-  --rizz-violet: oklch(0.45 0.25 295);
-  --rizz-cyan: oklch(0.78 0.18 200);
-  --rizz-glow: oklch(0.68 0.28 5 / 0.55);
-  --surface-bar: rgba(13, 10, 20, 0.93);
-  --surface-bubble: rgba(28, 23, 38, 0.96);
+  --rizz-lime: #d4ff00;
+  --rizz-pink: #d4ff00;
+  --rizz-violet: #1c1e24;
+  --rizz-cyan: #38bdf8;
+  --rizz-glow: transparent;
+  --surface-bar: #131418;
+  --surface-bubble: #17181e;
 
-  /* Chat rhythm. Every spacing value a message uses lives here, so the whole
-     list can be re-tuned from one place — Discord's numbers: ~3px between two
-     lines from the same person, ~18px between groups from different people. */
+  /* Chat rhythm */
   --chat-gap-same: 3px;
   --chat-gap-group: 18px;
   --chat-gap-separator: 20px;
@@ -111,62 +111,54 @@
   --chat-media-gap: 8px;
   --chat-avatar: 2.25rem;
 
-  /* Chat author-name palette. Every value clears 4.5:1 against --surface-bubble
-     and --background, so a name is never the default link-blue on dark. */
-  --chat-name-1: oklch(0.80 0.16 20);
-  --chat-name-2: oklch(0.82 0.15 75);
-  --chat-name-3: oklch(0.83 0.16 145);
-  --chat-name-4: oklch(0.82 0.13 200);
-  --chat-name-5: oklch(0.78 0.14 265);
-  --chat-name-6: oklch(0.80 0.15 320);
+  /* Chat author-name palette */
+  --chat-name-1: #e2e8f0;
+  --chat-name-2: #facc15;
+  --chat-name-3: #4ade80;
+  --chat-name-4: #38bdf8;
+  --chat-name-5: #a78bfa;
+  --chat-name-6: #f472b6;
 
-  --gradient-primary: linear-gradient(135deg, var(--rizz-pink), var(--rizz-violet));
-  --gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.68 0.28 5 / 0.35), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.45 0.25 295 / 0.45), transparent 65%),
-    radial-gradient(ellipse 60% 50% at 50% 100%, oklch(0.55 0.25 320 / 0.3), transparent 70%);
-  --gradient-text: linear-gradient(135deg, oklch(0.85 0.18 5), oklch(0.78 0.18 320), oklch(0.78 0.18 200));
-  --shadow-glow: 0 0 40px -8px var(--rizz-glow);
-  --shadow-glow-lg: 0 0 80px -10px oklch(0.68 0.28 5 / 0.7), 0 0 120px -20px oklch(0.45 0.25 295 / 0.5);
+  --gradient-primary: #d4ff00;
+  --gradient-aurora: none;
+  --gradient-text: #f4f4f6;
+  --shadow-glow: none;
+  --shadow-glow-lg: none;
 
-  --chart-1: oklch(0.68 0.28 5);
-  --chart-2: oklch(0.55 0.25 320);
-  --chart-3: oklch(0.45 0.25 295);
-  --chart-4: oklch(0.78 0.18 200);
-  --chart-5: oklch(0.85 0.18 90);
+  --chart-1: #d4ff00;
+  --chart-2: #38bdf8;
+  --chart-3: #facc15;
+  --chart-4: #4ade80;
+  --chart-5: #f472b6;
 
-  --sidebar: oklch(0.15 0.04 295);
-  --sidebar-foreground: oklch(0.98 0.01 320);
-  --sidebar-primary: oklch(0.68 0.28 5);
-  --sidebar-primary-foreground: oklch(0.99 0.01 320);
-  --sidebar-accent: oklch(0.22 0.06 295);
-  --sidebar-accent-foreground: oklch(0.98 0.01 320);
-  --sidebar-border: oklch(0.98 0.01 320 / 0.08);
-  --sidebar-ring: oklch(0.68 0.28 5);
+  --sidebar: #101115;
+  --sidebar-foreground: #f4f4f6;
+  --sidebar-primary: #d4ff00;
+  --sidebar-primary-foreground: #0a0b0e;
+  --sidebar-accent: #1c1d23;
+  --sidebar-accent-foreground: #f4f4f6;
+  --sidebar-border: rgba(244, 244, 246, 0.1);
+  --sidebar-ring: #d4ff00;
 
-  /* ---------- Forums ----------
-     A forum is a whole product surface — hero, filter bar, cards, threads,
-     composer, admin preview — so its look lives in tokens too. Change a forum's
-     radius, gap, shadow or accent here and every forum screen follows, the same
-     way chat rhythm and the feed cards are tuned from one place. */
-  --forum-radius: 16px;
-  --forum-radius-lg: 22px;
-  --forum-radius-sm: 10px;
+  /* ---------- Forums ---------- */
+  --forum-radius: 12px;
+  --forum-radius-lg: 16px;
+  --forum-radius-sm: 8px;
   --forum-gap: 14px;
   --forum-pad: 18px;
   --forum-font-scale: 1;
   --forum-line: 1.6;
-  --forum-surface: oklch(0.19 0.035 295 / 0.92);
-  --forum-surface-raised: oklch(0.23 0.04 295 / 0.95);
-  --forum-surface-sunken: oklch(0.14 0.03 295 / 0.85);
-  --forum-border: oklch(0.98 0.01 320 / 0.1);
-  --forum-shadow: 0 16px 40px -26px oklch(0.03 0.02 295 / 0.85), 0 2px 6px -4px rgb(0 0 0 / 0.45);
-  --forum-shadow-hover: 0 24px 54px -28px oklch(0.03 0.02 295 / 0.95), 0 0 0 1px oklch(0.98 0.01 320 / 0.08);
-  --forum-accent: var(--rizz-pink);
-  --forum-accent-soft: oklch(0.68 0.28 5 / 0.16);
+  --forum-surface: #14151a;
+  --forum-surface-raised: #1a1c22;
+  --forum-surface-sunken: #0e0f13;
+  --forum-border: rgba(244, 244, 246, 0.12);
+  --forum-shadow: none;
+  --forum-shadow-hover: none;
+  --forum-accent: #d4ff00;
+  --forum-accent-soft: rgba(212, 255, 0, 0.12);
   --forum-title-font: var(--font-display);
   --forum-body-font: var(--font-sans);
-  /* State colours a card renders: pinned, locked, solved, archived. */
-  --forum-pinned: oklch(0.87 0.17 88);
+  --forum-pinned: #d4ff00;
   --forum-locked: oklch(0.8 0.03 295);
   --forum-solved: oklch(0.8 0.19 152);
   --forum-archived: oklch(0.7 0.02 295);
@@ -314,6 +306,8 @@
 @layer base {
   html {
     color-scheme: dark;
+    background-color: #0a0b0e;
+    background-color: var(--background);
   }
 
   * {
@@ -321,16 +315,18 @@
   }
 
   body {
-    background-color: var(--color-background);
+    background-color: #0a0b0e;
+    background-color: var(--background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(ellipse 90% 60% at 10% -10%, oklch(0.68 0.28 5 / 0.18), transparent 60%),
-      radial-gradient(ellipse 70% 50% at 100% 30%, oklch(0.45 0.25 295 / 0.22), transparent 65%),
-      radial-gradient(ellipse 60% 50% at 50% 110%, oklch(0.55 0.25 320 / 0.18), transparent 70%);
-    background-attachment: fixed;
+    background-image: none !important;
     min-height: 100dvh;
+  }
+
+  a, a:visited {
+    color: inherit;
+    text-decoration: inherit;
   }
 
   h1, h2, h3, h4, .font-display {
@@ -339,50 +335,55 @@
   }
 
   ::selection {
-    background: var(--rizz-pink);
+    background: var(--primary);
     color: var(--primary-foreground);
   }
 }
 
 @layer utilities {
   .text-gradient {
-    background: var(--gradient-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--foreground);
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
   }
-  .bg-gradient-primary { background-image: var(--gradient-primary); }
-  .bg-aurora { background-image: var(--gradient-aurora); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-glow-lg { box-shadow: var(--shadow-glow-lg); }
+  .bg-gradient-primary {
+    background-color: var(--primary);
+    background-image: none;
+    color: var(--primary-foreground);
+  }
+  .bg-aurora { background-image: none; }
+  .shadow-glow { box-shadow: none; }
+  .shadow-glow-lg { box-shadow: none; }
   .glass {
-    background: oklch(0.18 0.04 295 / 0.88);
-    border: 1px solid oklch(0.98 0.01 320 / 0.08);
+    background: var(--card);
+    border: 1px solid var(--border);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .glass-strong {
-    background: var(--surface-bar);
-    backdrop-filter: blur(20px) saturate(130%);
-    -webkit-backdrop-filter: blur(20px) saturate(130%);
-    border: 1px solid oklch(0.98 0.01 320 / 0.1);
+    background: var(--card);
+    border: 1px solid var(--border);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .ring-glow {
-    box-shadow: 0 0 0 2px var(--rizz-pink), 0 0 20px var(--rizz-glow);
+    box-shadow: 0 0 0 2px var(--ring);
   }
   .animate-pulse-glow {
-    animation: pulse-glow 2.4s ease-in-out infinite;
+    animation: none;
   }
   .animate-shimmer {
     background-size: 200% 100%;
     animation: shimmer 3s linear infinite;
   }
   .animate-float {
-    animation: float 6s ease-in-out infinite;
+    animation: none;
   }
 }
 .chat-bar {
   background: var(--surface-bar);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  border-bottom: 1px solid var(--border);
 }
 .chat-bubble {
   backdrop-filter: none !important;

@@ -2,16 +2,16 @@
   <title>Peeking</title>
   <path d="M40 70 L44 28 L76 60 Z" fill="#12101A" />
   <path d="M120 70 L116 28 L84 60 Z" fill="#12101A" />
-  <path d="M47 66 L50 38 L69 60 Z" fill="#8B72FF" />
-  <path d="M113 66 L110 38 L91 60 Z" fill="#8B72FF" />
+  <path d="M47 66 L50 38 L69 60 Z" fill="#B8E600" />
+  <path d="M113 66 L110 38 L91 60 Z" fill="#B8E600" />
   <ellipse cx="80" cy="88" rx="45" ry="39" fill="#12101A" />
   <circle cx="62" cy="84" r="11.5" fill="#FFFFFF" />
   <circle cx="98" cy="84" r="11.5" fill="#FFFFFF" />
   <circle cx="62" cy="85" r="5.2" fill="#12101A" />
   <circle cx="98" cy="85" r="5.2" fill="#12101A" />
-  <path d="M73 100h14l-7 8z" fill="#8B72FF" />
-  <path d="M36 96L20 100M36 105l-16 6M124 96l16 4M124 105l16 6" stroke="#8B72FF" stroke-width="3.6" stroke-linecap="round" />
+  <path d="M73 100h14l-7 8z" fill="#B8E600" />
+  <path d="M36 96L20 100M36 105l-16 6M124 96l16 4M124 105l16 6" stroke="#B8E600" stroke-width="3.6" stroke-linecap="round" />
   <ellipse cx="54" cy="113" rx="15" ry="10" fill="#12101A" />
   <ellipse cx="106" cy="113" rx="15" ry="10" fill="#12101A" />
-  <rect x="12" y="118" width="136" height="15" rx="7.5" fill="#6C4BFF" />
+  <rect x="12" y="118" width="136" height="15" rx="7.5" fill="#D4FF00" />
 </svg>

@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },
       { name: "author", content: "RIZZ" },
-      { name: "theme-color", content: "#ff2d92" },
+      { name: "theme-color", content: "#0a0b0d" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
       { property: "og:description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { property: "og:type", content: "website" },
@@ -110,7 +110,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Syne:wght@600;700;800&display=swap",
       },
       {
         rel: "stylesheet",
