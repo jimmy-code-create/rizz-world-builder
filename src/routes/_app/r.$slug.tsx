@@ -66,6 +66,7 @@ import { flushDueScheduledMessages } from "@/lib/realm-schedule";
 import { isMusicCommand } from "@/lib/music";
 import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
+import { emojiTextClass } from "@/lib/text-size";
 import { RealmForum } from "@/components/forum/RealmForum";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift, forum: MessagesSquare };
@@ -1310,7 +1311,7 @@ function RealmPage() {
                         ]),
                   ]}
                 >
-                  <div className={`realm-message__body select-none touch-manipulation ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
+                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "comment") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
@@ -1321,7 +1322,7 @@ function RealmPage() {
                                 src={emojiByName.get(part.name)}
                                 alt={part.name}
                                 title={`:${part.name}:`}
-                                className="inline-block h-5 w-5 align-middle"
+                                className="inline-block h-7 w-7 align-middle mx-0.5 object-contain"
                               />
                             ) : (
                               renderCaptionWithTags(part.text).map((p, pi) =>

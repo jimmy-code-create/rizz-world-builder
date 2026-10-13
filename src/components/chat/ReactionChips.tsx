@@ -20,7 +20,7 @@ export type { ReactionPulse };
  * show, then a "+N" chip opens the full list.
  */
 const MAX_VISIBLE_CHIPS = 4;
-const LONG_PRESS_MS = 420;
+const LONG_PRESS_MS = 320;
 
 /**
  * Fires a burst over a message, used by double tap. Pass the tap's viewport
@@ -157,6 +157,9 @@ function ReactionChip({
         pressTimer.current = window.setTimeout(() => {
           pressTimer.current = null;
           longPressed.current = true;
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            try { navigator.vibrate(35); } catch {}
+          }
           onLongPress();
         }, LONG_PRESS_MS);
       }}

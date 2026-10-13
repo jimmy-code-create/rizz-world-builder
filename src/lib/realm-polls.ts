@@ -144,3 +144,33 @@ export function parsePollDraft(text: string): { question: string; options: strin
   if (!question || options.length < 2) return null;
   return { question, options };
 }
+
+export type RealmPollVoter = {
+  user_id: string;
+  option_index: number;
+  user: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+export async function fetchRealmPollVoters(pollId: string): Promise<RealmPollVoter[]> {
+  const { data: rawVotes } = await supabase
+    .from("realm_poll_votes" as any)
+    .select("user_id, option_index")
+    .eq("poll_id", pollId);
+  if (!rawVotes || rawVotes.length === 0) return [];
+  const userIds = [...new Set(rawVotes.map((v: any) => v.user_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .in("id", userIds);
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return rawVotes.map((v: any) => ({
+    user_id: v.user_id,
+    option_index: v.option_index,
+    user: profileMap.get(v.user_id) ?? null,
+  }));
+}

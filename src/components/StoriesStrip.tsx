@@ -89,15 +89,19 @@ export function StoriesStrip() {
     }
     const rawStories = (data ?? []) as unknown as Story[];
     if (user) {
-      // Fetch accounts that follow the current user (to support 'following' visibility where author follows viewer)
-      const { data: authorsFollowingMe } = await supabase
-        .from("follows")
-        .select("follower_id")
-        .eq("following_id", user.id);
+      // Fetch who I am following and who follows me in parallel
+      const [{ data: myFollowings }, { data: authorsFollowingMe }] = await Promise.all([
+        supabase.from("follows").select("following_id").eq("follower_id", user.id),
+        supabase.from("follows").select("follower_id").eq("following_id", user.id),
+      ]);
+
+      const followingIds = new Set((myFollowings ?? []).map((r: { following_id: string }) => r.following_id));
       const followingMeSet = new Set((authorsFollowingMe ?? []).map((r: { follower_id: string }) => r.follower_id));
 
+      // Home page feed only shows stories from accounts we follow (plus our own)
       const filtered = rawStories.filter((s) => {
         if (s.author_id === user.id) return true;
+        if (!followingIds.has(s.author_id)) return false;
         if (s.visibility === "following") {
           return followingMeSet.has(s.author_id);
         }
@@ -105,7 +109,7 @@ export function StoriesStrip() {
       });
       setStories(filtered);
     } else {
-      setStories(rawStories.filter((s) => s.visibility === "public"));
+      setStories([]);
     }
     setLoading(false);
   }, [user]);
