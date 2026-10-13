@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BarChart3, Check, Clock } from "lucide-react";
-import { fetchPoll, votePoll } from "@/lib/polls";
+import { BarChart3, Check, Clock, Users } from "lucide-react";
+import { fetchPoll, fetchPollVoters, votePoll } from "@/lib/polls";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function closesIn(iso: string | null) {
   if (!iso) return null;
@@ -18,9 +21,18 @@ function closesIn(iso: string | null) {
 export function PollBlock({ postId }: { postId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [votersOpen, setVotersOpen] = useState(false);
+
   const poll = useQuery({
     queryKey: ["poll", postId, user?.id],
     queryFn: () => fetchPoll(postId, user?.id),
+  });
+
+  const voters = useQuery({
+    queryKey: ["poll-voters", poll.data?.id],
+    queryFn: () => fetchPollVoters(poll.data!.id),
+    enabled: votersOpen && !!poll.data?.id,
+    staleTime: 15_000,
   });
 
   const vote = useMutation({
@@ -125,7 +137,18 @@ export function PollBlock({ postId }: { postId: string }) {
         })}
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5 text-[10px] font-medium text-muted-foreground">
-        <span className="tabular-nums">{p.total_votes.toLocaleString()} {p.total_votes === 1 ? "vote" : "votes"}</span>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums">{p.total_votes.toLocaleString()} {p.total_votes === 1 ? "vote" : "votes"}</span>
+          {p.total_votes > 0 && (
+            <button
+              type="button"
+              onClick={() => setVotersOpen(true)}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--rizz-pink)] hover:underline"
+            >
+              <Users className="h-3 w-3" /> See who voted
+            </button>
+          )}
+        </div>
         {timeLabel && (
           <span className="inline-flex items-center gap-1.5">
             <Clock aria-hidden="true" className="h-3 w-3" />
@@ -133,6 +156,51 @@ export function PollBlock({ postId }: { postId: string }) {
           </span>
         )}
       </div>
+
+      <Dialog open={votersOpen} onOpenChange={setVotersOpen}>
+        <DialogContent className="max-w-md bg-card text-card-foreground border border-border rounded-2xl p-5">
+          <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
+            <Users className="h-4 w-4 text-[var(--rizz-pink)]" /> Who voted ({p.total_votes})
+          </DialogTitle>
+          <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {voters.isLoading && (
+              <p className="py-4 text-center text-xs text-muted-foreground animate-pulse">Loading votes…</p>
+            )}
+            {voters.data && p.options.map((opt) => {
+              const optVoters = (voters.data ?? []).filter((v) => v.option_id === opt.id);
+              return (
+                <div key={opt.id} className="rounded-xl border border-border/70 bg-muted/30 p-3">
+                  <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                    <span className="truncate flex-1 font-medium">{opt.label}</span>
+                    <span className="text-muted-foreground ml-2 text-[11px] font-bold tabular-nums">
+                      {optVoters.length} {optVoters.length === 1 ? "vote" : "votes"}
+                    </span>
+                  </div>
+                  {optVoters.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">No votes yet</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {optVoters.map((v) => (
+                        <div key={v.user_id} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card py-1 px-2 text-xs">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={v.user?.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[8px] font-bold">
+                              {(v.user?.username ?? "?").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate max-w-[110px] text-[11px] font-medium">
+                            {v.user?.display_name || v.user?.username || "Someone"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

@@ -68,3 +68,33 @@ export async function votePoll(pollId: string, optionId: string, userId: string)
     throw error;
   }
 }
+
+export type PollVoter = {
+  user_id: string;
+  option_id: string;
+  user: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+export async function fetchPollVoters(pollId: string): Promise<PollVoter[]> {
+  const { data: rawVotes } = await supabase
+    .from("post_poll_votes")
+    .select("user_id, option_id")
+    .eq("poll_id", pollId);
+  if (!rawVotes || rawVotes.length === 0) return [];
+  const userIds = [...new Set(rawVotes.map((v) => v.user_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .in("id", userIds);
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return rawVotes.map((v) => ({
+    user_id: v.user_id,
+    option_id: v.option_id,
+    user: profileMap.get(v.user_id) ?? null,
+  }));
+}
