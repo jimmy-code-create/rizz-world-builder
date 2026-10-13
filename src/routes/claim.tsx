@@ -106,7 +106,7 @@ function ClaimUsernamePage() {
     <AuthCard
       title="Claim your @"
       subtitle="Choose the username people will use to find you."
-      footer={<>Need a different account? <Link to="/" className="text-[var(--rizz-pink)] hover:underline font-medium">Back to RIZZ</Link></>}
+      footer={<>Need a different account? <Link to="/" className="text-primary hover:underline font-medium">Back to RIZZ</Link></>}
     >
       {errorKind && (
         <AuthErrorBanner kind={errorKind} rawMessage={errorMessage} onRetry={() => setErrorKind(null)} retryLabel="Try another username" />
@@ -130,8 +130,8 @@ function ClaimUsernamePage() {
                   className={cn(
                     "relative aspect-square overflow-hidden rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
-                      ? "ring-2 ring-[var(--rizz-pink)] ring-offset-2 ring-offset-background"
-                      : "ring-1 ring-white/10 hover:ring-white/35",
+                      ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                      : "ring-1 ring-border hover:ring-border/80",
                   )}
                 >
                   <img src={option.url} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -152,12 +152,16 @@ function ClaimUsernamePage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="h-11 pl-7 glass border-white/10"
+              className="h-11 pl-7 bg-muted/30 border-border focus-visible:ring-primary"
               placeholder="yourname"
             />
           </div>
         </div>
-        <Button type="submit" disabled={busy} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+        <Button
+          type="submit"
+          disabled={busy}
+          className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
           {busy ? "Saving…" : "Claim username"}
         </Button>
       </form>

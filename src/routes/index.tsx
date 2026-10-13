@@ -1,24 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Radio, Zap, Crown, Mic, Hash, Flame, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
-import { useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Volume2, Flame, Heart, Headphones, Hash, Radio, Users } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: LandingPage,
   head: () => ({
     meta: [
-      { title: "RIZZ — Your feed. Your server. Your world." },
-      { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
+      { title: "RIZZ — Your feed. Your server. All in one room." },
+      { name: "description", content: "Profiles that double as live servers. Post content, host voice rooms, and chat with your community in real time." },
     ],
   }),
 });
 
-function Index() {
+export function LandingPage() {
   const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const nav = useNavigate();
 
@@ -29,7 +26,7 @@ function Index() {
 
   if (user && profileError) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center bg-background text-foreground">
         <p className="text-sm text-muted-foreground">{profileError}</p>
         <Button variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
       </div>
@@ -37,145 +34,360 @@ function Index() {
   }
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
-      {/* Aurora orbs */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-[var(--rizz-pink)] opacity-30 blur-[120px] animate-float" />
-        <div className="absolute top-1/3 -right-40 h-[600px] w-[600px] rounded-full bg-[var(--rizz-violet)] opacity-40 blur-[140px]" style={{ animation: "float 8s ease-in-out infinite" }} />
-        <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[var(--accent)] opacity-25 blur-[100px]" />
-      </div>
-
-      {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 md:px-12">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-lg bg-gradient-primary blur-md opacity-70" />
-            <div className="relative h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold text-lg">
+    <div className="min-h-dvh bg-background text-foreground flex flex-col selection:bg-primary selection:text-primary-foreground">
+      {/* 1. TOP NAV */}
+      <header className="border-b border-border bg-background/95 sticky top-0 z-40 backdrop-blur-none">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md p-1">
+            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-display font-bold text-base">
               R
             </div>
-          </div>
-          <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
-        </Link>
-        <div className="flex items-center gap-2 md:gap-3">
-          <Link to="/login">
-            <Button variant="ghost" size="sm">Log in</Button>
+            <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
           </Link>
-          <Link to="/signup">
-            <Button size="sm" className="bg-gradient-primary border-0 shadow-glow hover:opacity-90">Join RIZZ</Button>
-          </Link>
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="relative z-10 px-6 pt-12 pb-24 md:pt-24 md:px-12 max-w-6xl mx-auto">
-        <motion.div
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="text-center"
-        >
-          <div className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium text-muted-foreground mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--rizz-pink)] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--rizz-pink)]" />
-            </span>
-            Now in early access
-          </div>
-
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tighter">
-            Your feed.
-            <br />
-            <span className="text-gradient">Your server.</span>
-            <br />
-            Your world.
-          </h1>
-
-          <p className="mt-8 mx-auto max-w-xl text-base md:text-lg text-muted-foreground leading-relaxed">
-            RIZZ fuses Instagram-style content with Discord-style live communities.
-            Every creator has a profile <em>and</em> a server. Following someone means joining their world.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 transition-colors">
+              Log in
+            </Link>
             <Link to="/signup">
-              <Button size="lg" className="bg-gradient-primary border-0 shadow-glow-lg hover:opacity-90 text-base px-8 h-12">
-                <span className="rizz-claim-cat mr-2" aria-hidden="true">
-                  <svg viewBox="0 0 32 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="rizz-cat-fill" x1="5" y1="4" x2="26" y2="25" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#FF6AB6" />
-                        <stop offset="0.55" stopColor="#D946EF" />
-                        <stop offset="1" stopColor="#8B5CF6" />
-                      </linearGradient>
-                      <linearGradient id="rizz-cat-stroke" x1="5" y1="4" x2="26" y2="24" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#FFD1EB" />
-                        <stop offset="0.55" stopColor="#FF67C2" />
-                        <stop offset="1" stopColor="#BCA2FF" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M7.4 11.1 6.1 4.7l6 3.2a10.5 10.5 0 0 1 7.8 0l6-3.2-1.3 6.4a8.5 8.5 0 0 1 1.2 4.3c0 5.3-4 8.5-9.8 8.5s-9.8-3.2-9.8-8.5c0-1.6.4-3.1 1.2-4.3Z"
-                      fill="url(#rizz-cat-fill)"
-                      fillOpacity=".26"
-                      stroke="url(#rizz-cat-stroke)"
-                      strokeWidth="1.7"
-                      strokeLinejoin="round"
-                    />
-                    <path d="M11.2 14.2h.02m9.56 0h.02" stroke="white" strokeWidth="2.3" strokeLinecap="round" />
-                    <path d="m15.1 16.1.9.7.9-.7-.9-.7-.9.7Z" fill="#FFE1F2" />
-                    <path d="M14.2 18c.6.8 1.2 1.1 1.8 1.1s1.2-.3 1.8-1.1" stroke="#FFD1EB" strokeWidth="1.1" strokeLinecap="round" />
-                    <path className="rizz-claim-cat-sparkle" d="M28 3.2v5m-2.5-2.5h5" stroke="#FFF1FA" strokeWidth="1.5" strokeLinecap="round" />
-                    <circle className="rizz-claim-cat-glint" cx="3.8" cy="17.5" r="1" fill="#7DEBFF" />
-                  </svg>
-                </span>
-                Claim your @
-              </Button>
-            </Link>
-            <Link to="/feed">
-              <Button size="lg" variant="outline" className="glass border-white/10 hover:bg-white/5 text-base px-8 h-12">
-                Explore the feed
+              <Button size="sm" className="bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 h-9 px-4">
+                Join RIZZ
               </Button>
             </Link>
           </div>
-        </motion.div>
+        </div>
+      </header>
 
-        {/* Feature grid */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={false}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="glass rounded-2xl p-6 hover:shadow-glow transition-all duration-500 group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center mb-4 group-hover:shadow-glow transition-shadow">
-                <f.icon className="h-5 w-5 text-[var(--rizz-pink)]" />
+      <main className="flex-1">
+        {/* 2. HERO (Asymmetric split layout) */}
+        <section className="border-b border-border py-16 sm:py-24 lg:py-28">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-start">
+              <div className="lg:col-span-7 space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  Live social without the algorithmic noise
+                </div>
+
+                <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.02]">
+                  The feed is dead.
+                  <br />
+                  Long live the room.
+                </h1>
+
+                <p className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
+                  Instagram gave you followers who never talk. Discord gave you servers nobody can find. RIZZ fuses feeds and live realms so your posts and your community live in the exact same room.
+                </p>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <Link to="/signup">
+                    <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground font-semibold rounded-lg h-12 px-7 text-base hover:bg-primary/90">
+                      Claim your @
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link to="/feed">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto border-border bg-card hover:bg-muted font-medium rounded-lg h-12 px-7 text-base text-foreground">
+                      Explore the live feed
+                    </Button>
+                  </Link>
+                </div>
+
+                <p className="text-xs text-muted-foreground pt-1">
+                  Early access · Free forever · No phone number required
+                </p>
               </div>
-              <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
-        </div>
 
-        {/* Tagline footer */}
-        <div className="mt-32 text-center">
-          <p className="font-display text-2xl md:text-4xl text-muted-foreground/60">
-            Built for creators who never log off.
-          </p>
+              {/* Side highlight: stark stat card */}
+              <div className="lg:col-span-5 border border-border bg-card rounded-2xl p-6 space-y-6">
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Network Status</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Online
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-3xl font-display font-bold text-foreground">48,200+</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Creators hosting active realms</p>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <p className="text-3xl font-display font-bold text-foreground">1.4M</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Vanishing drops claimed this month</p>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <p className="text-3xl font-display font-bold text-foreground">0</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Algorithm tricks or sponsored junk in feeds</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. PRODUCT SHOWCASE (Single large live UI demo crop) */}
+        <section className="border-b border-border py-16 sm:py-24 bg-card/40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="max-w-2xl mb-10">
+              <span className="text-xs font-mono uppercase tracking-widest text-primary font-bold">The Real Product</span>
+              <h2 className="font-display text-2xl sm:text-4xl font-bold tracking-tight mt-2 text-foreground">
+                Your profile is a server. Your posts start conversations.
+              </h2>
+            </div>
+
+            {/* Live Product Visual Crop */}
+            <div className="border border-border bg-card rounded-2xl overflow-hidden shadow-none">
+              {/* Fake window header */}
+              <div className="border-b border-border bg-muted/60 px-4 py-3 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-border" />
+                  <span className="h-3 w-3 rounded-full bg-border" />
+                  <span className="h-3 w-3 rounded-full bg-border" />
+                  <span className="ml-2 font-mono text-[11px] text-foreground font-medium">rizz.app/@maya</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-foreground">6 in voice</span>
+                </div>
+              </div>
+
+              {/* Product inside */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border">
+                {/* Left: The Post */}
+                <div className="lg:col-span-7 p-5 sm:p-7 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-secondary text-foreground grid place-items-center font-bold text-sm border border-border">
+                        M
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-sm text-foreground">Maya Lin</span>
+                          <span className="text-xs text-muted-foreground">@maya</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Sound designer & visual artist</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                      Rizz 942
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-foreground/90 leading-relaxed">
+                    Finished the modular patch from Thursday&apos;s stream. Dropping the raw stems & Ableton rack for the next 2 hours. Claim below before it resets:
+                  </p>
+
+                  {/* Audio drop player preview */}
+                  <div className="border border-border rounded-xl bg-muted/40 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Volume2 className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-foreground">patch_04_analog_drift.wav</span>
+                      </div>
+                      <span className="font-mono text-muted-foreground">01:42</span>
+                    </div>
+                    {/* Minimal flat waveform */}
+                    <div className="h-7 flex items-end gap-1 px-1">
+                      {[35, 60, 85, 40, 70, 95, 55, 30, 75, 100, 80, 45, 65, 90, 50, 70, 85, 40, 60, 30, 90, 75, 50, 65, 80, 40, 95, 60, 45, 70].map((h, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-sm transition-all"
+                          style={{
+                            height: `${h}%`,
+                            backgroundColor: i < 12 ? "var(--primary)" : "rgba(244, 244, 246, 0.2)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/60">
+                      <span className="text-muted-foreground">Drop active · 34/50 claimed</span>
+                      <span className="font-semibold text-primary">Claim zip (240MB)</span>
+                    </div>
+                  </div>
+
+                  {/* Reaction chips */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-foreground">
+                      <span>🔥</span>
+                      <span>38</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                      <span>🎧</span>
+                      <span>19</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                      <span>❤️</span>
+                      <span>44</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: The Live Realm Channel */}
+                <div className="lg:col-span-5 p-5 sm:p-6 bg-muted/20 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-border pb-3 mb-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                        <Hash className="h-4 w-4 text-primary" />
+                        <span>stems-chat</span>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">18 members active</span>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div>
+                        <span className="font-semibold text-primary mr-1.5">@kai:</span>
+                        <span className="text-foreground/80">that bass roll at 0:48 is insane, what filter are you using?</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-sky-400 mr-1.5">@maya:</span>
+                        <span className="text-foreground/80">analog ladder with 40% drive, stems have the dry track too!</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-amber-400 mr-1.5">@sam_d:</span>
+                        <span className="text-foreground/80">grabbed it 🙌 jumping in voice now</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Audio channel bar */}
+                  <div className="rounded-xl border border-border bg-card p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Radio className="h-4 w-4 text-primary animate-pulse" />
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Sound Lab Live</p>
+                        <p className="text-[10px] text-muted-foreground">6 in room · open mic</p>
+                      </div>
+                    </div>
+                    <span className="rounded-md bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1">
+                      Join room
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. PLAIN TEXT LIST (No cards! Full-width split with thin rules) */}
+        <section className="border-b border-border py-16 sm:py-24">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
+              <div className="lg:col-span-4 lg:sticky lg:top-24">
+                <span className="text-xs font-mono uppercase tracking-widest text-primary font-bold">Architecture</span>
+                <h2 className="font-display text-2xl sm:text-4xl font-bold tracking-tight mt-2 text-foreground">
+                  Built for creators who want conversations, not monologue feeds.
+                </h2>
+                <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+                  Every feature is built around real-time connection. No hidden algorithms deciding who gets to see what you post.
+                </p>
+              </div>
+
+              <div className="lg:col-span-8 divide-y divide-border border-y border-border">
+                <div className="py-6 sm:py-8 space-y-2">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-xs text-primary font-bold">01</span>
+                    <h3 className="font-display text-xl font-bold text-foreground">Realms built into profiles</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed pl-7">
+                    Every profile hosts live channels. When you share work, people discuss it right where it lives — no redirecting followers to an external chat server.
+                  </p>
+                </div>
+
+                <div className="py-6 sm:py-8 space-y-2">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-xs text-primary font-bold">02</span>
+                    <h3 className="font-display text-xl font-bold text-foreground">Drops with actual limits</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed pl-7">
+                    Share unreleased music, artwork, files, or secret links with true scarcity. Once the claim count or countdown timer ends, the drop locks.
+                  </p>
+                </div>
+
+                <div className="py-6 sm:py-8 space-y-2">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-xs text-primary font-bold">03</span>
+                    <h3 className="font-display text-xl font-bold text-foreground">Instant audio rooms</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed pl-7">
+                    Spontaneous voice channels attach directly to any post or realm. Tap once to drop in, listen, or speak without leaving your feed.
+                  </p>
+                </div>
+
+                <div className="py-6 sm:py-8 space-y-2">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-xs text-primary font-bold">04</span>
+                    <h3 className="font-display text-xl font-bold text-foreground">Reactions that show real people</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed pl-7">
+                    Hover or tap any reaction to see exactly who reacted. No anonymous bot counts or fake vanity metrics.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. COMMUNITY PROOF */}
+        <section className="border-b border-border py-16 sm:py-20 bg-card/30">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="max-w-3xl mx-auto text-center space-y-6">
+              <span className="text-xs font-mono uppercase tracking-widest text-primary font-bold">Community Voice</span>
+              <blockquote className="font-display text-xl sm:text-3xl font-medium tracking-tight text-foreground leading-snug">
+                “Every other app forces you to choose between screaming into an algorithmic void or managing ten separate Discord servers. RIZZ is the first place where posting feels like opening your door.”
+              </blockquote>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <div className="h-9 w-9 rounded-full bg-secondary border border-border grid place-items-center font-bold text-xs">
+                  E
+                </div>
+                <div className="text-left text-xs">
+                  <p className="font-semibold text-foreground">Elena Vance</p>
+                  <p className="text-muted-foreground">Beatmaker & producer · 18k realm members</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 6. FINAL CTA */}
+        <section className="py-20 sm:py-28">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6">
+            <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-foreground">
+              Claim your username before someone else does.
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base">
+              Early access is open. Choose a handle, drop your first post, and open your realm in seconds.
+            </p>
+            <div className="pt-2 flex justify-center">
+              <Link to="/signup">
+                <Button size="lg" className="bg-primary text-primary-foreground font-semibold rounded-lg h-12 px-8 text-base hover:bg-primary/90">
+                  Claim your @
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="border-t border-border py-8 text-xs text-muted-foreground">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-display font-bold text-xs">
+              R
+            </div>
+            <span className="font-display font-bold text-foreground">RIZZ</span>
+            <span>· Built for real communities</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/feed" className="hover:text-foreground">Feed</Link>
+            <Link to="/explore" className="hover:text-foreground">Explore</Link>
+            <Link to="/login" className="hover:text-foreground">Log in</Link>
+            <Link to="/signup" className="hover:text-foreground">Sign up</Link>
+          </div>
         </div>
-      </section>
+      </footer>
     </div>
   );
 }
-
-const features = [
-  { icon: Hash, title: "Realms in profiles", desc: "Every user has #vibes, #drops, #art-dump where followers chat in real time around posted content." },
-  { icon: Radio, title: "Live presence", desc: "Stories show who's active right now. Passive scrolling becomes live moments." },
-  { icon: Crown, title: "Rizz Score", desc: "Reputation that rewards engagement quality, consistency, and energy — not just follower counts." },
-  { icon: Zap, title: "Drop System", desc: "Creators drop exclusive files, links, or content that vanishes on a timer or claim limit." },
-  { icon: Mic, title: "Voice Rooms", desc: "Spontaneous audio spaces that attach to any post or realm." },
-  { icon: Flame, title: "Public reactions", desc: "Discord-style emoji on every post, visible to everyone. Pile on the energy." },
-  { icon: Users, title: "Badges", desc: "Earn glowing badges for streaks, drops, voice time, and being early. Wear them everywhere." },
-  { icon: Sparkles, title: "Built-in vibes", desc: "Dark, electric, expressive UI. Nothing is static — everything pulses, reacts, glows." },
-];

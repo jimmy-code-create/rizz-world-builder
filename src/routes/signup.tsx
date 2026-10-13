@@ -90,8 +90,8 @@ function SignupPage() {
   return (
     <AuthCard
       title="Claim your @"
-      subtitle="Free forever. Pick a username, drop in."
-      footer={<>Already have an account? <Link to="/login" className="text-[var(--rizz-pink)] hover:underline font-medium">Log in</Link></>}
+      subtitle="Choose your username to get started."
+      footer={<>Already have an account? <Link to="/login" className="text-primary hover:underline font-medium">Log in</Link></>}
     >
       {errKind && (
         <AuthErrorBanner
@@ -106,20 +106,45 @@ function SignupPage() {
           <Label htmlFor="username">Username</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-            <Input id="username" required value={username} onChange={(e) => setUsername(e.target.value)} className="h-11 pl-7 glass border-white/10" placeholder="yourname" />
+            <Input id="username" required value={username} onChange={(e) => setUsername(e.target.value)} className="h-11 pl-7 bg-muted/30 border-border focus-visible:ring-primary" placeholder="yourname" />
           </div>
         </div>
-        <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 glass border-white/10" /></div>
-        <div className="flex gap-2 rounded-xl border border-white/10 p-1">
-          <Button type="button" variant={mode === "password" ? "default" : "ghost"} className="h-9 flex-1" onClick={() => { setMode("password"); setOtpSent(false); }}>Password</Button>
-          <Button type="button" variant={mode === "otp" ? "default" : "ghost"} className="h-9 flex-1" onClick={() => setMode("otp")}>Email code</Button>
+        <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 bg-muted/30 border-border focus-visible:ring-primary" /></div>
+        <div role="tablist" aria-label="Sign-in method" className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted/60 p-1">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "password"}
+            className={`h-9 rounded-md text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              mode === "password" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => { setMode("password"); setOtpSent(false); }}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "otp"}
+            className={`h-9 rounded-md text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              mode === "otp" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setMode("otp")}
+          >
+            Email code
+          </button>
         </div>
         {mode === "password" ? (
-          <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 glass border-white/10" /></div>
+          <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 bg-muted/30 border-border focus-visible:ring-primary" /></div>
         ) : otpSent ? (
-          <div className="space-y-2"><Label htmlFor="otp">Email code</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.slice(0, 8))} className="h-11 glass border-white/10 tracking-[0.3em]" placeholder="123456" /></div>
+          <div className="space-y-2"><Label htmlFor="otp">Email code</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.slice(0, 8))} className="h-11 bg-muted/30 border-border tracking-[0.3em] focus-visible:ring-primary" placeholder="123456" /></div>
         ) : null}
-        <Button type={mode === "otp" && otpSent ? "button" : "submit"} onClick={mode === "otp" && otpSent ? verifyOtp : undefined} disabled={loading} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+        <Button
+          type={mode === "otp" && otpSent ? "button" : "submit"}
+          onClick={mode === "otp" && otpSent ? verifyOtp : undefined}
+          disabled={loading}
+          className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
           {loading ? "Please wait…" : mode === "otp" ? (otpSent ? "Verify code" : "Send email code") : "Create account"}
         </Button>
       </form>

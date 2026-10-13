@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
+import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Medal, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +45,7 @@ const sideTabs = [
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
   { to: "/effects", label: "Effects", icon: Sparkles },
-  { to: "/badges", label: "Badges", icon: Trophy },
+  { to: "/badges", label: "Badges", icon: Medal },
   { to: "/leaderboard", label: "Top", icon: Trophy },
   { to: "/bots", label: "Bots", icon: Bot },
 ] as const;
@@ -111,6 +111,23 @@ export function AppShell() {
     staleTime: 30_000,
   });
 
+  const unreadDms = useQuery({
+    queryKey: ["unread-dms-count", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const { count, error } = await supabase
+        .from("direct_messages" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .eq("read", false);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!user,
+    retry: false,
+    staleTime: 30_000,
+  });
+
   // A new ping chimes softly (never under Do not disturb, never when the
   // "Notification sounds" preference is off).
   const lastUnread = useRef<number | null>(null);
@@ -128,7 +145,7 @@ export function AppShell() {
   // refetching (and re-rendering) on a timer while nothing is happening.
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
+    const channel1 = supabase
       .channel(`unread-notifs-${user.id}`)
       .on(
         "postgres_changes",
@@ -136,7 +153,18 @@ export function AppShell() {
         () => { qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] }); },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const channel2 = supabase
+      .channel(`unread-dms-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "direct_messages", filter: `recipient_id=eq.${user.id}` },
+        () => { qc.invalidateQueries({ queryKey: ["unread-dms-count", user.id] }); },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel1);
+      supabase.removeChannel(channel2);
+    };
   }, [user, qc]);
 
   if (profileError) {
@@ -159,31 +187,38 @@ export function AppShell() {
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
   const unreadCount = unread.data ?? 0;
   const unreadBadge = unreadCount > 9 ? "9+" : String(unreadCount);
-  // A realm's own pages (/r/<slug>/settings) keep the Realms tab lit even
-  // though they do not live under /realms.
-  const isActive = (to: string) =>
-    path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/realms" && path.startsWith("/r/"));
+  const unreadDmsCount = unreadDms.data ?? 0;
+
+  // Active route matching: supports deep links, refresh, and nested routes.
+  const isActive = (to: string) => {
+    if (to === "/feed") return path === "/" || path === "/feed" || path.startsWith("/feed/");
+    if (to === "/dms") return path === "/dms" || path.startsWith("/dm/") || path.startsWith("/call/");
+    if (to === "/groups") return path === "/groups" || path.startsWith("/g/") || path.startsWith("/join/");
+    if (to === "/realms") return path === "/realms" || path.startsWith("/r/") || path.startsWith("/join-realm/");
+    if (to === "/bots") return path === "/bots" || path.startsWith("/bots");
+    if (to === "/settings") return path === "/settings" || path.startsWith("/settings/");
+    return path === to || path.startsWith(to + "/");
+  };
 
   return (
     <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
       {!isConversation && <Suspense fallback={null}><NightclubCanvas /></Suspense>}
       {/* Desktop sidebar */}
-      {!isConversation && <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
-        <Link to="/feed" className="flex items-center gap-2 mb-6 px-2 group" aria-label="RIZZ home">
-          <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow group-hover:scale-105 transition-transform">R</div>
-          <img src="/brand/rizz-cat-logo.svg" alt="" className="h-8 w-8 shrink-0" />
-          <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
+      {!isConversation && <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-sidebar border-r border-border px-4 py-6 z-30">
+        <Link to="/feed" className="flex items-center gap-2.5 mb-6 px-2 group" aria-label="RIZZ home">
+          <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center font-display font-bold text-base">R</div>
+          <span className="font-display text-xl font-bold tracking-tight text-foreground">RIZZ</span>
         </Link>
 
-        <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-gradient-primary border-0 shadow-glow rounded-xl h-10 gap-2">
-          <Plus className="h-5 w-5" /> New post
+        <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 rounded-lg h-10 gap-2 shadow-none border-0">
+          <Plus className="h-5 w-5 shrink-0" /> New post
         </Button>
 
         <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto -mx-1 px-1">
           <button
             type="button"
             onClick={() => setStatusOpen(true)}
-            className="flex min-h-[48px] items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
+            className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           >
             {presence.customStatus?.emoji ? (
               <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
@@ -195,45 +230,59 @@ export function AppShell() {
             <span className="font-medium text-sm flex-1 text-left">Status</span>
             <span className="text-xs">{statusShortLabel(presence.status)}</span>
           </button>
-          {sideTabs.map((t) => (
-            <Link
-              key={t.to}
-              to={t.to}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                isActive(t.to)
-                  ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
-            >
-              <t.icon className="h-5 w-5" />
-              <span className="font-medium text-sm">{t.label}</span>
-            </Link>
-          ))}
+          {sideTabs.map((t) => {
+            const active = isActive(t.to);
+            const badgeCount = t.to === "/dms" ? unreadDmsCount : 0;
+            return (
+              <Link
+                key={t.to}
+                to={t.to}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  active
+                    ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                <t.icon className={`h-5 w-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="flex-1 truncate">{t.label}</span>
+                {badgeCount > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center bg-primary text-primary-foreground">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
           <Link
             to="/notifications"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+            aria-current={isActive("/notifications") ? "page" : undefined}
+            className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isActive("/notifications")
-                ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
-            <Bell className="h-5 w-5" />
-            <span className="font-medium text-sm flex-1">Inbox</span>
-            {(unread.data ?? 0) > 0 && (
-              <span className="text-[10px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread.data}</span>
+            <Bell className={`h-5 w-5 shrink-0 ${isActive("/notifications") ? "text-primary" : "text-muted-foreground"}`} />
+            <span className="flex-1 truncate">Inbox</span>
+            {unreadCount > 0 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center bg-primary text-primary-foreground">
+                {unreadBadge}
+              </span>
             )}
           </Link>
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+            aria-current={path.startsWith("/u/") ? "page" : undefined}
+            className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               path.startsWith("/u/")
-                ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
-            <UserIcon className="h-5 w-5" />
-            <span className="font-medium text-sm">Profile</span>
+            <UserIcon className={`h-5 w-5 shrink-0 ${path.startsWith("/u/") ? "text-primary" : "text-muted-foreground"}`} />
+            <span className="flex-1 truncate">Profile</span>
           </Link>
         </nav>
 
@@ -241,33 +290,30 @@ export function AppShell() {
       </aside>}
 
       {/* Mobile top bar — brand, a full-width search field, then notifications
-          and your avatar (presence dot included). One tidy row on any phone;
-          the status picker lives in the avatar menu. */}
+          and your avatar (presence dot included). */}
       {!isConversation && <header
-        className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2"
+        className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-border px-3 pb-2"
         style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.5rem)" }}
       >
         {/* Brand mark as a plain home link. */}
         <Link
           to="/feed"
           aria-label="RIZZ home"
-          className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-[13px] bg-gradient-primary font-display text-sm font-bold text-primary-foreground shadow-glow ring-1 ring-inset ring-white/25 transition-transform active:scale-95"
+          className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary font-display text-sm font-bold text-primary-foreground shadow-none transition-transform active:scale-95"
         >
           R
-          <span aria-hidden className="pointer-events-none absolute -left-1 -top-3 h-7 w-3 rotate-[28deg] rounded-full bg-white/35 blur-[5px]" />
         </Link>
 
-        {/* One search field for the whole app. It opens the command palette,
-            which already searches people, realms, posts and DMs. */}
+        {/* One search field for the whole app. It opens the command palette */}
         <button
           type="button"
           onClick={openSearch}
           aria-label="Search RIZZ"
-          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] pl-3 pr-2 text-left text-[13px] text-muted-foreground backdrop-blur-sm transition-colors hover:bg-white/[0.08] active:bg-white/[0.11]"
+          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card pl-3 pr-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted/40"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate">Search people, realms, chats</span>
-          <kbd className="hidden shrink-0 rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 font-sans text-[10px] font-semibold min-[400px]:block">
+          <kbd className="hidden shrink-0 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 font-sans text-[10px] font-semibold min-[400px]:block">
             ⌘K
           </kbd>
         </button>
@@ -276,11 +322,11 @@ export function AppShell() {
           <Link
             to="/notifications"
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5 active:bg-white/10"
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg text-foreground transition-colors hover:bg-muted/50 active:bg-muted"
           >
             <Bell className="h-[19px] w-[19px]" />
             {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--rizz-pink)] px-1 text-[9px] font-bold leading-none text-white ring-2 ring-background">
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">
                 {unreadBadge}
               </span>
             )}
@@ -312,14 +358,14 @@ export function AppShell() {
       <VoiceCallBar />
 
       {/* Mobile bottom nav — 5 items, center FAB */}
-      {!isConversation && <nav className="md:hidden z-30 shrink-0 glass-strong border-t border-white/5 px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+      {!isConversation && <nav className="md:hidden z-30 shrink-0 bg-sidebar border-t border-border px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
         <div className="flex items-center justify-between gap-1">
           {mobileTabs.slice(0, 2).map((t) => (
             <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
           ))}
-          {!isReels && <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-5" aria-label="New post">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-primary shadow-glow flex items-center justify-center ring-4 ring-background">
-              <Plus className="h-5 w-5 text-primary-foreground" />
+          {!isReels && <button onClick={() => setComposerOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-4" aria-label="New post">
+            <div className="h-11 w-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center ring-4 ring-background">
+              <Plus className="h-5 w-5 shrink-0" />
             </div>
           </button>}
           {mobileTabs.slice(2).map((t) => (
@@ -361,11 +407,11 @@ export function AppShell() {
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className="mt-4 flex items-center gap-3 p-3 rounded-2xl glass border border-white/5"
+            className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-card border border-border"
           >
-            <Avatar className="h-12 w-12 ring-2 ring-[var(--rizz-pink)]/40">
+            <Avatar className="h-12 w-12 ring-2 ring-border">
               <AvatarImage src={profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+              <AvatarFallback className="bg-secondary text-foreground font-bold">{initial}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate">{profile?.display_name || profile?.username}</p>
@@ -379,45 +425,45 @@ export function AppShell() {
               <Link
                 key={t.to}
                 to={t.to}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
-                  isActive(t.to) ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors ${
+                  isActive(t.to) ? "bg-primary text-primary-foreground border-primary font-semibold" : "bg-card border-border hover:bg-muted/40"
                 }`}
               >
-                <t.icon className="h-5 w-5" />
+                <t.icon className="h-5 w-5 shrink-0" />
                 <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
               </Link>
             ))}
             <Link
               to="/notifications"
-              className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
-                isActive("/notifications") ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
+              className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors ${
+                isActive("/notifications") ? "bg-primary text-primary-foreground border-primary font-semibold" : "bg-card border-border hover:bg-muted/40"
               }`}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5 shrink-0" />
               <span className="text-[11px] font-medium">Inbox</span>
-              {(unread.data ?? 0) > 0 && (
-                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 rounded-full">{unread.data}</span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 rounded-full">{unreadCount}</span>
               )}
             </Link>
-            <Link to="/bookmarks" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
-              <Bookmark className="h-5 w-5" />
+            <Link to="/bookmarks" className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border hover:bg-muted/40">
+              <Bookmark className="h-5 w-5 shrink-0" />
               <span className="text-[11px] font-medium">Saved</span>
             </Link>
-            <Link to="/settings" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
-              <Settings className="h-5 w-5" />
+            <Link to="/settings" className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border hover:bg-muted/40">
+              <Settings className="h-5 w-5 shrink-0" />
               <span className="text-[11px] font-medium">Settings</span>
             </Link>
-            <Link to="/settings/appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
-              <Palette className="h-5 w-5" />
+            <Link to="/settings/appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border hover:bg-muted/40">
+              <Palette className="h-5 w-5 shrink-0" />
               <span className="text-[11px] font-medium">Theme</span>
             </Link>
           </div>
 
           <button
             onClick={() => { setMoreOpen(false); signOut(); }}
-            className="mt-4 w-full flex items-center justify-center gap-2 p-3 rounded-2xl glass border border-destructive/30 text-destructive font-medium text-sm"
+            className="mt-4 w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-card border border-destructive/30 text-destructive font-medium text-sm hover:bg-destructive/10"
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-4 w-4 shrink-0" /> Sign out
           </button>
         </SheetContent>
       </Sheet>
@@ -439,11 +485,15 @@ export function AppShell() {
 
 function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
   return (
-    <Link to={to} className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 py-1.5">
-      <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-[var(--rizz-pink)]/15" : ""}`}>
-        <Icon className={`h-5 w-5 ${active ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`} />
+    <Link
+      to={to}
+      aria-current={active ? "page" : undefined}
+      className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+    >
+      <div className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${active ? "bg-primary/10" : ""}`}>
+        <Icon className={`h-5 w-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
       </div>
-      <span className={`text-[10px] font-medium ${active ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`}>{label}</span>
+      <span className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</span>
     </Link>
   );
 }
@@ -473,9 +523,9 @@ function ProfileMenu({
           aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
           className={`relative flex items-center gap-3 transition-colors ${compact ? "h-10 w-10 justify-center rounded-full hover:bg-white/5 active:bg-white/10" : "p-2 rounded-xl hover:bg-white/5 w-full"}`}
         >
-          <Avatar className={compact ? "h-8 w-8 ring-2 ring-white/15" : "h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40"}>
+          <Avatar className={compact ? "h-8 w-8 ring-2 ring-border" : "h-9 w-9 ring-2 ring-border"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-secondary text-foreground font-bold">{initial}</AvatarFallback>
           </Avatar>
           {!compact && (
             <div className="flex-1 text-left min-w-0">

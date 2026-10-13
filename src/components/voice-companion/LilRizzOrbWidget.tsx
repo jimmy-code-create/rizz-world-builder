@@ -68,6 +68,7 @@ export function LilRizzOrbWidget({
 }: LilRizzWidgetProps) {
   const [message, setMessage] = useState("");
   const [justSpoke, setJustSpoke] = useState(false);
+  const [hasOverlay, setHasOverlay] = useState(false);
   const conversationRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,18 @@ export function LilRizzOrbWidget({
   const listening = status === "listening";
   const thinking = status === "thinking";
   const speaking = status === "speaking";
+
+  useEffect(() => {
+    const checkOverlay = () => {
+      const openDialog = document.querySelector('[role="dialog"][data-state="open"], [data-radix-portal] [role="dialog"], [data-state="open"].sheet-content, [data-side="bottom"][data-state="open"]');
+      const bodyLocked = document.body.hasAttribute("data-scroll-locked") || document.body.style.pointerEvents === "none";
+      setHasOverlay(!!openDialog || bodyLocked);
+    };
+    const observer = new MutationObserver(checkOverlay);
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+    checkOverlay();
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (status !== "speaking") return;
@@ -493,15 +506,19 @@ function DraggableBubble({
       onPointerUp={onPointerUp}
       onContextMenu={(event) => event.preventDefault()}
       style={{ left: pos.x, top: pos.y, touchAction: "none" }}
-      className="fixed z-[60] h-16 w-16 select-none rounded-full border border-pink-300/30 bg-[#1a1224]/92 shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_30px_rgba(255,45,146,.28)] backdrop-blur-xl transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_38px_rgba(255,45,146,.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      className={`fixed z-20 h-14 w-14 select-none rounded-full border border-border bg-card shadow-lg transition-all duration-150 grid place-items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        hasOverlay ? "opacity-0 pointer-events-none scale-90" : "opacity-100 hover:border-primary"
+      }`}
     >
       {listening && (
-        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border border-pink-400/40 motion-reduce:animate-none" />
+        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border border-primary/50 motion-reduce:animate-none" />
       )}
       {isHandsFree && (
-        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#1a1224] bg-cyan-300" />
+        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
       )}
-      <CatAvatar className="h-full w-full p-1.5" mood={mood} mouthRef={mouthRef} faceRef={faceRef} />
+      <div className="grid h-10 w-10 shrink-0 place-items-center">
+        <CatAvatar className="h-9 w-9 shrink-0 block m-0" mood={mood} mouthRef={mouthRef} faceRef={faceRef} />
+      </div>
     </button>
   );
 }
@@ -529,7 +546,7 @@ function CatAvatar({
     <svg
       aria-hidden="true"
       viewBox="0 0 48 48"
-      className={`${className} drop-shadow-[0_2px_8px_rgba(255,45,146,.2)]`}
+      className={className}
     >
       <defs>
         <linearGradient
@@ -540,8 +557,8 @@ function CatAvatar({
           y2="43"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#553267" />
-          <stop offset="1" stopColor="#211629" />
+          <stop stopColor="#1e2026" />
+          <stop offset="1" stopColor="#12101a" />
         </linearGradient>
         <linearGradient
           id="lil-rizz-inner-ear"
@@ -551,8 +568,8 @@ function CatAvatar({
           y2="22"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#ff9acb" />
-          <stop offset="1" stopColor="#c56ae8" />
+          <stop stopColor="#d4ff00" />
+          <stop offset="1" stopColor="#b8e600" />
         </linearGradient>
       </defs>
       {/* Ears perk up when listening/surprised. */}

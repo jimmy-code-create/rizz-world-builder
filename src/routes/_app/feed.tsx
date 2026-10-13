@@ -132,7 +132,7 @@ function FeedPage() {
             <Button
               type="button"
               onClick={focusComposer}
-              className="h-11 min-w-0 flex-1 gap-2 border-0 bg-gradient-primary text-primary-foreground shadow-glow sm:flex-none sm:px-6"
+              className="h-11 min-w-0 flex-1 gap-2 border-0 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-none sm:flex-none sm:px-6"
             >
               <Sparkles className="h-4 w-4" />
               <span className="truncate">Share something</span>
@@ -140,7 +140,7 @@ function FeedPage() {
             <Button
               asChild
               variant="outline"
-              className="h-11 gap-2 border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+              className="h-11 gap-2 border-border bg-card text-foreground hover:bg-muted"
             >
               <Link to="/reels">
                 <Film className="h-4 w-4" />
@@ -152,10 +152,10 @@ function FeedPage() {
               asChild
               variant="outline"
               size="icon"
-              className="h-11 w-11 shrink-0 border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+              className="h-11 w-11 shrink-0 grid place-items-center border-border bg-card text-foreground hover:bg-muted p-0"
             >
-              <Link to="/explore" aria-label="Explore RIZZ">
-                <Compass className="h-4 w-4" />
+              <Link to="/explore" aria-label="Explore RIZZ" className="grid h-full w-full place-items-center">
+                <Compass className="block h-4 w-4 shrink-0" />
               </Link>
             </Button>
           </div>
@@ -229,10 +229,9 @@ function FeedPage() {
         <button
           type="button"
           onClick={() => setVisible((v) => v + FEED_PAGE_SIZE)}
-          className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-3xl border border-white/10 glass text-sm font-semibold text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
+          className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-semibold text-muted-foreground transition-colors hover:border-border/80 hover:text-foreground"
         >
           Show {remaining > FEED_PAGE_SIZE ? FEED_PAGE_SIZE : remaining} more
-          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold">{remaining} left</span>
         </button>
       )}
 
