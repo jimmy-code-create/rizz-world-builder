@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeSafely } from "@/lib/realtime";
 import { useAuth } from "@/lib/auth";
 
 export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
@@ -89,14 +90,19 @@ function emitPresenceChange() {
 function subscribeToPresence(listener: PresenceListener) {
   presenceListeners.add(listener);
   if (!presenceChannel) {
-    presenceChannel = supabase
+    const channel = supabase
       .channel("user-presence")
       .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => {
         // Row level security applies here: an invisible status is never sent to
         // anyone but its owner.
         emitPresenceChange();
-      })
-      .subscribe();
+      });
+    // Teardown is asynchronous, so a listener arriving right after the last one
+    // left can be handed the channel that is still unsubscribing. Subscribing it
+    // again would throw "tried to subscribe multiple times" and take the route
+    // down with it; the channel is already live, so reuse it instead.
+    subscribeSafely(channel);
+    presenceChannel = channel;
   }
   return () => {
     presenceListeners.delete(listener);

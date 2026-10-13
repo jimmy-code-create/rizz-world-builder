@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchRealmBots, realmBotsKey } from "@/lib/bots";
 import { musicQueueKey, runMusicCommand, useMusicQueue, type QueueTrack } from "@/lib/music";
-import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+// Type-only: the props come from the provider instead of its context, so this
+// module no longer imports the provider at runtime (that cycle is avoidable and
+// the audio owner has no business reading the context it is rendered by).
+import type { ActiveCall } from "@/components/voice/VoiceCallProvider";
 
 /**
  * MUSIC BOT as a call participant.
@@ -68,12 +71,35 @@ export function useMusicBotInCall(): MusicBotState {
 }
 
 /**
+ * Contains MUSIC BOT so it can never blank a page again.
+ *
+ * The bot is an optional extra on top of a call: if its audio owner throws, the
+ * user should simply not have a singing bot, not an error screen. This is a
+ * safety net around the fix in `useMusicQueue`, not a substitute for it.
+ */
+export class MusicBotBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("MUSIC BOT in-call audio failed; continuing without it.", error);
+  }
+
+  render() {
+    if (this.state.failed) return null;
+    return this.props.children;
+  }
+}
+
+/**
  * Owns the bot's audio element and keeps it in sync with the channel queue.
  * Rendered by the voice provider, so it keeps playing when the call is
  * minimized, exactly like the other participants' audio.
  */
-export function MusicBotAudio() {
-  const { call } = useVoiceCallContext();
+export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
   const qc = useQueryClient();
   const realmId = call?.realmId ?? null;
   const roomId = call?.roomId ?? null;
@@ -132,13 +158,27 @@ export function MusicBotAudio() {
       update({ singing: false, blocked: false });
       return;
     }
-    if (audio.src !== track.preview_url) audio.src = track.preview_url;
-    audio.currentTime = 0;
-    endedRef.current = null;
-    void audio
-      .play()
-      .then(() => update({ singing: true, blocked: false }))
-      .catch(() => update({ singing: false, blocked: true }));
+    // Media element work throws in some browsers (a seek before metadata, a
+    // revoked blob URL). A bot that cannot sing must never take a page down, so
+    // every one of these calls is contained and reported as "blocked" instead.
+    try {
+      if (audio.src !== track.preview_url) audio.src = track.preview_url;
+      audio.currentTime = 0;
+      endedRef.current = null;
+    } catch (error) {
+      console.debug("MUSIC BOT could not load that preview", error);
+      update({ singing: false, blocked: true });
+      return;
+    }
+    try {
+      void audio
+        .play()
+        .then(() => update({ singing: true, blocked: false }))
+        .catch(() => update({ singing: false, blocked: true }));
+    } catch (error) {
+      console.debug("MUSIC BOT could not start playback", error);
+      update({ singing: false, blocked: true });
+    }
   }, [track?.id, track?.preview_url]);
 
   /**

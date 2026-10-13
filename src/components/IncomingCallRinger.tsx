@@ -8,6 +8,7 @@ import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
 import { isSelfDoNotDisturb } from "@/lib/presence";
+import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
 
 /** Vibration fallback for the ringtone — browsers without it simply stay silent. */
 function vibrateRing() {
@@ -75,16 +76,32 @@ export function IncomingCallRinger() {
   };
   const decline = () => {
     if (!call || !user) return;
-    const roomId = [user.id, call.fromId].sort().join("_");
-    const ch = supabase.channel(`call:${roomId}`, {
+    const meId = user.id;
+    const roomId = [meId, call.fromId].sort().join("_");
+    const topic = callTopic(roomId);
+
+    // Whoever already holds this topic (the call screen while it is open) gets
+    // the decline sent straight over their live channel: subscribing again would
+    // throw "tried to subscribe multiple times", and removing their channel
+    // afterwards would drop a call that is still running.
+    const existing = findJoinedChannel(supabase, topic);
+    if (existing) {
+      void existing
+        .send({ type: "broadcast", event: "declined", payload: { from: meId } })
+        .catch((error) => console.debug("Couldn't send the decline signal", error));
+      setCall(null);
+      return;
+    }
+
+    const ch = supabase.channel(topic, {
       config: { broadcast: { self: false, ack: false } },
     });
-    ch.subscribe((status) => {
+    subscribeSafely(ch, (status) => {
       if (status !== "SUBSCRIBED") return;
       void ch.send({
         type: "broadcast",
         event: "declined",
-        payload: { from: user.id },
+        payload: { from: meId },
       }).finally(() => {
         window.setTimeout(() => { void supabase.removeChannel(ch); }, 500);
       });

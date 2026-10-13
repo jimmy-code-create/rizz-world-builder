@@ -11,6 +11,7 @@ import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
 import { createVoiceProcessor, type VoiceProcessor } from "@/lib/audio-denoise";
 import { useCallWakeLock } from "@/lib/wake-lock";
+import { subscribeSafely } from "@/lib/realtime";
 
 export const Route = createFileRoute("/_app/call/$userId")({
   head: () => ({ meta: [{ title: "Call · RIZZ" }] }),
@@ -495,10 +496,14 @@ function CallPage() {
           tick();
         } catch { /* ignore */ }
 
-        await ch.subscribe(async (st) => {
+        // Tolerates the topic already being live on this client (the DM header's
+        // watcher or the ringer can hold it). In that case the channel is already
+        // joined, so the handlers above still receive offers, answers and ICE —
+        // only the fresh subscribe() call would throw.
+        subscribeSafely(ch, (st) => {
           if (st === "SUBSCRIBED") {
             setConnectionHint("Connected to call service. Waiting for the other person…");
-            await ch.track({ id: meId, at: Date.now() });
+            void ch.track({ id: meId, at: Date.now() });
           } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
             setConnectionHint("Could not connect to the call service.");
             setCallProblem("Check your internet connection. If the problem continues, the Realtime service may be unavailable.");

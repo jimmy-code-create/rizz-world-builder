@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { runBotCommand, type BotCommandResult } from "@/lib/bots";
@@ -44,6 +44,13 @@ export async function fetchMusicQueue(realmId: string, roomId: string | null): P
 /** Live queue for the channel on screen. */
 export function useMusicQueue(realmId: string | null | undefined, roomId: string | null | undefined, enabled = true) {
   const qc = useQueryClient();
+  // Every consumer gets its OWN realtime topic. supabase-js returns the existing
+  // channel for a repeated topic, and subscribing that instance a second time
+  // throws "tried to subscribe multiple times", which React escalates to the
+  // route error boundary. Two live consumers of the same queue are normal now
+  // (the channel's music panel and the in-call MUSIC BOT), so sharing a topic
+  // crashed the realm page the moment you joined voice.
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const query = useQuery({
     queryKey: musicQueueKey(realmId, roomId),
     enabled: enabled && !!realmId,
@@ -54,7 +61,7 @@ export function useMusicQueue(realmId: string | null | undefined, roomId: string
   useEffect(() => {
     if (!realmId || !enabled) return;
     const channel = supabase
-      .channel(`music-queue-${realmId}`)
+      .channel(`music-queue-${realmId}-${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "music_queue", filter: `realm_id=eq.${realmId}` },
@@ -62,7 +69,7 @@ export function useMusicQueue(realmId: string | null | undefined, roomId: string
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [realmId, roomId, enabled, qc]);
+  }, [realmId, roomId, enabled, qc, instanceId]);
 
   return query;
 }

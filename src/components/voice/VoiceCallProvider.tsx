@@ -25,7 +25,7 @@ import {
 } from "@/lib/voice";
 import { useVoiceCall } from "@/lib/voice-room-audio";
 import { VoiceCallAudio, VoiceCallView } from "@/components/voice/VoiceCallView";
-import { MusicBotAudio } from "@/components/voice/MusicBotInCall";
+import { MusicBotAudio, MusicBotBoundary } from "@/components/voice/MusicBotInCall";
 
 export type VoiceChannelRef = {
   id: string;
@@ -408,8 +408,11 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       {children}
       {/* Audio keeps playing while the view is minimized. */}
       <VoiceCallAudio />
-      {/* MUSIC BOT rides in the call: its audio element lives here too. */}
-      <MusicBotAudio />
+      {/* MUSIC BOT rides in the call: its audio element lives here too, inside a
+          boundary so a bot failure can never take the page down with it. */}
+      <MusicBotBoundary>
+        <MusicBotAudio call={call} />
+      </MusicBotBoundary>
       <VoiceCallView />
       <AlertDialog open={!!pendingSwitch} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
         <AlertDialogContent className="glass-strong border-white/10">

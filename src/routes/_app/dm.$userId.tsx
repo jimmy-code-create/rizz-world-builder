@@ -39,6 +39,8 @@ import { GifContent } from "@/components/GifContent";
 import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
 import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
 import { DmThreadRail } from "@/components/chat/DmThreadRail";
+import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
@@ -1254,23 +1256,40 @@ function usePeerInCall(peerId: string | undefined) {
       return;
     }
     const roomId = [selfId, peerId].sort().join("_");
-    const channel = supabase.channel(`call:${roomId}`, {
-      config: { broadcast: { self: false, ack: false }, presence: { key: `${selfId}:watcher` } },
-    });
+    const topic = callTopic(roomId);
     // The other participant's presence key is their user id; our own key is
     // suffixed so it never counts as a peer.
-    const readPresence = () => {
+    const readPresence = (channel: RealtimeChannel) => {
       const state = channel.presenceState() as Record<string, unknown>;
       return Object.keys(state).some((key) => key !== selfId && !key.startsWith(selfId));
     };
 
+    // The call screen and the incoming-call ringer use this same topic. Reading
+    // the live channel beats subscribing again: supabase-js would hand back that
+    // instance and throw on a second subscribe(), which used to take the whole
+    // page down. Presence handlers can be added to a joined channel, so this
+    // still works — and cleanup must NOT remove a channel we do not own.
+    const existing = findJoinedChannel(supabase, topic);
+    if (existing) {
+      const sync = () => setPeerInCall(readPresence(existing));
+      sync();
+      existing.on("presence", { event: "sync" }, sync);
+      existing.on("presence", { event: "join" }, sync);
+      existing.on("presence", { event: "leave" }, sync);
+      return;
+    }
+
+    const channel = supabase.channel(topic, {
+      config: { broadcast: { self: false, ack: false }, presence: { key: `${selfId}:watcher` } },
+    });
+
     channel
-      .on("presence", { event: "sync" }, () => setPeerInCall(readPresence()))
-      .on("presence", { event: "join" }, () => setPeerInCall(readPresence()))
-      .on("presence", { event: "leave" }, () => setPeerInCall(readPresence()))
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") setPeerInCall(readPresence());
-      });
+      .on("presence", { event: "sync" }, () => setPeerInCall(readPresence(channel)))
+      .on("presence", { event: "join" }, () => setPeerInCall(readPresence(channel)))
+      .on("presence", { event: "leave" }, () => setPeerInCall(readPresence(channel)));
+    subscribeSafely(channel, (status) => {
+      if (status === "SUBSCRIBED") setPeerInCall(readPresence(channel));
+    });
 
     return () => {
       void supabase.removeChannel(channel);

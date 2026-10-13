@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-13 — Fix: "This page didn't load" when joining a voice channel
+
+### What happened
+- Joining a voice channel on `/r/<slug>` crashed the route into the root error page ("This page didn't load").
+
+### Why (the actual cause)
+1. `useMusicQueue` subscribed to the realtime topic `music-queue-<realmId>`, and supabase-js keeps **one channel per topic per client** — a second `channel(topic)` call hands back the *existing* instance.
+2. That instance is already joined, so calling `subscribe()` on it throws `tried to subscribe multiple times. 'subscribe' can only be called a single time per channel instance`.
+3. The MUSIC BOT work added a **second live consumer** of that queue (the channel's music panel *and* the in-call bot), so the double subscribe happened exactly when a call started — inside a `useEffect`, which React escalates to the route error boundary. The whole page died instead of one feature failing.
+
+### Fix
+- `useMusicQueue` now gives every consumer its own topic (`music-queue-<realmId>-<instanceId>` via `useId`), so the panel, the queue sheet and the in-call bot never fight over one channel. This also removes the same latent crash when opening the Queue sheet while on a voice channel.
+- Added `src/lib/realtime.ts` with two helpers: `subscribeSafely` (a duplicate-topic subscribe is not fatal — the channel is already live and handlers attached before it still receive events) and `findJoinedChannel` (reuse a live channel and leave its cleanup alone).
+- Applied them to the other places where one client can hold the same topic twice: the DM header's "Call in progress" watcher, the incoming-call ringer's decline signal, the call screen's own subscribe, and the shared presence singleton (whose teardown is asynchronous, so a listener arriving right after the last one left could be handed a channel that was still closing).
+- `MusicBotBoundary` now wraps the bot's audio owner: the bot is an optional extra on top of a call, so if it ever does throw the user loses the singing bot, not the page.
+
+### How to confirm
+- Join a voice channel in a realm whose channel already has a track queued: the call opens full screen, the page stays up, and no "tried to subscribe multiple times" error appears in the console.
+- Open the Queue sheet while in the call, and hang up: neither action reloads the page.
+
 ## 2026-10-13 — Full-screen calls, MUSIC BOT in the call, Discord-style pickers
 
 ### Voice calls take the whole screen
