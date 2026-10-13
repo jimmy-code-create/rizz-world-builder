@@ -2,7 +2,9 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
+import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
+import { formatCount } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -527,7 +529,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
           </motion.span>
-          <span className="text-xs font-medium">{likeCount}</span>
+          <span className="text-xs font-medium">{formatCount(likeCount)}</span>
         </Button>
         <Button
           variant="ghost"
@@ -536,7 +538,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           className="gap-1.5 text-muted-foreground"
         >
           <MessageCircle className="h-5 w-5" />
-          <span className="text-xs font-medium">{post.comment_count}</span>
+          <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
         <Popover>
           <PopoverTrigger asChild>
@@ -912,19 +914,7 @@ function AuthorNameLink({ post }: { post: any }) {
       >
         <Nameplate name={name} slug={np?.slug} />
       </Link>
-      {post.author?.verified_creator && (
-        <span
-          role="img"
-          title="Verified Creator"
-          aria-label="Verified creator"
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-cyan-300/30 bg-gradient-to-r from-cyan-400/15 via-sky-400/10 to-violet-400/15 px-1.5 py-1 text-[10px] font-bold leading-none text-cyan-100 shadow-[0_0_12px_rgba(56,189,248,0.16)] backdrop-blur-sm"
-        >
-          <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-cyan-300/15 ring-1 ring-cyan-200/20">
-            <BadgeCheck className="h-3 w-3 text-cyan-200 drop-shadow-[0_0_4px_rgba(103,232,249,0.65)]" aria-hidden="true" />
-          </span>
-          Creator
-        </span>
-      )}
+      {post.author?.verified_creator && <VerifiedCreatorTag />}
     </div>
   );
 }

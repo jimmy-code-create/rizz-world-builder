@@ -67,12 +67,24 @@ export function MentionAutocomplete({
   useEffect(() => {
     if (query === null || hits.length === 0) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => (a + 1) % hits.length); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => (a - 1 + hits.length) % hits.length); }
+      // Only the composer's own text field is ours. A window-level listener used
+      // to swallow Enter and the arrow keys pressed anywhere else on the page
+      // while a half-typed mention sat in the composer.
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // stopPropagation matters: the composer sends on Enter, so picking with
+      // Enter without it posted the half-typed "@name" and wiped the composer.
+      const consume = () => { e.preventDefault(); e.stopPropagation(); };
+      if (e.key === "ArrowDown") { consume(); setActive((a) => (a + 1) % hits.length); }
+      else if (e.key === "ArrowUp") { consume(); setActive((a) => (a - 1 + hits.length) % hits.length); }
       else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        onPick(hits[active].username);
+        // Shift+Enter stays a newline in a textarea; only a plain pick consumes it.
+        if (e.shiftKey) return;
+        consume();
+        onPick(hits[Math.min(active, hits.length - 1)].username);
       } else if (e.key === "Escape") {
+        consume();
         setHits([]);
       }
     };
@@ -94,12 +106,16 @@ export function MentionAutocomplete({
   return (
     <div
       ref={popupRef}
+      role="listbox"
+      aria-label="Mention someone"
       className="absolute inset-x-0 bottom-full mb-2 z-50 glass-strong border border-white/10 rounded-2xl p-1 shadow-glow max-h-[200px] overflow-y-auto"
     >
       {hits.map((p, i) => (
         <button
           key={p.id}
           type="button"
+          role="option"
+          aria-selected={i === active}
           onMouseDown={(e) => { e.preventDefault(); onPick(p.username); }}
           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left ${i === active ? "bg-white/10" : "hover:bg-white/5"}`}
         >

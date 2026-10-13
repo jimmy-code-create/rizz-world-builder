@@ -17,12 +17,16 @@ export function SlashCommandMenu({
   onSelect,
   onHover,
   className = "",
+  emptyHint,
 }: {
   commands: RealmSlashCommand[];
   activeIndex: number;
   onSelect: (command: RealmSlashCommand) => void;
   onHover: (index: number) => void;
   className?: string;
+  /** Shown instead of the rows when nothing matches, so "nothing happens" never
+   *  reads as "the composer is broken". */
+  emptyHint?: string;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -31,7 +35,7 @@ export function SlashCommandMenu({
     node?.scrollIntoView({ block: "nearest" });
   }, [activeIndex, commands.length]);
 
-  if (!commands.length) return null;
+  if (!commands.length && !emptyHint) return null;
 
   return (
     <motion.div
@@ -45,6 +49,9 @@ export function SlashCommandMenu({
         <Sparkles className="h-3 w-3 text-[var(--rizz-pink)]" aria-hidden="true" />
         Bot commands
       </div>
+      {!commands.length && (
+        <p className="px-3 py-2.5 text-xs text-muted-foreground">{emptyHint}</p>
+      )}
       <ul
         ref={listRef}
         role="listbox"

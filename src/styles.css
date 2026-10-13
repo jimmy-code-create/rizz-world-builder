@@ -100,6 +100,15 @@
   --surface-bar: rgba(13, 10, 20, 0.93);
   --surface-bubble: rgba(28, 23, 38, 0.96);
 
+  /* Chat author-name palette. Every value clears 4.5:1 against --surface-bubble
+     and --background, so a name is never the default link-blue on dark. */
+  --chat-name-1: oklch(0.80 0.16 20);
+  --chat-name-2: oklch(0.82 0.15 75);
+  --chat-name-3: oklch(0.83 0.16 145);
+  --chat-name-4: oklch(0.82 0.13 200);
+  --chat-name-5: oklch(0.78 0.14 265);
+  --chat-name-6: oklch(0.80 0.15 320);
+
   --gradient-primary: linear-gradient(135deg, var(--rizz-pink), var(--rizz-violet));
   --gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.68 0.28 5 / 0.35), transparent 60%),
     radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.45 0.25 295 / 0.45), transparent 65%),
@@ -185,6 +194,13 @@
   --border: oklch(0.15 0.03 295 / 0.1);
   --surface-bar: rgb(255 255 255 / 0.93);
   --surface-bubble: rgb(255 255 255 / 0.96);
+  /* Same six names, darkened for the light surface (still 4.5:1). */
+  --chat-name-1: oklch(0.52 0.19 25);
+  --chat-name-2: oklch(0.50 0.13 60);
+  --chat-name-3: oklch(0.46 0.14 150);
+  --chat-name-4: oklch(0.50 0.12 220);
+  --chat-name-5: oklch(0.48 0.17 265);
+  --chat-name-6: oklch(0.50 0.18 330);
   color-scheme: light;
 }
 
@@ -282,7 +298,21 @@
   line-height: 1.4;
   letter-spacing: normal;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  /* `break-word` only — never `anywhere` or `break-all`. `anywhere` shrinks the
+     bubble's min-content width to a single glyph, which is what collapsed
+     short messages into a ~110px box that wrapped "Hey" as "He / y". */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+  /* Fit the content, cap at 82% of the list, keep a 44px tap target. */
+  width: fit-content;
+  max-width: min(82%, 34rem);
+  min-width: 2.75rem;
+}
+/* A long token inside a bubble must be allowed to shrink rather than push the
+   flex row past the bubble's max-width. */
+.message-bubble > * {
+  min-width: 0;
 }
 .message-bubble--outgoing {
   background: var(--gradient-primary);
@@ -294,15 +324,24 @@
   background: var(--surface-bubble);
   color: var(--foreground);
 }
-/* Unsent: a plain muted italic placeholder. The old inset accent stripe read as
-   a stray left border wrapped around the bubble. */
+/* Unsent: a plain muted italic placeholder with no bubble chrome at all — no
+   gradient, no border, no shadow. */
 .message-bubble--unsent {
-  border: 1px dashed color-mix(in srgb, var(--muted-foreground) 32%, transparent);
-  background: color-mix(in srgb, var(--surface-bubble) 62%, transparent);
+  border: none;
+  background: transparent;
   color: var(--muted-foreground);
   box-shadow: none;
   font-style: italic;
   opacity: 0.85;
+}
+/* An image-only message: the media block carries the surface, so the bubble
+   itself contributes no gradient, border, shadow or padding. */
+.message-bubble--media {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  min-width: 0;
 }
 /* Mentions must sit inline with zero added space: no padding, no margin, no
    inline-block. The padding that used to be here is what opened a gap either
@@ -319,6 +358,79 @@
 .chat-scroll {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+}
+
+/* ============ CHAT MESSAGES (Phase 1) ============ */
+
+/* Realm chat reads as Discord-style flat rows, not bubbles. */
+.realm-message {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.5rem;
+}
+.realm-message:hover {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+.realm-message__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+.realm-message__body a,
+.realm-message__body .mention-highlight {
+  overflow-wrap: break-word;
+}
+
+/* Chat media never sits inside a bubble: its own 16px radius, capped size, and
+   reserved space so the list does not jump while it loads. */
+.chat-media-frame {
+  position: relative;
+  display: flex;
+  width: fit-content;
+  max-width: min(75%, 26rem);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: transparent;
+}
+.chat-media {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 60dvh;
+  border-radius: 1rem;
+  object-fit: contain;
+  background: transparent;
+}
+.chat-media-skeleton {
+  display: block;
+  min-width: min(16rem, 60vw);
+  min-height: 12rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-bubble) 85%, transparent);
+  animation: chat-media-pulse 1.4s ease-in-out infinite;
+}
+@keyframes chat-media-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* Composer inputs: a calm accent ring instead of the pink browser outline. */
+.composer-input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--rizz-cyan) 45%, transparent);
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px color-mix(in srgb, var(--rizz-cyan) 60%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-media-skeleton { animation: none; }
 }
 
 /* ============ RIZZ NOTIFICATIONS ============ */

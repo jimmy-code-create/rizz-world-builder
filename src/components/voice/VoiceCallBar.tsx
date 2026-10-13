@@ -1,4 +1,5 @@
 import { Mic, MicOff, PhoneOff, Volume2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 
@@ -33,6 +34,20 @@ export function VoiceCallBar() {
             </span>
           </span>
         </button>
+
+        {/* Who is in the call, at a glance — the bar stays a single compact row. */}
+        {count > 0 && (
+          <span className="hidden shrink-0 -space-x-2 min-[380px]:flex" aria-hidden="true">
+            {participants.slice(0, 4).map((participant) => (
+              <Avatar key={participant.user_id} className="h-7 w-7 ring-2 ring-background">
+                <AvatarImage src={participant.user?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                  {(participant.user?.display_name || participant.user?.username || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+          </span>
+        )}
 
         <Button
           variant={muted ? "outline" : "default"}

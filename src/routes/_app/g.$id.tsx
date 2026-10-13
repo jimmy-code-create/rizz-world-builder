@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Palette, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
@@ -25,9 +25,15 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { toast } from "sonner";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
+import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
+import { compressChatImage } from "@/lib/chat-media";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { useMentionLabels } from "@/lib/mention-tokens";
+import { nameColorFor } from "@/lib/chat-appearance";
 
 const GROUP_MESSAGE_LIMIT = 10_000;
 
@@ -46,6 +52,14 @@ function GroupRoom() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
+  // Per-group wallpaper: a preset or an uploaded background URL.
+  const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  // Photo attachments, mirroring DMs: preview locally, upload on send.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -59,15 +73,17 @@ function GroupRoom() {
   const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
   const msgs = useQuery({ queryKey: ["group-msgs", id], queryFn: () => fetchGroupMessages(id, user?.id), enabled: !!group.data });
   const groupReady = Boolean(group.data);
+  // `<@userId>` tokens resolve to a username once, like in realm chat.
+  const mentionLabels = useMentionLabels((msgs.data ?? []).map((row) => row.body));
   const messageKey = ["group-msgs", id] as const;
   type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
   type CachedGroupMessage = GroupMessage & { delivery_status?: "sending" | "failed" };
   const sendMessage = useMutation({
-    mutationFn: ({ text }: { text: string; retryId?: string }) => {
+    mutationFn: ({ text, attachmentUrl }: { text: string; retryId?: string; attachmentUrl?: string | null }) => {
       if (!user) throw new Error("Sign in to send a message");
-      return sendGroupMessage({ group_id: id, author_id: user.id, body: text });
+      return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null });
     },
-    onMutate: async ({ text, retryId }) => {
+    onMutate: async ({ text, retryId, attachmentUrl }) => {
       await qc.cancelQueries({ queryKey: messageKey });
       const optimisticId = retryId ?? `pending-${crypto.randomUUID()}`;
       const optimistic = {
@@ -76,7 +92,9 @@ function GroupRoom() {
         author_id: user!.id,
         body: text,
         created_at: new Date().toISOString(),
-        attachment_url: null,
+        // The uploaded URL is already known before sending, so the optimistic
+        // row shows the real photo and a retry keeps it.
+        attachment_url: attachmentUrl ?? null,
         audio_url: null,
         duration_ms: null,
         reply_to: null,
@@ -179,11 +197,63 @@ function GroupRoom() {
     composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
   }, [body]);
 
+  useEffect(() => {
+    setWallpaper(loadWallpaper("group", id));
+  }, [id]);
+
+  useEffect(() => () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
+
+  const chooseImage = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Images must be smaller than 15 MB before compression.");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const send = async () => {
-    if (!user || !body.trim()) return;
+    if (!user) return;
     const text = body.trim();
+    if (!text && !imageFile) return;
     if (text.length > GROUP_MESSAGE_LIMIT) {
       toast.error(`Messages can be up to ${GROUP_MESSAGE_LIMIT.toLocaleString()} characters`);
+      return;
+    }
+    if (imageFile) {
+      setUploadingImage(true);
+      try {
+        const blob = await compressChatImage(imageFile);
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        const { error } = await supabase.storage
+          .from("chat-media")
+          .upload(path, blob, { contentType: "image/jpeg" });
+        if (error) {
+          throw new Error(/bucket|not found|does not exist|schema cache/i.test(error.message)
+            ? "Photo sending needs the chat-media storage setup in BACKEND_REQUIREMENTS.md."
+            : error.message);
+        }
+        const attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+        sendMessage.mutate({ text, attachmentUrl });
+        setBody("");
+        clearImage();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Couldn't send that photo");
+      } finally {
+        setUploadingImage(false);
+      }
       return;
     }
     setBody("");
@@ -314,6 +384,9 @@ function GroupRoom() {
         <Button onClick={makeInvite} variant="ghost" size="icon" aria-label="Invite" className="text-muted-foreground hover:text-foreground">
           <Link2 className="h-5 w-5" />
         </Button>
+        <Button onClick={() => setWallpaperOpen(true)} variant="ghost" size="icon" aria-label="Chat wallpaper" className="text-muted-foreground hover:text-foreground">
+          <Palette className="h-5 w-5" />
+        </Button>
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Members" className="text-muted-foreground hover:text-foreground"><Users className="h-5 w-5" /></Button>
@@ -344,6 +417,7 @@ function GroupRoom() {
           ref={messagesListRef}
           onClick={media.onMediaClick}
           className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2"
+          style={wallpaperStyle(wallpaper)}
         >
           {media.viewer}
           {hasOlderMessages && (
@@ -357,6 +431,7 @@ function GroupRoom() {
           {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
             const deletedAt = m.deleted_at as string | null | undefined;
+            const hasText = !!(m.body && m.body.trim());
             const previous = visibleMessages[index - 1];
             const startsGroup = !previous ||
               previous.author_id !== m.author_id ||
@@ -373,7 +448,14 @@ function GroupRoom() {
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
                 <div className={`w-fit max-w-[88%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                  {!mine && startsGroup && <span className="mb-0.5 ml-3 max-w-full truncate text-[11px] text-muted-foreground">@{m.author?.username}</span>}
+                  {!mine && startsGroup && (
+                    <span
+                      className="mb-0.5 ml-3 max-w-full truncate text-[11px]"
+                      style={{ color: nameColorFor(m.author_id, m.author?.accent_color ?? null) }}
+                    >
+                      @{m.author?.username}
+                    </span>
+                  )}
                   <MessageActionMenu
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -413,18 +495,37 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble message-bubble w-fit max-w-full min-w-[44px] rounded-2xl px-4 py-2 select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${deletedAt ? "message-bubble--unsent opacity-80" : mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}>
-                      {deletedAt ? "This message was unsent" : (
+                    <div className={`chat-bubble message-bubble rounded-2xl px-4 py-2 select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${
+                      deletedAt
+                        ? "message-bubble--unsent"
+                        : hasText
+                          ? mine
+                            ? "message-bubble--outgoing"
+                            : "message-bubble--incoming"
+                          : "message-bubble--media"
+                    }`}>
+                      {m.attachment_url && !deletedAt && (
+                        <ChatMessageMedia
+                          src={m.attachment_url}
+                          alt="Image shared in chat"
+                          className={hasText ? "mb-2" : ""}
+                        />
+                      )}
+                      {deletedAt ? "This message was unsent" : !hasText ? null : (
                         <>
                           {renderGifSegments(m.body).map((seg, si) =>
                             seg.isGif || seg.isSticker
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                               : renderCaptionWithTags(seg.value).map((p, pi) =>
-                                  p.mention
-                                    ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                    : p.url
-                                      ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline" : "text-sky-400 hover:underline break-all"}>{p.text}</a>
-                                      : <span key={`${si}-${pi}`}>{p.text}</span>
+                                  p.mentionToken
+                                    ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                    : p.mention
+                                      ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                      : p.tag
+                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline"}`}>{p.text}</Link>
+                                        : p.url
+                                          ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                          : <span key={`${si}-${pi}`}>{p.text}</span>
                                 )
                           )}
                         </>
@@ -451,7 +552,7 @@ function GroupRoom() {
                   {m.delivery_status ? (
                     m.delivery_status === "failed" ? (
                       <button
-                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id })}
+                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url })}
                         disabled={sendMessage.isPending}
                         className="text-[10px] text-amber-200/80 mt-0.5 px-2 hover:text-amber-100"
                       >
@@ -476,45 +577,88 @@ function GroupRoom() {
       </div>
 
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
-        <div className="mx-auto flex w-full max-w-3xl gap-2">
+        <div className="mx-auto w-full max-w-3xl">
+          {imagePreview && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Photo compresses before upload</span>
+              <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <div className="flex gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
-          <Textarea
-            ref={composerRef}
-            value={body}
-            onChange={(e) => {
-              setBody(e.target.value);
-              setCaret(e.target.selectionStart ?? e.target.value.length);
-            }}
-            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder="Message"
-            maxLength={GROUP_MESSAGE_LIMIT}
-            rows={1}
-            enterKeyHint="send"
-            className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
-          <MentionAutocomplete
-            value={body}
-            caret={caret}
-            onPick={(username) => {
-              const next = replaceMention(body, caret, username);
-              setBody(next.value);
-              setCaret(next.caret);
-              const el = composerRef.current;
-              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
-            }}
-          />
-          <Button onClick={() => void send()} disabled={!body.trim() || sendMessage.isPending} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
+          <Button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={uploadingImage}
+            variant="ghost"
+            size="icon"
+            aria-label="Attach a photo"
+            className="shrink-0 text-muted-foreground"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </Button>
+          {/* The mention popup anchors to this wrapper, so it opens above the
+              composer instead of the nearest positioned ancestor. */}
+          <div className="relative min-w-0 flex-1">
+            <Textarea
+              ref={composerRef}
+              value={body}
+              onChange={(e) => {
+                setBody(e.target.value);
+                setCaret(e.target.selectionStart ?? e.target.value.length);
+              }}
+              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder="Message"
+              maxLength={GROUP_MESSAGE_LIMIT}
+              rows={1}
+              enterKeyHint="send"
+              className="composer-input min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
+            />
+            <MentionAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(username) => {
+                const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+          </div>
+          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />
           </Button>
+          </div>
         </div>
       </div>
+
+      <WallpaperSheet
+        open={wallpaperOpen}
+        onOpenChange={setWallpaperOpen}
+        kind="group"
+        chatId={id}
+        userId={user?.id}
+        value={wallpaper}
+        onChange={setWallpaper}
+      />
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="glass-strong border-white/10">

@@ -24,8 +24,10 @@ import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { formatCount } from "@/lib/utils";
 
 const SONG_LIBRARY = [
   { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
@@ -501,15 +503,16 @@ function ReelItem({
                 <AvatarFallback className="bg-gradient-primary text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
+              {post.author?.verified_creator && <VerifiedCreatorTag />}
             </Link>
             <div className="flex items-center justify-around gap-1">
               <ReelAction
                 icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
-                label={String(likeCount)}
+                label={formatCount(likeCount)}
                 onClick={() => doLike()}
                 active={liked}
               />
-              <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={String(post.comment_count ?? 0)} onClick={() => setCommentsOpen(true)} />
+              <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={formatCount(post.comment_count)} onClick={() => setCommentsOpen(true)} />
               <ReelAction
                 icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
                 label={saved ? "Saved" : "Save"}
@@ -693,6 +696,7 @@ function ReelItem({
             <AvatarFallback className="bg-gradient-primary text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="font-bold text-sm">@{post.author?.username}</span>
+          {post.author?.verified_creator && <VerifiedCreatorTag />}
         </Link>
         {captions && post.caption && <p className="max-w-full text-[13px] leading-snug line-clamp-3 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 inline-block break-words"><CaptionText caption={post.caption} /></p>}
         <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
@@ -702,13 +706,13 @@ function ReelItem({
       <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
         <ReelAction
           icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
-          label={String(likeCount)}
+          label={formatCount(likeCount)}
           onClick={() => doLike()}
           active={liked}
         />
         <ReelAction
           icon={<MessageCircle className="h-6 w-6" />}
-          label={String(post.comment_count ?? 0)}
+          label={formatCount(post.comment_count)}
           onClick={() => setCommentsOpen(true)}
         />
         <ReelAction

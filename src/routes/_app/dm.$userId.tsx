@@ -31,18 +31,21 @@ import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
+import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
+import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
+import { DmThreadRail } from "@/components/chat/DmThreadRail";
+import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { renderCaptionWithTags } from "@/lib/hashtags";
+import { renderGifSegments } from "@/lib/gif-content";
+import { useMentionLabels } from "@/lib/mention-tokens";
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
 // and group chat stay in sync.
-const CHAT_WALLPAPERS = [
-  "radial-gradient(ellipse at top right, rgba(255,62,165,.14), transparent 55%)",
-  "radial-gradient(ellipse at bottom left, rgba(124,58,237,.18), transparent 60%)",
-  "none",
-];
 const MESSAGE_PAGE_SIZE = 30;
 const MAX_MESSAGE_LENGTH = 10_000;
 type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"] & {
@@ -73,6 +76,9 @@ function DMPage() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
+  // Where the caret sits in the composer, so the `@` mention popup knows which
+  // username is being typed.
+  const [caret, setCaret] = useState(0);
   const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
@@ -104,7 +110,9 @@ function DMPage() {
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
   const [recMs, setRecMs] = useState(0);
   const [sendingVoice, setSendingVoice] = useState(false);
-  const [wallpaperIndex, setWallpaperIndex] = useState(0);
+  // The chat's own wallpaper: a preset or an uploaded background URL.
+  const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -142,13 +150,7 @@ function DMPage() {
   }, [draftKey]);
 
   useEffect(() => {
-    try {
-      const stored = Number(window.localStorage.getItem(`rizz:dm-wallpaper:${userId}`));
-      if (Number.isInteger(stored) && stored >= 0 && stored < CHAT_WALLPAPERS.length) setWallpaperIndex(stored);
-      else setWallpaperIndex(0);
-    } catch {
-      setWallpaperIndex(0);
-    }
+    setWallpaper(loadWallpaper("dm", userId));
   }, [userId]);
 
   useEffect(() => {
@@ -269,6 +271,11 @@ function DMPage() {
     },
     enabled: !!user,
   });
+
+  // `<@userId>` tokens in any visible message resolve to a username once, so a
+  // body written by a bot or another client reads as a mention instead of raw
+  // angle brackets.
+  const mentionLabels = useMentionLabels((msgs.data ?? []).map((row) => row.body));
 
   useEffect(() => {
     if (!user) return;
@@ -696,13 +703,6 @@ function DMPage() {
     }
   };
 
-  const changeWallpaper = () => {
-    const next = (wallpaperIndex + 1) % CHAT_WALLPAPERS.length;
-    setWallpaperIndex(next);
-    try { window.localStorage.setItem(`rizz:dm-wallpaper:${userId}`, String(next)); } catch { /* optional */ }
-    toast.success("Chat wallpaper changed");
-  };
-
   // Every reaction write goes through toggle_dm_reaction (see the reactions
   // migration) with an optimistic chip and a friendly failure toast.
   const react = async (messageId: string, emoji: string) => {
@@ -717,17 +717,20 @@ function DMPage() {
   };
 
   return (
-    <div
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden"
-      style={{
-        backgroundImage: CHAT_WALLPAPERS[wallpaperIndex],
-        backgroundRepeat: "no-repeat",
-        ...(visualViewportHeight ? {
-          height: `min(100%, ${Math.round(visualViewportHeight)}px)`,
-          maxHeight: `min(100%, ${Math.round(visualViewportHeight)}px)`,
-        } : {}),
-      }}
-    >
+    // Two-pane on desktop: the conversation list sits beside the open chat, the
+    // phone layout keeps the single column and uses /dms for the list.
+    <div className="flex h-full min-h-0 w-full overflow-hidden">
+      <DmThreadRail activeId={userId} />
+      <div
+        className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
+        style={{
+          ...wallpaperStyle(wallpaper),
+          ...(visualViewportHeight ? {
+            height: `min(100%, ${Math.round(visualViewportHeight)}px)`,
+            maxHeight: `min(100%, ${Math.round(visualViewportHeight)}px)`,
+          } : {}),
+        }}
+      >
       {openMsg && (
         <div
           aria-hidden="true"
@@ -781,7 +784,7 @@ function DMPage() {
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
             <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
             <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Loaded messages copied"); }}>Export loaded messages</DropdownMenuItem>
-            <DropdownMenuItem onClick={changeWallpaper}>Change wallpaper</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setWallpaperOpen(true)}>Chat wallpaper</DropdownMenuItem>
             <DropdownMenuItem
               onClick={async () => {
                 if (!user) return;
@@ -844,6 +847,7 @@ function DMPage() {
             const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
+            const hasText = !!(rest && rest.trim());
             const previous = filteredMsgs[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -933,7 +937,17 @@ function DMPage() {
                     <button
                       aria-haspopup="dialog"
                       aria-expanded={openMsg === m.id}
-                      className={`chat-bubble message-bubble w-fit max-w-[88%] min-w-[44px] flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${deliveryStatus ? "opacity-60" : ""} ${deletedAt ? "message-bubble--unsent" : mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}
+                      className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-cyan)] ${
+                        deliveryStatus ? "opacity-60" : ""
+                      } ${
+                        deletedAt
+                          ? "message-bubble--unsent"
+                          : hasText
+                            ? mine
+                              ? "message-bubble--outgoing"
+                              : "message-bubble--incoming"
+                            : "message-bubble--media"
+                      }`}
                       style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                       onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
                       onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
@@ -954,15 +968,34 @@ function DMPage() {
                           <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                         </span>
                       )}
-                      {m.attachment_url && (
-                        <img
+                      {m.attachment_url && !deletedAt && (
+                        <ChatMessageMedia
                           src={m.attachment_url}
                           alt="Image shared in chat"
-                          loading="lazy"
-                          className="mb-2 max-h-72 max-w-full rounded-xl object-contain"
+                          className={hasText ? "mb-2" : ""}
                         />
                       )}
-                      {deletedAt ? "This message was unsent" : <GifContent>{rest}</GifContent>}
+                      {deletedAt ? "This message was unsent" : !hasText ? null : (
+                        <>
+                          {renderGifSegments(rest).map((seg, si) =>
+                            seg.isGif || seg.isSticker
+                              ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
+                              : renderCaptionWithTags(seg.value).map((p, pi) =>
+                                  p.mentionToken
+                                    ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                    : p.mention
+                                      // The bubble itself is a button, so a tap on a link must not
+                                      // also toggle the message actions popover.
+                                      ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                      : p.tag
+                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline"}`}>{p.text}</Link>
+                                        : p.url
+                                          ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                          : <span key={`${si}-${pi}`}>{p.text}</span>
+                              )
+                          )}
+                        </>
+                      )}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -1104,23 +1137,42 @@ function DMPage() {
           >
             <ImagePlus className="h-5 w-5" />
           </Button>
-          <Textarea
-            ref={composerRef}
-            value={body}
-            disabled={blockStatus.data}
-            onChange={(e) => { setBody(e.target.value); broadcastTyping(); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder="Message"
-            maxLength={MAX_MESSAGE_LENGTH}
-            rows={1}
-            enterKeyHint="send"
-            className="min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
-          />
+          <div className="relative min-w-0 flex-1">
+            <Textarea
+              ref={composerRef}
+              value={body}
+              disabled={blockStatus.data}
+              onChange={(e) => {
+                setBody(e.target.value);
+                setCaret(e.target.selectionStart ?? e.target.value.length);
+                broadcastTyping();
+              }}
+              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder="Message"
+              maxLength={MAX_MESSAGE_LENGTH}
+              rows={1}
+              enterKeyHint="send"
+              className="composer-input min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
+            />
+            <MentionAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(username) => {
+                const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+          </div>
           {body.trim() || imageFile ? (
             <>
               {body.trim() && (
@@ -1153,6 +1205,17 @@ function DMPage() {
           )}
           </div>
         </div>
+      </div>
+
+      <WallpaperSheet
+        open={wallpaperOpen}
+        onOpenChange={setWallpaperOpen}
+        kind="dm"
+        chatId={userId}
+        userId={user?.id}
+        value={wallpaper}
+        onChange={setWallpaper}
+      />
       </div>
     </div>
   );

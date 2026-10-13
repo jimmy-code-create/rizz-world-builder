@@ -69,6 +69,14 @@ export function useMusicQueue(realmId: string | null | undefined, roomId: string
 
 type MusicCommandInput = { args: string; realmId: string; roomId: string | null };
 
+/** Every command MUSIC BOT answers to. One list, shared by the composer and the
+ *  music panel, so a command can never be intercepted in one place only. */
+export const MUSIC_COMMAND_NAMES = ["play", "queue", "np", "skip", "stop"] as const;
+
+export function isMusicCommand(name: string): boolean {
+  return (MUSIC_COMMAND_NAMES as readonly string[]).includes(name.trim().toLowerCase());
+}
+
 /** `/play`, `/queue`, `/np`, `/skip`, `/stop` — all through the bot route. */
 export function runMusicCommand(command: "play" | "queue" | "np" | "skip" | "stop", input: MusicCommandInput): Promise<BotCommandResult> {
   return runBotCommand({ command, args: input.args, realmId: input.realmId, roomId: input.roomId });

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { acceptInvite, previewGroupInvite } from "@/lib/groups";
@@ -27,6 +27,7 @@ function JoinPage() {
   const { code } = Route.useParams();
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const autoJoinStarted = useRef(false);
   const invite = useQuery({
     queryKey: ["group-invite-preview", code],
@@ -36,6 +37,11 @@ function JoinPage() {
   const join = useMutation({
     mutationFn: () => acceptInvite(code),
     onSuccess: (group) => {
+      // Joining changes this invite's own state (it now reads "already member")
+      // and the caller's group list, so both are refreshed as one step instead
+      // of leaving a cached "valid" invite behind.
+      void qc.invalidateQueries({ queryKey: ["group-invite-preview", code] });
+      void qc.invalidateQueries({ queryKey: ["my-groups"] });
       try { window.sessionStorage.removeItem(PENDING_INVITE_KEY); } catch { /* optional */ }
       toast.success(`Joined ${group?.name ?? "group"}`);
       if (group?.id) nav({ to: "/g/$id", params: { id: group.id } });

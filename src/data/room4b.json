@@ -1,0 +1,70 @@
+{
+  "id": "room4b",
+  "title": "Room 4B",
+  "hook": "Hostel की रात, एक locked door, और अंदर से आती आवाज़।",
+  "language": "hi",
+  "genre": "horror",
+  "emoji": "🚪",
+  "characters": [
+    { "id": "echo", "name": "Echo", "role": "narrator", "voice_profile": { "provider": "webspeech", "lang": "hi-IN", "pitch": 0.52, "rate": 0.82, "volume": 0.86 }, "bubble_color": "#2a3750" },
+    { "id": "asha", "name": "Asha", "role": "player", "voice_profile": { "provider": "webspeech", "lang": "hi-IN", "pitch": 1.44, "rate": 1.08, "volume": 1 }, "bubble_color": "#4a2b50" },
+    { "id": "kabir", "name": "Kabir", "role": "friend", "voice_profile": { "provider": "webspeech", "lang": "hi-IN", "pitch": 0.7, "rate": 0.94, "volume": 0.96 }, "bubble_color": "#194d50" }
+  ],
+  "chapters": [
+    {
+      "id": "ch1",
+      "title": "Chapter 1 — The Locked Door",
+      "scenes": [
+        {
+          "id": "s1",
+          "time_label": "11:40 PM",
+          "narration": "हॉस्टल का कॉरिडोर खाली है। चार नंबर के कमरे की लाइट अंदर से बंद है।",
+          "image_url": "",
+          "audio_url": "",
+          "messages": [
+            { "character_id": "asha", "type": "text", "text": "कबीर, दरवाज़ा अंदर से लॉक है।", "emotion": "confused", "delay_ms": 700 },
+            { "character_id": "kabir", "type": "text", "text": "हो नहीं सकता, ये कमरा तीन महीने से बंद है।", "emotion": "scared", "delay_ms": 800 }
+          ]
+        },
+        {
+          "id": "s2",
+          "time_label": "11:58 PM",
+          "narration": "दरवाज़े के नीचे से एक ठंडी हवा निकलती है।",
+          "messages": [
+            { "character_id": "echo", "type": "text", "text": "अंदर से कोई गिनती गिन रहा है।", "emotion": "whisper", "delay_ms": 900 }
+          ],
+          "choice": {
+            "prompt": "दरवाज़ा खोलें या लौट जाएँ?",
+            "options": [
+              { "label": "दरवाज़ा खोलो", "reply": "मैं दरवाज़ा खोल रही हूँ।", "goto": "s3" },
+              { "label": "वापस चलो", "reply": "चलो, यहाँ से निकलते हैं।", "goto": "s4" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ch2",
+      "title": "Chapter 2 — What Was Inside",
+      "scenes": [
+        {
+          "id": "s3",
+          "time_label": "12:04 AM",
+          "narration": "दरवाज़ा खुलता है। अंदर सिर्फ़ एक पुराना टेप रिकॉर्डर चल रहा है।",
+          "audio_url": "",
+          "messages": [
+            { "character_id": "asha", "type": "text", "text": "ये आवाज़... मेरी है।", "emotion": "shocked", "delay_ms": 900 }
+          ]
+        },
+        {
+          "id": "s4",
+          "time_label": "12:04 AM",
+          "narration": "तुम पीछे मुड़ते हो। कॉरिडोर की लाइट एक-एक करके बंद हो रही है।",
+          "messages": [
+            { "character_id": "kabir", "type": "text", "text": "भागो!", "emotion": "panic", "delay_ms": 600 }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
-import { Heart, Loader2, MessageSquareText, Play, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Heart, Loader2, MessageSquareText, Play, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 import { generateChatStory, saveGeneratedStoryToSupabase } from "@/lib/story-generation";
+import { parseAuthorStoryFile } from "@/lib/chat-story-import";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -68,6 +69,10 @@ function ChatStoriesPage() {
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
   const [storyToDelete, setStoryToDelete] = useState<ListedChatStory | null>(null);
   const [isDeletingStory, setIsDeletingStory] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Rizz voice command "ek story bana do" opens the generator dialog.
   useEffect(() => {
@@ -201,6 +206,31 @@ function ChatStoriesPage() {
     }
   };
 
+  /**
+   * Author-only import: reads a story JSON file, converts the documented
+   * chapters/scenes schema into the stored shape and inserts it through this
+   * user's own session, so the existing RLS policies decide what is allowed.
+   */
+  const importStoryFile = async (file: File) => {
+    if (!user || isImporting) return;
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const contents = await file.text();
+      const story = parseAuthorStoryFile(contents);
+      const storyId = await saveGeneratedStoryToSupabase(story);
+      await qc.invalidateQueries({ queryKey: ["chat-stories"] });
+      setIsImportOpen(false);
+      setOpenId(storyId);
+      toast.success(`Imported “${story.title}” with ${story.lines.length} messages.`);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Couldn't import that story.");
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
+
   const list = (stories.data ?? []).filter((s) => cat === "all" || s.category === cat);
   const open = list.find((s) => s.id === openId) ?? (stories.data ?? []).find((s) => s.id === openId);
 
@@ -215,17 +245,75 @@ function ChatStoriesPage() {
             Short stories told as texts. Tap through them one message at a time.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsGenOpen(true)}
-          className="group relative isolate inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full border border-[var(--rizz-pink)]/70 bg-background/55 px-4 text-xs font-bold text-foreground shadow-[0_0_22px_rgba(255,65,150,.18)] backdrop-blur-xl transition hover:border-[var(--rizz-pink)] hover:shadow-[0_0_28px_rgba(255,65,150,.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
-        >
-          <span className="absolute inset-0 -z-10 bg-gradient-to-r from-[var(--rizz-pink)]/15 via-transparent to-fuchsia-400/10 opacity-80" />
-          <Sparkles className="h-4 w-4 text-[var(--rizz-pink)]" />
-          <span className="hidden sm:inline">Generate with AI</span>
-          <span className="sm:hidden">Generate</span>
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setImportError(null); setIsImportOpen(true); }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 bg-card/50 px-3 text-xs font-semibold text-muted-foreground transition hover:border-[var(--rizz-pink)]/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+          >
+            <Upload className="h-4 w-4" />
+            <span className="hidden sm:inline">Import JSON</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsGenOpen(true)}
+            className="group relative isolate inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full border border-[var(--rizz-pink)]/70 bg-background/55 px-4 text-xs font-bold text-foreground shadow-[0_0_22px_rgba(255,65,150,.18)] backdrop-blur-xl transition hover:border-[var(--rizz-pink)] hover:shadow-[0_0_28px_rgba(255,65,150,.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+          >
+            <span className="absolute inset-0 -z-10 bg-gradient-to-r from-[var(--rizz-pink)]/15 via-transparent to-fuchsia-400/10 opacity-80" />
+            <Sparkles className="h-4 w-4 text-[var(--rizz-pink)]" />
+            <span className="hidden sm:inline">Generate with AI</span>
+            <span className="sm:hidden">Generate</span>
+          </button>
+        </div>
       </header>
+
+      <Dialog open={isImportOpen} onOpenChange={(nextOpen) => { if (!isImporting) setIsImportOpen(nextOpen); }}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto border border-border/70 bg-background/95 backdrop-blur-2xl sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-left">
+              <Upload className="h-5 w-5 text-[var(--rizz-pink)]" /> Import a story JSON
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Author-only. The file is inserted under your account, so only stories
+              your account is allowed to create are saved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              disabled={isImporting}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importStoryFile(file);
+              }}
+              className="w-full cursor-pointer rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[var(--rizz-pink)]/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
+            />
+            <p className="rounded-xl border border-border/60 bg-card/40 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+              {'{ "title": "Room 4B", "hook": "…", "language": "hi", "genre": "horror",'}
+              {' "characters": [{ "id", "name", "role", "voice_profile" }],'}
+              {' "chapters": [{ "title", "scenes": [{ "id", "narration", "messages":'}
+              {' [{ "character_id", "text" }], "choice": { "options": [{ "label", "reply", "goto" }] } }] }] }'}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              A starting point lives at <span className="font-mono">src/data/room4b.json</span>. Already-flat
+              files (title + lines + choices) import as-is.
+            </p>
+            {importError && <p className="text-xs font-semibold text-[#ff5c7a]">{importError}</p>}
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(false)}
+              disabled={isImporting}
+              className="h-10 rounded-full border border-border/70 px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+            >
+              Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isGenOpen}

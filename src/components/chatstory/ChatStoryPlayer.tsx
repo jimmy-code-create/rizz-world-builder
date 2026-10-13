@@ -69,7 +69,10 @@ const ROOM_4B_SCENES: Scene[] = [
   { id: "scene-4", label: ROOM_4B_SCENE_LABELS["scene-4"].en, image: panelFour },
 ];
 
-const SPEEDS = [1, 1.5, 2] as const;
+const SPEEDS = [1, 1.5, 2, 3] as const;
+/** Pacing at 1x; higher speeds divide it so 2x really is twice as fast. */
+const ADVANCE_DELAY_MS = 1250;
+const TYPING_DELAY_MS = 420;
 type NarrationLanguage = "hi" | "en";
 
 type VoiceProfile = {
@@ -281,7 +284,8 @@ export function ChatStoryPlayer({
     const locale = spokenLanguage === "hi" ? "hi-IN" : "en-IN";
     const profile = resolveVoiceProfile(speaker, story);
     utterance.lang = locale;
-    utterance.rate = Math.min(2, Math.max(0.5, speed * profile.rateMultiplier));
+    // Speech rates above 3 sound garbled, so 3x is the ceiling here too.
+    utterance.rate = Math.min(3, Math.max(0.5, speed * profile.rateMultiplier));
     utterance.pitch = profile.pitch;
     utterance.volume = profile.volume;
     const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
@@ -357,11 +361,12 @@ export function ChatStoryPlayer({
   const advance = useCallback(() => {
     if (typing || done || pending.length > 0 || nextIdx == null) return;
     setTyping(true);
+    // The typing bubble shortens with the speed pill, so 2x/3x feel faster too.
     window.setTimeout(() => {
       setTyping(false);
       addLine(nextIdx);
-    }, 420);
-  }, [addLine, done, nextIdx, pending.length, typing]);
+    }, TYPING_DELAY_MS / speed);
+  }, [addLine, done, nextIdx, pending.length, speed, typing]);
 
   const choose = (choice: StoryChoice) => {
     if (cursor == null) return;
@@ -381,9 +386,9 @@ export function ChatStoryPlayer({
 
   useEffect(() => {
     if (!auto || done || typing || pending.length > 0 || isSpeaking) return;
-    const timeout = window.setTimeout(advance, 1250);
+    const timeout = window.setTimeout(advance, ADVANCE_DELAY_MS / speed);
     return () => window.clearTimeout(timeout);
-  }, [advance, auto, done, isSpeaking, pending.length, typing]);
+  }, [advance, auto, done, isSpeaking, pending.length, speed, typing]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

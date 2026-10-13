@@ -36,6 +36,8 @@ import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { nameColorFor } from "@/lib/chat-appearance";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -60,6 +62,7 @@ import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { threadLabel } from "@/lib/realm-threads";
 import { flushDueScheduledMessages } from "@/lib/realm-schedule";
+import { isMusicCommand } from "@/lib/music";
 import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
 
@@ -249,10 +252,17 @@ function RealmPage() {
   const slashQuery = parseSlashCommand(body);
   const slashMatches = slashQuery ? filterSlashCommands(realmCommands.commands, slashQuery.name) : [];
   // The menu only shows while the command word itself is being typed, so the
-  // arguments after the first space never sit under a popup.
+  // arguments after the first space never sit under a popup. It also opens when
+  // nothing matches, with a one-line explanation instead of a silent no-op.
   const slashMenuOpen =
-    !slashHidden && !sending && !!slashQuery && slashQuery.typingName && slashMatches.length > 0;
-  const slashActive = Math.min(slashIndex, Math.max(slashMatches.length - 1, 0));
+    !slashHidden && !sending && !realmCommands.isLoading && !!slashQuery && slashQuery.typingName;
+  const slashMatchCount = slashMatches.length;
+  const slashActive = Math.min(slashIndex, Math.max(slashMatchCount - 1, 0));
+  const slashHint = !slashMenuOpen || slashMatchCount > 0
+    ? undefined
+    : realmCommands.commands.length === 0
+      ? "No bot commands in this channel yet."
+      : `No command matches "/${slashQuery?.name ?? ""}".`;
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -373,6 +383,14 @@ function RealmPage() {
       } finally {
         setSending(false);
       }
+      return;
+    }
+
+    // Music commands are a voice-channel feature, so a text channel never
+    // offers them. Typing one there used to post "/play …" as a plain message,
+    // which read as the bot ignoring the request — intercept it instead.
+    if (parsed && isMusicCommand(parsed.name)) {
+      toast.error("Music commands work in voice channels — open one and use its music panel.");
       return;
     }
 
@@ -903,47 +921,53 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="mx-4 my-3 rounded-2xl border border-[var(--rizz-pink)]/20 bg-gradient-to-r from-[var(--rizz-pink)]/[0.08] via-[var(--rizz-violet)]/[0.07] to-transparent p-4 shadow-[0_12px_36px_rgba(236,72,153,0.08)] glass-strong">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-primary text-white shadow-glow">
-                <Mic className="h-6 w-6" />
-                {activeChannelPeople.length > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
-              </div>
-              <div className="min-w-0">
-                <h3 className="flex items-center gap-2 font-display text-base font-bold">
-                  <span className="truncate">{activeRoom.name || "Voice channel"}</span>
-                  {activeChannelPeople.length > 0 && (
-                    <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                      {activeChannelPeople.length} in call
-                    </span>
-                  )}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {activeChannelPeople.length > 0 ? "Jump in — everyone can talk." : "No one is here yet. Be the first voice."}
-                </p>
-              </div>
+        <div className="chat-bar shrink-0 border-b border-white/5 px-4 py-3">
+          {/* ONE compact voice bar. The in-call controls (mic, leave) live in the
+              single global VoiceCallBar below, so this row never repeats a
+              "Return to call" button or a second call bar. */}
+          <div className="flex items-center gap-3">
+            <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white">
+              <Mic className="h-5 w-5" />
+              {activeChannelPeople.length > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-sm font-bold">{activeRoom.name || "Voice channel"}</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {activeChannelPeople.length > 0 ? `${activeChannelPeople.length} in call` : "No one is here yet"}
+              </p>
+            </div>
+            {activeChannelPeople.length > 0 && (
+              <span className="flex shrink-0 -space-x-2">
+                {activeChannelPeople.slice(0, 4).map((person) => (
+                  <Avatar key={person.user_id} className="h-7 w-7 ring-2 ring-background">
+                    <AvatarImage src={person.user?.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                      {(person.user?.display_name || person.user?.username || "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </span>
+            )}
             {activeRoom.mods_only && !canModerate ? (
+              <Button type="button" disabled className="min-h-11 shrink-0 gap-2 glass border-white/10">
+                <Lock className="h-4 w-4" /> Mods only
+              </Button>
+            ) : activeCall?.channelId === activeRoom.id ? (
               <Button
                 type="button"
-                disabled
-                className="min-h-12 w-full shrink-0 gap-2 glass border-white/10 sm:w-auto"
+                onClick={() => openCallView()}
+                className="min-h-11 shrink-0 gap-2 glass border-white/10"
               >
-                <Lock className="h-4 w-4" /> Mods only
+                <Mic className="h-4 w-4" /> Open call
               </Button>
             ) : (
               <Button
                 type="button"
                 disabled={joiningVoice}
-                onClick={() => {
-                  if (activeCall?.channelId === activeRoom.id) openCallView();
-                  else joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name });
-                }}
-                className="min-h-12 w-full shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow sm:w-auto"
+                onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
+                className="min-h-11 shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow"
               >
-                <Mic className="h-4 w-4" />
-                {activeCall?.channelId === activeRoom.id ? "Return to call" : joiningVoice ? "Joining…" : "Join voice"}
+                <Mic className="h-4 w-4" /> {joiningVoice ? "Joining…" : "Join voice"}
               </Button>
             )}
           </div>
@@ -951,37 +975,6 @@ function RealmPage() {
           {/* MUSIC BOT is a voice-channel feature: its queue is keyed to this
               room, and a voice channel has no composer, so `/play` lives here. */}
           <VoiceChannelMusic realmId={c.id} roomId={activeRoom.id} />
-
-          {activeChannelPeople.length > 0 && (
-            <ul className="mt-4 space-y-2">
-              {activeChannelPeople.map((person) => {
-                const username = person.user?.username ?? "member";
-                return (
-                  <li key={person.user_id} className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-2.5">
-                    <AvatarWithStatus status={presence.statusOf(person.user_id)} dotSize={11}>
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={person.user?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-xs font-bold">
-                          {(person.user?.display_name || username).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </AvatarWithStatus>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{person.user?.display_name || `@${username}`}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{username === "member" ? statusLabel(presence.statusOf(person.user_id)) : `@${username}`}</p>
-                    </div>
-                    {person.muted ? (
-                      <MicOff className="h-4 w-4 shrink-0 text-destructive" aria-label="Muted" />
-                    ) : (
-                      <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> live
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </div>
       )}
 
@@ -1017,6 +1010,9 @@ function RealmPage() {
             const authorInitial = (isBot ? botRow?.name ?? "B" : authorProfile?.username ?? "?")
               .charAt(0)
               .toUpperCase();
+            // Realm names use the shared palette (or the author's own accent),
+            // never the default link-blue on the dark surface.
+            const authorColor = nameColorFor(isBot ? m.bot_id : m.sender_id, authorAccent);
             const previous = messageRows[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -1027,21 +1023,15 @@ function RealmPage() {
             }
             return (
               <Fragment key={m.id}>
-              {startsGroup && (
-                <div className="py-1 text-center text-[10px] font-medium text-muted-foreground">
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                </div>
-              )}
+              {/* Realm chat is Discord-style flat rows, not bubbles. */}
               <motion.div
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`mb-2 flex gap-2 rounded-2xl sm:gap-3 ${
-                  highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""
-                }`}
+                className={`realm-message ${highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""}`}
               >
-              {!mine && (startsGroup ? (
-                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px ${authorAccent || c.accent_color}66` }}>
+              {(startsGroup ? (
+                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
                   <AvatarImage src={authorAvatar ?? undefined} />
                   <AvatarFallback
                     className={`text-xs font-bold ${isBot ? "bg-[var(--rizz-violet)] text-white" : "bg-gradient-primary"}`}
@@ -1051,11 +1041,22 @@ function RealmPage() {
                 </Avatar>
               ) : <div aria-hidden="true" className="h-9 w-9 shrink-0" />)}
               <div className="flex-1 min-w-0">
-                {startsGroup && <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm" style={{ color: authorAccent || undefined }}>{authorName}</span>
+                {startsGroup && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="font-bold text-sm" style={{ color: authorColor }}>{authorName}</span>
                   {isBot && <BotBadge />}
                   {pinnedIds.has(m.id) && <PinBadge />}
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
                 </div>}
+                {/* Media renders as its own block — never inside a bubble. */}
+                {m.attachment_url && !String(m.id).startsWith("pending-") && (
+                  <ChatMessageMedia
+                    src={m.attachment_url}
+                    alt="Image shared in chat"
+                    className="my-1"
+                  />
+                )}
                 <MessageActionMenu
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -1139,7 +1140,7 @@ function RealmPage() {
                         ]),
                   ]}
                 >
-                  <p className={`chat-bubble message-bubble min-w-[44px] w-fit max-w-[88%] rounded-2xl px-3.5 py-2 select-none touch-manipulation ${mine ? "message-bubble--outgoing" : "message-bubble--incoming"}`}>
+                  <div className={`realm-message__body select-none touch-manipulation ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
@@ -1161,13 +1162,13 @@ function RealmPage() {
                                   : p.tag
                                     ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
                                     : p.url
-                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
                                       : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
                               )
                             )
                           )
                     )}
-                  </p>
+                  </div>
                 </MessageActionMenu>
                 {/* Rich payloads: polls and queued tracks carry their own card. */}
                 {m.card?.type === "poll" && (
@@ -1340,6 +1341,7 @@ function RealmPage() {
                   <SlashCommandMenu
                     commands={slashMatches}
                     activeIndex={slashActive}
+                    emptyHint={slashHint}
                     onHover={setSlashIndex}
                     onSelect={pickSlashCommand}
                   />
@@ -1358,15 +1360,16 @@ function RealmPage() {
             onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
             onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
             onKeyDown={(e) => {
-              // Arrow keys and Enter belong to the slash menu while it is open.
-              if (slashMenuOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+              // Arrow keys and Enter belong to the slash menu while it has rows;
+              // the no-match hint does not steal Enter, so the message still sends.
+              if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
                 e.preventDefault();
                 setSlashIndex((current) =>
                   wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
                 );
                 return;
               }
-              if (slashMenuOpen && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))) {
+              if (slashMatchCount > 0 && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))) {
                 e.preventDefault();
                 const chosen = slashMatches[slashActive] ?? slashMatches[0];
                 if (chosen) pickSlashCommand(chosen);
@@ -1378,7 +1381,7 @@ function RealmPage() {
             placeholder={composerBlock ?? "Message"}
             disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
             maxLength={500}
-            className="glass border-white/10"
+            className="composer-input glass border-white/10"
           />
           <MentionAutocomplete
             value={body}

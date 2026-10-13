@@ -9,6 +9,19 @@ import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
 import { isSelfDoNotDisturb } from "@/lib/presence";
 
+/** Vibration fallback for the ringtone — browsers without it simply stay silent. */
+function vibrateRing() {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  try {
+    navigator.vibrate([380, 200, 380, 900]);
+  } catch {
+    /* haptics are a bonus, never a failure */
+  }
+}
+
+/** How long a ring is offered before it is treated as missed. */
+const RING_TIMEOUT_MS = 45_000;
+
 type Incoming = {
   fromId: string;
   fromUsername?: string | null;
@@ -34,13 +47,25 @@ export function IncomingCallRinger() {
       // Do not disturb silences calls too.
       if (isSelfDoNotDisturb()) return;
       setCall(payload as Incoming);
-      // Auto-dismiss after 30s
-      setTimeout(() => setCall((c) => (c?.fromId === payload.fromId ? null : c)), 30_000);
+      vibrateRing();
+      // Auto-dismiss after the 45s ring window (the call itself becomes missed).
+      setTimeout(() => setCall((c) => (c?.fromId === payload.fromId ? null : c)), RING_TIMEOUT_MS);
     }).on("broadcast", { event: "cancel" }, ({ payload }) => {
       setCall((c) => (c && c.fromId === payload?.fromId ? null : c));
     }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [incomingUserId]);
+
+  // Keep buzzing while the sheet is up so the phone ring is hard to miss.
+  useEffect(() => {
+    if (!call) return;
+    vibrateRing();
+    const timer = window.setInterval(vibrateRing, 2_200);
+    return () => {
+      window.clearInterval(timer);
+      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(0);
+    };
+  }, [call]);
 
   const accept = () => {
     if (!call) return;

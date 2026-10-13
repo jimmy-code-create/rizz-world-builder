@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { ChevronDown, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 
@@ -95,9 +95,15 @@ export function VoiceCallView() {
     : participants.find((participant) => participant.user_id === remoteShare?.peerId)?.user?.username ?? "someone";
 
   return (
-    <FullScreenLayer open={!!call && viewOpen}>
-      <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-xl">
-        <header className="flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}>
+    // The expanded call is a bottom sheet, not a full-screen takeover: the chat
+    // stays readable behind it and the sheet is reachable with one thumb.
+    <Sheet open={!!call && viewOpen} onOpenChange={(open) => { if (!open) closeView(); }}>
+      <SheetContent
+        side="bottom"
+        className="glass-strong flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
+      >
+        <SheetTitle className="sr-only">Voice call</SheetTitle>
+        <header className="flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">Voice channel</p>
             <h1 className="truncate font-display text-lg font-bold leading-tight">{call.channelName}</h1>
@@ -284,7 +290,7 @@ export function VoiceCallView() {
           </p>
           {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
-      </div>
-    </FullScreenLayer>
+      </SheetContent>
+    </Sheet>
   );
 }
