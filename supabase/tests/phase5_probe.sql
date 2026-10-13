@@ -44,6 +44,7 @@ DECLARE
   emoji_id uuid;
   rizz_bot uuid;
   music_bot uuid;
+  voice_room uuid;
   own_bot uuid;
   n integer;
   v_xp integer;
@@ -351,39 +352,77 @@ BEGIN
   res := public.install_realm_bot(realm, music_bot);
   PERFORM pg_temp.expect('music: the bot can be installed', coalesce(res->>'ok','') = 'true', res::text);
 
-  res := public.music_add(realm, room,
+  -- The music bot belongs to voice channels (20261016000000). The house bot is
+  -- installed too, so "which commands does this channel offer" is a real
+  -- question instead of an empty list.
+  INSERT INTO public.realm_rooms (realm_id, name, kind, position)
+  VALUES (realm, 'Probe voice', 'voice', 99) RETURNING id INTO voice_room;
+  PERFORM pg_temp.expect('music: a voice channel exists to queue into', voice_room IS NOT NULL);
+  res := public.install_realm_bot(realm, rizz_bot);
+  PERFORM pg_temp.expect('commands: the house bot can be installed too', coalesce(res->>'ok','') = 'true', res::text);
+
+  res := public.music_add(realm, voice_room,
     '{"title":"Night Drive","artist":"The Probes","url":"https://example.com/t/1","artwork":"https://example.com/a.jpg","preview":"https://example.com/p.m4a","duration":180000}'::jsonb);
   PERFORM pg_temp.expect('music: a track is queued', coalesce(res->>'ok','') = 'true', res::text);
   PERFORM pg_temp.expect('music: the queued track posted a card',
     (SELECT card->>'type' FROM public.messages WHERE id = (res->>'message_id')::uuid) = 'track'
     AND (SELECT card->>'title' FROM public.messages WHERE id = (res->>'message_id')::uuid) = 'Night Drive');
 
-  res := public.music_add(realm, room, '{"title":"Second Song","artist":"The Probes"}'::jsonb);
+  res := public.music_add(realm, voice_room, '{"title":"Second Song","artist":"The Probes"}'::jsonb);
   PERFORM pg_temp.expect('music: the queue position climbs', (res->>'position')::int = 2, res::text);
 
-  res := public.music_add(realm, room, '{}'::jsonb);
+  res := public.music_add(realm, voice_room, '{}'::jsonb);
   PERFORM pg_temp.expect('music: a track without a title is refused', coalesce(res->>'ok','') = 'false', res::text);
 
-  res := public.run_music_bot_command('queue', '', realm, room);
+  res := public.run_music_bot_command('queue', '', realm, voice_room);
   PERFORM pg_temp.expect('music: /queue lists the songs',
     coalesce(res->>'ok','') = 'true' AND res->>'body' LIKE '%Night Drive%Second Song%', res::text);
 
-  res := public.run_music_bot_command('np', '', realm, room);
+  res := public.run_music_bot_command('np', '', realm, voice_room);
   PERFORM pg_temp.expect('music: /np answers', coalesce(res->>'ok','') = 'true' AND res->>'body' LIKE '%Now playing%', res::text);
 
-  res := public.run_music_bot_command('skip', '', realm, room);
+  res := public.run_music_bot_command('skip', '', realm, voice_room);
   PERFORM pg_temp.expect('music: /skip clears the head',
     coalesce(res->>'ok','') = 'true'
     AND (SELECT status FROM public.music_queue WHERE title = 'Night Drive') = 'skipped');
 
-  res := public.run_music_bot_command('stop', '', realm, room);
+  res := public.run_music_bot_command('stop', '', realm, voice_room);
   PERFORM pg_temp.expect('music: /stop empties the queue',
     coalesce(res->>'ok','') = 'true'
     AND (SELECT count(*) FROM public.music_queue WHERE realm_id = realm AND status = 'queued') = 0);
 
   PERFORM set_config('request.jwt.claim.sub', d::text, false);
-  res := public.music_add(realm, room, '{"title":"Nope"}'::jsonb);
+  res := public.music_add(realm, voice_room, '{"title":"Nope"}'::jsonb);
   PERFORM pg_temp.expect('music: a stranger cannot queue a song', coalesce(res->>'ok','') = 'false', res::text);
+
+  -- Voice channels only: the same calls are refused in a text channel and in the
+  -- realm's own channel, so a /play entry can no longer appear where it fails.
+  PERFORM set_config('request.jwt.claim.sub', a::text, false);
+  res := public.music_add(realm, room, '{"title":"Wrong place"}'::jsonb);
+  PERFORM pg_temp.expect('music: a text channel is refused',
+    coalesce(res->>'ok','') = 'false' AND coalesce(res->>'error','') LIKE '%voice channel%', res::text);
+  res := public.music_add(realm, NULL, '{"title":"Nowhere"}'::jsonb);
+  PERFORM pg_temp.expect('music: the realm channel is refused',
+    coalesce(res->>'ok','') = 'false' AND coalesce(res->>'error','') LIKE '%voice channel%', res::text);
+  res := public.run_music_bot_command('queue', '', realm, room);
+  PERFORM pg_temp.expect('music: /queue is refused outside a voice channel',
+    coalesce(res->>'ok','') = 'false' AND coalesce(res->>'error','') LIKE '%voice channel%', res::text);
+  res := public.run_music_bot_command('skip', '', realm, NULL);
+  PERFORM pg_temp.expect('music: /skip is refused outside a voice channel', coalesce(res->>'ok','') = 'false', res::text);
+
+  res := public.realm_slash_commands(realm, voice_room);
+  PERFORM pg_temp.expect('commands: a voice channel offers MUSIC BOT',
+    jsonb_array_length(res) > 0
+    AND (SELECT bool_and(entry->>'bot_name' = 'MUSIC BOT') FROM jsonb_array_elements(res) AS entry)
+    AND res::text LIKE '%"play"%', left(res::text, 300));
+  res := public.realm_slash_commands(realm, room);
+  PERFORM pg_temp.expect('commands: a text channel hides the music bot and keeps the house bot',
+    jsonb_array_length(res) > 0
+    AND (SELECT bool_and(entry->>'bot_name' <> 'MUSIC BOT') FROM jsonb_array_elements(res) AS entry)
+    AND res::text LIKE '%"rizz"%', left(res::text, 300));
+  res := public.realm_slash_commands(realm, NULL);
+  PERFORM pg_temp.expect('commands: the realm channel hides the music bot',
+    res::text NOT LIKE '%MUSIC BOT%' AND res::text LIKE '%"rizz"%', left(res::text, 300));
 
   -- ------------------------------------------------- welcome bot switch
   PERFORM set_config('request.jwt.claim.sub', b::text, false);

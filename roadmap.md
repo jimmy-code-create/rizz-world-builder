@@ -14,3 +14,4 @@
 
 - [ ] Fix group invite RPC/cache, chat overlap, story fullscreen, premium chat/poll/toast polish, and mobile performance.
 - [x] Add distinct narrator/character voices across story playback and make valid group invites bypass mutual-friend gating.
+- [x] Let realm settings scroll on phones, fold channel permissions into the realm settings page, keep the music bot on voice channels with a working `/play`, and refresh the feed.

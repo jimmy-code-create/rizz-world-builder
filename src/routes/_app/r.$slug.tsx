@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Music, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -52,7 +52,7 @@ import { TrackCard } from "@/components/chat/TrackCard";
 import { ThreadSheet } from "@/components/chat/ThreadSheet";
 import { MessageSearchSheet } from "@/components/chat/MessageSearchSheet";
 import { LevelsSheet } from "@/components/chat/LevelsSheet";
-import { MusicSheet } from "@/components/chat/MusicSheet";
+import { VoiceChannelMusic } from "@/components/chat/VoiceChannelMusic";
 import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
@@ -120,7 +120,6 @@ function RealmPage() {
   // Phase 5: search, levels, threads, scheduling, polls, emoji, reaction roles.
   const [searchOpen, setSearchOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
-  const [musicOpen, setMusicOpen] = useState(false);
   const [threadRoot, setThreadRoot] = useState<{ id: string; body: string; author: string | null } | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
@@ -548,15 +547,6 @@ function RealmPage() {
           size="sm"
           variant="outline"
           className="glass shrink-0 border-white/10"
-          aria-label="Music queue"
-          onClick={() => setMusicOpen(true)}
-        >
-          <Music className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
           aria-label="Realm options"
           onClick={() => setOptionsOpen(true)}
         >
@@ -958,6 +948,10 @@ function RealmPage() {
             )}
           </div>
 
+          {/* MUSIC BOT is a voice-channel feature: its queue is keyed to this
+              room, and a voice channel has no composer, so `/play` lives here. */}
+          <VoiceChannelMusic realmId={c.id} roomId={activeRoom.id} />
+
           {activeChannelPeople.length > 0 && (
             <ul className="mt-4 space-y-2">
               {activeChannelPeople.map((person) => {
@@ -1244,7 +1238,6 @@ function RealmPage() {
         onJump={jumpToMessage}
       />
       <LevelsSheet open={levelsOpen} onOpenChange={setLevelsOpen} realmId={c.id} />
-      <MusicSheet open={musicOpen} onOpenChange={setMusicOpen} realmId={c.id} roomId={slashRoomId} />
       <ThreadSheet
         open={!!threadRoot}
         onOpenChange={(open) => { if (!open) setThreadRoot(null); }}

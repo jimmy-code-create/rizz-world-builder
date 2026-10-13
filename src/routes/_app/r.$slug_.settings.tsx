@@ -16,11 +16,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RealmBotsSheet } from "@/components/bots/RealmBotsSheet";
-import { ChannelPermissionsSheet } from "@/components/realms/ChannelPermissionsSheet";
+import { ChannelPermissionsPanel } from "@/components/realms/ChannelPermissionsSheet";
 import {
   banRealmMember, createRealmInvite, createRealmRoom, deleteRealm, fetchRealmBySlug, fetchRealmRooms,
   kickRealmMember, listRealmMembers, setRealmMemberRole, unbanRealmMember, type RealmRoom,
 } from "@/lib/realms";
+import type { ReactionsMode } from "@/lib/realm-permissions";
 import {
   PERMISSION_LABELS, clearRealmWarns, fetchRealmAudit, fetchRealmBans, fetchRealmInvites,
   fetchRealmMemberStatus, fetchRealmReports, inviteState, realmAuditKey, realmBansKey, realmCan,
@@ -61,6 +62,7 @@ const SECTIONS = [
   { key: "roles", label: "Roles & permissions", icon: ShieldCheck },
   { key: "members", label: "Members", icon: Shield },
   { key: "channels", label: "Channels", icon: Hash },
+  { key: "permissions", label: "Channel permissions", icon: Lock },
   { key: "automod", label: "Moderation", icon: Gauge },
   { key: "reports", label: "Reports", icon: Flag },
   { key: "bans", label: "Bans", icon: UserX },
@@ -177,7 +179,21 @@ function RealmSettingsPage() {
           ) : section === "reactions" ? (
             <ReactionRolesSection realmId={payload.realm.id} canManage={can("moderate_messages")} />
           ) : section === "roles" ? (
-            <RolesSection realmId={payload.realm.id} roles={payload.roles} canManage={can("manage_roles")} />
+            <RolesSection
+              realmId={payload.realm.id}
+              roles={payload.roles}
+              canManage={can("manage_roles")}
+              onOpenPermissions={() => setSection("permissions")}
+            />
+          ) : section === "permissions" ? (
+            <PermissionsSection
+              realmId={payload.realm.id}
+              realmName={payload.realm.name}
+              reactionsMode={(payload.realm as { reactions_mode?: ReactionsMode | null }).reactions_mode ?? "everyone"}
+              // The server rule is role-based (is_realm_moderator), not the
+              // per-role switches above, so owner and mod both get the toggles.
+              canManage={myRole === "owner" || myRole === "mod"}
+            />
           ) : section === "members" ? (
             <MembersSection realmId={payload.realm.id} ownerId={payload.realm.owner_id} canManage={can("manage_members")} />
           ) : section === "channels" ? (
@@ -363,14 +379,14 @@ function RolesSection({
   realmId,
   roles,
   canManage,
+  onOpenPermissions,
 }: {
   realmId: string;
   roles: { role: "mod" | "member"; color: string | null; permissions: string[] }[];
   canManage: boolean;
+  onOpenPermissions: () => void;
 }) {
   const invalidate = useInvalidate(realmId);
-  const rooms = useQuery({ queryKey: ["realm-rooms", realmId], queryFn: () => fetchRealmRooms(realmId) });
-  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [draft, setDraft] = useState<Record<string, { color: string; permissions: string[] }>>(() =>
     Object.fromEntries(
       roles.map((entry) => [
@@ -425,7 +441,7 @@ function RolesSection({
             variant="outline"
             size="sm"
             className="h-10 shrink-0 border-white/10 bg-white/5"
-            onClick={() => setPermissionsOpen(true)}
+            onClick={onOpenPermissions}
           >
             <Lock className="h-4 w-4" /> Per-channel
           </Button>
@@ -494,16 +510,41 @@ function RolesSection({
         </div>
       </Panel>
 
-      <ChannelPermissionsSheet
-        open={permissionsOpen}
-        onOpenChange={setPermissionsOpen}
-        realmId={realmId}
-        realmName="this realm"
-        rooms={(rooms.data ?? []) as RealmRoom[]}
-        canModerate={canManage}
-        realmReactionsMode="everyone"
-      />
+      <p className="text-xs text-muted-foreground">
+        Per-channel overrides live in the Channel permissions section.
+      </p>
     </div>
+  );
+}
+
+// -------------------------------------------------- channel permissions
+
+/**
+ * Channel permissions used to be a sheet behind the Roles section's button,
+ * which never opened on phones. It is a first-class section of the page now:
+ * pick a channel, then switch who may write or react in it.
+ */
+function PermissionsSection({
+  realmId,
+  realmName,
+  reactionsMode,
+  canManage,
+}: {
+  realmId: string;
+  realmName: string;
+  reactionsMode: ReactionsMode;
+  canManage: boolean;
+}) {
+  const rooms = useQuery({ queryKey: ["realm-rooms", realmId], queryFn: () => fetchRealmRooms(realmId) });
+
+  return (
+    <ChannelPermissionsPanel
+      realmId={realmId}
+      realmName={realmName}
+      rooms={(rooms.data ?? []) as RealmRoom[]}
+      canModerate={canManage}
+      realmReactionsMode={reactionsMode}
+    />
   );
 }
 

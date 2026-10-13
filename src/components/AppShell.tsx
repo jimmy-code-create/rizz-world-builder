@@ -66,7 +66,12 @@ export function AppShell() {
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const presence = useSelfPresence();
-  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/|r\/)/.test(path);
+  // Chat surfaces scroll themselves (their message list owns the viewport) and
+  // hide the shell chrome. Realm settings lives at /r/<slug>/settings, which is
+  // a normal page: matching it here left it inside an `overflow-hidden` column
+  // with no scroller of its own, so nothing below the first screen could be
+  // reached on a phone.
+  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
 
   // Close the More sheet whenever the route changes
@@ -151,7 +156,10 @@ export function AppShell() {
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
   const unreadCount = unread.data ?? 0;
   const unreadBadge = unreadCount > 9 ? "9+" : String(unreadCount);
-  const isActive = (to: string) => path === to || (to !== "/feed" && path.startsWith(to + "/"));
+  // A realm's own pages (/r/<slug>/settings) keep the Realms tab lit even
+  // though they do not live under /realms.
+  const isActive = (to: string) =>
+    path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/realms" && path.startsWith("/r/"));
 
   return (
     <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
