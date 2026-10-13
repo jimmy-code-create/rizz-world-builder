@@ -87,7 +87,7 @@ function TutorialPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-dvh flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>;
+    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
   }
 
   if (profileError || !profile) {
@@ -99,17 +99,17 @@ function TutorialPage() {
   }
 
   if (!profile.username) {
-    return <div className="min-h-dvh flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>;
+    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
   }
 
   if (profile.tutorial_seen && !hasEntered.current) {
-    return <div className="min-h-dvh flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>;
+    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
   }
 
   return (
-    <AuthCard title="Find your people" subtitle="Pick what you're into. We'll suggest rooms and people that fit.">
+    <AuthCard title="Find your people" subtitle="Pick the things you’re into. We’ll suggest rooms and people that fit.">
       <div className="mb-4 flex justify-end">
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void finish(profile.interests ?? [])} className="text-muted-foreground hover:text-foreground">
+        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void finish(profile.interests ?? [])}>
           Skip
         </Button>
       </div>
@@ -117,23 +117,18 @@ function TutorialPage() {
         {TUTORIAL_INTERESTS.map(({ id, emoji }) => {
           const isSelected = selected.includes(id);
           return (
-            <button
+            <Button
               key={id}
               type="button"
+              variant={isSelected ? "default" : "outline"}
               aria-pressed={isSelected}
               disabled={busy}
               onClick={() => toggleInterest(id)}
-              className={`flex h-11 items-center justify-start gap-2.5 rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                isSelected
-                  ? "border-primary bg-primary/10 text-foreground font-semibold"
-                  : "border-border bg-card text-muted-foreground hover:border-border/80 hover:text-foreground"
-              }`}
+              className={`h-11 justify-start gap-2 ${isSelected ? "bg-gradient-primary border-0" : "glass border-white/10"}`}
             >
-              <span className="grid h-6 w-6 shrink-0 place-items-center">
-                <CustomEmoji name={emoji} className="block h-5 w-5 shrink-0" />
-              </span>
-              <span className="truncate">{id}</span>
-            </button>
+              <CustomEmoji name={emoji} className="h-5 w-5" />
+              <span>{id}</span>
+            </Button>
           );
         })}
       </div>
@@ -142,7 +137,7 @@ function TutorialPage() {
         type="button"
         disabled={busy}
         onClick={() => void finish(selected)}
-        className="mt-5 w-full h-11 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="mt-5 w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90"
       >
         {busy ? "Saving…" : "Continue"}
       </Button>

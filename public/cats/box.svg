@@ -2,17 +2,17 @@
   <title>Empty box</title>
   <path d="M46 70 L50 30 L80 60 Z" fill="#12101A" />
   <path d="M114 70 L110 30 L80 60 Z" fill="#12101A" />
-  <path d="M53 66 L56 40 L73 60 Z" fill="#B8E600" />
-  <path d="M107 66 L104 40 L87 60 Z" fill="#B8E600" />
+  <path d="M53 66 L56 40 L73 60 Z" fill="#8B72FF" />
+  <path d="M107 66 L104 40 L87 60 Z" fill="#8B72FF" />
   <ellipse cx="80" cy="88" rx="42" ry="37" fill="#12101A" />
   <circle cx="64" cy="84" r="10.5" fill="#FFFFFF" />
   <circle cx="96" cy="84" r="10.5" fill="#FFFFFF" />
   <circle cx="64" cy="85" r="4.8" fill="#12101A" />
   <circle cx="96" cy="85" r="4.8" fill="#12101A" />
-  <path d="M73 99h14l-7 8z" fill="#B8E600" />
-  <path d="M40 97L26 101M40 106l-14 6M120 97l14 4M120 106l14 6" stroke="#B8E600" stroke-width="3.4" stroke-linecap="round" />
-  <path d="M18 112 L48 94 L80 112 L50 130 Z" fill="#B8E600" />
-  <path d="M142 112 L112 94 L80 112 L110 130 Z" fill="#B8E600" />
-  <rect x="26" y="112" width="108" height="44" rx="9" fill="#D4FF00" />
+  <path d="M73 99h14l-7 8z" fill="#8B72FF" />
+  <path d="M40 97L26 101M40 106l-14 6M120 97l14 4M120 106l14 6" stroke="#8B72FF" stroke-width="3.4" stroke-linecap="round" />
+  <path d="M18 112 L48 94 L80 112 L50 130 Z" fill="#8B72FF" />
+  <path d="M142 112 L112 94 L80 112 L110 130 Z" fill="#8B72FF" />
+  <rect x="26" y="112" width="108" height="44" rx="9" fill="#6C4BFF" />
   <path d="M80 112v44" stroke="#12101A" stroke-opacity="0.22" stroke-width="4" />
 </svg>

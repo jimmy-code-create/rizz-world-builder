@@ -73,27 +73,25 @@ export function CustomEmoji({
   }, [extension, failed, source, visible]);
 
   if (failed) {
-    return <span aria-hidden="true" className={`grid shrink-0 place-items-center select-none text-base leading-none ${className}`}>{asset.fallback}</span>;
+    return <span aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center ${className}`}>{asset.fallback}</span>;
   }
 
   if (extension === "webp" || extension === "png") {
     return (
-      <span className={`grid shrink-0 place-items-center overflow-hidden p-0 m-0 ${className}`}>
-        <img
-          src={source}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-          className="block h-full w-full object-contain shrink-0 m-0 p-0"
-        />
-      </span>
+      <img
+        src={source}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+        className={`inline-block shrink-0 object-contain ${className}`}
+      />
     );
   }
 
   if (extension === "webm") {
     return (
-      <span ref={containerRef} aria-hidden="true" className={`grid shrink-0 place-items-center overflow-hidden p-0 m-0 ${className}`}>
+      <span ref={containerRef} aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center ${className}`}>
         {visible ? (
           <video
             src={source}
@@ -103,18 +101,12 @@ export function CustomEmoji({
             playsInline
             preload="none"
             onError={() => setFailed(true)}
-            className="block h-full w-full object-contain shrink-0 m-0 p-0"
+            className="h-full w-full object-contain"
           />
-        ) : (
-          <span className="text-base leading-none">{asset.fallback}</span>
-        )}
+        ) : asset.fallback}
       </span>
     );
   }
 
-  return (
-    <span aria-hidden="true" ref={containerRef} className={`grid shrink-0 place-items-center overflow-hidden p-0 m-0 ${className}`}>
-      {!visible ? <span className="text-base leading-none">{asset.fallback}</span> : null}
-    </span>
-  );
+  return <span aria-hidden="true" ref={containerRef} className={`inline-flex shrink-0 items-center justify-center ${className}`}>{!visible ? asset.fallback : null}</span>;
 }

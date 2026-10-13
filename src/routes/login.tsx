@@ -58,7 +58,7 @@ function LoginPage() {
       subtitle="Log into your world."
       footer={
         <>
-          New here? <Link to="/signup" className="text-primary hover:underline font-medium">Create an account</Link>
+          New here? <Link to="/signup" className="text-[var(--rizz-pink)] hover:underline font-medium">Create an account</Link>
         </>
       }
     >
@@ -73,20 +73,16 @@ function LoginPage() {
       <form onSubmit={onEmail} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 bg-muted/30 border-border focus-visible:ring-primary" />
+          <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 glass border-white/10" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
             <Link to="/reset-password" className="text-xs text-muted-foreground hover:text-foreground">Forgot?</Link>
           </div>
-          <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 bg-muted/30 border-border focus-visible:ring-primary" />
+          <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 glass border-white/10" />
         </div>
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
+        <Button type="submit" disabled={loading} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
           {loading ? "Logging in…" : "Log in"}
         </Button>
       </form>

@@ -15,8 +15,6 @@ function closesIn(iso: string | null) {
   return `${Math.max(1, Math.floor(ms / 60_000))}m left`;
 }
 
-import { IconTile, RadioIndicator } from "@/components/ui/IconTile";
-
 export function PollBlock({ postId }: { postId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -81,11 +79,11 @@ export function PollBlock({ postId }: { postId: string }) {
   const timeLabel = closesIn(p.closes_at);
 
   return (
-    <section aria-label="Poll" className="relative mx-4 mb-3 overflow-hidden rounded-xl border border-border bg-card p-3.5 shadow-none sm:p-4">
+    <section aria-label="Poll" className="relative mx-4 mb-3 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.05)] sm:p-4">
       <div className="mb-3 flex items-start gap-2.5">
-        <IconTile size="lg" shape="rounded" className="border border-primary/25 bg-primary/10 text-primary">
-          <BarChart3 aria-hidden="true" className="h-4 w-4" />
-        </IconTile>
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-[var(--rizz-pink)]/20 bg-[var(--rizz-pink)]/10">
+          <BarChart3 aria-hidden="true" className="h-4 w-4 text-[var(--rizz-pink)]" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Community poll</p>
           <h3 className="mt-0.5 text-sm font-semibold leading-snug">{p.question}</h3>
@@ -102,9 +100,9 @@ export function PollBlock({ postId }: { postId: string }) {
               disabled={revealed || vote.isPending || expired}
               aria-pressed={mine}
               onClick={() => vote.mutate(o.id)}
-              className={`group relative min-h-11 w-full overflow-hidden rounded-lg border px-3.5 py-2.5 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                mine ? "border-primary/50 bg-primary/10" : "border-border bg-muted/30"
-              } ${revealed ? "cursor-default" : "hover:border-border/80 hover:bg-muted/50 active:bg-muted/70"}`}
+              className={`group relative min-h-11 w-full overflow-hidden rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+                mine ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/[0.07]" : "border-white/[0.09] bg-black/10"
+              } ${revealed ? "cursor-default" : "hover:border-white/20 hover:bg-white/[0.045] active:bg-white/[0.08]"}`}
             >
               {revealed && (
                 <motion.span
@@ -112,11 +110,13 @@ export function PollBlock({ postId }: { postId: string }) {
                   animate={{ scaleX: pct / 100 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                   className="absolute inset-0 origin-left"
-                  style={{ background: mine ? "rgba(212, 255, 0, 0.15)" : "rgba(244, 244, 246, 0.06)" }}
+                  style={{ background: mine ? "linear-gradient(90deg,color-mix(in oklab,var(--rizz-pink) 24%,transparent),transparent)" : "rgba(255,255,255,0.07)" }}
                 />
               )}
               <span className="relative flex items-center gap-2.5">
-                <RadioIndicator checked={mine} />
+                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${mine ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)] text-white" : "border-white/25 group-hover:border-white/45"}`}>
+                  {mine && <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />}
+                </span>
                 <span className="flex-1 truncate font-medium">{o.label}</span>
                 {revealed && <span className="tabular-nums text-xs font-semibold text-foreground/75">{pct}%</span>}
               </span>
@@ -124,7 +124,7 @@ export function PollBlock({ postId }: { postId: string }) {
           );
         })}
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5 text-[10px] font-medium text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5 text-[10px] font-medium text-muted-foreground">
         <span className="tabular-nums">{p.total_votes.toLocaleString()} {p.total_votes === 1 ? "vote" : "votes"}</span>
         {timeLabel && (
           <span className="inline-flex items-center gap-1.5">
