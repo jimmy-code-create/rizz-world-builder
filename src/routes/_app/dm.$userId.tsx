@@ -716,6 +716,9 @@ function DMPage() {
     await reactions.toggle(messageId, DOUBLE_TAP_REACTION);
   };
 
+  // Live "Call in progress · Join" state for this conversation.
+  const peerInCall = usePeerInCall(userId);
+
   return (
     // Two-pane on desktop: the conversation list sits beside the open chat, the
     // phone layout keeps the single column and uses /dms for the list.
@@ -763,6 +766,17 @@ function DMPage() {
           )}
           <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : peerStatus === "offline" ? `@${other.data?.username}` : statusLabel(peerStatus) === "Idle" ? "Away" : "Active now"}</p>
         </Link>
+        {peerInCall && (
+          <Link
+            to="/call/$userId"
+            params={{ userId }}
+            search={{ video: false }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            Call in progress · Join
+          </Link>
+        )}
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
         </Button>
@@ -1219,4 +1233,49 @@ function DMPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Watches this conversation's call channel for the other participant, so the
+ * header can offer "Call in progress · Join".
+ *
+ * The call screen keeps presence on `call:<sortedUserIds>`, so this needs no new
+ * database state. The watcher joins with its own presence key and never calls
+ * track(), so it can never be mistaken for a participant in the call.
+ */
+function usePeerInCall(peerId: string | undefined) {
+  const { user } = useAuth();
+  const selfId = user?.id;
+  const [peerInCall, setPeerInCall] = useState(false);
+
+  useEffect(() => {
+    if (!selfId || !peerId || selfId === peerId) {
+      setPeerInCall(false);
+      return;
+    }
+    const roomId = [selfId, peerId].sort().join("_");
+    const channel = supabase.channel(`call:${roomId}`, {
+      config: { broadcast: { self: false, ack: false }, presence: { key: `${selfId}:watcher` } },
+    });
+    // The other participant's presence key is their user id; our own key is
+    // suffixed so it never counts as a peer.
+    const readPresence = () => {
+      const state = channel.presenceState() as Record<string, unknown>;
+      return Object.keys(state).some((key) => key !== selfId && !key.startsWith(selfId));
+    };
+
+    channel
+      .on("presence", { event: "sync" }, () => setPeerInCall(readPresence()))
+      .on("presence", { event: "join" }, () => setPeerInCall(readPresence()))
+      .on("presence", { event: "leave" }, () => setPeerInCall(readPresence()))
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setPeerInCall(readPresence());
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [selfId, peerId]);
+
+  return peerInCall;
 }

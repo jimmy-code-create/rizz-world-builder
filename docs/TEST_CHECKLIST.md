@@ -44,6 +44,8 @@
 - [ ] DM call: remote audio blocked by autoplay shows "Tap to enable sound", and tapping it produces sound.
 - [ ] DM call combinations, each in both directions: PC→PC, mobile→mobile, PC→mobile, mobile→PC.
 - [ ] Incoming call on a phone vibrates while the sheet is up and auto-dismisses after 45 seconds.
+- [ ] With a call already running between two accounts, the other account's DM header shows the "Call in progress · Join" pill, and tapping it joins the call. The pill disappears when the call ends.
+- [ ] Missed calls in the chat with a "Call back" button are **not** implemented: they need the `calls` / `call_participants` backend that this repo does not ship yet.
 - [ ] Counts: a post at 999,999,999 reads "1B" (never "1000M"), and 1,240 reads "1.2K".
 - [ ] Chat stories: "Import JSON" accepts `src/data/room4b.json`, saves it under your account and opens the player; a malformed file shows a friendly error instead of a crash.
 - [ ] Chat stories: importing a file while signed out, or that your account may not create, is refused by RLS with a message rather than a partial story.
