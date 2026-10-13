@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Tr
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
+import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -889,7 +890,7 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
     <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
       {deco ? (
         <AvatarDecoration
-          src={post.author?.avatar_url}
+          src={normalizeAvatarUrl(post.author?.avatar_url) ?? undefined}
           fallback={initial}
           size={40}
           effectSlug={deco.slug}

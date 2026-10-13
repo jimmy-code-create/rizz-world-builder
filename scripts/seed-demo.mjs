@@ -174,7 +174,7 @@ function personas(count) {
       email: `${f}.${l}.${i}@${EMAIL_DOMAIN}`,
       username: `${f}_${l}_${i}`,
       displayName: `${f.charAt(0).toUpperCase()}${f.slice(1)} ${l.charAt(0).toUpperCase()}${l.slice(1)}`,
-      avatar: `https://api.dicebear.com/9.x/thumbs/svg?seed=${f}${l}${i}`,
+      avatar: `/avatars/cat-${(i % 6) + 1}.svg`,
       bio: BIOS[i % BIOS.length],
       accent: ACCENTS[i % ACCENTS.length],
       password: `Seed-${i}-Rizz!2026`,

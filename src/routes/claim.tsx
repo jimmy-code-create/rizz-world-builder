@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
+import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/claim")({
@@ -19,6 +21,10 @@ function ClaimUsernamePage() {
   const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const nav = useNavigate();
   const [username, setUsername] = useState("");
+  // The dedicated pick: every account chooses its cat the first time it logs in.
+  const [avatar, setAvatar] = useState<string>(() =>
+    profile?.avatar_url && isDefaultAvatar(profile.avatar_url) ? profile.avatar_url : DEFAULT_AVATARS[0].url,
+  );
   const [busy, setBusy] = useState(false);
   const [errorKind, setErrorKind] = useState<AuthErrorKind | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -51,7 +57,7 @@ function ClaimUsernamePage() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .update({ username: normalized, display_name: profile?.display_name || normalized })
+        .update({ username: normalized, display_name: profile?.display_name || normalized, avatar_url: avatar })
         .eq("id", user.id)
         .is("username", null)
         .select("id")
@@ -71,7 +77,7 @@ function ClaimUsernamePage() {
         }
         const { error: insertError } = await supabase
           .from("profiles")
-          .upsert({ id: user.id, username: normalized, display_name: normalized });
+          .upsert({ id: user.id, username: normalized, display_name: normalized, avatar_url: avatar });
         if (insertError) throw insertError;
       }
 
@@ -106,6 +112,34 @@ function ClaimUsernamePage() {
         <AuthErrorBanner kind={errorKind} rawMessage={errorMessage} onRetry={() => setErrorKind(null)} retryLabel="Try another username" />
       )}
       <form onSubmit={claim} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Your avatar</Label>
+          <p className="text-xs text-muted-foreground">Pick the cat that's you. Change it any time in Settings.</p>
+          <div className="grid grid-cols-6 gap-2" role="radiogroup" aria-label="Choose your avatar">
+            {DEFAULT_AVATARS.map((option) => {
+              const selected = avatar === option.url;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={option.label}
+                  title={option.label}
+                  onClick={() => setAvatar(option.url)}
+                  className={cn(
+                    "relative aspect-square overflow-hidden rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "ring-2 ring-[var(--rizz-pink)] ring-offset-2 ring-offset-background"
+                      : "ring-1 ring-white/10 hover:ring-white/35",
+                  )}
+                >
+                  <img src={option.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="claim-username">Username</Label>
           <div className="relative">

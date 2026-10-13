@@ -41,3 +41,21 @@ export function randomDefaultAvatar(seed?: string): string {
 export function isDefaultAvatar(url: string | null | undefined): boolean {
   return !!url && DEFAULT_AVATARS.some((avatar) => avatar.url === url);
 }
+
+/**
+ * Generated placeholder faces (the demo seed's DiceBear avatars, ui-avatars,
+ * robohash …) are replaced with a cat at render time.
+ *
+ * Every avatar in the app passes through `AvatarImage`, so this one function
+ * repaints them everywhere they appear — feed, comments, DMs, search, previews —
+ * without touching the database or anyone's uploaded photo, which is never a
+ * generated placeholder and therefore passes straight through.
+ */
+const GENERATED_AVATAR = /(dicebear|ui-avatars|robohash|gravatar|boring-avatars|avataaars|placeholder\.)/i;
+
+export function normalizeAvatarUrl(url: string | null | undefined): string | null | undefined {
+  if (!url || !GENERATED_AVATAR.test(url)) return url;
+  // DiceBear puts its seed in the URL, so the same person keeps the same cat.
+  const seed = /[?&]seed=([^&]+)/.exec(url)?.[1];
+  return defaultAvatarFor(seed ? decodeURIComponent(seed) : url);
+}
