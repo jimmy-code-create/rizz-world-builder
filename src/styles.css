@@ -100,6 +100,17 @@
   --surface-bar: rgba(13, 10, 20, 0.93);
   --surface-bubble: rgba(28, 23, 38, 0.96);
 
+  /* Chat rhythm. Every spacing value a message uses lives here, so the whole
+     list can be re-tuned from one place — Discord's numbers: ~3px between two
+     lines from the same person, ~18px between groups from different people. */
+  --chat-gap-same: 3px;
+  --chat-gap-group: 18px;
+  --chat-gap-separator: 20px;
+  --chat-side-padding: 14px;
+  --chat-line-height: 1.45;
+  --chat-media-gap: 8px;
+  --chat-avatar: 2.25rem;
+
   /* Chat author-name palette. Every value clears 4.5:1 against --surface-bubble
      and --background, so a name is never the default link-blue on dark. */
   --chat-name-1: oklch(0.80 0.16 20);
@@ -362,13 +373,22 @@
 
 /* ============ CHAT MESSAGES (Phase 1) ============ */
 
-/* Realm chat reads as Discord-style flat rows, not bubbles. */
+/* Realm chat reads as Discord-style flat rows, not bubbles.
+   The two gaps are the whole point: consecutive lines from one author sit close
+   enough to read as a paragraph, and a new author gets real breathing room. */
 .realm-message {
   display: flex;
   gap: 0.75rem;
   align-items: flex-start;
-  padding: 0.125rem 0.25rem;
+  margin-top: var(--chat-gap-same);
+  padding: 0.125rem var(--chat-side-padding);
   border-radius: 0.5rem;
+}
+/* The first row in the list, and the first row after a date separator, gets the
+   group gap so a divider never looks glued to the message under it. */
+.realm-message--group-start,
+.realm-message:first-child {
+  margin-top: var(--chat-gap-group);
 }
 .realm-message:hover {
   background: color-mix(in srgb, var(--foreground) 4%, transparent);
@@ -380,7 +400,60 @@
   overflow-wrap: break-word;
   word-break: normal;
   font-size: 0.9375rem;
-  line-height: 1.4;
+  line-height: var(--chat-line-height);
+}
+/* Media and embeds are cards with their own rhythm, never glued to the text. */
+.realm-message__body .chat-media-frame,
+.realm-message__body .chat-media-skeleton {
+  margin-block: var(--chat-media-gap);
+  border-radius: var(--radius-xl);
+}
+
+/* The timestamp of a grouped continuation line. Hidden until the row is hovered
+   on a pointer device; on touch the same information is in the long-press
+   preview, so nothing is lost by not showing it permanently. */
+.realm-message__time {
+  width: var(--chat-avatar);
+  flex: 0 0 auto;
+  padding-top: 0.15rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  text-align: right;
+}
+.realm-message:hover .realm-message__time,
+.realm-message:focus-within .realm-message__time {
+  opacity: 1;
+}
+@media (hover: none) {
+  /* Touch devices keep the gutter clear and rely on the message menu. */
+  .realm-message__time { display: none; }
+}
+
+/* ============ DATE SEPARATORS ============ */
+.chat-date-separator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: var(--chat-gap-separator) 0 0.25rem;
+  padding-inline: var(--chat-side-padding);
+}
+.chat-date-separator__label {
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  background: color-mix(in srgb, var(--surface-bubble) 80%, transparent);
+  padding: 0.15rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.chat-date-separator__line {
+  height: 1px;
+  flex: 1 1 auto;
+  background: linear-gradient(to right, color-mix(in srgb, var(--foreground) 10%, transparent), transparent);
 }
 .realm-message__body a,
 .realm-message__body .mention-highlight {

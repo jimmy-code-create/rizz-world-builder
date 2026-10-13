@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Music, Pause, Play, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Music, ExternalLink, Play } from "lucide-react";
 import { formatDuration } from "@/lib/music";
+import { MusicPlayer } from "@/components/music/MusicPlayer";
+import { detectMusicSource, MUSIC_PROVIDERS } from "@/lib/music-sources";
 
 export type TrackCardPayload = {
   type: "track";
@@ -15,15 +17,28 @@ export type TrackCardPayload = {
 };
 
 /**
- * The card MUSIC BOT inserts with `music_add`: artwork, credits, and the
- * 30-second preview the iTunes API provides. The preview never autoplays.
+ * The card MUSIC BOT inserts with `music_add`.
+ *
+ * It used to render nothing at all unless `preview` existed, so a queued
+ * YouTube or direct-audio link showed as a bare title with no way to hear it.
+ * Now the card carries the unified player: Apple previews and audio files play
+ * inline, YouTube opens the official embed, and anything without audio says so
+ * and offers the link instead. Nothing autoplays.
  */
 export function TrackCard({ card }: { card: TrackCardPayload }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const source = detectMusicSource(card.url ?? card.preview);
+  const provider = MUSIC_PROVIDERS[source?.kind ?? "apple"];
 
-  useEffect(() => () => { audioRef.current?.pause(); }, []);
-  if (!card.preview) {
+  if (expanded) {
+    return (
+      <div className="mt-1 w-full max-w-sm">
+        <MusicPlayer track={card} showVolume />
+      </div>
+    );
+  }
+
+  if (!card.preview && !card.url) {
     return (
       <div className="mt-1 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-primary/20 text-[var(--rizz-pink)]">
@@ -37,23 +52,12 @@ export function TrackCard({ card }: { card: TrackCardPayload }) {
     );
   }
 
-  const toggle = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
-    } else {
-      void audio.play().then(() => setPlaying(true), () => setPlaying(false));
-    }
-  };
-
   return (
     <div className="mt-1 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <button
         type="button"
-        onClick={toggle}
-        aria-label={playing ? `Pause ${card.title}` : `Play a preview of ${card.title}`}
+        onClick={() => setExpanded(true)}
+        aria-label={`Play ${card.title} on ${provider.label}`}
         className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-primary text-white shadow-sm"
       >
         {card.artwork ? (
@@ -61,14 +65,17 @@ export function TrackCard({ card }: { card: TrackCardPayload }) {
         ) : (
           <Music className="h-5 w-5" />
         )}
-        <span className="absolute inset-0 grid place-items-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-          {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+        <span className="absolute inset-0 grid place-items-center bg-black/50">
+          <Play className="h-5 w-5" />
         </span>
       </button>
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-sm font-semibold">{card.title}</span>
+          <span className="shrink-0 rounded-full border border-white/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            {provider.shortLabel}
+          </span>
           {card.position ? (
             <span className="shrink-0 rounded-full border border-white/10 px-1.5 text-[10px] font-bold text-muted-foreground">
               #{card.position}
@@ -92,13 +99,6 @@ export function TrackCard({ card }: { card: TrackCardPayload }) {
           <ExternalLink className="h-4 w-4" />
         </a>
       )}
-      <audio
-        ref={audioRef}
-        src={card.preview}
-        onEnded={() => setPlaying(false)}
-        onPause={() => setPlaying(false)}
-        className="hidden"
-      />
     </div>
   );
 }

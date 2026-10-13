@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-10-13 — Story likes and privacy, any-source music, Voice & Sound, chat rhythm, 69 face lenses
+
+### Stories are their own feature, and likes finally save
+- **Why likes failed:** there was nothing to write to. `public.stories` had `view_count` and no `like_count`, and there was no `story_likes` table at all — the heart only flipped a local flag, so nothing was saved, no count was ever shown, and a second tap silently re-inserted the same row. `story_reactions` covers emoji reactions, not likes.
+- **Why the view counter was also stuck at 0:** `bump_story_views` is a plain trigger, so its `UPDATE public.stories` ran as the *viewer* — and the only UPDATE policy on `stories` is the author's. RLS matched zero rows, so `view_count` never moved. Both counters are now `SECURITY DEFINER`, and existing stories are recomputed from the `story_views` rows that were recorded.
+- **Fix:** new `story_likes` table (own-rows policies, author can see who liked), `stories.like_count`, a `bump_story_likes` trigger, and a `StoryViewer` like button that is optimistic, shows the real count, and rolls back the flag *and* the count when the write fails. Double-tap likes with a heart burst.
+- **Audience, enforced in RLS:** `everyone` / `followers only` / `close friends` plus a hide-from list (`stories.hidden_from`). `followers` is a new value on `post_visibility`, `can_view_story()` applies it, and the old expiry-only policies were replaced — a private story is not readable through a direct PostgREST call either. The composer has a privacy panel and a people picker before posting.
+- **Unseen rings:** the gradient ring now means "new since you last looked" (tracked per device), instead of always looking the same.
+- **Mentions in stories:** the story text editor and the new caption field use the same `@` picker as chat, and captions render mentions/tags as real links.
+- **Replies stay DMs:** a story reply is inserted into `direct_messages` with `story_id`, so it lands in the author's inbox — the story is never rendered as a chat message.
+
+### MUSIC BOT plays more than Apple (and pasted links actually resolve)
+- **Why only Apple Music ever played:** `/play` sent a typed song name to the iTunes Search API and, for anything that looked like a link, queued the raw URL as the *title* with `preview_url = null`. So a YouTube link produced a chat card reading "https://youtu.be/…" with no artwork, no metadata and no audio — and the in-call bot, whose only playback path was `<audio src={preview_url}>`, could not sing it.
+- **Fix:** `src/lib/music-sources.ts` classifies a link (YouTube watch / youtu.be / shorts / playlists / music.youtube.com, Apple Music, direct audio files) and `src/lib/music-resolve.ts` resolves it per provider on the server — YouTube through its public oEmbed endpoint (no API key), Apple through the existing search, audio files by checking the content type. Each provider is one entry in a registry, so adding one is a case, not a rewrite.
+- **Playback:** one `MusicPlayer` handles every source — an `<audio>` element for Apple previews and direct files, and the official YouTube IFrame Player API for YouTube. **YouTube is never downloaded or extracted.** Play/pause/seek/volume/loop/end-of-track behave identically for all three.
+- **Errors:** video unavailable (100), embedding blocked (101/150), region-locked, invalid link and not-audio all map to friendly copy with a skip to the next track; the queue keeps the track so it can retry.
+- **Player features:** the voice-channel panel gained a now-playing card, seek bar, restart, skip, loop, shuffle, inline volume and the upcoming queue; queued-track cards play inline instead of showing a dead title.
+
+### Voice & Sound settings
+- New **Settings → Voice & Sound**: master (0–200%), separate music / voice & TTS / notification sliders, mute-everything, Test sound, input + output device pickers, mic sensitivity and noise suppression. Stored in `rizz:sound` and applied live — no playback restart.
+- Per-realm bot volume override on top of the music slider, plus quick volume + mute inside the player.
+- Honest limits, stated in the UI: the browser caps streamed media at 100%, while the notification tones are generated here and do go above it; output-device selection is hidden where `setSinkId` doesn't exist.
+
+### Chat rhythm (Realms chat)
+- Message spacing is now theme tokens: ~3px between consecutive lines from one author, ~18px between groups (5-minute grouping window), with the date divider adding its own gap.
+- Consecutive messages group under one avatar/name/time, and the time appears in the avatar gutter on hover (desktop); on touch the long-press preview carries it.
+- Added `Today` / `Yesterday` / dated separators, a comfortable line height token, 14px side padding, and media/embed cards with their own spacing.
+
+### Face effects — 69 lenses on one shared warp shader
+- `src/lib/face-effects.ts` is a data-driven registry of all 69 effects (16 warp, 8 reactive, 12 overlays, 8 beauty, 12 filters, 8 world, 5 fun) with per-effect parameters and a default intensity. New lenses are rows, not code.
+- **One shared GPU mesh-warp shader** drives every warp effect: a subdivided grid displaced in the vertex shader from `uWarp[6]` (centre, radius, signed strength) plus `uSwirl`. No CPU pixel loops anywhere in the warp path.
+- Tracking is MediaPipe Face Landmarker, imported lazily from its pinned CDN bundle (no new dependency, so the repo's three lockfiles and the Render `npm ci` step are untouched) and it asks for **blendshapes** — `jawOpen`, `mouthPucker`, `tongueOut`, `eyeBlinkLeft/Right`, `browInnerUp`, `mouthSmileLeft/Right` — so the reactive lenses respond to the right expression instead of guessing from geometry. Head roll/yaw/pitch come from landmarks and drive the overlays.
+- The studio (camera or gallery photo) has the effect carousel above the capture button, tap-to-apply, an intensity slider for every effect, and the "No face found — showing the original image" hint. Sustained frame rate under 24fps halves the render resolution until it recovers above 28fps, and the measured fps is shown.
+- **Scope, stated plainly:** `Background Replace` and `Face Swap` are registered but marked unavailable in the UI — the first needs a segmentation model that isn't bundled, the second needs a two-face texture transfer. Nothing pretends to work: those two say what they need. The 30fps target is implemented as the guard above but has not been measured on a mid-range phone from this environment.
+
+### Story editor status (section 2 of the brief)
+- Added: privacy picker before posting, mention/tag people in story text and captions, the lens tool, 44px touch targets, a scrollable toolbar that survives 375px, and safe-area handling.
+- Already present and kept: 9:16 canvas, pinch/rotate/drag/tap/swipe-down gestures, text with fonts/colours, stickers, filters, gradient backgrounds, undo, trash-drop.
+- **Not built:** the drawing brush, story music picker, GIF picker and crop/trim trimmer. They are additive tools on top of the existing canvas model and are the natural next step, not something this pass silently dropped.
+
 ## 2026-10-13 — Channels & permissions crash, silent MUSIC BOT, message actions, Discord-style mobile pass
 
 ### "Channels & permissions" no longer takes the page down

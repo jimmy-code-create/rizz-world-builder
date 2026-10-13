@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getAuthorizedSupabase } from "@/lib/server-supabase";
 import type { RealmSlashCommand } from "@/lib/bot-commands";
+import { resolveMusicQuery } from "@/lib/music-resolve";
+import { MUSIC_PROVIDERS } from "@/lib/music-sources";
 
 /**
  * Slash command execution.
@@ -19,56 +21,12 @@ import type { RealmSlashCommand } from "@/lib/bot-commands";
 
 const BOT_COMMAND_TIMEOUT_MS = 5_000;
 const LLM_TIMEOUT_MS = 8_000;
-const ITUNES_TIMEOUT_MS = 5_000;
 
 /** Commands where a configured LLM may improve on the curated line bank. */
 const LLM_COMMANDS = new Set(["rizz", "rizzme", "compliment", "icebreaker"]);
 
-/** MUSIC BOT's command names. /play needs the server-side search; the rest are RPCs. */
+/** MUSIC BOT's command names. /play needs the server-side resolve; the rest are RPCs. */
 const MUSIC_COMMANDS = new Set(["play", "queue", "np", "skip", "stop"]);
-
-/** The metadata the queue stores for one resolved song. */
-type ResolvedTrack = {
-  title: string;
-  artist: string | null;
-  url: string | null;
-  artwork: string | null;
-  preview: string | null;
-  duration: number | null;
-};
-
-/**
- * Resolves a song query against Apple Music's public search, on the server.
- * Returns null when nothing matched, which the caller turns into a friendly
- * "no song found" instead of an empty queue entry.
- */
-async function itunesTrack(query: string): Promise<ResolvedTrack | null> {
-  try {
-    const params = new URLSearchParams({ term: query, media: "music", entity: "song", limit: "1" });
-    const response = await fetch(`https://itunes.apple.com/search?${params}`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(ITUNES_TIMEOUT_MS),
-    });
-    if (!response.ok) return null;
-
-    const payload = (await response.json()) as { results?: Record<string, unknown>[] };
-    const hit = payload.results?.[0];
-    if (!hit || typeof hit.trackName !== "string" || !hit.trackName.trim()) return null;
-    const title = hit.trackName.trim();
-
-    return {
-      title,
-      artist: typeof hit.artistName === "string" ? hit.artistName : null,
-      url: typeof hit.trackViewUrl === "string" ? hit.trackViewUrl : null,
-      artwork: typeof hit.artworkUrl100 === "string" ? hit.artworkUrl100 : null,
-      preview: typeof hit.previewUrl === "string" ? hit.previewUrl : null,
-      duration: typeof hit.trackTimeMillis === "number" ? Math.round(hit.trackTimeMillis) : null,
-    };
-  } catch (error) {
-    console.error("[bot-command] iTunes search failed", error);
-    return null;
-  }
-}
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -220,13 +178,15 @@ export const Route = createFileRoute("/api/bot/command")({
               return json({ ok: false, error: "Name a song first, like /play golden hour" }, 400);
             }
 
-            // A pasted link is queued as-is; anything else is looked up first.
-            const track = /^https?:\/\//i.test(query)
-              ? { title: query, artist: null, url: query, artwork: null, preview: null, duration: null }
-              : await itunesTrack(query);
-            if (!track) {
-              return json({ ok: false, error: `No song found for "${query.slice(0, 60)}"` }, 404);
+            // Source-agnostic. A YouTube, Apple Music or direct-audio link is
+            // routed to its own provider; anything else is an Apple search. The
+            // old code queued every link verbatim — title, artwork and audio all
+            // missing — which is why only Apple playback ever worked.
+            const resolved = await resolveMusicQuery(query);
+            if (!resolved.ok) {
+              return json({ ok: false, error: resolved.error, reason: resolved.reason }, 404);
             }
+            const { track, kind } = resolved;
 
             const { data, error } = await (client.rpc as any)("music_add", {
               _realm_id: realmId,
@@ -239,7 +199,11 @@ export const Route = createFileRoute("/api/bot/command")({
             }
             const result = (data ?? {}) as { ok?: boolean; error?: string; message_id?: string };
             return json(
-              { ...result, body: `🎵 Queued ${track.title}${track.artist ? ` — ${track.artist}` : ""}` },
+              {
+                ...result,
+                source: kind,
+                body: `🎵 Queued ${track.title}${track.artist ? ` — ${track.artist}` : ""} · ${MUSIC_PROVIDERS[kind].label}`,
+              },
               result.ok === false ? 400 : 200,
             );
           }

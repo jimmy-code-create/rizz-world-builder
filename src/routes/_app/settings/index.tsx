@@ -8,6 +8,7 @@ import {
   Sliders,
   UserCog,
   UserRound,
+  Volume2,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +25,14 @@ export const Route = createFileRoute("/_app/settings/")({
 });
 
 type SettingsSection = {
-  to: "/settings/profile" | "/settings/appearance" | "/settings/notifications" | "/settings/preferences" | "/settings/blocked" | "/settings/account";
+  to:
+    | "/settings/profile"
+    | "/settings/appearance"
+    | "/settings/notifications"
+    | "/settings/preferences"
+    | "/settings/voice"
+    | "/settings/blocked"
+    | "/settings/account";
   label: string;
   description: string;
   icon: LucideIcon;
@@ -34,6 +42,7 @@ const SECTIONS: SettingsSection[] = [
   { to: "/settings/profile", label: "Profile", description: "Name, bio, avatar and banner", icon: UserRound },
   { to: "/settings/appearance", label: "Appearance", description: "Theme, mode, density and motion", icon: Palette },
   { to: "/settings/notifications", label: "Notifications", description: "Push alerts and delivery", icon: Bell },
+  { to: "/settings/voice", label: "Voice & Sound", description: "Bot, call and alert volume, mic and devices", icon: Volume2 },
   { to: "/settings/preferences", label: "Preferences", description: "Feeds, media, text size and language", icon: Sliders },
   { to: "/settings/blocked", label: "Blocked accounts", description: "People you've blocked", icon: Shield },
   { to: "/settings/account", label: "Account", description: "Your data, sign out and delete", icon: UserCog },

@@ -1,24 +1,37 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ListMusic, Loader2, Music, Pause, Play, SkipForward, Square } from "lucide-react";
+import {
+  ListMusic,
+  Loader2,
+  Music,
+  Repeat,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Square,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MusicSheet } from "@/components/chat/MusicSheet";
+import { MusicPlayer, queueTrackToMusic, type MusicPlayerController } from "@/components/music/MusicPlayer";
 import { fetchRealmBots, realmBotsKey } from "@/lib/bots";
 import { formatDuration, musicQueueKey, runMusicCommand, useMusicQueue } from "@/lib/music";
-import { useMusicBotInCall } from "@/components/voice/MusicBotInCall";
+import { MUSIC_PROVIDERS, detectMusicSource } from "@/lib/music-sources";
+import { useMusicBotInCall, musicBotControls } from "@/components/voice/MusicBotInCall";
 
 /**
  * MUSIC BOT inside a voice channel.
  *
  * The bot is a voice-channel feature: the queue lives on the voice room and
  * `/play` is refused everywhere else (music_add checks the room kind). A voice
- * channel has no composer, so this panel is where `/play` is typed: a song name
- * or a link, then the queue at the top plays it for whoever is in the call.
+ * channel has no composer, so this panel is where `/play` is typed: a song name,
+ * a YouTube link, an Apple Music link, or a direct audio file.
  *
- * The preview is played locally and never autoplays — browsers block that, and a
- * voice channel should not suddenly make noise.
+ * Playback uses the unified `MusicPlayer`, so the panel and the in-call bot
+ * share one implementation and every provider behaves the same. The panel never
+ * autoplays, and it steps aside while the bot itself is singing in this
+ * channel's call so the same song is never heard twice.
  */
 export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId: string }) {
   const qc = useQueryClient();
@@ -30,8 +43,12 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"play" | "skip" | "stop" | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Per-listener playback preferences: the bot plays the queue in order, these
+  // only shape what *you* hear in the panel.
+  const [loop, setLoop] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [shuffleSeed, setShuffleSeed] = useState(1);
+  const controller = useRef<MusicPlayerController | null>(null);
 
   // When the bot is riding in this channel's call, the panel says so — the bot
   // is a participant now, not just a queue.
@@ -39,22 +56,16 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
 
   const tracks = queue.data ?? [];
   const current = tracks[0] ?? null;
+  const currentInput = queueTrackToMusic(current);
+  const upcoming = tracks.slice(1);
+  const provider = MUSIC_PROVIDERS[detectMusicSource(current?.url ?? current?.preview_url)?.kind ?? "apple"];
   const singingHere = botInCall.enabled && !!botInCall.track && botInCall.track.id === current?.id;
 
-  // A song reaching the front of the queue (or being skipped) stops the old
-  // preview instead of leaving two tracks talking at once.
-  useEffect(() => {
-    audioRef.current?.pause();
-    setPlaying(false);
-  }, [current?.id]);
-
-  // MUSIC BOT sings a track through the call's own audio element. The panel's
-  // local preview must step aside at that point, or the same song plays twice,
-  // out of sync.
+  // MUSIC BOT sings a track through the call's own player. The panel's local
+  // player must step aside at that point, or the same song plays twice.
   useEffect(() => {
     if (!singingHere) return;
-    audioRef.current?.pause();
-    setPlaying(false);
+    controller.current?.pause();
   }, [singingHere]);
 
   const submit = async (event: FormEvent) => {
@@ -75,30 +86,39 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
     }
   };
 
-  const run = async (command: "skip" | "stop") => {
-    setBusy(command);
-    try {
-      const result = await runMusicCommand(command, { args: "", realmId, roomId });
-      if (!result.ok) throw new Error(result.error || "The music bot didn't answer");
-      toast.success(result.body || (command === "skip" ? "Skipped." : "Queue cleared."));
-      await qc.invalidateQueries({ queryKey: musicQueueKey(realmId, roomId) });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The music bot didn't answer");
-    } finally {
-      setBusy(null);
-    }
-  };
+  const run = useCallback(
+    async (command: "skip" | "stop") => {
+      setBusy(command);
+      try {
+        const result = await runMusicCommand(command, { args: "", realmId, roomId });
+        if (!result.ok) throw new Error(result.error || "The music bot didn't answer");
+        toast.success(result.body || (command === "skip" ? "Skipped." : "Queue cleared."));
+        await qc.invalidateQueries({ queryKey: musicQueueKey(realmId, roomId) });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "The music bot didn't answer");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [qc, realmId, roomId],
+  );
 
-  const togglePreview = () => {
-    const audio = audioRef.current;
-    if (!audio || !current?.preview_url) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
+  // The queue has no history, so "previous" restarts the current track — the
+  // standard behaviour for a player with nothing behind it.
+  const previous = () => {
+    if (botInCall.singing) {
+      musicBotControls.seek(0);
       return;
     }
-    void audio.play().then(() => setPlaying(true), () => setPlaying(false));
+    controller.current?.seekTo(0);
   };
+
+  // A new order every time shuffle is switched on (or tapped again), so it
+  // never looks randomised but frozen.
+  const orderedUpcoming = useMemo(
+    () => (shuffle ? seededShuffle(upcoming, shuffleSeed) : upcoming),
+    [shuffle, upcoming, shuffleSeed],
+  );
 
   return (
     <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -116,7 +136,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
           <p className="truncate text-[11px] text-muted-foreground">
             {canUse
               ? tracks.length === 0
-                ? "Nothing queued — type a song below."
+                ? "Nothing queued — paste a YouTube, Apple or audio link below."
                 : `${tracks.length} song${tracks.length === 1 ? "" : "s"} in this channel's queue`
               : bot
                 ? "MUSIC BOT is switched off for this realm"
@@ -137,69 +157,130 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
       </div>
 
       {canUse && current && (
-        <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] p-2 sm:flex-nowrap sm:gap-3">
-          <button
-            type="button"
-            disabled={!current.preview_url}
-            onClick={togglePreview}
-            aria-label={playing ? `Pause ${current.title}` : `Play a preview of ${current.title}`}
-            className="group relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-primary text-white disabled:opacity-70"
-          >
-            {current.artwork_url ? (
-              <img src={current.artwork_url} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-            ) : (
-              <Music className="h-4 w-4" />
-            )}
-            <span className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
-              {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </span>
-          </button>
-
-          <div className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
-            <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-              {current.title}
-              {singingHere && (
-                <span className="shrink-0 rounded-full bg-emerald-400/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-emerald-200">
-                  {botInCall.singing ? "Singing in call" : "In call"}
-                </span>
-              )}
-            </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {current.artist ?? "Unknown artist"}
-              {formatDuration(current.duration_ms) ? ` · ${formatDuration(current.duration_ms)}` : ""}
-              {singingHere
-                ? botInCall.note
-                  ? ` · ${botInCall.note}`
-                  : ""
-                : current.preview_url
-                  ? " · tap to preview"
-                  : " · no preview audio"}
-            </p>
+        <>
+          <div className="mt-3">
+            <MusicPlayer
+              track={currentInput}
+              realmId={realmId}
+              loop={loop}
+              showVolume
+              onEnded={() => void run("skip")}
+              controllerRef={(next) => {
+                controller.current = next;
+              }}
+            />
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={busy !== null}
-            onClick={() => void run("skip")}
-            className="h-9 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
-          >
-            {busy === "skip" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SkipForward className="h-3.5 w-3.5" />}
-            Skip
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy !== null}
-            onClick={() => void run("stop")}
-            aria-label="Clear the queue"
-            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
-          >
-            {busy === "stop" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Square className="h-3.5 w-3.5" />}
-          </Button>
-        </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={previous}
+              aria-label="Restart the current track"
+              className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+            >
+              <SkipBack className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() => void run("skip")}
+              className="h-9 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
+            >
+              {busy === "skip" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SkipForward className="h-3.5 w-3.5" />}
+              Skip
+            </Button>
+            <Button
+              type="button"
+              variant={loop ? "default" : "ghost"}
+              size="sm"
+              aria-pressed={loop}
+              onClick={() => setLoop((value) => !value)}
+              className={`h-9 w-9 shrink-0 p-0 ${loop ? "bg-gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              aria-label="Loop the current track"
+            >
+              <Repeat className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={shuffle ? "default" : "ghost"}
+              size="sm"
+              aria-pressed={shuffle}
+              onClick={() => {
+                setShuffle((value) => {
+                  if (!value) setShuffleSeed((seed) => seed + 1);
+                  return !value;
+                });
+                toast.info("Shuffle changes the order you hear here; the queue itself stays in order.");
+              }}
+              className={`h-9 w-9 shrink-0 p-0 ${shuffle ? "bg-gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              aria-label="Shuffle the upcoming tracks"
+            >
+              <Shuffle className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() => void run("stop")}
+              aria-label="Clear the queue"
+              className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+            >
+              {busy === "stop" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Square className="h-3.5 w-3.5" />}
+            </Button>
+            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+              {singingHere ? (
+                <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                  {botInCall.singing ? "Singing in call" : botInCall.note ? "In call — see note" : "In call"}
+                </span>
+              ) : (
+                provider.note
+              )}
+            </span>
+          </div>
+
+          {botInCall.note && singingHere && (
+            <p className="mt-2 rounded-xl border border-amber-400/25 bg-amber-400/5 px-2.5 py-1.5 text-[11px] text-amber-100">
+              {botInCall.note}
+            </p>
+          )}
+
+          {orderedUpcoming.length > 0 && (
+            <ul className="mt-3 space-y-1.5">
+              {orderedUpcoming.slice(0, 5).map((track, index) => (
+                <li
+                  key={track.id}
+                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
+                >
+                  <span className="w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-muted-foreground">
+                    {index + 2}
+                  </span>
+                  {track.artwork_url ? (
+                    <img src={track.artwork_url} alt="" loading="lazy" className="h-7 w-7 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/5">
+                      <Music className="h-3.5 w-3.5 text-muted-foreground" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold">{track.title}</span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {track.artist ?? MUSIC_PROVIDERS[detectMusicSource(track.url ?? track.preview_url)?.kind ?? "apple"].label}
+                      {formatDuration(track.duration_ms) ? ` · ${formatDuration(track.duration_ms)}` : ""}
+                    </span>
+                  </span>
+                </li>
+              ))}
+              {upcoming.length > 5 && (
+                <li className="px-2 text-[11px] text-muted-foreground">+{upcoming.length - 5} more in the queue</li>
+              )}
+            </ul>
+          )}
+        </>
       )}
 
       {canUse && (
@@ -207,9 +288,9 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="/play a song name or link"
+            placeholder="/play a song, a YouTube link, or an audio file"
             aria-label="Queue a song with the music bot"
-            maxLength={120}
+            maxLength={200}
             disabled={busy === "play"}
             className="glass h-11 border-white/10"
           />
@@ -218,23 +299,31 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
             disabled={!query.trim() || busy === "play"}
             className="h-12 shrink-0 border-0 bg-gradient-primary text-primary-foreground sm:h-11 sm:w-auto"
           >
-            {busy === "play" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {busy === "play" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />}
             Play
           </Button>
         </form>
       )}
 
       <MusicSheet open={sheetOpen} onOpenChange={setSheetOpen} realmId={realmId} roomId={roomId} />
-
-      {current?.preview_url && (
-        <audio
-          ref={audioRef}
-          src={current.preview_url}
-          onEnded={() => setPlaying(false)}
-          onPause={() => setPlaying(false)}
-          className="hidden"
-        />
-      )}
     </div>
   );
+}
+
+/**
+ * A seeded Fisher–Yates shuffle. Seeded so one render pass is stable (no
+ * flicker while React re-renders) and a new seed gives a genuinely new order.
+ */
+function seededShuffle<T>(items: T[], seed: number): T[] {
+  let state = seed * 2_654_435_761 + 1;
+  const random = () => {
+    state = (state * 1_664_525 + 1_013_904_223) % 4_294_967_296;
+    return state / 4_294_967_296;
+  };
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
 }

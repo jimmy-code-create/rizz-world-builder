@@ -67,11 +67,13 @@ export function MentionAutocomplete({
   useEffect(() => {
     if (query === null || hits.length === 0) return;
     const onKey = (e: KeyboardEvent) => {
-      // Only the composer's own text field is ours. A window-level listener used
-      // to swallow Enter and the arrow keys pressed anywhere else on the page
-      // while a half-typed mention sat in the composer.
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+      // Only a real text field (or the story editor's contentEditable text) is
+      // ours. A window-level listener used to swallow Enter and the arrow keys
+      // pressed anywhere else on the page while a half-typed mention sat in the
+      // composer.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA" && target?.isContentEditable !== true) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // stopPropagation matters: the composer sends on Enter, so picking with
       // Enter without it posted the half-typed "@name" and wiped the composer.

@@ -1,7 +1,15 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchRealmBots, realmBotsKey } from "@/lib/bots";
 import { musicQueueKey, runMusicCommand, useMusicQueue, type QueueTrack } from "@/lib/music";
+import {
+  elementSourceOf,
+  MusicPlayer,
+  queueTrackToMusic,
+  sourceKindOf,
+  type MusicPlayerController,
+} from "@/components/music/MusicPlayer";
+import { MUSIC_PROVIDERS, type MusicIssue } from "@/lib/music-sources";
 // Type-only: the props come from the provider instead of its context, so this
 // module no longer imports the provider at runtime (that cycle is avoidable and
 // the audio owner has no business reading the context it is rendered by).
@@ -15,10 +23,10 @@ import type { ActiveCall } from "@/components/voice/VoiceCallProvider";
  * — its tile sits with the other participants and its track plays for the whole
  * channel, so "/play …" really does make the bot sing.
  *
- * The audio element is mounted by the voice provider rather than by the call
- * view, so minimizing the call does not stop the song. Because browsers can
- * block audio that starts without a gesture, a blocked start is reported through
- * the store and the call view offers a "Tap to let MUSIC BOT sing" button.
+ * Playback goes through the SAME unified player the channel panel uses, so a
+ * YouTube link, a direct audio file and an Apple preview all sing in a call.
+ * Before this, the bot owned a bare `<audio preload>` pointed at
+ * `preview_url`, which is why only Apple's 30-second clips were ever audible.
  *
  * State is kept in a tiny module-level store instead of React context: the audio
  * owner (provider) and the renderer (call view) are siblings under the same
@@ -54,9 +62,10 @@ function update(patch: Partial<MusicBotState>) {
 }
 
 /** Imperative controls the audio owner publishes for the call view's buttons. */
-export const musicBotControls: { toggle: () => void; retry: () => void } = {
+export const musicBotControls: { toggle: () => void; retry: () => void; seek: (seconds: number) => void } = {
   toggle: () => {},
   retry: () => {},
+  seek: () => {},
 };
 
 /** Subscribes a component (the call view) to the bot's state. */
@@ -77,8 +86,7 @@ export function useMusicBotInCall(): MusicBotState {
  * Contains MUSIC BOT so it can never blank a page again.
  *
  * The bot is an optional extra on top of a call: if its audio owner throws, the
- * user should simply not have a singing bot, not an error screen. This is a
- * safety net around the fix in `useMusicQueue`, not a substitute for it.
+ * user should simply not have a singing bot, not an error screen.
  */
 export class MusicBotBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -98,7 +106,7 @@ export class MusicBotBoundary extends Component<{ children: ReactNode }, { faile
 }
 
 /**
- * Owns the bot's audio element and keeps it in sync with the channel queue.
+ * Owns the bot's playback and keeps it in sync with the channel queue.
  * Rendered by the voice provider, so it keeps playing when the call is
  * minimized, exactly like the other participants' audio.
  */
@@ -107,8 +115,7 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
   const realmId = call?.realmId ?? null;
   // The queue is keyed by the REALM CHANNEL id, while `call.roomId` is the
   // voice_rooms row. Using the voice-room id made every lookup miss, so the bot
-  // stood in the call with an empty queue and never made a sound — this is why
-  // a queued song was inaudible in the voice channel.
+  // stood in the call with an empty queue and never made a sound.
   const roomId = call?.channelId ?? null;
 
   const bots = useQuery({
@@ -120,48 +127,60 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
 
   const queue = useMusicQueue(realmId, roomId, botEnabled);
   const track = (queue.data ?? [])[0] ?? null;
+  const input = queueTrackToMusic(track);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const controller = useRef<MusicPlayerController | null>(null);
   const endedRef = useRef<string | null>(null);
-  /** True while the browser is refusing to start audio without a gesture. */
-  const blockedRef = useRef(false);
+
+  // Whether this track has anything to play at all: a YouTube link uses the
+  // embed, everything else needs a playable URL.
+  const kind = sourceKindOf(input);
+  const playable = kind === "youtube" ? true : !!elementSourceOf(input);
 
   useEffect(() => {
     update({ enabled: botEnabled && !!realmId, track });
-    // Leaving the call clears the bot from the participant list.
     if (!realmId) update({ singing: false, blocked: false, note: null });
   }, [botEnabled, realmId, track]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const start = () => {
-      void audio
-        .play()
-        .then(() => {
-          blockedRef.current = false;
-          update({ singing: true, blocked: false, note: null });
-        })
-        .catch(() => {
-          blockedRef.current = true;
-          update({ singing: false, blocked: true, note: "Tap anywhere in the call to start the music." });
-        });
-    };
-    const pause = () => {
-      audio.pause();
-      update({ singing: false });
-    };
-    musicBotControls.toggle = () => {
-      if (!track?.preview_url) return;
-      if (audio.paused) start();
-      else pause();
-    };
-    musicBotControls.retry = start;
-    return () => {
-      musicBotControls.toggle = () => {};
-      musicBotControls.retry = () => {};
-    };
-  }, [track?.preview_url]);
+    if (track && !playable) {
+      update({
+        singing: false,
+        blocked: false,
+        note: `No playable audio for this ${MUSIC_PROVIDERS[kind].label} track — skip to the next song.`,
+      });
+      return;
+    }
+    if (playable) update({ note: null });
+  }, [track, playable, kind]);
+
+  const handleIssue = useCallback((issue: MusicIssue | null) => {
+    if (!issue) {
+      update({ blocked: false, note: null });
+      return;
+    }
+    const blocked = issue.title === "Tap to start the music";
+    update({ blocked, singing: false, note: `${issue.title} — ${issue.detail}` });
+  }, []);
+
+  const handlePlayingChange = useCallback((playing: boolean) => {
+    update(playing ? { singing: true, blocked: false, note: null } : { singing: false });
+  }, []);
+
+  /**
+   * When a track finishes, the bot moves the queue on so it keeps singing
+   * instead of falling silent after one song.
+   */
+  const handleEnded = useCallback(() => {
+    if (!realmId || !track || endedRef.current === track.id) return;
+    endedRef.current = track.id;
+    update({ singing: false });
+    void runMusicCommand("skip", { args: "", realmId, roomId })
+      .then(() => qc.invalidateQueries({ queryKey: musicQueueKey(realmId, roomId) }))
+      .catch(() => {
+        /* The bot is best-effort here: a failed skip just leaves the queue alone. */
+      });
+  }, [realmId, roomId, track, qc]);
 
   /**
    * Autoplay policy: a track queued by someone else starts with no gesture of
@@ -171,18 +190,7 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
    */
   useEffect(() => {
     const resume = () => {
-      if (!blockedRef.current) return;
-      const audio = audioRef.current;
-      if (!audio || !audio.src) return;
-      void audio
-        .play()
-        .then(() => {
-          blockedRef.current = false;
-          update({ singing: true, blocked: false, note: null });
-        })
-        .catch(() => {
-          // Still blocked: the next gesture tries again.
-        });
+      if (store.blocked) controller.current?.play();
     };
     window.addEventListener("pointerdown", resume, true);
     window.addEventListener("keydown", resume, true);
@@ -192,85 +200,33 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     };
   }, []);
 
-  // A newly queued track starts singing immediately for everyone in the call.
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (!track?.preview_url) {
-      audio.pause();
-      audio.removeAttribute("src");
-      blockedRef.current = false;
-      update({
-        singing: false,
-        blocked: false,
-        note: track
-          ? "No playable audio for this track — Apple Music only shares 30-second previews."
-          : null,
-      });
-      return;
-    }
-    // Media element work throws in some browsers (a seek before metadata, a
-    // revoked blob URL). A bot that cannot sing must never take a page down, so
-    // every one of these calls is contained and reported instead.
-    try {
-      if (audio.src !== track.preview_url) audio.src = track.preview_url;
-      audio.currentTime = 0;
-      endedRef.current = null;
-    } catch (error) {
-      console.debug("MUSIC BOT could not load that preview", error);
-      update({ singing: false, blocked: true, note: "That preview wouldn't load — skip to the next song." });
-      return;
-    }
-    try {
-      void audio
-        .play()
-        .then(() => {
-          blockedRef.current = false;
-          update({ singing: true, blocked: false, note: null });
-        })
-        .catch(() => {
-          blockedRef.current = true;
-          update({ singing: false, blocked: true, note: "Tap anywhere in the call to start the music." });
-        });
-    } catch (error) {
-      console.debug("MUSIC BOT could not start playback", error);
-      update({ singing: false, blocked: true, note: "That preview wouldn't play — skip to the next song." });
-    }
-  }, [track?.id, track?.preview_url]);
-
-  /**
-   * When a preview finishes, the bot moves the queue on so it keeps singing
-   * instead of falling silent after 30 seconds.
-   */
-  const handleEnded = () => {
-    if (!realmId || !track || endedRef.current === track.id) return;
-    endedRef.current = track.id;
-    update({ singing: false });
-    void runMusicCommand("skip", { args: "", realmId, roomId })
-      .then(() => qc.invalidateQueries({ queryKey: musicQueueKey(realmId, roomId) }))
-      .catch(() => {
-        /* The bot is best-effort here: a failed skip just leaves the queue alone. */
-      });
-  };
+    musicBotControls.toggle = () => {
+      if (!playable) return;
+      if (store.singing) controller.current?.pause();
+      else controller.current?.play();
+    };
+    musicBotControls.retry = () => controller.current?.play();
+    musicBotControls.seek = (seconds: number) => controller.current?.seekTo(seconds);
+    return () => {
+      musicBotControls.toggle = () => {};
+      musicBotControls.retry = () => {};
+      musicBotControls.seek = () => {};
+    };
+  }, [playable]);
 
   return (
-    <audio
-      ref={audioRef}
-      playsInline
-      preload="auto"
+    <MusicPlayer
+      chromeless
+      autoPlay
+      track={playable ? input : null}
+      realmId={realmId}
       onEnded={handleEnded}
-      onPause={() => {
-        if (blockedRef.current) return;
-        update({ singing: false });
+      onIssue={handleIssue}
+      onPlayingChange={handlePlayingChange}
+      controllerRef={(next) => {
+        controller.current = next;
       }}
-      onPlay={() => {
-        blockedRef.current = false;
-        update({ singing: true, blocked: false, note: null });
-      }}
-      // Visually hidden but still rendered: `display: none` is the one thing that
-      // some mobile browsers treat as "not playing" for media elements.
-      aria-hidden="true"
-      className="sr-only"
     />
   );
 }

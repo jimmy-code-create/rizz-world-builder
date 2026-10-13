@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
+import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
@@ -1110,18 +1111,26 @@ function RealmPage() {
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
+            // A new calendar day always starts a new group and gets its divider,
+            // however recently the previous message was sent.
+            const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
+            const messageClock = new Date(m.created_at).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            });
             // "@user pinned a message" reads as a system line, not a bubble.
             if ((m as { system?: boolean }).system) {
               return <SystemLine key={m.id} text={m.body} />;
             }
             return (
               <Fragment key={m.id}>
+              {newDay && <DateSeparator date={m.created_at} />}
               {/* Realm chat is Discord-style flat rows, not bubbles. */}
               <motion.div
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`realm-message ${highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""}`}
+                className={`realm-message ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""}`}
               >
               {(startsGroup ? (
                 <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
@@ -1132,7 +1141,12 @@ function RealmPage() {
                     {authorInitial}
                   </AvatarFallback>
                 </Avatar>
-              ) : <div aria-hidden="true" className="h-9 w-9 shrink-0" />)}
+              ) : (
+                // Same author, same day: the avatar gutter carries the time
+                // instead, revealed on hover (and never shown on touch, where
+                // the long-press preview has it).
+                <span aria-hidden="true" className="realm-message__time">{messageClock}</span>
+              ))}
               <div className="flex-1 min-w-0">
                 {startsGroup && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-bold text-sm" style={{ color: authorColor }}>{authorName}</span>

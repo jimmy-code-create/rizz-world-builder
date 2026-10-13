@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
 import { updateParticipant } from "@/lib/voice";
+import { loadSoundSettings, SOUND_SETTINGS_EVENT } from "@/lib/sound-settings";
 
 /**
  * Mesh call engine used by the global VoiceCallProvider.
@@ -45,6 +46,15 @@ type AnalyserEntry = {
 
 const SPEAKING_THRESHOLD = 0.045;
 const LEVEL_INTERVAL_MS = 180;
+
+/**
+ * The mic-sensitivity slider (0–1) as a level threshold: a higher sensitivity
+ * means quieter speech still lights the speaking ring. 0.5 is the old fixed
+ * 0.045, so existing users hear no change.
+ */
+function speakingThreshold(sensitivity: number): number {
+  return Math.max(0.01, 0.085 - 0.08 * Math.min(1, Math.max(0, sensitivity)));
+}
 
 function mediaErrorMessage(error: unknown, kind: "mic" | "camera"): string {
   const name = error instanceof DOMException ? error.name : "";
@@ -116,6 +126,9 @@ export function useVoiceCall({
   const analysersRef = useRef(new Map<string, AnalyserEntry>());
   const audioContextRef = useRef<AudioContext | null>(null);
   const levelsRef = useRef(new Set<string>());
+  // Voice & Sound owns the mic settings; they are read at capture time and the
+  // threshold tracks the slider live so a change is felt on the next word.
+  const micSensitivityRef = useRef(loadSoundSettings().micSensitivity);
 
   participantsRef.current = participants;
   mutedRef.current = muted;
@@ -160,10 +173,24 @@ export function useVoiceCall({
   }, []);
 
   useEffect(() => {
+    const syncSettings = () => {
+      micSensitivityRef.current = loadSoundSettings().micSensitivity;
+    };
+    window.addEventListener(SOUND_SETTINGS_EVENT, syncSettings);
+    window.addEventListener("storage", syncSettings);
+    syncSettings();
+    return () => {
+      window.removeEventListener(SOUND_SETTINGS_EVENT, syncSettings);
+      window.removeEventListener("storage", syncSettings);
+    };
+  }, []);
+
+  useEffect(() => {
     analysersRef.current.forEach((entry) => { try { entry.source.disconnect(); } catch { /* noop */ } });
     analysersRef.current.clear();
     const timer = window.setInterval(() => {
       const next = new Set<string>();
+      const threshold = speakingThreshold(micSensitivityRef.current) || SPEAKING_THRESHOLD;
       analysersRef.current.forEach((entry, peerId) => {
         entry.analyser.getByteTimeDomainData(entry.buffer);
         let sum = 0;
@@ -171,7 +198,7 @@ export function useVoiceCall({
           const sample = (entry.buffer[index] - 128) / 128;
           sum += sample * sample;
         }
-        if (Math.sqrt(sum / entry.buffer.length) > SPEAKING_THRESHOLD) next.add(peerId);
+        if (Math.sqrt(sum / entry.buffer.length) > threshold) next.add(peerId);
       });
       const current = levelsRef.current;
       if (next.size !== current.size || [...next].some((id) => !current.has(id))) {
@@ -369,7 +396,16 @@ export function useVoiceCall({
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // Voice & Sound's mic choices are applied at capture time: the chosen
+        // input device, and the noise-suppression toggle.
+        const sound = loadSoundSettings();
+        const audio: MediaTrackConstraints = {
+          noiseSuppression: sound.noiseSuppression,
+          echoCancellation: sound.noiseSuppression,
+          autoGainControl: true,
+        };
+        if (sound.inputDeviceId) audio.deviceId = { exact: sound.inputDeviceId };
+        const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
         if (disposed) {
           stream.getTracks().forEach((track) => track.stop());
           return;

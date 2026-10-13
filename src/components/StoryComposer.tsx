@@ -1,6 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Type, Smile, Image as ImageIcon, Palette, Trash2, Loader2, Send, Wand2, Undo2, Copy } from "lucide-react";
+import {
+  X,
+  ScanFace,
+  Type,
+  Smile,
+  Image as ImageIcon,
+  Palette,
+  Trash2,
+  Loader2,
+  Send,
+  Wand2,
+  Undo2,
+  Copy,
+  Lock,
+  AtSign,
+  Globe,
+  UserCheck,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -8,6 +26,29 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { FaceEffectsStudio } from "@/components/story/FaceEffectsStudio";
+
+/**
+ * Who a story is for. Stored as `stories.visibility` (public / followers /
+ * close_friends) so Postgres enforces it — a private story must not be readable
+ * by a direct API call, only hidden in the UI.
+ */
+type StoryAudience = "everyone" | "followers" | "close_friends";
+
+const AUDIENCE_OPTIONS: {
+  id: StoryAudience;
+  label: string;
+  hint: string;
+  visibility: "public" | "followers" | "close_friends";
+  icon: typeof Globe;
+}[] = [
+  { id: "everyone", label: "Everyone", hint: "Anyone on RIZZ can see it.", visibility: "public", icon: Globe },
+  { id: "followers", label: "Followers only", hint: "Only people who follow you.", visibility: "followers", icon: Users },
+  { id: "close_friends", label: "Close friends", hint: "Only the people on your close friends list.", visibility: "close_friends", icon: UserCheck },
+];
+
+type Person = { id: string; username: string; display_name: string | null; avatar_url: string | null };
 
 type Overlay = {
   id: string;
@@ -50,10 +91,21 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [filter, setFilter] = useState<string>("none");
   const [bg, setBg] = useState<string>("linear-gradient(135deg,#ff3ea5,#7c3aed)");
   const [busy, setBusy] = useState(false);
-  const [panel, setPanel] = useState<"text"|"sticker"|"filter"|"bg"|null>(null);
+  const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | null>(null);
   const [history, setHistory] = useState<Overlay[][]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
+  const [audience, setAudience] = useState<StoryAudience>("everyone");
+  const [hiddenFrom, setHiddenFrom] = useState<Person[]>([]);
+  const [caption, setCaption] = useState("");
+  const [captionCaret, setCaptionCaret] = useState(0);
+  // Live text + caret of the overlay currently being edited, so `@` mentions can
+  // autocomplete inside story text as well as in the caption.
+  const [editorText, setEditorText] = useState("");
+  const [editorCaret, setEditorCaret] = useState(0);
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [peopleHits, setPeopleHits] = useState<Person[]>([]);
+  const [lensOpen, setLensOpen] = useState(false);
 
   const pushHistory = (prev: Overlay[]) => setHistory((h) => [...h.slice(-19), prev]);
   const undo = () => setHistory((h) => {
@@ -69,8 +121,28 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       setOverlays([]); setSelected(null); setFilter("none");
       setBg("linear-gradient(135deg,#ff3ea5,#7c3aed)"); setPanel(null);
       setHistory([]); setEditingId(null);
+      setAudience("everyone"); setHiddenFrom([]); setCaption("");
+      setEditorText(""); setPeopleQuery(""); setPeopleHits([]);
     }
   }, [open]);
+
+  // Type-ahead for the hide-from list. Names, avatars and handles come from the
+  // same profiles table the mention picker uses.
+  useEffect(() => {
+    if (panel !== "privacy") return;
+    const query = peopleQuery.trim();
+    const timer = window.setTimeout(async () => {
+      let request = supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .order("rizz_score", { ascending: false })
+        .limit(6);
+      if (query) request = request.ilike("username", `${query}%`);
+      const { data } = await request;
+      setPeopleHits((data as Person[]) ?? []);
+    }, 140);
+    return () => window.clearTimeout(timer);
+  }, [panel, peopleQuery]);
 
   const pickFile = (f: File | null) => {
     if (!f) return;
@@ -238,8 +310,33 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       const { error: upErr } = await supabase.storage.from("stories").upload(path, blob, { contentType: blob.type || (type==="video"?"video/mp4":"image/jpeg") });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("stories").getPublicUrl(path);
-      const caption = overlays.find((o) => o.kind === "text")?.value ?? null;
-      const { error: insErr } = await supabase.from("stories").insert({ author_id: user.id, media_url: pub.publicUrl, media_type: type, caption });
+      // A written caption wins; otherwise the first text overlay becomes one, so
+      // stories created before the caption field still read the same.
+      const captionText = caption.trim() || overlays.find((o) => o.kind === "text")?.value?.trim() || null;
+      const visibility = AUDIENCE_OPTIONS.find((option) => option.id === audience)!.visibility;
+      const base = {
+        author_id: user.id,
+        media_url: pub.publicUrl,
+        media_type: type,
+        caption: captionText,
+      };
+      let { error: insErr } = await supabase.from("stories").insert({
+        ...base,
+        visibility,
+        hidden_from: hiddenFrom.map((person) => person.id),
+      });
+      // `hidden_from` and the audience value arrive with the story-likes
+      // migration. If it has not been applied yet, posting must still work
+      // rather than failing on a column the deployment doesn't have.
+      const missingColumn =
+        insErr &&
+        (insErr.code === "42703" ||
+          insErr.code === "PGRST204" ||
+          /hidden_from|visibility/i.test(insErr.message ?? ""));
+      if (missingColumn) {
+        console.warn("[story-composer] audience columns are missing; posting without them");
+        ({ error: insErr } = await supabase.from("stories").insert(base));
+      }
       if (insErr) throw insErr;
       toast.success("Story posted ✨");
       onPosted?.();
@@ -313,7 +410,18 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   contentEditable
                   suppressContentEditableWarning
                   onPointerDown={(e) => e.stopPropagation()}
-                  onBlur={(e) => { updateSelected({ value: e.currentTarget.textContent || " " }); setEditingId(null); }}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    setEditorText(el.textContent ?? "");
+                    const selection = window.getSelection();
+                    setEditorCaret(selection?.anchorOffset ?? (el.textContent ?? "").length);
+                  }}
+                  onKeyUp={(e) => {
+                    const el = e.currentTarget;
+                    const selection = window.getSelection();
+                    setEditorCaret(selection?.anchorOffset ?? (el.textContent ?? "").length);
+                  }}
+                  onBlur={(e) => { updateSelected({ value: e.currentTarget.textContent || " " }); setEditingId(null); setEditorText(""); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
                   className="outline-none"
                 >{ov.value}</span>
@@ -385,7 +493,130 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         </div>
       )}
 
+      {/* Mentions inside story text: the same picker the chat composer uses,
+          filtered as you type and picked by tap or Enter. */}
+      {editingId && editorText.includes("@") && (
+        <div className="relative shrink-0 px-2 pb-1">
+          <MentionAutocomplete
+            value={editorText}
+            caret={editorCaret}
+            onPick={(username) => {
+              const next = replaceMention(editorText, editorCaret, username);
+              updateSelected({ value: next.value });
+              setEditorText(next.value);
+              // Committing closes the inline editor so the mention renders from
+              // state instead of from the contentEditable DOM.
+              setEditingId(null);
+            }}
+          />
+        </div>
+      )}
+
       {/* Panels */}
+      {panel === "caption" && (
+        <div className="shrink-0 px-2 pb-1">
+          <div className="glass-strong relative rounded-2xl p-2">
+            <Input
+              value={caption}
+              onChange={(event) => {
+                setCaption(event.target.value.slice(0, 300));
+                setCaptionCaret(event.target.selectionStart ?? event.target.value.length);
+              }}
+              onKeyUp={(event) => setCaptionCaret(event.currentTarget.selectionStart ?? caption.length)}
+              onClick={(event) => setCaptionCaret(event.currentTarget.selectionStart ?? caption.length)}
+              placeholder="Add a caption — @ to mention someone"
+              aria-label="Story caption"
+              maxLength={300}
+              className="h-11 border-white/10 bg-black/20"
+            />
+            <MentionAutocomplete value={caption} caret={captionCaret} onPick={(username) => {
+              const next = replaceMention(caption, captionCaret, username);
+              setCaption(next.value);
+              setCaptionCaret(next.caret);
+            }} />
+            <p className="mt-1 px-1 text-[10px] text-muted-foreground">{caption.length}/300 · mentions notify the person</p>
+          </div>
+        </div>
+      )}
+      {panel === "privacy" && (
+        <div className="shrink-0 px-2 pb-1">
+          <div className="glass-strong max-h-[42vh] space-y-3 overflow-y-auto rounded-2xl p-3">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+              <Lock className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Who can see this story
+            </p>
+            <div className="space-y-1.5">
+              {AUDIENCE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={audience === option.id}
+                  onClick={() => setAudience(option.id)}
+                  className={`flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-2.5 text-left transition ${
+                    audience === option.id
+                      ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/12"
+                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <option.icon className="h-4 w-4 shrink-0 text-[var(--rizz-pink)]" />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold">{option.label}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{option.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2 border-t border-white/5 pt-3">
+              <p className="text-xs font-bold">Hide from</p>
+              {hiddenFrom.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {hiddenFrom.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() => setHiddenFrom((list) => list.filter((entry) => entry.id !== person.id))}
+                      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 text-[11px] font-semibold"
+                    >
+                      @{person.username}
+                      <X className="h-3 w-3" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Input
+                value={peopleQuery}
+                onChange={(event) => setPeopleQuery(event.target.value)}
+                placeholder="Search a username to hide this story from"
+                aria-label="Search people to hide this story from"
+                className="h-10 border-white/10 bg-black/20"
+              />
+              {peopleHits.filter((hit) => !hiddenFrom.some((person) => person.id === hit.id)).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {peopleHits
+                    .filter((hit) => !hiddenFrom.some((person) => person.id === hit.id))
+                    .slice(0, 6)
+                    .map((hit) => (
+                      <button
+                        key={hit.id}
+                        type="button"
+                        onClick={() => {
+                          setHiddenFrom((list) => [...list, hit]);
+                          setPeopleQuery("");
+                        }}
+                        className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 text-[11px]"
+                      >
+                        @{hit.username}
+                      </button>
+                    ))}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                They won't see this story even if the audience above includes them.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {panel === "sticker" && (
         <div className="px-2 pb-1 shrink-0">
           <div className="glass-strong rounded-2xl p-2 grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-[26vh] overflow-y-auto">
@@ -425,14 +656,35 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
       {/* Bottom action bar */}
       <div className="px-2 pt-1 shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
-        <div className="glass-strong rounded-2xl p-2 flex items-center justify-around">
+        {/* Horizontally scrollable so every tool keeps a 44px target at 375px. */}
+        <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide">
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
+          <ToolBtn icon={<ScanFace className="h-4 w-4" />} label="Lens" onClick={() => setLensOpen(true)} />
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
-          <ToolBtn icon={<Smile className="h-4 w-4" />} label="Sticker" onClick={() => setPanel(panel==="sticker"?null:"sticker")} />
-          <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel==="filter"?null:"filter")} disabled={!mediaUrl} />
-          <ToolBtn icon={<Palette className="h-4 w-4" />} label="BG" onClick={() => setPanel(panel==="bg"?null:"bg")} disabled={!!mediaUrl} />
+          <ToolBtn icon={<AtSign className="h-4 w-4" />} label="Mention" onClick={() => setPanel(panel === "caption" ? null : "caption")} />
+          <ToolBtn icon={<Smile className="h-4 w-4" />} label="Sticker" onClick={() => setPanel(panel === "sticker" ? null : "sticker")} />
+          <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel === "filter" ? null : "filter")} disabled={!mediaUrl} />
+          <ToolBtn icon={<Palette className="h-4 w-4" />} label="BG" onClick={() => setPanel(panel === "bg" ? null : "bg")} disabled={!!mediaUrl} />
+          <ToolBtn
+            icon={<Lock className="h-4 w-4" />}
+            label={AUDIENCE_OPTIONS.find((option) => option.id === audience)!.label.split(" ")[0]}
+            onClick={() => setPanel(panel === "privacy" ? null : "privacy")}
+          />
         </div>
       </div>
+      {/* The lens studio returns the composed frame, which becomes the story's
+          media — text, stickers and filters then layer on top of it. */}
+      <FaceEffectsStudio
+        open={lensOpen}
+        onClose={() => setLensOpen(false)}
+        onCapture={(lensed) => {
+          setFile(lensed);
+          setIsVideo(false);
+          setMediaUrl(URL.createObjectURL(lensed));
+          setLensOpen(false);
+        }}
+      />
+
       <input ref={fileRef} hidden type="file" accept="image/*,video/*" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
     </motion.div>
     </FullScreenLayer>
@@ -441,7 +693,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
 function ToolBtn({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl hover:bg-white/5 disabled:opacity-40 disabled:hover:bg-transparent">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      // min-w keeps the 44px touch target the brief asks for on a 375px screen.
+      className="flex min-w-[52px] shrink-0 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 hover:bg-white/5 disabled:opacity-40 disabled:hover:bg-transparent"
+    >
       <span className="h-7 w-7 rounded-lg bg-white/5 grid place-items-center">{icon}</span>
       <span className="text-[10px] text-muted-foreground">{label}</span>
     </button>

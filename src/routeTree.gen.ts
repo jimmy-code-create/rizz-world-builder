@@ -51,6 +51,7 @@ import { Route as AppSettingsBlockedRouteImport } from './routes/_app/settings/b
 import { Route as AppSettingsNotificationsRouteImport } from './routes/_app/settings/notifications'
 import { Route as AppSettingsPreferencesRouteImport } from './routes/_app/settings/preferences'
 import { Route as AppSettingsProfileRouteImport } from './routes/_app/settings/profile'
+import { Route as AppSettingsVoiceRouteImport } from './routes/_app/settings/voice'
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
@@ -267,6 +268,11 @@ const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
   path: '/settings/profile',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsVoiceRoute = AppSettingsVoiceRouteImport.update({
+  id: '/settings/voice',
+  path: '/settings/voice',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTagTagRoute = AppTagTagRouteImport.update({
   id: '/tag/$tag',
   path: '/tag/$tag',
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/preferences': typeof AppSettingsPreferencesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/preferences': typeof AppSettingsPreferencesRoute
   '/settings/profile': typeof AppSettingsProfileRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
@@ -430,6 +438,7 @@ export interface FileRoutesById {
   '/_app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/_app/settings/preferences': typeof AppSettingsPreferencesRoute
   '/_app/settings/profile': typeof AppSettingsProfileRoute
+  '/_app/settings/voice': typeof AppSettingsVoiceRoute
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/preferences'
     | '/settings/profile'
+    | '/settings/voice'
     | '/tag/$tag'
     | '/u/$username'
     | '/api/bot/command'
@@ -527,6 +537,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/preferences'
     | '/settings/profile'
+    | '/settings/voice'
     | '/tag/$tag'
     | '/u/$username'
     | '/api/bot/command'
@@ -576,6 +587,7 @@ export interface FileRouteTypes {
     | '/_app/settings/notifications'
     | '/_app/settings/preferences'
     | '/_app/settings/profile'
+    | '/_app/settings/voice'
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/api/bot/command'
@@ -899,6 +911,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsProfileRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/voice': {
+      id: '/_app/settings/voice'
+      path: '/settings/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AppSettingsVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/tag/$tag': {
       id: '/_app/tag/$tag'
       path: '/tag/$tag'
@@ -975,6 +994,7 @@ interface AppRouteChildren {
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsPreferencesRoute: typeof AppSettingsPreferencesRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
+  AppSettingsVoiceRoute: typeof AppSettingsVoiceRoute
   AppTagTagRoute: typeof AppTagTagRoute
   AppUUsernameRoute: typeof AppUUsernameRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
@@ -1006,6 +1026,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsPreferencesRoute: AppSettingsPreferencesRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
+  AppSettingsVoiceRoute: AppSettingsVoiceRoute,
   AppTagTagRoute: AppTagTagRoute,
   AppUUsernameRoute: AppUUsernameRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,

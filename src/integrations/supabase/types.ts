@@ -1965,7 +1965,9 @@ export type Database = {
           caption: string | null
           created_at: string
           expires_at: string
+          hidden_from: string[]
           id: string
+          like_count: number
           media_type: string
           media_url: string
           view_count: number
@@ -1976,7 +1978,9 @@ export type Database = {
           caption?: string | null
           created_at?: string
           expires_at?: string
+          hidden_from?: string[]
           id?: string
+          like_count?: number
           media_type?: string
           media_url: string
           view_count?: number
@@ -1987,7 +1991,9 @@ export type Database = {
           caption?: string | null
           created_at?: string
           expires_at?: string
+          hidden_from?: string[]
           id?: string
+          like_count?: number
           media_type?: string
           media_url?: string
           view_count?: number
@@ -2070,6 +2076,39 @@ export type Database = {
           {
             foreignKeyName: "story_highlights_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_likes: {
+        Row: {
+          created_at: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_likes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_likes_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2517,7 +2556,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       group_member_role: "owner" | "admin" | "member"
-      post_visibility: "public" | "close_friends"
+      post_visibility: "public" | "close_friends" | "followers"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
       realm_role: "owner" | "mod" | "member"
       realm_type: "text" | "announcement" | "drops" | "voice"
@@ -2652,7 +2691,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       group_member_role: ["owner", "admin", "member"],
-      post_visibility: ["public", "close_friends"],
+      post_visibility: ["public", "close_friends", "followers"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
       realm_role: ["owner", "mod", "member"],
       realm_type: ["text", "announcement", "drops", "voice"],

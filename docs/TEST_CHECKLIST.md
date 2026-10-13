@@ -1,5 +1,55 @@
 # RIZZ Test Checklist
 
+## Story likes, any-source music, Voice & Sound, chat rhythm, face lenses (this pass)
+
+### Stories
+- [ ] Tap ❤️ on a story: the count goes up immediately; reload — it is still up, and a second tap removes it.
+- [ ] Block the write (go offline) and tap ❤️: the flag and the count both snap back, with an error toast — nothing is left showing a like that was not saved.
+- [ ] Double-tap a story: a heart bursts and the story gets liked once (a single tap never unlikes it).
+- [ ] Open your own story: the button shows "N ❤"; the insights sheet lists views and shows the same like count.
+- [ ] A story you have already watched loses its gradient ring; a new story from anyone brings the gradient back.
+- [ ] Post with audience **Followers only** from an account that follows nothing: a second account that does not follow the author cannot see it (check the strip and direct API access).
+- [ ] Post with **Close friends** and verify only close friends see it; add someone to **Hide from** and confirm they don't, even though the audience includes them.
+- [ ] Reply to a story: it arrives as a normal DM in the author's inbox and no story bubble appears in any chat.
+- [ ] Type `@` in a story caption and in a story text overlay: the member picker appears and inserting a mention renders as a link in the viewer.
+
+### Music
+- [ ] `/play` a song name → Apple preview, title, artwork and provider chip appear.
+- [ ] `/play https://youtu.be/…` → real title, thumbnail and provider chip "YouTube", and the track plays through the embedded player (no download).
+- [ ] `/play https://open.spotify.com/track/…` → "That link isn't supported yet" and nothing is queued.
+- [ ] `/play https://youtube.com/playlist?list=…` → queues the playlist and plays it.
+- [ ] `/play <direct .mp3 URL>` → plays inline, seek bar works.
+- [ ] Join the channel's call: MUSIC BOT sings a YouTube track as well as an Apple one.
+- [ ] Play a private/deleted video: the player shows "That video is unavailable" and skips to the next track.
+- [ ] A video with embedding disabled shows "This track can't be embedded" and skips.
+- [ ] Loop, restart, skip, queue list and inline volume all work in the voice-channel panel.
+
+### Voice & Sound
+- [ ] Settings → Voice & Sound opens and every slider saves (reload keeps the values).
+- [ ] Moving the music slider changes a playing track's volume without restarting it.
+- [ ] Test sound is audible; mute-everything silences it and shows the "you're muted" hint.
+- [ ] A value above 100% on music shows "capped at 100%" for streamed media; the notification slider does go louder.
+- [ ] Mic sensitivity changes when the speaking ring lights up; noise suppression shows as on/off for the next call.
+- [ ] Input device picker lists devices after mic permission is granted; output picker is hidden where the browser has no `setSinkId`.
+- [ ] Per-realm override changes only that realm's bot volume and can be reset.
+
+### Chat rhythm
+- [ ] Consecutive messages from one author sit ~3px apart; a new author gets ~18px.
+- [ ] A day change inserts Today/Yesterday/dated separator, and the hover time appears in the avatar gutter on desktop (not on touch).
+- [ ] At 375px, message side padding and media cards look right and nothing overflows.
+- [ ] Changing `--chat-gap-same` / `--chat-gap-group` in `src/styles.css` visibly re-tunes the whole chat.
+
+### Face lenses
+- [ ] The story editor's Lens tool opens the studio and the camera permission prompt appears; denying it shows Retry + Pick a photo.
+- [ ] Every category is reachable and the carousel swipes; tapping a lens applies it, tapping it again removes it.
+- [ ] Intensity changes live for a warp (Big Eyes) and for a filter (Pixel 8-bit).
+- [ ] With no face in frame, "No face found — showing the original image" appears and the frame is untouched.
+- [ ] A gallery photo gets real detection (ears/hats track the head in the still).
+- [ ] Reactive lenses respond to the right expression: jawOpen for fire breath, pucker for kiss burst, tongueOut for dog tongue.
+- [ ] The fps badge appears; deliberately slowing the device drops it to "low" (half resolution) and it recovers.
+- [ ] Background Replace and Face Swap show their "needs …" note instead of a broken result.
+- [ ] Capture returns the frame into the story composer, where text/stickers/filters layer on top of it.
+
 ## Screenshot-focused changes
 
 - [ ] On mobile, opening a story covers the app header and bottom navigation, respects safe areas, and prevents background scrolling.

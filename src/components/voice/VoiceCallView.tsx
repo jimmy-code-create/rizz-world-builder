@@ -6,10 +6,19 @@ import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
+import { channelVolume, useSoundSettings } from "@/lib/sound-settings";
 
-/** Plays a remote participant's audio. Video tracks are ignored here. */
+/**
+ * Plays a remote participant's audio. Video tracks are ignored here.
+ *
+ * Volume and output device come from Voice & Sound. `setSinkId` is only present
+ * in some browsers, so the picker is best-effort: when it is missing, playback
+ * stays on the system default instead of failing.
+ */
 function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [settings] = useSoundSettings();
+  const volume = channelVolume(settings, "voice");
 
   useEffect(() => {
     const element = audioRef.current;
@@ -17,6 +26,24 @@ function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: ()
     element.srcObject = stream;
     void element.play().catch(onBlocked);
   }, [stream, onBlocked]);
+
+  useEffect(() => {
+    const element = audioRef.current;
+    if (!element) return;
+    // `volume` is capped at 1 by the browser for streamed/live audio, which is
+    // why the settings screen says so next to the Voice & TTS slider.
+    element.volume = Math.min(1, Math.max(0, volume));
+  }, [volume]);
+
+  useEffect(() => {
+    const element = audioRef.current;
+    if (!element || !settings.outputDeviceId) return;
+    const withSink = element as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
+    if (!withSink.setSinkId) return;
+    void withSink.setSinkId(settings.outputDeviceId).catch((error: unknown) => {
+      console.debug("Could not switch the call's output device", error);
+    });
+  }, [settings.outputDeviceId]);
 
   return <audio ref={audioRef} autoPlay playsInline className="hidden" />;
 }
