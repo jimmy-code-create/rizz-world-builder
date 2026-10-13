@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-13 — Full-screen calls, MUSIC BOT in the call, Discord-style pickers
+
+### Voice calls take the whole screen
+- Why: The expanded call was a bottom sheet capped at 92% height, so tiles, the participant list and the controls had to share a cramped area — the one thing a call needs is room.
+- Fix: The call view is now a full-screen layer above the app shell, with safe-area padding, a whole-viewport participant grid and a minimize button that drops back to the chat without ending the call. Audio is unaffected while minimized (it is owned by the provider, not the view).
+
+### MUSIC BOT joins the call and sings
+- Why: The bot only ever queued songs into `music_queue`. Nothing played unless you tapped a preview on your own device, so "/play" looked like it did nothing.
+- Fix: The bot is now a call participant. Its tile sits with the other people, the header count includes it, and its track plays for everyone in the channel through an audio element owned by the voice provider (so minimizing the call does not cut the song). A queued track starts automatically, `Tap to let MUSIC BOT sing` appears when the browser blocks autoplay, and when a preview ends the bot skips the queue on so it keeps singing. The music panel shows an "In call / Singing in call" chip and its layout stacks on phones.
+- Honest scope: tracks are the 30-second iTunes preview clips already stored in the queue, each client plays the same queue item from 0, and previews are start-synced on queue changes rather than sample-synced. Streaming full tracks to a channel needs a server-side audio worker, which this repo does not have.
+
+### Reels: REALMS rail removed
+- Why: The realm rail sat in the reels header next to upload and pushed the other controls around on small screens.
+- Fix: Reels no longer render it; `ReelsRealmRail` stays in the repo for other surfaces.
+
+### Discord-style mention and slash pickers
+- Why: The mention list stacked the name over the handle and the slash menu buried the owning app in the middle of the row, so both read as generic autocompletes rather than the pattern people know.
+- Fix: Mentions are one row per member — avatar, bold name, handle pushed to the right edge — under a "Frequently used" / "Members" heading. Slash commands put the app name at the right edge and gained Discord's quick-pick icon strip under the list.
+
+### Emoji, GIF and sticker picker
+- Why: The picker was a small popover with one long unsectioned emoji scroll, which is awkward on a phone.
+- Fix: It is now a bottom sheet with a drag handle, safe-area padding and a scrolling body, keeping the Emoji / GIFs / Stickers tabs and search. Emoji gained a "Top emoji" quick row, sticky per-section headings and a category strip that jumps to a section.
+
 ## 2026-10-13 — UI phases 3–11: calls, counts, stories and import
 
 ### DM calls (phase 9)

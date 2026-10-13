@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { MusicSheet } from "@/components/chat/MusicSheet";
 import { fetchRealmBots, realmBotsKey } from "@/lib/bots";
 import { formatDuration, musicQueueKey, runMusicCommand, useMusicQueue } from "@/lib/music";
+import { useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 
 /**
  * MUSIC BOT inside a voice channel.
@@ -32,8 +33,13 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // When the bot is riding in this channel's call, the panel says so — the bot
+  // is a participant now, not just a queue.
+  const botInCall = useMusicBotInCall();
+
   const tracks = queue.data ?? [];
   const current = tracks[0] ?? null;
+  const singingHere = botInCall.enabled && !!botInCall.track && botInCall.track.id === current?.id;
 
   // A song reaching the front of the queue (or being skipped) stops the old
   // preview instead of leaving two tracks talking at once.
@@ -113,7 +119,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
+            className="min-h-11 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
             onClick={() => setSheetOpen(true)}
           >
             <ListMusic className="h-3.5 w-3.5" /> Queue
@@ -122,7 +128,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
       </div>
 
       {canUse && current && (
-        <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] p-2 sm:flex-nowrap sm:gap-3">
           <button
             type="button"
             disabled={!current.preview_url}
@@ -140,12 +146,19 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
             </span>
           </button>
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{current.title}</p>
+          <div className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
+            <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+              {current.title}
+              {singingHere && (
+                <span className="shrink-0 rounded-full bg-emerald-400/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-emerald-200">
+                  {botInCall.singing ? "Singing in call" : "In call"}
+                </span>
+              )}
+            </p>
             <p className="truncate text-[11px] text-muted-foreground">
               {current.artist ?? "Unknown artist"}
               {formatDuration(current.duration_ms) ? ` · ${formatDuration(current.duration_ms)}` : ""}
-              {current.preview_url ? " · tap to preview" : ""}
+              {current.preview_url ? (singingHere ? "" : " · tap to preview") : ""}
             </p>
           </div>
 
@@ -175,7 +188,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
       )}
 
       {canUse && (
-        <form className="mt-3 flex gap-2" onSubmit={(event) => void submit(event)}>
+        <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void submit(event)}>
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -188,7 +201,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
           <Button
             type="submit"
             disabled={!query.trim() || busy === "play"}
-            className="h-11 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+            className="h-12 shrink-0 border-0 bg-gradient-primary text-primary-foreground sm:h-11 sm:w-auto"
           >
             {busy === "play" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Play

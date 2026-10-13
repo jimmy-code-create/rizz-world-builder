@@ -103,34 +103,46 @@ export function MentionAutocomplete({
 
   if (query === null || hits.length === 0) return null;
 
+  // Discord-style picker: one row per member — avatar, bold name, handle pushed
+  // to the right edge — under a small section label. With nothing typed the list
+  // is "frequently used" (top rizz), otherwise it is a member search.
+  const heading = query.trim() ? "Members" : "Frequently used";
+
   return (
     <div
       ref={popupRef}
       role="listbox"
       aria-label="Mention someone"
-      className="absolute inset-x-0 bottom-full mb-2 z-50 glass-strong border border-white/10 rounded-2xl p-1 shadow-glow max-h-[200px] overflow-y-auto"
+      className="absolute bottom-full left-0 right-0 z-50 mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#150f22] shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.95)] sm:right-auto sm:w-[21rem]"
     >
-      {hits.map((p, i) => (
-        <button
-          key={p.id}
-          type="button"
-          role="option"
-          aria-selected={i === active}
-          onMouseDown={(e) => { e.preventDefault(); onPick(p.username); }}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left ${i === active ? "bg-white/10" : "hover:bg-white/5"}`}
-        >
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={p.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs font-bold">
-              {(p.display_name || p.username).charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{p.display_name || p.username}</p>
-            <p className="text-xs text-muted-foreground truncate">@{p.username}</p>
-          </div>
-        </button>
-      ))}
+      <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {heading}
+      </p>
+      <div className="max-h-[min(38dvh,13rem)] overflow-y-auto p-1">
+        {hits.map((p, i) => (
+          <button
+            key={p.id}
+            type="button"
+            role="option"
+            aria-selected={i === active}
+            onMouseDown={(e) => { e.preventDefault(); onPick(p.username); }}
+            className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+              i === active ? "bg-[var(--rizz-pink)]/18" : "hover:bg-white/[0.06]"
+            }`}
+          >
+            <Avatar className="h-6 w-6 shrink-0">
+              <AvatarImage src={p.avatar_url ?? undefined} />
+              <AvatarFallback className="bg-gradient-primary text-primary-foreground text-[10px] font-bold">
+                {(p.display_name || p.username).charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+              {p.display_name || p.username}
+            </span>
+            <span className="shrink-0 truncate text-xs text-muted-foreground">@{p.username}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

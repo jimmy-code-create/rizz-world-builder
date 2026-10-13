@@ -47,7 +47,7 @@ export function SlashCommandMenu({
     >
       <div className="flex items-center gap-1.5 border-b border-white/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <Sparkles className="h-3 w-3 text-[var(--rizz-pink)]" aria-hidden="true" />
-        Bot commands
+        {commands.length ? "Frequently used" : "Bot commands"}
       </div>
       {!commands.length && (
         <p className="px-3 py-2.5 text-xs text-muted-foreground">{emptyHint}</p>
@@ -86,17 +86,18 @@ export function SlashCommandMenu({
                   </AvatarFallback>
                 </Avatar>
 
+                {/* Discord layout: command name over its description on the left,
+                    the owning app pushed to the right edge. */}
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 truncate text-sm font-semibold">
-                    <span className={active ? "text-[var(--rizz-pink)]" : "text-foreground"}>
-                      /{command.name}
-                    </span>
-                    <span className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {command.bot_name}
-                    </span>
+                  <p className={`truncate text-sm font-semibold ${active ? "text-[var(--rizz-pink)]" : "text-foreground"}`}>
+                    /{command.name}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">{command.description}</p>
                 </div>
+
+                <span className="shrink-0 truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {command.bot_name}
+                </span>
 
                 <span className="hidden shrink-0 font-mono text-[10px] text-muted-foreground sm:block">
                   {describeOptions(command)}
@@ -106,6 +107,41 @@ export function SlashCommandMenu({
           );
         })}
       </ul>
+
+      {/* Frequently used strip, like Discord's app icons under the list. */}
+      {commands.length > 1 && (
+        <div className="flex items-center gap-1 border-t border-white/5 px-2 py-1.5">
+          {commands.slice(0, 8).map((command, index) => (
+            <button
+              key={`fav-${command.command_id}`}
+              type="button"
+              title={`/${command.name} — ${command.bot_name}`}
+              aria-label={`/${command.name} from ${command.bot_name}`}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                onSelect(command);
+              }}
+              onMouseEnter={() => onHover(index)}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 text-[11px] font-bold transition-colors ${
+                index === activeIndex ? "bg-[var(--rizz-pink)]/25 text-foreground" : "bg-white/[0.04] text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {command.is_builtin ? (
+                <BotIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : command.bot_avatar_url ? (
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={command.bot_avatar_url} alt="" />
+                  <AvatarFallback className="bg-gradient-primary text-[9px] font-bold text-primary-foreground">
+                    {command.bot_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                command.bot_name.charAt(0).toUpperCase()
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }

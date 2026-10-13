@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 type GifResult = {
   id: string;
@@ -185,6 +185,12 @@ const EMOJIS: EmojiEntry[] = [
   ].map(([emoji, name]) => ({ emoji, name, group: "More" })),
 ];
 
+/** Section names in display order, derived from the emoji table. */
+const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
+
+/** The quick-pick row above the sections. */
+const TOP_EMOJIS = EMOJIS.slice(0, 12);
+
 export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PickerTab>("emoji");
@@ -196,6 +202,9 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const apiKey = import.meta.env.VITE_GIPHY_API_KEY?.trim();
+  // Discord-style sections: the category strip below jumps to a section instead
+  // of making the whole list one long scroll.
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     if (!open || stickers.length) return;
@@ -277,9 +286,12 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
     setVisibleCount(36);
   };
 
+  // A bottom sheet, not a small popover: on a phone the picker gets the whole
+  // width, a drag handle to dismiss it and a scrolling body, which is the part
+  // of Discord's picker people actually use.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button
           type="button"
           variant="ghost"
@@ -290,13 +302,16 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
         >
           <Smile className="h-5 w-5" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="top"
-        sideOffset={8}
-        className="glass-strong w-[min(23rem,calc(100vw-1.5rem))] border-white/10 p-3 shadow-2xl"
+      </SheetTrigger>
+      <SheetContent
+        side="bottom"
+        className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
       >
+        <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
+        <div className="flex shrink-0 justify-center pb-1 pt-2.5" aria-hidden="true">
+          <span className="h-1 w-10 rounded-full bg-white/25" />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1">
         <div
           className="mb-3 flex gap-1 rounded-xl border border-white/10 bg-black/20 p-1"
           role="tablist"
@@ -350,42 +365,86 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
         ) : null}
 
         {tab === "emoji" && (
-          <>
+          <div className="flex min-h-0 flex-col">
             {!query && (
-              <p className="mb-2 px-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                The usuals, plus the good ones
-              </p>
-            )}
-            <div
-              className="grid max-h-64 grid-cols-9 gap-0.5 overflow-y-auto overscroll-contain pr-0.5"
-              role="group"
-              aria-label="Emoji"
-            >
-              {filteredEmojis.map((item, index) => (
-                <button
-                  key={`${item.emoji}-${index}`}
-                  type="button"
-                  onClick={() => {
-                    onSelect(item.emoji);
-                    setOpen(false);
-                  }}
-                  className="grid aspect-square min-h-8 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
-                  aria-label={`Add ${item.name} emoji`}
-                  title={item.name}
-                >
-                  {item.emoji}
-                </button>
-              ))}
-              {!filteredEmojis.length && (
-                <p className="col-span-9 py-8 text-center text-sm text-muted-foreground">
-                  No emoji found.
+              <div className="mb-2">
+                <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Top emoji
                 </p>
+                <div className="flex gap-1 overflow-x-auto pb-1">
+                  {TOP_EMOJIS.map((item) => (
+                    <button
+                      key={`top-${item.name}`}
+                      type="button"
+                      onClick={() => {
+                        onSelect(item.emoji);
+                        setOpen(false);
+                      }}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-lg transition hover:scale-110 hover:bg-white/10"
+                      aria-label={`Add ${item.name} emoji`}
+                      title={item.name}
+                    >
+                      {item.emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-[45dvh] overflow-y-auto overscroll-contain pr-0.5" role="group" aria-label="Emoji">
+              {EMOJI_GROUPS.map((group) => {
+                const items = filteredEmojis.filter((item) => item.group === group);
+                if (!items.length) return null;
+                return (
+                  <div
+                    key={group}
+                    ref={(node) => {
+                      sectionRefs.current[group] = node;
+                    }}
+                  >
+                    <p className="sticky top-0 z-10 bg-[#150f22]/95 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      {group}
+                    </p>
+                    <div className="grid grid-cols-8 gap-0.5 sm:grid-cols-9">
+                      {items.map((item, index) => (
+                        <button
+                          key={`${item.emoji}-${index}`}
+                          type="button"
+                          onClick={() => {
+                            onSelect(item.emoji);
+                            setOpen(false);
+                          }}
+                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                          aria-label={`Add ${item.name} emoji`}
+                          title={item.name}
+                        >
+                          {item.emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {!filteredEmojis.length && (
+                <p className="py-8 text-center text-sm text-muted-foreground">No emoji found.</p>
               )}
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">
-              Standard Unicode emoji, ready to use on any device.
-            </p>
-          </>
+
+            <div className="mt-2 flex items-center gap-1 overflow-x-auto border-t border-white/5 pt-2">
+              {EMOJI_GROUPS.map((group) => (
+                <button
+                  key={`jump-${group}`}
+                  type="button"
+                  onClick={() =>
+                    sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
+                  }
+                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-[var(--rizz-pink)]/50 hover:text-foreground"
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {tab === "gifs" && (
@@ -401,7 +460,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
               </div>
             ) : (
               <>
-                <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto">
+                <div className="grid max-h-[45dvh] grid-cols-3 gap-2 overflow-y-auto">
                   {loading && (
                     <div className="col-span-3 flex justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -479,7 +538,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                 </button>
               ))}
             </div>
-            <div className="grid max-h-64 grid-cols-5 gap-1 overflow-y-auto overscroll-contain rounded-xl bg-black/10 p-1">
+            <div className="grid max-h-[45dvh] grid-cols-5 gap-1 overflow-y-auto overscroll-contain rounded-xl bg-black/10 p-1">
               {stickers.length > 0 &&
                 filteredStickers.slice(0, visibleCount).map((sticker) => (
                   <button
@@ -548,7 +607,8 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
             </p>
           </>
         )}
-      </PopoverContent>
-    </Popover>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

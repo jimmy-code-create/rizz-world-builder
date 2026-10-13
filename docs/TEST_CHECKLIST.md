@@ -35,6 +35,18 @@
 - [x] `npx tsc --noEmit`
 - [ ] Verify authenticated screens in the running preview after the existing Supabase environment is available. The workflow starts, but the preview currently stops at the missing Supabase configuration; no authentication bypass or environment change was made.
 
+## Full-screen call, MUSIC BOT and picker checks
+
+- [ ] Joining a voice channel opens a full-screen call: tiles fill the screen, safe areas are respected, the chat sits behind it, and the minimize (⌄) button returns to the chat with the call still running and everyone's audio still playing.
+- [ ] `/play <song>` in a voice channel: MUSIC BOT appears as a participant tile with the track title, the header count includes it, and the track plays with nobody tapping anything.
+- [ ] With browser autoplay blocked, "Tap to let MUSIC BOT sing" appears and starts playback on tap.
+- [ ] When a preview finishes the bot moves to the next queued song instead of going silent; Pause on the tile stops it for that listener only.
+- [ ] The music panel shows "Singing in call" for the current track, and its form stacks on a phone with a full-width Play button.
+- [ ] Reels no longer show the REALMS chip row; upload is the only control at the top-left.
+- [ ] Typing `@` shows one row per member (avatar, bold name, handle right-aligned) under a "Frequently used"/"Members" heading, and Enter picks without sending.
+- [ ] Typing `/` shows commands with the app name right-aligned and the quick-pick icon strip underneath; tapping an icon runs that command.
+- [ ] The emoji button opens a bottom sheet with a drag handle, Emoji/GIFs/Stickers tabs, search, a "Top emoji" row, section headings and a category strip that scrolls to a section.
+
 ## Phases 3–11 checks added in this pass
 
 - [ ] DM call: TURN credentials are requested from `/api/turn-credentials`; with no relay configured the screen says "No TURN relay configured…" instead of pretending the call can always connect.

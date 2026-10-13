@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { ChevronDown, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
+import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 
 /** Plays a remote participant's audio. Video tracks are ignored here. */
 function RemoteAudio({ stream, onBlocked }: { stream: MediaStream; onBlocked: () => void }) {
@@ -79,6 +80,9 @@ export function VoiceCallView() {
     retry,
   } = useVoiceCallContext();
 
+  // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
+  const musicBot = useMusicBotInCall();
+
   if (!call || !viewOpen) return null;
 
   const videosByPeer = new Map(
@@ -95,21 +99,29 @@ export function VoiceCallView() {
     : participants.find((participant) => participant.user_id === remoteShare?.peerId)?.user?.username ?? "someone";
 
   return (
-    // The expanded call is a bottom sheet, not a full-screen takeover: the chat
-    // stays readable behind it and the sheet is reachable with one thumb.
-    <Sheet open={!!call && viewOpen} onOpenChange={(open) => { if (!open) closeView(); }}>
-      <SheetContent
-        side="bottom"
-        className="glass-strong flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
+    // A voice call takes over the screen: the tiles, the music bot and the
+    // controls get the whole viewport, and the minimize button drops back to the
+    // chat without ending the call.
+    <FullScreenLayer open>
+      <div
+        className="fixed inset-0 z-[130] flex flex-col bg-[#0b0714] text-foreground"
+        style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
-        <SheetTitle className="sr-only">Voice call</SheetTitle>
-        <header className="flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(255,45,146,0.18), transparent 65%)" }}
+        />
+        <header className="relative flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">Voice channel</p>
             <h1 className="truncate font-display text-lg font-bold leading-tight">{call.channelName}</h1>
             <p role={error ? "alert" : undefined} className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}>
               {!error && <Wifi className="h-3 w-3" />}
-              {error ?? `${status} · ${participants.length} ${participants.length === 1 ? "person" : "people"}`}
+              {error ??
+                `${status} · ${participants.length + (musicBot.enabled && musicBot.track ? 1 : 0)} ${
+                  participants.length + (musicBot.enabled && musicBot.track ? 1 : 0) === 1 ? "person" : "people"
+                }`}
             </p>
           </div>
           {error && (
@@ -213,11 +225,50 @@ export function VoiceCallView() {
                 </div>
               );
             })}
+
+            {musicBot.enabled && musicBot.track && (
+              <div className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center">
+                <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
+                  {musicBot.singing ? "Singing" : "In call"}
+                </span>
+                <Avatar className={`h-16 w-16 ${musicBot.singing ? "ring-2 ring-emerald-400" : ""}`}>
+                  <AvatarImage src={musicBot.track.artwork_url ?? undefined} alt="" />
+                  <AvatarFallback className="bg-emerald-500/25 text-emerald-100">
+                    <Music className="h-6 w-6" aria-hidden="true" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 px-1">
+                  <p className="truncate text-xs font-semibold">MUSIC BOT</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {musicBot.track.title}
+                    {musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => musicBotControls.toggle()}
+                  aria-label={musicBot.singing ? "Pause MUSIC BOT" : "Play MUSIC BOT"}
+                  className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-background/80 transition active:scale-95"
+                >
+                  {musicBot.singing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
+        {musicBot.track && musicBot.blocked && (
+          <button
+            type="button"
+            onClick={() => musicBotControls.retry()}
+            className="mx-auto mb-2 shrink-0 rounded-full bg-emerald-400/15 px-4 py-2 text-xs font-semibold text-emerald-200 transition active:scale-95"
+          >
+            Tap to let MUSIC BOT sing
+          </button>
+        )}
+
         <div
-          className="shrink-0 border-t border-white/5 glass-strong px-4 pt-3"
+          className="relative shrink-0 border-t border-white/5 glass-strong px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
           <div className="mx-auto flex max-w-md items-center justify-center gap-3">
@@ -290,7 +341,7 @@ export function VoiceCallView() {
           </p>
           {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </FullScreenLayer>
   );
 }
