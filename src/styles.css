@@ -592,7 +592,7 @@
 
 /* ============ RIZZ NOTIFICATIONS ============ */
 .rizz-toaster {
-  --width: min(360px, calc(100vw - 1.25rem));
+  --width: min(384px, calc(100vw - 1.5rem));
   z-index: 100;
 }
 
@@ -616,105 +616,125 @@
   }
 }
 
+/*
+ * The toast is the app's voice, so it wears the app's shape: a dark glass card
+ * with a tinted icon chip and a coloured rail down the leading edge. Every
+ * variant only swaps two variables (--rizz-toast-accent for the rail, chip and
+ * glow, --rizz-toast-tint for the chip fill), so the family stays consistent.
+ */
 .rizz-toaster [data-sonner-toast].rizz-toast {
+  --rizz-toast-accent: var(--rizz-pink);
+  --rizz-toast-tint: color-mix(in srgb, var(--rizz-pink) 16%, transparent);
   width: var(--width);
-  min-height: 44px;
-  gap: 9px;
-  padding: 10px 12px;
-  border: 1px solid oklch(0.98 0.01 320 / 0.1);
-  border-radius: 14px;
-  background: oklch(0.15 0.04 295 / 0.94);
+  min-height: 0;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 14px 11px 12px;
+  border: 1px solid oklch(0.98 0.01 320 / 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, oklch(0.19 0.045 295 / 0.96) 0%, oklch(0.13 0.04 295 / 0.97) 100%);
   color: oklch(0.98 0.01 320);
   box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    0 0 20px oklch(0.68 0.28 5 / 0.08),
-    inset 0 1px 0 oklch(0.98 0.01 320 / 0.06);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+    0 18px 42px -14px oklch(0.03 0.02 295 / 0.75),
+    0 0 22px -6px color-mix(in srgb, var(--rizz-toast-accent) 42%, transparent),
+    inset 0 1px 0 oklch(0.98 0.01 320 / 0.08),
+    inset 3px 0 0 var(--rizz-toast-accent);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   font-family: var(--font-sans);
 }
 
+.rizz-toaster [data-sonner-toast].rizz-toast:hover {
+  border-color: oklch(0.98 0.01 320 / 0.2);
+}
+
 .rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
-  border-color: oklch(0.72 0.2 20 / 0.3);
-  box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    inset 2px 0 0 oklch(0.68 0.2 20 / 0.8);
+  --rizz-toast-accent: oklch(0.72 0.19 20);
+  --rizz-toast-tint: oklch(0.72 0.19 20 / 0.16);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="success"].rizz-toast {
-  border-color: oklch(0.78 0.16 155 / 0.28);
-  box-shadow:
-    0 12px 34px oklch(0.04 0.02 295 / 0.44),
-    0 0 18px oklch(0.72 0.17 155 / 0.07);
+  --rizz-toast-accent: oklch(0.8 0.16 155);
+  --rizz-toast-tint: oklch(0.8 0.16 155 / 0.16);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="info"].rizz-toast {
-  border-color: oklch(0.78 0.18 200 / 0.25);
+  --rizz-toast-accent: oklch(0.82 0.13 205);
+  --rizz-toast-tint: oklch(0.82 0.13 205 / 0.16);
+}
+
+.rizz-toaster [data-sonner-toast][data-type="warning"].rizz-toast {
+  --rizz-toast-accent: oklch(0.84 0.16 85);
+  --rizz-toast-tint: oklch(0.84 0.16 85 / 0.16);
 }
 
 .rizz-toaster .rizz-toast-title {
   min-width: 0;
   white-space: normal;
-  color: oklch(0.98 0.01 320);
-  font-size: 12px;
+  color: oklch(0.99 0.008 320);
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.4;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .rizz-toaster .rizz-toast-description {
   white-space: normal;
-  margin-top: 3px;
-  color: oklch(0.76 0.03 295);
-  font-size: 12px;
+  margin-top: 2px;
+  color: oklch(0.78 0.025 295);
+  font-size: 12.5px;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
+/* Icon chip: the glyph sits in a tinted circle so the type reads at a glance
+   without a full coloured border competing with the message. */
 .rizz-toaster .rizz-toast-icon {
-  display: flex;
-  width: 19px;
-  height: 19px;
-  flex: 0 0 19px;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--rizz-toast-tint);
+  color: var(--rizz-toast-accent);
 }
 
 .rizz-toaster .rizz-toast-icon svg {
-  width: 17px;
-  height: 17px;
-  stroke-width: 2.2;
-}
-
-.rizz-toaster [data-sonner-toast][data-type="error"] .rizz-toast-icon {
-  color: oklch(0.78 0.19 20);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="success"] .rizz-toast-icon {
-  color: oklch(0.82 0.16 155);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="info"] .rizz-toast-icon {
-  color: oklch(0.82 0.16 200);
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
 }
 
 .rizz-toaster .rizz-toast-action,
 .rizz-toaster .rizz-toast-cancel {
-  min-height: 34px;
-  border-radius: 10px;
-  padding: 0 11px;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 13px;
   font-size: 12px;
   font-weight: 650;
+  transition: filter 150ms ease, background-color 150ms ease;
 }
 
 .rizz-toaster .rizz-toast-action {
   background: var(--gradient-primary);
   color: white;
+  box-shadow: 0 6px 18px -8px var(--rizz-glow);
+}
+
+.rizz-toaster .rizz-toast-action:hover {
+  filter: brightness(1.1);
 }
 
 .rizz-toaster .rizz-toast-cancel {
   background: oklch(0.98 0.01 320 / 0.08);
   color: oklch(0.86 0.02 295);
+}
+
+.rizz-toaster .rizz-toast-cancel:hover {
+  background: oklch(0.98 0.01 320 / 0.14);
 }
 
 @keyframes pulse-glow {

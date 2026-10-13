@@ -678,7 +678,7 @@ function CommentsThread({ postId }: { postId: string }) {
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-xs">@{a?.username}</span>{" "}
                 <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
-                <p className={cn("text-sm leading-snug mt-0.5 whitespace-pre-wrap", emojiTextClass(c.body))}><GifContent>{c.body}</GifContent></p>
+                <p className={cn("text-sm leading-snug mt-0.5 whitespace-pre-wrap", emojiTextClass(c.body, "comment"))}><GifContent>{c.body}</GifContent></p>
                 <div className="mt-1 flex items-center gap-3">
                   {user && (
                     <button

@@ -18,7 +18,15 @@ function graphemes(text: string): string[] {
   return [...text];
 }
 
-export function emojiTextClass(text: string | null | undefined): string | null {
+/**
+ * Comment threads stack many one-liners, so the same emoji wall has to stay a
+ * step smaller there than it does in a post caption. Pass "comment" for rows
+ * inside a thread.
+ */
+export function emojiTextClass(
+  text: string | null | undefined,
+  scale: "post" | "comment" = "post",
+): string | null {
   if (!text) return null;
   const trimmed = text.trim();
   // Long captions are prose; leave them alone.
@@ -35,12 +43,20 @@ export function emojiTextClass(text: string | null | undefined): string | null {
 
   // Pure emoji: the whole message is the emoji.
   if (emojis.length === visible.length) {
+    if (scale === "comment") {
+      if (emojis.length <= 3) return "text-2xl leading-tight";
+      if (emojis.length <= 9) return "text-xl leading-snug";
+      return "text-lg leading-snug";
+    }
     if (emojis.length <= 3) return "text-[2.5rem] leading-[1.15]";
     if (emojis.length <= 9) return "text-[2rem] leading-tight";
     return "text-2xl leading-snug";
   }
 
   // Emoji with a few words around them: a gentle bump, never huge.
+  if (scale === "comment") {
+    return emojiShare >= 0.5 ? "text-base leading-relaxed" : null;
+  }
   if (emojiShare >= 0.5) return "text-lg leading-relaxed";
   if (emojiShare >= 0.25) return "text-base leading-relaxed";
   return null;

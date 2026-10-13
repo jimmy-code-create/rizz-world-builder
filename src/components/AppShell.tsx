@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText, ChevronDown } from "lucide-react";
+import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +30,6 @@ const NightclubCanvas = lazy(() => import("@/components/NightclubCanvas").then((
 const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
 const AppOverlays = lazy(() => import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })));
 const KeyboardShortcuts = lazy(() => import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })));
-const OwnerPanel = lazy(() => import("@/components/OwnerPanel").then((m) => ({ default: m.OwnerPanel })));
 const IncomingCallRinger = lazy(() => import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })));
 const PostComposer = lazy(() => import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })));
 
@@ -63,7 +62,6 @@ export function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [ownerOpen, setOwnerOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const presence = useSelfPresence();
   // Chat surfaces scroll themselves (their message list owns the viewport) and
@@ -90,6 +88,10 @@ export function AppShell() {
     window.addEventListener("rizz:new-post", open);
     return () => window.removeEventListener("rizz:new-post", open);
   }, []);
+
+  // The header's search field opens the command palette, which already searches
+  // people, realms, posts and messages from anywhere in the app.
+  const openSearch = () => window.dispatchEvent(new CustomEvent("rizz:command-palette"));
 
   const unread = useQuery({
     queryKey: ["unread-notifs", user?.id],
@@ -166,17 +168,11 @@ export function AppShell() {
       {!isConversation && <Suspense fallback={null}><NightclubCanvas /></Suspense>}
       {/* Desktop sidebar */}
       {!isConversation && <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col glass-strong border-r border-white/5 px-4 py-6 z-30">
-        <button
-          type="button"
-          onClick={() => setOwnerOpen(true)}
-          className="flex items-center gap-2 mb-6 px-2 group"
-          aria-label="Open owner panel"
-          title="Owner panel"
-        >
+        <Link to="/feed" className="flex items-center gap-2 mb-6 px-2 group" aria-label="RIZZ home">
           <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow group-hover:scale-105 transition-transform">R</div>
           <img src="/brand/rizz-cat-logo.svg" alt="" className="h-8 w-8 shrink-0" />
           <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
-        </button>
+        </Link>
 
         <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-gradient-primary border-0 shadow-glow rounded-xl h-10 gap-2">
           <Plus className="h-5 w-5" /> New post
@@ -243,50 +239,62 @@ export function AppShell() {
         <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
       </aside>}
 
-      {/* Mobile top bar — Discord's arrangement: logo, search, then the bell,
-          status pill and avatar grouped on the right. One row on any phone. */}
+      {/* Mobile top bar — brand, a full-width search field, then notifications
+          and your avatar (presence dot included). One tidy row on any phone;
+          the status picker lives in the avatar menu. */}
       {!isConversation && <header
-        className="chat-bar md:hidden z-30 flex shrink-0 items-center gap-1.5 border-b border-white/5 px-3 pb-2.5"
-        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.6rem)" }}
+        className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2"
+        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.5rem)" }}
       >
-        <button
-          type="button"
-          onClick={() => setOwnerOpen(true)}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-primary font-display text-base font-bold shadow-glow"
-          aria-label="Open owner panel"
+        {/* Brand mark as a plain home link. */}
+        <Link
+          to="/feed"
+          aria-label="RIZZ home"
+          className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-[13px] bg-gradient-primary font-display text-sm font-bold text-primary-foreground shadow-glow ring-1 ring-inset ring-white/25 transition-transform active:scale-95"
         >
           R
-        </button>
-        {/* Round search button: the icon is the whole control, so the bar never
-            wraps on the narrowest phones. */}
-        <Link
-          to="/explore"
-          aria-label="Search RIZZ"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
-        >
-          <Search className="h-5 w-5" />
+          <span aria-hidden className="pointer-events-none absolute -left-1 -top-3 h-7 w-3 rotate-[28deg] rounded-full bg-white/35 blur-[5px]" />
         </Link>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+
+        {/* One search field for the whole app. It opens the command palette,
+            which already searches people, realms, posts and DMs. */}
+        <button
+          type="button"
+          onClick={openSearch}
+          aria-label="Search RIZZ"
+          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] pl-3 pr-2 text-left text-[13px] text-muted-foreground backdrop-blur-sm transition-colors hover:bg-white/[0.08] active:bg-white/[0.11]"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">Search people, realms, chats</span>
+          <kbd className="hidden shrink-0 rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 font-sans text-[10px] font-semibold min-[400px]:block">
+            ⌘K
+          </kbd>
+        </button>
+
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <Link
             to="/notifications"
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-            className="relative grid h-11 w-11 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5"
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5 active:bg-white/10"
           >
-            <Bell className="h-5 w-5" />
+            <Bell className="h-[19px] w-[19px]" />
             {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-background px-1 text-[10px] font-bold leading-none text-foreground ring-1 ring-[var(--rizz-pink)]">
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--rizz-pink)] px-1 text-[9px] font-bold leading-none text-white ring-2 ring-background">
                 {unreadBadge}
               </span>
             )}
           </Link>
-          {/* Status: a pill with the dot and the label — never the avatar, which
-              sits next to it and made the two look like duplicates. */}
-          <StatusPill
+          {/* Status lives inside the avatar menu: the bar now carries brand,
+              search, notifications and you, and nothing else. */}
+          <ProfileMenu
+            profile={profile}
+            initial={initial}
+            signOut={signOut}
+            compact
             status={presence.status}
             emoji={presence.customStatus?.emoji}
-            onOpen={() => setStatusOpen(true)}
+            onStatus={() => setStatusOpen(true)}
           />
-          <ProfileMenu profile={profile} initial={initial} signOut={signOut} compact />
         </div>
       </header>}
 
@@ -423,46 +431,8 @@ export function AppShell() {
         <CommandPalette />
         <AppOverlays />
         <KeyboardShortcuts profileUsername={profile?.username} />
-        <OwnerPanel open={ownerOpen} onOpenChange={setOwnerOpen} />
       </Suspense>
     </div>
-  );
-}
-
-/**
- * The header's status control.
- *
- * It shows the status dot (or the custom-status emoji) and the label, never the
- * avatar: the profile avatar sits directly next to it, and two copies of the
- * same picture read as a duplicate button.
- */
-function StatusPill({
-  status,
-  emoji,
-  onOpen,
-}: {
-  status: PublicPresence;
-  emoji?: string | null;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Status: ${statusLabel(status)}. Change your status`}
-      title={`Status: ${statusLabel(status)}`}
-      className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[380px]:h-10 max-[380px]:w-10 max-[380px]:px-0"
-    >
-      {emoji ? (
-        <span aria-hidden className="text-base leading-none">{emoji}</span>
-      ) : (
-        <StatusDot status={status} size={14} ring={false} />
-      )}
-      {/* Capped so a long label can never push the bar past 380px: below the
-          cap it truncates instead of clipping. */}
-      <span className="hidden max-w-[4.5rem] truncate min-[380px]:inline">{statusShortLabel(status)}</span>
-      <ChevronDown className="hidden h-5 w-5 shrink-0 text-muted-foreground min-[380px]:block" />
-    </button>
   );
 }
 
@@ -482,20 +452,27 @@ function ProfileMenu({
   initial,
   signOut,
   compact,
+  status,
+  emoji,
+  onStatus,
 }: {
   profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
   initial: string;
   signOut: () => Promise<void>;
   compact?: boolean;
+  /** Presence, drawn as a dot (or status emoji) on the avatar when compact. */
+  status?: PublicPresence;
+  emoji?: string | null;
+  onStatus?: () => void;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          aria-label="Your profile"
-          className={`flex items-center gap-3 rounded-xl transition-colors ${compact ? "h-11 w-11 justify-center hover:bg-white/5" : "p-2 hover:bg-white/5 w-full"}`}
+          aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
+          className={`relative flex items-center gap-3 transition-colors ${compact ? "h-10 w-10 justify-center rounded-full hover:bg-white/5 active:bg-white/10" : "p-2 rounded-xl hover:bg-white/5 w-full"}`}
         >
-          <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
+          <Avatar className={compact ? "h-8 w-8 ring-2 ring-white/15" : "h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} />
             <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
           </Avatar>
@@ -505,11 +482,32 @@ function ProfileMenu({
               <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
             </div>
           )}
+          {compact && status && (
+            <span className="pointer-events-none absolute bottom-0 right-0 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-white/10">
+              {emoji ? (
+                <span aria-hidden className="text-[9px] leading-none">{emoji}</span>
+              ) : (
+                <StatusDot status={status} size={9} ring={false} />
+              )}
+            </span>
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="glass-strong border-white/10 w-56">
         <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">@{profile?.username}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {onStatus && (
+          <DropdownMenuItem onClick={onStatus}>
+            <span className="mr-2 grid h-4 w-4 place-items-center">
+              {emoji ? (
+                <span className="text-sm leading-none">{emoji}</span>
+              ) : status ? (
+                <StatusDot status={status} size={9} ring={false} />
+              ) : null}
+            </span>
+            Status · {status ? statusShortLabel(status) : "Online"}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
             <UserIcon className="mr-2 h-4 w-4" /> Profile

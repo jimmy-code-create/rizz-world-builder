@@ -1292,8 +1292,18 @@ function RealmPage() {
                           onSelect: () => {
                             void reportRealmMessage(m.id, "Reported from chat").then(
                               () => toast.success("Thanks — a moderator will take a look"),
-                              (error: unknown) =>
-                                toast.error(error instanceof Error ? error.message : "Couldn't send that report"),
+                              (error: unknown) => {
+                                const message = error instanceof Error ? error.message : "";
+                                // A second report is a "nothing to do" state, not a failure:
+                                // say it plainly instead of flashing a red alarm.
+                                if (/already|duplicate|unique/i.test(message)) {
+                                  toast.info("You already reported this message", {
+                                    description: "A moderator can still see your first report.",
+                                  });
+                                  return;
+                                }
+                                toast.error(message || "Couldn't send that report");
+                              },
                             );
                           },
                         },

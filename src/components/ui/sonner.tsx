@@ -9,13 +9,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group rizz-toaster"
       position="bottom-center"
       offset={12}
-      duration={3200}
+      gap={10}
+      duration={3600}
+      visibleToasts={3}
       closeButton={false}
       icons={{
         success: <CheckCircle2 aria-hidden="true" />,
         error: <AlertCircle aria-hidden="true" />,
         info: <Info aria-hidden="true" />,
-        loading: <LoaderCircle aria-hidden="true" />,
+        loading: <LoaderCircle aria-hidden="true" className="animate-spin" />,
       }}
       toastOptions={{
         classNames: {

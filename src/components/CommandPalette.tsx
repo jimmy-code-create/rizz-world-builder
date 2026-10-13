@@ -48,8 +48,15 @@ export function CommandPalette() {
         setOpen(true);
       }
     };
+    // The mobile header's search field asks for the palette through this event
+    // instead of faking a keystroke.
+    const onOpenEvent = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("rizz:command-palette", onOpenEvent);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("rizz:command-palette", onOpenEvent);
+    };
   }, []);
 
   useEffect(() => {
