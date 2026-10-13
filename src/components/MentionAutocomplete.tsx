@@ -113,12 +113,16 @@ export function MentionAutocomplete({
       ref={popupRef}
       role="listbox"
       aria-label="Mention someone"
-      className="absolute bottom-full left-0 right-0 z-50 mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#150f22] shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.95)] sm:right-auto sm:w-[21rem]"
+      className="glass-strong absolute bottom-full left-0 right-0 z-50 mb-2 overflow-hidden rounded-2xl border border-white/10 shadow-[0_-8px_40px_-12px_rgba(0,0,0,0.95)] sm:right-auto sm:w-[21rem]"
     >
-      <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[var(--rizz-pink)]/45 to-transparent"
+      />
+      <p className="px-3 pb-1 pt-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         {heading}
       </p>
-      <div className="max-h-[min(38dvh,13rem)] overflow-y-auto p-1">
+      <div className="max-h-[min(38dvh,13rem)] overflow-y-auto px-1 pb-1">
         {hits.map((p, i) => (
           <button
             key={p.id}
@@ -126,23 +130,34 @@ export function MentionAutocomplete({
             role="option"
             aria-selected={i === active}
             onMouseDown={(e) => { e.preventDefault(); onPick(p.username); }}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
-              i === active ? "bg-[var(--rizz-pink)]/18" : "hover:bg-white/[0.06]"
+            className={`flex w-full min-h-11 items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors ${
+              i === active ? "bg-white/[0.07] shadow-[inset_2px_0_0_var(--rizz-pink)]" : "hover:bg-white/[0.05]"
             }`}
           >
-            <Avatar className="h-6 w-6 shrink-0">
+            <Avatar className="h-7 w-7 shrink-0 ring-1 ring-white/10">
               <AvatarImage src={p.avatar_url ?? undefined} />
               <AvatarFallback className="bg-gradient-primary text-primary-foreground text-[10px] font-bold">
                 {(p.display_name || p.username).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-              {p.display_name || p.username}
-            </span>
-            <span className="shrink-0 truncate text-xs text-muted-foreground">@{p.username}</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold leading-tight">
+                {p.display_name || p.username}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">@{p.username}</p>
+            </div>
+            {i === active && (
+              <span className="shrink-0 rounded border border-white/10 bg-white/5 px-1 text-[10px] text-muted-foreground">
+                ↵
+              </span>
+            )}
           </button>
         ))}
       </div>
+      <p className="hidden items-center gap-1.5 border-t border-white/5 px-3 py-1.5 text-[10px] text-muted-foreground sm:flex">
+        <kbd className="rounded border border-white/10 bg-white/5 px-1 font-sans">↑↓</kbd> browse
+        <kbd className="rounded border border-white/10 bg-white/5 px-1 font-sans">↵</kbd> mention
+      </p>
     </div>
   );
 }

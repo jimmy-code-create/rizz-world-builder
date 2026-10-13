@@ -31,9 +31,11 @@ type MusicBotState = {
   blocked: boolean;
   /** True while the channel's MUSIC BOT is installed and enabled. */
   enabled: boolean;
+  /** Why the bot is quiet, in the user's words — null while it is singing. */
+  note: string | null;
 };
 
-let store: MusicBotState = { track: null, singing: false, blocked: false, enabled: false };
+let store: MusicBotState = { track: null, singing: false, blocked: false, enabled: false, note: null };
 const listeners = new Set<() => void>();
 
 function update(patch: Partial<MusicBotState>) {
@@ -42,7 +44,8 @@ function update(patch: Partial<MusicBotState>) {
     next.track?.id === store.track?.id &&
     next.singing === store.singing &&
     next.blocked === store.blocked &&
-    next.enabled === store.enabled
+    next.enabled === store.enabled &&
+    next.note === store.note
   ) {
     return;
   }
@@ -102,7 +105,11 @@ export class MusicBotBoundary extends Component<{ children: ReactNode }, { faile
 export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
   const qc = useQueryClient();
   const realmId = call?.realmId ?? null;
-  const roomId = call?.roomId ?? null;
+  // The queue is keyed by the REALM CHANNEL id, while `call.roomId` is the
+  // voice_rooms row. Using the voice-room id made every lookup miss, so the bot
+  // stood in the call with an empty queue and never made a sound — this is why
+  // a queued song was inaudible in the voice channel.
+  const roomId = call?.channelId ?? null;
 
   const bots = useQuery({
     queryKey: realmBotsKey(realmId ?? ""),
@@ -116,21 +123,29 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const endedRef = useRef<string | null>(null);
+  /** True while the browser is refusing to start audio without a gesture. */
+  const blockedRef = useRef(false);
 
   useEffect(() => {
     update({ enabled: botEnabled && !!realmId, track });
     // Leaving the call clears the bot from the participant list.
-    if (!realmId) update({ singing: false, blocked: false });
+    if (!realmId) update({ singing: false, blocked: false, note: null });
   }, [botEnabled, realmId, track]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const play = () => {
+    const start = () => {
       void audio
         .play()
-        .then(() => update({ singing: true, blocked: false }))
-        .catch(() => update({ singing: false, blocked: true }));
+        .then(() => {
+          blockedRef.current = false;
+          update({ singing: true, blocked: false, note: null });
+        })
+        .catch(() => {
+          blockedRef.current = true;
+          update({ singing: false, blocked: true, note: "Tap anywhere in the call to start the music." });
+        });
     };
     const pause = () => {
       audio.pause();
@@ -138,15 +153,44 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     };
     musicBotControls.toggle = () => {
       if (!track?.preview_url) return;
-      if (audio.paused) play();
+      if (audio.paused) start();
       else pause();
     };
-    musicBotControls.retry = play;
+    musicBotControls.retry = start;
     return () => {
       musicBotControls.toggle = () => {};
       musicBotControls.retry = () => {};
     };
   }, [track?.preview_url]);
+
+  /**
+   * Autoplay policy: a track queued by someone else starts with no gesture of
+   * mine, which browsers refuse. Instead of leaving it silent until the user
+   * finds a button, the first tap or key press anywhere — the call's own mic,
+   * camera or tile buttons included — starts the song.
+   */
+  useEffect(() => {
+    const resume = () => {
+      if (!blockedRef.current) return;
+      const audio = audioRef.current;
+      if (!audio || !audio.src) return;
+      void audio
+        .play()
+        .then(() => {
+          blockedRef.current = false;
+          update({ singing: true, blocked: false, note: null });
+        })
+        .catch(() => {
+          // Still blocked: the next gesture tries again.
+        });
+    };
+    window.addEventListener("pointerdown", resume, true);
+    window.addEventListener("keydown", resume, true);
+    return () => {
+      window.removeEventListener("pointerdown", resume, true);
+      window.removeEventListener("keydown", resume, true);
+    };
+  }, []);
 
   // A newly queued track starts singing immediately for everyone in the call.
   useEffect(() => {
@@ -155,29 +199,42 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     if (!track?.preview_url) {
       audio.pause();
       audio.removeAttribute("src");
-      update({ singing: false, blocked: false });
+      blockedRef.current = false;
+      update({
+        singing: false,
+        blocked: false,
+        note: track
+          ? "No playable audio for this track — Apple Music only shares 30-second previews."
+          : null,
+      });
       return;
     }
     // Media element work throws in some browsers (a seek before metadata, a
     // revoked blob URL). A bot that cannot sing must never take a page down, so
-    // every one of these calls is contained and reported as "blocked" instead.
+    // every one of these calls is contained and reported instead.
     try {
       if (audio.src !== track.preview_url) audio.src = track.preview_url;
       audio.currentTime = 0;
       endedRef.current = null;
     } catch (error) {
       console.debug("MUSIC BOT could not load that preview", error);
-      update({ singing: false, blocked: true });
+      update({ singing: false, blocked: true, note: "That preview wouldn't load — skip to the next song." });
       return;
     }
     try {
       void audio
         .play()
-        .then(() => update({ singing: true, blocked: false }))
-        .catch(() => update({ singing: false, blocked: true }));
+        .then(() => {
+          blockedRef.current = false;
+          update({ singing: true, blocked: false, note: null });
+        })
+        .catch(() => {
+          blockedRef.current = true;
+          update({ singing: false, blocked: true, note: "Tap anywhere in the call to start the music." });
+        });
     } catch (error) {
       console.debug("MUSIC BOT could not start playback", error);
-      update({ singing: false, blocked: true });
+      update({ singing: false, blocked: true, note: "That preview wouldn't play — skip to the next song." });
     }
   }, [track?.id, track?.preview_url]);
 
@@ -202,9 +259,18 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
       playsInline
       preload="auto"
       onEnded={handleEnded}
-      onPause={() => update({ singing: false })}
-      onPlay={() => update({ singing: true, blocked: false })}
-      className="hidden"
+      onPause={() => {
+        if (blockedRef.current) return;
+        update({ singing: false });
+      }}
+      onPlay={() => {
+        blockedRef.current = false;
+        update({ singing: true, blocked: false, note: null });
+      }}
+      // Visually hidden but still rendered: `display: none` is the one thing that
+      // some mobile browsers treat as "not playing" for media elements.
+      aria-hidden="true"
+      className="sr-only"
     />
   );
 }

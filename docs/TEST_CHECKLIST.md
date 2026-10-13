@@ -14,6 +14,20 @@
 - [ ] External Reels show the original source and an Open original link; no video is downloaded or rehosted.
 - [ ] Verify the external-video card at full-screen Reel size and in the compact post-embed size.
 
+## Realm chat, voice and pickers (this pass)
+
+- [ ] Options → "Channels & permissions" opens the sheet on mobile and desktop and never shows "This page didn't load"; switching channels in the sheet and flipping a member's switch both work.
+- [ ] The realm composer still reflects a per-channel write block set from that sheet.
+- [ ] Queue a song in a voice channel's music panel, then join that channel's call: MUSIC BOT appears as a participant and the song is audible to everyone in the call (first tap starts it if the browser blocks autoplay).
+- [ ] A track with no preview audio says so on the bot tile instead of sitting silent; skip/stop still work from the call.
+- [ ] The music panel's local preview does not play over the in-call bot (no doubled, out-of-sync audio).
+- [ ] Long-pressing a message shows the author, time and text at the top of the menu; on a phone the menu arrives as a bottom sheet that does not cover the conversation.
+- [ ] "View message" opens the full message with a working copy button.
+- [ ] Delete your own message in a text channel and in the realm's own channel: it disappears in both, not just the second.
+- [ ] As realm owner (and as a moderator), delete someone else's message from the long-press menu: it is removed for everyone and disappears without a reload.
+- [ ] The @ mention picker and the / command picker show the section label, row layout, right-aligned app/handle and the keyboard-hint footer.
+- [ ] With owner and moderator roles, the moderation actions (pin, reaction roles, delete for everyone) are all visible; a plain member sees only their own delete plus report.
+
 ## Broader regression checks from the project spec
 
 - [ ] Calls: PC to PC.

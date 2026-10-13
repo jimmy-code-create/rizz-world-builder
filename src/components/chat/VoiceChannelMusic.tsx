@@ -48,6 +48,15 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
     setPlaying(false);
   }, [current?.id]);
 
+  // MUSIC BOT sings a track through the call's own audio element. The panel's
+  // local preview must step aside at that point, or the same song plays twice,
+  // out of sync.
+  useEffect(() => {
+    if (!singingHere) return;
+    audioRef.current?.pause();
+    setPlaying(false);
+  }, [singingHere]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const song = query.trim().replace(/^\/play\s+/i, "").trim();
@@ -158,7 +167,13 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
             <p className="truncate text-[11px] text-muted-foreground">
               {current.artist ?? "Unknown artist"}
               {formatDuration(current.duration_ms) ? ` · ${formatDuration(current.duration_ms)}` : ""}
-              {current.preview_url ? (singingHere ? "" : " · tap to preview") : ""}
+              {singingHere
+                ? botInCall.note
+                  ? ` · ${botInCall.note}`
+                  : ""
+                : current.preview_url
+                  ? " · tap to preview"
+                  : " · no preview audio"}
             </p>
           </div>
 

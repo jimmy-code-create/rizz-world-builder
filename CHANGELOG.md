@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-13 — Channels & permissions crash, silent MUSIC BOT, message actions, Discord-style mobile pass
+
+### "Channels & permissions" no longer takes the page down
+- Opening Options → **Channels & permissions** replaced the realm with "This page didn't load".
+- Cause: the same duplicate-topic bug as the voice-join crash, in a second place. `useChannelPermissions` subscribed to the fixed topic `realm-channel-permissions-<realmId>`, and the realm page *and* the sheet body both use that hook — so opening the sheet subscribed an already-joined channel, `subscribe()` threw inside an effect, and React escalated it to the route error boundary.
+- Fix: every consumer of `useChannelPermissions` gets its own topic (`...-<instanceId>` via `useId`) and subscribes through `subscribeSafely`, so the composer hint and the moderation sheet watch the same data without sharing a channel. The realm settings panel uses the same hook and is covered by the same fix.
+
+### MUSIC BOT sings in the call (it was keyed to the wrong id)
+- Cause: the queue is keyed by the **realm channel** id (`realm_rooms.id`), but the in-call bot passed `call.roomId`, which is the **voice_rooms row** id. Every lookup missed, so the bot stood in the call with an empty queue and never made a sound — the track really was queued, it was just invisible to the bot.
+- Fix: the in-call bot and its `skip` now use `call.channelId`. Queuing in the channel's music panel and joining that channel's call is enough for everyone in the call to hear the same song, and the panel's local preview steps aside so the track never plays twice, out of sync.
+- Autoplay: a track queued by someone else starts with no gesture of mine, which browsers refuse. The bot now resumes on the first tap or key press anywhere in the call (the mic/camera buttons count), instead of waiting for a dedicated button.
+- Honesty: when a track has no playable preview (Apple Music shares 30-second previews only, and pasted links have none) the bot tile and the panel now say so instead of sitting silent.
+
+### Long-press on a message
+- The menu no longer covers what you pressed: it opens with the author, the time and the message text at the top, and `View message` opens the whole message full size with a copy button.
+- On phones the menu is a **bottom action sheet** (Discord-style) rather than a popover over the conversation, so the chat stays readable.
+- Deleting your own message in a *text channel* now removes it from the list: the handler patched only the realm-level cache, so a message in a channel stayed on screen after being deleted and looked like the delete had failed.
+- Realm owners and moderators can remove anyone's message; if the row is not theirs to delete (a bot message, or a moderation-only policy) the moderation RPC is used instead of refusing with "you can only delete messages you sent".
+
+### Mobile top bar and feed hero
+- Top bar is Discord's arrangement and one tidy row on any phone: logo, round search button, then the bell, status pill and avatar on the right.
+- Feed hero is compact (smaller avatar, tighter heading, one action row with Share/Reels/Explore) so more of the feed is visible without scrolling.
+
+### @ mentions and / commands
+- Both pickers now match: section label on top, one row per entry with the avatar leading, the name and secondary line, the owning app or handle pushed to the right, an accent bar on the highlighted row, and a keyboard-hint footer. The slash list keeps its app strip.
+
 ## 2026-10-13 — Fix: "This page didn't load" when joining a voice channel
 
 ### What happened

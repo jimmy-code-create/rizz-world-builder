@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Shield, UserMinus, UserX, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -115,6 +115,14 @@ function RealmPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [unpinningId, setUnpinningId] = useState<string | null>(null);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  // The one message opened full size from the long-press menu.
+  const [viewingMessage, setViewingMessage] = useState<{
+    author: string;
+    avatarUrl: string | null;
+    time: string;
+    body: string;
+    attachmentUrl: string | null;
+  } | null>(null);
   const [botsOpen, setBotsOpen] = useState(false);
   // Slash-command popup: which row is highlighted, and whether Escape dismissed
   // it for the text currently in the composer.
@@ -438,21 +446,49 @@ function RealmPage() {
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
+  /**
+   * Drops a message from whichever list is on screen.
+   *
+   * A text channel's rows live under `realm-room-messages`, not
+   * `realm-messages`. Deleting only touched the realm cache, so in a channel the
+   * message stayed on screen after it had been deleted — it looked like the
+   * delete never happened.
+   */
+  const removeMessageFromCache = (messageId: string) => {
+    const drop = (rows: any[] | undefined) =>
+      Array.isArray(rows) ? rows.filter((row: { id: string }) => row.id !== messageId) : rows;
+    qc.setQueryData<any[]>(["realm-messages", c.id], drop);
+    if (activeRoomId) qc.setQueryData<any[]>(["realm-room-messages", activeRoomId], drop);
+  };
+
+  /**
+   * Deletes one message, mine or (for owners and moderators) someone else's.
+   *
+   * My own row goes first; if the row is not mine to delete — a bot message, or
+   * a moderation-only policy — an owner or moderator falls back to the
+   * moderation RPC instead of being told "you can only delete messages you
+   * sent".
+   */
+  const handleDeleteMessage = async (messageId: string, options?: { moderate?: boolean }) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .delete()
-        .eq("id", messageId)
-        .eq("sender_id", user.id)
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("You can only delete messages you sent.");
-      qc.setQueryData<any[]>(["realm-messages", c.id], (current = []) =>
-        current.filter((message) => message.id !== messageId),
-      );
+      if (options?.moderate) {
+        await moderateDeleteMessage(messageId, "Removed by a moderator");
+      } else {
+        const { data, error } = await supabase
+          .from("messages")
+          .delete()
+          .eq("id", messageId)
+          .eq("sender_id", user.id)
+          .select("id")
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          if (!canModerate) throw new Error("You can only delete messages you sent.");
+          await moderateDeleteMessage(messageId, "Removed by the sender");
+        }
+      }
+      removeMessageFromCache(messageId);
       toast.success("Message deleted");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't delete that message");
@@ -767,6 +803,52 @@ function RealmPage() {
         isOwner={myRole === "owner" || c.owner_id === user?.id}
       />
 
+      {/* One message, full size: opened from "View message" in the long-press
+          menu, for text that the chat row has to wrap tightly. */}
+      <Dialog
+        open={!!viewingMessage}
+        onOpenChange={(open) => { if (!open) setViewingMessage(null); }}
+      >
+        <DialogContent className="glass-strong max-h-[85dvh] overflow-y-auto border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-left font-display text-base">
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarImage src={viewingMessage?.avatarUrl ?? undefined} />
+                <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                  {(viewingMessage?.author ?? "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate">{viewingMessage?.author}</span>
+                <span className="text-[11px] font-normal text-muted-foreground">{viewingMessage?.time}</span>
+              </span>
+            </DialogTitle>
+            <DialogDescription className="sr-only">The full message</DialogDescription>
+          </DialogHeader>
+          {viewingMessage?.attachmentUrl && (
+            <ChatMessageMedia src={viewingMessage.attachmentUrl} alt="Image shared in chat" />
+          )}
+          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+            {viewingMessage?.body}
+          </p>
+          {viewingMessage?.body && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full gap-2 border-white/10 bg-white/5"
+              onClick={() => {
+                void navigator.clipboard.writeText(viewingMessage.body).then(
+                  () => toast.success("Copied"),
+                  () => toast.error("Couldn't copy this message"),
+                );
+              }}
+            >
+              <Copy className="h-4 w-4" /> Copy message
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
         <AlertDialogContent className="glass-strong border-white/10">
           <AlertDialogHeader>
@@ -1013,6 +1095,17 @@ function RealmPage() {
             // Realm names use the shared palette (or the author's own accent),
             // never the default link-blue on the dark surface.
             const authorColor = nameColorFor(isBot ? m.bot_id : m.sender_id, authorAccent);
+            // "View message": the long-press menu shows what was pressed, and this
+            // opens it full size when the text is longer than the row.
+            const messageTime = new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            const openFullMessage = () =>
+              setViewingMessage({
+                author: authorName,
+                avatarUrl: authorAvatar,
+                time: new Date(m.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+                body: m.body ?? "",
+                attachmentUrl: m.attachment_url ?? null,
+              });
             const previous = messageRows[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -1069,7 +1162,19 @@ function RealmPage() {
                     reactionHaptic();
                     void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
                   }}
+                  preview={{
+                    author: authorName,
+                    time: messageTime,
+                    body: m.body,
+                    avatarUrl: authorAvatar,
+                    onView: openFullMessage,
+                  }}
                   actions={[
+                    {
+                      label: "View message",
+                      icon: Maximize2,
+                      onSelect: openFullMessage,
+                    },
                     {
                       label: "Copy message",
                       icon: Copy,
@@ -1117,13 +1222,7 @@ function RealmPage() {
                                 label: "Delete for everyone",
                                 icon: Trash2,
                                 destructive: true,
-                                onSelect: () => {
-                                  void moderateDeleteMessage(m.id, "Removed by a moderator").then(
-                                    () => toast.success("Message removed"),
-                                    (error: unknown) =>
-                                      toast.error(error instanceof Error ? error.message : "Couldn't remove that message"),
-                                  );
-                                },
+                                onSelect: () => { void handleDeleteMessage(m.id, { moderate: true }); },
                               }]
                             : []),
                           {

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeSafely } from "@/lib/realtime";
 import { normalizeRealmRole, type RealmRole } from "@/lib/realm-roles";
 import { useAuth } from "@/lib/auth";
 
@@ -126,9 +127,19 @@ export async function fetchChannelPermissions(realmId: string): Promise<ChannelP
   return (data ?? []) as ChannelPermission[];
 }
 
-/** Every denial in a realm, kept fresh over realtime so mods and members agree. */
+/**
+ * Every denial in a realm, kept fresh over realtime so mods and members agree.
+ *
+ * Every consumer gets its OWN realtime topic. The realm page watches who may
+ * write where (for the composer hint) and the Channels & permissions sheet
+ * watches the same thing while it is open; a shared topic made the second
+ * subscriber call `subscribe()` on the already-joined channel, which throws
+ * inside an effect, and React escalated it to the route error boundary — the
+ * page became "This page didn't load" the moment the sheet was opened.
+ */
 export function useChannelPermissions(realmId: string | null | undefined) {
   const qc = useQueryClient();
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const query = useQuery({
     queryKey: channelPermissionsKey(realmId),
     enabled: !!realmId,
@@ -140,15 +151,15 @@ export function useChannelPermissions(realmId: string | null | undefined) {
   useEffect(() => {
     if (!realmId) return;
     const channel = supabase
-      .channel(`realm-channel-permissions-${realmId}`)
+      .channel(`realm-channel-permissions-${realmId}-${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "realm_channel_permissions", filter: `realm_id=eq.${realmId}` },
         () => { void qc.invalidateQueries({ queryKey: ["realm-channel-permissions"] }); },
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [realmId, qc]);
+      );
+    subscribeSafely(channel);
+    return () => { void supabase.removeChannel(channel); };
+  }, [realmId, qc, instanceId]);
 
   return {
     permissions: query.data ?? [],

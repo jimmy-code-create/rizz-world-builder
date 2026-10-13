@@ -242,35 +242,34 @@ export function AppShell() {
         <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
       </aside>}
 
-      {/* Mobile top bar */}
+      {/* Mobile top bar — Discord's arrangement: logo, search, then the bell,
+          status pill and avatar grouped on the right. One row on any phone. */}
       {!isConversation && <header
-        className="md:hidden z-30 shrink-0 glass-strong border-b border-white/5 px-4 pb-3 flex items-center justify-between gap-2"
-        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
+        className="chat-bar md:hidden z-30 flex shrink-0 items-center gap-1.5 border-b border-white/5 px-3 pb-2.5"
+        style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.6rem)" }}
       >
         <button
           type="button"
           onClick={() => setOwnerOpen(true)}
-          className="flex min-h-12 shrink-0 items-center gap-2"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-primary font-display text-base font-bold shadow-glow"
           aria-label="Open owner panel"
         >
-          <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center font-display font-bold text-sm shadow-glow">R</div>
-          {/* The wordmark is the first thing the bar gives up when it gets tight. */}
-          <span className="hidden font-display text-lg font-bold min-[480px]:inline">RIZZ</span>
+          R
         </button>
-        {/* The search pill shrinks first: its label goes before anything else moves. */}
+        {/* Round search button: the icon is the whole control, so the bar never
+            wraps on the narrowest phones. */}
         <Link
           to="/explore"
           aria-label="Search RIZZ"
-          className="flex h-12 min-w-12 items-center justify-center gap-2 glass rounded-full border border-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground min-[480px]:max-w-xs min-[480px]:flex-1 min-[480px]:justify-start"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
         >
-          <Search className="h-5 w-5 shrink-0" />
-          <span className="hidden truncate min-[480px]:inline">Search RIZZ</span>
+          <Search className="h-5 w-5" />
         </Link>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <Link
             to="/notifications"
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-            className="relative grid h-12 w-12 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5"
+            className="relative grid h-11 w-11 place-items-center rounded-full text-foreground transition-colors hover:bg-white/5"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
@@ -451,7 +450,7 @@ function StatusPill({
       onClick={onOpen}
       aria-label={`Status: ${statusLabel(status)}. Change your status`}
       title={`Status: ${statusLabel(status)}`}
-      className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[380px]:h-10 max-[380px]:w-10 max-[380px]:px-0"
+      className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground backdrop-blur-sm transition-colors hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[380px]:h-10 max-[380px]:w-10 max-[380px]:px-0"
     >
       {emoji ? (
         <span aria-hidden className="text-base leading-none">{emoji}</span>
@@ -493,7 +492,7 @@ function ProfileMenu({
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Your profile"
-          className={`flex items-center gap-3 rounded-xl transition-colors ${compact ? "h-12 w-12 justify-center hover:bg-white/5" : "p-2 hover:bg-white/5 w-full"}`}
+          className={`flex items-center gap-3 rounded-xl transition-colors ${compact ? "h-11 w-11 justify-center hover:bg-white/5" : "p-2 hover:bg-white/5 w-full"}`}
         >
           <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
             <AvatarImage src={profile?.avatar_url ?? undefined} />

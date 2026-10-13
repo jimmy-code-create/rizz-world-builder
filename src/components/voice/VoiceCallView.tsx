@@ -119,8 +119,8 @@ export function VoiceCallView() {
             <p role={error ? "alert" : undefined} className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}>
               {!error && <Wifi className="h-3 w-3" />}
               {error ??
-                `${status} · ${participants.length + (musicBot.enabled && musicBot.track ? 1 : 0)} ${
-                  participants.length + (musicBot.enabled && musicBot.track ? 1 : 0) === 1 ? "person" : "people"
+                `${status} · ${participants.length + (musicBot.enabled ? 1 : 0)} ${
+                  participants.length + (musicBot.enabled ? 1 : 0) === 1 ? "person" : "people"
                 }`}
             </p>
           </div>
@@ -226,13 +226,19 @@ export function VoiceCallView() {
               );
             })}
 
-            {musicBot.enabled && musicBot.track && (
+            {musicBot.enabled && (
               <div className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center">
                 <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
-                  {musicBot.singing ? "Singing" : "In call"}
+                  {!musicBot.track
+                    ? "In call"
+                    : musicBot.blocked
+                      ? "Tap to play"
+                      : musicBot.singing
+                        ? "Singing"
+                        : "Paused"}
                 </span>
                 <Avatar className={`h-16 w-16 ${musicBot.singing ? "ring-2 ring-emerald-400" : ""}`}>
-                  <AvatarImage src={musicBot.track.artwork_url ?? undefined} alt="" />
+                  <AvatarImage src={musicBot.track?.artwork_url ?? undefined} alt="" />
                   <AvatarFallback className="bg-emerald-500/25 text-emerald-100">
                     <Music className="h-6 w-6" aria-hidden="true" />
                   </AvatarFallback>
@@ -240,18 +246,22 @@ export function VoiceCallView() {
                 <div className="min-w-0 px-1">
                   <p className="truncate text-xs font-semibold">MUSIC BOT</p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {musicBot.track.title}
-                    {musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}
+                    {musicBot.track
+                      ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
+                      : "Nothing queued — /play a song in this channel"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => musicBotControls.toggle()}
-                  aria-label={musicBot.singing ? "Pause MUSIC BOT" : "Play MUSIC BOT"}
-                  className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-background/80 transition active:scale-95"
-                >
-                  {musicBot.singing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </button>
+                {musicBot.track && (
+                  <button
+                    type="button"
+                    onClick={() => musicBotControls.toggle()}
+                    disabled={!musicBot.track.preview_url}
+                    aria-label={musicBot.singing ? "Pause MUSIC BOT" : "Play MUSIC BOT"}
+                    className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-background/80 transition active:scale-95 disabled:opacity-50"
+                  >
+                    {musicBot.singing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -261,9 +271,10 @@ export function VoiceCallView() {
           <button
             type="button"
             onClick={() => musicBotControls.retry()}
-            className="mx-auto mb-2 shrink-0 rounded-full bg-emerald-400/15 px-4 py-2 text-xs font-semibold text-emerald-200 transition active:scale-95"
+            className="mx-auto mb-2 flex shrink-0 items-center gap-2 rounded-full bg-emerald-400/15 px-4 py-2 text-xs font-semibold text-emerald-200 transition active:scale-95"
           >
-            Tap to let MUSIC BOT sing
+            <Play className="h-3.5 w-3.5" aria-hidden="true" />
+            {musicBot.note ?? "Tap to let MUSIC BOT sing"}
           </button>
         )}
 

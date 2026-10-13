@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Film, Flame, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Compass, Film, Flame, RefreshCw, Sparkles } from "lucide-react";
 import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 
@@ -90,7 +90,7 @@ function FeedPage() {
       <motion.section
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[28px] border border-white/10 glass-strong p-5 sm:p-6"
+        className="relative overflow-hidden rounded-[26px] border border-white/10 glass-strong p-4 sm:p-5"
       >
         <span
           aria-hidden
@@ -103,38 +103,38 @@ function FeedPage() {
 
         <div className="relative">
           <div className="flex items-center gap-3">
-            <Avatar className="h-11 w-11 ring-2 ring-[var(--rizz-pink)]/40">
+            <Avatar className="h-10 w-10 ring-2 ring-[var(--rizz-pink)]/40">
               <AvatarImage src={profile?.avatar_url ?? undefined} alt="" />
               <AvatarFallback className="bg-gradient-primary font-bold">{initial}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {greetingFor(new Date().getHours())}
               </p>
               <p className="truncate font-display text-base font-bold">{name}</p>
             </div>
-            <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               live
             </span>
           </div>
 
-          <h1 className="mt-5 font-display text-3xl font-bold leading-none tracking-tight sm:text-4xl">
+          <h1 className="mt-3.5 font-display text-[26px] font-bold leading-none tracking-tight sm:text-3xl">
             Your Feed
           </h1>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-[var(--rizz-pink)]" />
             What&apos;s vibing right now
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-3.5 flex items-center gap-2">
             <Button
               type="button"
               onClick={focusComposer}
-              className="h-11 flex-1 gap-2 border-0 bg-gradient-primary text-primary-foreground shadow-glow sm:flex-none sm:px-6"
+              className="h-11 min-w-0 flex-1 gap-2 border-0 bg-gradient-primary text-primary-foreground shadow-glow sm:flex-none sm:px-6"
             >
               <Sparkles className="h-4 w-4" />
-              Share something
+              <span className="truncate">Share something</span>
             </Button>
             <Button
               asChild
@@ -147,17 +147,27 @@ function FeedPage() {
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 shrink-0 border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+            >
+              <Link to="/explore" aria-label="Explore RIZZ">
+                <Compass className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
+          <div className="no-scrollbar -mx-4 mt-3 flex items-center gap-2 overflow-x-auto px-4 text-[11px] sm:mx-0 sm:px-0">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
               <Flame className="h-3 w-3 text-[var(--rizz-pink)]" />
               {todayCount === 0
                 ? "Nothing yet today"
                 : `${todayCount} new drop${todayCount === 1 ? "" : "s"} today`}
             </span>
             {posts.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
                 {posts.length} post{posts.length === 1 ? "" : "s"} in your feed
               </span>
             )}
