@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { RizzCat } from "@/components/RizzCat";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · RIZZ" }] }),
@@ -153,8 +154,8 @@ function NotificationsPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="glass rounded-3xl p-10 text-center">
-          <Bell className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+        <div className="glass rounded-3xl p-8 text-center">
+          <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
           <p className="text-sm text-muted-foreground">{tab === "all" ? "Nothing yet. Go drop a vibe." : "Nothing here in this tab."}</p>
         </div>
       )}

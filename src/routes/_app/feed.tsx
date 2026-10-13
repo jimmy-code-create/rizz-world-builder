@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpRight, Compass, Film, Flame, RefreshCw, Sparkles } from "lucide-react";
 import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
+import { RizzCat } from "@/components/RizzCat";
 
 export const Route = createFileRoute("/_app/feed")({
   head: () => ({ meta: [{ title: "Feed · RIZZ" }] }),
@@ -193,10 +194,8 @@ function FeedPage() {
       )}
 
       {!feed.isLoading && posts.length === 0 && (
-        <div className="glass rounded-3xl border border-white/5 p-10 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary text-white shadow-glow">
-            <Sparkles className="h-6 w-6" />
-          </div>
+        <div className="glass rounded-3xl border border-white/5 p-8 text-center">
+          <RizzCat mood="box" size={124} className="mx-auto" />
           <h2 className="mt-4 font-display text-xl font-bold">Nothing here yet</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Be the first to drop something hot — your post lands right here.

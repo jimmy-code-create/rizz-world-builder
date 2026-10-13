@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { RizzCat } from "@/components/RizzCat";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
@@ -28,8 +29,9 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <RizzCat mood="searching" size={132} className="mx-auto mb-1" />
+        <h1 className="text-5xl font-bold text-foreground">404</h1>
+        <h2 className="mt-3 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>

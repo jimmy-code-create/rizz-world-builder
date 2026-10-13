@@ -16,6 +16,7 @@ import { MAX_GROUP_PICKS, createGroupChat } from "@/lib/groups.functions";
 import { squareImageFile } from "@/lib/image-square";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, usePresenceMap } from "@/lib/presence";
+import { RizzCat } from "@/components/RizzCat";
 
 export const Route = createFileRoute("/_app/dms")({
   head: () => ({ meta: [{ title: "Messages · RIZZ" }] }),
@@ -496,8 +497,8 @@ function DMsPage() {
       </div>
 
       {!threads.isError && !threads.isPending && filtered.length === 0 && (
-        <div className="glass rounded-3xl p-10 text-center">
-          <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+        <div className="glass rounded-3xl p-8 text-center">
+          <RizzCat mood={q ? "searching" : "peek"} size={112} className="mx-auto mb-1" />
           <p className="text-sm text-muted-foreground">{q ? "No matches." : "No conversations yet. Go say hi from someone's profile."}</p>
         </div>
       )}

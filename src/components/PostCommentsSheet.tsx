@@ -13,6 +13,7 @@ import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
+import { RizzCat } from "@/components/RizzCat";
 
 /** The page size fetchComments uses. When a thread fills it, say "100+" instead
  *  of pretending that is the whole thread. */
@@ -336,7 +337,10 @@ export function PostCommentsSheet({
           )}
 
           {!comments.isLoading && !comments.isError && sorted.length === 0 && (
-            <p className="py-10 text-center text-sm text-muted-foreground">No comments yet — start the thread ✨</p>
+            <div className="py-10 text-center">
+              <RizzCat mood="peek" size={104} className="mx-auto mb-1" />
+              <p className="text-sm text-muted-foreground">No comments yet — start the thread ✨</p>
+            </div>
           )}
 
           {sorted.map((comment) => (

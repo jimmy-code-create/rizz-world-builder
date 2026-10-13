@@ -21,6 +21,7 @@ import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
+import { RizzCat } from "@/components/RizzCat";
 import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 
@@ -150,7 +151,7 @@ export function AppShell() {
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" />
+        <RizzCat mood="peek" size={76} className="animate-pulse" />
       </div>
     );
   }
