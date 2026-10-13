@@ -329,6 +329,12 @@
     text-decoration: inherit;
   }
 
+  aside a:visited,
+  nav a:visited {
+    color: inherit;
+    text-decoration: none;
+  }
+
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;

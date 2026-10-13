@@ -510,10 +510,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               type="button"
               aria-pressed={mine}
               onClick={() => toggleReaction(emoji)}
-              className={`text-xs px-2 py-1 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 mine
-                  ? "bg-[var(--rizz-pink)]/15 border-[var(--rizz-pink)]/40 shadow-glow"
-                  : "bg-white/5 border-white/10 hover:bg-white/10"
+                  ? "bg-primary/15 border-primary/40 text-foreground font-semibold"
+                  : "bg-card border-border text-foreground/90 hover:bg-muted"
               }`}
             >
               <span className="mr-1">{emoji}</span>

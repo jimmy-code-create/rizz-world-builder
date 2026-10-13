@@ -4,11 +4,48 @@ import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { useAuth } from "@/lib/auth";
 import { fetchReactorProfiles, reactorsQueryKey, type ReactionGroup, type ReactionScope } from "@/lib/reactions";
 import { reactionHaptic, triggerReactionBurst, triggerBurstOnElement } from "@/components/chat/ReactionBurst";
 import type { ReactionPulse } from "@/lib/useChatReactions";
 
 export type { ReactionPulse };
+
+const EMOJI_NAMES: Record<string, string> = {
+  "❤️": "heart",
+  "🔥": "fire",
+  "😂": "joy",
+  "😮": "surprised",
+  "😢": "cry",
+  "👏": "applause",
+  "😍": "heart eyes",
+  "🙌": "raising hands",
+  "💯": "hundred",
+  "🥹": "pleading",
+  "🎉": "tada",
+  "🤔": "thinking",
+  "😭": "loudly crying",
+  "😅": "sweat smile",
+  "🤣": "rofl",
+  "😎": "cool",
+  "🥰": "smiling with hearts",
+  "😳": "flushed",
+  "🙈": "see no evil",
+  "💀": "skull",
+  "👀": "eyes",
+  "✨": "sparkles",
+  "💖": "sparkling heart",
+  "🤝": "handshake",
+  "👑": "crown",
+  "🫶": "heart hands",
+  "🤯": "mind blown",
+  "😴": "sleeping",
+  "🤢": "nauseated",
+  "🖤": "black heart",
+  "👍": "thumbs up",
+  "👎": "thumbs down",
+};
 
 /**
  * THE reaction chips for the whole app: DMs, groups and realm channels all
@@ -74,7 +111,110 @@ function useReactionRowAnchor(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
-/** One 24px chip with a 44px tap area, a spring pop and a count that rolls. */
+/** Hover popover content listing reactors with "You" at top, capped at 8-10. */
+function ReactorHoverPopover({
+  emoji,
+  messageId,
+  scope,
+  userIds,
+  currentUserId,
+}: {
+  emoji: string;
+  messageId: string;
+  scope: ReactionScope;
+  userIds: string[];
+  currentUserId?: string;
+}) {
+  const profiles = useQuery({
+    queryKey: reactorsQueryKey(scope, messageId, emoji),
+    queryFn: () => fetchReactorProfiles(userIds),
+    enabled: userIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  const emojiName = EMOJI_NAMES[emoji] ?? "";
+  const byId = new Map(
+    (profiles.data ?? []).map((person: { id: string; username: string | null; display_name: string | null; avatar_url: string | null }) => [
+      person.id,
+      person,
+    ]),
+  );
+
+  // Reorder userIds so current user is shown first
+  const sortedIds = [...userIds].sort((a, b) => {
+    if (a === currentUserId) return -1;
+    if (b === currentUserId) return 1;
+    return 0;
+  });
+
+  const maxDisplay = 8;
+  const displayed = sortedIds.slice(0, maxDisplay);
+  const remaining = sortedIds.length - displayed.length;
+
+  return (
+    <div className="w-[210px] select-none text-left p-1">
+      <div className="flex items-center gap-1.5 border-b border-border/70 pb-2 mb-2">
+        <span className="text-lg leading-none" aria-hidden="true">{emoji}</span>
+        <span className="text-xs font-semibold capitalize text-foreground truncate">
+          {emojiName || "Reaction"}
+        </span>
+        <span className="ml-auto text-[11px] font-medium text-muted-foreground tabular-nums">
+          {userIds.length}
+        </span>
+      </div>
+
+      {profiles.isLoading && (
+        <div className="py-2 text-center text-xs text-muted-foreground animate-pulse">
+          Loading…
+        </div>
+      )}
+
+      {profiles.isError && (
+        <div className="py-1 text-xs text-muted-foreground">
+          {userIds.length} {userIds.length === 1 ? "reaction" : "reactions"}
+        </div>
+      )}
+
+      {profiles.data && (
+        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+          {displayed.map((id) => {
+            const isMe = id === currentUserId;
+            const person = byId.get(id);
+            const name = isMe ? "You" : (person?.display_name || person?.username || "Someone");
+            const handle = person?.username ? `@${person.username}` : null;
+
+            return (
+              <div key={id} className="flex items-center gap-2 py-0.5">
+                <Avatar className="h-5 w-5 shrink-0 rounded-full border border-border">
+                  <AvatarImage src={person?.avatar_url ?? undefined} />
+                  <AvatarFallback className="text-[9px] font-bold bg-muted text-muted-foreground">
+                    {name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1 truncate text-xs">
+                  <span className={`font-medium ${isMe ? "text-primary font-semibold" : "text-foreground"}`}>
+                    {name}
+                  </span>
+                  {!isMe && handle && (
+                    <span className="ml-1 text-[10px] text-muted-foreground">{handle}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {remaining > 0 && (
+            <div className="pt-1 text-[11px] font-medium text-muted-foreground">
+              and {remaining} other{remaining === 1 ? "" : "s"}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One 24px chip with a 44px tap area, a spring pop, roll count, and desktop hover card. */
 function ReactionChip({
   emoji,
   count,
@@ -84,6 +224,10 @@ function ReactionChip({
   onToggle,
   onLongPress,
   label,
+  messageId,
+  scope,
+  reactors,
+  currentUserId,
 }: {
   emoji: string;
   count: number;
@@ -93,6 +237,10 @@ function ReactionChip({
   onToggle: () => Promise<boolean>;
   onLongPress: () => void;
   label: string;
+  messageId: string;
+  scope: ReactionScope;
+  reactors: string[];
+  currentUserId?: string;
 }) {
   const controls = useAnimationControls();
   const pressTimer = useRef<number | null>(null);
@@ -104,9 +252,6 @@ function ReactionChip({
   useEffect(() => {
     if (!pulse || pulse.emoji !== emoji) return;
     if (pulse.kind === "remote") {
-      // Someone else reacted to my message: a small pop and a light glow, no
-      // burst, so it never pulls attention away from what I'm reading. The glow
-      // is a one-off style swap, not an animated shadow.
       setGlowing(true);
       const timer = window.setTimeout(() => setGlowing(false), 460);
       void controls.start({ scale: [1, 1.14, 1], transition: { duration: 0.42, ease: "easeOut" } });
@@ -127,7 +272,6 @@ function ReactionChip({
       toast.error("Only owners and moderators can add reactions here");
       return;
     }
-    // The big burst only plays for my own reaction, over the chip's message.
     if (!mine) {
       const rect = buttonRef.current?.getBoundingClientRect();
       if (rect) triggerReactionBurst({ x: rect.left + rect.width / 2, y: rect.top, emoji });
@@ -135,93 +279,105 @@ function ReactionChip({
     }
     const ok = await onToggle();
     if (!ok) {
-      // Saving failed: shrink away instead of leaving a lying chip on screen.
       setFailed(true);
       await controls.start({ scale: 0, opacity: 0, transition: { duration: 0.22, ease: "easeIn" } });
     }
   };
 
   return (
-    <motion.button
-      ref={buttonRef}
-      type="button"
-      aria-pressed={mine}
-      aria-label={`${emoji} ${count}. ${label}`}
-      initial={failed ? false : { scale: 0.6, opacity: 0 }}
-      animate={failed ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 620, damping: 20 }}
-      whileTap={{ scale: 0.94 }}
-      onPointerDown={() => {
-        longPressed.current = false;
-        if (pressTimer.current) window.clearTimeout(pressTimer.current);
-        pressTimer.current = window.setTimeout(() => {
-          pressTimer.current = null;
-          longPressed.current = true;
-          onLongPress();
-        }, LONG_PRESS_MS);
-      }}
-      onPointerUp={() => {
-        if (pressTimer.current) {
-          window.clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-        }
-      }}
-      onPointerLeave={() => {
-        if (pressTimer.current) {
-          window.clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-        }
-      }}
-      onPointerCancel={() => {
-        if (pressTimer.current) {
-          window.clearTimeout(pressTimer.current);
-          pressTimer.current = null;
-        }
-      }}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        onLongPress();
-      }}
-      onClick={(event) => {
-        if (longPressed.current) {
-          longPressed.current = false;
-          event.preventDefault();
-          return;
-        }
-        void handleActivate();
-      }}
-      // The visible chip is 24px; the invisible ::after makes the tap area 44px
-      // without adding any layout height.
-      className={`relative flex h-6 shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
-        mine
-          ? "border-[var(--rizz-pink)]/60 bg-[var(--rizz-pink)]/20 text-foreground"
-          : "border-white/12 bg-[#0c0812]/70 text-foreground/90"
-      }`}
-      style={{
-        boxShadow: glowing
-          ? "0 0 0 2px var(--rizz-pink), 0 2px 12px -2px var(--rizz-pink)"
-          : mine
-            ? "0 2px 10px -4px var(--rizz-pink)"
-            : "0 2px 8px -4px rgba(0,0,0,0.6)",
-      }}
-    >
-      <span className="text-[13px]" aria-hidden="true">
-        {emoji}
-      </span>
-      <motion.span
-        key={count}
-        initial={{ y: 6, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 520, damping: 26 }}
-        className="text-[11px] font-semibold tabular-nums"
+    <HoverCard openDelay={250} closeDelay={150}>
+      <HoverCardTrigger asChild>
+        <motion.button
+          ref={buttonRef}
+          type="button"
+          aria-pressed={mine}
+          aria-label={`${emoji} ${count}. ${label}`}
+          initial={failed ? false : { scale: 0.6, opacity: 0 }}
+          animate={failed ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 620, damping: 20 }}
+          whileTap={{ scale: 0.94 }}
+          onPointerDown={() => {
+            longPressed.current = false;
+            if (pressTimer.current) window.clearTimeout(pressTimer.current);
+            pressTimer.current = window.setTimeout(() => {
+              pressTimer.current = null;
+              longPressed.current = true;
+              onLongPress();
+            }, LONG_PRESS_MS);
+          }}
+          onPointerUp={() => {
+            if (pressTimer.current) {
+              window.clearTimeout(pressTimer.current);
+              pressTimer.current = null;
+            }
+          }}
+          onPointerLeave={() => {
+            if (pressTimer.current) {
+              window.clearTimeout(pressTimer.current);
+              pressTimer.current = null;
+            }
+          }}
+          onPointerCancel={() => {
+            if (pressTimer.current) {
+              window.clearTimeout(pressTimer.current);
+              pressTimer.current = null;
+            }
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            onLongPress();
+          }}
+          onClick={(event) => {
+            if (longPressed.current) {
+              longPressed.current = false;
+              event.preventDefault();
+              return;
+            }
+            void handleActivate();
+          }}
+          className={`relative flex h-6 shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+            mine
+              ? "border-primary/50 bg-primary/15 text-foreground font-semibold"
+              : "border-border/80 bg-card/90 text-foreground/90 hover:bg-muted"
+          }`}
+          style={{
+            boxShadow: glowing
+              ? "0 0 0 2px var(--primary)"
+              : undefined,
+          }}
+        >
+          <span className="text-[13px]" aria-hidden="true">
+            {emoji}
+          </span>
+          <motion.span
+            key={count}
+            initial={{ y: 6, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 520, damping: 26 }}
+            className="text-[11px] font-semibold tabular-nums"
+          >
+            {count}
+          </motion.span>
+        </motion.button>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="center"
+        sideOffset={6}
+        className="w-auto p-2 bg-popover text-popover-foreground border border-border rounded-xl shadow-xl z-50"
       >
-        {count}
-      </motion.span>
-    </motion.button>
+        <ReactorHoverPopover
+          emoji={emoji}
+          messageId={messageId}
+          scope={scope}
+          userIds={reactors}
+          currentUserId={currentUserId}
+        />
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
-/** Bottom sheet listing everybody who reacted, grouped per emoji. */
 function ReactorsSheet({
   open,
   onOpenChange,
@@ -256,10 +412,10 @@ function ReactorsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="glass-strong z-[70] max-h-[70dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        className="bg-card text-card-foreground border-border z-[70] max-h-[75dvh] overflow-y-auto rounded-t-3xl border-t pb-[max(env(safe-area-inset-bottom),1rem)] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-[380px] sm:w-full sm:rounded-2xl sm:border sm:border-border sm:p-6 sm:shadow-2xl"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="font-display text-lg">Reactions</SheetTitle>
+          <SheetTitle className="font-display text-lg font-bold">Reactions</SheetTitle>
         </SheetHeader>
         <div className="mt-3 space-y-4">
           {groups.map((group) => (
@@ -268,26 +424,26 @@ function ReactorsSheet({
                 <span aria-hidden="true" className="text-[15px]">
                   {group.emoji}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {group.count} {group.count === 1 ? "reaction" : "reactions"}
                 </span>
               </h3>
               <div className="mt-1.5 space-y-1">
                 {profiles.isLoading && (
-                  <p className="px-1 text-xs text-muted-foreground">Loading…</p>
+                  <p className="px-1 text-xs text-muted-foreground animate-pulse">Loading…</p>
                 )}
                 {reactorsFor(messageId, group.emoji).map((userId) => {
                   const person = byId.get(userId);
                   const name = person?.display_name || person?.username || "Someone";
                   return (
-                    <div key={`${group.emoji}-${userId}`} className="flex min-h-12 items-center gap-3 rounded-2xl px-1">
-                      <Avatar className="h-8 w-8">
+                    <div key={`${group.emoji}-${userId}`} className="flex min-h-10 items-center gap-3 rounded-xl px-1 hover:bg-muted/40">
+                      <Avatar className="h-7 w-7 rounded-full border border-border">
                         <AvatarImage src={person?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                        <AvatarFallback className="bg-muted text-[10px] font-bold text-muted-foreground">
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="min-w-0 truncate text-sm">{name}</span>
+                      <span className="min-w-0 truncate text-sm font-medium">{name}</span>
                     </div>
                   );
                 })}
@@ -323,6 +479,7 @@ export function ReactionChips({
   pulse?: ReactionPulse | null;
   onToggle: (emoji: string) => Promise<boolean>;
 }) {
+  const { user } = useAuth();
   const rowRef = useRef<HTMLDivElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   useReactionRowAnchor(rowRef);
@@ -356,6 +513,10 @@ export function ReactionChips({
               canReact={canReact}
               pulse={pulseFor(group.emoji)}
               label="Tap to toggle, long press to see who reacted."
+              messageId={messageId}
+              scope={scope}
+              reactors={reactorsFor(messageId, group.emoji)}
+              currentUserId={user?.id}
               onToggle={() => onToggle(group.emoji)}
               onLongPress={() => setSheetOpen(true)}
             />
@@ -370,8 +531,7 @@ export function ReactionChips({
               transition={{ type: "spring", stiffness: 620, damping: 20 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
-              className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-white/12 bg-[#0c0812]/70 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
-              style={{ boxShadow: "0 2px 8px -4px rgba(0,0,0,0.6)" }}
+              className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-border bg-card/90 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               +{overflow}
             </motion.button>

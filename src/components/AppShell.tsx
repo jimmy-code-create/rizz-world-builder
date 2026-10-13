@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
+import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Medal, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +45,7 @@ const sideTabs = [
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
   { to: "/effects", label: "Effects", icon: Sparkles },
-  { to: "/badges", label: "Badges", icon: Trophy },
+  { to: "/badges", label: "Badges", icon: Medal },
   { to: "/leaderboard", label: "Top", icon: Trophy },
   { to: "/bots", label: "Bots", icon: Bot },
 ] as const;
@@ -237,16 +237,17 @@ export function AppShell() {
               <Link
                 key={t.to}
                 to={t.to}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium text-sm ${
+                aria-current={active ? "page" : undefined}
+                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
                   active
-                    ? "bg-primary text-primary-foreground font-semibold"
+                    ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
-                <t.icon className="h-5 w-5 shrink-0" />
+                <t.icon className={`h-5 w-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="flex-1 truncate">{t.label}</span>
                 {badgeCount > 0 && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center ${active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center bg-primary text-primary-foreground">
                     {badgeCount > 9 ? "9+" : badgeCount}
                   </span>
                 )}
@@ -255,16 +256,17 @@ export function AppShell() {
           })}
           <Link
             to="/notifications"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium text-sm ${
+            aria-current={isActive("/notifications") ? "page" : undefined}
+            className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               isActive("/notifications")
-                ? "bg-primary text-primary-foreground font-semibold"
+                ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
-            <Bell className="h-5 w-5 shrink-0" />
+            <Bell className={`h-5 w-5 shrink-0 ${isActive("/notifications") ? "text-primary" : "text-muted-foreground"}`} />
             <span className="flex-1 truncate">Inbox</span>
             {unreadCount > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center ${isActive("/notifications") ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center bg-primary text-primary-foreground">
                 {unreadBadge}
               </span>
             )}
@@ -272,13 +274,14 @@ export function AppShell() {
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium text-sm ${
+            aria-current={path.startsWith("/u/") ? "page" : undefined}
+            className={`relative flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
               path.startsWith("/u/")
-                ? "bg-primary text-primary-foreground font-semibold"
+                ? "bg-accent/80 text-foreground font-semibold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-primary shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
-            <UserIcon className="h-5 w-5 shrink-0" />
+            <UserIcon className={`h-5 w-5 shrink-0 ${path.startsWith("/u/") ? "text-primary" : "text-muted-foreground"}`} />
             <span className="flex-1 truncate">Profile</span>
           </Link>
         </nav>
@@ -482,7 +485,11 @@ export function AppShell() {
 
 function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
   return (
-    <Link to={to} className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
+    <Link
+      to={to}
+      aria-current={active ? "page" : undefined}
+      className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+    >
       <div className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${active ? "bg-primary/10" : ""}`}>
         <Icon className={`h-5 w-5 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
       </div>
