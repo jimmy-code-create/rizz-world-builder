@@ -5,6 +5,46 @@
 -- Additive migration. No table is dropped or renamed.
 -- ============================================================
 
+-- Prerequisites. This file calls into the realm-bots and realm-settings
+-- migrations. Applied before those it used to fail deep inside a policy with a
+-- bare "function public.realm_can(...) does not exist", leaving whoever ran it
+-- guessing, so the missing pieces are named up front instead.
+DO $pre$
+DECLARE
+  v_missing text[] := ARRAY[]::text[];
+  v_found integer;
+BEGIN
+  IF to_regclass('public.bots') IS NULL
+     OR to_regclass('public.bot_commands') IS NULL
+     OR to_regclass('public.realm_bot_installs') IS NULL THEN
+    v_missing := v_missing || '20261014000000_realm_bots.sql'::text;
+  END IF;
+
+  SELECT count(DISTINCT p.proname) INTO v_found
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname IN ('realm_can', 'realm_can_moderate');
+  IF v_found < 2 THEN
+    v_missing := v_missing || '20261015000000_realm_settings_moderation.sql'::text;
+  END IF;
+
+  SELECT count(DISTINCT p.proname) INTO v_found
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN ('is_realm_member', 'can_read_realm', 'channel_write_allowed');
+  IF v_found < 3 THEN
+    v_missing := v_missing || 'the earlier realm migrations'::text;
+  END IF;
+
+  IF coalesce(array_length(v_missing, 1), 0) > 0 THEN
+    RAISE EXCEPTION 'PHASE 5 needs migrations that are not applied yet: %',
+      array_to_string(v_missing, ', ')
+      USING HINT = 'Apply supabase/migrations/*.sql in filename order, then run this file again.';
+  END IF;
+END;
+$pre$;
+
 -- ---------------------------------------------- 0. messages extras
 -- `card` is the shared rich-payload column: a poll, a track, anything that
 -- needs more than text. `thread_root`/`parent_id` make a thread out of the

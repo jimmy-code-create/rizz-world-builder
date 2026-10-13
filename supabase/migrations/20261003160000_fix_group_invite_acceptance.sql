@@ -1,6 +1,11 @@
 -- Invitees are not group members yet, so the member-only SELECT policy on
 -- group_invites prevents the client from looking up a valid invite. Keep invite
 -- rows private and perform validation/joining through this narrowly scoped RPC.
+--
+-- The database may still hold the older uuid-returning version from the Drizzle
+-- era, and Postgres cannot change a return type in place, so drop it first.
+DROP FUNCTION IF EXISTS public.accept_group_invite(text);
+
 CREATE OR REPLACE FUNCTION public.accept_group_invite(_code text)
 RETURNS jsonb
 LANGUAGE plpgsql

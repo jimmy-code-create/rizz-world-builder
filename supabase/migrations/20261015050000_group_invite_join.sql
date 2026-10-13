@@ -4,6 +4,16 @@
 -- previews become readable without a session so the join page and the chat
 -- invite card can render for a signed-out visitor.
 
+-- The database still carries the earlier Drizzle-era shapes of these three
+-- functions: accept_group_invite returned uuid, and both previews declared
+-- their OUT parameters in a different order. Postgres refuses CREATE OR REPLACE
+-- across a return-type change (42P13, "Row type defined by OUT parameters is
+-- different"), so they are dropped first. That also makes this file safe to
+-- apply to any existing database state, in any order.
+DROP FUNCTION IF EXISTS public.preview_group_invite(text);
+DROP FUNCTION IF EXISTS public.get_group_invite_preview(text);
+DROP FUNCTION IF EXISTS public.accept_group_invite(text);
+
 -- 1. Preview RPC for the join page and the DM invite card.
 CREATE OR REPLACE FUNCTION public.get_group_invite_preview(_code text)
 RETURNS TABLE (
