@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { getPostAuthPath } from "@/lib/onboarding";
+import { getPendingInvitePath, getPostAuthPath } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -29,7 +29,14 @@ function SignupPage() {
   const [errMsg, setErrMsg] = useState<string>("");
 
   useEffect(() => {
-    if (user && !authLoading && !profileError) nav({ to: getPostAuthPath(profile) });
+    if (!user || authLoading || profileError) return;
+    // A new account created from an invite link joins it straight away.
+    const pendingInvite = getPendingInvitePath();
+    if (pendingInvite) {
+      window.location.replace(pendingInvite);
+      return;
+    }
+    nav({ to: getPostAuthPath(profile) });
   }, [user, profile, authLoading, profileError, nav]);
 
   const onSubmit = async (e: React.FormEvent) => {

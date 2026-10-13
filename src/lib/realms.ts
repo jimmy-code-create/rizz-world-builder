@@ -205,6 +205,22 @@ export async function createRealmInvite(input: {
   return data as string;
 }
 
+/**
+ * Pulls the invite code out of whatever was pasted: a bare code or a full
+ * `/join-realm/<code>` link, with query strings and trailing slashes included.
+ */
+export function extractRealmInviteCode(value: string): string {
+  const input = value.trim();
+  if (!input) return "";
+  const withoutQuery = input.split(/[?#]/, 1)[0];
+  const lastSegment = withoutQuery.split("/").filter(Boolean).at(-1) ?? input;
+  try {
+    return decodeURIComponent(lastSegment).replace(/[^a-z0-9]/gi, "").toLowerCase();
+  } catch {
+    return lastSegment.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  }
+}
+
 export async function previewRealmInvite(code: string): Promise<RealmInvitePreview> {
   const { data, error } = await supabase.rpc("preview_realm_invite", { _code: code });
   if (error) throw error;

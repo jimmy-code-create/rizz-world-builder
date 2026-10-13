@@ -71,8 +71,23 @@ export async function leaveRoom(roomId: string, userId: string) {
   await supabase.from("voice_participants").delete().eq("room_id", roomId).eq("user_id", userId);
 }
 
-export async function updateParticipant(roomId: string, userId: string, patch: { muted?: boolean; hand_raised?: boolean; role?: "host" | "speaker" | "listener" }) {
-  const { error } = await supabase.from("voice_participants").update(patch).eq("room_id", roomId).eq("user_id", userId);
+export async function updateParticipant(
+  roomId: string,
+  userId: string,
+  patch: {
+    muted?: boolean;
+    hand_raised?: boolean;
+    role?: "host" | "speaker" | "listener";
+    /** Set while the participant is sharing their screen (phase 4). */
+    sharing_screen?: boolean;
+  },
+) {
+  // `sharing_screen` arrives with the screen-share migration, so it is not in
+  // the generated Supabase types yet.
+  const { error } = await (supabase.from as any)("voice_participants")
+    .update(patch)
+    .eq("room_id", roomId)
+    .eq("user_id", userId);
   if (error) throw error;
 }
 

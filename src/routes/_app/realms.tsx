@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchRealms, createRealmSecure, joinRealmPublic, previewRealmInvite, acceptRealmInvite, updateRealm } from "@/lib/realms";
+import { fetchRealms, createRealmSecure, joinRealmPublic, previewRealmInvite, acceptRealmInvite, extractRealmInviteCode, updateRealm } from "@/lib/realms";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,7 +118,7 @@ function RealmsPage() {
   };
 
   const runPreview = async (raw: string) => {
-    const cleaned = raw.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+    const cleaned = extractRealmInviteCode(raw).slice(0, 32);
     setCode(raw);
     if (!cleaned) { setPreview(null); return; }
     try {
@@ -133,7 +133,8 @@ function RealmsPage() {
     if (!code.trim()) return;
     setJoining(true);
     try {
-      const cleaned = code.replace(/[^a-zA-Z0-9]/g, "");
+      const cleaned = extractRealmInviteCode(code);
+      if (!cleaned) throw new Error("Paste a valid invite code or link.");
       const realmId = await acceptRealmInvite(cleaned);
       qc.invalidateQueries({ queryKey: ["my-realms", user.id] });
       toast.success("Realm joined!");
@@ -193,10 +194,10 @@ function RealmsPage() {
               <DialogHeader><DialogTitle className="font-display">Join a realm</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <Input
-                  placeholder="Invite code (e.g. ab12cd34)"
+                  placeholder="Invite code or link"
                   value={code}
                   onChange={(e) => { void runPreview(e.target.value); }}
-                  maxLength={24}
+                  maxLength={200}
                   className="glass border-white/10"
                   autoFocus
                 />

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bot as BotIcon, Check, Plus, Search, Sparkles } from "lucide-react";
+import { Bot as BotIcon, Check, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { botDirectoryKey, fetchBotDirectory, installRealmBot, type DirectoryBot } from "@/lib/bots";
+import { botDirectoryKey, fetchBotDirectory, installRealmBot, rateBot, type DirectoryBot } from "@/lib/bots";
 
 /** /bots — browse built-in and published bots, and install one into a realm. */
 export const Route = createFileRoute("/_app/bots/")({
@@ -71,6 +71,7 @@ function BotDirectoryPage() {
   const [search, setSearch] = useState("");
   const [installingBot, setInstallingBot] = useState<DirectoryBot | null>(null);
   const [busyRealmId, setBusyRealmId] = useState<string | null>(null);
+  const [ratingBusy, setRatingBusy] = useState<string | null>(null);
 
   const directory = useQuery({
     queryKey: botDirectoryKey(search),
@@ -100,6 +101,24 @@ function BotDirectoryPage() {
       toast.error(error instanceof Error ? error.message : "Couldn't add that bot");
     } finally {
       setBusyRealmId(null);
+    }
+  };
+
+  /** One rating per user: the server upserts, so this is also the "change my mind" path. */
+  const rate = async (bot: DirectoryBot, stars: number) => {
+    if (!user) {
+      toast.error("Sign in to rate a bot");
+      return;
+    }
+    setRatingBusy(bot.bot_id);
+    try {
+      await rateBot(bot.bot_id, stars);
+      await qc.invalidateQueries({ queryKey: ["bot-directory"] });
+      toast.success(`Rated ${bot.name} ${stars} star${stars === 1 ? "" : "s"}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save that rating");
+    } finally {
+      setRatingBusy(null);
     }
   };
 
@@ -176,6 +195,40 @@ function BotDirectoryPage() {
                     </span>
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{bot.description}</p>
+
+                  {/* Community average, then my own stars. Own bots cannot be rated. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {bot.rating_count > 0
+                        ? `★ ${bot.rating_avg} · ${bot.rating_count} rating${bot.rating_count === 1 ? "" : "s"}`
+                        : "No ratings yet"}
+                    </span>
+                    {user && bot.owner_id === user.id ? (
+                      <span className="text-[11px] text-muted-foreground">· your bot</span>
+                    ) : (
+                      <span className="flex items-center gap-0.5" role="group" aria-label={`Rate ${bot.name}`}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            disabled={ratingBusy === bot.bot_id}
+                            aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
+                            onClick={() => void rate(bot, star)}
+                            className="grid h-6 w-6 place-items-center rounded-md transition-colors hover:bg-white/10 disabled:opacity-50"
+                          >
+                            <Star
+                              aria-hidden="true"
+                              className={`h-3.5 w-3.5 ${
+                                (bot.my_rating ?? 0) >= star
+                                  ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]"
+                                  : "text-muted-foreground/60"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </div>
 
                   {bot.commands.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">

@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Bot as BotIcon, Flag, Hash, Lock, Megaphone, Gift, LogOut, Mic, MicOff, Pencil, Send, Settings, ShieldCheck, Sparkles, Trash2, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Music, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -46,6 +46,22 @@ import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/li
 import { runBotCommand, useRealmSlashCommands } from "@/lib/bots";
 import { moderateDeleteMessage, reportRealmMessage } from "@/lib/realm-settings";
 import { useMentionLabels } from "@/lib/mention-tokens";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PollCard } from "@/components/chat/PollCard";
+import { TrackCard } from "@/components/chat/TrackCard";
+import { ThreadSheet } from "@/components/chat/ThreadSheet";
+import { MessageSearchSheet } from "@/components/chat/MessageSearchSheet";
+import { LevelsSheet } from "@/components/chat/LevelsSheet";
+import { MusicSheet } from "@/components/chat/MusicSheet";
+import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
+import { PollDialog } from "@/components/chat/PollDialog";
+import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
+import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
+import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
+import { threadLabel } from "@/lib/realm-threads";
+import { flushDueScheduledMessages } from "@/lib/realm-schedule";
+import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
+import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
 
 const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift };
 
@@ -101,6 +117,15 @@ function RealmPage() {
   // it for the text currently in the composer.
   const [slashIndex, setSlashIndex] = useState(0);
   const [slashHidden, setSlashHidden] = useState(false);
+  // Phase 5: search, levels, threads, scheduling, polls, emoji, reaction roles.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [levelsOpen, setLevelsOpen] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
+  const [threadRoot, setThreadRoot] = useState<{ id: string; body: string; author: string | null } | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -202,6 +227,16 @@ function RealmPage() {
   const pinnedIds = new Set(pins.map((pin) => pin.message_id));
   const removedPreviews = useHiddenLinkPreviews("realm", messageIds);
   const media = useMediaViewer();
+  // Phase 5 data: reaction roles and this realm's custom emoji. Both feed the
+  // message list (the reaction-role menu and `:name:` expansion).
+  const reactionRoles = useReactionRoles(realm.data?.id);
+  const emojiList = useQuery({
+    queryKey: realmEmojiKey(realm.data?.id),
+    enabled: !!realm.data,
+    queryFn: () => fetchRealmEmoji(realm.data!.id),
+  });
+  const emojiByName = new Map((emojiList.data ?? []).map((entry) => [entry.name, entry.url]));
+  const emojiNames = new Set(emojiByName.keys());
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
   // Who may type where, shared by the moderation sheet and the composer.
   const channelPermissions = useChannelPermissions(realm.data?.id);
@@ -234,6 +269,23 @@ function RealmPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [realm.data, qc]);
+
+  // Scheduled messages have no cron: flush whatever is due whenever this realm
+  // is on screen, then let realtime deliver the result to everyone.
+  useEffect(() => {
+    const realmId = realm.data?.id;
+    if (!realmId) return;
+    void flushDueScheduledMessages()
+      .then((sent) => {
+        if (sent > 0) {
+          void qc.invalidateQueries({ queryKey: ["realm-messages", realmId] });
+          void qc.invalidateQueries({ queryKey: ["realm-room-messages"] });
+        }
+      })
+      .catch(() => {
+        // A failed flush only delays a scheduled message until the next visit.
+      });
+  }, [realm.data?.id, qc]);
 
   if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
   if (!realm.data) return <div className="text-center py-20"><h1 className="font-display text-2xl font-bold">Realm not found</h1></div>;
@@ -347,6 +399,15 @@ function RealmPage() {
     }, 0);
   };
 
+  /** Flashes a message on screen, whichever list it belongs to. */
+  const jumpToMessage = (messageId: string) => {
+    window.setTimeout(() => {
+      document.getElementById(`msg-${messageId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(messageId);
+      window.setTimeout(() => setHighlightId((current) => (current === messageId ? null : current)), 1600);
+    }, 50);
+  };
+
   const handlePinToggle = async (messageId: string, isPinned: boolean) => {
     setUnpinningId(messageId);
     try {
@@ -429,14 +490,25 @@ function RealmPage() {
     }
   };
 
+  /**
+   * Mints a 7-day invite and copies the whole link, not the bare code: the link
+   * is what someone can actually paste into a chat, and it works for people who
+   * are not signed in yet (they log in and land straight on the join page).
+   */
   const copyRealmCode = async () => {
     if (!c.id) return;
     try {
       const inviteCode = await createRealmInvite({ realmId: c.id, expiresInDays: 7 });
-      await navigator.clipboard.writeText(inviteCode);
-      toast.success("7-day realm invite code copied");
+      const link = `${window.location.origin}/join-realm/${inviteCode}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success("7-day invite link copied");
+      } catch {
+        toast.success(`Invite ready: ${link}`);
+      }
+      await qc.invalidateQueries({ queryKey: ["realm-invites", c.id] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't copy the realm code");
+      toast.error(error instanceof Error ? error.message : "Couldn't create the realm invite");
     }
   };
 
@@ -454,6 +526,33 @@ function RealmPage() {
           <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><Users className="h-3 w-3" /> {c.member_count}</p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Search messages"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Levels"
+          onClick={() => setLevelsOpen(true)}
+        >
+          <Sparkles className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Music queue"
+          onClick={() => setMusicOpen(true)}
+        >
+          <Music className="h-4 w-4" />
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -581,7 +680,7 @@ function RealmPage() {
           <div className="mt-4 space-y-2">
             {joined && (
               <SheetRowButton onClick={() => void copyRealmCode()}>
-                <Copy className="h-4 w-4" /> Copy invite code
+                <Copy className="h-4 w-4" /> Copy invite link
               </SheetRowButton>
             )}
             <SheetRowButton onClick={() => { setOptionsOpen(false); setMembersOpen(true); }}>
@@ -986,6 +1085,23 @@ function RealmPage() {
                         );
                       },
                     },
+                    {
+                      label: "Reply in thread",
+                      icon: MessagesSquare,
+                      onSelect: () =>
+                        setThreadRoot({
+                          id: m.id,
+                          body: m.body ?? "",
+                          author: isBot ? botRow?.name ?? "Bot" : authorName,
+                        }),
+                    },
+                    ...(canModerate
+                      ? [{
+                          label: "Reaction roles",
+                          icon: UserCog,
+                          onSelect: () => setReactionRoleMessageId(m.id),
+                        }]
+                      : []),
                     ...(canModerate
                       ? [{
                           label: pinnedIds.has(m.id) ? "Unpin message" : "Pin message",
@@ -1033,20 +1149,52 @@ function RealmPage() {
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                        : renderCaptionWithTags(seg.value).map((p, pi) =>
-                            p.mentionToken
-                              ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                              : p.mention
-                              ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
-                              : p.tag
-                                ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
-                                : p.url
-                                  ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
-                                  : <span key={`${si}-${pi}`}>{p.text}</span>
+                        : splitEmojiSegments(seg.value, emojiNames).map((part, xi) =>
+                            part.name ? (
+                              <img
+                                key={`${si}-${xi}`}
+                                src={emojiByName.get(part.name)}
+                                alt={part.name}
+                                title={`:${part.name}:`}
+                                className="inline-block h-5 w-5 align-middle"
+                              />
+                            ) : (
+                              renderCaptionWithTags(part.text).map((p, pi) =>
+                                p.mentionToken
+                                  ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                  : p.mention
+                                  ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
+                                  : p.tag
+                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                                    : p.url
+                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+                                      : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
+                              )
+                            )
                           )
                     )}
                   </p>
                 </MessageActionMenu>
+                {/* Rich payloads: polls and queued tracks carry their own card. */}
+                {m.card?.type === "poll" && (
+                  <PollCard card={m.card as PollCardPayload} canVote={joined} />
+                )}
+                {m.card?.type === "track" && <TrackCard card={m.card} />}
+                {!!m.reply_count && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setThreadRoot({
+                        id: m.id,
+                        body: m.body ?? "",
+                        author: isBot ? botRow?.name ?? "Bot" : authorName,
+                      })
+                    }
+                    className="mt-1 flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                  >
+                    <MessagesSquare className="h-3 w-3" /> {threadLabel(m.reply_count)}
+                  </button>
+                )}
                 <ReactionChips
                   scope="realm"
                   messageId={m.id}
@@ -1088,6 +1236,46 @@ function RealmPage() {
         onUnpin={(pin) => void handlePinToggle(pin.message_id, true)}
       />
 
+      <MessageSearchSheet
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        realmId={c.id}
+        roomId={slashRoomId}
+        onJump={jumpToMessage}
+      />
+      <LevelsSheet open={levelsOpen} onOpenChange={setLevelsOpen} realmId={c.id} />
+      <MusicSheet open={musicOpen} onOpenChange={setMusicOpen} realmId={c.id} roomId={slashRoomId} />
+      <ThreadSheet
+        open={!!threadRoot}
+        onOpenChange={(open) => { if (!open) setThreadRoot(null); }}
+        root={threadRoot}
+        realmId={c.id}
+        roomId={slashRoomId}
+      />
+      <ScheduleDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        realmId={c.id}
+        roomId={slashRoomId}
+        body={body}
+        onScheduled={() => { setBody(""); setCaret(0); }}
+      />
+      <PollDialog open={pollOpen} onOpenChange={setPollOpen} realmId={c.id} roomId={slashRoomId} />
+      <RealmEmojiPicker
+        open={emojiOpen}
+        onOpenChange={setEmojiOpen}
+        realmId={c.id}
+        canManage={canModerate}
+        onPick={(token) => setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `)}
+      />
+      <ReactionRoleDialog
+        open={!!reactionRoleMessageId}
+        onOpenChange={(open) => { if (!open) setReactionRoleMessageId(null); }}
+        messageId={reactionRoleMessageId ?? ""}
+        roles={rolesForMessage(reactionRoles.data ?? [], reactionRoleMessageId ?? "")}
+        onChanged={() => void reactionRoles.refetch()}
+      />
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="glass-strong border-white/10">
           <AlertDialogHeader>
@@ -1121,6 +1309,35 @@ function RealmPage() {
         )}
         <div className="mx-auto flex w-full max-w-3xl gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
+          <button
+            type="button"
+            aria-label="Custom emoji"
+            onClick={() => setEmojiOpen(true)}
+            disabled={!joined}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
+          >
+            <SmilePlus className="h-4 w-4" />
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Add a poll or schedule this message"
+                disabled={!!composerBlock}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="glass-strong border-white/10">
+              <DropdownMenuItem onSelect={() => setPollOpen(true)}>
+                <BarChart3 className="mr-2 h-4 w-4" /> New poll
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setScheduleOpen(true)} disabled={!body.trim()}>
+                <CalendarClock className="mr-2 h-4 w-4" /> Schedule message
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {/* The slider and the mention popup both anchor to the input wrapper, so
               they can never end up on opposite sides of the composer. */}
           <div className="relative min-w-0 flex-1">

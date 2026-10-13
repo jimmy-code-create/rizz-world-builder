@@ -45,6 +45,7 @@ export type CallParticipantRow = {
   user_id: string;
   role: string;
   muted: boolean;
+  sharing_screen?: boolean;
   joined_at: string;
   user?: {
     username: string | null;
@@ -66,6 +67,13 @@ type VoiceCallContextValue = {
   remoteStreams: { peerId: string; stream: MediaStream }[];
   localStream: MediaStream | null;
   localCameraStream: MediaStream | null;
+  /** Screen sharing (opt-in): who is sharing, and the streams to render. */
+  localScreenStream: MediaStream | null;
+  remoteScreenStreams: { peerId: string; stream: MediaStream }[];
+  sharingScreen: boolean;
+  sharingIds: string[];
+  screenSupported: boolean;
+  screenError: string | null;
   status: string;
   error: string | null;
   micReady: boolean;
@@ -77,6 +85,7 @@ type VoiceCallContextValue = {
   toggleMute: () => void;
   toggleCamera: () => void;
   flipCamera: () => void;
+  toggleScreenShare: () => void;
   retry: () => void;
   markPlaybackBlocked: () => void;
 };
@@ -159,6 +168,22 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     cameraOn,
     facing,
   });
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
+
+  // Who is sharing right now: the roster flag for everyone else, the engine's
+  // own state for me (the flag round-trips through the database).
+  const sharingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const participant of participants) {
+      if (participant.user_id === userIdRef.current) {
+        if (engine.sharingScreen) ids.add(participant.user_id);
+      } else if (participant.sharing_screen) {
+        ids.add(participant.user_id);
+      }
+    }
+    return [...ids];
+  }, [participants, engine.sharingScreen]);
 
   // Live roster: realtime keeps the count in the bar honest.
   useEffect(() => {
@@ -272,6 +297,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
 
   const toggleCamera = useCallback(() => setCameraOn((previous) => !previous), []);
   const flipCamera = useCallback(() => setFacing((previous) => (previous === "user" ? "environment" : "user")), []);
+  const toggleScreenShare = useCallback(() => {
+    if (engineRef.current.sharingScreen) engineRef.current.stopScreenShare();
+    else void engineRef.current.startScreenShare();
+  }, []);
 
   // Signing out must not leave a ghost participant behind. The keepalive
   // request uses the token captured while the call was live.
@@ -313,6 +342,12 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       remoteStreams: engine.remoteStreams,
       localStream: engine.localStream,
       localCameraStream: engine.localCameraStream,
+      localScreenStream: engine.localScreenStream,
+      remoteScreenStreams: engine.remoteScreenStreams,
+      sharingScreen: engine.sharingScreen,
+      sharingIds,
+      screenSupported: engine.screenSupported,
+      screenError: engine.screenError,
       status: engine.status,
       error: engine.error,
       micReady: engine.micReady,
@@ -328,6 +363,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       toggleMute,
       toggleCamera,
       flipCamera,
+      toggleScreenShare,
       retry: () => {
         void engine.retry();
       },
@@ -341,10 +377,16 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       cameraOn,
       facing,
       participants,
+      sharingIds,
       engine.speakingIds,
       engine.remoteStreams,
       engine.localStream,
       engine.localCameraStream,
+      engine.localScreenStream,
+      engine.remoteScreenStreams,
+      engine.sharingScreen,
+      engine.screenSupported,
+      engine.screenError,
       engine.status,
       engine.error,
       engine.micReady,
@@ -356,6 +398,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       toggleMute,
       toggleCamera,
       flipCamera,
+      toggleScreenShare,
     ],
   );
 

@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Bot as BotIcon, Crown, Flag,
-  Gauge, Hash, ListOrdered, Lock, MessageSquareWarning, ScrollText, Search, Shield, ShieldCheck,
-  Sparkles, Trash2, UserMinus, UserX, X,
+  Gauge, Hash, Heart, ListOrdered, Lock, MessageSquareWarning, ScrollText, Search, Shield, ShieldCheck,
+  SmilePlus, Sparkles, Trash2, UserCog, UserMinus, UserX, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,15 @@ import {
   type RealmPermission,
 } from "@/lib/realm-settings";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { setRealmWelcome, setRealmXpEnabled } from "@/lib/realm-xp";
+import {
+  deleteRealmEmoji, fetchRealmEmoji, realmEmojiKey, saveRealmEmoji, uploadRealmEmoji,
+  type RealmEmoji,
+} from "@/lib/realm-emoji";
+import {
+  deleteReactionRole, fetchReactionRoles, reactionRolesKey, type ReactionRole,
+} from "@/lib/reaction-roles";
 
 /**
  * /r/$slug/settings — the full realm settings page.
@@ -46,6 +55,9 @@ export const Route = createFileRoute("/_app/r/$slug_/settings")({
 
 const SECTIONS = [
   { key: "overview", label: "Overview", icon: Sparkles },
+  { key: "welcome", label: "Welcome & levels", icon: Heart },
+  { key: "emoji", label: "Custom emoji", icon: SmilePlus },
+  { key: "reactions", label: "Reaction roles", icon: UserCog },
   { key: "roles", label: "Roles & permissions", icon: ShieldCheck },
   { key: "members", label: "Members", icon: Shield },
   { key: "channels", label: "Channels", icon: Hash },
@@ -158,6 +170,12 @@ function RealmSettingsPage() {
             <div className="h-40 animate-pulse rounded-3xl glass" />
           ) : section === "overview" ? (
             <OverviewSection realmId={payload.realm.id} realm={payload.realm} canManage={can("manage_realm")} />
+          ) : section === "welcome" ? (
+            <WelcomeSection realmId={payload.realm.id} realmName={payload.realm.name} canManage={can("moderate_messages")} />
+          ) : section === "emoji" ? (
+            <EmojiSection realmId={payload.realm.id} canManage={can("moderate_messages")} />
+          ) : section === "reactions" ? (
+            <ReactionRolesSection realmId={payload.realm.id} canManage={can("moderate_messages")} />
           ) : section === "roles" ? (
             <RolesSection realmId={payload.realm.id} roles={payload.roles} canManage={can("manage_roles")} />
           ) : section === "members" ? (
@@ -1553,3 +1571,314 @@ function DangerSection({
     </div>
   );
 }
+
+// ---------------------------------------------------------------- welcome & levels
+
+type RealmFlags = { welcome_enabled: boolean; welcome_message: string | null; xp_enabled: boolean };
+
+/** The phase-5 columns on `realms`, which the generated Supabase types predate. */
+async function fetchRealmFlags(realmId: string): Promise<RealmFlags> {
+  const { data, error } = await (supabase.from as any)("realms")
+    .select("welcome_enabled, welcome_message, xp_enabled")
+    .eq("id", realmId)
+    .maybeSingle();
+  if (error) throw error;
+  const row = (data ?? {}) as Partial<RealmFlags>;
+  return {
+    welcome_enabled: row.welcome_enabled ?? true,
+    welcome_message: row.welcome_message ?? null,
+    xp_enabled: row.xp_enabled ?? true,
+  };
+}
+
+function WelcomeSection({
+  realmId,
+  realmName,
+  canManage,
+}: {
+  realmId: string;
+  realmName: string;
+  canManage: boolean;
+}) {
+  const invalidate = useInvalidate(realmId);
+  const qc = useQueryClient();
+  const flags = useQuery({ queryKey: ["realm-flags", realmId], queryFn: () => fetchRealmFlags(realmId) });
+  const [draft, setDraft] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"welcome" | "levels" | "message" | null>(null);
+
+  const message = draft ?? flags.data?.welcome_message ?? "";
+  const welcomeOn = flags.data?.welcome_enabled ?? true;
+  const levelsOn = flags.data?.xp_enabled ?? true;
+
+  const run = async (
+    key: "welcome" | "levels" | "message",
+    action: () => Promise<void>,
+    success: string,
+  ) => {
+    setBusy(key);
+    try {
+      await action();
+      await qc.invalidateQueries({ queryKey: ["realm-flags", realmId] });
+      await invalidate(["realm-leaderboard"], ["realm-my-xp"]);
+      toast.success(success);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save that");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Panel
+      title="Welcome & levels"
+      description="The WELCOME BOT greets everybody who joins, and levels are this realm's XP board."
+    >
+      <div className="space-y-3">
+        <ToggleRow
+          label="Welcome new members"
+          hint="Posts a greeting in the realm when somebody joins."
+          checked={welcomeOn}
+          disabled={!canManage || busy === "welcome" || flags.isLoading}
+          onChange={(next) =>
+            void run(
+              "welcome",
+              () => setRealmWelcome({ realmId, enabled: next, message }),
+              next ? "Welcome messages are on" : "Welcome messages are off",
+            )
+          }
+        />
+
+        <Field label="Extra welcome line" hint={`Added after the greeting in ${realmName}. 300 characters, plain text.`}>
+          <Textarea
+            value={message}
+            rows={3}
+            maxLength={300}
+            disabled={!canManage}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Say hi, read the rules, and grab a role below 👋"
+            className="glass border-white/10"
+          />
+          <Button
+            type="button"
+            disabled={!canManage || busy === "message" || message === (flags.data?.welcome_message ?? "")}
+            onClick={() =>
+              void run(
+                "message",
+                () => setRealmWelcome({ realmId, enabled: welcomeOn, message }),
+                "Welcome message saved",
+              )
+            }
+            className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+          >
+            {busy === "message" ? "Saving…" : "Save welcome message"}
+          </Button>
+        </Field>
+
+        <ToggleRow
+          label="Levels"
+          hint="Counts XP for messages and shows the leaderboard. Turning it off keeps the points already earned."
+          checked={levelsOn}
+          disabled={!canManage || busy === "levels" || flags.isLoading}
+          onChange={(next) =>
+            void run(
+              "levels",
+              () => setRealmXpEnabled(realmId, next),
+              next ? "Levels are on" : "Levels are off",
+            )
+          }
+        />
+      </div>
+    </Panel>
+  );
+}
+
+// ---------------------------------------------------------------- custom emoji
+
+function EmojiSection({ realmId, canManage }: { realmId: string; canManage: boolean }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const emoji = useQuery({ queryKey: realmEmojiKey(realmId), queryFn: () => fetchRealmEmoji(realmId) });
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState<"add" | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const cleanName = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 32);
+
+  /** Shared tail of both add paths: the image already has a public URL here. */
+  const add = async (imageUrl: string) => {
+    await saveRealmEmoji({ realmId, name: cleanName, url: imageUrl });
+    setName("");
+    setUrl("");
+    if (fileRef.current) fileRef.current.value = "";
+    await qc.invalidateQueries({ queryKey: realmEmojiKey(realmId) });
+    toast.success(`:${cleanName}: is ready to use`);
+  };
+
+  const guard = () => {
+    if (cleanName.length < 2) {
+      toast.error("Name it first — a-z, 0-9 and _ (2 to 32 characters)");
+      return false;
+    }
+    return true;
+  };
+
+  const runAdd = async (action: () => Promise<void>) => {
+    if (!guard()) return;
+    setBusy("add");
+    try {
+      await action();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't add that emoji");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (row: RealmEmoji) => {
+    try {
+      await deleteRealmEmoji(row.id);
+      await qc.invalidateQueries({ queryKey: realmEmojiKey(realmId) });
+      toast.success(`Removed :${row.name}:`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't remove that emoji");
+    }
+  };
+
+  return (
+    <Panel
+      title="Custom emoji"
+      description="Type :name: in any message and it renders as this image. Moderators can manage them."
+    >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {(emoji.data ?? []).map((row) => (
+          <div key={row.id} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+            <img
+              src={row.url}
+              alt={`:${row.name}:`}
+              loading="lazy"
+              decoding="async"
+              className="h-9 w-9 shrink-0 rounded-lg object-contain"
+            />
+            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">:{row.name}:</span>
+            <button
+              type="button"
+              aria-label={`Remove :${row.name}:`}
+              disabled={!canManage}
+              onClick={() => void remove(row)}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:opacity-40"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {(emoji.data ?? []).length === 0 && <EmptyState>No custom emoji yet.</EmptyState>}
+
+      {canManage && (
+        <div className="mt-3 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <Field label="Name" hint="Used as :name: — a-z, 0-9 and _ only.">
+            <Input
+              value={name}
+              maxLength={32}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="rizz_smile"
+              className="glass h-11 border-white/10 font-mono"
+            />
+          </Field>
+          <Field label="Upload an image" hint="PNG, GIF or WebP up to a couple of megabytes.">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/gif,image/webp"
+              disabled={busy === "add" || !user}
+              aria-label="Emoji image file"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file || !user) return;
+                void runAdd(async () => add(await uploadRealmEmoji(file, user.id, cleanName || "emoji")));
+              }}
+              className="w-full rounded-xl border border-white/10 bg-transparent p-2 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-foreground"
+            />
+          </Field>
+          <Field label="Or paste an https image link">
+            <div className="flex gap-2">
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://…"
+                className="glass h-11 border-white/10"
+              />
+              <Button
+                type="button"
+                disabled={busy === "add" || !url.trim()}
+                onClick={() => void runAdd(() => add(url.trim()))}
+                className="h-11 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+              >
+                {busy === "add" ? "Adding…" : "Add"}
+              </Button>
+            </div>
+          </Field>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+// ---------------------------------------------------------------- reaction roles
+
+function ReactionRolesSection({ realmId, canManage }: { realmId: string; canManage: boolean }) {
+  const qc = useQueryClient();
+  const roles = useQuery({ queryKey: reactionRolesKey(realmId), queryFn: () => fetchReactionRoles(realmId) });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const remove = async (row: ReactionRole) => {
+    setBusy(row.id);
+    try {
+      await deleteReactionRole(row.id);
+      await qc.invalidateQueries({ queryKey: reactionRolesKey(realmId) });
+      toast.success(`${row.emoji} no longer grants a role`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't remove that reaction role");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Panel
+      title="Reaction roles"
+      description="Reacting to a message with the emoji grants the role; un-reacting takes it back. Set one up from a message's ⋯ menu → Reaction roles."
+    >
+      <ul className="space-y-2">
+        {(roles.data ?? []).map((row) => (
+          <li key={row.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/30 text-lg">{row.emoji}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold capitalize">Grants {row.role === "mod" ? "Moderator" : "Member"}</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                Message {row.message_id.slice(0, 8)} · added {new Date(row.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canManage || busy === row.id}
+              className="h-10 shrink-0 border-white/10 bg-white/5"
+              onClick={() => void remove(row)}
+            >
+              Remove
+            </Button>
+          </li>
+        ))}
+        {(roles.data ?? []).length === 0 && (
+          <EmptyState>
+            No reaction roles yet. Open a message in the realm and pick “Reaction roles” to attach one.
+          </EmptyState>
+        )}
+      </ul>
+    </Panel>
+  );
+}
+

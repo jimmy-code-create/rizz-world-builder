@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ChevronDown, Mic, MicOff, PhoneOff, RefreshCw, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
+import { ChevronDown, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Wifi } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -59,6 +59,12 @@ export function VoiceCallView() {
     speakingIds,
     remoteStreams,
     localCameraStream,
+    localScreenStream,
+    remoteScreenStreams,
+    sharingScreen,
+    sharingIds,
+    screenSupported,
+    screenError,
     muted,
     cameraOn,
     cameraReady,
@@ -68,6 +74,7 @@ export function VoiceCallView() {
     toggleMute,
     toggleCamera,
     flipCamera,
+    toggleScreenShare,
     leaveCall,
     retry,
   } = useVoiceCallContext();
@@ -77,6 +84,15 @@ export function VoiceCallView() {
   const videosByPeer = new Map(
     remoteStreams.map(({ peerId, stream }) => [peerId, stream.getVideoTracks().some((track) => track.readyState === "live") ? stream : null]),
   );
+
+  // The stage shows one shared screen: mine while I am sharing, otherwise the
+  // first peer whose roster flag says they are sharing.
+  const sharingParticipants = participants.filter((participant) => sharingIds.includes(participant.user_id));
+  const remoteShare = remoteScreenStreams.find(({ stream }) => stream.getVideoTracks().some((track) => track.readyState === "live")) ?? null;
+  const stageStream = sharingScreen ? localScreenStream : remoteShare?.stream ?? null;
+  const stageOwner = sharingScreen
+    ? "you"
+    : participants.find((participant) => participant.user_id === remoteShare?.peerId)?.user?.username ?? "someone";
 
   return (
     <FullScreenLayer open={!!call && viewOpen}>
@@ -107,6 +123,28 @@ export function VoiceCallView() {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
+          {stageStream && (
+            <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-[var(--rizz-pink)]/40 bg-black shadow-glow">
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
+                  <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{sharingScreen ? "Your screen" : `Screen shared by @${stageOwner}`}</span>
+                </span>
+                {sharingScreen && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-destructive/40 bg-destructive/15 px-2.5 text-xs text-destructive hover:bg-destructive/25"
+                    onClick={toggleScreenShare}
+                  >
+                    Stop sharing
+                  </Button>
+                )}
+              </div>
+              <VideoTile stream={stageStream} />
+            </div>
+          )}
+
           <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
             {participants.map((participant) => {
               const isMe = participant.user_id === user?.id;
@@ -161,6 +199,11 @@ export function VoiceCallView() {
                   {!videoStream && speaking && (
                     <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">Speaking</span>
                   )}
+                  {sharingIds.includes(participant.user_id) && !sharingScreen && (
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-[var(--rizz-pink)]/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
+                      <MonitorPlay className="h-3 w-3" /> Sharing
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -207,6 +250,21 @@ export function VoiceCallView() {
             )}
 
             <Button
+              variant={sharingScreen ? "default" : "outline"}
+              size="icon"
+              aria-label={sharingScreen ? "Stop sharing your screen" : "Share your screen"}
+              aria-pressed={sharingScreen}
+              disabled={!screenSupported}
+              title={screenSupported ? undefined : "Screen sharing isn't available in this browser."}
+              onClick={toggleScreenShare}
+              className={`h-14 w-14 rounded-full ${
+                sharingScreen ? "border-0 bg-gradient-primary shadow-glow" : "glass border-white/10"
+              } disabled:opacity-50`}
+            >
+              {sharingScreen ? <ScreenShareOff className="h-5 w-5" /> : <ScreenShare className="h-5 w-5" />}
+            </Button>
+
+            <Button
               variant="outline"
               aria-label="Leave call"
               onClick={leaveCall}
@@ -216,8 +274,15 @@ export function VoiceCallView() {
             </Button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
-            {cameraOn ? `Camera on · ${facing === "user" ? "front" : "back"}` : "Camera off · mic " + (muted ? "muted" : "live")}
+            {sharingScreen
+              ? "Sharing your screen"
+              : sharingParticipants.length > 0
+                ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
+                : cameraOn
+                  ? `Camera on · ${facing === "user" ? "front" : "back"}`
+                  : "Camera off · mic " + (muted ? "muted" : "live")}
           </p>
+          {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
       </div>
     </FullScreenLayer>

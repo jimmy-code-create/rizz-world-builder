@@ -36,13 +36,13 @@ import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
+import { Route as JoinRealmCodeRouteImport } from './routes/join-realm.$code'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppBotsIndexRouteImport } from './routes/_app/bots.index'
 import { Route as AppBotsDeveloperRouteImport } from './routes/_app/bots.developer'
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
-import { Route as AppJoinRealmCodeRouteImport } from './routes/_app/join-realm.$code'
 import { Route as AppRSlugRouteImport } from './routes/_app/r.$slug'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsAccountRouteImport } from './routes/_app/settings/account'
@@ -191,6 +191,11 @@ const ApiTurnCredentialsRoute = ApiTurnCredentialsRouteImport.update({
   path: '/api/turn-credentials',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinRealmCodeRoute = JoinRealmCodeRouteImport.update({
+  id: '/join-realm/$code',
+  path: '/join-realm/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
@@ -219,11 +224,6 @@ const AppDmUserIdRoute = AppDmUserIdRouteImport.update({
 const AppGIdRoute = AppGIdRouteImport.update({
   id: '/g/$id',
   path: '/g/$id',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppJoinRealmCodeRoute = AppJoinRealmCodeRouteImport.update({
-  id: '/join-realm/$code',
-  path: '/join-realm/$code',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRSlugRoute = AppRSlugRouteImport.update({
@@ -320,12 +320,12 @@ export interface FileRoutesByFullPath {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/bots/developer': typeof AppBotsDeveloperRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
-  '/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/r/$slug': typeof AppRSlugRoute
   '/settings/account': typeof AppSettingsAccountRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
@@ -367,12 +367,12 @@ export interface FileRoutesByTo {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/bots/developer': typeof AppBotsDeveloperRoute
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
-  '/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/r/$slug': typeof AppRSlugRoute
   '/settings/account': typeof AppSettingsAccountRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
@@ -417,12 +417,12 @@ export interface FileRoutesById {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/_app/bots/developer': typeof AppBotsDeveloperRoute
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/g/$id': typeof AppGIdRoute
-  '/_app/join-realm/$code': typeof AppJoinRealmCodeRoute
   '/_app/r/$slug': typeof AppRSlugRoute
   '/_app/settings/account': typeof AppSettingsAccountRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
@@ -467,12 +467,12 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/join-realm/$code'
     | '/join/$code'
     | '/bots/developer'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
-    | '/join-realm/$code'
     | '/r/$slug'
     | '/settings/account'
     | '/settings/appearance'
@@ -514,12 +514,12 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/join-realm/$code'
     | '/join/$code'
     | '/bots/developer'
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
-    | '/join-realm/$code'
     | '/r/$slug'
     | '/settings/account'
     | '/settings/appearance'
@@ -563,12 +563,12 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/join-realm/$code'
     | '/join/$code'
     | '/_app/bots/developer'
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/g/$id'
-    | '/_app/join-realm/$code'
     | '/_app/r/$slug'
     | '/_app/settings/account'
     | '/_app/settings/appearance'
@@ -599,6 +599,7 @@ export interface RootRouteChildren {
   ApiMeRoute: typeof ApiMeRoute
   ApiRizzCoachRoute: typeof ApiRizzCoachRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
+  JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
 }
 
@@ -793,6 +794,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTurnCredentialsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join-realm/$code': {
+      id: '/join-realm/$code'
+      path: '/join-realm/$code'
+      fullPath: '/join-realm/$code'
+      preLoaderRoute: typeof JoinRealmCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join/$code': {
       id: '/join/$code'
       path: '/join/$code'
@@ -833,13 +841,6 @@ declare module '@tanstack/react-router' {
       path: '/g/$id'
       fullPath: '/g/$id'
       preLoaderRoute: typeof AppGIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/join-realm/$code': {
-      id: '/_app/join-realm/$code'
-      path: '/join-realm/$code'
-      fullPath: '/join-realm/$code'
-      preLoaderRoute: typeof AppJoinRealmCodeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/r/$slug': {
@@ -967,7 +968,6 @@ interface AppRouteChildren {
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
-  AppJoinRealmCodeRoute: typeof AppJoinRealmCodeRoute
   AppRSlugRoute: typeof AppRSlugRoute
   AppSettingsAccountRoute: typeof AppSettingsAccountRoute
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
@@ -999,7 +999,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,
-  AppJoinRealmCodeRoute: AppJoinRealmCodeRoute,
   AppRSlugRoute: AppRSlugRoute,
   AppSettingsAccountRoute: AppSettingsAccountRoute,
   AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
@@ -1052,6 +1051,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMeRoute: ApiMeRoute,
   ApiRizzCoachRoute: ApiRizzCoachRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
+  JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
 }
 export const routeTree = rootRouteImport

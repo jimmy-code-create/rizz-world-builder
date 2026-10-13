@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { getPostAuthPath } from "@/lib/onboarding";
+import { getPendingInvitePath, getPostAuthPath } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -26,14 +26,11 @@ function LoginPage() {
 
   useEffect(() => {
     if (!user || authLoading || profileError) return;
-    let pendingCode: string | null = null;
-    try {
-      pendingCode = window.sessionStorage.getItem("rizz:pending-group-invite");
-    } catch {
-      // A blocked session store should not stop a normal login.
-    }
-    if (pendingCode && /^[a-z0-9]{4,64}$/i.test(pendingCode)) {
-      window.location.replace(`/join/${encodeURIComponent(pendingCode)}`);
+    // Someone who followed an invite link finishes joining instead of landing
+    // on the feed. Group and realm invites are both handled here.
+    const pendingInvite = getPendingInvitePath();
+    if (pendingInvite) {
+      window.location.replace(pendingInvite);
       return;
     }
     nav({ to: getPostAuthPath(profile) });

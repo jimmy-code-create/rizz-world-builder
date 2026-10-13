@@ -22,6 +22,11 @@ export type DirectoryBot = {
   is_builtin: boolean;
   owner_id: string | null;
   installs: number;
+  /** Community rating (phase 5): 0–5 rounded to one decimal, plus its size. */
+  rating_avg: number;
+  rating_count: number;
+  /** My own rating of this bot, or null when I have not rated it. */
+  my_rating: number | null;
   commands: { name: string; description: string }[];
 };
 
@@ -213,6 +218,20 @@ export async function fetchBotDirectory(search = ""): Promise<DirectoryBot[]> {
 }
 
 export const botDirectoryKey = (search: string) => ["bot-directory", search.trim()] as const;
+/**
+ * Rates a bot 1–5 stars, optionally with a short review. One rating per user:
+ * a second call updates the first, and nobody can rate their own bot.
+ */
+export async function rateBot(botId: string, rating: number, review?: string): Promise<void> {
+  const { data, error } = await (supabase.rpc as any)("rate_bot", {
+    _bot_id: botId,
+    _rating: rating,
+    _review: review?.trim() || null,
+  });
+  rpcError(error, "Couldn't save that rating");
+  unwrap(data, "Couldn't save that rating");
+}
+
 export const myBotsKey = ["my-bots"] as const;
 export const realmBotsKey = (realmId: string | null | undefined) => ["realm-bots", realmId ?? ""] as const;
 export const realmSlashCommandsKey = (realmId: string | null | undefined, roomId: string | null | undefined) =>

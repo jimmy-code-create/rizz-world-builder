@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
+import { updateParticipant } from "@/lib/voice";
 
 /**
  * Mesh call engine used by the global VoiceCallProvider.
@@ -32,6 +33,8 @@ type PeerConnection = {
   retryTimer?: number;
   audioSender?: RTCRtpSender;
   videoSender?: RTCRtpSender;
+  /** The third m-line, reserved for screen sharing. */
+  screenSender?: RTCRtpSender;
 };
 
 type AnalyserEntry = {
@@ -86,6 +89,11 @@ export function useVoiceCall({
   const [cameraReady, setCameraReady] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
+  // Screen sharing is opt-in: nothing is captured until the button is pressed.
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<RemoteStream[]>([]);
+  const [sharingScreen, setSharingScreen] = useState(false);
+  const [screenError, setScreenError] = useState<string | null>(null);
 
   const peerConnections = useRef(new Map<string, PeerConnection>());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -95,12 +103,15 @@ export function useVoiceCall({
   const facingRef = useRef(facing);
   const micStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const iceServersRef = useRef<RTCIceServer[]>([]);
   const turnConfiguredRef = useRef(false);
   const syncPeersRef = useRef<() => void>(() => {});
   const startMicRef = useRef<() => Promise<void>>(async () => {});
   const startCameraRef = useRef<(nextFacing?: "user" | "environment") => Promise<void>>(async () => {});
   const stopCameraRef = useRef<() => void>(() => {});
+  const startScreenRef = useRef<() => Promise<void>>(async () => {});
+  const stopScreenRef = useRef<() => void>(() => {});
   const retryRef = useRef<() => Promise<void>>(async () => {});
   const analysersRef = useRef(new Map<string, AnalyserEntry>());
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -267,6 +278,12 @@ export function useVoiceCall({
       const videoTrack = cameraStreamRef.current?.getVideoTracks()[0];
       if (videoTrack) void entry.videoSender.replaceTrack(videoTrack).catch(() => {});
 
+      // The screen transceiver is always negotiated, so starting a share later
+      // is a track swap and never a renegotiation of the call.
+      entry.screenSender = pc.addTransceiver("video", { direction: "sendrecv" }).sender;
+      const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+      if (screenTrack) void entry.screenSender.replaceTrack(screenTrack).catch(() => {});
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           void sendSignal(peerId, "ice", { candidate: event.candidate.toJSON() }).catch((error) => {
@@ -277,6 +294,21 @@ export function useVoiceCall({
       pc.ontrack = (event) => {
         const incoming = event.streams[0];
         const tracks = incoming ? incoming.getTracks() : [event.track];
+        // Both sides add the transceivers in the same order (audio, camera,
+        // screen), so the second video m-line is always the shared screen.
+        const videoTransceivers = pc
+          .getTransceivers()
+          .filter((transceiver) => transceiver.receiver.track.kind === "video");
+        const isScreen =
+          event.track.kind === "video" && videoTransceivers.indexOf(event.transceiver) >= 1;
+        if (isScreen) {
+          const stream = new MediaStream([event.track]);
+          setRemoteScreenStreams((current) => [
+            ...current.filter((item) => item.peerId !== peerId),
+            { peerId, stream },
+          ]);
+          return;
+        }
         setRemoteStreams((currentStreams) => {
           const existing = currentStreams.find((item) => item.peerId === peerId);
           const stream = existing?.stream ?? new MediaStream();
@@ -317,6 +349,7 @@ export function useVoiceCall({
         detachAnalyser(peerId);
         setConnected(peerId, false);
         setRemoteStreams((current) => current.filter((item) => item.peerId !== peerId));
+        setRemoteScreenStreams((current) => current.filter((item) => item.peerId !== peerId));
       }
       for (const peerId of activePeers.keys()) {
         const entry = ensurePeer(peerId);
@@ -405,6 +438,67 @@ export function useVoiceCall({
       setCameraReady(false);
     };
     stopCameraRef.current = stopCamera;
+
+    /** Best-effort roster flag so everyone else knows there is something to see. */
+    const syncSharingFlag = async (next: boolean) => {
+      if (!roomId || !userId) return;
+      try {
+        await updateParticipant(roomId, userId, { sharing_screen: next });
+      } catch (error) {
+        console.warn("Couldn't sync the screen-share flag", error);
+      }
+    };
+
+    const startScreenShare = async () => {
+      if (disposed) return;
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        setScreenError("Screen sharing isn't available in this browser.");
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        if (disposed) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error("That window did not share a video track.");
+
+        screenStreamRef.current?.getTracks().forEach((item) => item.stop());
+        screenStreamRef.current = stream;
+        setLocalScreenStream(stream);
+        for (const [, entry] of peers) {
+          if (entry.screenSender) void entry.screenSender.replaceTrack(track).catch(() => {});
+        }
+        // The browser's own "Stop sharing" bar ends the track.
+        track.addEventListener("ended", () => stopScreenRef.current());
+        setSharingScreen(true);
+        setScreenError(null);
+        await syncSharingFlag(true);
+      } catch (error) {
+        setSharingScreen(false);
+        const name = error instanceof DOMException ? error.name : "";
+        setScreenError(
+          name === "NotAllowedError" || name === "AbortError"
+            ? "Screen sharing was cancelled."
+            : "Couldn't share that. Pick a window, tab or screen and try again.",
+        );
+      }
+    };
+    startScreenRef.current = startScreenShare;
+
+    const stopScreenShare = () => {
+      const stream = screenStreamRef.current;
+      screenStreamRef.current = null;
+      setLocalScreenStream(null);
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+      for (const [, entry] of peers) {
+        if (entry.screenSender) void entry.screenSender.replaceTrack(null).catch(() => {});
+      }
+      setSharingScreen(false);
+      void syncSharingFlag(false);
+    };
+    stopScreenRef.current = stopScreenShare;
 
     const applyRemoteDescription = async (peerId: string, description: RTCSessionDescriptionInit) => {
       const entry = ensurePeer(peerId);
@@ -529,8 +623,13 @@ export function useVoiceCall({
       micStreamRef.current = null;
       cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = null;
+      screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
       setConnectedPeerIds([]);
       setRemoteStreams([]);
+      setRemoteScreenStreams([]);
+      setLocalScreenStream(null);
+      setSharingScreen(false);
       setSpeakingIds([]);
       setSignalingReady(false);
       setMicReady(false);
@@ -562,16 +661,27 @@ export function useVoiceCall({
   }, [facing, cameraOn]);
 
   const retry = useCallback(() => retryRef.current(), []);
+  const startScreenShare = useCallback(() => startScreenRef.current(), []);
+  const stopScreenShare = useCallback(() => stopScreenRef.current(), []);
+  const screenSupported =
+    typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
 
   return {
     status,
     error: cameraError ?? micError ?? connectionError,
     micError,
     cameraError,
+    screenError,
     micReady,
     cameraReady,
     localStream,
     localCameraStream,
+    localScreenStream,
+    remoteScreenStreams,
+    sharingScreen,
+    screenSupported,
+    startScreenShare,
+    stopScreenShare,
     retry,
     remoteStreams,
     speakingIds,

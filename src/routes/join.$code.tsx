@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { acceptInvite, previewGroupInvite } from "@/lib/groups";
+import { PENDING_GROUP_INVITE_KEY as PENDING_INVITE_KEY } from "@/lib/onboarding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,8 +22,6 @@ export const Route = createFileRoute("/join/$code")({
   }),
   component: JoinPage,
 });
-
-const PENDING_INVITE_KEY = "rizz:pending-group-invite";
 
 function JoinPage() {
   const { code } = Route.useParams();
