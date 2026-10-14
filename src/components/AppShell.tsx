@@ -27,6 +27,7 @@ import { StatusDot } from "@/components/presence/StatusDot";
 import { RizzCat } from "@/components/RizzCat";
 import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
+import { useI18n } from "@/lib/i18n";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
@@ -60,6 +61,7 @@ const mobileTabs = [
 
 export function AppShell() {
   const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
+  const { t } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -349,7 +351,7 @@ export function AppShell() {
             className="flex h-11 min-h-[44px] min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">Search people, tags, chats</span>
+            <span className="min-w-0 flex-1 truncate">{t("search_placeholder")}</span>
           </Link>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -399,9 +401,10 @@ export function AppShell() {
       {!isConversation && (
         <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
           <div className="flex items-center justify-between gap-1">
-            {mobileTabs.slice(0, 2).map((t) => (
-              <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
-            ))}
+            {mobileTabs.slice(0, 2).map((tab) => {
+              const label = tab.to === "/feed" ? t("feed") : tab.to === "/reels" ? t("reels") : tab.label;
+              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+            })}
             {!isReels && (
               <button
                 onClick={() => setComposerOpen(true)}
@@ -413,18 +416,19 @@ export function AppShell() {
                 </div>
               </button>
             )}
-            {mobileTabs.slice(2).map((t) => (
-              <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
-            ))}
+            {mobileTabs.slice(2).map((tab) => {
+              const label = tab.to === "/dms" ? t("messages") : tab.label;
+              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+            })}
             <button
               onClick={() => setMoreOpen(true)}
               className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
-              aria-label="More"
+              aria-label={t("more")}
             >
               <div className="p-1 rounded-lg">
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground">More</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{t("more")}</span>
             </button>
           </div>
         </nav>
@@ -565,6 +569,8 @@ function ProfileMenu({
   emoji?: string | null;
   onStatus?: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -617,46 +623,46 @@ function ProfileMenu({
                 <StatusDot status={status} size={9} ring={false} />
               ) : null}
             </span>
-            <span className="flex-1 truncate">Status · <strong className="font-semibold text-foreground">{status ? statusShortLabel(status) : "Online"}</strong></span>
+            <span className="flex-1 truncate">{t("status")} · <strong className="font-semibold text-foreground">{status ? statusShortLabel(status) : t("online")}</strong></span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-3 w-full">
-            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> Profile
+            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/bookmarks" className="flex items-center gap-3 w-full">
-            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> Saved
+            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("saved")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/effects" className="flex items-center justify-between w-full">
             <span className="flex items-center gap-3">
-              <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Effects
+              <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("effects")}
             </span>
             <span className="text-[9px] font-bold border border-primary text-primary px-1.5 py-0.2 rounded-full">Soon</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/badges" className="flex items-center gap-3 w-full">
-            <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> Badges
+            <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("badges")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="my-1.5 -mx-1" />
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/settings" className="flex items-center gap-3 w-full">
-            <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> Settings
+            <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("settings")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/settings/appearance" className="flex items-center gap-3 w-full">
-            <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Appearance
+            <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("appearance")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="my-1.5 -mx-1" />
         <DropdownMenuItem onClick={() => signOut()} className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3 text-destructive focus:text-destructive flex items-center">
-          <LogOut className="h-4 w-4 shrink-0" /> Sign out
+          <LogOut className="h-4 w-4 shrink-0" /> {t("sign_out")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

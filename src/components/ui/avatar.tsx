@@ -5,6 +5,7 @@ import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import { cn } from "@/lib/utils";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { TOKENS, type PresenceState } from "@/lib/tokens";
+import { useStoriesStore } from "@/lib/stories-store";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -24,6 +25,9 @@ export interface UserAvatarProps {
   presence?: PresenceState | null;
   className?: string;
   alt?: string;
+  hasStory?: boolean | "unseen" | "seen";
+  userId?: string | null;
+  onStoryClick?: () => void;
 }
 
 /**
@@ -31,6 +35,7 @@ export interface UserAvatarProps {
  * - Unified size scale
  * - Initials on surface-2 (bg-[#1c1c1f], text cream #f4f1e7, not lime)
  * - Presence dot positioned from avatar box with 2px cut-out ring, never clipped
+ * - Instagram-style story ring when user has an active story
  */
 export function UserAvatar({
   src,
@@ -39,6 +44,9 @@ export function UserAvatar({
   presence,
   className,
   alt,
+  hasStory,
+  userId,
+  onStoryClick,
 }: UserAvatarProps) {
   const isNamedSize = typeof size === "string" && size in AVATAR_SIZES;
   const config = isNamedSize ? AVATAR_SIZES[size as AvatarSize] : null;
@@ -46,26 +54,48 @@ export function UserAvatar({
   const fontClass = config ? config.font : pixelBox >= 72 ? "text-2xl" : pixelBox >= 48 ? "text-base" : "text-xs";
   const dotSize = config ? config.dot : Math.max(7, Math.round(pixelBox * 0.22));
 
-  return (
+  const storiesStore = useStoriesStore();
+  const storyStatus = hasStory !== undefined
+    ? (hasStory === true ? "unseen" : hasStory === false ? "none" : hasStory)
+    : userId
+      ? storiesStore.unseenAuthorIds.has(userId)
+        ? "unseen"
+        : storiesStore.activeAuthorIds.has(userId)
+          ? "seen"
+          : "none"
+      : "none";
+
+  const avatarElement = (
     <div
       className={cn("relative inline-flex shrink-0 select-none", className)}
       style={{ width: pixelBox, height: pixelBox }}
     >
-      <AvatarPrimitive.Root className="relative flex h-full w-full shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]">
-        <AvatarPrimitive.Image
-          src={normalizeAvatarUrl(src) ?? undefined}
-          alt={alt || fallback}
-          className="aspect-square h-full w-full object-cover"
-        />
-        <AvatarPrimitive.Fallback
-          className={cn(
-            "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)]",
-            fontClass,
-          )}
-        >
-          {fallback.slice(0, 2).toUpperCase()}
-        </AvatarPrimitive.Fallback>
-      </AvatarPrimitive.Root>
+      <div
+        className={cn(
+          "relative flex h-full w-full shrink-0 overflow-hidden rounded-full",
+          storyStatus === "unseen"
+            ? "p-[2.5px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_10px_rgba(220,39,67,0.3)]"
+            : storyStatus === "seen"
+              ? "p-[2px] border border-white/20"
+              : ""
+        )}
+      >
+        <AvatarPrimitive.Root className={cn("relative flex h-full w-full shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]", storyStatus !== "none" && "ring-2 ring-background")}>
+          <AvatarPrimitive.Image
+            src={normalizeAvatarUrl(src) ?? undefined}
+            alt={alt || fallback}
+            className="aspect-square h-full w-full object-cover"
+          />
+          <AvatarPrimitive.Fallback
+            className={cn(
+              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)]",
+              fontClass,
+            )}
+          >
+            {fallback.slice(0, 2).toUpperCase()}
+          </AvatarPrimitive.Fallback>
+        </AvatarPrimitive.Root>
+      </div>
 
       {/* Presence dot: positioned from avatar outer box, 2px cut-out ring, not clipped */}
       {presence && (
@@ -81,6 +111,21 @@ export function UserAvatar({
       )}
     </div>
   );
+
+  if (onStoryClick) {
+    return (
+      <button
+        type="button"
+        onClick={onStoryClick}
+        className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full transition-transform hover:scale-105 active:scale-95"
+        title={storyStatus !== "none" ? "View story" : undefined}
+      >
+        {avatarElement}
+      </button>
+    );
+  }
+
+  return avatarElement;
 }
 
 /**

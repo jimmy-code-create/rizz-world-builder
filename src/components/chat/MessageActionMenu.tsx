@@ -287,7 +287,7 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="glass-strong z-[80] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="glass-strong z-[100] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
