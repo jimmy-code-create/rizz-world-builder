@@ -366,8 +366,8 @@ function ProfilePage() {
         <Calendar className="h-3 w-3" /> Joined {joined}
       </div>
 
-      <Tabs defaultValue="posts" className="mt-8">
-        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-2xl p-1">
+      <Tabs defaultValue="posts" className="mt-4">
+        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-xl p-1">
           <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
           <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
           <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
@@ -375,9 +375,9 @@ function ProfilePage() {
           <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="posts" className="mt-6 space-y-4">
+        <TabsContent value="posts" className="mt-4 space-y-3">
           {posts.isLoading ? (
-            <div className="h-40 animate-pulse rounded-3xl glass" />
+            <div className="h-40 animate-pulse rounded-2xl glass" />
           ) : posts.data?.length === 0 ? (
             <EmptyState label="No posts yet" />
           ) : (
@@ -385,9 +385,9 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="reels" className="mt-6">
+        <TabsContent value="reels" className="mt-4">
           {reelsQ.isLoading ? (
-            <div className="h-40 animate-pulse rounded-3xl glass" />
+            <div className="h-40 animate-pulse rounded-2xl glass" />
           ) : reelsQ.data?.length === 0 ? (
             <EmptyState label="No reels yet" />
           ) : (
@@ -404,20 +404,20 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="realms" className="mt-6 space-y-2">
+        <TabsContent value="realms" className="mt-4 space-y-2">
           {realmsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-3xl glass" />
+            <div className="h-24 animate-pulse rounded-2xl glass" />
           ) : realmsQ.data?.length === 0 ? (
             <EmptyState label="No realms owned" />
           ) : (
             realmsQ.data?.map((c) => (
-              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--brand-paper-dim))` }}>
                     #
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{c.name}</div>
+                    <div className="font-semibold text-sm truncate">{c.name}</div>
                     {c.topic && <div className="text-xs text-muted-foreground truncate">{c.topic}</div>}
                   </div>
                   <div className="text-xs text-muted-foreground">{c.member_count} members</div>
@@ -427,14 +427,14 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="groups" className="mt-6 space-y-2">
+        <TabsContent value="groups" className="mt-4 space-y-2">
           {groupsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-3xl glass" />
+            <div className="h-24 animate-pulse rounded-2xl glass" />
           ) : groupsQ.data?.length === 0 ? (
             <EmptyState label="Not in any groups yet" />
           ) : (
             groupsQ.data?.map((g) => (
-              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   {g.icon_url ? (
                     <img src={g.icon_url} width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-xl object-cover" alt="" />
@@ -444,7 +444,7 @@ function ProfilePage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{g.name}</div>
+                    <div className="font-semibold text-sm truncate">{g.name}</div>
                     {g.topic && <div className="text-xs text-muted-foreground truncate">{g.topic}</div>}
                   </div>
                   <div className="text-xs text-muted-foreground">{g.member_count}</div>
@@ -454,7 +454,7 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="rizz" className="mt-6">
+        <TabsContent value="rizz" className="mt-4">
           <RizzBreakdown score={profile.rizz_score} data={rizzBreakdown.data} loading={rizzBreakdown.isLoading} accent={accent} />
         </TabsContent>
       </Tabs>

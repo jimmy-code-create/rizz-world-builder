@@ -152,7 +152,7 @@ function FeedPage() {
           </div>
         </div>
 
-        <SectionHeading title={t("stories")} hint={t("fresh_stories")} />
+        <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
         <StoriesStrip />
 
         <div id="feed-composer" className="scroll-mt-24">
@@ -161,7 +161,7 @@ function FeedPage() {
 
         <TrendingTagsRail />
 
-        <SectionHeading title={t("latest_drops")} hint={t("drops_subtitle")} />
+        <SectionHeading title={t("latest_drops")} tooltip={t("drops_subtitle")} />
 
         {feed.isLoading && (
           <div className="space-y-4">
@@ -233,15 +233,14 @@ function FeedPage() {
   );
 }
 
-/** A quiet section divider: a label, a hint, and a hairline that runs to the edge. */
-function SectionHeading({ title, hint }: { title: string; hint?: string }) {
+/** A quiet section divider: a label, a tooltip, and a hairline that runs to the edge (12px above and below). */
+function SectionHeading({ title, tooltip }: { title: string; tooltip?: string }) {
   return (
-    <div className="mb-3 mt-6 flex items-baseline gap-3">
-      <h2 className="shrink-0 font-display text-sm font-bold uppercase tracking-[0.14em] text-foreground">
+    <div className="my-3 flex items-center gap-2" title={tooltip}>
+      <h2 className="shrink-0 font-display text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {title}
       </h2>
-      {hint && <p className="min-w-0 truncate text-[11px] text-muted-foreground">{hint}</p>}
-      <span aria-hidden className="ml-1 h-px flex-1 bg-border" />
+      <span aria-hidden className="h-px flex-1 bg-border/60" />
     </div>
   );
 }

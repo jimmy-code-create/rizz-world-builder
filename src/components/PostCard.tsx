@@ -46,7 +46,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
-import { translateText, LANGUAGE_NAMES } from "@/lib/translate";
+import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate";
 import { loadPrefs } from "@/lib/prefs";
 import { PostReactionsSheet } from "@/components/reactions/PostReactionsSheet";
 
@@ -234,6 +234,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [editOpen, setEditOpen] = useState(false);
   const [caption, setCaption] = useState(post.caption ?? "");
+  const [mediaFailed, setMediaFailed] = useState(false);
   const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
   const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
@@ -388,9 +389,9 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="feed-post-card relative isolate mb-4 overflow-hidden rounded-[1.75rem]"
+      className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
     >
-      <header className="flex items-center gap-3 p-4 pb-3">
+      <header className="flex items-center gap-2.5 p-3 pb-2">
         <AuthorAvatarLink post={post} accent={accent} initial={initial} />
         <div className="flex-1 min-w-0">
           <AuthorNameLink post={post} />
@@ -481,7 +482,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </header>
 
       {post.caption && (
-        <div className="px-4 pb-3">
+        <div className="px-3 pb-2">
           <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(showTranslated && translatedCaption ? translatedCaption : post.caption))}>
             {renderGifSegments(showTranslated && translatedCaption ? translatedCaption : post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
               ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
@@ -505,7 +506,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             }))}
           </p>
           {showTranslated && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Languages className="h-3 w-3 text-primary" />
               <span>Translated to {LANGUAGE_NAMES[translatedLang] ?? translatedLang}</span>
               <span>·</span>
@@ -519,7 +520,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             </div>
           )}
           {!showTranslated && translatedCaption && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Languages className="h-3 w-3" />
               <button
                 type="button"
@@ -530,28 +531,34 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               </button>
             </div>
           )}
-          {!translatedCaption && post.caption && post.caption.trim().length > 3 && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Languages className="h-3 w-3" />
-              <button
-                type="button"
-                onClick={handleTranslate}
-                disabled={isTranslating}
-                className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
-              >
-                {isTranslating ? "Translating…" : `Translate post (${LANGUAGE_NAMES[loadPrefs().language] || "Preferred"})`}
-              </button>
-            </div>
-          )}
+          {(() => {
+            const detectedSource = detectSourceLang(post.caption);
+            const userLang = loadPrefs().language || "en";
+            const isDifferentLang = detectedSource !== userLang;
+            if (!isDifferentLang || translatedCaption || post.caption.trim().length <= 3) return null;
+            return (
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Languages className="h-3 w-3" />
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={isTranslating}
+                  className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
+                >
+                  {isTranslating ? "Translating…" : `Translate post (${LANGUAGE_NAMES[userLang] || "Preferred"})`}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
       {post.quote_post_id && <QuoteEmbed postId={post.quote_post_id} />}
       <PollBlock postId={post.id} />
 
-      {post.media_url && (
+      {post.media_url && !mediaFailed && (
         <div
-          className="post-media-frame relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
+          className="post-media-frame relative mb-2 max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
           onClick={
             externalVideo?.ok
               ? undefined
@@ -570,7 +577,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[min(48dvh,390px)] object-contain" />
+            <img
+              src={post.media_url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full max-h-[min(48dvh,390px)] object-contain"
+              onError={() => setMediaFailed(true)}
+            />
           )}
           <AnimatePresence>
             {!externalVideo?.ok && burst > 0 && (
@@ -593,7 +607,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       )}
 
       {Object.keys(grouped).length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+        <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
           {Object.entries(grouped).map(([emoji, { count, mine }]) => (
             <ReactionChipButton
               key={emoji}
@@ -617,15 +631,15 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      <footer className="flex items-center gap-1 px-2 py-2 border-t border-white/5 mt-3">
+      <footer className="flex h-10 items-center gap-1 px-3 border-t border-white/5 mt-2">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-8 px-2 relative gap-1.5 before:absolute before:-inset-1 before:content-[''] ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
-            <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
+            <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
           </motion.span>
           <span className="text-xs font-medium">{formatCount(likeCount)}</span>
         </Button>
@@ -636,16 +650,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
             setShowComments((s) => !s);
           }}
-          className="gap-1.5 text-muted-foreground"
+          className="h-8 px-2 relative gap-1.5 text-muted-foreground before:absolute before:-inset-1 before:content-['']"
         >
-          <MessageCircle className="h-5 w-5" />
+          <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
         <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="React to post">
-              <Smile className="h-5 w-5" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']" aria-label="React to post">
+              <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-2 glass-strong border-white/10">
@@ -669,18 +683,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={saved ? "text-primary" : "text-muted-foreground"}
+          className={`h-8 w-8 p-0 relative before:absolute before:-inset-1 before:content-[''] ${saved ? "text-primary" : "text-muted-foreground"}`}
           aria-label="Save post"
         >
-          <Bookmark className={`h-5 w-5 ${saved ? "fill-current" : ""}`} />
+          <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={sharePost}
-          className="text-muted-foreground"
+          className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']"
+          aria-label="Share post"
         >
-          <Share2 className="h-5 w-5" />
+          <Share2 className="h-4 w-4" />
         </Button>
       </footer>
 

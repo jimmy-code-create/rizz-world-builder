@@ -380,15 +380,15 @@ export function AppShell() {
         </header>
       )}
 
-      {/* Content - strictly using token gutters: 16px (px-4), 24px (sm:px-6), 32px (lg:px-8) */}
+      {/* Content - strictly using token gutters: 12px (px-3), 16px (sm:px-4), 24px (lg:px-6) */}
       <main
         ref={mainRef}
         className={`relative z-10 flex min-h-0 flex-1 flex-col ${
           isConversation || isReels
             ? "w-full overflow-hidden"
             : isWidePage
-              ? "mx-auto w-full max-w-7xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
-              : "mx-auto w-full max-w-3xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
+              ? "mx-auto w-full max-w-7xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
+              : "mx-auto w-full max-w-3xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
         }`}
       >
         <Outlet />
