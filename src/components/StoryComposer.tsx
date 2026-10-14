@@ -366,7 +366,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           </button>
           <div className="text-sm font-semibold hidden xs:block sm:block">New story</div>
         </div>
-        <Button onClick={post} disabled={busy} size="sm" className="bg-gradient-primary shadow-glow rounded-full px-4 h-9">
+        <Button onClick={post} disabled={busy} size="sm" className="bg-primary text-primary-foreground shadow-md rounded-full px-4 h-9">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" /> Share</>}
         </Button>
       </div>
@@ -376,7 +376,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <div
           ref={stageRef}
           onPointerDown={(e) => { if (e.target === stageRef.current) setSelected(null); }}
-          className="relative rounded-2xl overflow-hidden shadow-glow border border-white/10 select-none touch-none h-full w-auto max-h-full max-w-full"
+          className="relative rounded-2xl overflow-hidden shadow-md border border-white/10 select-none touch-none h-full w-auto max-h-full max-w-full"
           style={{
             aspectRatio: "9 / 16",
             background: mediaUrl ? "#000" : bg,
@@ -543,7 +543,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <div className="shrink-0 px-2 pb-1">
           <div className="glass-strong max-h-[42vh] space-y-3 overflow-y-auto rounded-2xl p-3">
             <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-              <Lock className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Who can see this story
+              <Lock className="h-3.5 w-3.5 text-primary" /> Who can see this story
             </p>
             <div className="space-y-1.5">
               {AUDIENCE_OPTIONS.map((option) => (
@@ -554,11 +554,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   onClick={() => setAudience(option.id)}
                   className={`flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-2.5 text-left transition ${
                     audience === option.id
-                      ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/12"
+                      ? "border-primary/50 bg-primary/12"
                       : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                   }`}
                 >
-                  <option.icon className="h-4 w-4 shrink-0 text-[var(--rizz-pink)]" />
+                  <option.icon className="h-4 w-4 shrink-0 text-primary" />
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold">{option.label}</span>
                     <span className="block truncate text-[11px] text-muted-foreground">{option.hint}</span>

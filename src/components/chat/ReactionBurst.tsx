@@ -243,7 +243,7 @@ function BurstInstance({ burst, reduced }: { burst: ReactionBurst; reduced: bool
       {burst.kind === "wow" && (
         <motion.span
           aria-hidden="true"
-          className="absolute left-1/2 top-1/2 block rounded-full border-2 border-[var(--rizz-pink)]/70 will-change-transform"
+          className="absolute left-1/2 top-1/2 block rounded-full border-2 border-primary/70 will-change-transform"
           style={{ width: 76, height: 76, marginLeft: -38, marginTop: -38 }}
           initial={{ scale: 0.45, opacity: 0.85 }}
           animate={{ scale: 2.4, opacity: 0 }}

@@ -474,7 +474,7 @@ export function ChatStoryPlayer({
             className="relative z-10 flex items-center gap-3 px-4 pb-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 12px)" }}
           >
-            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
+            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <X className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
@@ -484,7 +484,7 @@ export function ChatStoryPlayer({
             <button
               onClick={() => setAuto((current) => !current)}
               aria-label={auto ? "Pause autoplay" : "Play autoplay"}
-              className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {auto ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
@@ -518,20 +518,20 @@ export function ChatStoryPlayer({
                     <button
                       onClick={() => changeLanguage("hi")}
                       aria-pressed={language === "hi"}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${language === "hi" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${language === "hi" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       हिंदी
                     </button>
                     <button
                       onClick={() => changeLanguage("en")}
                       aria-pressed={language === "en"}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       English
                     </button>
                   </div>
                 )}
-                <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
+                <button onClick={toggleNarration} aria-label={narration ? "Turn narration off" : "Turn narration on"} className="glass flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   {narration ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
                 <div className="glass flex h-8 items-center gap-0.5 rounded-full px-1">
@@ -540,7 +540,7 @@ export function ChatStoryPlayer({
                       key={value}
                       onClick={() => setSpeed(value)}
                       aria-label={`Narration speed ${value}x`}
-                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
                     >
                       {value}x
                     </button>
@@ -598,10 +598,10 @@ export function ChatStoryPlayer({
         >
           {done ? (
             <div className="flex gap-2">
-              <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
+              <button onClick={reset} className="glass flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <RotateCcw className="h-4 w-4" /> {isRoom4B && language === "hi" ? "फिर से पढ़ें" : "Replay"}
               </button>
-              <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
+              <button onClick={onLike} className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${liked ? "bg-primary text-primary-foreground" : "glass"}`}>
                 <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} /> {liked ? "Liked" : "Like"}
               </button>
             </div>
@@ -610,14 +610,14 @@ export function ChatStoryPlayer({
               <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><GitBranch className="h-3 w-3" /> {language === "hi" && isRoom4B ? "रास्ता चुनो" : "Choose the scene"}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {pending.map((choice) => (
-                  <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
+                  <button key={`${choice.at_idx}-${choice.position}`} onClick={() => choose(choice)} className="glass h-11 rounded-full px-4 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                     {storyText(choice.label, choice.label_en, language)}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <button onClick={advance} className="bg-gradient-primary flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">
+            <button onClick={advance} className="bg-primary text-primary-foreground flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               {language === "hi" && isRoom4B ? "आगे बढ़ो" : "Tap for next scene"} <ChevronsRight className="h-4 w-4" />
             </button>
           )}

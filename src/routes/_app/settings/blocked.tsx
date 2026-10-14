@@ -63,7 +63,7 @@ function BlockedSettingsPage() {
                 <div key={entry.blocked_id} className="flex items-center gap-3 rounded-xl border border-white/5 glass-strong p-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={blockedProfile?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-gradient-primary text-xs font-bold">{username.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{username.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{blockedProfile?.display_name || `@${username}`}</p>

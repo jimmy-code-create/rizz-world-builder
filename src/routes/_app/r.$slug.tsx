@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -620,7 +620,7 @@ function RealmPage() {
           aria-label="Levels"
           onClick={() => setLevelsOpen(true)}
         >
-          <Sparkles className="h-4 w-4" />
+          <Trophy className="h-4 w-4" />
         </Button>
         <Button
           size="sm"
@@ -648,7 +648,7 @@ function RealmPage() {
                   <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={m.profile?.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                         {(m.profile?.display_name || m.profile?.username || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -658,7 +658,7 @@ function RealmPage() {
                     {publicCustomStatus(presence.rows[m.user_id], false) ? (
                       <CustomStatusLine
                         status={publicCustomStatus(presence.rows[m.user_id], false)}
-                        className="text-[11px] text-[var(--rizz-pink)]/90"
+                        className="text-[11px] text-primary/90"
                       />
                     ) : (
                       <p className="text-[11px] text-muted-foreground">{m.role}</p>
@@ -839,7 +839,7 @@ function RealmPage() {
             <DialogTitle className="flex items-center gap-3 text-left font-display text-base">
               <Avatar className="h-9 w-9 shrink-0">
                 <AvatarImage src={viewingMessage?.avatarUrl ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                   {(viewingMessage?.author ?? "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -896,7 +896,7 @@ function RealmPage() {
 
       {c.topic && (
         <div className="chat-bar flex shrink-0 items-start gap-2 border-b border-white/5 px-4 py-3 text-sm text-muted-foreground">
-          <Sparkles className="h-4 w-4 mt-0.5 text-[var(--rizz-pink)] shrink-0" />
+          <Hash className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
           {c.topic}
         </div>
       )}
@@ -930,7 +930,7 @@ function RealmPage() {
                     {people.slice(0, 3).map((person) => (
                       <Avatar key={person.user_id} className="h-4 w-4 ring-1 ring-background">
                         <AvatarImage src={person.user?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-[8px] font-bold">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[8px] font-bold">
                           {(person.user?.username ?? "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -998,7 +998,7 @@ function RealmPage() {
                       onClick={() => setNewRoomKind(k)}
                       className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold capitalize transition-colors ${
                         newRoomKind === k
-                          ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10 text-[var(--rizz-pink)]"
+                          ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-white/10 bg-white/[0.03] text-white/70"
                       }`}
                     >
@@ -1006,7 +1006,7 @@ function RealmPage() {
                     </button>
                   ))}
                 </div>
-                <Button onClick={handleCreateRoom} disabled={!newRoomName.trim() || creatingRoom} className="w-full bg-gradient-primary border-0 shadow-glow">
+                <Button onClick={handleCreateRoom} disabled={!newRoomName.trim() || creatingRoom} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
                   {creatingRoom ? "Creating…" : "Create room"}
                 </Button>
               </div>
@@ -1033,7 +1033,7 @@ function RealmPage() {
               single global VoiceCallBar below, so this row never repeats a
               "Return to call" button or a second call bar. */}
           <div className="flex items-center gap-3">
-            <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white">
+            <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Mic className="h-5 w-5" />
               {activeChannelPeople.length > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
             </div>
@@ -1048,7 +1048,7 @@ function RealmPage() {
                 {activeChannelPeople.slice(0, 4).map((person) => (
                   <Avatar key={person.user_id} className="h-7 w-7 ring-2 ring-background">
                     <AvatarImage src={person.user?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                       {(person.user?.display_name || person.user?.username || "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -1072,7 +1072,7 @@ function RealmPage() {
                 type="button"
                 disabled={joiningVoice}
                 onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
-                className="min-h-11 shrink-0 gap-2 border-0 bg-gradient-primary shadow-glow"
+                className="min-h-11 shrink-0 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
               >
                 <Mic className="h-4 w-4" /> {joiningVoice ? "Joining…" : "Join voice"}
               </Button>
@@ -1178,13 +1178,13 @@ function RealmPage() {
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`realm-message ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-[var(--rizz-pink)]/[0.08] ring-2 ring-[var(--rizz-pink)]/50" : ""}`}
+                className={`realm-message ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""}`}
               >
               {(startsGroup ? (
                 <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
                   <AvatarImage src={authorAvatar ?? undefined} />
                   <AvatarFallback
-                    className={`text-xs font-bold ${isBot ? "bg-[var(--rizz-violet)] text-white" : "bg-gradient-primary"}`}
+                    className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
                   >
                     {authorInitial}
                   </AvatarFallback>
@@ -1331,7 +1331,7 @@ function RealmPage() {
                                   : p.mention
                                   ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
                                   : p.tag
-                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
                                     : p.url
                                       ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
                                       : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
@@ -1570,7 +1570,7 @@ function RealmPage() {
             }}
           />
           </div>
-          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-gradient-primary border-0 shadow-glow shrink-0">
+          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>

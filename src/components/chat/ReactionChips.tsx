@@ -211,16 +211,16 @@ function ReactionChip({
       }}
       // The visible chip is 24px; the invisible ::after makes the tap area 44px
       // without adding any layout height.
-      className={`relative flex h-6 shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+      className={`relative flex h-6 shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         mine
-          ? "border-[var(--rizz-pink)]/60 bg-[var(--rizz-pink)]/20 text-foreground"
+          ? "border-primary/60 bg-primary/20 text-foreground"
           : "border-white/12 bg-[#0c0812]/70 text-foreground/90"
       }`}
       style={{
         boxShadow: glowing
-          ? "0 0 0 2px var(--rizz-pink), 0 2px 12px -2px var(--rizz-pink)"
+          ? "0 0 0 2px var(--brand-signal), 0 2px 12px -2px var(--brand-signal)"
           : mine
-            ? "0 2px 10px -4px var(--rizz-pink)"
+            ? "0 2px 10px -4px var(--brand-signal)"
             : "0 2px 8px -4px rgba(0,0,0,0.6)",
       }}
     >
@@ -302,7 +302,7 @@ function ReactorsSheet({
                     <div key={`${group.emoji}-${userId}`} className="flex min-h-12 items-center gap-3 rounded-2xl px-1">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={person?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -390,7 +390,7 @@ export function ReactionChips({
               transition={{ type: "spring", stiffness: 620, damping: 20 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
-              className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-white/12 bg-[#0c0812]/70 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-white/12 bg-[#0c0812]/70 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               style={{ boxShadow: "0 2px 8px -4px rgba(0,0,0,0.6)" }}
             >
               +{overflow}

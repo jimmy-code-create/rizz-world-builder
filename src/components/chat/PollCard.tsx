@@ -47,7 +47,7 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
 
   return (
     <div className="mt-1 w-full max-w-md rounded-[10px] border border-border bg-card p-3.5">
-      <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
+      <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-primary">
         <IconTile
           size="xs"
           radius="9999px"
@@ -72,12 +72,12 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
               onClick={() => void vote(index)}
               className={`relative block w-full overflow-hidden rounded-[8px] border px-3 py-2 text-left text-sm transition-colors ${
                 chosen
-                  ? "border-[var(--rizz-pink)]/60 bg-[var(--rizz-pink)]/15"
+                  ? "border-primary/60 bg-primary/15"
                   : "border-border bg-[var(--brand-ink-3)] hover:bg-secondary"
               } ${closable ? "cursor-pointer" : "cursor-default"}`}
             >
               <span
-                className="absolute inset-y-0 left-0 bg-[var(--rizz-pink)]/25 transition-all"
+                className="absolute inset-y-0 left-0 bg-primary/25 transition-all"
                 style={{ width: `${share}%` }}
                 aria-hidden="true"
               />
@@ -115,7 +115,7 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
           <button
             type="button"
             onClick={() => setVotersOpen(true)}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--rizz-pink)] hover:underline shrink-0"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline shrink-0"
           >
             <Users className="h-3 w-3" /> Who voted
           </button>
@@ -125,7 +125,7 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
       <Dialog open={votersOpen} onOpenChange={setVotersOpen}>
         <DialogContent className="max-w-md bg-card text-card-foreground border border-border rounded-2xl p-5">
           <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
-            <Users className="h-4 w-4 text-[var(--rizz-pink)]" /> Who voted ({total})
+            <Users className="h-4 w-4 text-primary" /> Who voted ({total})
           </DialogTitle>
           <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {voters.isLoading && (

@@ -37,14 +37,14 @@ export function ExternalVideoEmbed({
         <div className="relative w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#100d18]/75 p-4 shadow-[0_24px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary font-display text-sm font-bold text-white shadow-glow">R</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground font-display text-sm font-bold text-white shadow-md">R</span>
               <div className="min-w-0">
                 <p className="font-display text-sm font-bold leading-tight">RIZZ</p>
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/45">Linked reel</p>
               </div>
             </div>
             <span className="inline-flex max-w-[48%] shrink-0 items-center gap-1.5 truncate rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-white/75">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rizz-pink)] shadow-glow" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-md" />
               <span className="truncate">{platformName} · {source}</span>
             </span>
           </div>
@@ -54,7 +54,7 @@ export function ExternalVideoEmbed({
             <div className="relative flex flex-col items-center">
               <span className="relative grid h-14 w-14 place-items-center rounded-2xl border border-white/15 bg-white/[0.07] shadow-lg">
                 <Film className="h-6 w-6 text-white/75" strokeWidth={1.6} />
-                <span className="absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-full bg-gradient-primary text-white shadow-glow">
+                <span className="absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-md">
                   <Play className="ml-0.5 h-4 w-4 fill-current" />
                 </span>
               </span>
@@ -72,7 +72,7 @@ export function ExternalVideoEmbed({
               href={parsed.value.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 text-sm font-semibold text-white shadow-[0_10px_28px_-14px_var(--rizz-glow)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#090711]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-4 text-sm font-semibold text-white shadow-[0_10px_28px_-14px_transparent] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#090711]"
             >
               <Play className="h-4 w-4 fill-current" />
               Continue on {platformName}

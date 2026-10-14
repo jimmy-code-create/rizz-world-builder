@@ -87,7 +87,7 @@ export function SlashCommandMenu({
               >
                 <Avatar className="h-9 w-9 shrink-0">
                   <AvatarImage src={command.bot_avatar_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-gradient-primary text-[11px] font-bold text-primary-foreground">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold text-primary-foreground">
                     {command.is_builtin ? <BotIcon className="h-4 w-4" aria-hidden="true" /> : initial}
                   </AvatarFallback>
                 </Avatar>
@@ -129,7 +129,7 @@ export function SlashCommandMenu({
               onMouseEnter={() => onHover(index)}
               className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 text-[11px] font-bold transition-colors ${
                 index === activeIndex
-                  ? "bg-[var(--rizz-pink)]/25 text-foreground"
+                  ? "bg-primary/25 text-foreground"
                   : "bg-white/[0.04] text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -138,7 +138,7 @@ export function SlashCommandMenu({
               ) : command.bot_avatar_url ? (
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={command.bot_avatar_url} alt="" />
-                  <AvatarFallback className="bg-gradient-primary text-[9px] font-bold text-primary-foreground">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-[9px] font-bold text-primary-foreground">
                     {command.bot_name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

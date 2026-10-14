@@ -123,7 +123,7 @@ export function MessageLinkPreviews({
               <Button variant="ghost" className="h-12 flex-1 glass border-white/10" onClick={() => setConfirming(null)}>
                 Cancel
               </Button>
-              <Button className="h-12 flex-1 gap-2 bg-gradient-primary" onClick={confirmOpen}>
+              <Button className="h-12 flex-1 gap-2 bg-primary text-primary-foreground" onClick={confirmOpen}>
                 Open link <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
@@ -196,7 +196,7 @@ export function ExternalLinkGuard() {
               Cancel
             </Button>
             <Button
-              className="h-12 flex-1 gap-2 bg-gradient-primary"
+              className="h-12 flex-1 gap-2 bg-primary text-primary-foreground"
               onClick={() => {
                 if (!pending) return;
                 ackDomain(domain, dontAsk);
@@ -243,7 +243,7 @@ function PreviewCard({
       <button
         type="button"
         onClick={isImage ? onViewImage : onOpen}
-        className="block w-full min-h-[48px] text-left transition-colors hover:bg-white/5 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]/60"
+        className="block w-full min-h-[48px] text-left transition-colors hover:bg-white/5 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
         aria-label={isImage ? `View image from ${preview.domain}` : `Open ${preview.title || preview.domain}`}
       >
         {preview.imageUrl && (

@@ -37,7 +37,7 @@ export function GroupInviteMessageCard({ code, message }: Props) {
       <Link
         to="/join/$code"
         params={{ code }}
-        className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-[var(--surface-bubble)] p-3 text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+        className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-[var(--surface-bubble)] p-3 text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span
           className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl text-white"
@@ -64,7 +64,7 @@ export function GroupInviteMessageCard({ code, message }: Props) {
                 : group?.topic || statusText[group?.status ?? "valid"]}
           </span>
         </span>
-        <span className="grid min-h-10 min-w-14 shrink-0 place-items-center rounded-xl bg-gradient-primary px-3 text-sm font-semibold text-white shadow-sm">
+        <span className="grid min-h-10 min-w-14 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground px-3 text-sm font-semibold text-white shadow-sm">
           Join
         </span>
       </Link>

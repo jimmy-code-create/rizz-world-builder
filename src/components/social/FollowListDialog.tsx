@@ -61,7 +61,7 @@ export function FollowListDialog({
             >
               <Avatar className="h-10 w-10">
                 <AvatarImage src={p.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-sm font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
                   {(p.display_name || p.username).charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

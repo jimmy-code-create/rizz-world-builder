@@ -6,11 +6,11 @@ const SHORTCUTS: { keys: string; label: string }[] = [
   { keys: "g f", label: "Go to Feed" },
   { keys: "g r", label: "Go to Reels" },
   { keys: "g e", label: "Go to Explore" },
-  { keys: "g d", label: "Go to DMs" },
+  { keys: "g d", label: "Go to Messages" },
   { keys: "g n", label: "Go to Notifications" },
   { keys: "g p", label: "Go to my Profile" },
   { keys: "g s", label: "Go to Settings" },
-  { keys: "n", label: "Compose new post (open dialog)" },
+  { keys: "n", label: "Compose new post" },
   { keys: "/", label: "Open search" },
   { keys: "⌘K", label: "Command palette" },
   { keys: "?", label: "Show this help" },
@@ -78,19 +78,19 @@ export function KeyboardShortcuts({ profileUsername }: { profileUsername?: strin
   return (
     <>
       {pending === "g" && (
-        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 glass-strong border border-white/10 rounded-xl px-3 py-1.5 text-xs font-medium pointer-events-none shadow-glow">
-          <kbd className="font-mono">g</kbd> + …
+        <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-xl px-3.5 py-1.5 text-xs font-medium pointer-events-none shadow-lg">
+          <kbd className="font-mono text-primary font-bold">g</kbd> + …
         </div>
       )}
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-        <DialogContent className="glass-strong border-white/10 max-w-md">
+        <DialogContent className="border-border bg-card max-w-md">
           <DialogTitle className="font-display">Keyboard shortcuts</DialogTitle>
-          <DialogDescription>Move around faster.</DialogDescription>
-          <ul className="divide-y divide-white/5">
+          <DialogDescription className="text-muted-foreground">Move around faster.</DialogDescription>
+          <ul className="divide-y divide-border">
             {SHORTCUTS.map((s) => (
               <li key={s.keys} className="flex items-center justify-between py-2 text-sm">
                 <span>{s.label}</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-xs">{s.keys}</kbd>
+                <kbd className="px-2 py-0.5 rounded bg-surface-2 border border-border font-mono text-xs">{s.keys}</kbd>
               </li>
             ))}
           </ul>

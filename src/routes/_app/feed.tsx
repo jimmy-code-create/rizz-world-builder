@@ -9,12 +9,13 @@ import { StoriesStrip } from "@/components/StoriesStrip";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Compass, Film, Flame, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Compass, Film, Flame, Loader2, Plus, RefreshCw } from "lucide-react";
 import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { RizzCat } from "@/components/RizzCat";
+import { formatNumber } from "@/lib/formatters";
 
 export const Route = createFileRoute("/_app/feed")({
   head: () => ({ meta: [{ title: "Feed · RIZZ" }] }),
@@ -48,89 +49,81 @@ function FeedPage() {
 
   const likes = useQuery({
     queryKey: ["my-likes", user?.id, feed.data?.map((p) => p.id).join(",")],
-    queryFn: () => fetchMyLikes(user!.id, feed.data!.map((p) => p.id)),
+    queryFn: async () => {
+      if (!user || !feed.data) return new Set<string>();
+      return fetchMyLikes(user.id, feed.data.map((p) => p.id));
+    },
     enabled: !!user && !!feed.data && feed.data.length > 0,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 60_000,
   });
 
+  // Grow the visible slice as the user approaches the bottom of the feed
   useEffect(() => {
-    const ch = supabase
-      .channel("feed-posts")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => {
-        qc.invalidateQueries({ queryKey: ["feed"] });
-      })
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        setVisible((v) => v + FEED_PAGE_SIZE);
+      }
+    }, { rootMargin: "400px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [feed.data]);
+
+  // Realtime updates: newly posted drops pop straight in
+  useEffect(() => {
+    const channel = supabase
+      .channel("feed-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts" },
+        () => { qc.invalidateQueries({ queryKey: ["feed"] }); },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
   const posts = feed.data ?? [];
-  // Everything here is real data from the posts already loaded: how much landed
-  // since midnight, and how much is in the window at all.
+  const shown = useMemo(() => posts.slice(0, visible), [posts, visible]);
+  const remaining = posts.length - visible;
+
+  // Count how many posts have dropped so far today
   const todayCount = useMemo(() => {
-    const midnight = new Date();
-    midnight.setHours(0, 0, 0, 0);
-    return posts.filter((post) => new Date(post.created_at).getTime() >= midnight.getTime()).length;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const cut = startOfDay.getTime();
+    return posts.filter((p) => new Date(p.created_at).getTime() >= cut).length;
   }, [posts]);
 
   const name = profile?.display_name || profile?.username || "there";
-  const initial = name.charAt(0).toUpperCase();
-  const shown = posts.slice(0, visible);
-  const remaining = posts.length - visible;
-
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || remaining <= 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisible((v) => v + FEED_PAGE_SIZE);
-        }
-      },
-      { rootMargin: "400px" },
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [remaining]);
 
   const focusComposer = () => {
     const el = document.getElementById("feed-composer");
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => {
-      (el?.querySelector("textarea, input") as HTMLElement | null)?.focus();
-    }, 320);
+    const area = el?.querySelector("textarea");
+    area?.focus();
   };
 
   return (
-    <div className="pb-2">
-      {/* Hero: who you are, what is happening, and the two things worth doing. */}
-      <motion.section
+    <div className="space-y-6">
+      {/* Greeting card - clean flat surface */}
+      <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[26px] border border-white/10 glass-strong p-4 sm:p-5"
+        className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-5"
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-[var(--rizz-pink)]/25 blur-3xl"
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -bottom-28 -left-12 h-56 w-56 rounded-full bg-[var(--rizz-violet)]/20 blur-3xl"
-        />
-
         <div className="relative">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 ring-2 ring-[var(--rizz-pink)]/40">
-              <AvatarImage src={profile?.avatar_url ?? undefined} alt="" />
-              <AvatarFallback className="bg-gradient-primary font-bold">{initial}</AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              src={profile?.avatar_url}
+              fallback={profile?.display_name || profile?.username}
+              size="md"
+            />
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {greetingFor(new Date().getHours())}
               </p>
-              <p className="truncate font-display text-base font-bold">{name}</p>
+              <p className="truncate font-display text-base font-bold text-foreground">{name}</p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
@@ -138,11 +131,10 @@ function FeedPage() {
             </span>
           </div>
 
-          <h1 className="mt-3.5 font-display text-[26px] font-bold leading-none tracking-tight sm:text-3xl">
+          <h1 className="mt-3.5 font-display text-[26px] font-bold leading-none tracking-tight sm:text-3xl text-foreground">
             Your Feed
           </h1>
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-[var(--rizz-pink)]" />
+          <p className="mt-1.5 text-xs text-muted-foreground">
             What&apos;s vibing right now
           </p>
 
@@ -150,15 +142,15 @@ function FeedPage() {
             <Button
               type="button"
               onClick={focusComposer}
-              className="h-11 min-w-0 flex-1 gap-2 border-0 bg-gradient-primary text-primary-foreground shadow-glow sm:flex-none sm:px-6"
+              className="h-11 min-w-0 flex-1 gap-2 bg-primary text-primary-foreground sm:flex-none sm:px-6 font-semibold"
             >
-              <Sparkles className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
               <span className="truncate">Share something</span>
             </Button>
             <Button
               asChild
               variant="outline"
-              className="h-11 gap-2 border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+              className="h-11 gap-2 border-border bg-surface-2 text-foreground hover:bg-surface-3"
             >
               <Link to="/reels">
                 <Film className="h-4 w-4" />
@@ -170,7 +162,7 @@ function FeedPage() {
               asChild
               variant="outline"
               size="icon"
-              className="h-11 w-11 shrink-0 border-border bg-card p-0 text-foreground hover:bg-[var(--brand-ink-3)]"
+              className="h-11 w-11 shrink-0 border-border bg-surface-2 p-0 text-foreground hover:bg-surface-3"
             >
               <Link
                 to="/explore"
@@ -183,20 +175,15 @@ function FeedPage() {
           </div>
 
           <div className="no-scrollbar -mx-4 mt-3 flex items-center gap-2 overflow-x-auto px-4 text-[11px] sm:mx-0 sm:px-0">
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
-              <Flame className="h-3 w-3 text-[var(--rizz-pink)]" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-semibold text-muted-foreground">
+              <Flame className="h-3 w-3 text-primary" />
               {todayCount === 0
                 ? "Nothing yet today"
-                : `${todayCount} new drop${todayCount === 1 ? "" : "s"} today`}
+                : `${formatNumber(todayCount)} new drop${todayCount === 1 ? "" : "s"} today`}
             </span>
-            {posts.length > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-muted-foreground">
-                {posts.length} post{posts.length === 1 ? "" : "s"} in your feed
-              </span>
-            )}
           </div>
         </div>
-      </motion.section>
+      </motion.div>
 
       <SectionHeading title="Stories" hint="Fresh in the last 24 hours" />
       <StoriesStrip />
@@ -211,12 +198,12 @@ function FeedPage() {
 
       {feed.isLoading && (
         <div className="space-y-4">
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-3xl" />)}
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}
         </div>
       )}
 
       {!feed.isLoading && posts.length === 0 && (
-        <div className="glass rounded-3xl border border-white/5 p-8 text-center">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center">
           <RizzCat mood="box" size={124} className="mx-auto" />
           <h2 className="mt-4 font-display text-xl font-bold">Nothing here yet</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -225,9 +212,9 @@ function FeedPage() {
           <Button
             type="button"
             onClick={focusComposer}
-            className="mt-5 h-11 gap-2 border-0 bg-gradient-primary text-primary-foreground"
+            className="mt-5 h-11 gap-2 bg-primary text-primary-foreground font-semibold"
           >
-            <Sparkles className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Start the vibe
           </Button>
         </div>
@@ -254,8 +241,8 @@ function FeedPage() {
       )}
 
       {!feed.isLoading && posts.length > 0 && remaining <= 0 && (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-white/10 glass p-6 text-center">
-          <p className="font-display text-base font-bold">You&apos;re all caught up ✨</p>
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center">
+          <p className="font-display text-base font-bold">You&apos;re all caught up</p>
           <p className="text-xs text-muted-foreground">
             New posts show up here the moment they land.
           </p>
@@ -264,7 +251,7 @@ function FeedPage() {
             variant="outline"
             disabled={feed.isFetching}
             onClick={() => void feed.refetch()}
-            className="h-11 gap-2 border-white/10 bg-white/5"
+            className="h-11 gap-2 border-border bg-surface-2 hover:bg-surface-3"
           >
             <RefreshCw className={`h-4 w-4 ${feed.isFetching ? "animate-spin" : ""}`} />
             {feed.isFetching ? "Checking…" : "Check for new posts"}
@@ -283,7 +270,7 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
         {title}
       </h2>
       {hint && <p className="min-w-0 truncate text-[11px] text-muted-foreground">{hint}</p>}
-      <span aria-hidden className="ml-1 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
+      <span aria-hidden className="ml-1 h-px flex-1 bg-border" />
     </div>
   );
 }

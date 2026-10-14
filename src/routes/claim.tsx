@@ -106,7 +106,7 @@ function ClaimUsernamePage() {
     <AuthCard
       title="Claim your @"
       subtitle="Choose the username people will use to find you."
-      footer={<>Need a different account? <Link to="/" className="text-[var(--rizz-pink)] hover:underline font-medium">Back to RIZZ</Link></>}
+      footer={<>Need a different account? <Link to="/" className="text-primary hover:underline font-medium">Back to RIZZ</Link></>}
     >
       {errorKind && (
         <AuthErrorBanner kind={errorKind} rawMessage={errorMessage} onRetry={() => setErrorKind(null)} retryLabel="Try another username" />

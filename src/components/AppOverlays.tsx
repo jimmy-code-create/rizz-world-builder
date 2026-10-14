@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const ROUTES: Record<string, string> = {
   f: "/feed", r: "/reels", e: "/explore", d: "/dms", n: "/notifications",
-  b: "/bookmarks", g: "/groups", c: "/realms", p: "/effects", t: "/leaderboard",
+  b: "/bookmarks", g: "/groups", c: "/realms", t: "/leaderboard",
   s: "/settings",
 };
 
@@ -126,7 +126,7 @@ export function AppOverlays() {
     <>
       {/* Scroll progress bar */}
       <div
-        className="fixed top-0 left-0 right-0 h-0.5 z-50 pointer-events-none bg-gradient-primary origin-left transition-transform duration-100"
+        className="fixed top-0 left-0 right-0 h-0.5 z-50 pointer-events-none bg-primary origin-left transition-transform duration-100"
         style={{ transform: `scaleX(${progress / 100})` }}
         aria-hidden
       />
@@ -137,7 +137,7 @@ export function AppOverlays() {
             initial={{ y: -40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -40, opacity: 0 }}
-            className="fixed top-2 left-1/2 -translate-x-1/2 z-50 glass-strong border border-amber-500/30 rounded-full px-3 py-1.5 text-xs font-medium flex items-center gap-2 shadow-glow"
+            className="fixed top-2 left-1/2 -translate-x-1/2 z-50 bg-card border border-amber-500/30 rounded-full px-3.5 py-1.5 text-xs font-medium flex items-center gap-2 shadow-lg"
           >
             <WifiOff className="h-3.5 w-3.5 text-amber-400" /> You're offline
           </motion.div>
@@ -148,21 +148,23 @@ export function AppOverlays() {
         {installEvt && !installDismissed && (
           <motion.div
             initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-            className="fixed bottom-24 md:bottom-6 right-4 z-40 glass-strong border border-white/10 rounded-2xl p-3 pr-2 shadow-glow flex items-center gap-3 max-w-xs"
+            className="fixed bottom-24 md:bottom-6 right-4 z-40 bg-card border border-border rounded-2xl p-3 pr-2 shadow-xl flex items-center gap-3 max-w-xs"
           >
-            <div className="h-9 w-9 rounded-xl bg-gradient-primary grid place-items-center"><Download className="h-4 w-4" /></div>
-            <div className="text-xs flex-1">
-              <p className="font-semibold">Install RIZZ</p>
-              <p className="text-muted-foreground">Get the app on your device.</p>
+            <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground grid place-items-center font-bold">
+              <Download className="h-4 w-4" />
+            </div>
+            <div className="text-xs flex-1 min-w-0">
+              <p className="font-semibold text-foreground">Install RIZZ</p>
+              <p className="text-muted-foreground truncate">Get the app on your device.</p>
             </div>
             <button
               onClick={async () => { await installEvt.prompt?.(); setInstallEvt(null); }}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gradient-primary"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >Install</button>
             <button
               onClick={() => { setInstallDismissed(true); localStorage.setItem("rizz:install-dismissed","1"); }}
-              className="h-7 w-7 grid place-items-center rounded-full hover:bg-white/5" aria-label="Dismiss"
-            ><X className="h-3.5 w-3.5" /></button>
+              className="h-8 w-8 grid place-items-center rounded-full hover:bg-surface-2 text-muted-foreground hover:text-foreground" aria-label="Dismiss"
+            ><X className="h-4 w-4" /></button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -174,7 +176,7 @@ export function AppOverlays() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="fixed bottom-24 left-4 z-30 grid h-10 w-10 place-items-center rounded-full border border-border bg-card active:scale-95 md:bottom-6 md:left-72"
+            className="fixed bottom-24 left-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-border bg-card shadow-lg active:scale-95 md:bottom-6 md:left-72 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Scroll to top"
           >
             <ArrowUp className="h-4 w-4" />
@@ -182,12 +184,11 @@ export function AppOverlays() {
         )}
       </AnimatePresence>
 
-      {/* Focus mode toggle — bottom right on desktop. `data-overlay-hide` parks
-          it while a sheet or dialog is open so it never covers their rows. */}
+      {/* Focus mode toggle */}
       <button
         data-overlay-hide
         onClick={() => setFocusMode((v) => !v)}
-        className={`hidden md:grid fixed bottom-6 right-6 z-30 h-10 w-10 place-items-center rounded-full border bg-card active:scale-95 transition-colors ${focusMode ? "border-[var(--rizz-signal,var(--brand-signal))] text-[var(--brand-signal)]" : "border-border"}`}
+        className={`hidden md:grid fixed bottom-6 right-6 z-30 h-11 w-11 place-items-center rounded-full border bg-card shadow-lg active:scale-95 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${focusMode ? "border-primary text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
         aria-label="Toggle focus mode"
         title="Focus mode (shift+F)"
       >
@@ -195,14 +196,14 @@ export function AppOverlays() {
       </button>
 
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-        <DialogContent className="glass-strong border-white/10 max-w-md">
+        <DialogContent className="border-border bg-card max-w-md">
           <DialogTitle className="font-display text-xl">Keyboard shortcuts</DialogTitle>
-          <DialogDescription>Move around RIZZ at the speed of thought.</DialogDescription>
-          <ul className="divide-y divide-white/5 text-sm mt-2">
+          <DialogDescription className="text-muted-foreground">Move around RIZZ at the speed of thought.</DialogDescription>
+          <ul className="divide-y divide-border text-sm mt-2">
             {SHORTCUTS.map((s) => (
-              <li key={s.label} className="flex items-center justify-between py-2">
+              <li key={s.label} className="flex items-center justify-between py-2.5">
                 <span className="text-muted-foreground">{s.label}</span>
-                <kbd className="font-mono text-[11px] glass border border-white/10 rounded px-2 py-0.5">{s.keys}</kbd>
+                <kbd className="font-mono text-[11px] bg-surface-2 border border-border rounded px-2 py-0.5">{s.keys}</kbd>
               </li>
             ))}
           </ul>

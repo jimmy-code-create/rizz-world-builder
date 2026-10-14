@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "RIZZ is a feed with a live realm behind every profile: posts, reels, voice rooms, DMs and chat stories in one place.",
+          "RIZZ is a feed with a live realm behind every profile: posts, reels, voice rooms, Messages and chat stories in one place.",
       },
     ],
   }),
@@ -401,7 +401,7 @@ const pillars = [
   },
   {
     icon: MessageSquare,
-    title: "DMs & chat stories",
+    title: "Messages & chat stories",
     body: "Private chat with reactions, wallpapers and voice notes, plus stories that disappear after 24 hours.",
   },
 ];

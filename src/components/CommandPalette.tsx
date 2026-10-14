@@ -5,9 +5,12 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Bot, Home, Compass, Bell, MessageCircle, Hash, Gift, Bookmark, Sparkles, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut,
+  Bot, Home, Compass, Bell, MessageCircle, Hash, Gift, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { UserAvatar } from "@/components/ui/avatar";
+import { formatNumber } from "@/lib/formatters";
+import { toast } from "sonner";
 
 type Hit = { kind: "user"; id: string; username: string; display_name: string | null; avatar_url: string | null }
   | { kind: "tag"; tag: string; post_count: number };
@@ -20,8 +23,8 @@ const PAGES = [
   { to: "/realms", label: "Realms", icon: Hash },
   { to: "/drops", label: "Giveaways", icon: Gift },
   { to: "/dms", label: "Messages", icon: MessageCircle },
+  { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/effects", label: "Effects", icon: Sparkles },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Leaderboard", icon: Flame },
   { to: "/notifications", label: "Inbox", icon: Bell },
@@ -48,8 +51,6 @@ export function CommandPalette() {
         setOpen(true);
       }
     };
-    // The mobile header's search field asks for the palette through this event
-    // instead of faking a keystroke.
     const onOpenEvent = () => setOpen(true);
     window.addEventListener("keydown", onKey);
     window.addEventListener("rizz:command-palette", onOpenEvent);
@@ -84,22 +85,30 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search creators, tags, or jump anywhere…  (⌘K)" value={q} onValueChange={setQ} />
+      <CommandInput placeholder="Search people, tags, or jump anywhere…  (⌘K)" value={q} onValueChange={setQ} />
       <CommandList>
         <CommandEmpty>No matches.</CommandEmpty>
         {hits.length > 0 && (
           <CommandGroup heading="Results">
             {hits.map((h) => h.kind === "user" ? (
-              <CommandItem key={"u" + h.id} value={"user " + h.username} onSelect={() => go(() => nav({ to: "/u/$username", params: { username: h.username } }))}>
-                <UserIcon className="mr-2 h-4 w-4 text-[var(--rizz-pink)]" />
+              <CommandItem
+                key={"u" + h.id}
+                value={"user " + h.username + " " + (h.display_name || "")}
+                onSelect={() => go(() => nav({ to: "/u/$username", params: { username: h.username } }))}
+              >
+                <UserAvatar src={h.avatar_url} fallback={h.display_name || h.username} size="xs" className="mr-2" />
                 <span className="font-medium">@{h.username}</span>
                 {h.display_name && <span className="ml-2 text-muted-foreground text-xs truncate">{h.display_name}</span>}
               </CommandItem>
             ) : (
-              <CommandItem key={"t" + h.tag} value={"tag " + h.tag} onSelect={() => go(() => nav({ to: "/tag/$tag", params: { tag: h.tag } }))}>
-                <Hash className="mr-2 h-4 w-4 text-[var(--rizz-pink)]" />
+              <CommandItem
+                key={"t" + h.tag}
+                value={"tag " + h.tag}
+                onSelect={() => go(() => nav({ to: "/tag/$tag", params: { tag: h.tag } }))}
+              >
+                <Hash className="mr-2 h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">#{h.tag}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{h.post_count} posts</span>
+                <span className="ml-auto text-xs text-muted-foreground">{formatNumber(h.post_count)} posts</span>
               </CommandItem>
             ))}
           </CommandGroup>
@@ -108,24 +117,38 @@ export function CommandPalette() {
         <CommandGroup heading="Go to">
           {PAGES.map((p) => (
             <CommandItem key={p.to} value={"goto " + p.label} onSelect={() => go(() => nav({ to: p.to }))}>
-              <p.icon className="mr-2 h-4 w-4" /> {p.label}
+              <p.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>{p.label}</span>
             </CommandItem>
           ))}
           {profileUsername && (
             <CommandItem value="goto profile" onSelect={() => go(() => nav({ to: "/u/$username", params: { username: profileUsername } }))}>
-              <UserIcon className="mr-2 h-4 w-4" /> My profile
+              <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>My profile</span>
             </CommandItem>
           )}
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Actions">
-          <CommandItem value="copy profile link" onSelect={() => go(() => {
-            if (profileUsername) navigator.clipboard.writeText(`${location.origin}/u/${profileUsername}`);
-          })}>
-            <Sparkles className="mr-2 h-4 w-4" /> Copy my profile link
+          <CommandItem
+            value="copy profile link"
+            onSelect={() => go(() => {
+              if (profileUsername) {
+                navigator.clipboard.writeText(`${location.origin}/u/${profileUsername}`);
+                toast.success("Profile link copied to clipboard");
+              }
+            })}
+          >
+            <Copy className="mr-2 h-4 w-4 text-muted-foreground" />
+            <span>Copy my profile link</span>
           </CommandItem>
-          <CommandItem value="sign out" onSelect={() => go(() => signOut())}>
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
+          <CommandItem
+            value="sign out"
+            className="text-destructive focus:text-destructive"
+            onSelect={() => go(() => signOut())}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Sign out</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

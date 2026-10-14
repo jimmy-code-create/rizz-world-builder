@@ -62,7 +62,7 @@ export function ScheduleDialog({ open, onOpenChange, realmId, roomId, body, onSc
       <DialogContent className="glass-strong border-white/10">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
-            <CalendarClock className="h-5 w-5 text-[var(--rizz-pink)]" /> Schedule message
+            <CalendarClock className="h-5 w-5 text-primary" /> Schedule message
           </DialogTitle>
         </DialogHeader>
 
@@ -85,7 +85,7 @@ export function ScheduleDialog({ open, onOpenChange, realmId, roomId, body, onSc
           <Button variant="outline" className="glass border-white/10 flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="flex-1 bg-gradient-primary border-0 shadow-glow" disabled={busy || !body.trim()} onClick={() => void submit()}>
+          <Button className="flex-1 bg-primary text-primary-foreground border-0 shadow-md" disabled={busy || !body.trim()} onClick={() => void submit()}>
             {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
             Schedule
           </Button>

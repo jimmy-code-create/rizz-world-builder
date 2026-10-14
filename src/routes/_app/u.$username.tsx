@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar, Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
@@ -241,7 +242,7 @@ function ProfilePage() {
     );
   }
 
-  const accent = profile.accent_color || "var(--rizz-pink)";
+  const accent = profile.accent_color || "var(--brand-signal)";
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
@@ -254,7 +255,7 @@ function ProfilePage() {
           style={{
             background: profile.banner_url
               ? `url(${profile.banner_url}) center/cover`
-              : `linear-gradient(135deg, ${accent}, var(--rizz-violet))`,
+              : `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
           }}
         >
           {eq?.profile_effect && (
@@ -315,7 +316,7 @@ function ProfilePage() {
               size="sm"
               onClick={() => followMut.mutate()}
               disabled={followMut.isPending}
-              className={isFollowing ? "glass border border-white/10" : "bg-gradient-primary border-0 shadow-glow"}
+              className={isFollowing ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}
               variant={isFollowing ? "outline" : "default"}
             >
               {isFollowing ? "Following" : "Follow"}
@@ -355,9 +356,9 @@ function ProfilePage() {
         <button onClick={() => setListOpen("following")} className="hover:underline">
           <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
         </button>
-        <div className="ml-auto flex items-center gap-1.5 text-[var(--rizz-pink)] font-bold">
+        <div className="ml-auto flex items-center gap-1.5 text-primary font-bold">
           <Sparkles className="h-4 w-4" />
-          {profile.rizz_score} Rizz
+          {formatNumber(profile.rizz_score)} Rizz
         </div>
       </div>
 
@@ -412,7 +413,7 @@ function ProfilePage() {
             realmsQ.data?.map((c) => (
               <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--rizz-violet))` }}>
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--brand-paper-dim))` }}>
                     #
                   </div>
                   <div className="flex-1 min-w-0">
@@ -438,7 +439,7 @@ function ProfilePage() {
                   {g.icon_url ? (
                     <img src={g.icon_url} width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-xl object-cover" alt="" />
                   ) : (
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--rizz-violet))` }}>
+                    <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--brand-paper-dim))` }}>
                       {g.name.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -481,19 +482,19 @@ function EmptyState({ label }: { label: string }) {
 function RizzBreakdown({ score, data, loading, accent }: { score: number; data?: { likes: number; comments: number; reactions: number; postCount: number; badges: number }; loading: boolean; accent: string }) {
   if (loading || !data) return <div className="h-40 animate-pulse rounded-3xl glass" />;
   const rows = [
-    { icon: Heart, label: "Likes received", value: data.likes, pts: data.likes * 2, color: "var(--rizz-pink)" },
-    { icon: MessageSquare, label: "Comments received", value: data.comments, pts: data.comments * 3, color: "var(--rizz-violet)" },
-    { icon: Sparkles, label: "Reactions received", value: data.reactions, pts: data.reactions * 1, color: "var(--rizz-pink)" },
-    { icon: UserPlus, label: "Posts published", value: data.postCount, pts: data.postCount * 5, color: "var(--rizz-violet)" },
-    { icon: Star, label: "Badges earned", value: data.badges, pts: data.badges * 25, color: "var(--rizz-pink)" },
+    { icon: Heart, label: "Likes received", value: data.likes, pts: data.likes * 2, color: "var(--brand-signal)" },
+    { icon: MessageSquare, label: "Comments received", value: data.comments, pts: data.comments * 3, color: "var(--brand-paper-dim)" },
+    { icon: Smile, label: "Reactions received", value: data.reactions, pts: data.reactions * 1, color: "var(--brand-signal)" },
+    { icon: UserPlus, label: "Posts published", value: data.postCount, pts: data.postCount * 5, color: "var(--brand-paper-dim)" },
+    { icon: Star, label: "Badges earned", value: data.badges, pts: data.badges * 25, color: "var(--brand-signal)" },
   ];
   const total = rows.reduce((a, r) => a + r.pts, 0) || 1;
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6 text-center" style={{ boxShadow: `0 0 40px ${accent}30` }}>
+      <div className="glass rounded-3xl p-6 text-center" className="border border-border bg-card rounded-2xl p-6 text-center">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">Rizz Score</div>
         <div className="font-display text-5xl font-bold mt-2 flex items-center justify-center gap-2" style={{ color: accent }}>
-          <Sparkles className="h-8 w-8" />{score}
+          <Sparkles className="h-8 w-8" />{formatNumber(score)}
         </div>
       </div>
       <div className="glass rounded-3xl p-5 space-y-3">
@@ -507,7 +508,7 @@ function RizzBreakdown({ score, data, loading, accent }: { score: number; data?:
                 <div className="text-muted-foreground"><span className="font-semibold text-foreground">{r.value}</span> · +{r.pts}</div>
               </div>
               <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${r.color}, ${accent})` }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: r.color }} />
               </div>
             </div>
           );

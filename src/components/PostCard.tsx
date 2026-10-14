@@ -212,7 +212,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     reactMut.mutate({ emoji, mine });
   };
 
-  const accent = post.author?.accent_color || "var(--rizz-pink)";
+  const accent = post.author?.accent_color || "var(--brand-signal)";
   const initial = (post.author?.display_name || post.author?.username || "?").charAt(0).toUpperCase();
 
   const bookmarkMut = useMutation({
@@ -360,7 +360,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               </span>
             )}
             {isPinned && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[var(--rizz-pink)] uppercase tracking-wider">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
                 <Pin className="h-2.5 w-2.5 fill-current" /> Pinned
               </span>
             )}
@@ -439,7 +439,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             : renderCaptionWithTags(segment.value).map((p, i) => {
             if (p.tag) {
               return (
-                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-[var(--rizz-pink)] hover:underline font-medium">{p.text}</Link>
+                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
               );
             }
             if (p.mention) {
@@ -494,7 +494,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 className="pointer-events-none absolute inset-0 z-10 grid place-items-center"
               >
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
-                  <Heart className="h-3.5 w-3.5 fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" />
+                  <Heart className="h-3.5 w-3.5 fill-primary text-primary" />
                   Liked
                 </span>
               </motion.div>
@@ -523,7 +523,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`gap-1.5 ${liked ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`}
+          className={`gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
@@ -554,7 +554,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   type="button"
                   onClick={() => toggleReaction(e)}
                   aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] hover:bg-white/10"
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-white/10"
                 >
                   {e}
                 </button>
@@ -567,7 +567,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={saved ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}
+          className={saved ? "text-primary" : "text-muted-foreground"}
           aria-label="Save post"
         >
           <Bookmark className={`h-5 w-5 ${saved ? "fill-current" : ""}`} />
@@ -595,7 +595,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <button
                 key={r}
                 onClick={() => setReportReason(r)}
-                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/15" : "border-white/10 hover:bg-white/5"}`}
+                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/5"}`}
               >
                 {r}
               </button>
@@ -603,7 +603,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setReportOpen(false)}>Cancel</Button>
-            <Button onClick={() => reportMut.mutate()} disabled={reportMut.isPending} className="bg-gradient-primary border-0">Submit report</Button>
+            <Button onClick={() => reportMut.mutate()} disabled={reportMut.isPending} className="bg-primary text-primary-foreground border-0">Submit report</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -616,7 +616,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <p className="text-[10px] text-muted-foreground text-right">{caption.length}/2000</p>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={() => editMut.mutate()} disabled={editMut.isPending} className="bg-gradient-primary border-0">Save</Button>
+            <Button onClick={() => editMut.mutate()} disabled={editMut.isPending} className="bg-primary text-primary-foreground border-0">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -667,7 +667,7 @@ function CommentsThread({ postId }: { postId: string }) {
             <div key={c.id} className={`flex gap-2 text-sm ${comment.parent_comment_id ? "ml-8" : ""}`}>
               <Avatar className="h-7 w-7 shrink-0">
                 <AvatarImage src={a?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-[10px]">
+                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                   {(a?.display_name || a?.username || "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -679,7 +679,7 @@ function CommentsThread({ postId }: { postId: string }) {
                   {user && (
                     <button
                       type="button"
-                      className="text-[10px] text-muted-foreground hover:text-[var(--rizz-pink)]"
+                      className="text-[10px] text-muted-foreground hover:text-primary"
                       onClick={() => setReplyTo({ id: c.id, username: a?.username ?? "user" })}
                     >
                       Reply
@@ -729,7 +729,7 @@ function CommentsThread({ postId }: { postId: string }) {
             <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 500))} />
             <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary text-[10px]">
+              <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                 {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -739,7 +739,7 @@ function CommentsThread({ postId }: { postId: string }) {
               placeholder={replyTo ? "Write a reply…" : "Add a comment…"}
               className="bg-transparent border-white/10 h-9"
             />
-            <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-gradient-primary border-0 h-9 w-9">
+            <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 h-9 w-9">
               <Send className="h-4 w-4" />
             </Button>
           </form>
@@ -856,7 +856,7 @@ function CommentInteractions({ commentId }: { commentId: string }) {
         aria-pressed={liked}
         disabled={toggleLike.isPending}
         onClick={() => toggleLike.mutate()}
-        className={`rounded-full px-1.5 py-0.5 text-[10px] ${liked ? "text-[var(--rizz-pink)]" : "text-muted-foreground"}`}
+        className={`rounded-full px-1.5 py-0.5 text-[10px] ${liked ? "text-primary" : "text-muted-foreground"}`}
       >
         ♥ {current.likes.length || ""}
       </button>
@@ -892,7 +892,7 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
       ) : (
         <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
           <AvatarImage src={post.author?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
         </Avatar>
       )}
     </ProfilePreviewTrigger>

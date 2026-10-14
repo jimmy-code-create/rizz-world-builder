@@ -387,7 +387,7 @@ export function MusicPlayer({
           type="button"
           onClick={toggle}
           aria-label={playing ? `Pause ${track?.title ?? "track"}` : `Play ${track?.title ?? "track"}`}
-          className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-primary text-white"
+          className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary text-primary-foreground"
         >
           {track?.artwork ? (
             <img src={track.artwork} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
@@ -422,9 +422,9 @@ export function MusicPlayer({
               onChange={(event) => seekTo(Number(event.target.value))}
               aria-label="Seek"
               disabled={duration <= 0}
-              className="order-last h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-[var(--rizz-pink)] disabled:opacity-40 sm:order-none sm:w-32"
+              className="order-last h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-primary disabled:opacity-40 sm:order-none sm:w-32"
               style={{
-                background: `linear-gradient(to right, var(--rizz-pink) ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
+                background: `linear-gradient(to right, var(--brand-signal) ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
               }}
             />
             <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">

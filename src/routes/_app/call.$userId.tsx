@@ -659,8 +659,8 @@ function CallPage() {
           >
             {status === "ringing" && (
               <>
-                <span className="absolute inset-0 rounded-full bg-[var(--rizz-pink)]/30 animate-ping" />
-                <span className="absolute inset-0 rounded-full bg-[var(--rizz-pink)]/20 animate-ping [animation-delay:300ms]" />
+                <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
+                <span className="absolute inset-0 rounded-full bg-primary/20 animate-ping [animation-delay:300ms]" />
               </>
             )}
             <span
@@ -669,7 +669,7 @@ function CallPage() {
             />
             <Avatar className="h-36 w-36 ring-4 ring-white/20 shadow-2xl relative">
               <AvatarImage src={other.data?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary text-4xl font-bold">
+              <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
                 {(other.data?.username ?? "?").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -742,7 +742,7 @@ function CallPage() {
               enhancedNC ? "bg-white/15 text-white" : "bg-white/5 text-white/60"
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Volume2 className="h-3.5 w-3.5" />
             Enhanced noise cancellation {enhancedNC ? "on" : "off"}
           </button>
         </div>

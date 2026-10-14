@@ -72,7 +72,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
     <aside className="hidden h-full w-[320px] shrink-0 flex-col border-r border-white/10 bg-[var(--surface)]/60 lg:flex">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <p className="font-display text-sm font-bold tracking-tight">Messages</p>
-        <Link to="/dms" className="text-[11px] font-semibold text-[var(--rizz-pink)] hover:underline">
+        <Link to="/dms" className="text-[11px] font-semibold text-primary hover:underline">
           New
         </Link>
       </div>
@@ -106,7 +106,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
             >
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarImage src={thread.other.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                   {(thread.other.username ?? "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -125,7 +125,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
                 </p>
               </div>
               {thread.unread > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--rizz-pink)] px-1.5 text-[10px] font-bold text-white">
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
                   {thread.unread}
                 </span>
               )}

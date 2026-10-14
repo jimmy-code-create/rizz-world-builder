@@ -95,12 +95,12 @@ export function WallpaperSheet({
                 aria-label={isNone ? "No wallpaper" : `Wallpaper ${index + 1}`}
                 aria-pressed={active}
                 className={`relative grid h-20 place-items-center overflow-hidden rounded-2xl border bg-black/30 transition-transform active:scale-[0.98] ${
-                  active ? "border-[var(--rizz-cyan)] ring-2 ring-[var(--rizz-cyan)]/40" : "border-white/10"
+                  active ? "border-primary ring-2 ring-primary/40" : "border-white/10"
                 }`}
                 style={isNone ? undefined : { backgroundImage: preset, backgroundRepeat: "no-repeat" }}
               >
                 {isNone && <X className="h-5 w-5 text-muted-foreground" aria-hidden="true" />}
-                {active && <Check className="h-4 w-4 text-[var(--rizz-cyan)]" aria-hidden="true" />}
+                {active && <Check className="h-4 w-4 text-primary" aria-hidden="true" />}
               </button>
             );
           })}

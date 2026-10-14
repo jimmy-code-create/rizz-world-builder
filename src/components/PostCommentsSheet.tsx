@@ -109,7 +109,7 @@ const CommentRowView = memo(function CommentRowView({
         className={cn(
           "flex h-9 w-8 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border text-[11px] font-bold transition",
           voted
-            ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-[var(--rizz-pink)]"
+            ? "border-primary/50 bg-primary/15 text-primary"
             : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:text-foreground",
         )}
       >
@@ -120,7 +120,7 @@ const CommentRowView = memo(function CommentRowView({
         <div className="flex min-w-0 items-center gap-1.5">
           <Avatar className="h-6 w-6 shrink-0">
             <AvatarImage src={author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-[9px] font-bold">
+            <AvatarFallback className="bg-primary text-primary-foreground text-[9px] font-bold">
               {name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -141,7 +141,7 @@ const CommentRowView = memo(function CommentRowView({
         <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
           <button
             type="button"
-            className="py-0.5 transition-colors hover:text-[var(--rizz-pink)]"
+            className="py-0.5 transition-colors hover:text-primary"
             onClick={() => onReply(comment.id, author?.username ?? "user")}
           >
             Reply
@@ -396,7 +396,7 @@ export function PostCommentsSheet({
               size="icon"
               disabled={!user || !body.trim() || sendMut.isPending}
               onClick={() => sendMut.mutate()}
-              className="h-11 w-11 shrink-0 border-0 bg-gradient-primary shadow-glow"
+              className="h-11 w-11 shrink-0 border-0 bg-primary text-primary-foreground shadow-md"
               aria-label="Send comment"
             >
               <Send className="h-4 w-4" />

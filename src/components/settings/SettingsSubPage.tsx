@@ -24,7 +24,7 @@ export function SettingsSubPage({
 
       <header className="flex items-start gap-3">
         {icon && (
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md">
             {icon}
           </span>
         )}

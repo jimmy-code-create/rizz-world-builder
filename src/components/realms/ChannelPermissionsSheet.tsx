@@ -161,9 +161,9 @@ export function ChannelPermissionsBody({
               type="button"
               aria-pressed={activeChannel}
               onClick={() => setChannelKey(entry.key)}
-              className={`flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+              className={`flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 activeChannel
-                  ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-foreground"
+                  ? "border-primary/50 bg-primary/15 text-foreground"
                   : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -217,7 +217,7 @@ export function ChannelPermissionsBody({
           {/* 2. Who can add reactions (server-enforced switch). */}
           <section className="mt-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <SmilePlus className="h-4 w-4 text-[var(--rizz-violet)]" />
+              <SmilePlus className="h-4 w-4 text-muted-foreground" />
               Who can add reactions
             </h3>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -230,9 +230,9 @@ export function ChannelPermissionsBody({
                     aria-pressed={isActive}
                     disabled={!canModerate || modeBusy}
                     onClick={() => void changeReactionsMode(mode)}
-                    className={`min-h-12 rounded-2xl border px-3 text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+                    className={`min-h-12 rounded-2xl border px-3 text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                       isActive
-                        ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-foreground"
+                        ? "border-primary/50 bg-primary/15 text-foreground"
                         : "border-white/10 bg-white/5 text-muted-foreground"
                     }`}
                   >
@@ -251,7 +251,7 @@ export function ChannelPermissionsBody({
           {/* 3. Who can send messages, one row per member. */}
           <section className="mt-6">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Hash className="h-4 w-4 text-[var(--rizz-pink)]" />
+              <Hash className="h-4 w-4 text-primary" />
               Who can send messages
             </h3>
             <div className="mt-2 space-y-2">
@@ -272,7 +272,7 @@ export function ChannelPermissionsBody({
                   >
                     <Avatar className="h-9 w-9 shrink-0">
                       <AvatarImage src={member.profile?.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                         {name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -331,7 +331,7 @@ export function ChannelPermissionsSheet({
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-xl break-words">
             <span className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-[var(--rizz-pink)]" />
+              <ShieldCheck className="h-5 w-5 text-primary" />
               Channels &amp; permissions
             </span>
           </SheetTitle>
@@ -373,7 +373,7 @@ export function ChannelPermissionsPanel({
       <header className="mb-4 flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-            <ShieldCheck className="h-5 w-5 text-[var(--rizz-pink)]" />
+            <ShieldCheck className="h-5 w-5 text-primary" />
             Channel permissions
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, X, Loader2, BarChart3, Globe, Lock, Plus } from "lucide-react";
+import { Send, X, Loader2, BarChart3, Globe, Lock, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { createPost, rollbackCreatedPost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
@@ -102,10 +102,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       className="glass rounded-3xl p-4 md:p-5 mb-6 border border-white/5"
     >
       <div className="flex gap-3">
-        <Avatar className="h-10 w-10 ring-2 ring-[var(--rizz-pink)]/40 shrink-0">
-          <AvatarImage src={profile?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
-        </Avatar>
+        <UserAvatar src={profile?.avatar_url} fallback={initial} size="md" className="shrink-0" />
         <div className="flex-1 min-w-0 relative">
           <Textarea
             ref={textareaRef}
@@ -160,7 +157,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                     value={o}
                     onChange={(e) => setPollOptions((p) => p.map((v, j) => (j === i ? e.target.value.slice(0, 80) : v)))}
                     placeholder={`Option ${i + 1}`}
-                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--rizz-pink)]/50"
+                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
                   />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => setPollOptions((p) => p.filter((_, j) => j !== i))}
@@ -198,7 +195,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}
-                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${pollOn ? "text-[var(--rizz-pink)] bg-white/5" : "text-[var(--rizz-pink)]"}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${pollOn ? "text-primary bg-white/5" : "text-primary"}`}
                 aria-label="Add poll"
               >
                 <BarChart3 className="h-5 w-5" />
@@ -223,9 +220,9 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               size="sm"
               onClick={() => mut.mutate()}
                disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn)}
-              className="bg-gradient-primary border-0 shadow-glow hover:opacity-90 px-5"
+              className="bg-primary text-primary-foreground border-0 shadow-md hover:opacity-90 px-5"
             >
-              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-1" /> Post</>}
+              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" /> Post</>}
             </Button>
           </div>
         </div>

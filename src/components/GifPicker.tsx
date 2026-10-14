@@ -298,7 +298,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           size="icon"
           aria-label="Open emoji, GIFs, and stickers"
           title="Emoji, GIFs, and stickers"
-          className="shrink-0 text-[var(--rizz-pink)]"
+          className="shrink-0 text-primary"
         >
           <Smile className="h-5 w-5" />
         </Button>
@@ -332,7 +332,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
               onClick={() => changeTab(value)}
               className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition ${
                 tab === value
-                  ? "bg-gradient-primary text-white shadow-glow"
+                  ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
               }`}
             >
@@ -414,7 +414,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                             onSelect(item.emoji);
                             setOpen(false);
                           }}
-                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           aria-label={`Add ${item.name} emoji`}
                           title={item.name}
                         >
@@ -438,7 +438,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                   onClick={() =>
                     sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
                   }
-                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-[var(--rizz-pink)]/50 hover:text-foreground"
+                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
                 >
                   {group}
                 </button>
@@ -475,7 +475,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                           onSelect(GIF_MARKER(gif.images.fixed_width.url));
                           setOpen(false);
                         }}
-                        className="overflow-hidden rounded-lg bg-black/20 transition hover:ring-2 hover:ring-[var(--rizz-pink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                        className="overflow-hidden rounded-lg bg-black/20 transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label={`Add GIF: ${gif.title || "animated GIF"}`}
                       >
                         <img
@@ -530,7 +530,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                   }}
                   className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
                     selectedPack === pack.id
-                      ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-foreground"
+                      ? "border-primary/50 bg-primary/15 text-foreground"
                       : "border-white/10 text-muted-foreground hover:bg-white/5"
                   }`}
                 >
@@ -548,7 +548,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
                       onSelect(STICKER_MARKER(sticker.src));
                       setOpen(false);
                     }}
-                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition hover:scale-105 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition hover:scale-105 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label={`Add ${sticker.label}`}
                     title={sticker.label}
                   >

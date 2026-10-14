@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Hash, Heart, MessageCircle, MessagesSquare, Sparkles, CheckCheck, AtSign, UserPlus } from "lucide-react";
+import { Bell, Hash, Heart, MessageCircle, MessagesSquare, Smile, CheckCheck, AtSign, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const ICON: Record<string, any> = {
   like: Heart,
   comment: MessageCircle,
   follow: UserPlus,
-  reaction: Sparkles,
+  reaction: Smile,
   mention: AtSign,
   // Forum notifications: a reply to your thread, or a new post in a tag you follow.
   forum_reply: MessagesSquare,
@@ -83,8 +83,8 @@ function NotificationsPage() {
     <div>
       <div className="flex items-end justify-between gap-3 mb-1">
         <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Bell className="h-7 w-7 text-[var(--rizz-pink)]" /> Notifications
-          {unreadCount > 0 && <span className="text-xs font-bold bg-[var(--rizz-pink)] text-white px-2 py-0.5 rounded-full">{unreadCount}</span>}
+          <Bell className="h-7 w-7 text-primary" /> Notifications
+          {unreadCount > 0 && <span className="text-xs font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{unreadCount}</span>}
         </h1>
         {unreadCount > 0 && (
           <Button onClick={markAll} size="sm" variant="ghost" className="text-xs gap-1.5">
@@ -109,10 +109,10 @@ function NotificationsPage() {
         {filtered.map((n: any) => {
           const Icon = ICON[n.type] ?? Bell;
           const target = forumTarget(n);
-          const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-[var(--rizz-pink)]/30 shadow-glow"} flex items-center gap-3 w-full text-left`;
+          const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
           const inner = (
             <>
-              <div className="h-10 w-10 rounded-xl bg-gradient-primary/20 flex items-center justify-center"><Icon className="h-5 w-5 text-[var(--rizz-pink)]" /></div>
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center"><Icon className="h-5 w-5 text-primary" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm flex-1 min-w-0">
                   <span className="font-bold">@{n.actor?.username}</span>{" "}

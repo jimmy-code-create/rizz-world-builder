@@ -3,7 +3,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar, Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { previewText } from "@/lib/formatters";
 import { MessageCircle, Search, X, Check, Users, UsersRound, Camera, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -329,7 +330,7 @@ function DMsPage() {
           <Button
             onClick={() => setGroupSheetOpen(true)}
             disabled={selected.length < 2}
-            className="min-h-12 shrink-0 rounded-xl border-0 bg-gradient-primary shadow-glow px-4"
+            className="min-h-12 shrink-0 rounded-xl border-0 bg-primary text-primary-foreground shadow-md px-4"
           >
             <UsersRound className="h-4 w-4" /> Create group
           </Button>
@@ -339,7 +340,7 @@ function DMsPage() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="font-display text-3xl font-bold tracking-tight mb-1">Messages</h1>
-              <p className="text-sm text-muted-foreground">Slide in those DMs.</p>
+              <p className="text-sm text-muted-foreground">Start a conversation.</p>
             </div>
             <Button
               variant="outline"
@@ -418,21 +419,21 @@ function DMsPage() {
               aria-pressed={selecting ? isSelected : undefined}
               className={`glass w-full min-h-12 rounded-2xl p-4 border flex items-center gap-3 text-left transition-colors ${
                 isSelected
-                  ? "border-[var(--rizz-pink)]/60 shadow-glow"
+                  ? "border-primary/60 shadow-md"
                   : unread > 0
-                    ? "border-[var(--rizz-pink)]/30 shadow-glow"
+                    ? "border-primary/30 shadow-md"
                     : "border-white/5 hover:border-white/15"
               }`}
             >
               <div className="relative shrink-0">
                 <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={12}>
-                  <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-[var(--rizz-pink)]" : "ring-[var(--rizz-pink)]/40"}`}>
+                  <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-primary" : "ring-primary/40"}`}>
                     <AvatarImage src={other.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-gradient-primary font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </AvatarWithStatus>
                 {isSelected && (
-                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--rizz-pink)] text-white ring-2 ring-background">
+                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 )}
@@ -440,14 +441,14 @@ function DMsPage() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate">{other.display_name || other.username}</p>
                 {peerStatus && (
-                  <CustomStatusLine status={peerStatus} className="text-[11px] text-[var(--rizz-pink)]/90" />
+                  <CustomStatusLine status={peerStatus} className="text-[11px] text-primary/90" />
                 )}
-                <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{last.body}</p>
+                <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{previewText(last.body)}</p>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <span className="text-[10px] text-muted-foreground">{fmtTime(last.created_at)}</span>
                 {unread > 0 && (
-                  <span className="text-[10px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
+                  <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
                 )}
               </div>
             </button>
@@ -535,7 +536,7 @@ function DMsPage() {
                   <button
                     type="button"
                     onClick={() => { if (photoPreview) URL.revokeObjectURL(photoPreview); setPhotoPreview(null); setGroupPhoto(null); }}
-                    className="mt-1 text-xs font-medium text-[var(--rizz-pink)]"
+                    className="mt-1 text-xs font-medium text-primary"
                   >
                     Remove photo
                   </button>
@@ -573,7 +574,7 @@ function DMsPage() {
                     <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 pl-1 pr-2 py-1 text-xs">
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={person?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-[9px] font-bold">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[9px] font-bold">
                           {(person?.username ?? "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -587,7 +588,7 @@ function DMsPage() {
             <Button
               onClick={() => void createTheGroup()}
               disabled={creating || preparingPhoto || !groupName.trim() || selected.length < 2}
-              className="w-full min-h-12 rounded-xl border-0 bg-gradient-primary shadow-glow"
+              className="w-full min-h-12 rounded-xl border-0 bg-primary text-primary-foreground shadow-md"
             >
               {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> : "Create group"}
             </Button>

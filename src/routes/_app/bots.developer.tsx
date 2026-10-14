@@ -167,7 +167,7 @@ function BotDeveloperPage() {
       <div className="rounded-3xl border border-white/10 glass p-5 text-sm text-muted-foreground">
         <p className="font-display text-lg font-bold text-foreground">Sign in to build a bot</p>
         <p className="mt-1">Bots belong to an account, so you need one before you can create one.</p>
-        <Button asChild className="mt-4 h-11 border-0 bg-gradient-primary text-primary-foreground">
+        <Button asChild className="mt-4 h-11 border-0 bg-primary text-primary-foreground">
           <Link to="/login">Sign in</Link>
         </Button>
       </div>
@@ -187,7 +187,7 @@ function BotDeveloperPage() {
         </div>
         <Button
           type="button"
-          className="h-11 shrink-0 gap-1.5 border-0 bg-gradient-primary text-primary-foreground"
+          className="h-11 shrink-0 gap-1.5 border-0 bg-primary text-primary-foreground"
           onClick={() => setDraft({ ...EMPTY_DRAFT })}
         >
           <Plus className="h-4 w-4" /> New bot
@@ -242,7 +242,7 @@ function BotDeveloperPage() {
             <div className="flex items-start gap-3">
               <Avatar className="h-12 w-12 shrink-0 ring-1 ring-white/10">
                 <AvatarImage src={bot.avatar_url ?? undefined} alt="" />
-                <AvatarFallback className="bg-gradient-primary font-bold text-primary-foreground">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-primary-foreground">
                   {bot.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -520,7 +520,7 @@ function BotFormDialog({
               </Button>
               <Button
                 type="button"
-                className="h-11 flex-1 border-0 bg-gradient-primary text-primary-foreground"
+                className="h-11 flex-1 border-0 bg-primary text-primary-foreground"
                 onClick={onSave}
                 disabled={saving}
               >
@@ -605,7 +605,7 @@ function CommandDialog({
               Command
             </label>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-lg text-[var(--rizz-pink)]">/</span>
+              <span className="font-mono text-lg text-primary">/</span>
               <Input
                 id="cmd-name"
                 value={name}
@@ -744,7 +744,7 @@ function CommandDialog({
             </Button>
             <Button
               type="button"
-              className="h-11 flex-1 border-0 bg-gradient-primary text-primary-foreground"
+              className="h-11 flex-1 border-0 bg-primary text-primary-foreground"
               onClick={() => void submit()}
               disabled={saving}
             >
@@ -771,7 +771,7 @@ function TokenDialog({
       <DialogContent className="glass-strong border-white/10">
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-[var(--rizz-pink)]" /> {token?.name} token
+            <KeyRound className="h-5 w-5 text-primary" /> {token?.name} token
           </DialogTitle>
         </DialogHeader>
 
@@ -801,7 +801,7 @@ function TokenDialog({
           </Button>
           <Button
             type="button"
-            className="h-11 flex-1 border-0 bg-gradient-primary text-primary-foreground"
+            className="h-11 flex-1 border-0 bg-primary text-primary-foreground"
             onClick={() => { setCopied(false); onClose(); }}
           >
             I saved it
@@ -835,7 +835,7 @@ function ApiDocsCard() {
   return (
     <section className="rounded-3xl border border-white/10 glass p-4">
       <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-        <Webhook className="h-5 w-5 text-[var(--rizz-violet)]" /> Talking to RIZZ
+        <Webhook className="h-5 w-5 text-muted-foreground" /> Talking to RIZZ
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         One endpoint, one header. Everything else lives in your bot.
@@ -850,7 +850,7 @@ function ApiDocsCard() {
             onClick={() => setAction(entry.action)}
             className={`rounded-full border px-2.5 py-1 font-mono text-[10px] transition-colors ${
               action === entry.action
-                ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-foreground"
+                ? "border-primary/50 bg-primary/15 text-foreground"
                 : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
             }`}
           >

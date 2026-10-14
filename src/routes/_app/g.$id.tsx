@@ -357,7 +357,7 @@ function GroupRoom() {
     <div className="text-center py-20 glass rounded-3xl border border-white/5">
       <h2 className="font-display text-xl font-bold">Group not found</h2>
       <p className="text-sm text-muted-foreground mt-1">You may need an invite link to join.</p>
-      <Link to="/groups" className="inline-block mt-4 text-sm text-[var(--rizz-pink)]">← Back to groups</Link>
+      <Link to="/groups" className="inline-block mt-4 text-sm text-primary">← Back to groups</Link>
     </div>
   );
 
@@ -371,13 +371,13 @@ function GroupRoom() {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
         <Link to="/groups"><ArrowLeft className="h-5 w-5" /></Link>
-        <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center font-display font-bold shadow-glow shrink-0">
+        <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-display font-bold shadow-md shrink-0">
           {g.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold truncate flex items-center gap-1.5">{g.name} {isOwner && <Crown className="h-3.5 w-3.5 text-[var(--rizz-pink)]" />}</p>
+          <p className="font-bold truncate flex items-center gap-1.5">{g.name} {isOwner && <Crown className="h-3.5 w-3.5 text-primary" />}</p>
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
-            <span className="px-1.5 py-0.5 rounded-md bg-[var(--rizz-pink)]/15 text-[9px] font-bold uppercase tracking-wide text-[var(--rizz-pink)]">Private group</span>
+            <span className="px-1.5 py-0.5 rounded-md bg-primary/15 text-[9px] font-bold uppercase tracking-wide text-primary">Private group</span>
             {g.member_count} member{g.member_count === 1 ? "" : "s"} · {g.topic || "No topic"}
           </p>
         </div>
@@ -397,7 +397,7 @@ function GroupRoom() {
               {(members.data ?? []).map((m: any) => (
                 <Link key={m.user_id} to="/u/$username" params={{ username: m.user?.username ?? "" }} className="flex min-h-12 items-center gap-3 p-2 rounded-xl hover:bg-white/5">
                   <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
-                    <Avatar className="h-9 w-9"><AvatarImage src={m.user?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary font-bold text-xs">{(m.user?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                    <Avatar className="h-9 w-9"><AvatarImage src={m.user?.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{(m.user?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                   </AvatarWithStatus>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{m.user?.display_name || m.user?.username}</p>
@@ -445,7 +445,7 @@ function GroupRoom() {
               )}
               <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (startsGroup ? (
-                  <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-primary text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                  <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
                 <div className={`w-fit max-w-[88%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
                   {!mine && startsGroup && (
@@ -522,7 +522,7 @@ function GroupRoom() {
                                     : p.mention
                                       ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
                                       : p.tag
-                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline"}`}>{p.text}</Link>
+                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                         : p.url
                                           ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
                                           : <span key={`${si}-${pi}`}>{p.text}</span>
@@ -645,7 +645,7 @@ function GroupRoom() {
               }}
             />
           </div>
-          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
+          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />
           </Button>
           </div>
@@ -668,7 +668,7 @@ function GroupRoom() {
           <p className="text-xs text-muted-foreground mt-1">Friends-only · expires in 7 days. Recipients must mutually follow a current member.</p>
           <div className="mt-3 flex gap-2">
             <Input value={inviteUrl} readOnly className="glass border-white/10 font-mono text-xs" />
-            <Button onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Copied"); }} size="icon" className="bg-gradient-primary border-0 shadow-glow"><Copy className="h-4 w-4" /></Button>
+            <Button onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Copied"); }} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md"><Copy className="h-4 w-4" /></Button>
           </div>
         </DialogContent>
       </Dialog>

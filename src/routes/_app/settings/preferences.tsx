@@ -107,7 +107,7 @@ function PreferencesSettingsPage() {
               updatePref("textScaleCustom", true);
               updatePref("textScale", parseFloat(e.target.value));
             }}
-            className="mt-1 w-full accent-[var(--rizz-pink)]"
+            className="mt-1 w-full accent-primary"
           />
         </div>
 

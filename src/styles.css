@@ -51,10 +51,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-rizz-pink: var(--rizz-pink);
-  --color-rizz-violet: var(--rizz-violet);
-  --color-rizz-cyan: var(--rizz-cyan);
-  --color-rizz-glow: var(--rizz-glow);
+  --color-rizz-pink: var(--brand-signal);
+  --color-rizz-violet: var(--brand-paper-dim);
+  --color-rizz-cyan: var(--brand-signal);
+  --color-rizz-glow: transparent;
   /* Display: Bricolage Grotesque — editorial and slightly awkward on purpose.
      Text: Instrument Sans. Fallbacks are plain system faces, never Inter. */
   --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, ui-sans-serif, sans-serif;
@@ -157,13 +157,13 @@
   --chat-name-6: oklch(0.80 0.15 320);
 
   /* A "gradient" is now just the flat accent. Every legacy call site
-     (bg-gradient-primary, text-gradient, shadow-glow) is on-brand by
+     (bg-primary text-primary-foreground, text-gradient, shadow-md) is on-brand by
      construction, and preset themes still recolor it from --rizz-pink. */
-  --gradient-primary: var(--rizz-pink);
+  --gradient-primary: var(--brand-signal);
   --gradient-aurora: none;
-  --gradient-text: var(--rizz-pink);
-  --shadow-glow: var(--shadow-1);
-  --shadow-glow-lg: var(--shadow-2);
+  --gradient-text: var(--brand-signal);
+  --shadow-md: var(--shadow-1);
+  --shadow-lg: var(--shadow-2);
 
   --chart-1: var(--brand-signal);
   --chart-2: var(--brand-paper);
@@ -226,7 +226,7 @@
   --rizz-pink: #6aa6ff;
   --rizz-violet: #9db6cf;
   --rizz-cyan: #93c5fd;
-  --rizz-glow: rgb(106 166 255 / 0.45);
+  --rizz-glow: transparent;
   --accent: #16233a;
   --accent-foreground: #f1f6ff;
 }
@@ -237,7 +237,7 @@
   --rizz-pink: #f0793a;
   --rizz-violet: #d3b49a;
   --rizz-cyan: #f0b429;
-  --rizz-glow: rgb(240 121 58 / 0.45);
+  --rizz-glow: transparent;
   --accent: #2b1a0d;
   --accent-foreground: #fdf3e8;
 }
@@ -248,7 +248,7 @@
   --rizz-pink: #4ade80;
   --rizz-violet: #9fb8ab;
   --rizz-cyan: #a3e635;
-  --rizz-glow: rgb(74 222 128 / 0.4);
+  --rizz-glow: transparent;
   --accent: #11251a;
   --accent-foreground: #eafff2;
 }
@@ -259,7 +259,7 @@
   --rizz-pink: #f4f1e7;
   --rizz-violet: #a9a69c;
   --rizz-cyan: #a9a69c;
-  --rizz-glow: rgb(244 241 231 / 0.35);
+  --rizz-glow: transparent;
   --accent: #1c1c1f;
   --accent-foreground: #f4f1e7;
 }
@@ -271,7 +271,7 @@
   --rizz-pink: #d98a63;
   --rizz-violet: #8a7f6a;
   --rizz-cyan: #e0b184;
-  --rizz-glow: rgb(217 138 99 / 0.4);
+  --rizz-glow: transparent;
   --accent: #2a2016;
   --accent-foreground: #fdf7ee;
 }
@@ -434,10 +434,10 @@
   .text-gradient {
     color: var(--gradient-text);
   }
-  .bg-gradient-primary { background-color: var(--gradient-primary); }
+  .bg-primary text-primary-foreground { background-color: var(--gradient-primary); }
   .bg-aurora { background-image: var(--gradient-aurora); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-glow-lg { box-shadow: var(--shadow-glow-lg); }
+  .shadow-md { box-shadow: var(--shadow-md); }
+  .shadow-lg { box-shadow: var(--shadow-lg); }
   /* Solid surfaces with a hairline border — no frosted glass. */
   .glass {
     background: var(--card, var(--brand-ink-2));
@@ -817,10 +817,10 @@
 /* Composer inputs: a calm accent ring instead of the pink browser outline. */
 .composer-input:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--rizz-cyan) 45%, transparent);
+  border-color: color-mix(in srgb, var(--brand-signal) 45%, transparent);
   box-shadow:
     0 0 0 2px var(--background),
-    0 0 0 4px color-mix(in srgb, var(--rizz-cyan) 60%, transparent);
+    0 0 0 4px color-mix(in srgb, var(--brand-signal) 60%, transparent);
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-media-skeleton { animation: none; }

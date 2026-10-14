@@ -177,7 +177,7 @@ export function ProfilePreviewDialog({
           {p && (
             <>
               {/* Discord-style banner, with the avatar breaking out of it */}
-              <div className="relative h-24 w-full bg-gradient-primary">
+              <div className="relative h-24 w-full bg-primary text-primary-foreground">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_-20%,rgba(255,255,255,0.35),transparent_55%)]" />
               </div>
 
@@ -185,7 +185,7 @@ export function ProfilePreviewDialog({
                 <div className="-mt-10">
                   <Avatar className="h-20 w-20 rounded-full ring-4 ring-[var(--surface-bar)]">
                     <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
-                    <AvatarFallback className="bg-gradient-primary text-2xl font-bold">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
                       {name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -222,7 +222,7 @@ export function ProfilePreviewDialog({
                       className={
                         following.data
                           ? "h-11 flex-1 gap-2 border border-white/10 bg-white/5 text-foreground"
-                          : "h-11 flex-1 gap-2 border-0 bg-gradient-primary shadow-glow"
+                          : "h-11 flex-1 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
                       }
                     >
                       {following.data ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}

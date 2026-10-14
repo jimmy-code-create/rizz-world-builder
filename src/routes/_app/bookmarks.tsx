@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { fetchMyBookmarks } from "@/lib/bookmarks";
+import { formatNumber } from "@/lib/formatters";
 import { PostCard } from "@/components/PostCard";
 
 export const Route = createFileRoute("/_app/bookmarks")({
@@ -35,12 +36,12 @@ function BookmarksPage() {
   return (
     <div>
       <header className="flex items-center gap-3 mb-6">
-        <div className="h-10 w-10 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow">
+        <div className="h-10 w-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
           <Bookmark className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
           <h1 className="font-display text-3xl font-bold">Saved</h1>
-          <p className="text-sm text-muted-foreground">{q.data?.length ?? 0} posts bookmarked for later</p>
+          <p className="text-sm text-muted-foreground">{formatNumber(q.data?.length ?? 0)} posts bookmarked for later</p>
         </div>
       </header>
       {q.data && q.data.length > 0 && (
@@ -54,7 +55,7 @@ function BookmarksPage() {
         <div className="glass rounded-3xl border border-white/5 p-10 text-center">
           <Bookmark className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Nothing saved yet. Tap the bookmark icon on any post.</p>
-          <Button asChild className="bg-gradient-primary border-0 shadow-glow"><Link to="/explore"><Compass className="mr-2 h-4 w-4" /> Discover posts</Link></Button>
+          <Button asChild className="bg-primary text-primary-foreground font-semibold"><Link to="/explore"><Compass className="mr-2 h-4 w-4" /> Discover posts</Link></Button>
         </div>
       )}
       {filtered.map((p) => <PostCard key={p.id} post={p} saved />)}

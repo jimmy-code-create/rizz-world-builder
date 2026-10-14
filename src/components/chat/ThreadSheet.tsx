@@ -72,7 +72,7 @@ export function ThreadSheet({ open, onOpenChange, root, realmId, roomId }: Threa
       >
         <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
-            <MessagesSquare className="h-4 w-4 text-[var(--rizz-pink)]" /> Thread
+            <MessagesSquare className="h-4 w-4 text-primary" /> Thread
           </SheetTitle>
         </SheetHeader>
 
@@ -130,7 +130,7 @@ export function ThreadSheet({ open, onOpenChange, root, realmId, roomId }: Threa
             type="submit"
             size="icon"
             disabled={!draft.trim() || sending}
-            className="shrink-0 bg-gradient-primary border-0 shadow-glow"
+            className="shrink-0 bg-primary text-primary-foreground border-0 shadow-md"
             aria-label="Send reply"
           >
             <Send className="h-4 w-4" />

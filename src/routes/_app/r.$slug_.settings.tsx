@@ -91,7 +91,7 @@ function RealmSettingsPage() {
     return (
       <div className="mx-auto mt-16 max-w-md text-center">
         <h1 className="font-display text-2xl font-bold">Realm not found</h1>
-        <Button asChild className="mt-4 h-11 border-0 bg-gradient-primary text-primary-foreground">
+        <Button asChild className="mt-4 h-11 border-0 bg-primary text-primary-foreground">
           <Link to="/realms">Browse realms</Link>
         </Button>
       </div>
@@ -150,14 +150,14 @@ function RealmSettingsPage() {
                   onClick={() => setSection(entry.key)}
                   className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors lg:w-full ${
                     active
-                      ? "bg-[var(--rizz-pink)]/15 text-foreground ring-1 ring-[var(--rizz-pink)]/40"
+                      ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
                   <span className="whitespace-nowrap lg:whitespace-normal">{entry.label}</span>
                   {badge ? (
-                    <span className="ml-auto rounded-full bg-[var(--rizz-pink)]/25 px-1.5 text-[10px] font-bold text-foreground">
+                    <span className="ml-auto rounded-full bg-primary/25 px-1.5 text-[10px] font-bold text-foreground">
                       {badge}
                     </span>
                   ) : null}
@@ -364,7 +364,7 @@ function OverviewSection({
           type="button"
           disabled={!canManage || busy}
           onClick={() => void save()}
-          className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+          className="h-11 w-full border-0 bg-primary text-primary-foreground"
         >
           {busy ? "Saving…" : canManage ? "Save changes" : "Only the owner can edit this"}
         </Button>
@@ -487,7 +487,7 @@ function RolesSection({
                       checked={draft[role]?.permissions.includes(permission.key) ?? false}
                       disabled={!canManage || busy === role}
                       onChange={(e) => toggle(role, permission.key, e.target.checked)}
-                      className="h-4 w-4 accent-[var(--rizz-pink)]"
+                      className="h-4 w-4 accent-primary"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm">{permission.label}</span>
@@ -501,7 +501,7 @@ function RolesSection({
                 type="button"
                 disabled={!canManage || busy === role}
                 onClick={() => void save(role)}
-                className="mt-3 h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+                className="mt-3 h-11 w-full border-0 bg-primary text-primary-foreground"
               >
                 {busy === role ? "Saving…" : `Save ${role === "mod" ? "moderator" : "member"} role`}
               </Button>
@@ -629,7 +629,7 @@ function MembersSection({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 shrink-0 ring-1 ring-white/10">
                   <AvatarImage src={member.profile?.avatar_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                     {name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -940,7 +940,7 @@ function ChannelsSection({ realmId, canManage }: { realmId: string; canManage: b
                   size="sm"
                   disabled={!canManage || busy === room.id}
                   onClick={() => void save(room)}
-                  className="h-10 border-0 bg-gradient-primary text-primary-foreground"
+                  className="h-10 border-0 bg-primary text-primary-foreground"
                 >
                   {busy === room.id ? "Saving…" : "Save"}
                 </Button>
@@ -963,7 +963,7 @@ function ChannelsSection({ realmId, canManage }: { realmId: string; canManage: b
               type="button"
               disabled={busy === "create" || !newName.trim()}
               onClick={() => void create()}
-              className="h-11 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+              className="h-11 shrink-0 border-0 bg-primary text-primary-foreground"
             >
               Create
             </Button>
@@ -1149,7 +1149,7 @@ function AutomodSection({
           type="button"
           disabled={!canManage || busy}
           onClick={() => void save()}
-          className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+          className="h-11 w-full border-0 bg-primary text-primary-foreground"
         >
           {busy ? "Saving…" : "Save AutoMod"}
         </Button>
@@ -1224,7 +1224,7 @@ function ReportsSection({ realmId, canModerate }: { realmId: string; canModerate
                 type="button"
                 size="sm"
                 disabled={busy === report.id}
-                className="h-10 border-0 bg-gradient-primary text-primary-foreground"
+                className="h-10 border-0 bg-primary text-primary-foreground"
                 onClick={() => void run(report.id, () => resolveRealmReport(report.id, "actioned"), "Report actioned")}
               >
                 Actioned
@@ -1262,7 +1262,7 @@ function BansSection({ realmId, canManage }: { realmId: string; canManage: boole
           <li key={ban.user_id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <Avatar className="h-9 w-9 shrink-0 ring-1 ring-white/10">
               <AvatarImage src={ban.avatar_url ?? undefined} alt="" />
-              <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                 {(ban.display_name || ban.username || "?").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -1352,7 +1352,7 @@ function InvitesSection({ realmId, canManage }: { realmId: string; canManage: bo
             type="button"
             disabled={!canManage || busy === "create"}
             onClick={() => void create()}
-            className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+            className="h-11 w-full border-0 bg-primary text-primary-foreground"
           >
             New invite
           </Button>
@@ -1427,14 +1427,14 @@ function BotsSection({ realmId, realmName, installed }: { realmId: string; realm
     <Panel title="Bots & integrations" description={`${installed} bot(s) installed. Bots only work inside realms.`}>
       <Button
         type="button"
-        className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+        className="h-11 w-full border-0 bg-primary text-primary-foreground"
         onClick={() => setOpen(true)}
       >
         <BotIcon className="h-4 w-4" /> Manage bots
       </Button>
       <p className="mt-3 text-[11px] text-muted-foreground">
         Want a bot of your own? Build one on the{" "}
-        <Link to="/bots/developer" className="text-[var(--rizz-pink)] hover:underline">
+        <Link to="/bots/developer" className="text-primary hover:underline">
           developer page
         </Link>
         .
@@ -1539,7 +1539,7 @@ function DangerSection({
             <Button
               type="button"
               disabled={!transferTo || busy === "transfer"}
-              className="h-11 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+              className="h-11 shrink-0 border-0 bg-primary text-primary-foreground"
               onClick={() => {
                 setBusy("transfer");
                 void transferRealmOwnership(realmId, transferTo)
@@ -1709,7 +1709,7 @@ function WelcomeSection({
                 "Welcome message saved",
               )
             }
-            className="h-11 w-full border-0 bg-gradient-primary text-primary-foreground"
+            className="h-11 w-full border-0 bg-primary text-primary-foreground"
           >
             {busy === "message" ? "Saving…" : "Save welcome message"}
           </Button>
@@ -1854,7 +1854,7 @@ function EmojiSection({ realmId, canManage }: { realmId: string; canManage: bool
                 type="button"
                 disabled={busy === "add" || !url.trim()}
                 onClick={() => void runAdd(() => add(url.trim()))}
-                className="h-11 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+                className="h-11 shrink-0 border-0 bg-primary text-primary-foreground"
               >
                 {busy === "add" ? "Adding…" : "Add"}
               </Button>

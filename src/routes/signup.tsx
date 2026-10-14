@@ -92,7 +92,7 @@ function SignupPage() {
     <AuthCard
       title="Claim your @"
       subtitle="Pick a username, add an email and a password. That's the whole sign-up."
-      footer={<>Already have an account? <Link to="/login" className="font-medium text-[var(--rizz-pink)] hover:underline">Log in</Link></>}
+      footer={<>Already have an account? <Link to="/login" className="font-medium text-primary hover:underline">Log in</Link></>}
     >
       {errKind && (
         <AuthErrorBanner

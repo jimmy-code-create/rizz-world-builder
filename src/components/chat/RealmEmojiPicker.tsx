@@ -105,14 +105,14 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
         <SheetHeader className="px-1 text-left">
           <SheetTitle className="flex items-center justify-between font-display text-base">
             <span className="flex items-center gap-2">
-              <Smile className="h-4 w-4 text-[var(--rizz-pink)]" /> Emojis
+              <Smile className="h-4 w-4 text-primary" /> Emojis
             </span>
             <div className="flex gap-1 rounded-xl bg-white/[0.06] p-1 border border-white/10">
               <button
                 type="button"
                 onClick={() => setTab("standard")}
                 className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                  tab === "standard" ? "bg-[var(--rizz-pink)] text-white shadow-xs" : "text-muted-foreground hover:text-white"
+                  tab === "standard" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-white"
                 }`}
               >
                 Standard
@@ -121,7 +121,7 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
                 type="button"
                 onClick={() => setTab("custom")}
                 className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-                  tab === "custom" ? "bg-[var(--rizz-pink)] text-white shadow-xs" : "text-muted-foreground hover:text-white"
+                  tab === "custom" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-white"
                 }`}
               >
                 <Sticker className="h-3 w-3" /> Custom ({rows.length})
@@ -218,7 +218,7 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
                   <Button
                     size="sm"
                     disabled={busy}
-                    className="bg-gradient-primary border-0 shadow-glow"
+                    className="bg-primary text-primary-foreground border-0 shadow-md"
                     onClick={() => fileRef.current?.click()}
                   >
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Choose image"}

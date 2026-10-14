@@ -229,7 +229,7 @@ export function ForumPostCard({
         <MetaRow post={post} unread={unread} muted={muted} className="pt-0.5" />
         {post.is_solved && (
           <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--forum-solved)]">
-            <Sparkles className="h-3 w-3" aria-hidden />
+            <Check className="h-3 w-3" aria-hidden />
             Best answer marked
           </p>
         )}

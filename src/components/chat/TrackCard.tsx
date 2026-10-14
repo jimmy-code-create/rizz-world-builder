@@ -41,7 +41,7 @@ export function TrackCard({ card }: { card: TrackCardPayload }) {
   if (!card.preview && !card.url) {
     return (
       <div className="mt-1 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-primary/20 text-[var(--rizz-pink)]">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
           <Music className="h-5 w-5" />
         </span>
         <span className="min-w-0">
@@ -58,7 +58,7 @@ export function TrackCard({ card }: { card: TrackCardPayload }) {
         type="button"
         onClick={() => setExpanded(true)}
         aria-label={`Play ${card.title} on ${provider.label}`}
-        className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-primary text-white shadow-sm"
+        className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm"
       >
         {card.artwork ? (
           <img src={card.artwork} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />

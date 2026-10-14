@@ -66,7 +66,7 @@ export function PollDialog({ open, onOpenChange, realmId, roomId, onCreated }: P
       <DialogContent className="glass-strong border-white/10">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
-            <BarChart3 className="h-5 w-5 text-[var(--rizz-pink)]" /> New poll
+            <BarChart3 className="h-5 w-5 text-primary" /> New poll
           </DialogTitle>
         </DialogHeader>
 
@@ -95,7 +95,7 @@ export function PollDialog({ open, onOpenChange, realmId, roomId, onCreated }: P
 
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={multi} onChange={(event) => setMulti(event.target.checked)} className="h-4 w-4 accent-[var(--rizz-pink)]" />
+            <input type="checkbox" checked={multi} onChange={(event) => setMulti(event.target.checked)} className="h-4 w-4 accent-primary" />
             Allow multiple picks
           </label>
           <label className="ml-auto text-sm text-muted-foreground">
@@ -113,7 +113,7 @@ export function PollDialog({ open, onOpenChange, realmId, roomId, onCreated }: P
         </div>
 
         <Button
-          className="w-full bg-gradient-primary border-0 shadow-glow"
+          className="w-full bg-primary text-primary-foreground border-0 shadow-md"
           disabled={!valid || busy}
           onClick={() => void submit()}
         >

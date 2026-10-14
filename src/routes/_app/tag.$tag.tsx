@@ -18,9 +18,9 @@ function TagPage() {
   return (
     <div>
       <header className="glass rounded-3xl border border-white/5 p-6 mb-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-primary opacity-10" />
+        <div className="absolute inset-0 bg-primary text-primary-foreground opacity-10" />
         <div className="relative flex items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow">
+          <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
             <Hash className="h-7 w-7 text-primary-foreground" />
           </div>
           <div>
@@ -35,7 +35,7 @@ function TagPage() {
           <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground"><TrendingUp className="h-3 w-3" /> Trending</div>
           <div className="flex flex-wrap gap-2">
             {trending.data.map((t) => (
-              <Link key={t.tag} to="/tag/$tag" params={{ tag: t.tag }} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${t.tag === tagLower ? "bg-gradient-primary border-transparent text-primary-foreground shadow-glow" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
+              <Link key={t.tag} to="/tag/$tag" params={{ tag: t.tag }} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${t.tag === tagLower ? "bg-primary text-primary-foreground border-transparent text-primary-foreground shadow-md" : "border-white/10 bg-white/5 hover:bg-white/10"}`}>
                 #{t.tag} <span className="opacity-60">· {t.post_count}</span>
               </Link>
             ))}

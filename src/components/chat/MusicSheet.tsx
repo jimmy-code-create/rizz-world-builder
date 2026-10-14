@@ -44,7 +44,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId }: MusicSheetPr
       <SheetContent side="right" className="glass-strong flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
         <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
-            <Music className="h-4 w-4 text-[var(--rizz-pink)]" /> Music
+            <Music className="h-4 w-4 text-primary" /> Music
           </SheetTitle>
         </SheetHeader>
 
@@ -119,7 +119,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId }: MusicSheetPr
                     href={track.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 text-xs font-semibold text-[var(--rizz-pink)] hover:underline"
+                    className="shrink-0 text-xs font-semibold text-primary hover:underline"
                   >
                     Open
                   </a>

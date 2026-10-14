@@ -113,7 +113,7 @@ export function RizzVideoPlayer({ src, label = "Post video" }: { src: string; la
         if (event.target === videoRef.current) void togglePlayback();
       }}
       onDoubleClick={(event) => event.stopPropagation()}
-      className={`rizz-video-player group relative isolate w-full overflow-hidden bg-[#090710] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)] ${fullscreen ? "flex h-full flex-col justify-center" : ""}`}
+      className={`rizz-video-player group relative isolate w-full overflow-hidden bg-[#090710] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${fullscreen ? "flex h-full flex-col justify-center" : ""}`}
     >
       <video
         ref={videoRef}
@@ -142,7 +142,7 @@ export function RizzVideoPlayer({ src, label = "Post video" }: { src: string; la
         <>
           {loading && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/20" aria-live="polite">
-              <span className="h-9 w-9 animate-spin rounded-full border-2 border-white/25 border-t-[var(--rizz-pink)]" aria-label="Loading video" />
+              <span className="h-9 w-9 animate-spin rounded-full border-2 border-white/25 border-t-primary" aria-label="Loading video" />
             </div>
           )}
           {!playing && !loading && (
@@ -206,7 +206,7 @@ export function RizzVideoPlayer({ src, label = "Post video" }: { src: string; la
                 if (videoRef.current) videoRef.current.currentTime = nextTime;
                 setCurrentTime(nextTime);
               }}
-              className="mt-0.5 block h-3 w-full cursor-pointer accent-[var(--rizz-pink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="mt-0.5 block h-3 w-full cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
         </>
@@ -220,7 +220,7 @@ export function RizzVideoPlayer({ src, label = "Post video" }: { src: string; la
             <button
               type="button"
               onClick={handleRetry}
-              className="pointer-events-auto mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-4 text-xs font-semibold transition-colors hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="pointer-events-auto mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-4 text-xs font-semibold transition-colors hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Retry video

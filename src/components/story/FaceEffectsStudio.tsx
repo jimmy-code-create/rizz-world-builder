@@ -455,7 +455,7 @@ export function FaceEffectsStudio({
                     onClick={() => applyEffect(item)}
                     className={`flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-2xl border p-1.5 transition ${
                       selected
-                        ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/20"
+                        ? "border-primary bg-primary/20"
                         : "border-white/10 bg-white/[0.06]"
                     }`}
                   >

@@ -61,7 +61,7 @@ export function FollowSuggestions() {
   return (
     <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-white/5">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="h-4 w-4 text-[var(--rizz-pink)]" />
+        <Users className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-display font-bold tracking-tight">Suggested for you</h3>
       </div>
       <div className="space-y-2">
@@ -70,9 +70,9 @@ export function FollowSuggestions() {
           return (
             <div key={p.id} className="flex items-center gap-3">
               <Link to="/u/$username" params={{ username: p.username }}>
-                <Avatar className="h-9 w-9 ring-2" style={{ boxShadow: `0 0 0 2px ${p.accent_color || "var(--rizz-pink)"}40` }}>
+                <Avatar className="h-9 w-9 ring-2" style={{ boxShadow: `0 0 0 2px ${p.accent_color || "var(--brand-signal)"}40` }}>
                   <AvatarImage src={p.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-xs">{initial}</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{initial}</AvatarFallback>
                 </Avatar>
               </Link>
               <Link to="/u/$username" params={{ username: p.username }} className="flex-1 min-w-0">
@@ -83,7 +83,7 @@ export function FollowSuggestions() {
                 size="sm"
                 onClick={() => followMut.mutate(p.id)}
                 disabled={followMut.isPending}
-                className="bg-gradient-primary border-0 h-8 px-3 shadow-glow"
+                className="bg-primary text-primary-foreground border-0 h-8 px-3 shadow-md"
               >
                 <UserPlus className="h-3.5 w-3.5 mr-1" />
                 Follow

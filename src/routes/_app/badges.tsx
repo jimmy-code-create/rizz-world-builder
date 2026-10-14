@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { fetchAllBadges, fetchUserBadges } from "@/lib/badges";
 import { BadgeChip } from "@/components/BadgeChip";
 import { Award, Lock } from "lucide-react";
+import { formatNumber } from "@/lib/formatters";
 
 export const Route = createFileRoute("/_app/badges")({
   head: () => ({ meta: [{ title: "Badges · RIZZ" }] }),
@@ -21,10 +22,10 @@ function BadgesPage() {
     <div>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Award className="h-7 w-7 text-[var(--rizz-pink)]" /> Badges
+          <Award className="h-7 w-7 text-primary" /> Badges
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {mine.data?.length ?? 0} of {all.data?.length ?? 0} collected
+          {formatNumber(mine.data?.length ?? 0)} of {formatNumber(all.data?.length ?? 0)} collected
         </p>
       </motion.div>
 
@@ -32,7 +33,7 @@ function BadgesPage() {
         {all.data?.map((b) => {
           const hasIt = owned.has(b.id);
           return (
-            <motion.div key={b.id} whileHover={{ y: -4 }} className={`glass rounded-2xl p-4 border ${hasIt ? "border-white/10" : "border-white/5 opacity-50"} flex flex-col items-center text-center transition-all hover:shadow-glow`}>
+            <motion.div key={b.id} whileHover={{ y: -4 }} className={`glass rounded-2xl p-4 border ${hasIt ? "border-white/10" : "border-white/5 opacity-50"} flex flex-col items-center text-center transition-all hover:shadow-md`}>
               {hasIt ? <BadgeChip badge={b} size="lg" /> : (
                 <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10"><Lock className="h-4 w-4 text-muted-foreground" /></div>
               )}

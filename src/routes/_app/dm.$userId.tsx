@@ -750,9 +750,9 @@ function DMPage() {
         <Link to="/dms"><ArrowLeft className="h-5 w-5" /></Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="grid min-h-12 min-w-12 place-items-center">
         <AvatarWithStatus status={peerStatus} dotSize={12}>
-          <Avatar className="h-9 w-9 ring-2 ring-[var(--rizz-pink)]/40">
+          <Avatar className="h-9 w-9 ring-2 ring-primary/40">
             <AvatarImage src={other.data?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary font-bold text-xs">{(other.data?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{(other.data?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </AvatarWithStatus>
         </Link>
@@ -764,7 +764,7 @@ function DMPage() {
             )}
           </p>
           {peerCustom && (
-            <CustomStatusLine status={peerCustom} className="text-[11px] text-[var(--rizz-pink)]/90" />
+            <CustomStatusLine status={peerCustom} className="text-[11px] text-primary/90" />
           )}
           <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : peerStatus === "offline" ? `@${other.data?.username}` : statusLabel(peerStatus) === "Idle" ? "Away" : "Active now"}</p>
         </Link>
@@ -942,7 +942,7 @@ function DMPage() {
                 className={`group flex min-w-0 flex-col rounded-2xl transition-shadow duration-500 ${
                   openMsg === m.id ? "relative z-[41]" : ""
                 } ${
-                  highlighted === m.id ? "ring-2 ring-[var(--rizz-pink)] shadow-glow" : ""
+                  highlighted === m.id ? "ring-2 ring-primary shadow-md" : ""
                 } ${mine ? "items-end" : "items-start"}`}
               >
                 {inviteCode && !deletedAt ? (
@@ -953,7 +953,7 @@ function DMPage() {
                     <button
                       aria-haspopup="dialog"
                       aria-expanded={openMsg === m.id}
-                      className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-cyan)] ${
+                      className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         deliveryStatus ? "opacity-60" : ""
                       } ${
                         deletedAt
@@ -1004,7 +1004,7 @@ function DMPage() {
                                       // also toggle the message actions popover.
                                       ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
                                       : p.tag
-                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-[var(--rizz-pink)] hover:underline"}`}>{p.text}</Link>
+                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                         : p.url
                                           ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
                                           : <span key={`${si}-${pi}`}>{p.text}</span>
@@ -1027,20 +1027,20 @@ function DMPage() {
                       onPick={(emoji) => { void react(m.id, emoji); setOpenMsg(null); }}
                     />
                     <div className="flex flex-col gap-0.5 text-xs">
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Copy className="h-4 w-4 text-white/60" />Copy text</button>
-                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><CornerUpLeft className="h-4 w-4 text-white/60" />Reply</button>
-                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Flag className="h-4 w-4 text-white/60" />Report</button>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Copy className="h-4 w-4 text-white/60" />Copy text</button>
+                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><CornerUpLeft className="h-4 w-4 text-white/60" />Reply</button>
+                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Flag className="h-4 w-4 text-white/60" />Report</button>
                       {!deletedAt && (
                         <button
                           type="button"
                           onClick={() => { void deleteMsgForMe(m.id); setOpenMsg(null); }}
-                          className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                          className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
                           <Trash2 className="h-4 w-4" />Delete for me
                         </button>
                       )}
                       {mine && !deletedAt && (
-                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"><Trash2 className="h-4 w-4" />Delete for everyone</button>
+                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Trash2 className="h-4 w-4" />Delete for everyone</button>
                       )}
                     </div>
                   </PopoverContent>
@@ -1122,7 +1122,7 @@ function DMPage() {
           )}
           {replyTo && (
             <div className="mb-2 flex items-center gap-2 rounded-xl glass border border-white/10 px-3 py-2">
-              <CornerUpLeft className="h-3.5 w-3.5 text-[var(--rizz-pink)] shrink-0" />
+              <CornerUpLeft className="h-3.5 w-3.5 text-primary shrink-0" />
               <button onClick={() => jumpToMessage(replyTo.id)} className="flex-1 min-w-0 text-left">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   Replying to {replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}
@@ -1198,7 +1198,7 @@ function DMPage() {
                   <Clock className="h-4 w-4" />
                 </Button>
               )}
-              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-gradient-primary border-0 shadow-glow" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendingMessage ? "Sending message" : "Send message"}>
                 <Send className="h-4 w-4" />
               </Button>
             </>
@@ -1207,7 +1207,7 @@ function DMPage() {
               onClick={toggleRecord}
               disabled={blockStatus.data || sendingVoice}
               size="icon"
-              className={recording ? "min-w-[5.5rem] gap-2 border border-rose-300/30 bg-rose-600 px-3 text-white shadow-[0_6px_22px_-9px_rgba(244,63,94,.8)] hover:bg-rose-500" : "bg-gradient-primary border-0 shadow-glow"}
+              className={recording ? "min-w-[5.5rem] gap-2 border border-rose-300/30 bg-rose-600 px-3 text-white shadow-[0_6px_22px_-9px_rgba(244,63,94,.8)] hover:bg-rose-500" : "bg-primary text-primary-foreground border-0 shadow-md"}
               aria-label={recording ? "Stop and send voice note" : "Record voice note"}
               aria-pressed={recording}
             >

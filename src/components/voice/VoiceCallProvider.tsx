@@ -424,7 +424,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmSwitch()} className="bg-gradient-primary border-0">
+            <AlertDialogAction onClick={() => void confirmSwitch()} className="bg-primary text-primary-foreground border-0">
               Switch
             </AlertDialogAction>
           </AlertDialogFooter>

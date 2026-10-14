@@ -60,20 +60,20 @@ function GroupsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Users className="h-7 w-7 text-[var(--rizz-pink)]" /> Groups
+            <Users className="h-7 w-7 text-primary" /> Groups
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Private hangouts — invite link only, friends of a member.
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
-            Want public, open rooms instead? Browse <Link to="/realms" className="text-[var(--rizz-pink)] font-medium">Realms</Link>.
+            Want public, open rooms instead? Browse <Link to="/realms" className="text-primary font-medium">Realms</Link>.
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:shrink-0">
           <Button variant="outline" className="glass min-h-11 rounded-xl border-sky-300/15 gap-2" onClick={() => setOpenJoin(true)}>
             <Link2 className="h-4 w-4" /> Join
           </Button>
-          <Button className="min-h-11 rounded-xl border-0 bg-gradient-primary shadow-glow gap-2" onClick={() => setOpenCreate(true)}>
+          <Button className="min-h-11 rounded-xl border-0 bg-primary text-primary-foreground shadow-md gap-2" onClick={() => setOpenCreate(true)}>
             <Plus className="h-4 w-4" /> Create
           </Button>
         </div>
@@ -85,11 +85,11 @@ function GroupsPage() {
         </div>
       ) : (groups.data ?? []).length === 0 ? (
         <div className="text-center py-20 glass rounded-3xl border border-sky-300/10 shadow-[0_16px_48px_rgba(37,99,235,.08)]">
-          <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <h2 className="font-display text-xl font-bold">No groups yet</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-5">Create your first group or join one with an invite link.</p>
           <div className="flex gap-2 justify-center">
-            <Button onClick={() => setOpenCreate(true)} className="bg-gradient-primary border-0 shadow-glow rounded-xl">Create a group</Button>
+            <Button onClick={() => setOpenCreate(true)} className="bg-primary text-primary-foreground border-0 shadow-md rounded-xl">Create a group</Button>
             <Button variant="outline" onClick={() => setOpenJoin(true)} className="glass border-white/10 rounded-xl">Join with link</Button>
           </div>
         </div>
@@ -110,7 +110,7 @@ function GroupsPage() {
                 <p className="text-xs text-muted-foreground truncate">{g.topic || "No topic"}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">{g.member_count} member{g.member_count === 1 ? "" : "s"}</p>
               </div>
-              {g.is_voice_live && <span className="text-[10px] font-bold uppercase text-[var(--rizz-pink)] animate-pulse">● Live</span>}
+              {g.is_voice_live && <span className="text-[10px] font-bold uppercase text-primary animate-pulse">● Live</span>}
             </button>
           ))}
         </div>
@@ -122,7 +122,7 @@ function GroupsPage() {
           <div className="space-y-3 mt-2">
             <Input placeholder="Group name" value={name} onChange={(e) => setName(e.target.value)} className="glass border-white/10" />
             <Input placeholder="Topic (optional)" value={topic} onChange={(e) => setTopic(e.target.value)} className="glass border-white/10" />
-            <Button onClick={handleCreate} disabled={!name.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">Create</Button>
+            <Button onClick={handleCreate} disabled={!name.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">Create</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -133,7 +133,7 @@ function GroupsPage() {
           <div className="space-y-3 mt-2">
             <Input placeholder="Paste invite code or full link" value={code} onChange={(e) => setCode(e.target.value)} className="glass border-white/10" />
             <p className="text-xs text-muted-foreground">Friends-only: you must mutually follow at least one current member.</p>
-            <Button onClick={handleJoin} disabled={!code.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">Join</Button>
+            <Button onClick={handleJoin} disabled={!code.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">Join</Button>
           </div>
         </DialogContent>
       </Dialog>
