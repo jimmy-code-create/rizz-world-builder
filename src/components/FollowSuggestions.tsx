@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -70,10 +70,7 @@ export function FollowSuggestions() {
           return (
             <div key={p.id} className="flex items-center gap-3">
               <Link to="/u/$username" params={{ username: p.username }}>
-                <Avatar className="h-9 w-9 ring-2" style={{ boxShadow: `0 0 0 2px ${p.accent_color || "var(--brand-signal)"}40` }}>
-                  <AvatarImage src={p.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{initial}</AvatarFallback>
-                </Avatar>
+                <UserAvatar src={p.avatar_url} fallback={initial} size="sm" userId={p.id} />
               </Link>
               <Link to="/u/$username" params={{ username: p.username }} className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.display_name || p.username}</p>

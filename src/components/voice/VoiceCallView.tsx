@@ -629,13 +629,10 @@ export function VoiceCallView() {
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>
           <SheetContent side="right" className="glass-strong border-white/10 w-full sm:max-w-md p-0 flex flex-col z-[140]">
-            <SheetHeader className="p-4 border-b border-white/10 flex flex-row items-center justify-between">
+            <SheetHeader className="p-4 pr-12 border-b border-white/10 flex flex-row items-center justify-between">
               <SheetTitle className="font-display text-sm font-bold flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat
               </SheetTitle>
-              <Button variant="ghost" size="icon" onClick={() => setChatOpen(false)} className="h-8 w-8 rounded-full">
-                <X className="h-4 w-4" />
-              </Button>
             </SheetHeader>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">

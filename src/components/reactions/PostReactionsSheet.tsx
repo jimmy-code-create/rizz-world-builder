@@ -204,16 +204,10 @@ export function PostReactionsSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="glass-strong z-[100] rounded-t-3xl border-white/10 p-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
-          <SheetHeader className="p-4 border-b border-white/10 flex flex-row items-center justify-between">
+          <SheetHeader className="p-4 pr-12 border-b border-white/10 flex flex-row items-center justify-between">
             <SheetTitle className="font-display text-base font-bold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> {t("reactions")} ({reactions.length})
+              <span className="text-base select-none">✨</span> {t("reactions")} ({reactions.length})
             </SheetTitle>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </SheetHeader>
           {content}
         </SheetContent>
@@ -224,9 +218,9 @@ export function PostReactionsSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-strong border-white/10 max-w-md w-full p-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b border-white/10">
+        <DialogHeader className="p-4 pr-12 border-b border-white/10">
           <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> {t("reactions")} ({reactions.length})
+            <span className="text-base select-none">✨</span> {t("reactions")} ({reactions.length})
           </DialogTitle>
         </DialogHeader>
         {content}

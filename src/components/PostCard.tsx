@@ -999,10 +999,12 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           accent={deco.preview_color || accent}
         />
       ) : (
-        <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
-          <AvatarImage src={post.author?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          src={post.author?.avatar_url}
+          fallback={initial}
+          size="md"
+          userId={post.author_id}
+        />
       )}
     </ProfilePreviewTrigger>
   );

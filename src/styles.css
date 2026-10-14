@@ -1415,10 +1415,7 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     animation: none;
   }
 }
-.feed-post-card:focus-within {
-  border-color: color-mix(in srgb, var(--brand-signal) 55%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-signal) 28%, transparent);
-}
+/* Focus-within removed: only explicit keyboard :focus-visible rings on controls may show */
 .post-media-frame {
   border-block: 1px solid var(--brand-line);
 }

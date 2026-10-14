@@ -80,7 +80,13 @@ export function UserAvatar({
               : ""
         )}
       >
-        <AvatarPrimitive.Root className={cn("relative flex h-full w-full shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]", storyStatus !== "none" && "ring-2 ring-background")}>
+        <AvatarPrimitive.Root
+          className={cn(
+            "relative flex h-full w-full shrink-0 overflow-hidden rounded-full bg-[var(--brand-ink-3,#1c1c1f)]",
+            src ? "border border-[#2a2a2e]" : "border-0 shadow-none ring-0",
+            storyStatus !== "none" && "ring-2 ring-background",
+          )}
+        >
           <AvatarPrimitive.Image
             src={normalizeAvatarUrl(src) ?? undefined}
             alt={alt || fallback}
@@ -88,7 +94,7 @@ export function UserAvatar({
           />
           <AvatarPrimitive.Fallback
             className={cn(
-              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)]",
+              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] border-0 shadow-none ring-0",
               fontClass,
             )}
           >
@@ -137,7 +143,7 @@ const Avatar = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Root
     ref={ref}
-    className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]", className)}
+    className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#2a2a2e] bg-[var(--brand-ink-3,#1c1c1f)] shadow-none ring-0", className)}
     {...props}
   />
 ));
@@ -170,7 +176,7 @@ const AvatarFallback = React.forwardRef<
     <AvatarPrimitive.Fallback
       ref={ref}
       className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold",
+        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold border-0 shadow-none ring-0",
         cleanedClass,
       )}
       {...props}
