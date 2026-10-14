@@ -294,22 +294,22 @@ export function LilRizzOrbWidget({
           disabled={isGuest || isAuthLoading}
           aria-label={
             listening
-              ? "Stop listening"
+              ? "Stop listening (microphone active)"
               : isConversationActive
                 ? "Continue voice conversation"
                 : "Talk to Lil Rizz"
           }
           aria-pressed={isConversationActive}
-          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             listening
-              ? "border-[var(--brand-signal)]/40 bg-[color-mix(in_srgb,var(--brand-signal)_20%,transparent)] text-foreground"
+              ? "border-primary/50 bg-primary/20 text-primary shadow-[0_0_12px_rgba(200,255,61,0.35)]"
               : "border-white/10 bg-white/[.06] text-white/75 hover:bg-white/10 hover:text-white"
           }`}
         >
           {listening ? (
-            <MicOff aria-hidden="true" className="h-4 w-4" />
+            <Mic aria-hidden="true" className="h-4 w-4 animate-pulse text-primary" />
           ) : (
-            <Mic aria-hidden="true" className="h-4 w-4" />
+            <MicOff aria-hidden="true" className="h-4 w-4 text-white/60" />
           )}
         </button>
         <label htmlFor="lil-rizz-message" className="sr-only">

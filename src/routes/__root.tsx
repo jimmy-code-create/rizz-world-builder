@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   useLocation,
+  ScrollRestoration,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
@@ -151,6 +152,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <ScrollRestoration getKey={(location) => location.pathname} />
         <Scripts />
       </body>
     </html>

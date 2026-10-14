@@ -154,10 +154,19 @@ export function ReactorPeekProvider({ children }: { children: ReactNode }) {
       );
       setPlacement({ opacity: 1, top, left, position: "fixed" });
     };
+
     place();
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && panelRef.current) {
+      ro = new ResizeObserver(() => place());
+      ro.observe(panelRef.current);
+    }
+
     return () => {
+      ro?.disconnect();
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };
@@ -219,6 +228,8 @@ function PeekBody({ target }: { target: ReactionTarget }) {
 
   const reactors = known ?? data?.reactors ?? [];
   const total = known ? known.length : data?.total ?? target.count;
+  const isCompact = total < 4;
+  const skeletonCount = Math.min(Math.max(1, target.count), 4);
   const shown = reactors.slice(0, MAX_SHOWN);
   const others = Math.max(0, total - shown.length);
 
@@ -231,9 +242,9 @@ function PeekBody({ target }: { target: ReactionTarget }) {
         <span className="font-display text-sm font-semibold">{reactionName(target.emoji)}</span>
         <span className="ml-auto font-mono text-[11px] text-muted-foreground">{total}</span>
       </p>
-      <div className="max-h-56 space-y-1 overflow-y-auto">
+      <div className={isCompact ? "space-y-1 overflow-hidden" : "max-h-48 space-y-1 overflow-y-auto pr-1"}>
         {isLoading && !known
-          ? [0, 1, 2].map((row) => (
+          ? Array.from({ length: skeletonCount }).map((_, row) => (
               <div key={row} className="flex items-center gap-2 py-1">
                 <span className="skeleton-shimmer h-6 w-6 shrink-0 rounded-full" />
                 <span className="skeleton-shimmer h-3 w-24 rounded-full" />

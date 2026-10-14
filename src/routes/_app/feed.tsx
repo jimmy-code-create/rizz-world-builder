@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpRight, Compass, Film, Flame, Loader2, Plus, RefreshCw } from "lucide-react";
 import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
+import { FeedSideDiscussion } from "@/components/FeedSideDiscussion";
 import { RizzCat } from "@/components/RizzCat";
 import { formatNumber } from "@/lib/formatters";
+import type { FeedPost } from "@/lib/posts";
 
 export const Route = createFileRoute("/_app/feed")({
   head: () => ({ meta: [{ title: "Feed · RIZZ" }] }),
@@ -37,7 +39,19 @@ function FeedPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(FEED_PAGE_SIZE);
+  const [activeSidePost, setActiveSidePost] = useState<FeedPost | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Listen for side discussion triggers from post cards
+  useEffect(() => {
+    const handleSideOpen = (event: CustomEvent<{ post: FeedPost }>) => {
+      if (event.detail?.post) {
+        setActiveSidePost(event.detail.post);
+      }
+    };
+    window.addEventListener("rizz:open-side-discussion", handleSideOpen as EventListener);
+    return () => window.removeEventListener("rizz:open-side-discussion", handleSideOpen as EventListener);
+  }, []);
 
   const feed = useQuery({
     queryKey: ["feed"],
@@ -104,102 +118,112 @@ function FeedPage() {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Compact greeting bar */}
-      <div className="flex items-center justify-between pt-1 pb-1">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <UserAvatar
-            src={profile?.avatar_url}
-            fallback={profile?.display_name || profile?.username}
-            size="sm"
-          />
-          <p className="text-sm text-muted-foreground truncate leading-tight">
-            {greetingFor(new Date().getHours())},{" "}
-            <span className="font-semibold text-foreground">{name}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {todayCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-              <Flame className="h-3 w-3 text-primary" />
-              {formatNumber(todayCount)} new
-            </span>
-          )}
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            live
-          </span>
-        </div>
-      </div>
-
-      <SectionHeading title="Stories" hint="Fresh in the last 24 hours" />
-      <StoriesStrip />
-
-      <div id="feed-composer" className="scroll-mt-24">
-        <PostComposer />
-      </div>
-
-      <TrendingTagsRail />
-
-      <SectionHeading title="Latest drops" hint="Newest first, from everyone you follow" />
-
-      {feed.isLoading && (
-        <div className="space-y-4">
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}
-        </div>
-      )}
-
-      {!feed.isLoading && posts.length === 0 && (
-        <div className="rounded-2xl border border-border bg-card p-8 text-center">
-          <RizzCat mood="box" size={124} className="mx-auto" />
-          <h2 className="mt-4 font-display text-xl font-bold">Nothing here yet</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Be the first to drop something hot — your post lands right here.
-          </p>
-          <Button
-            type="button"
-            onClick={focusComposer}
-            className="mt-5 h-11 gap-2 bg-primary text-primary-foreground font-semibold"
-          >
-            <Plus className="h-4 w-4" />
-            Start the vibe
-          </Button>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {shown.map((p, i) => (
-          <div key={p.id}>
-            <PostCard post={p} liked={likes.data?.has(p.id)} />
-            {i === 2 && <FollowSuggestions />}
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start w-full">
+      <div className="xl:col-span-8 min-w-0 space-y-5">
+        {/* Compact greeting bar */}
+        <div className="flex items-center justify-between pt-1 pb-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <UserAvatar
+              src={profile?.avatar_url}
+              fallback={profile?.display_name || profile?.username}
+              size="sm"
+            />
+            <p className="text-sm text-muted-foreground truncate leading-tight">
+              {greetingFor(new Date().getHours())},{" "}
+              <span className="font-semibold text-foreground">{name}</span>
+            </p>
           </div>
-        ))}
+          <div className="flex items-center gap-2 shrink-0">
+            {todayCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                <Flame className="h-3 w-3 text-primary" />
+                {formatNumber(todayCount)} new
+              </span>
+            )}
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              live
+            </span>
+          </div>
+        </div>
+
+        <SectionHeading title="Stories" hint="Fresh in the last 24 hours" />
+        <StoriesStrip />
+
+        <div id="feed-composer" className="scroll-mt-24">
+          <PostComposer />
+        </div>
+
+        <TrendingTagsRail />
+
+        <SectionHeading title="Latest drops" hint="Newest first, from everyone you follow" />
+
+        {feed.isLoading && (
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}
+          </div>
+        )}
+
+        {!feed.isLoading && posts.length === 0 && (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center">
+            <RizzCat mood="box" size={124} className="mx-auto" />
+            <h2 className="mt-4 font-display text-xl font-bold">Nothing here yet</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Be the first to drop something hot — your post lands right here.
+            </p>
+            <Button
+              type="button"
+              onClick={focusComposer}
+              className="mt-5 h-11 gap-2 bg-primary text-primary-foreground font-semibold"
+            >
+              <Plus className="h-4 w-4" />
+              Start the vibe
+            </Button>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {shown.map((p, i) => (
+            <div key={p.id}>
+              <PostCard post={p} liked={likes.data?.has(p.id)} />
+              {i === 2 && <div className="xl:hidden"><FollowSuggestions /></div>}
+            </div>
+          ))}
+        </div>
+
+        {remaining > 0 && (
+          <div ref={sentinelRef} className="py-8 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
+          </div>
+        )}
+
+        {!feed.isLoading && posts.length > 0 && remaining <= 0 && (
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center">
+            <p className="font-display text-base font-bold">You&apos;re all caught up</p>
+            <p className="text-xs text-muted-foreground">
+              New posts show up here the moment they land.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={feed.isFetching}
+              onClick={() => void feed.refetch()}
+              className="h-11 gap-2 border-border bg-surface-2 hover:bg-surface-3"
+            >
+              <RefreshCw className={`h-4 w-4 ${feed.isFetching ? "animate-spin" : ""}`} />
+              {feed.isFetching ? "Checking…" : "Check for new posts"}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {remaining > 0 && (
-        <div ref={sentinelRef} className="py-8 flex items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
-        </div>
-      )}
-
-      {!feed.isLoading && posts.length > 0 && remaining <= 0 && (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center">
-          <p className="font-display text-base font-bold">You&apos;re all caught up</p>
-          <p className="text-xs text-muted-foreground">
-            New posts show up here the moment they land.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={feed.isFetching}
-            onClick={() => void feed.refetch()}
-            className="h-11 gap-2 border-border bg-surface-2 hover:bg-surface-3"
-          >
-            <RefreshCw className={`h-4 w-4 ${feed.isFetching ? "animate-spin" : ""}`} />
-            {feed.isFetching ? "Checking…" : "Check for new posts"}
-          </Button>
-        </div>
-      )}
+      {/* Desktop Discussion and Community Rail */}
+      <aside className="hidden xl:block xl:col-span-4 min-w-0 sticky top-6">
+        <FeedSideDiscussion
+          activePost={activeSidePost}
+          onClose={() => setActiveSidePost(null)}
+        />
+      </aside>
     </div>
   );
 }

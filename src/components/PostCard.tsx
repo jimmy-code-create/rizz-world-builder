@@ -46,6 +46,8 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
+import { translateText, LANGUAGE_NAMES } from "@/lib/translate";
+import { loadPrefs } from "@/lib/prefs";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -232,6 +234,44 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [editOpen, setEditOpen] = useState(false);
   const [caption, setCaption] = useState(post.caption ?? "");
 
+  const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslated, setShowTranslated] = useState(false);
+  const [translatedLang, setTranslatedLang] = useState<string>("");
+
+  const handleTranslate = async () => {
+    if (!post.caption?.trim()) {
+      toast.info("No caption to translate");
+      return;
+    }
+    const currentLang = loadPrefs().language || "en";
+    const langLabel = LANGUAGE_NAMES[currentLang] ?? currentLang;
+
+    if (showTranslated) {
+      setShowTranslated(false);
+      return;
+    }
+
+    if (translatedCaption && translatedLang === currentLang) {
+      setShowTranslated(true);
+      toast.success(`Translated to ${langLabel}`);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translated = await translateText(post.caption, currentLang);
+      setTranslatedCaption(translated);
+      setTranslatedLang(currentLang);
+      setShowTranslated(true);
+      toast.success(`Translated to ${langLabel}`);
+    } catch {
+      toast.error(`Could not translate to ${langLabel}`);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const deleteMut = useMutation({
     mutationFn: () => deletePost(post.id),
     onSuccess: () => {
@@ -382,8 +422,13 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <DropdownMenuItem onClick={quoteThis}>
               <Quote className="mr-2 h-4 w-4" /> Quote post
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
-              <Languages className="mr-2 h-4 w-4" /> Translate
+            <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
+              <Languages className="mr-2 h-4 w-4" />
+              {isTranslating
+                ? "Translating…"
+                : showTranslated
+                  ? "Show original"
+                  : `Translate (${LANGUAGE_NAMES[loadPrefs().language] || "Preferred"})`}
             </DropdownMenuItem>
             {externalVideo?.ok && (
               <DropdownMenuItem onClick={viewOriginal}>
@@ -433,28 +478,56 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </header>
 
       {post.caption && (
-        <p className={cn("px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(post.caption))}>
-          {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
-            ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
-            : renderCaptionWithTags(segment.value).map((p, i) => {
-            if (p.tag) {
-              return (
-                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-              );
-            }
-            if (p.mention) {
-              return (
-                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>
-              );
-            }
-            if (p.url) {
-              return (
-                <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
-              );
-            }
-            return <span key={i}>{p.text}</span>;
-          }))}
-        </p>
+        <div className="px-4 pb-3">
+          <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(showTranslated && translatedCaption ? translatedCaption : post.caption))}>
+            {renderGifSegments(showTranslated && translatedCaption ? translatedCaption : post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
+              ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
+              : renderCaptionWithTags(segment.value).map((p, i) => {
+              if (p.tag) {
+                return (
+                  <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
+                );
+              }
+              if (p.mention) {
+                return (
+                  <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>
+                );
+              }
+              if (p.url) {
+                return (
+                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
+                );
+              }
+              return <span key={i}>{p.text}</span>;
+            }))}
+          </p>
+          {showTranslated && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Languages className="h-3 w-3 text-primary" />
+              <span>Translated to {LANGUAGE_NAMES[translatedLang] ?? translatedLang}</span>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => setShowTranslated(false)}
+                className="font-medium text-primary hover:underline focus-visible:outline-none"
+              >
+                See original
+              </button>
+            </div>
+          )}
+          {!showTranslated && translatedCaption && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Languages className="h-3 w-3" />
+              <button
+                type="button"
+                onClick={() => setShowTranslated(true)}
+                className="font-medium text-primary hover:underline focus-visible:outline-none"
+              >
+                See translation ({LANGUAGE_NAMES[translatedLang] ?? translatedLang})
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {post.quote_post_id && <QuoteEmbed postId={post.quote_post_id} />}
@@ -533,7 +606,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowComments((s) => !s)}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
+            setShowComments((s) => !s);
+          }}
           className="gap-1.5 text-muted-foreground"
         >
           <MessageCircle className="h-5 w-5" />

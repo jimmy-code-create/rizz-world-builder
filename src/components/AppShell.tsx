@@ -70,6 +70,44 @@ export function AppShell() {
 
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
+  const isWidePage = path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Preserve and restore main scroll position across tabs and reloads
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (!mainEl) return;
+
+    const saved = sessionStorage.getItem(`rizz_main_scroll_${path}`);
+    if (saved !== null) {
+      const scrollY = parseInt(saved, 10);
+      if (!isNaN(scrollY) && scrollY > 0) {
+        requestAnimationFrame(() => {
+          if (mainRef.current) mainRef.current.scrollTop = scrollY;
+        });
+      }
+    }
+
+    const onScroll = () => {
+      sessionStorage.setItem(`rizz_main_scroll_${path}`, String(mainEl.scrollTop));
+    };
+
+    mainEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      mainEl.removeEventListener("scroll", onScroll);
+    };
+  }, [path]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      if (mainRef.current) {
+        sessionStorage.setItem(`rizz_main_scroll_${path}`, String(mainRef.current.scrollTop));
+      }
+    };
+    window.addEventListener("pagehide", onBeforeUnload);
+    return () => window.removeEventListener("pagehide", onBeforeUnload);
+  }, [path]);
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -325,11 +363,16 @@ export function AppShell() {
       )}
 
       {/* Content - strictly using token gutters: 16px (px-4), 24px (sm:px-6), 32px (lg:px-8) */}
-      <main className={`relative z-10 flex min-h-0 flex-1 flex-col ${
-        isConversation || isReels
-          ? "w-full overflow-hidden"
-          : "mx-auto w-full max-w-3xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
-      }`}>
+      <main
+        ref={mainRef}
+        className={`relative z-10 flex min-h-0 flex-1 flex-col ${
+          isConversation || isReels
+            ? "w-full overflow-hidden"
+            : isWidePage
+              ? "mx-auto w-full max-w-7xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
+              : "mx-auto w-full max-w-3xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
+        }`}
+      >
         <Outlet />
       </main>
 

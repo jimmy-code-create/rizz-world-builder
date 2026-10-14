@@ -1524,9 +1524,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
    feedback sheet, because it keys off the primitive's data-side. */
 @media (hover: hover) and (pointer: fine) and (min-width: 641px) {
   [role="dialog"][data-state="open"][data-side="bottom"] {
-    inset-inline: auto 1.5rem;
-    width: min(26rem, calc(100vw - 3rem));
-    max-width: 26rem;
+    inset-inline: 0;
+    margin-inline: auto;
+    bottom: 1.5rem;
+    width: min(28rem, calc(100vw - 3rem));
+    max-width: 28rem;
     max-height: min(70dvh, 40rem);
     border: 1px solid var(--brand-line);
     border-radius: var(--radius-card);
