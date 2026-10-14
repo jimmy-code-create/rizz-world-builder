@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { COSMETICS_ENABLED } from "@/lib/effects";
 
 const STYLE_CLASS: Record<string, string> = {
   sparkles: "pfx-sparkles",
@@ -15,7 +16,7 @@ const STYLE_CLASS: Record<string, string> = {
 
 /** Full-coverage overlay effect (banner/profile card background). */
 export function ProfileEffect({ slug, accent }: { slug?: string | null; accent?: string | null }) {
-  if (!slug) return null;
+  if (!COSMETICS_ENABLED || !slug) return null;
 
   // Discord-style effects
   if (slug === "fx-cosmic-nebula") return <CosmicNebulaOverlay />;

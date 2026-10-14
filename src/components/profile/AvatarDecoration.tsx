@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { COSMETICS_ENABLED } from "@/lib/effects";
 
 const STYLE_CLASS: Record<string, string> = {
   neon: "fx-ring-neon",
@@ -33,35 +34,37 @@ type Props = {
 };
 
 export function AvatarDecoration({ src, fallback, size = 40, effectSlug, accent, className }: Props) {
-  const ringClass = resolveRingClass(effectSlug);
-  const isDiscordDeco = effectSlug?.startsWith("deco-");
+  const isDecorated = COSMETICS_ENABLED && Boolean(effectSlug);
+  const ringClass = isDecorated ? resolveRingClass(effectSlug) : undefined;
+  const isDiscordDeco = isDecorated && effectSlug?.startsWith("deco-");
 
   return (
     <div
       className={cn("relative inline-block select-none", className)}
       style={{ width: size, height: size }}
     >
-      {/* 1. Discord-Style Animated SVG Decorations */}
+      {/* 1. Discord-Style Animated SVG Decorations (only when cosmetics flag is on) */}
       {isDiscordDeco && <DiscordAvatarDecoration slug={effectSlug!} size={size} accent={accent} />}
 
-      {/* 2. Legacy / Procedural Rings — an accent-less ring falls back to the
-          brand signal, not the retired violet-pink. */}
+      {/* 2. Legacy / Procedural Rings (only when cosmetics flag is on) */}
       {ringClass && (
         <div
           className={cn("absolute inset-0 rounded-full pointer-events-none", ringClass)}
-          style={{ ["--ec" as any]: accent || "#c9ff3d" }}
+          style={{ ["--ec" as any]: accent || "#c8ff3d" }}
         />
       )}
 
-      {/* Avatar Content */}
+      {/* Avatar Content — Plain avatar on surface-2, initials not lime */}
       <Avatar
         className="relative h-full w-full"
         style={{
-          boxShadow: !ringClass && !isDiscordDeco && accent ? `0 0 0 2px ${accent}66, 0 0 12px ${accent}33` : undefined,
+          boxShadow: isDecorated && !ringClass && !isDiscordDeco && accent ? `0 0 0 2px ${accent}66, 0 0 12px ${accent}33` : undefined,
         }}
       >
         <AvatarImage src={src ?? undefined} />
-        <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{fallback}</AvatarFallback>
+        <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold">
+          {fallback}
+        </AvatarFallback>
       </Avatar>
     </div>
   );

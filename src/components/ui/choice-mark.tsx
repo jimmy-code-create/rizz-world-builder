@@ -30,3 +30,11 @@ export function ChoiceMark({
     />
   );
 }
+
+export function RadioDot({ checked, className }: { checked: boolean; className?: string }) {
+  return <ChoiceMark checked={checked} shape="radio" className={className} />;
+}
+
+export function CheckboxMark({ checked, className }: { checked: boolean; className?: string }) {
+  return <ChoiceMark checked={checked} shape="checkbox" className={className} />;
+}

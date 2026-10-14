@@ -389,4 +389,5 @@ export function useReactorPeek(target: ReactionTarget | null) {
   };
 }
 
+export { ReactorPeekProvider as ReactorsPopover };
 export default ReactorPeekProvider;
