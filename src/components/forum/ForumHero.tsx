@@ -197,7 +197,7 @@ export function ForumSlimHeader({
         type="button"
         size="sm"
         onClick={onNewPost}
-        className="h-9 shrink-0 gap-1.5 border-0 bg-primary text-primary-foreground px-3 text-primary-foreground"
+        className="h-9 shrink-0 gap-1.5 border-0 bg-primary px-3 text-primary-foreground"
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         New

@@ -52,10 +52,12 @@ export const TOKENS = {
   },
   zIndex: {
     content: 0,
-    sticky: 10,
-    nav: 20,
-    overlay: 30,
-    toast: 40,
+    sticky: 20,
+    nav: 30,
+    fullscreen: 70,
+    overlay: 100,
+    popover: 150,
+    toast: 200,
   },
   motion: {
     fast: "150ms",

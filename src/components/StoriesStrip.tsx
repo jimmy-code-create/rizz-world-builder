@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -377,6 +377,8 @@ function StoryViewer({
   const mentionLabel = useMentionLabels(captionBodies);
   const isMine = !!user && user.id === story?.author_id;
   const isLiked = likedIds.has(storyId);
+  const qc = useQueryClient();
+  const reactionsKey = useMemo(() => ["story-reactions", user?.id, storyId], [user?.id, storyId]);
 
   /**
    * Likes are saved in `story_likes`; reactions are saved in `story_reactions`.
@@ -384,7 +386,7 @@ function StoryViewer({
    * without anything being persisted.
    */
   const reactions = useQuery({
-    queryKey: ["story-reactions", user?.id, storyId],
+    queryKey: reactionsKey,
     enabled: !!user && !!story,
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("story_reactions")
@@ -403,15 +405,21 @@ function StoryViewer({
       return;
     }
     const selected = myReactions.includes(emoji);
+    const prev = myReactions;
+    const next = selected ? prev.filter((e) => e !== emoji) : [...prev, emoji];
+
+    // Optimistic update for instant feedback
+    qc.setQueryData<string[]>(reactionsKey, next);
+
     const query = (supabase.from as any)("story_reactions");
     const { error } = selected
       ? await query.delete().eq("story_id", storyId).eq("user_id", user.id).eq("emoji", emoji)
       : await query.insert({ story_id: storyId, user_id: user.id, emoji });
     if (error) {
+      qc.setQueryData<string[]>(reactionsKey, prev);
       toast.error("Couldn't save that reaction.");
       return;
     }
-    void reactions.refetch();
   };
 
   const viewers = useQuery({

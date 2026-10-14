@@ -95,6 +95,16 @@
   --space-section: clamp(4rem, 9vw, 8rem);
   --space-stack: 1.25rem;
 
+  /* Layering hierarchy:
+     content (0) -> sticky (20) -> nav (30) -> fullscreen (50/70) -> overlay (100) -> popover/menu (150) -> toast (200) */
+  --z-content: 0;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-fullscreen: 70;
+  --z-overlay: 100;
+  --z-popover: 150;
+  --z-toast: 200;
+
   /* Elevation: flat. Never a glow. */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
   --shadow-2: 0 14px 34px -22px rgb(0 0 0 / 0.85);

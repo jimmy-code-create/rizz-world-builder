@@ -91,7 +91,7 @@ export function ForumComposer({
   userId: string | null;
   post?: ForumPost | null;
   canModerate?: boolean;
-  onSaved: () => void;
+  onSaved: (postId?: string) => void;
 }) {
   const editing = !!post;
   const [state, setState] = useState<ComposerState>(() => emptyState(post));
@@ -170,6 +170,7 @@ export function ForumComposer({
     if (!canPost || !userId) return;
     setSaving(true);
     try {
+      let savedPostId = post?.id;
       if (editing && post) {
         await updateForumPost({
           postId: post.id,
@@ -183,7 +184,7 @@ export function ForumComposer({
         });
         toast.success("Thread updated");
       } else {
-        await createForumPost({
+        savedPostId = await createForumPost({
           roomId: config.room_id,
           title: state.title.trim(),
           body: state.body,
@@ -197,7 +198,7 @@ export function ForumComposer({
         });
         toast.success(pinAsGuidelines ? "Thread pinned as the forum's guidelines" : "Thread published");
       }
-      onSaved();
+      onSaved(savedPostId);
       onOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't publish that thread");

@@ -6,6 +6,7 @@ import {
   BellOff,
   Check,
   CheckCircle2,
+  Copy,
   CornerDownRight,
   Eye,
   Heart,
@@ -54,6 +55,7 @@ import {
   useForumThreadRealtime,
   type ForumConfig,
   type ForumPost,
+  type ForumReactionChip,
   type ForumReply,
   type ForumStatus,
   type ForumTag,
@@ -62,6 +64,21 @@ import { realmRoleLabel, type RealmRole } from "@/lib/realm-roles";
 import type { Badge } from "@/lib/badges";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+
+function toggleReactionInChips(chips: ForumReactionChip[], emoji: string): ForumReactionChip[] {
+  const existing = chips.find((c) => c.emoji === emoji);
+  if (!existing) {
+    return [...chips, { emoji, count: 1, mine: true }];
+  }
+  if (existing.mine) {
+    if (existing.count <= 1) {
+      return chips.filter((c) => c.emoji !== emoji);
+    }
+    return chips.map((c) => (c.emoji === emoji ? { ...c, count: c.count - 1, mine: false } : c));
+  } else {
+    return chips.map((c) => (c.emoji === emoji ? { ...c, count: c.count + 1, mine: true } : c));
+  }
+}
 
 /**
  * One thread, full screen.
@@ -140,6 +157,8 @@ function ReplyItem({
   userId,
   canModerate,
   onReply,
+  onReaction,
+  onLike,
   onChanged,
   onOpenImage,
   muted,
@@ -152,6 +171,8 @@ function ReplyItem({
   userId: string | null;
   canModerate: boolean;
   onReply: (reply: ForumReply) => void;
+  onReaction: (replyId: string, emoji: string) => void;
+  onLike: (replyId: string) => void;
   onChanged: () => void;
   onOpenImage: (url: string) => void;
   muted: boolean;
@@ -160,24 +181,20 @@ function ReplyItem({
 }) {
   const qc = useQueryClient();
   const reply = node.reply;
-  const [busy, setBusy] = useState(false);
   const author = reply.author;
   const role = roles.get(reply.author_id) ?? author?.role ?? null;
   const name = author?.display_name || author?.username || "member";
   const isOp = reply.author_id === post.author_id;
   const isBest = post.best_reply_id === reply.id;
-  const mine = reply.author_id === userId;
+  const mine = !!userId && reply.author_id === userId;
   const deleted = !!reply.deleted_at || !reply.body.trim();
 
   const act = (run: () => Promise<unknown>, failure: string) => {
-    setBusy(true);
     void run()
       .then(() => {
         void qc.invalidateQueries({ queryKey: forumThreadKey(post.id) });
-        onChanged();
       })
-      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : failure))
-      .finally(() => setBusy(false));
+      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : failure));
   };
 
   if (deleted) {
@@ -236,52 +253,64 @@ function ReplyItem({
             <button
               type="button"
               onClick={() => onReply(reply)}
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`Reply to ${name}`}
             >
               <CornerDownRight className="h-3.5 w-3.5" />
             </button>
-            {(mine || canModerate) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Reply options"
-                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-foreground"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="glass-strong border-white/10">
-                  <DropdownMenuItem onSelect={() => onReply(reply)}>
-                    <CornerDownRight className="mr-2 h-4 w-4" aria-hidden /> Reply
-                  </DropdownMenuItem>
-                  {(mine || post.author_id === userId || canModerate) && !isBest && (
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        act(() => setForumBestAnswer(post.id, reply.id), "Couldn't mark the best answer")
-                      }
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden /> Mark best answer
-                    </DropdownMenuItem>
-                  )}
-                  {isBest && (
-                    <DropdownMenuItem
-                      onSelect={() => act(() => setForumBestAnswer(post.id, null), "Couldn't clear that")}
-                    >
-                      <Check className="mr-2 h-4 w-4" aria-hidden /> Unmark best answer
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Reply options for ${name}`}
+                  className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="glass-strong border-white/10 z-[150]">
+                <DropdownMenuItem onSelect={() => onReply(reply)}>
+                  <CornerDownRight className="mr-2 h-4 w-4" aria-hidden /> Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    void navigator.clipboard.writeText(reply.body).then(
+                      () => toast.success("Reply text copied"),
+                      () => toast.error("Couldn't copy reply"),
+                    );
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4" aria-hidden /> Copy text
+                </DropdownMenuItem>
+                {(mine || post.author_id === userId || canModerate) && !isBest && (
                   <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={() => act(() => deleteForumReply(reply.id), "Couldn't delete that reply")}
+                    onSelect={() =>
+                      act(() => setForumBestAnswer(post.id, reply.id), "Couldn't mark the best answer")
+                    }
                   >
-                    <Trash2 className="mr-2 h-4 w-4" aria-hidden /> Delete
+                    <CheckCircle2 className="mr-2 h-4 w-4 text-[var(--forum-solved)]" aria-hidden /> Mark best answer
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                )}
+                {isBest && (mine || post.author_id === userId || canModerate) && (
+                  <DropdownMenuItem
+                    onSelect={() => act(() => setForumBestAnswer(post.id, null), "Couldn't clear that")}
+                  >
+                    <Check className="mr-2 h-4 w-4" aria-hidden /> Unmark best answer
+                  </DropdownMenuItem>
+                )}
+                {(mine || canModerate) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={() => act(() => deleteForumReply(reply.id), "Couldn't delete that reply")}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" aria-hidden /> Delete reply
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -295,18 +324,17 @@ function ReplyItem({
               chips={reply.reactions ?? []}
               options={config.reactions}
               compact
-              disabled={busy || !userId}
-              onPick={(emoji) =>
-                act(() => toggleForumReplyReaction(reply.id, emoji), "Couldn't react to that reply")
-              }
+              disabled={!userId}
+              onPick={(emoji) => onReaction(reply.id, emoji)}
             />
           )}
           <button
             type="button"
-            disabled={busy || !userId}
-            onClick={() => act(() => toggleForumReplyLike(reply.id), "Couldn't update that like")}
+            disabled={!userId}
+            onClick={() => onLike(reply.id)}
+            aria-label={reply.liked ? "Unlike reply" : "Like reply"}
             className={cn(
-              "inline-flex items-center gap-1 text-[12px] font-semibold",
+              "inline-flex items-center gap-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1 py-0.5",
               reply.liked ? "text-[var(--forum-accent)]" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -325,6 +353,8 @@ function ReplyItem({
           userId={userId}
           canModerate={canModerate}
           onReply={onReply}
+          onReaction={onReaction}
+          onLike={onLike}
           onChanged={onChanged}
           onOpenImage={onOpenImage}
           muted={muted}
@@ -438,10 +468,181 @@ export function ForumPostView({
         setReplyValue("");
         setReplyTo(null);
         void qc.invalidateQueries({ queryKey: forumThreadKey(post.id) });
+        qc.setQueriesData<{ posts: ForumPost[]; hasMore: boolean }>({ queryKey: ["forum-posts"] }, (old) => {
+          if (!old?.posts) return old;
+          return {
+            ...old,
+            posts: old.posts.map((p) => (p.id === post.id ? { ...p, reply_count: (p.reply_count || 0) + 1 } : p)),
+          };
+        });
         onChanged();
       })
       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Couldn't post that reply"))
       .finally(() => setReplyBusy(false));
+  };
+
+  const handlePostReaction = (emoji: string) => {
+    if (!post || !userId) return;
+    const threadKey = [...forumThreadKey(post.id), userId ?? ""];
+    const prev = qc.getQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey);
+
+    qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        post: {
+          ...old.post,
+          reactions: toggleReactionInChips(old.post.reactions ?? [], emoji),
+        },
+      };
+    });
+
+    void toggleForumReaction(post.id, emoji)
+      .then((chip) => {
+        qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (current) => {
+          if (!current) return current;
+          const filtered = (current.post.reactions ?? []).filter((c) => c.emoji !== emoji);
+          const nextReactions = chip.count > 0 ? [...filtered, chip] : filtered;
+          return {
+            ...current,
+            post: { ...current.post, reactions: nextReactions },
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        if (prev) qc.setQueryData(threadKey, prev);
+        toast.error(error instanceof Error ? error.message : "Couldn't react to that");
+      });
+  };
+
+  const handlePostLike = () => {
+    if (!post || !userId) return;
+    const threadKey = [...forumThreadKey(post.id), userId ?? ""];
+    const prev = qc.getQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey);
+    const wasLiked = post.liked === true;
+    const nextLiked = !wasLiked;
+    const nextCount = Math.max(0, (post.like_count || 0) + (nextLiked ? 1 : -1));
+
+    qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        post: {
+          ...old.post,
+          liked: nextLiked,
+          like_count: nextCount,
+        },
+      };
+    });
+
+    qc.setQueriesData<{ posts: ForumPost[]; hasMore: boolean }>({ queryKey: ["forum-posts"] }, (old) => {
+      if (!old?.posts) return old;
+      return {
+        ...old,
+        posts: old.posts.map((p) => (p.id === post.id ? { ...p, liked: nextLiked, like_count: nextCount } : p)),
+      };
+    });
+
+    void toggleForumLike(post.id)
+      .then((res) => {
+        qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            post: { ...current.post, liked: res.liked, like_count: res.like_count },
+          };
+        });
+        qc.setQueriesData<{ posts: ForumPost[]; hasMore: boolean }>({ queryKey: ["forum-posts"] }, (old) => {
+          if (!old?.posts) return old;
+          return {
+            ...old,
+            posts: old.posts.map((p) => (p.id === post.id ? { ...p, liked: res.liked, like_count: res.like_count } : p)),
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        if (prev) qc.setQueryData(threadKey, prev);
+        toast.error(error instanceof Error ? error.message : "Couldn't update that like");
+      });
+  };
+
+  const handleReplyReaction = (replyId: string, emoji: string) => {
+    if (!post || !userId) return;
+    const threadKey = [...forumThreadKey(post.id), userId ?? ""];
+    const prev = qc.getQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey);
+
+    qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        replies: old.replies.map((reply) =>
+          reply.id === replyId
+            ? { ...reply, reactions: toggleReactionInChips(reply.reactions ?? [], emoji) }
+            : reply,
+        ),
+      };
+    });
+
+    void toggleForumReplyReaction(replyId, emoji)
+      .then((chip) => {
+        qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            replies: current.replies.map((reply) => {
+              if (reply.id !== replyId) return reply;
+              const filtered = (reply.reactions ?? []).filter((c) => c.emoji !== emoji);
+              const nextReactions = chip.count > 0 ? [...filtered, chip] : filtered;
+              return { ...reply, reactions: nextReactions };
+            }),
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        if (prev) qc.setQueryData(threadKey, prev);
+        toast.error(error instanceof Error ? error.message : "Couldn't react to that reply");
+      });
+  };
+
+  const handleReplyLike = (replyId: string) => {
+    if (!post || !userId) return;
+    const threadKey = [...forumThreadKey(post.id), userId ?? ""];
+    const prev = qc.getQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey);
+    const target = prev?.replies.find((r) => r.id === replyId);
+    const wasLiked = target?.liked === true;
+    const nextLiked = !wasLiked;
+    const nextCount = Math.max(0, (target?.like_count || 0) + (nextLiked ? 1 : -1));
+
+    qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        replies: old.replies.map((reply) =>
+          reply.id === replyId
+            ? { ...reply, liked: nextLiked, like_count: nextCount }
+            : reply,
+        ),
+      };
+    });
+
+    void toggleForumReplyLike(replyId)
+      .then((res) => {
+        qc.setQueryData<{ post: ForumPost; replies: ForumReply[] }>(threadKey, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            replies: current.replies.map((reply) =>
+              reply.id === replyId
+                ? { ...reply, liked: res.liked, like_count: res.like_count }
+                : reply,
+            ),
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        if (prev) qc.setQueryData(threadKey, prev);
+        toast.error(error instanceof Error ? error.message : "Couldn't update that like");
+      });
   };
 
   const moderate = (action: Parameters<typeof moderateForumPost>[1], success: string) => {
@@ -709,33 +910,16 @@ export function ForumPostView({
                       chips={post.reactions ?? []}
                       options={config.reactions}
                       disabled={!userId}
-                      onPick={(emoji) => {
-                        void toggleForumReaction(post.id, emoji)
-                          .then(() => {
-                            void qc.invalidateQueries({ queryKey: forumThreadKey(post.id) });
-                            onChanged();
-                          })
-                          .catch((error: unknown) =>
-                            toast.error(error instanceof Error ? error.message : "Couldn't react to that"),
-                          );
-                      }}
+                      onPick={handlePostReaction}
                     />
                   )}
                   <button
                     type="button"
                     disabled={!userId}
-                    onClick={() => {
-                      void toggleForumLike(post.id)
-                        .then(() => {
-                          void qc.invalidateQueries({ queryKey: forumThreadKey(post.id) });
-                          onChanged();
-                        })
-                        .catch((error: unknown) =>
-                          toast.error(error instanceof Error ? error.message : "Couldn't update that like"),
-                        );
-                    }}
+                    onClick={handlePostLike}
+                    aria-label={post.liked ? "Unlike thread" : "Like thread"}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold",
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       post.liked
                         ? "border-[var(--forum-accent)] bg-[var(--forum-accent-soft)] text-foreground"
                         : "border-[var(--forum-border)] text-muted-foreground hover:text-foreground",
@@ -799,6 +983,8 @@ export function ForumPostView({
                         setReplyTo(target);
                         document.getElementById("forum-reply-box")?.scrollIntoView({ behavior: "smooth", block: "end" });
                       }}
+                      onReaction={handleReplyReaction}
+                      onLike={handleReplyLike}
                       onChanged={onChanged}
                       onOpenImage={media.openMedia}
                       muted={muted}
