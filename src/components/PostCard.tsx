@@ -8,7 +8,7 @@ import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
@@ -1014,7 +1014,7 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           accent={deco.preview_color || accent}
         />
       ) : (
-        <UserAvatar
+        <InteractiveAvatar
           src={post.author?.avatar_url}
           fallback={initial}
           size="md"

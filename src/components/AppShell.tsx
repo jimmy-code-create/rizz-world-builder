@@ -17,6 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
@@ -25,7 +35,8 @@ import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
 import { RizzCat } from "@/components/RizzCat";
-import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
+import { LimeCatSplash } from "@/components/LimeCatSplash";
+import { PRESENCE_STATUSES, statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
 
@@ -68,6 +79,7 @@ export function AppShell() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
   const presence = useSelfPresence();
 
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
@@ -198,32 +210,7 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return (
-      <div className="min-h-dvh flex flex-col items-center justify-center bg-background px-4 select-none">
-        <div className="relative flex flex-col items-center">
-          {/* Radial brand ambient glow */}
-          <div
-            className="absolute -inset-10 rounded-full opacity-25 blur-3xl animate-pulse pointer-events-none"
-            style={{ background: "radial-gradient(circle, #c8ff3d 0%, transparent 70%)" }}
-          />
-
-          {/* Floating animated cat mascot with shadow */}
-          <div className="relative z-10 animate-[float_3s_ease-in-out_infinite]">
-            <RizzCat mood="peek" size={112} className="drop-shadow-[0_16px_28px_rgba(0,0,0,0.8)]" />
-          </div>
-
-          {/* Sleek branded loader bar */}
-          <div className="relative mt-7 flex flex-col items-center gap-2">
-            <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full w-full rounded-full bg-primary animate-[progress_1.6s_ease-in-out_infinite]" />
-            </div>
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">
-              RIZZ
-            </span>
-          </div>
-        </div>
-      </div>
-    );
+    return <LimeCatSplash />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
@@ -514,13 +501,33 @@ export function AppShell() {
           </div>
 
           <button
-            onClick={() => { setMoreOpen(false); signOut(); }}
+            onClick={() => { setMoreOpen(false); setMobileSignOutConfirm(true); }}
             className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
           >
             <LogOut className="h-4 w-4" /> Sign out
           </button>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
+        <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Sign out of RIZZ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to sign back in to access your messages, feed, and saved posts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
       <ExternalLinkGuard />
@@ -557,8 +564,8 @@ function ProfileMenu({
   initial,
   signOut,
   compact,
-  status,
-  emoji,
+  status: statusProp,
+  emoji: emojiProp,
   onStatus,
 }: {
   profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
@@ -570,101 +577,169 @@ function ProfileMenu({
   onStatus?: () => void;
 }) {
   const { t } = useI18n();
+  const selfPresence = useSelfPresence();
+  const [confirmSignOutOpen, setConfirmSignOutOpen] = useState(false);
+
+  const currentStatus = statusProp ?? selfPresence.status;
+  const currentEmoji = emojiProp ?? selfPresence.customStatus?.emoji;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
-          className={`relative flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            compact
-              ? "h-11 w-11 justify-center rounded-full hover:bg-surface-2 active:bg-surface-3"
-              : "p-2 rounded-xl hover:bg-surface-2 w-full min-h-[44px]"
-          }`}
-        >
-          <div className="relative inline-flex items-center justify-center">
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={initial}
-              size={compact ? "sm" : "md"}
-              presence={emoji ? undefined : status}
-            />
-            {emoji && (
-              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-border text-[9px] leading-none">
-                {emoji}
-              </span>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label={currentStatus ? `Your profile. Status: ${statusLabel(currentStatus)}` : "Your profile"}
+            className={`relative flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              compact
+                ? "h-11 w-11 justify-center rounded-full hover:bg-surface-2 active:bg-surface-3"
+                : "p-2 rounded-xl hover:bg-surface-2 w-full min-h-[44px]"
+            }`}
+          >
+            <div className="relative inline-flex items-center justify-center">
+              <UserAvatar
+                src={profile?.avatar_url}
+                fallback={initial}
+                size={compact ? "sm" : "md"}
+                presence={currentEmoji ? undefined : currentStatus}
+              />
+              {currentEmoji && (
+                <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-border text-[9px] leading-none">
+                  {currentEmoji}
+                </span>
+              )}
+            </div>
+            {!compact && (
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-medium truncate text-foreground">{profile?.display_name || profile?.username}</p>
+                <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
+              </div>
             )}
-          </div>
-          {!compact && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">{profile?.display_name || profile?.username}</p>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-popover border-border w-[280px] shadow-2xl p-1.5 rounded-2xl">
+          <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <UserAvatar src={profile?.avatar_url} fallback={initial} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate text-foreground leading-tight">
+                {profile?.display_name || profile?.username}
+              </p>
               <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
             </div>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-popover border-border w-60 shadow-2xl p-1.5 rounded-xl">
-        <div className="flex items-center gap-2.5 px-2.5 py-2">
-          <UserAvatar src={profile?.avatar_url} fallback={initial} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate text-foreground leading-tight">
-              {profile?.display_name || profile?.username}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
           </div>
-        </div>
-        <DropdownMenuSeparator className="my-1 -mx-1" />
-        {onStatus && (
-          <DropdownMenuItem onClick={onStatus} className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-            <span className="grid h-4 w-4 shrink-0 place-items-center">
-              {emoji ? (
-                <span className="text-sm leading-none">{emoji}</span>
-              ) : status ? (
-                <StatusDot status={status} size={9} ring={false} />
-              ) : null}
-            </span>
-            <span className="flex-1 truncate">{t("status")} · <strong className="font-semibold text-foreground">{status ? statusShortLabel(status) : t("online")}</strong></span>
+
+          <DropdownMenuSeparator className="my-1 -mx-1" />
+
+          {/* Inline Status Picker */}
+          <div className="px-2 py-1.5">
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("status")}</span>
+              {onStatus ? (
+                <button
+                  type="button"
+                  onClick={onStatus}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {selfPresence.customStatus?.emoji ? `${selfPresence.customStatus.emoji} Custom` : "Custom"}
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">{statusShortLabel(selfPresence.status)}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-surface-2 border border-border">
+              {PRESENCE_STATUSES.map((entry) => {
+                const active = selfPresence.status === entry.value;
+                return (
+                  <button
+                    key={entry.value}
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await selfPresence.chooseStatus(entry.value);
+                    }}
+                    title={entry.label}
+                    className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
+                      active
+                        ? "bg-card text-foreground shadow-sm ring-1 ring-primary/40 font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                    }`}
+                  >
+                    <span className="h-2 w-2 rounded-full mb-1" style={{ backgroundColor: entry.color }} />
+                    <span className="truncate max-w-full text-[10px]">{entry.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <DropdownMenuSeparator className="my-1 -mx-1" />
+
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-3 w-full">
+              <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("profile")}
+            </Link>
           </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-3 w-full">
-            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("profile")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/bookmarks" className="flex items-center gap-3 w-full">
-            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("saved")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/effects" className="flex items-center justify-between w-full">
-            <span className="flex items-center gap-3">
-              <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("effects")}
-            </span>
-            <span className="text-[9px] font-bold border border-primary text-primary px-1.5 py-0.2 rounded-full">Soon</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/badges" className="flex items-center gap-3 w-full">
-            <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("badges")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1.5 -mx-1" />
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/settings" className="flex items-center gap-3 w-full">
-            <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("settings")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
-          <Link to="/settings/appearance" className="flex items-center gap-3 w-full">
-            <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("appearance")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1.5 -mx-1" />
-        <DropdownMenuItem onClick={() => signOut()} className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3 text-destructive focus:text-destructive flex items-center">
-          <LogOut className="h-4 w-4 shrink-0" /> {t("sign_out")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/bookmarks" className="flex items-center gap-3 w-full">
+              <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("saved")}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/effects" className="flex items-center justify-between w-full">
+              <span className="flex items-center gap-3">
+                <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("effects")}
+              </span>
+              <span className="text-[9px] font-bold border border-primary text-primary px-1.5 py-0.2 rounded-full">Soon</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/badges" className="flex items-center gap-3 w-full">
+              <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("badges")}
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="my-1.5 -mx-1" />
+
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/settings" className="flex items-center gap-3 w-full">
+              <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("settings")}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3">
+            <Link to="/settings/appearance" className="flex items-center gap-3 w-full">
+              <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> {t("appearance")}
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="my-1.5 -mx-1" />
+
+          <DropdownMenuItem
+            onClick={() => setConfirmSignOutOpen(true)}
+            className="h-11 min-h-[44px] px-3 rounded-xl cursor-pointer text-sm gap-3 text-destructive focus:text-destructive flex items-center"
+          >
+            <LogOut className="h-4 w-4 shrink-0" /> {t("sign_out")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={confirmSignOutOpen} onOpenChange={setConfirmSignOutOpen}>
+        <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Sign out of RIZZ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to sign back in to access your messages, feed, and saved posts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
