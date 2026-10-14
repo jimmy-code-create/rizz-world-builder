@@ -176,7 +176,11 @@ export function RealmForum({
   const hasFilters =
     !!filters.search.trim() || filters.tagIds.length > 0 || !!filters.statusId || filters.archive !== "hide";
 
-  const refresh = useCallback(() => {
+  const refreshPosts = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: forumPostsKey(room.id) });
+  }, [qc, room.id]);
+
+  const refreshAll = useCallback(() => {
     void qc.invalidateQueries({ queryKey: forumPostsKey(room.id) });
     void qc.invalidateQueries({ queryKey: forumTaxonomyKey(config.data?.id) });
     void qc.invalidateQueries({ queryKey: forumConfigKey(room.id) });
@@ -309,6 +313,7 @@ export function RealmForum({
             tags={tags}
             activeTagIds={filters.tagIds}
             onToggleTag={toggleTag}
+            onClearTags={() => setFilters((current) => ({ ...current, tagIds: [] }))}
             trailing={
               <ForumViewOptions
                 density={view.density}
@@ -414,7 +419,12 @@ export function RealmForum({
           userId={userId}
           post={editingPost}
           canModerate={canModerate}
-          onSaved={refresh}
+          onSaved={(newPostId) => {
+            refreshPosts();
+            if (newPostId) {
+              showPost(newPostId);
+            }
+          }}
         />
       )}
 
@@ -435,7 +445,7 @@ export function RealmForum({
             setComposerOpen(true);
             showPost(null);
           }}
-          onChanged={refresh}
+          onChanged={refreshPosts}
           onToggleMute={(muted) => {
             if (openPostId) togglePostMute(openPostId, muted);
           }}
@@ -455,7 +465,7 @@ export function RealmForum({
           roomName={room.name}
           userId={userId}
           canModerate={canModerate}
-          onSaved={refresh}
+          onSaved={refreshAll}
         />
       )}
     </div>

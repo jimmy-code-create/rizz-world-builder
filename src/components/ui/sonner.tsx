@@ -13,7 +13,7 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      className="toaster group rizz-toaster z-[var(--z-toast,40)]"
+      className="toaster group rizz-toaster z-[var(--z-toast,200)]"
       position="bottom-center"
       offset="calc(env(safe-area-inset-bottom, 0px) + 4.75rem)"
       gap={8}
