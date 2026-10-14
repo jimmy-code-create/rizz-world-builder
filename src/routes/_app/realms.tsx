@@ -171,7 +171,7 @@ function RealmsPage() {
   };
 
   const myRealmIds = new Set((myMemberships.data ?? []).map((m) => m.realm_id));
-  const publicRealms = (realms.data ?? []).filter((r: RealmRow) => r.is_public !== false);
+  const publicRealms = (realms.data ?? []).filter((r: RealmRow) => r.is_public !== false && !myRealmIds.has(r.id));
 
   return (
     <div
@@ -276,11 +276,14 @@ function RealmsPage() {
       </motion.div>
 
       {/* My realms */}
-      <section>
-        <h2 className="font-display text-lg font-bold mb-3">Your realms</h2>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold">Your realms</h2>
+          <span className="text-xs text-muted-foreground font-mono">{(myMemberships.data ?? []).length} joined</span>
+        </div>
         {myMemberships.isLoading && <div className="h-24 animate-pulse rounded-3xl glass" />}
         {!myMemberships.isLoading && (myMemberships.data ?? []).length === 0 && (
-          <div className="glass rounded-3xl p-6 text-center text-sm text-muted-foreground">
+          <div className="glass rounded-3xl p-6 text-center text-sm text-muted-foreground border border-white/5">
             You haven't joined a realm yet. Browse public ones below or join with a code.
           </div>
         )}
@@ -290,26 +293,26 @@ function RealmsPage() {
             if (!realm) return null;
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             return (
-              <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }} className="block min-h-[44px] rounded-3xl">
-                <motion.div whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
+              <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }} className="block min-h-[44px] rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                <div className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]">
                   <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
-                      {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
+                    <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15 bg-surface-2">
+                      {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-primary" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-bold text-lg leading-tight truncate flex items-center gap-1.5">
+                      <h3 className="font-display font-bold text-base leading-tight truncate flex items-center gap-1.5">
                         {realm.name}
-                        {realm.is_public ? <Globe className="h-3.5 w-3.5 text-white/40" /> : <Lock className="h-3.5 w-3.5 text-white/40" />}
+                        {realm.is_public ? <Globe className="h-3.5 w-3.5 text-muted-foreground" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                       </h3>
-                      <p className="text-xs text-muted-foreground truncate">{realm.topic || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{realm.topic || "—"}</p>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wide rounded-full border border-white/10 px-2 py-0.5 text-white/60">{m.role}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-foreground/80">{m.role}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
+                    <Users className="h-3.5 w-3.5" />
                     <span>{realm.member_count} members</span>
                   </div>
-                </motion.div>
+                </div>
               </Link>
             );
           })}
@@ -317,8 +320,11 @@ function RealmsPage() {
       </section>
 
       {/* Browse public realms */}
-      <section>
-        <h2 className="font-display text-lg font-bold mb-3">Discover public realms</h2>
+      <section className="space-y-3 pt-4 border-t border-white/10">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold">Discover public realms</h2>
+          <span className="text-xs text-muted-foreground font-mono">{publicRealms.length} available</span>
+        </div>
         {realms.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
         {realms.isError && <p className="text-sm text-destructive">Couldn't load realms. Try again later.</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -326,36 +332,37 @@ function RealmsPage() {
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             const joined = myRealmIds.has(realm.id);
             return (
-              <motion.div key={realm.id} whileHover={{ y: -3 }} className="glass relative overflow-hidden rounded-3xl border border-sky-300/10 p-5 transition-colors hover:border-sky-300/25" style={{ boxShadow: `inset 0 0 0 1px ${realm.accent_color}33, 0 12px 36px rgba(37,99,235,.08)` }}>
+              <div key={realm.id} className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]">
                 <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${realm.accent_color || "#38bdf8"}, #2563eb)` }}>
-                    {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-white" />}
+                  <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15 bg-surface-2">
+                    {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-primary" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-lg leading-tight truncate">{realm.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">{realm.topic || "—"}</p>
+                    <h3 className="font-display font-bold text-base leading-tight truncate">{realm.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{realm.topic || "—"}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Users className="h-3 w-3" />
-                  <span>{realm.member_count} members</span>
+                <div className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{realm.member_count} members</span>
+                  </span>
                   {joined ? (
-                    <Link to="/r/$slug" params={{ slug: realm.slug }} className="ml-auto">
-                      <Button size="sm" variant="outline" className="glass border-white/10">Open</Button>
+                    <Link to="/r/$slug" params={{ slug: realm.slug }}>
+                      <Button size="sm" variant="outline" className="glass border-white/10 h-8 px-3 text-xs">Open</Button>
                     </Link>
                   ) : (
-                    <Button size="sm" onClick={() => void handleQuickJoin(realm.id)} className="ml-auto bg-primary text-primary-foreground border-0 shadow-md">Join</Button>
+                    <Button size="sm" onClick={() => void handleQuickJoin(realm.id)} className="h-8 px-3 text-xs bg-primary text-primary-foreground border-0 shadow-md font-semibold">Join</Button>
                   )}
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
         {!realms.isLoading && publicRealms.length === 0 && (
-          <div className="glass rounded-3xl p-10 text-center">
-            <div className="text-5xl mb-3">🏰</div>
-            <h2 className="font-display text-xl font-bold">No public realms yet</h2>
-            <p className="text-sm text-muted-foreground mt-1">Be the first to start one.</p>
+          <div className="glass rounded-3xl p-8 text-center border border-white/5">
+            <h3 className="font-display text-base font-bold text-foreground">You're all caught up!</h3>
+            <p className="text-xs text-muted-foreground mt-1">You are already a member of all public realms, or no new public realms exist yet.</p>
           </div>
         )}
       </section>

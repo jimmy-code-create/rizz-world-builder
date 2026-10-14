@@ -172,19 +172,19 @@ export function MessageActionMenu({
   const select = (action: MessageActionDescriptor) => handleSelect(action);
 
   const previewHeader = preview ? (
-    <div className="mb-1.5 flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.035] p-2">
-      <Avatar className="mt-0.5 h-7 w-7 shrink-0">
+    <div className="mb-2 flex items-start gap-3 rounded-2xl border border-white/10 bg-card p-3 shadow-md">
+      <Avatar className="mt-0.5 h-8 w-8 shrink-0 ring-1 ring-white/15">
         <AvatarImage src={preview.avatarUrl ?? undefined} alt="" />
-        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold text-primary-foreground">
+        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
           {preview.author.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-[11px] font-semibold">
+        <p className="flex items-baseline gap-1.5 text-xs font-semibold text-foreground">
           <span className="truncate">{preview.author}</span>
-          {preview.time && <span className="shrink-0 font-normal text-muted-foreground">{preview.time}</span>}
+          {preview.time && <span className="shrink-0 font-normal text-[10px] text-muted-foreground">{preview.time}</span>}
         </p>
-        <p className="mt-0.5 line-clamp-4 whitespace-pre-wrap break-words text-[12px] leading-snug text-foreground/85">
+        <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/95">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
@@ -197,7 +197,7 @@ export function MessageActionMenu({
           }}
           aria-label="Open this message"
           title="Open this message"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
         >
           <Maximize2 className="h-4 w-4" aria-hidden="true" />
         </button>

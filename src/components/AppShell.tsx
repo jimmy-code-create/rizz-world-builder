@@ -197,8 +197,29 @@ export function AppShell() {
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
     return (
-      <div className="min-h-dvh flex items-center justify-center">
-        <RizzCat mood="peek" size={76} className="animate-pulse" />
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-background px-4 select-none">
+        <div className="relative flex flex-col items-center">
+          {/* Radial brand ambient glow */}
+          <div
+            className="absolute -inset-10 rounded-full opacity-25 blur-3xl animate-pulse pointer-events-none"
+            style={{ background: "radial-gradient(circle, #c8ff3d 0%, transparent 70%)" }}
+          />
+
+          {/* Floating animated cat mascot with shadow */}
+          <div className="relative z-10 animate-[float_3s_ease-in-out_infinite]">
+            <RizzCat mood="peek" size={112} className="drop-shadow-[0_16px_28px_rgba(0,0,0,0.8)]" />
+          </div>
+
+          {/* Sleek branded loader bar */}
+          <div className="relative mt-7 flex flex-col items-center gap-2">
+            <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-full rounded-full bg-primary animate-[progress_1.6s_ease-in-out_infinite]" />
+            </div>
+            <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">
+              RIZZ
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -234,10 +255,9 @@ export function AppShell() {
       {!isConversation && (
         <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
           <Link to="/feed" className="flex items-center gap-2.5 mb-6 px-2 group" aria-label="RIZZ home">
-            <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-display font-bold text-base transition-transform group-hover:scale-105">
-              R
+            <div className="h-10 w-10 rounded-2xl bg-surface-2 border border-border flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+              <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
             </div>
-            <img src="/brand/rizz-cat-logo.svg" alt="" className="h-8 w-8 shrink-0" />
             <span className="font-display text-xl font-bold tracking-tight text-foreground">RIZZ</span>
           </Link>
 
@@ -318,23 +338,19 @@ export function AppShell() {
           <Link
             to="/feed"
             aria-label="RIZZ home"
-            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary font-display text-base font-bold text-primary-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-surface-3"
           >
-            R
+            <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
           </Link>
 
-          <button
-            type="button"
-            onClick={openSearch}
-            aria-label="Search RIZZ"
+          <Link
+            to="/explore"
+            aria-label="Search and Explore RIZZ"
             className="flex h-11 min-h-[44px] min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate">Search people, tags, chats</span>
-            <kbd className="hidden shrink-0 rounded-md border border-border bg-surface-3 px-1.5 py-0.5 font-sans text-[10px] font-semibold min-[400px]:block">
-              ⌘K
-            </kbd>
-          </button>
+          </Link>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <Link
@@ -593,7 +609,7 @@ function ProfileMenu({
         </div>
         <DropdownMenuSeparator className="my-1 -mx-1" />
         {onStatus && (
-          <DropdownMenuItem onClick={onStatus} className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <DropdownMenuItem onClick={onStatus} className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
             <span className="grid h-4 w-4 shrink-0 place-items-center">
               {emoji ? (
                 <span className="text-sm leading-none">{emoji}</span>
@@ -604,42 +620,42 @@ function ProfileMenu({
             <span className="flex-1 truncate">Status · <strong className="font-semibold text-foreground">{status ? statusShortLabel(status) : "Online"}</strong></span>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
-          <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-2.5 w-full">
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
+          <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-3 w-full">
             <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
-          <Link to="/bookmarks" className="flex items-center gap-2.5 w-full">
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
+          <Link to="/bookmarks" className="flex items-center gap-3 w-full">
             <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> Saved
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
           <Link to="/effects" className="flex items-center justify-between w-full">
-            <span className="flex items-center gap-2.5">
+            <span className="flex items-center gap-3">
               <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Effects
             </span>
             <span className="text-[9px] font-bold border border-primary text-primary px-1.5 py-0.2 rounded-full">Soon</span>
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
-          <Link to="/badges" className="flex items-center gap-2.5 w-full">
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
+          <Link to="/badges" className="flex items-center gap-3 w-full">
             <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> Badges
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 -mx-1" />
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
-          <Link to="/settings" className="flex items-center gap-2.5 w-full">
+        <DropdownMenuSeparator className="my-1.5 -mx-1" />
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
+          <Link to="/settings" className="flex items-center gap-3 w-full">
             <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> Settings
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
-          <Link to="/settings/appearance" className="flex items-center gap-2.5 w-full">
+        <DropdownMenuItem asChild className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3">
+          <Link to="/settings/appearance" className="flex items-center gap-3 w-full">
             <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Appearance
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 -mx-1" />
-        <DropdownMenuItem onClick={() => signOut()} className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5 text-destructive focus:text-destructive flex items-center">
+        <DropdownMenuSeparator className="my-1.5 -mx-1" />
+        <DropdownMenuItem onClick={() => signOut()} className="h-10 px-3 rounded-xl cursor-pointer text-sm gap-3 text-destructive focus:text-destructive flex items-center">
           <LogOut className="h-4 w-4 shrink-0" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>

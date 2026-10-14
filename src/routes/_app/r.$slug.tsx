@@ -149,11 +149,13 @@ function RealmPage() {
   const [pollOpen, setPollOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
+  const [showVoiceChat, setShowVoiceChat] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
-    enabled: !!realm.data && membersOpen,
+    enabled: !!realm.data?.id,
     queryFn: () => listRealmMembers(realm.data!.id),
+    staleTime: 60_000,
   });
 
   const rooms = useQuery({
@@ -1063,9 +1065,9 @@ function RealmPage() {
               <Button
                 type="button"
                 onClick={() => openCallView()}
-                className="min-h-11 shrink-0 gap-2 glass border-white/10"
+                className="min-h-10 px-3.5 shrink-0 gap-1.5 border border-primary/50 bg-primary/20 text-primary hover:bg-primary/30 font-semibold text-xs shadow-md"
               >
-                <Mic className="h-4 w-4" /> Open call
+                <Mic className="h-3.5 w-3.5" /> Open call
               </Button>
             ) : (
               <Button
@@ -1108,12 +1110,74 @@ function RealmPage() {
         />
       )}
 
-      {activeRoom?.kind !== "forum" && (
+      {/* Dedicated Voice Stage when voice room is open without text chat active */}
+      {activeRoom?.kind === "voice" && !showVoiceChat && (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none">
+          <div className="relative mb-5">
+            <div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
+            <div className="relative h-20 w-20 rounded-3xl bg-primary/10 border-2 border-primary/40 grid place-items-center text-primary shadow-[0_0_24px_rgba(200,255,61,0.2)]">
+              <Mic className="h-9 w-9" />
+            </div>
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">{activeRoom.name}</h2>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            {activeChannelPeople.length > 0
+              ? `${activeChannelPeople.length} connected in voice`
+              : "Voice channel is currently empty — jump in and start the vibe!"}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {activeCall?.channelId === activeRoom.id ? (
+              <Button
+                size="lg"
+                onClick={() => openCallView()}
+                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
+              >
+                <Mic className="h-4 w-4" /> Open Voice Call
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                disabled={joiningVoice}
+                onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
+                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
+              >
+                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join Voice Channel"}
+              </Button>
+            )}
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setShowVoiceChat(true)}
+              className="h-11 px-4 gap-2 glass border-white/10 hover:bg-white/10 text-xs"
+            >
+              <MessageSquare className="h-4 w-4" /> Open VC Text Chat
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
       <div
         onClick={media.onMediaClick}
         className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
       >
         {media.viewer}
+        {activeRoom?.kind === "voice" && showVoiceChat && (
+          <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat · {activeRoom.name}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowVoiceChat(false)}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Back to Stage
+            </Button>
+          </div>
+        )}
         {activeRoom?.kind !== "voice" && activeRoom && (
           <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Hash className="h-3 w-3" />{activeRoom.name}
@@ -1311,7 +1375,7 @@ function RealmPage() {
                         ]),
                   ]}
                 >
-                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "comment") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
+                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
                     {renderGifSegments(m.body).map((seg, si) =>
                       seg.isGif || seg.isSticker
                         ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
@@ -1467,7 +1531,7 @@ function RealmPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {activeRoom?.kind !== "forum" && (
+      {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         {myWriteBlocked && (
           <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
