@@ -59,8 +59,8 @@ type PressOrigin = {
   pointerId: number;
 };
 
-const LONG_PRESS_DELAY = 480;
-const MOVEMENT_TOLERANCE = 10;
+const LONG_PRESS_DELAY = 320;
+const MOVEMENT_TOLERANCE = 22;
 /** Two taps within this window count as a double tap (react with a heart). */
 const DOUBLE_TAP_WINDOW = 300;
 
@@ -122,6 +122,9 @@ export function MessageActionMenu({
       pressTimer.current = null;
       if (!pressOrigin.current) return;
       longPressFired.current = true;
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try { navigator.vibrate(35); } catch {}
+      }
       onOpenChangeRef.current(true);
     }, LONG_PRESS_DELAY);
   };

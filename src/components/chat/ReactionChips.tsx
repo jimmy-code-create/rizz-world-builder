@@ -24,7 +24,7 @@ export type { ReactionPulse };
  * show, then a "+N" chip opens the full list.
  */
 const MAX_VISIBLE_CHIPS = 4;
-const LONG_PRESS_MS = 420;
+const LONG_PRESS_MS = 320;
 
 /**
  * Fires a burst over a message, used by double tap. Pass the tap's viewport
@@ -170,9 +170,10 @@ function ReactionChip({
         pressTimer.current = window.setTimeout(() => {
           pressTimer.current = null;
           longPressed.current = true;
-          // Long press shows who reacted, through the shared peek — the same
-          // gesture everywhere reactions exist. The "+N" chip still opens the
-          // full sheet for messages with more chips than fit.
+          // Hold longer, feel more: the shared haptic helper first, then the
+          // shared peek. Long press shows who reacted everywhere reactions
+          // exist; the "+N" chip still opens the full sheet.
+          reactionHaptic(35);
           if (peek.openNow) peek.openNow();
           else onLongPress();
         }, LONG_PRESS_MS);

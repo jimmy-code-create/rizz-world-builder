@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { BarChart3, Clock } from "lucide-react";
+import { BarChart3, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ChoiceMark } from "@/components/ui/choice-mark";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
-import { usePollTallies, voteRealmPoll } from "@/lib/realm-polls";
+import { usePollTallies, voteRealmPoll, fetchRealmPollVoters } from "@/lib/realm-polls";
+import { useQuery } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 /**
  * The poll renders from the message's own `card` payload, so it reads
@@ -14,6 +17,14 @@ import { usePollTallies, voteRealmPoll } from "@/lib/realm-polls";
 export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: boolean }) {
   const tallies = usePollTallies(card.pollId);
   const [busy, setBusy] = useState<number | null>(null);
+  const [votersOpen, setVotersOpen] = useState(false);
+
+  const voters = useQuery({
+    queryKey: ["realm-poll-voters", card.pollId],
+    queryFn: () => fetchRealmPollVoters(card.pollId),
+    enabled: votersOpen && !!card.pollId,
+    staleTime: 15_000,
+  });
 
   const counts = tallies.data?.counts ?? new Array(card.options.length).fill(0);
   const total = tallies.data?.total ?? 0;
@@ -83,21 +94,78 @@ export function PollCard({ card, canVote }: { card: PollCardPayload; canVote: bo
         })}
       </div>
 
-      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {closed ? (
-          <>
-            <Clock className="h-3 w-3" /> Voting closed · {total} {total === 1 ? "vote" : "votes"}
-          </>
-        ) : card.closesAt ? (
-          <>
-            <Clock className="h-3 w-3" /> {total} {total === 1 ? "vote" : "votes"} · closes{" "}
-            {new Date(card.closesAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          </>
-        ) : (
-          `${total} ${total === 1 ? "vote" : "votes"}`
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          {closed ? (
+            <>
+              <Clock className="h-3 w-3" /> Voting closed · {total} {total === 1 ? "vote" : "votes"}
+            </>
+          ) : card.closesAt ? (
+            <>
+              <Clock className="h-3 w-3" /> {total} {total === 1 ? "vote" : "votes"} · closes{" "}
+              {new Date(card.closesAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </>
+          ) : (
+            `${total} ${total === 1 ? "vote" : "votes"}`
+          )}
+          {tallies.isError && " · live counts unavailable"}
+        </span>
+
+        {total > 0 && (
+          <button
+            type="button"
+            onClick={() => setVotersOpen(true)}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--rizz-pink)] hover:underline shrink-0"
+          >
+            <Users className="h-3 w-3" /> Who voted
+          </button>
         )}
-        {tallies.isError && " · live counts unavailable"}
-      </p>
+      </div>
+
+      <Dialog open={votersOpen} onOpenChange={setVotersOpen}>
+        <DialogContent className="max-w-md bg-card text-card-foreground border border-border rounded-2xl p-5">
+          <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
+            <Users className="h-4 w-4 text-[var(--rizz-pink)]" /> Who voted ({total})
+          </DialogTitle>
+          <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {voters.isLoading && (
+              <p className="py-4 text-center text-xs text-muted-foreground animate-pulse">Loading votes…</p>
+            )}
+            {voters.data && card.options.map((optLabel, optIndex) => {
+              const optVoters = (voters.data ?? []).filter((v) => v.option_index === optIndex);
+              return (
+                <div key={optIndex} className="rounded-xl border border-border/70 bg-muted/30 p-3">
+                  <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                    <span className="truncate flex-1 font-medium">{optLabel}</span>
+                    <span className="text-muted-foreground ml-2 text-[11px] font-bold tabular-nums">
+                      {optVoters.length} {optVoters.length === 1 ? "vote" : "votes"}
+                    </span>
+                  </div>
+                  {optVoters.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">No votes yet</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {optVoters.map((v) => (
+                        <div key={v.user_id} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card py-1 px-2 text-xs">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={v.user?.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[8px] font-bold">
+                              {(v.user?.username ?? "?").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate max-w-[110px] text-[11px] font-medium">
+                            {v.user?.display_name || v.user?.username || "Someone"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

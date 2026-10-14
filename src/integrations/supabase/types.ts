@@ -3217,7 +3217,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       group_member_role: "owner" | "admin" | "member"
-      post_visibility: "public" | "close_friends" | "followers"
+      post_visibility: "public" | "close_friends" | "followers" | "following"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
       realm_role: "owner" | "mod" | "member"
       realm_type: "text" | "announcement" | "drops" | "voice"
@@ -3352,7 +3352,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       group_member_role: ["owner", "admin", "member"],
-      post_visibility: ["public", "close_friends", "followers"],
+      post_visibility: ["public", "close_friends", "followers", "following"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
       realm_role: ["owner", "mod", "member"],
       realm_type: ["text", "announcement", "drops", "voice"],

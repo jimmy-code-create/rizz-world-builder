@@ -44,7 +44,7 @@ type Story = {
   expires_at: string;
   like_count: number;
   view_count: number;
-  visibility: "public" | "close_friends" | "followers";
+  visibility: "public" | "close_friends" | "followers" | "following";
   author: { username: string; display_name: string | null; avatar_url: string | null; accent_color: string | null } | null;
 };
 
@@ -87,9 +87,32 @@ export function StoriesStrip() {
       setLoading(false);
       return;
     }
-    setStories((data ?? []) as unknown as Story[]);
+    const rawStories = (data ?? []) as unknown as Story[];
+    if (user) {
+      // Fetch who I am following and who follows me in parallel
+      const [{ data: myFollowings }, { data: authorsFollowingMe }] = await Promise.all([
+        supabase.from("follows").select("following_id").eq("follower_id", user.id),
+        supabase.from("follows").select("follower_id").eq("following_id", user.id),
+      ]);
+
+      const followingIds = new Set((myFollowings ?? []).map((r: { following_id: string }) => r.following_id));
+      const followingMeSet = new Set((authorsFollowingMe ?? []).map((r: { follower_id: string }) => r.follower_id));
+
+      // Home page feed only shows stories from accounts we follow (plus our own)
+      const filtered = rawStories.filter((s) => {
+        if (s.author_id === user.id) return true;
+        if (!followingIds.has(s.author_id)) return false;
+        if (s.visibility === "following") {
+          return followingMeSet.has(s.author_id);
+        }
+        return true;
+      });
+      setStories(filtered);
+    } else {
+      setStories([]);
+    }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -542,6 +565,21 @@ function StoryViewer({
               >
                 @{story.author?.username}
               </Link>
+              {story.visibility === "close_friends" && (
+                <span className="rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                  Close friends
+                </span>
+              )}
+              {story.visibility === "followers" && (
+                <span className="rounded-full bg-sky-500/25 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                  Followers
+                </span>
+              )}
+              {story.visibility === "following" && (
+                <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                  Following only
+                </span>
+              )}
             </div>
 
             {isMine && (
