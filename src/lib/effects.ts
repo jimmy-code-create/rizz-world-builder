@@ -1,5 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Global cosmetics killswitch.
+ * While false: avatar decorations, nameplates, glowing/colored names, and profile
+ * effects are paused and hidden across all surfaces. Server-side equip/unlock is blocked.
+ */
+export const COSMETICS_ENABLED = false;
+
 export type ProfileEffectType = "avatar_decoration" | "profile_effect" | "nameplate";
 
 export type ProfileEffect = {
@@ -363,6 +370,9 @@ export async function fetchEquippedEffects(userId: string): Promise<Partial<Reco
 }
 
 export async function acquireEffect(userId: string, effectId: string) {
+  if (!COSMETICS_ENABLED) {
+    throw new Error("Cosmetics are currently paused.");
+  }
   saveLocalAcquired(userId, effectId);
   try {
     await supabase.from("user_profile_effects").insert({ user_id: userId, effect_id: effectId });
@@ -377,6 +387,9 @@ export function isTrialActive(profile: { trial_active?: boolean | null; trial_en
 }
 
 export async function equipEffect(userId: string, effectId: string, type: ProfileEffectType) {
+  if (!COSMETICS_ENABLED) {
+    throw new Error("Cosmetics are currently paused.");
+  }
   saveLocalAcquired(userId, effectId);
   saveLocalEquipped(userId, type, effectId);
 
@@ -407,10 +420,12 @@ export async function unequipEffect(userId: string, effectId: string, type?: Pro
   } catch {}
 }
 
-export const RARITY_GRADIENT: Record<ProfileEffect["rarity"], string> = {
-  common: "linear-gradient(135deg, #94a3b8, #cbd5e1)",
-  rare: "linear-gradient(135deg, #22d3ee, #06b6d4)",
-  epic: "linear-gradient(135deg, #a855f7, #ec4899)",
-  legendary: "linear-gradient(135deg, #facc15, #f97316)",
-  mythic: "linear-gradient(135deg, #ff2d92, #a855f7, #22d3ee)",
+export const RARITY_FLAT: Record<ProfileEffect["rarity"], string> = {
+  common: "#94a3b8",
+  rare: "#06b6d4",
+  epic: "#a855f7",
+  legendary: "#facc15",
+  mythic: "#ec4899",
 };
+
+export const RARITY_GRADIENT: Record<ProfileEffect["rarity"], string> = RARITY_FLAT;

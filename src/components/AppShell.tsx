@@ -41,10 +41,9 @@ const sideTabs = [
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/realms", label: "Realms", icon: Hash },
   { to: "/drops", label: "Giveaways", icon: Gift },
-  { to: "/dms", label: "DMs", icon: MessageCircle },
+  { to: "/dms", label: "Messages", icon: MessageCircle },
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/effects", label: "Effects", icon: Sparkles },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Top", icon: Trophy },
   { to: "/bots", label: "Bots", icon: Bot },
@@ -53,7 +52,7 @@ const sideTabs = [
 const mobileTabs = [
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/reels", label: "Reels", icon: Film },
-  { to: "/dms", label: "DMs", icon: MessageCircle },
+  { to: "/dms", label: "Messages", icon: MessageCircle },
 ] as const;
 
 export function AppShell() {
@@ -432,6 +431,11 @@ export function AppShell() {
               <Bookmark className="h-5 w-5" />
               <span className="text-[11px] font-medium">Saved</span>
             </Link>
+            <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
+              <Sparkles className="h-5 w-5" />
+              <span className="text-[11px] font-medium">Effects</span>
+              <span className="absolute top-1 right-1 text-[8px] font-bold border border-[var(--brand-signal,#c8ff3d)] text-[var(--brand-signal,#c8ff3d)] px-1 rounded-full">Soon</span>
+            </Link>
             <Link to="/settings" className={navTile(path === "/settings")}>
               <Settings className="h-5 w-5" />
               <span className="text-[11px] font-medium">Settings</span>
@@ -547,7 +551,10 @@ function ProfileMenu({
           <Link to="/bookmarks"><Bookmark className="mr-2 h-4 w-4" /> Saved</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/effects"><Sparkles className="mr-2 h-4 w-4" /> Effects</Link>
+          <Link to="/effects" className="flex items-center justify-between">
+            <span className="flex items-center"><Sparkles className="mr-2 h-4 w-4" /> Effects</span>
+            <span className="text-[9px] font-bold border border-[var(--brand-signal,#c8ff3d)] text-[var(--brand-signal,#c8ff3d)] px-1 rounded-full">Soon</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/badges"><Trophy className="mr-2 h-4 w-4" /> Badges</Link>

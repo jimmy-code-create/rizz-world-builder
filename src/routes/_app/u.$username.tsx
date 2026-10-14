@@ -305,11 +305,6 @@ function ProfilePage() {
             <Button variant="outline" size="sm" className="glass border-white/10" onClick={shareProfile}>
               <Share2 className="h-4 w-4" />
             </Button>
-            <Link to="/effects">
-              <Button variant="outline" size="sm" className="glass border-white/10 flex items-center gap-1.5">
-                <Wand2 className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Effects
-              </Button>
-            </Link>
             <Link to="/settings">
               <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
             </Link>
@@ -375,7 +370,7 @@ function ProfilePage() {
           <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
           <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
           <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
-          <TabsTrigger value="servers" className="gap-1.5"><Users className="h-4 w-4" />Servers</TabsTrigger>
+          <TabsTrigger value="groups" className="gap-1.5"><Users className="h-4 w-4" />Groups</TabsTrigger>
           <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
         </TabsList>
 
@@ -431,11 +426,11 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="servers" className="mt-6 space-y-2">
+        <TabsContent value="groups" className="mt-6 space-y-2">
           {groupsQ.isLoading ? (
             <div className="h-24 animate-pulse rounded-3xl glass" />
           ) : groupsQ.data?.length === 0 ? (
-            <EmptyState label="Not in any servers yet" />
+            <EmptyState label="Not in any groups yet" />
           ) : (
             groupsQ.data?.map((g) => (
               <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">

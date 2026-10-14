@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { COSMETICS_ENABLED } from "@/lib/effects";
 
 // Legacy exact slugs
 const LEGACY: Record<string, string> = {
@@ -66,6 +67,11 @@ export function Nameplate({
   variant?: "badge" | "text";
   className?: string;
 }) {
+  // When cosmetics are paused, render all names plain
+  if (!COSMETICS_ENABLED) {
+    return <span className={className}>{name}</span>;
+  }
+
   const style = accent ? ({ ["--nc" as any]: accent } as React.CSSProperties) : undefined;
 
   // 1. Full Discord-Style Framed Nameplates
