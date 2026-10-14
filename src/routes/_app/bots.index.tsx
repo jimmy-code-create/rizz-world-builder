@@ -187,7 +187,7 @@ function BotDirectoryPage() {
                     {bot.name}
                     {bot.is_builtin && (
                       <span className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/45 bg-muted-foreground/15 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                        <Bot className="h-2.5 w-2.5" aria-hidden="true" /> Official
+                        <BotIcon className="h-2.5 w-2.5" aria-hidden="true" /> Official
                       </span>
                     )}
                     <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { BellOff, Heart, MessageSquare, Pin, Sparkles } from "lucide-react";
+import { BellOff, Check, Heart, MessageSquare, Pin, Sparkles } from "lucide-react";
 import { AuthorLine, CountPill, ReplierFaces, StateFlag, StatusChip, TagChip } from "@/components/forum/ForumBits";
 import { ForumThumb } from "@/components/forum/ForumEmbeds";
 import { forumActivityLabel, forumExcerpt, forumThumbnail } from "@/lib/forum-content";

@@ -116,7 +116,7 @@ function FeedPage() {
           <div className="flex items-center gap-3">
             <UserAvatar
               src={profile?.avatar_url}
-              fallback={profile?.display_name || profile?.username}
+              fallback={profile?.display_name || profile?.username || undefined}
               size="md"
             />
             <div className="min-w-0 flex-1">

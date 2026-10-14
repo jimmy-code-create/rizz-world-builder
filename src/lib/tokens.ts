@@ -21,6 +21,7 @@ export const TOKENS = {
     online: "#22c55e",
     idle: "#f59e0b",
     dnd: "#ef4444",
+    invisible: "#52525b",
     offline: "#71717a",
   },
   rarities: {
