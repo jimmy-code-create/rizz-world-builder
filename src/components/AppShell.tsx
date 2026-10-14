@@ -538,48 +538,66 @@ function ProfileMenu({
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-popover border-border w-56 shadow-xl">
-        <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">@{profile?.username}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent align="end" className="bg-popover border-border w-60 shadow-2xl p-1.5 rounded-xl">
+        <div className="flex items-center gap-2.5 px-2.5 py-2">
+          <UserAvatar src={profile?.avatar_url} fallback={initial} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate text-foreground leading-tight">
+              {profile?.display_name || profile?.username}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
+          </div>
+        </div>
+        <DropdownMenuSeparator className="my-1 -mx-1" />
         {onStatus && (
-          <DropdownMenuItem onClick={onStatus} className="min-h-[44px] cursor-pointer">
-            <span className="mr-2 grid h-4 w-4 place-items-center">
+          <DropdownMenuItem onClick={onStatus} className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+            <span className="grid h-4 w-4 shrink-0 place-items-center">
               {emoji ? (
                 <span className="text-sm leading-none">{emoji}</span>
               ) : status ? (
                 <StatusDot status={status} size={9} ring={false} />
               ) : null}
             </span>
-            Status · {status ? statusShortLabel(status) : "Online"}
+            <span className="flex-1 truncate">Status · <strong className="font-semibold text-foreground">{status ? statusShortLabel(status) : "Online"}</strong></span>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
-            <UserIcon className="mr-2 h-4 w-4" /> Profile
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-2.5 w-full">
+            <UserIcon className="h-4 w-4 shrink-0 text-muted-foreground" /> Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/bookmarks"><Bookmark className="mr-2 h-4 w-4" /> Saved</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/effects" className="flex items-center justify-between">
-            <span className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Effects</span>
-            <span className="text-[9px] font-bold border border-primary text-primary px-1 rounded-full">Soon</span>
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/bookmarks" className="flex items-center gap-2.5 w-full">
+            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" /> Saved
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/badges"><Trophy className="mr-2 h-4 w-4" /> Badges</Link>
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/effects" className="flex items-center justify-between w-full">
+            <span className="flex items-center gap-2.5">
+              <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Effects
+            </span>
+            <span className="text-[9px] font-bold border border-primary text-primary px-1.5 py-0.2 rounded-full">Soon</span>
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/badges" className="flex items-center gap-2.5 w-full">
+            <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" /> Badges
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/settings/appearance"><Palette className="mr-2 h-4 w-4" /> Appearance</Link>
+        <DropdownMenuSeparator className="my-1 -mx-1" />
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/settings" className="flex items-center gap-2.5 w-full">
+            <Settings className="h-4 w-4 shrink-0 text-muted-foreground" /> Settings
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="min-h-[44px] cursor-pointer text-destructive focus:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" /> Sign out
+        <DropdownMenuItem asChild className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5">
+          <Link to="/settings/appearance" className="flex items-center gap-2.5 w-full">
+            <Palette className="h-4 w-4 shrink-0 text-muted-foreground" /> Appearance
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="my-1 -mx-1" />
+        <DropdownMenuItem onClick={() => signOut()} className="h-9 px-2.5 rounded-lg cursor-pointer text-sm gap-2.5 text-destructive focus:text-destructive flex items-center">
+          <LogOut className="h-4 w-4 shrink-0" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

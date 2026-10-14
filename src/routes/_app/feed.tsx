@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
@@ -105,85 +104,33 @@ function FeedPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Greeting card - clean flat surface */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-5"
-      >
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={profile?.display_name || profile?.username || undefined}
-              size="md"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {greetingFor(new Date().getHours())}
-              </p>
-              <p className="truncate font-display text-base font-bold text-foreground">{name}</p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              live
-            </span>
-          </div>
-
-          <h1 className="mt-3.5 font-display text-[26px] font-bold leading-none tracking-tight sm:text-3xl text-foreground">
-            Your Feed
-          </h1>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            What&apos;s vibing right now
+    <div className="space-y-5">
+      {/* Compact greeting bar */}
+      <div className="flex items-center justify-between pt-1 pb-1">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <UserAvatar
+            src={profile?.avatar_url}
+            fallback={profile?.display_name || profile?.username}
+            size="sm"
+          />
+          <p className="text-sm text-muted-foreground truncate leading-tight">
+            {greetingFor(new Date().getHours())},{" "}
+            <span className="font-semibold text-foreground">{name}</span>
           </p>
-
-          <div className="mt-3.5 flex items-center gap-2">
-            <Button
-              type="button"
-              onClick={focusComposer}
-              className="h-11 min-w-0 flex-1 gap-2 bg-primary text-primary-foreground sm:flex-none sm:px-6 font-semibold"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="truncate">Share something</span>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="h-11 gap-2 border-border bg-surface-2 text-foreground hover:bg-surface-3"
-            >
-              <Link to="/reels">
-                <Film className="h-4 w-4" />
-                Reels
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 shrink-0 border-border bg-surface-2 p-0 text-foreground hover:bg-surface-3"
-            >
-              <Link
-                to="/explore"
-                aria-label="Explore RIZZ"
-                className="grid h-full w-full place-items-center"
-              >
-                <Compass className="block h-4 w-4 shrink-0" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="no-scrollbar -mx-4 mt-3 flex items-center gap-2 overflow-x-auto px-4 text-[11px] sm:mx-0 sm:px-0">
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-semibold text-muted-foreground">
-              <Flame className="h-3 w-3 text-primary" />
-              {todayCount === 0
-                ? "Nothing yet today"
-                : `${formatNumber(todayCount)} new drop${todayCount === 1 ? "" : "s"} today`}
-            </span>
-          </div>
         </div>
-      </motion.div>
+        <div className="flex items-center gap-2 shrink-0">
+          {todayCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+              <Flame className="h-3 w-3 text-primary" />
+              {formatNumber(todayCount)} new
+            </span>
+          )}
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            live
+          </span>
+        </div>
+      </div>
 
       <SectionHeading title="Stories" hint="Fresh in the last 24 hours" />
       <StoriesStrip />
@@ -222,15 +169,10 @@ function FeedPage() {
 
       <div className="space-y-4">
         {shown.map((p, i) => (
-          <motion.div
-            key={p.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(i * 0.04, 0.24), duration: 0.3, ease: "easeOut" }}
-          >
+          <div key={p.id}>
             <PostCard post={p} liked={likes.data?.has(p.id)} />
             {i === 2 && <FollowSuggestions />}
-          </motion.div>
+          </div>
         ))}
       </div>
 

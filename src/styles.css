@@ -1187,6 +1187,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   background-image: radial-gradient(color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1.5px);
   background-size: 22px 22px;
   contain: strict;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .nc-orb, .nc-beam, .nc-grain { display: none; }
 .nc-orb {
@@ -1230,9 +1232,9 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
 
 /* ============ EFFECT BUDGET — MOBILE ============
-   The texture is static now, so phones simply get a slightly denser grid. */
+   Mobile gets a clean solid surface to eliminate GPU raster jank during scroll. */
 @media (max-width: 767.98px) {
-  .nightclub-canvas { background-size: 18px 18px; }
+  .nightclub-canvas { display: none; }
   .feed-post-card { transition: border-color 200ms ease; }
 }
 /* The app's own "Reduced motion" setting also stops the decorative layers. */
