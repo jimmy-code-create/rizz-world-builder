@@ -151,7 +151,7 @@ export async function createRealmSecure(input: {
   const { data, error } = await supabase.rpc("create_realm_secure", {
     _name: input.name,
     _topic: input.topic,
-    _accent_color: input.accent_color ?? "#ff2d92",
+    _accent_color: input.accent_color ?? "#c9ff3d",
     _kind: input.kind ?? "text",
     _is_public: input.is_public ?? true,
   });

@@ -55,50 +55,86 @@
   --color-rizz-violet: var(--rizz-violet);
   --color-rizz-cyan: var(--rizz-cyan);
   --color-rizz-glow: var(--rizz-glow);
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* Display: Bricolage Grotesque — editorial and slightly awkward on purpose.
+     Text: Instrument Sans. Fallbacks are plain system faces, never Inter. */
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, ui-sans-serif, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 :root {
-  --radius: 1rem;
+  /* ---------- RIZZ DESIGN TOKENS — ink + one flat signal ----------
+     Near-black ink canvas, warm off-white paper text and exactly one accent
+     (acid lime). No gradients, no glow, no blur blobs. This block is the only
+     place brand values are defined: every page, sheet, card and control reads
+     from here, so the landing page and the product stay one thing. */
+  --brand-ink: #0a0a0b;
+  --brand-ink-2: #131315;
+  --brand-ink-3: #1c1c1f;
+  --brand-line: #2a2a2e;
+  --brand-paper: #f4f1e7;
+  --brand-paper-dim: #a9a69c;
+  --brand-signal: #c9ff3d;
+  --brand-signal-ink: #0a0a0b;
+  --brand-signal-dim: #9cc72c;
 
-  /* Nightclub dark base */
-  --background: oklch(0.13 0.03 295);
-  --foreground: oklch(0.98 0.01 320);
+  /* Radii: tight. Cards 8px, larger panels 10px, pills round. */
+  --radius: 0.5rem;
+  --radius-card: 0.625rem;
+  --radius-pill: 9999px;
 
-  --card: oklch(0.17 0.04 295 / 0.7);
-  --card-foreground: oklch(0.98 0.01 320);
-  --popover: oklch(0.16 0.05 295);
-  --popover-foreground: oklch(0.98 0.01 320);
+  /* Type scale and rhythm */
+  --text-display: clamp(2.75rem, 8vw, 6.5rem);
+  --text-title: clamp(1.75rem, 3.4vw, 2.75rem);
+  --text-lead: clamp(1.0625rem, 1.4vw, 1.25rem);
+  --text-body: 0.9375rem;
+  --text-small: 0.8125rem;
+  --tracking-display: -0.035em;
 
-  /* Hot pink primary */
-  --primary: oklch(0.68 0.28 5);
-  --primary-foreground: oklch(0.99 0.01 320);
+  /* Spacing */
+  --space-gutter: clamp(1.25rem, 5vw, 5rem);
+  --space-section: clamp(4rem, 9vw, 8rem);
+  --space-stack: 1.25rem;
 
-  /* Deep violet secondary */
-  --secondary: oklch(0.38 0.18 295);
-  --secondary-foreground: oklch(0.98 0.01 320);
+  /* Elevation: flat. Never a glow. */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-2: 0 14px 34px -22px rgb(0 0 0 / 0.85);
+  --shadow-line: inset 0 1px 0 rgb(255 255 255 / 0.04);
 
-  --muted: oklch(0.22 0.04 295);
-  --muted-foreground: oklch(0.72 0.04 295);
+  --background: var(--brand-ink);
+  --foreground: var(--brand-paper);
 
-  --accent: oklch(0.55 0.25 320);
-  --accent-foreground: oklch(0.99 0.01 320);
+  --card: var(--brand-ink-2);
+  --card-foreground: var(--brand-paper);
+  --popover: var(--brand-ink-2);
+  --popover-foreground: var(--brand-paper);
 
-  --destructive: oklch(0.65 0.27 25);
-  --destructive-foreground: oklch(0.99 0.01 320);
+  --primary: var(--brand-signal);
+  --primary-foreground: var(--brand-signal-ink);
 
-  --border: oklch(0.98 0.01 320 / 0.08);
-  --input: oklch(0.98 0.01 320 / 0.06);
-  --ring: oklch(0.68 0.28 5);
+  --secondary: var(--brand-ink-3);
+  --secondary-foreground: var(--brand-paper);
 
-  /* Brand tokens */
-  --rizz-pink: oklch(0.68 0.28 5);
-  --rizz-violet: oklch(0.45 0.25 295);
-  --rizz-cyan: oklch(0.78 0.18 200);
-  --rizz-glow: oklch(0.68 0.28 5 / 0.55);
-  --surface-bar: rgba(13, 10, 20, 0.93);
-  --surface-bubble: rgba(28, 23, 38, 0.96);
+  --muted: var(--brand-ink-3);
+  --muted-foreground: var(--brand-paper-dim);
+
+  --accent: var(--brand-ink-3);
+  --accent-foreground: var(--brand-paper);
+
+  --destructive: #ff6a55;
+  --destructive-foreground: #1a0f0c;
+
+  --border: color-mix(in srgb, var(--brand-paper) 13%, transparent);
+  --input: color-mix(in srgb, var(--brand-paper) 9%, transparent);
+  --ring: var(--brand-signal);
+
+  /* The old brand names are kept, remapped flat, so no legacy call site can
+     paint a purple gradient. */
+  --rizz-pink: var(--brand-signal);
+  --rizz-violet: var(--brand-paper-dim);
+  --rizz-cyan: var(--brand-signal);
+  --rizz-glow: color-mix(in srgb, var(--brand-signal) 30%, transparent);
+  --surface-bar: rgb(10 10 11 / 0.94);
+  --surface-bubble: rgb(19 19 21 / 0.96);
 
   /* Chat rhythm. Every spacing value a message uses lives here, so the whole
      list can be re-tuned from one place — Discord's numbers: ~3px between two
@@ -120,28 +156,29 @@
   --chat-name-5: oklch(0.78 0.14 265);
   --chat-name-6: oklch(0.80 0.15 320);
 
-  --gradient-primary: linear-gradient(135deg, var(--rizz-pink), var(--rizz-violet));
-  --gradient-aurora: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.68 0.28 5 / 0.35), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.45 0.25 295 / 0.45), transparent 65%),
-    radial-gradient(ellipse 60% 50% at 50% 100%, oklch(0.55 0.25 320 / 0.3), transparent 70%);
-  --gradient-text: linear-gradient(135deg, oklch(0.85 0.18 5), oklch(0.78 0.18 320), oklch(0.78 0.18 200));
-  --shadow-glow: 0 0 40px -8px var(--rizz-glow);
-  --shadow-glow-lg: 0 0 80px -10px oklch(0.68 0.28 5 / 0.7), 0 0 120px -20px oklch(0.45 0.25 295 / 0.5);
+  /* A "gradient" is now just the flat accent. Every legacy call site
+     (bg-gradient-primary, text-gradient, shadow-glow) is on-brand by
+     construction, and preset themes still recolor it from --rizz-pink. */
+  --gradient-primary: var(--rizz-pink);
+  --gradient-aurora: none;
+  --gradient-text: var(--rizz-pink);
+  --shadow-glow: var(--shadow-1);
+  --shadow-glow-lg: var(--shadow-2);
 
-  --chart-1: oklch(0.68 0.28 5);
-  --chart-2: oklch(0.55 0.25 320);
-  --chart-3: oklch(0.45 0.25 295);
-  --chart-4: oklch(0.78 0.18 200);
-  --chart-5: oklch(0.85 0.18 90);
+  --chart-1: var(--brand-signal);
+  --chart-2: var(--brand-paper);
+  --chart-3: var(--brand-paper-dim);
+  --chart-4: #6f8f2a;
+  --chart-5: #46464c;
 
-  --sidebar: oklch(0.15 0.04 295);
-  --sidebar-foreground: oklch(0.98 0.01 320);
-  --sidebar-primary: oklch(0.68 0.28 5);
-  --sidebar-primary-foreground: oklch(0.99 0.01 320);
-  --sidebar-accent: oklch(0.22 0.06 295);
-  --sidebar-accent-foreground: oklch(0.98 0.01 320);
-  --sidebar-border: oklch(0.98 0.01 320 / 0.08);
-  --sidebar-ring: oklch(0.68 0.28 5);
+  --sidebar: var(--brand-ink-2);
+  --sidebar-foreground: var(--brand-paper);
+  --sidebar-primary: var(--brand-signal);
+  --sidebar-primary-foreground: var(--brand-signal-ink);
+  --sidebar-accent: var(--brand-ink-3);
+  --sidebar-accent-foreground: var(--brand-paper);
+  --sidebar-border: var(--brand-line);
+  --sidebar-ring: var(--brand-signal);
 
   /* ---------- Forums ----------
      A forum is a whole product surface — hero, filter bar, cards, threads,
@@ -155,23 +192,23 @@
   --forum-pad: 18px;
   --forum-font-scale: 1;
   --forum-line: 1.6;
-  --forum-surface: oklch(0.19 0.035 295 / 0.92);
-  --forum-surface-raised: oklch(0.23 0.04 295 / 0.95);
-  --forum-surface-sunken: oklch(0.14 0.03 295 / 0.85);
-  --forum-border: oklch(0.98 0.01 320 / 0.1);
-  --forum-shadow: 0 16px 40px -26px oklch(0.03 0.02 295 / 0.85), 0 2px 6px -4px rgb(0 0 0 / 0.45);
-  --forum-shadow-hover: 0 24px 54px -28px oklch(0.03 0.02 295 / 0.95), 0 0 0 1px oklch(0.98 0.01 320 / 0.08);
-  --forum-accent: var(--rizz-pink);
-  --forum-accent-soft: oklch(0.68 0.28 5 / 0.16);
+  --forum-surface: var(--brand-ink-2);
+  --forum-surface-raised: var(--brand-ink-3);
+  --forum-surface-sunken: #101012;
+  --forum-border: var(--brand-line);
+  --forum-shadow: var(--shadow-1);
+  --forum-shadow-hover: 0 0 0 1px color-mix(in srgb, var(--brand-paper) 12%, transparent);
+  --forum-accent: var(--brand-signal);
+  --forum-accent-soft: color-mix(in srgb, var(--brand-signal) 16%, transparent);
   --forum-title-font: var(--font-display);
   --forum-body-font: var(--font-sans);
   /* State colours a card renders: pinned, locked, solved, archived. */
-  --forum-pinned: oklch(0.87 0.17 88);
-  --forum-locked: oklch(0.8 0.03 295);
-  --forum-solved: oklch(0.8 0.19 152);
-  --forum-archived: oklch(0.7 0.02 295);
+  --forum-pinned: #e6c76a;
+  --forum-locked: #9d9a94;
+  --forum-solved: #86e0a4;
+  --forum-archived: #6e6c66;
   /* Thread connector lines and the role colours authors' names carry. */
-  --forum-thread-line: oklch(0.98 0.01 320 / 0.16);
+  --forum-thread-line: color-mix(in srgb, var(--brand-paper) 16%, transparent);
   --forum-role-owner: oklch(0.86 0.16 85);
   --forum-role-mod: oklch(0.83 0.17 150);
   --forum-role-member: var(--muted-foreground);
@@ -183,61 +220,91 @@
 
 /* ============ THEME PRESETS ============ */
 [data-theme="midnight"] {
-  --background: oklch(0.10 0.04 260);
-  --primary: oklch(0.65 0.22 250);
-  --rizz-pink: oklch(0.65 0.22 250);
-  --rizz-violet: oklch(0.40 0.20 280);
-  --rizz-cyan: oklch(0.75 0.18 220);
-  --rizz-glow: oklch(0.65 0.22 250 / 0.55);
-  --accent: oklch(0.55 0.20 240);
+  --background: #0b1220;
+  --primary: #6aa6ff;
+  --primary-foreground: #08111f;
+  --rizz-pink: #6aa6ff;
+  --rizz-violet: #9db6cf;
+  --rizz-cyan: #93c5fd;
+  --rizz-glow: rgb(106 166 255 / 0.45);
+  --accent: #16233a;
+  --accent-foreground: #f1f6ff;
 }
 [data-theme="sunset"] {
-  --background: oklch(0.14 0.05 35);
-  --primary: oklch(0.72 0.22 30);
-  --rizz-pink: oklch(0.72 0.22 30);
-  --rizz-violet: oklch(0.55 0.22 350);
-  --rizz-cyan: oklch(0.75 0.20 60);
-  --rizz-glow: oklch(0.72 0.22 30 / 0.55);
-  --accent: oklch(0.70 0.22 50);
+  --background: #1a0f07;
+  --primary: #f0793a;
+  --primary-foreground: #1a0f07;
+  --rizz-pink: #f0793a;
+  --rizz-violet: #d3b49a;
+  --rizz-cyan: #f0b429;
+  --rizz-glow: rgb(240 121 58 / 0.45);
+  --accent: #2b1a0d;
+  --accent-foreground: #fdf3e8;
 }
 [data-theme="cyber"] {
-  --background: oklch(0.10 0.05 160);
-  --primary: oklch(0.78 0.22 160);
-  --rizz-pink: oklch(0.78 0.22 160);
-  --rizz-violet: oklch(0.55 0.25 295);
-  --rizz-cyan: oklch(0.85 0.18 180);
-  --rizz-glow: oklch(0.78 0.22 160 / 0.55);
-  --accent: oklch(0.70 0.25 200);
+  --background: #07130d;
+  --primary: #4ade80;
+  --primary-foreground: #06130c;
+  --rizz-pink: #4ade80;
+  --rizz-violet: #9fb8ab;
+  --rizz-cyan: #a3e635;
+  --rizz-glow: rgb(74 222 128 / 0.4);
+  --accent: #11251a;
+  --accent-foreground: #eafff2;
 }
 [data-theme="mono"] {
-  --background: oklch(0.10 0 0);
-  --primary: oklch(0.95 0 0);
-  --rizz-pink: oklch(0.95 0 0);
-  --rizz-violet: oklch(0.50 0 0);
-  --rizz-cyan: oklch(0.80 0 0);
-  --rizz-glow: oklch(0.95 0 0 / 0.4);
-  --accent: oklch(0.65 0 0);
-  --primary-foreground: oklch(0.10 0 0);
+  --background: #0a0a0b;
+  --primary: #f4f1e7;
+  --primary-foreground: #0a0a0b;
+  --rizz-pink: #f4f1e7;
+  --rizz-violet: #a9a69c;
+  --rizz-cyan: #a9a69c;
+  --rizz-glow: rgb(244 241 231 / 0.35);
+  --accent: #1c1c1f;
+  --accent-foreground: #f4f1e7;
 }
 [data-theme="pastel"] {
-  --background: oklch(0.18 0.04 320);
-  --primary: oklch(0.82 0.14 330);
-  --rizz-pink: oklch(0.82 0.14 330);
-  --rizz-violet: oklch(0.70 0.15 280);
-  --rizz-cyan: oklch(0.85 0.12 200);
-  --rizz-glow: oklch(0.82 0.14 330 / 0.5);
-  --accent: oklch(0.80 0.14 200);
+  /* Renamed "Paper" in Settings: warm clay on a soft off-white-dark sheet. */
+  --background: #17130e;
+  --primary: #c46a4a;
+  --primary-foreground: #fdf7ee;
+  --rizz-pink: #d98a63;
+  --rizz-violet: #8a7f6a;
+  --rizz-cyan: #e0b184;
+  --rizz-glow: rgb(217 138 99 / 0.4);
+  --accent: #2a2016;
+  --accent-foreground: #fdf7ee;
 }
 
 [data-mode="light"] {
-  --background: oklch(0.98 0.01 320);
-  --foreground: oklch(0.15 0.03 295);
-  --card: oklch(1 0 0 / 0.7);
-  --muted: oklch(0.95 0.02 295);
-  --muted-foreground: oklch(0.45 0.04 295);
-  --border: oklch(0.15 0.03 295 / 0.1);
-  --surface-bar: rgb(255 255 255 / 0.93);
-  --surface-bubble: rgb(255 255 255 / 0.96);
+  /* Paper mode: a warm off-white sheet with ink text. Ink becomes the accent
+     here (lime on paper fails AA), so buttons and links stay legible. */
+  --background: #f2efe6;
+  --foreground: #15151a;
+  --card: #fffdf7;
+  --card-foreground: #15151a;
+  --popover: #fffdf7;
+  --popover-foreground: #15151a;
+  --primary: #15151a;
+  --primary-foreground: #f4f1e7;
+  --secondary: #e6e2d6;
+  --secondary-foreground: #15151a;
+  --muted: #e9e5da;
+  --muted-foreground: #55524a;
+  --accent: #e6e2d6;
+  --accent-foreground: #15151a;
+  --border: color-mix(in srgb, #15151a 14%, transparent);
+  --input: color-mix(in srgb, #15151a 10%, transparent);
+  --ring: #15151a;
+  /* Destructive stays legible on paper (AA), unlike the neon dark-mode red. */
+  --destructive: #b8391f;
+  --destructive-foreground: #fffdf7;
+  --rizz-pink: #15151a;
+  --rizz-violet: #55524a;
+  --rizz-cyan: #15151a;
+  --rizz-glow: transparent;
+  --surface-bar: rgb(255 253 247 / 0.94);
+  --surface-bubble: rgb(255 253 247 / 0.96);
   /* Same six names, darkened for the light surface (still 4.5:1). */
   --chat-name-1: oklch(0.52 0.19 25);
   --chat-name-2: oklch(0.50 0.13 60);
@@ -245,15 +312,15 @@
   --chat-name-4: oklch(0.50 0.12 220);
   --chat-name-5: oklch(0.48 0.17 265);
   --chat-name-6: oklch(0.50 0.18 330);
-  /* Forum surfaces flip with the mode; the header gradient stays readable on a
-     light page, and the thread lines darken instead of lightening. */
-  --forum-surface: oklch(1 0 0 / 0.94);
-  --forum-surface-raised: oklch(1 0 0);
-  --forum-surface-sunken: oklch(0.96 0.01 295 / 0.9);
-  --forum-border: oklch(0.15 0.03 295 / 0.12);
-  --forum-shadow: 0 14px 32px -26px oklch(0.2 0.03 295 / 0.5), 0 1px 3px -2px rgb(0 0 0 / 0.12);
-  --forum-shadow-hover: 0 22px 44px -28px oklch(0.2 0.03 295 / 0.55), 0 0 0 1px oklch(0.15 0.03 295 / 0.08);
-  --forum-thread-line: oklch(0.15 0.03 295 / 0.18);
+  /* Forum surfaces flip with the mode; the hairlines darken instead of
+     lightening. */
+  --forum-surface: #fffdf7;
+  --forum-surface-raised: #ffffff;
+  --forum-surface-sunken: #eae6db;
+  --forum-border: color-mix(in srgb, #15151a 14%, transparent);
+  --forum-shadow: 0 1px 2px rgb(21 21 26 / 0.12);
+  --forum-shadow-hover: 0 0 0 1px color-mix(in srgb, #15151a 10%, transparent);
+  --forum-thread-line: color-mix(in srgb, #15151a 18%, transparent);
   --forum-pinned: oklch(0.62 0.16 80);
   --forum-solved: oklch(0.58 0.16 152);
   --forum-locked: oklch(0.5 0.02 295);
@@ -277,29 +344,32 @@
    visible *above* black — so borders and the forum's own surfaces carry the
    separation instead of a drop shadow. */
 [data-mode="amoled"] {
-  --background: oklch(0 0 0);
-  --foreground: oklch(0.99 0 0);
-  --card: oklch(0.06 0 0 / 0.92);
-  --card-foreground: oklch(0.99 0 0);
-  --popover: oklch(0.06 0 0);
-  --popover-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.3 0.1 295);
-  --muted: oklch(0.12 0 0);
-  --muted-foreground: oklch(0.76 0.006 295);
-  --border: oklch(0.99 0 0 / 0.16);
-  --input: oklch(0.99 0 0 / 0.1);
-  --surface-bar: rgba(0, 0, 0, 0.94);
-  --surface-bubble: rgba(9, 9, 11, 0.96);
-  --sidebar: oklch(0.04 0 0);
-  --sidebar-accent: oklch(0.13 0 0);
-  --forum-surface: oklch(0.08 0.004 295);
-  --forum-surface-raised: oklch(0.12 0.006 295);
-  --forum-surface-sunken: oklch(0.05 0 0);
-  --forum-border: oklch(0.99 0 0 / 0.17);
-  --forum-shadow: 0 18px 44px -30px rgb(0 0 0 / 0.95);
-  --forum-shadow-hover: 0 26px 56px -32px rgb(0 0 0 / 1);
-  --forum-thread-line: oklch(0.99 0 0 / 0.2);
-  --forum-locked: oklch(0.86 0.02 295);
+  --background: #000;
+  --foreground: #f7f5ee;
+  --card: #0b0b0c;
+  --card-foreground: #f7f5ee;
+  --popover: #0b0b0c;
+  --popover-foreground: #f7f5ee;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #f7f5ee;
+  --muted: #141416;
+  --muted-foreground: #b6b3aa;
+  --accent: #1c1c1f;
+  --accent-foreground: #f7f5ee;
+  --border: color-mix(in srgb, #f7f5ee 17%, transparent);
+  --input: color-mix(in srgb, #f7f5ee 11%, transparent);
+  --surface-bar: rgb(0 0 0 / 0.95);
+  --surface-bubble: rgb(11 11 12 / 0.96);
+  --sidebar: #060607;
+  --sidebar-accent: #16161a;
+  --forum-surface: #0b0b0c;
+  --forum-surface-raised: #141416;
+  --forum-surface-sunken: #050505;
+  --forum-border: color-mix(in srgb, #f7f5ee 18%, transparent);
+  --forum-shadow: none;
+  --forum-shadow-hover: 0 0 0 1px color-mix(in srgb, #f7f5ee 14%, transparent);
+  --forum-thread-line: color-mix(in srgb, #f7f5ee 20%, transparent);
+  --forum-locked: #d9d6cd;
   color-scheme: dark;
 }
 
@@ -312,64 +382,230 @@
 }
 
 @layer base {
+  /* THE BACKGROUND LIVES HERE, ONCE.
+     A solid token colour on both html and body, with no gradient and no image
+     to fail: if anything else goes wrong the page still paints ink, never a
+     neutral grey. Per-page backgrounds are gone; every route inherits this. */
   html {
     color-scheme: dark;
+    background-color: var(--background);
   }
 
   * {
     border-color: var(--color-border);
   }
 
+  html,
   body {
-    background-color: var(--color-background);
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(ellipse 90% 60% at 10% -10%, oklch(0.68 0.28 5 / 0.18), transparent 60%),
-      radial-gradient(ellipse 70% 50% at 100% 30%, oklch(0.45 0.25 295 / 0.22), transparent 65%),
-      radial-gradient(ellipse 60% 50% at 50% 110%, oklch(0.55 0.25 320 / 0.18), transparent 70%);
-    background-attachment: fixed;
     min-height: 100dvh;
   }
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
+    font-weight: 700;
     letter-spacing: -0.02em;
   }
 
+  /* Keyboard focus is always visible, in the brand signal colour. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
   ::selection {
-    background: var(--rizz-pink);
-    color: var(--primary-foreground);
+    background: var(--brand-signal);
+    color: var(--brand-signal-ink);
   }
 }
 
 @layer utilities {
+  /* Flat replacements for the three old gradient utilities. They keep their
+     names so the ~60 existing call sites restyle without being touched. */
   .text-gradient {
-    background: var(--gradient-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--gradient-text);
   }
-  .bg-gradient-primary { background-image: var(--gradient-primary); }
+  .bg-gradient-primary { background-color: var(--gradient-primary); }
   .bg-aurora { background-image: var(--gradient-aurora); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-glow-lg { box-shadow: var(--shadow-glow-lg); }
+  /* Solid surfaces with a hairline border — no frosted glass. */
   .glass {
-    background: oklch(0.18 0.04 295 / 0.88);
-    border: 1px solid oklch(0.98 0.01 320 / 0.08);
+    background: var(--card, var(--brand-ink-2));
+    border: 1px solid var(--border);
   }
   .glass-strong {
-    background: var(--surface-bar);
-    backdrop-filter: blur(20px) saturate(130%);
-    -webkit-backdrop-filter: blur(20px) saturate(130%);
-    border: 1px solid oklch(0.98 0.01 320 / 0.1);
+    background: var(--card, var(--brand-ink-2));
+    border: 1px solid var(--border);
   }
   .ring-glow {
-    box-shadow: 0 0 0 2px var(--rizz-pink), 0 0 20px var(--rizz-glow);
+    box-shadow: 0 0 0 2px var(--brand-signal);
   }
   .animate-pulse-glow {
     animation: pulse-glow 2.4s ease-in-out infinite;
+  }
+  /* Type-scale helpers the landing page and section headers share. */
+  .type-display {
+    font-family: var(--font-display);
+    font-size: var(--text-display);
+    line-height: 0.92;
+    letter-spacing: var(--tracking-display);
+    font-weight: 800;
+  }
+  .type-title {
+    font-family: var(--font-display);
+    font-size: var(--text-title);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .type-lead {
+    font-size: var(--text-lead);
+    line-height: 1.55;
+    color: var(--brand-paper-dim);
+  }
+  .rule {
+    height: 1px;
+    background: var(--border);
+  }
+  .shell-gutter {
+    padding-inline: var(--space-gutter);
+  }
+  .shell-section {
+    padding-block: var(--space-section);
+  }
+
+  /* ---------- ICON TILES ----------
+     Any icon that lives inside a circle, square or pill goes through here.
+     The container is a fixed-size square grid, the glyph is a block box that
+     cannot inherit an inline baseline gap, and nothing carries a stray margin
+     or an absolute offset. One rule set instead of a per-screen guess. */
+  .icon-tile {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: var(--tile-size, 2rem);
+    height: var(--tile-size, 2rem);
+    border-radius: var(--tile-radius, var(--radius));
+    line-height: 0;
+    margin: 0;
+  }
+  .icon-tile > svg,
+  .icon-tile > img,
+  .icon-tile > video,
+  .icon-tile > canvas {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0;
+    width: var(--tile-glyph, 1rem);
+    height: var(--tile-glyph, 1rem);
+  }
+  .icon-tile > img,
+  .icon-tile > video {
+    object-fit: contain;
+  }
+  /* A glyph inside a button/link with no tile: still centred, still block. */
+  .glyph-center {
+    display: grid;
+    place-items: center;
+    line-height: 0;
+  }
+  .glyph-center > svg,
+  .glyph-center > img {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  /* ---- motion helpers: 320ms max, delay supplied per item ---- */
+  .anim-rise {
+    animation: rizz-rise 320ms ease-out both;
+    animation-delay: var(--delay, 0ms);
+  }
+  /* Starts hidden and fills forwards, so the dots are invisible until their own
+     delay lands. With `both` the backwards fill would paint every row's dots at
+     once on load. */
+  .anim-typing {
+    opacity: 0;
+    animation: rizz-typing 300ms ease-out forwards;
+    animation-delay: var(--delay, 0ms);
+  }
+  .anim-typing-dot {
+    animation: rizz-dot-bounce 380ms ease-in-out infinite;
+  }
+  /* The one allowed slow effect: a room's presence dot breathing. */
+  .anim-presence {
+    animation: rizz-presence 2600ms ease-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .anim-rise,
+    .anim-typing,
+    .anim-typing-dot,
+    .anim-presence {
+      animation: none !important;
+    }
+    /* The typing row is decoration: without motion there is nothing to show. */
+    .anim-typing { display: none; }
+  }
+
+  [data-reduced-motion="true"] .anim-rise,
+  [data-reduced-motion="true"] .anim-typing,
+  [data-reduced-motion="true"] .anim-typing-dot,
+  [data-reduced-motion="true"] .anim-presence {
+    animation: none !important;
+  }
+  [data-reduced-motion="true"] .anim-typing { display: none; }
+
+  /* ---------- CHOICE MARK ----------
+     A radio/checkbox where the visible control and its checked indicator are
+     ONE element: the tick is drawn by ::after inside the same box, so the two
+     can never drift apart at any zoom or text-size setting. */
+  .choice-mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    /* Foreground, not paper: this has to stay visible in paper mode too. */
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 40%, transparent);
+    border-radius: 4px;
+    background: transparent;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  .choice-mark--radio {
+    border-radius: 9999px;
+  }
+  .choice-mark.is-checked {
+    border-color: var(--brand-signal);
+    background: var(--brand-signal);
+  }
+  .choice-mark.is-checked::after {
+    content: "";
+    display: block;
+    width: 0.3rem;
+    height: 0.55rem;
+    border-right: 2px solid var(--brand-signal-ink);
+    border-bottom: 2px solid var(--brand-signal-ink);
+    transform: rotate(45deg) translate(-0.5px, -1px);
+  }
+  .choice-mark--radio.is-checked::after {
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--brand-signal-ink);
+    transform: none;
   }
   .animate-shimmer {
     background-size: 200% 100%;
@@ -381,8 +617,8 @@
 }
 .chat-bar {
   background: var(--surface-bar);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .chat-bubble {
   backdrop-filter: none !important;
@@ -415,7 +651,7 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
 }
 .message-bubble--incoming {
-  border: 1px solid color-mix(in srgb, var(--rizz-pink) 18%, transparent);
+  border: 1px solid var(--brand-line);
   background: var(--surface-bubble);
   color: var(--foreground);
 }
@@ -623,29 +859,23 @@
  * glow, --rizz-toast-tint for the chip fill), so the family stays consistent.
  */
 .rizz-toaster [data-sonner-toast].rizz-toast {
-  --rizz-toast-accent: var(--rizz-pink);
-  --rizz-toast-tint: color-mix(in srgb, var(--rizz-pink) 16%, transparent);
+  --rizz-toast-accent: var(--brand-signal);
+  --rizz-toast-tint: color-mix(in srgb, var(--brand-signal) 16%, transparent);
   width: var(--width);
   min-height: 0;
   gap: 10px;
   align-items: flex-start;
   padding: 11px 14px 11px 12px;
-  border: 1px solid oklch(0.98 0.01 320 / 0.12);
-  border-radius: 18px;
-  background: linear-gradient(180deg, oklch(0.19 0.045 295 / 0.96) 0%, oklch(0.13 0.04 295 / 0.97) 100%);
-  color: oklch(0.98 0.01 320);
-  box-shadow:
-    0 18px 42px -14px oklch(0.03 0.02 295 / 0.75),
-    0 0 22px -6px color-mix(in srgb, var(--rizz-toast-accent) 42%, transparent),
-    inset 0 1px 0 oklch(0.98 0.01 320 / 0.08),
-    inset 3px 0 0 var(--rizz-toast-accent);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid var(--brand-line);
+  border-radius: 10px;
+  background: var(--brand-ink-2);
+  color: var(--brand-paper);
+  box-shadow: var(--shadow-2);
   font-family: var(--font-sans);
 }
 
 .rizz-toaster [data-sonner-toast].rizz-toast:hover {
-  border-color: oklch(0.98 0.01 320 / 0.2);
+  border-color: color-mix(in srgb, var(--brand-paper) 22%, transparent);
 }
 
 .rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
@@ -671,7 +901,7 @@
 .rizz-toaster .rizz-toast-title {
   min-width: 0;
   white-space: normal;
-  color: oklch(0.99 0.008 320);
+  color: var(--brand-paper);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -682,7 +912,7 @@
 .rizz-toaster .rizz-toast-description {
   white-space: normal;
   margin-top: 2px;
-  color: oklch(0.78 0.025 295);
+  color: var(--brand-paper-dim);
   font-size: 12.5px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -719,9 +949,8 @@
 }
 
 .rizz-toaster .rizz-toast-action {
-  background: var(--gradient-primary);
-  color: white;
-  box-shadow: 0 6px 18px -8px var(--rizz-glow);
+  background: var(--brand-signal);
+  color: var(--brand-signal-ink);
 }
 
 .rizz-toaster .rizz-toast-action:hover {
@@ -729,17 +958,40 @@
 }
 
 .rizz-toaster .rizz-toast-cancel {
-  background: oklch(0.98 0.01 320 / 0.08);
-  color: oklch(0.86 0.02 295);
+  background: color-mix(in srgb, var(--brand-paper) 8%, transparent);
+  color: var(--brand-paper-dim);
 }
 
 .rizz-toaster .rizz-toast-cancel:hover {
-  background: oklch(0.98 0.01 320 / 0.14);
+  background: color-mix(in srgb, var(--brand-paper) 14%, transparent);
+}
+
+/* ============ LANDING MOTION (all of it optional) ============
+   Three named effects, each under 400ms except the presence pulse. They are
+   plain CSS with inline delays, and every one of them is switched off for
+   prefers-reduced-motion (and for the app's own reduced-motion setting), where
+   the content simply starts in its final state. */
+@keyframes rizz-rise {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rizz-typing {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes rizz-dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-2px); opacity: 1; }
+}
+@keyframes rizz-presence {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); }
+  100% { box-shadow: 0 0 0 7px transparent; }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px -4px var(--rizz-glow); }
-  50% { box-shadow: 0 0 50px -2px var(--rizz-pink); }
+  /* A presence pulse, not a glow: opacity only, so it costs no paint. */
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 @keyframes rizz-companion-poof {
   to { opacity: 0; filter: blur(8px); transform: scale(0.72) rotate(8deg); }
@@ -749,8 +1001,8 @@
   50% { transform: translateY(-1px) scale(1.025); }
 }
 @keyframes lil-rizz-orb-pulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(255, 45, 146, 0.3), 0 0 0 0 rgba(34, 211, 238, 0.15); }
-  50% { box-shadow: 0 0 24px rgba(34, 211, 238, 0.48), 0 0 0 9px rgba(255, 45, 146, 0.09); }
+  0%, 100% { box-shadow: 0 0 12px rgb(201 255 61 / 0.28), 0 0 0 0 rgb(244 241 231 / 0.12); }
+  50% { box-shadow: 0 0 22px rgb(201 255 61 / 0.45), 0 0 0 9px rgb(244 241 231 / 0.06); }
 }
 @media (prefers-reduced-motion: reduce) {
   @keyframes rizz-companion-poof {
@@ -783,8 +1035,8 @@
 /* ============ PROFILE EFFECTS (Discord-style) ============ */
 @keyframes ring-rotate { to { transform: rotate(360deg); } }
 @keyframes ring-pulse {
-  0%,100% { box-shadow: 0 0 0 2px var(--ec, #ff2d92), 0 0 20px var(--ec, #ff2d92); }
-  50% { box-shadow: 0 0 0 3px var(--ec, #ff2d92), 0 0 40px var(--ec, #ff2d92); }
+  0%,100% { box-shadow: 0 0 0 2px var(--ec, var(--brand-signal)), 0 0 20px var(--ec, var(--brand-signal)); }
+  50% { box-shadow: 0 0 0 3px var(--ec, var(--brand-signal)), 0 0 40px var(--ec, var(--brand-signal)); }
 }
 @keyframes hue-shift { to { filter: hue-rotate(360deg); } }
 @keyframes confetti-drift {
@@ -811,11 +1063,11 @@
   40% { transform: translate(1px,-1px); }
 }
 
-.fx-ring-neon { --ec: #ff2d92; border-radius: 9999px; box-shadow: 0 0 0 2px var(--ec), 0 0 20px var(--ec); animation: ring-pulse 2.4s ease-in-out infinite; }
+.fx-ring-neon { --ec: var(--brand-signal); border-radius: 9999px; box-shadow: 0 0 0 2px var(--ec), 0 0 20px var(--ec); animation: ring-pulse 2.4s ease-in-out infinite; }
 .fx-ring-aurora { --ec: #a855f7; }
 .fx-ring-aurora::before {
   content: ""; position: absolute; inset: -6px; border-radius: 9999px;
-  background: conic-gradient(from 0deg, #ff2d92, #a855f7, #06b6d4, #22d3ee, #ec4899, #ff2d92);
+  background: conic-gradient(from 0deg, var(--brand-signal), #a855f7, #06b6d4, #22d3ee, #ec4899, var(--brand-signal));
   filter: blur(6px); z-index: -1; animation: ring-rotate 4s linear infinite;
 }
 .fx-ring-fire::before {
@@ -858,7 +1110,7 @@
 
 /* Skeleton shimmer */
 .skeleton-shimmer {
-  background: linear-gradient(90deg, oklch(0.20 0.04 295), oklch(0.28 0.05 295), oklch(0.20 0.04 295));
+  background: linear-gradient(90deg, var(--brand-ink-2), var(--brand-ink-3), var(--brand-ink-2));
   background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
 }
 
@@ -866,14 +1118,18 @@
 body.focus-mode [data-focus-hide] { display: none !important; }
 body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 
-/* ============ NIGHTCLUB CANVAS (GPU OPTIMIZED) ============ */
+/* ============ FLAT TEXTURE ============
+   The old nightclub layer was three blurred colour orbs, two light beams and a
+   grain overlay — the exact "AI landing page" look. What is left is a static
+   halftone dot grid on the token canvas: one paint, no animation, no blur, and
+   it can never come between the page background and its content. */
 .nightclub-canvas {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  /* Parallax vars set by NightclubCanvas on pointer move (desktop only).
-     scale(1.04) hides the up-to-±10px parallax shift at the edges. */
-  transform: translate3d(var(--px, 0px), var(--py, 0px), 0) scale(1.04);
+  background-image: radial-gradient(color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1.5px);
+  background-size: 22px 22px;
   contain: strict;
 }
+.nc-orb, .nc-beam, .nc-grain { display: none; }
 .nc-orb {
   position: absolute; border-radius: 9999px; opacity: 0.35;
   will-change: transform;
@@ -915,21 +1171,15 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
 
 /* ============ EFFECT BUDGET — MOBILE ============
-   Same palette and layout, but the animated dotted grain, the drifting orbs and
-   the long-running composited animations are paused on phones, where they were
-   the main source of scroll jank and battery drain. */
+   The texture is static now, so phones simply get a slightly denser grid. */
 @media (max-width: 767.98px) {
-  .nc-grain { display: none; }
-  .nc-orb { animation: none !important; will-change: auto; }
-  .nightclub-canvas { contain: strict; }
-  .feed-post-card { transition: border-color 200ms ease, box-shadow 200ms ease; }
-  .shadow-glow { box-shadow: 0 2px 10px oklch(0.68 0.28 5 / 0.22); }
-  .shadow-glow-lg { box-shadow: 0 4px 18px oklch(0.68 0.28 5 / 0.26); }
+  .nightclub-canvas { background-size: 18px 18px; }
+  .feed-post-card { transition: border-color 200ms ease; }
 }
 /* The app's own "Reduced motion" setting also stops the decorative layers. */
-[data-reduced-motion="true"] .nc-grain,
-[data-reduced-motion="true"] .nc-beam { display: none; }
-[data-reduced-motion="true"] .nc-orb { animation: none !important; }
+[data-reduced-motion="true"] .nightclub-canvas {
+  background-image: none;
+}
 
 /* ============ SOUND WAVE VISUALIZER ============ */
 @keyframes soundwave {
@@ -979,17 +1229,17 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
    still respect --ec on top of their base gradient. */
 .fx-ring-aurora, .fx-ring-fire, .fx-ring-holo, .fx-ring-sakura, .fx-ring-electric {
   border-radius: 9999px;
-  box-shadow: 0 0 22px var(--ec, #ff2d92);
+  box-shadow: 0 0 22px var(--ec, var(--brand-signal));
 }
 
 /* Procedural nameplate variants — all use --nc for tint. */
 .np-base {
-  background: linear-gradient(90deg, var(--nc, #ff2d92), color-mix(in oklab, var(--nc, #ff2d92) 40%, white 60%), var(--nc, #ff2d92));
+  background: linear-gradient(90deg, var(--nc, var(--brand-signal)), color-mix(in oklab, var(--nc, var(--brand-signal)) 40%, white 60%), var(--nc, var(--brand-signal)));
   background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
   color: transparent; animation: name-shimmer 3s linear infinite;
 }
 .np-p-shimmer {
-  background: linear-gradient(90deg, var(--nc, #ff2d92), color-mix(in oklab, var(--nc, #ff2d92) 40%, white 60%), var(--nc, #ff2d92));
+  background: linear-gradient(90deg, var(--nc, var(--brand-signal)), color-mix(in oklab, var(--nc, var(--brand-signal)) 40%, white 60%), var(--nc, var(--brand-signal)));
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -1037,17 +1287,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   content-visibility: auto;
   contain-intrinsic-size: auto 420px;
   contain: layout paint;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    radial-gradient(120% 90% at 0% 0%, rgba(236, 72, 153, 0.12), transparent 58%),
-    radial-gradient(100% 80% at 100% 0%, rgba(124, 58, 237, 0.13), transparent 55%),
-    linear-gradient(145deg, rgb(31, 23, 43), rgb(17, 13, 25));
-  /* No backdrop-filter: the card background is already opaque, so blurring 50
-     cards behind each other cost GPU time for a look nobody could see. */
-  box-shadow:
-    0 18px 54px rgba(4, 2, 10, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.025);
+  /* One flat surface, one hairline border. No tinted corner gradients. */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--brand-ink-2);
+  box-shadow: var(--shadow-line);
   transition:
     transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
     border-color 220ms ease,
@@ -1059,7 +1303,6 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   height: 1.35rem;
   flex: none;
   place-items: center;
-  filter: drop-shadow(0 0 6px rgba(255, 91, 190, 0.55));
   animation: rizz-cat-float 2.8s ease-in-out infinite;
 }
 .rizz-claim-cat svg {
@@ -1097,19 +1340,15 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   }
 }
 .feed-post-card:focus-within {
-  border-color: color-mix(in oklab, var(--rizz-pink) 48%, transparent);
-  box-shadow:
-    0 18px 54px rgba(4, 2, 10, 0.3),
-    0 0 0 2px color-mix(in oklab, var(--rizz-pink) 24%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--brand-signal) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-signal) 28%, transparent);
 }
 .post-media-frame {
-  border-block: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-block: 1px solid var(--brand-line);
 }
 .feed-post-card > footer {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(12, 9, 19, 0.28));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  background: var(--brand-ink-2);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-paper) 5%, transparent);
 }
 .feed-post-card > footer > button {
   border-radius: 9999px;
@@ -1117,9 +1356,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     background-color 160ms ease,
     color 160ms ease,
     transform 160ms ease;
-}
-.feed-post-card > footer > button:hover {
-  background-color: rgba(255, 255, 255, 0.07);
+}  .feed-post-card > footer > button:hover {
+  background-color: color-mix(in srgb, var(--brand-paper) 7%, transparent);
   color: var(--foreground);
 }
 .feed-post-card > footer > button:active {
@@ -1128,21 +1366,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .feed-post-card:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in oklab, var(--rizz-pink) 27%, rgba(255, 255, 255, 0.1));
-    box-shadow:
-      0 24px 62px rgba(4, 2, 10, 0.38),
-      0 8px 28px color-mix(in oklab, var(--rizz-pink) 12%, transparent),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .feed-post-card {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background:
-      radial-gradient(120% 90% at 0% 0%, rgba(236, 72, 153, 0.1), transparent 58%),
-      radial-gradient(100% 80% at 100% 0%, rgba(124, 58, 237, 0.1), transparent 55%),
-      rgb(24, 18, 33);
+    border-color: color-mix(in srgb, var(--brand-paper) 24%, transparent);
+    box-shadow: var(--shadow-2);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1162,14 +1387,14 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .pfx-sparkles::before, .pfx-sparkles::after {
   content: ""; position: absolute; inset: 0;
   background:
-    radial-gradient(circle, var(--ec, #ff2d92) 1px, transparent 1.5px) 0 0/40px 40px,
-    radial-gradient(circle, var(--ec, #ff2d92) 1px, transparent 1.5px) 20px 20px/40px 40px;
+    radial-gradient(circle, var(--ec, var(--brand-signal)) 1px, transparent 1.5px) 0 0/40px 40px,
+    radial-gradient(circle, var(--ec, var(--brand-signal)) 1px, transparent 1.5px) 20px 20px/40px 40px;
   animation: sparkle-twinkle 2.8s ease-in-out infinite;
   opacity: 0.6;
 }
 .pfx-hearts::before {
   content: "♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥"; position: absolute; inset: 0;
-  color: var(--ec, #ff2d92); font-size: 14px; letter-spacing: 24px;
+  color: var(--ec, var(--brand-signal)); font-size: 14px; letter-spacing: 24px;
   animation: confetti-drift 6s linear infinite; opacity: 0.7;
 }
 .pfx-snow::before {
@@ -1181,8 +1406,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .pfx-confetti::before {
   content: ""; position: absolute; inset: 0;
   background:
-    linear-gradient(45deg, var(--ec, #ff2d92) 25%, transparent 25%) 0 0/16px 16px,
-    linear-gradient(-45deg, var(--ec, #ff2d92) 25%, transparent 25%) 8px 0/16px 16px;
+    linear-gradient(45deg, var(--ec, var(--brand-signal)) 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(-45deg, var(--ec, var(--brand-signal)) 25%, transparent 25%) 8px 0/16px 16px;
   animation: confetti-drift 5s linear infinite; opacity: 0.5;
 }
 .pfx-embers::before {
@@ -1214,9 +1439,39 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 }
 .pfx-meteors::before {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(20deg, transparent 40%, var(--ec, #ff2d92) 50%, transparent 60%);
+  background: linear-gradient(20deg, transparent 40%, var(--ec, var(--brand-signal)) 50%, transparent 60%);
   background-size: 30px 200%; animation: snow-fall 3s linear infinite;
   opacity: 0.35;
+}
+
+/* ============ ADAPTIVE OVERLAYS (Issue 10) ============
+   On a phone, pickers stay bottom sheets: they are where your thumb is. On a
+   desktop or any fine pointer, a full-width strip pinned to the bottom of a
+   2500px window makes the cursor travel across the screen, so the same sheet
+   becomes a compact card anchored bottom-right, next to the sidebar and right
+   by the control that opened it. Applies to every picker, confirmation and
+   feedback sheet, because it keys off the primitive's data-side. */
+@media (hover: hover) and (pointer: fine) and (min-width: 641px) {
+  [role="dialog"][data-state="open"][data-side="bottom"] {
+    inset-inline: auto 1.5rem;
+    width: min(26rem, calc(100vw - 3rem));
+    max-width: 26rem;
+    max-height: min(70dvh, 40rem);
+    border: 1px solid var(--brand-line);
+    border-radius: var(--radius-card);
+    padding-bottom: 1.25rem;
+  }
+  /* The drag handle is a touch affordance; there is no dragging with a mouse. */
+  [role="dialog"][data-state="open"][data-side="bottom"] .sheet-drag-handle {
+    display: none;
+  }
+}
+
+/* Floating buttons step aside while an overlay is open, so the cat never sits
+   on top of a sheet's rows. */
+body:has([role="dialog"][data-state="open"]) [data-overlay-hide],
+body:has([role="dialog"][data-state="open"]) .overlay-hide {
+  display: none !important;
 }
 
 @utility no-scrollbar {

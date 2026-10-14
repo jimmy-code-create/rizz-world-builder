@@ -1,8 +1,8 @@
 /**
  * The RIZZ cat, as a pose catalogue.
  *
- * The mascot is one visual language: a #12101A cat, #8B72FF inner ears and
- * strokes, #6C4BFF accents. Every pose gets a slot here so the UI asks for a
+ * The mascot is one visual language: a #12101A cat, #C9FF3D inner ears and
+ * strokes, #C9FF3D accents. Every pose gets a slot here so the UI asks for a
  * *mood* — "this list is empty", "we couldn't find it", "you're on top" —
  * instead of hard-coding a file path at each call site.
  *

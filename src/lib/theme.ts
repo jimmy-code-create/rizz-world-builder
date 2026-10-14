@@ -10,19 +10,19 @@ export type Density = "comfy" | "compact";
  * near-black and borders carry the separation that shadows used to.
  */
 export const THEME_MODES: { id: ThemeMode; label: string; hint: string }[] = [
-  { id: "dark", label: "Dark", hint: "The default nightclub dark" },
-  { id: "light", label: "Light", hint: "Bright surfaces, darkened accents" },
+  { id: "dark", label: "Dark", hint: "Ink black with acid lime (default)" },
+  { id: "light", label: "Light", hint: "Warm paper, ink text" },
   { id: "amoled", label: "AMOLED black", hint: "True black for OLED screens" },
   { id: "auto", label: "Auto", hint: "Follow the device setting" },
 ];
 
 export const THEME_PRESETS: { id: ThemePreset; name: string; desc: string; colors: string[] }[] = [
-  { id: "nightclub", name: "Nightclub", desc: "Hot pink + violet (default)", colors: ["#ff2d92", "#7c3aed", "#22d3ee"] },
-  { id: "midnight", name: "Midnight", desc: "Deep ocean blue", colors: ["#3b82f6", "#1e1b4b", "#06b6d4"] },
-  { id: "sunset", name: "Sunset", desc: "Warm fire orange", colors: ["#f97316", "#ec4899", "#facc15"] },
-  { id: "cyber", name: "Cyber", desc: "Matrix green", colors: ["#22c55e", "#06b6d4", "#a3e635"] },
-  { id: "mono", name: "Mono", desc: "Pure black & white", colors: ["#fafafa", "#525252", "#a3a3a3"] },
-  { id: "pastel", name: "Pastel Dream", desc: "Soft and dreamy", colors: ["#f9a8d4", "#c4b5fd", "#a5f3fc"] },
+  { id: "nightclub", name: "Ink", desc: "Near-black ink + acid lime (default)", colors: ["#0a0a0b", "#c9ff3d", "#f4f1e7"] },
+  { id: "midnight", name: "Midnight", desc: "Cold blue on black", colors: ["#0b1220", "#3b82f6", "#93c5fd"] },
+  { id: "sunset", name: "Sunset", desc: "Rust and amber, no neon", colors: ["#2a1508", "#e2601f", "#f0b429"] },
+  { id: "cyber", name: "Cyber", desc: "Signal green on deep green", colors: ["#07130d", "#22c55e", "#a3e635"] },
+  { id: "mono", name: "Mono", desc: "Ink, paper, nothing else", colors: ["#0a0a0b", "#f4f1e7", "#a9a69c"] },
+  { id: "pastel", name: "Paper", desc: "Warm off-white and clay", colors: ["#f2efe6", "#c46a4a", "#8a7f6a"] },
 ];
 
 export function applyTheme(preset: ThemePreset, mode: ThemeMode, density: Density, reducedMotion: boolean) {

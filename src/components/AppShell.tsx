@@ -111,6 +111,26 @@ export function AppShell() {
     staleTime: 30_000,
   });
 
+  // Unread DMs, straight from `direct_messages.read` — the same flag the DM
+  // list uses, so the badge means exactly "there are messages you have not
+  // opened". Nothing cosmetic, nothing that depends on what you have visited.
+  const dmUnread = useQuery({
+    queryKey: ["unread-dms", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const { count, error } = await supabase
+        .from("direct_messages" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .eq("read", false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+    retry: false,
+    staleTime: 30_000,
+  });
+
   // A new ping chimes softly (never under Do not disturb, never when the
   // "Notification sounds" preference is off).
   const lastUnread = useRef<number | null>(null);
@@ -159,10 +179,30 @@ export function AppShell() {
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
   const unreadCount = unread.data ?? 0;
   const unreadBadge = unreadCount > 9 ? "9+" : String(unreadCount);
+  const dmUnreadCount = dmUnread.data ?? 0;
+  const dmBadge = dmUnreadCount > 9 ? "9+" : String(dmUnreadCount);
   // A realm's own pages (/r/<slug>/settings) keep the Realms tab lit even
-  // though they do not live under /realms.
+  // though they do not live under /realms. Settings subpages highlight their
+  // parent, and the Appearance tile stays exact so it never lights Settings too.
   const isActive = (to: string) =>
     path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/realms" && path.startsWith("/r/"));
+
+  /** Nav items have exactly three looks: default, hover and active. Nothing
+      depends on whether a section has been visited — that state does not exist. */
+  const navItem = (active: boolean) =>
+    `flex items-center gap-3 rounded-[8px] px-3 py-2.5 transition-colors ${
+      active
+        ? "bg-primary text-primary-foreground"
+        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+    }`;
+
+  /** The same three looks for the bigger tiles in the mobile "More" sheet. */
+  const navTile = (active: boolean) =>
+    `flex flex-col items-center gap-1.5 rounded-[10px] border p-3 transition-colors ${
+      active
+        ? "border-transparent bg-primary text-primary-foreground"
+        : "border-border bg-card hover:bg-secondary"
+    }`;
 
   return (
     <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
@@ -175,7 +215,7 @@ export function AppShell() {
           <span className="font-display text-xl font-bold tracking-tight">RIZZ</span>
         </Link>
 
-        <Button onClick={() => setComposerOpen(true)} className="mb-4 bg-gradient-primary border-0 shadow-glow rounded-xl h-10 gap-2">
+        <Button onClick={() => setComposerOpen(true)} className="mb-4 h-10 gap-2 rounded-[8px] font-semibold">
           <Plus className="h-5 w-5" /> New post
         </Button>
 
@@ -199,23 +239,21 @@ export function AppShell() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                isActive(t.to)
-                  ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
+            className={navItem(isActive(t.to))}
             >
               <t.icon className="h-5 w-5" />
-              <span className="font-medium text-sm">{t.label}</span>
+              <span className="flex-1 text-sm font-medium">{t.label}</span>
+              {/* A real badge: unread messages, not “you have not been here yet”. */}
+              {t.to === "/dms" && dmUnreadCount > 0 && (
+                <span className="min-w-5 rounded-full bg-primary px-1.5 text-center text-[10px] font-bold text-primary-foreground">
+                  {dmBadge}
+                </span>
+              )}
             </Link>
           ))}
           <Link
             to="/notifications"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-              isActive("/notifications")
-                ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-            }`}
+            className={navItem(isActive("/notifications"))}
           >
             <Bell className="h-5 w-5" />
             <span className="font-medium text-sm flex-1">Inbox</span>
@@ -226,11 +264,7 @@ export function AppShell() {
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-              path.startsWith("/u/")
-                ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-            }`}
+            className={navItem(path.startsWith("/u/"))}
           >
             <UserIcon className="h-5 w-5" />
             <span className="font-medium text-sm">Profile</span>
@@ -379,35 +413,30 @@ export function AppShell() {
               <Link
                 key={t.to}
                 to={t.to}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
-                  isActive(t.to) ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
-                }`}
+                className={navTile(isActive(t.to))}
               >
                 <t.icon className="h-5 w-5" />
                 <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
               </Link>
             ))}
-            <Link
-              to="/notifications"
-              className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition ${
-                isActive("/notifications") ? "bg-gradient-primary text-white shadow-glow" : "glass hover:bg-white/5"
-              }`}
-            >
+            <Link to="/notifications" className={`relative ${navTile(isActive("/notifications"))}`}>
               <Bell className="h-5 w-5" />
               <span className="text-[11px] font-medium">Inbox</span>
               {(unread.data ?? 0) > 0 && (
                 <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-[var(--rizz-pink)] text-white px-1.5 rounded-full">{unread.data}</span>
               )}
             </Link>
-            <Link to="/bookmarks" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+            {/* Same three looks as the sidebar: default, hover, active. Nothing
+                here changes because a section has been visited. */}
+            <Link to="/bookmarks" className={navTile(isActive("/bookmarks"))}>
               <Bookmark className="h-5 w-5" />
               <span className="text-[11px] font-medium">Saved</span>
             </Link>
-            <Link to="/settings" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+            <Link to="/settings" className={navTile(path === "/settings")}>
               <Settings className="h-5 w-5" />
               <span className="text-[11px] font-medium">Settings</span>
             </Link>
-            <Link to="/settings/appearance" className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass hover:bg-white/5">
+            <Link to="/settings/appearance" className={navTile(isActive("/settings/appearance"))}>
               <Palette className="h-5 w-5" />
               <span className="text-[11px] font-medium">Theme</span>
             </Link>

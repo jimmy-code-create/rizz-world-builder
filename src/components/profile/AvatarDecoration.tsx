@@ -42,7 +42,7 @@ export function AvatarDecoration({ src, fallback, size = 40, effectSlug, accent,
   const ringClass = resolveRingClass(effectSlug);
   return (
     <div className={cn("relative inline-block", className)} style={{ width: size, height: size }}>
-      {ringClass && <div className={cn("absolute inset-0 rounded-full pointer-events-none", ringClass)} style={{ ["--ec" as any]: accent || "#ff2d92" }} />}
+      {ringClass && <div className={cn("absolute inset-0 rounded-full pointer-events-none", ringClass)} style={{ ["--ec" as any]: accent || "#c9ff3d" }} />}
       <Avatar className="relative" style={{ width: size, height: size, boxShadow: !ringClass && accent ? `0 0 0 2px ${accent}66, 0 0 12px ${accent}33` : undefined }}>
         <AvatarImage src={src ?? undefined} />
         <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold">{fallback}</AvatarFallback>

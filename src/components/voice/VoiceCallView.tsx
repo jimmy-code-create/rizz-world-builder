@@ -216,7 +216,7 @@ export function VoiceCallView() {
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(255,45,146,0.18), transparent 65%)" }}
+          style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(201,255,61,0.14), transparent 65%)" }}
         />
         <header className="relative flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
           <div className="min-w-0 flex-1">

@@ -7,6 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchReactorProfiles, reactorsQueryKey, type ReactionGroup, type ReactionScope } from "@/lib/reactions";
 import { reactionHaptic, triggerReactionBurst, triggerBurstOnElement } from "@/components/chat/ReactionBurst";
 import type { ReactionPulse } from "@/lib/useChatReactions";
+import {
+  useReactorPeek,
+  type ReactionTarget,
+} from "@/components/reactions/ReactorPeek";
 
 export type { ReactionPulse };
 
@@ -84,6 +88,7 @@ function ReactionChip({
   onToggle,
   onLongPress,
   label,
+  peekTarget,
 }: {
   emoji: string;
   count: number;
@@ -93,6 +98,8 @@ function ReactionChip({
   onToggle: () => Promise<boolean>;
   onLongPress: () => void;
   label: string;
+  /** The same shared reactor peek every other surface uses. */
+  peekTarget?: ReactionTarget | null;
 }) {
   const controls = useAnimationControls();
   const pressTimer = useRef<number | null>(null);
@@ -100,6 +107,7 @@ function ReactionChip({
   const [failed, setFailed] = useState(false);
   const [glowing, setGlowing] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const peek = useReactorPeek(peekTarget ?? null);
 
   useEffect(() => {
     if (!pulse || pulse.emoji !== emoji) return;
@@ -143,10 +151,15 @@ function ReactionChip({
 
   return (
     <motion.button
-      ref={buttonRef}
+      ref={(node: HTMLButtonElement | null) => {
+        buttonRef.current = node;
+        peek.anchorRef.current = node;
+      }}
       type="button"
       aria-pressed={mine}
       aria-label={`${emoji} ${count}. ${label}`}
+      aria-describedby={peek.describedBy}
+      {...peek.triggerProps}
       initial={failed ? false : { scale: 0.6, opacity: 0 }}
       animate={failed ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 620, damping: 20 }}
@@ -157,7 +170,11 @@ function ReactionChip({
         pressTimer.current = window.setTimeout(() => {
           pressTimer.current = null;
           longPressed.current = true;
-          onLongPress();
+          // Long press shows who reacted, through the shared peek — the same
+          // gesture everywhere reactions exist. The "+N" chip still opens the
+          // full sheet for messages with more chips than fit.
+          if (peek.openNow) peek.openNow();
+          else onLongPress();
         }, LONG_PRESS_MS);
       }}
       onPointerUp={() => {
@@ -171,6 +188,7 @@ function ReactionChip({
           window.clearTimeout(pressTimer.current);
           pressTimer.current = null;
         }
+        peek.close?.();
       }}
       onPointerCancel={() => {
         if (pressTimer.current) {
@@ -356,6 +374,7 @@ export function ReactionChips({
               canReact={canReact}
               pulse={pulseFor(group.emoji)}
               label="Tap to toggle, long press to see who reacted."
+              peekTarget={{ emoji: group.emoji, count: group.count, source: { kind: "message", id: messageId } }}
               onToggle={() => onToggle(group.emoji)}
               onLongPress={() => setSheetOpen(true)}
             />

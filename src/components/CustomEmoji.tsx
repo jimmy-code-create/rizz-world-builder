@@ -11,6 +11,12 @@ export function CustomEmoji({
   const asset = CUSTOM_EMOJI[name];
   const source = `/emoji/${asset.file}`;
   const extension = asset.file.split(".").pop()?.toLowerCase();
+  /* One fixed square for every emoji, whatever its source format: the glyph or
+     media fills that square with object-fit: contain, sits on a grid so there
+     is no baseline gap, and is clipped consistently. That is what stops the
+     same emoji rendering tiny in a chip and cropped in a picker. */
+  const box = `inline-grid shrink-0 place-items-center overflow-hidden align-middle leading-none ${className}`;
+  const media = "block h-full w-full object-contain";
   const containerRef = useRef<HTMLSpanElement>(null);
   const [failed, setFailed] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -73,25 +79,31 @@ export function CustomEmoji({
   }, [extension, failed, source, visible]);
 
   if (failed) {
-    return <span aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center ${className}`}>{asset.fallback}</span>;
+    return (
+      <span aria-hidden="true" className={`${box} text-[0.85em]`}>
+        {asset.fallback}
+      </span>
+    );
   }
 
   if (extension === "webp" || extension === "png") {
     return (
-      <img
-        src={source}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onError={() => setFailed(true)}
-        className={`inline-block shrink-0 object-contain ${className}`}
-      />
+      <span aria-hidden="true" className={box}>
+        <img
+          src={source}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className={media}
+        />
+      </span>
     );
   }
 
   if (extension === "webm") {
     return (
-      <span ref={containerRef} aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center ${className}`}>
+      <span ref={containerRef} aria-hidden="true" className={box}>
         {visible ? (
           <video
             src={source}
@@ -101,12 +113,18 @@ export function CustomEmoji({
             playsInline
             preload="none"
             onError={() => setFailed(true)}
-            className="h-full w-full object-contain"
+            className={media}
           />
-        ) : asset.fallback}
+        ) : (
+          <span className="text-[0.85em]">{asset.fallback}</span>
+        )}
       </span>
     );
   }
 
-  return <span aria-hidden="true" ref={containerRef} className={`inline-flex shrink-0 items-center justify-center ${className}`}>{!visible ? asset.fallback : null}</span>;
+  return (
+    <span aria-hidden="true" ref={containerRef} className={box}>
+      {!visible ? <span className="text-[0.85em]">{asset.fallback}</span> : null}
+    </span>
+  );
 }

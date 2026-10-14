@@ -87,7 +87,7 @@ function TutorialPage() {
   };
 
   if (loading || !user) {
-    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
+    return <div className="flex min-h-dvh items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]" role="status" aria-label="Loading" /></div>;
   }
 
   if (profileError || !profile) {
@@ -99,11 +99,11 @@ function TutorialPage() {
   }
 
   if (!profile.username) {
-    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
+    return <div className="flex min-h-dvh items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]" role="status" aria-label="Loading" /></div>;
   }
 
   if (profile.tutorial_seen && !hasEntered.current) {
-    return <div className="min-h-dvh flex items-center justify-center"><div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" /></div>;
+    return <div className="flex min-h-dvh items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]" role="status" aria-label="Loading" /></div>;
   }
 
   return (
@@ -124,7 +124,7 @@ function TutorialPage() {
               aria-pressed={isSelected}
               disabled={busy}
               onClick={() => toggleInterest(id)}
-              className={`h-11 justify-start gap-2 ${isSelected ? "bg-gradient-primary border-0" : "glass border-white/10"}`}
+              className={`h-11 justify-start gap-2 rounded-[8px] ${isSelected ? "border-transparent bg-primary text-primary-foreground hover:bg-primary" : "border-border bg-card"}`}
             >
               <CustomEmoji name={emoji} className="h-5 w-5" />
               <span>{id}</span>
@@ -137,7 +137,7 @@ function TutorialPage() {
         type="button"
         disabled={busy}
         onClick={() => void finish(selected)}
-        className="mt-5 w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90"
+        className="mt-5 h-11 w-full rounded-[6px] font-semibold"
       >
         {busy ? "Saving…" : "Continue"}
       </Button>

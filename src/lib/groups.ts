@@ -66,7 +66,7 @@ export async function fetchGroupBySlug(slug: string) {
 export async function createGroup(input: { owner_id: string; name: string; topic?: string; accent_color?: string }) {
   const slug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + randCode(4);
   const { data, error } = await supabase.from("groups").insert({
-    owner_id: input.owner_id, slug, name: input.name, topic: input.topic, accent_color: input.accent_color ?? "#ff2d92",
+    owner_id: input.owner_id, slug, name: input.name, topic: input.topic, accent_color: input.accent_color ?? "#c9ff3d",
   }).select().single();
   if (error) throw error;
   return data as Group;

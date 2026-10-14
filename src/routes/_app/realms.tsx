@@ -41,7 +41,7 @@ function RealmsPage() {
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
   const [kind, setKind] = useState<"text" | "announcement" | "voice">("text");
-  const [accent, setAccent] = useState("#ff2d92");
+  const [accent, setAccent] = useState("#c9ff3d");
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);

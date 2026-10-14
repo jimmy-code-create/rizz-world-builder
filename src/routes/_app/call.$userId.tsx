@@ -639,10 +639,10 @@ function CallPage() {
   return (
     <FullScreenLayer open>
     <div
-      className="fixed inset-0 z-[120] bg-gradient-to-br from-[#1a0820] via-[#0b0b15] to-black text-white flex flex-col overscroll-none"
+      className="fixed inset-0 z-[120] flex flex-col overscroll-none bg-background text-foreground"
       style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(60% 50% at 50% 30%, rgba(255,45,146,0.35), transparent 60%)" }} />
+      <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(60% 50% at 50% 30%, rgba(201,255,61,0.22), transparent 60%)" }} />
 
       {/* Remote video fills when available */}
       {cam || remoteHasVideo ? (
@@ -665,7 +665,7 @@ function CallPage() {
             )}
             <span
               className="absolute -inset-3 rounded-full pointer-events-none transition-opacity"
-              style={{ boxShadow: `0 0 ${20 + level * 60}px ${4 + level * 10}px rgba(255,45,146,${0.15 + level * 0.4})`, opacity: muted ? 0 : 1 }}
+              style={{ boxShadow: `0 0 ${20 + level * 60}px ${4 + level * 10}px rgba(201,255,61,${0.15 + level * 0.4})`, opacity: muted ? 0 : 1 }}
             />
             <Avatar className="h-36 w-36 ring-4 ring-white/20 shadow-2xl relative">
               <AvatarImage src={other.data?.avatar_url ?? undefined} />

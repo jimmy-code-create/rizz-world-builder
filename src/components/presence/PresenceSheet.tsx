@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Check, CircleDashed, Circle as CircleIcon, Moon, PhoneOff, Smile, Trash2 } from "lucide-react";
+import { CircleDashed, Circle as CircleIcon, Moon, PhoneOff, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { IconTile } from "@/components/ui/icon-tile";
+import { ChoiceMark } from "@/components/ui/choice-mark";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +37,20 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const presence = useSelfPresence();
   const [saving, setSaving] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  /* Feedback for a local control belongs next to that control, so it renders in
+     the row that changed instead of as a toast at the bottom of the window. */
+  const [feedback, setFeedback] = useState<{
+    kind: "saved" | "error";
+    status: PresenceStatus;
+    text?: string;
+  } | null>(null);
+
+  // Inline feedback fades on its own; no intervention needed.
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
   const [emoji, setEmoji] = useState("");
   const [text, setText] = useState("");
   const [expiry, setExpiry] = useState<(typeof EXPIRY_OPTIONS)[number]["value"]>("1h");
@@ -91,9 +107,13 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const choose = async (status: PresenceStatus) => {
     try {
       await presence.chooseStatus(status);
-      toast.success(`Status set to ${PRESENCE_STATUSES.find((entry) => entry.value === status)?.label}`);
+      setFeedback({ kind: "saved", status });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't save your status, try again");
+      setFeedback({
+        kind: "error",
+        status,
+        text: error instanceof Error ? error.message : "Couldn't save your status, try again",
+      });
     }
   };
 
@@ -155,14 +175,14 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
           onPointerUp={onDragEnd}
           onPointerCancel={onDragEnd}
         >
-          <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
+          <div className="sheet-drag-handle mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
           <SheetTitle className="font-display text-lg">Status</SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground">
             Choose how you appear, or add a short custom status.
           </SheetDescription>
         </div>
 
-        <div className="mt-4 space-y-1">
+        <div className="mt-4 space-y-1" role="radiogroup" aria-label="Status">
           {PRESENCE_STATUSES.map((entry) => {
             const Icon = STATUS_ICONS[entry.value];
             const active = presence.status === entry.value;
@@ -170,14 +190,21 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               <button
                 key={entry.value}
                 type="button"
+                role="radio"
+                aria-checked={active}
                 onClick={() => void choose(entry.value)}
-                className={`flex min-h-[52px] w-full items-center gap-3 rounded-2xl border px-3 text-left transition-colors ${
-                  active ? "border-white/15 bg-white/[0.07]" : "border-transparent hover:bg-white/5"
+                className={`flex min-h-[52px] w-full items-center gap-3 rounded-[10px] border px-3 text-left transition-colors ${
+                  active ? "border-border bg-secondary" : "border-transparent hover:bg-secondary"
                 }`}
               >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `${entry.color}26` }}>
-                  <Icon className="h-4 w-4" style={{ color: entry.color }} />
-                </span>
+                {/* Fixed square, centred glyph — the icon can't sit off-centre. */}
+                <IconTile
+                  size="md"
+                  radius="9999px"
+                  style={{ background: `${entry.color}26` }}
+                >
+                  <Icon style={{ color: entry.color }} />
+                </IconTile>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-sm font-semibold">
                     {entry.label}
@@ -189,14 +216,26 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   </span>
                   <span className="block truncate text-[11px] text-muted-foreground">{entry.hint}</span>
                 </span>
-                {active && <Check className="h-4 w-4 shrink-0 text-[var(--rizz-pink)]" />}
+                {/* Inline confirmation, right where the change happened. */}
+                {feedback && feedback.status === entry.value && (
+                  <span
+                    role="status"
+                    className={`shrink-0 text-[11px] font-medium ${
+                      feedback.kind === "error" ? "text-destructive" : "text-[var(--brand-signal)]"
+                    }`}
+                  >
+                    {feedback.kind === "error" ? feedback.text ?? "Couldn't save" : "Saved"}
+                  </span>
+                )}
+                {/* Box and tick in one element, so they can never drift apart. */}
+                <ChoiceMark checked={active} />
               </button>
             );
           })}
         </div>
 
         {presence.customStatus && (
-          <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/5 glass px-3 py-2.5 text-sm">
+          <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-border bg-card px-3 py-2.5 text-sm">
             <Smile className="h-4 w-4 shrink-0 text-muted-foreground" />
             <CustomStatusLine status={presence.customStatus} className="min-w-0 flex-1 text-muted-foreground" />
           </div>
@@ -206,13 +245,13 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
           <button
             type="button"
             onClick={() => setCustomOpen(true)}
-            className="mt-3 flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-white/5 glass px-3 text-left text-sm font-medium hover:bg-white/5"
+            className="mt-3 flex min-h-[52px] w-full items-center gap-3 rounded-[10px] border border-border bg-card px-3 text-left text-sm font-medium hover:bg-secondary"
           >
             <Smile className="h-4 w-4 text-muted-foreground" />
             Set a custom status
           </button>
         ) : (
-          <div className="mt-3 space-y-3 rounded-2xl border border-white/5 glass p-3">
+          <div className="mt-3 space-y-3 rounded-[10px] border border-border bg-card p-3">
             <div className="flex items-center gap-2">
               <Input
                 value={emoji}

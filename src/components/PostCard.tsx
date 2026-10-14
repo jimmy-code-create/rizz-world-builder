@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
+import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
@@ -505,20 +506,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       {Object.keys(grouped).length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-4 pt-3">
           {Object.entries(grouped).map(([emoji, { count, mine }]) => (
-            <button
+            <ReactionChipButton
               key={emoji}
-              type="button"
-              aria-pressed={mine}
-              onClick={() => toggleReaction(emoji)}
-              className={`text-xs px-2 py-1 rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
-                mine
-                  ? "bg-[var(--rizz-pink)]/15 border-[var(--rizz-pink)]/40 shadow-glow"
-                  : "bg-white/5 border-white/10 hover:bg-white/10"
-              }`}
-            >
-              <span className="mr-1">{emoji}</span>
-              <span className="font-medium">{count}</span>
-            </button>
+              emoji={emoji}
+              count={count}
+              mine={mine}
+              target={{ emoji, count, source: { kind: "post", id: post.id } }}
+              onToggle={() => toggleReaction(emoji)}
+            />
           ))}
         </div>
       )}
@@ -866,18 +861,16 @@ function CommentInteractions({ commentId }: { commentId: string }) {
         ♥ {current.likes.length || ""}
       </button>
       {["❤️", "😂", "🔥"].map((emoji) => (
-        <button
-          type="button"
+        <ReactionChipButton
           key={emoji}
-          aria-pressed={grouped[emoji]?.mine ?? false}
-          disabled={react.isPending}
-          onClick={() => react.mutate(emoji)}
-          className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
-            grouped[emoji]?.mine ? "border-[var(--rizz-pink)]/40 bg-[var(--rizz-pink)]/10" : "border-white/10"
-          }`}
-        >
-          {emoji} {grouped[emoji]?.count || ""}
-        </button>
+          emoji={emoji}
+          count={grouped[emoji]?.count ?? 0}
+          mine={grouped[emoji]?.mine ?? false}
+          target={{ emoji, count: grouped[emoji]?.count ?? 0, source: { kind: "comment", id: commentId } }}
+          onToggle={() => react.mutate(emoji)}
+          className="h-5 gap-1 px-1.5 text-[10px]"
+          title={`React ${emoji}`}
+        />
       ))}
     </div>
   );

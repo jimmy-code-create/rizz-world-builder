@@ -38,7 +38,7 @@ function ClaimUsernamePage() {
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <div className="h-12 w-12 rounded-full bg-gradient-primary animate-pulse-glow" aria-label="Loading account" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]" role="status" aria-label="Loading account" />
       </div>
     );
   }
@@ -130,7 +130,7 @@ function ClaimUsernamePage() {
                   className={cn(
                     "relative aspect-square overflow-hidden rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
-                      ? "ring-2 ring-[var(--rizz-pink)] ring-offset-2 ring-offset-background"
+                      ? "ring-2 ring-[var(--ring)] ring-offset-2 ring-offset-background"
                       : "ring-1 ring-white/10 hover:ring-white/35",
                   )}
                 >
@@ -152,12 +152,12 @@ function ClaimUsernamePage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="h-11 pl-7 glass border-white/10"
+              className="h-11 border-border bg-secondary pl-7"
               placeholder="yourname"
             />
           </div>
         </div>
-        <Button type="submit" disabled={busy} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+        <Button type="submit" disabled={busy} className="h-11 w-full rounded-[6px] font-semibold">
           {busy ? "Saving…" : "Claim username"}
         </Button>
       </form>

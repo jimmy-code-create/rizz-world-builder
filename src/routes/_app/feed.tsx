@@ -152,10 +152,14 @@ function FeedPage() {
               asChild
               variant="outline"
               size="icon"
-              className="h-11 w-11 shrink-0 border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+              className="h-11 w-11 shrink-0 border-border bg-card p-0 text-foreground hover:bg-[var(--brand-ink-3)]"
             >
-              <Link to="/explore" aria-label="Explore RIZZ">
-                <Compass className="h-4 w-4" />
+              <Link
+                to="/explore"
+                aria-label="Explore RIZZ"
+                className="grid h-full w-full place-items-center"
+              >
+                <Compass className="block h-4 w-4 shrink-0" />
               </Link>
             </Button>
           </div>
@@ -232,7 +236,6 @@ function FeedPage() {
           className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-3xl border border-white/10 glass text-sm font-semibold text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
         >
           Show {remaining > FEED_PAGE_SIZE ? FEED_PAGE_SIZE : remaining} more
-          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] font-bold">{remaining} left</span>
         </button>
       )}
 

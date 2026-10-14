@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { randomDefaultAvatar } from "@/lib/default-avatars";
 import { AuthCard } from "@/components/AuthCard";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,8 +91,8 @@ function SignupPage() {
   return (
     <AuthCard
       title="Claim your @"
-      subtitle="Free forever. Pick a username, drop in."
-      footer={<>Already have an account? <Link to="/login" className="text-[var(--rizz-pink)] hover:underline font-medium">Log in</Link></>}
+      subtitle="Pick a username, add an email and a password. That's the whole sign-up."
+      footer={<>Already have an account? <Link to="/login" className="font-medium text-[var(--rizz-pink)] hover:underline">Log in</Link></>}
     >
       {errKind && (
         <AuthErrorBanner
@@ -106,20 +107,28 @@ function SignupPage() {
           <Label htmlFor="username">Username</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-            <Input id="username" required value={username} onChange={(e) => setUsername(e.target.value)} className="h-11 pl-7 glass border-white/10" placeholder="yourname" />
+            <Input id="username" required value={username} onChange={(e) => setUsername(e.target.value)} className="h-11 border-border bg-secondary pl-7" placeholder="yourname" />
           </div>
         </div>
-        <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 glass border-white/10" /></div>
-        <div className="flex gap-2 rounded-xl border border-white/10 p-1">
-          <Button type="button" variant={mode === "password" ? "default" : "ghost"} className="h-9 flex-1" onClick={() => { setMode("password"); setOtpSent(false); }}>Password</Button>
-          <Button type="button" variant={mode === "otp" ? "default" : "ghost"} className="h-9 flex-1" onClick={() => setMode("otp")}>Email code</Button>
-        </div>
+        <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 border-border bg-secondary" /></div>
+        <SegmentedControl
+          label="Sign-up method"
+          value={mode}
+          options={[
+            { value: "password" as const, label: "Password" },
+            { value: "otp" as const, label: "Email code" },
+          ]}
+          onChange={(next) => {
+            setMode(next);
+            if (next === "password") setOtpSent(false);
+          }}
+        />
         {mode === "password" ? (
-          <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 glass border-white/10" /></div>
+          <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 border-border bg-secondary" /></div>
         ) : otpSent ? (
-          <div className="space-y-2"><Label htmlFor="otp">Email code</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.slice(0, 8))} className="h-11 glass border-white/10 tracking-[0.3em]" placeholder="123456" /></div>
+          <div className="space-y-2"><Label htmlFor="otp">Email code</Label><Input id="otp" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.slice(0, 8))} className="h-11 border-border bg-secondary tracking-[0.3em]" placeholder="123456" /></div>
         ) : null}
-        <Button type={mode === "otp" && otpSent ? "button" : "submit"} onClick={mode === "otp" && otpSent ? verifyOtp : undefined} disabled={loading} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+        <Button type={mode === "otp" && otpSent ? "button" : "submit"} onClick={mode === "otp" && otpSent ? verifyOtp : undefined} disabled={loading} className="h-11 w-full rounded-[6px] font-semibold">
           {loading ? "Please wait…" : mode === "otp" ? (otpSent ? "Verify code" : "Send email code") : "Create account"}
         </Button>
       </form>

@@ -46,7 +46,7 @@ export function ReelsRealmRail() {
           to="/r/$slug"
           params={{ slug: realm.slug }}
           className="grid h-10 shrink-0 place-items-center rounded-full bg-black/40 px-3 text-[11px] font-semibold text-white backdrop-blur transition active:scale-95"
-          style={{ border: `1px solid ${realm.accent_color ?? "#ff2d92"}55` }}
+          style={{ border: `1px solid ${realm.accent_color ?? "#c9ff3d"}55` }}
           title={realm.is_public ? "Public realm" : "Private realm"}
         >
           <span className="flex items-center gap-1.5">

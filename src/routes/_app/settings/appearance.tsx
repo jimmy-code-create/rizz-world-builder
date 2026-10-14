@@ -19,6 +19,15 @@ function AppearanceSettingsPage() {
   const [mode, setMode] = useState<ThemeMode>((profile?.theme_mode as ThemeMode) || "dark");
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
+  /* A picker that changes something local confirms it right here, next to the
+     control — no toast at the bottom of the window. */
+  const [savedAt, setSavedAt] = useState(0);
+
+  useEffect(() => {
+    if (!savedAt) return;
+    const timer = window.setTimeout(() => setSavedAt(0), 2000);
+    return () => window.clearTimeout(timer);
+  }, [savedAt]);
 
   useEffect(() => {
     if (!profile) return;
@@ -44,6 +53,7 @@ function AppearanceSettingsPage() {
       .update({ theme_preset: newPreset, theme_mode: newMode, ui_density: newDensity, reduced_motion: newReduced } as any)
       .eq("id", user.id);
     await refreshProfile();
+    setSavedAt(Date.now());
   }
 
   if (!profile) return null;
@@ -55,6 +65,16 @@ function AppearanceSettingsPage() {
       icon={<Palette className="h-5 w-5" />}
     >
       <SettingsCard className="space-y-5">
+        <div className="flex min-h-[1rem] items-center justify-end" aria-live="polite">
+          {savedAt ? (
+            <span
+              role="status"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--brand-signal)]"
+            >
+              <Check className="h-3 w-3" aria-hidden /> Saved
+            </span>
+          ) : null}
+        </div>
         <div>
           <Label className="mb-2 block text-xs text-muted-foreground">Theme</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -64,7 +84,7 @@ function AppearanceSettingsPage() {
                 <button
                   key={t.id}
                   onClick={() => saveAppearance({ preset: t.id })}
-                  className={`relative rounded-2xl border p-3 text-left transition-all ${active ? "border-[var(--rizz-pink)] shadow-glow" : "border-white/10 hover:border-white/20"}`}
+                  className={`relative rounded-[10px] border p-3 text-left transition-colors ${active ? "border-[var(--brand-signal)]" : "border-border hover:border-[color-mix(in_srgb,var(--brand-paper)_28%,transparent)]"}`}
                 >
                   <div className="mb-2 flex gap-1">
                     {t.colors.map((c) => (
@@ -73,7 +93,7 @@ function AppearanceSettingsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">{t.name}</span>
-                    {active && <Check className="h-3.5 w-3.5 text-[var(--rizz-pink)]" />}
+                    {active && <Check className="h-3.5 w-3.5 text-[var(--brand-signal)]" />}
                   </div>
                   <p className="text-[10px] text-muted-foreground">{t.desc}</p>
                 </button>
@@ -94,7 +114,7 @@ function AppearanceSettingsPage() {
                   key={m.id}
                   onClick={() => saveAppearance({ mode: m.id })}
                   aria-pressed={active}
-                  className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium ${active ? "border-transparent bg-gradient-primary text-primary-foreground shadow-glow" : "border-white/10 hover:bg-white/5"}`}
+                  className={`flex items-center justify-between gap-2 rounded-[8px] border px-3 py-2 text-left text-sm font-medium transition-colors ${active ? "border-transparent bg-primary text-primary-foreground" : "border-border hover:bg-secondary"}`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate">{m.label}</span>
@@ -116,7 +136,7 @@ function AppearanceSettingsPage() {
               <button
                 key={d}
                 onClick={() => saveAppearance({ density: d })}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium capitalize ${density === d ? "border-transparent bg-gradient-primary text-primary-foreground shadow-glow" : "border-white/10 hover:bg-white/5"}`}
+                className={`flex-1 rounded-[8px] border px-3 py-2 text-sm font-medium capitalize transition-colors ${density === d ? "border-transparent bg-primary text-primary-foreground" : "border-border hover:bg-secondary"}`}
               >
                 {d}
               </button>

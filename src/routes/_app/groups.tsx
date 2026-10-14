@@ -100,7 +100,7 @@ function GroupsPage() {
               key={g.id}
               onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
               className="glass min-h-[92px] rounded-3xl border border-sky-300/10 p-4 shadow-[0_12px_36px_rgba(37,99,235,.06)] transition-all hover:-translate-y-0.5 hover:border-sky-300/25 hover:shadow-[0_14px_40px_rgba(37,99,235,.14)] flex items-center gap-3 text-left"
-              style={{ ["--ec" as any]: g.accent_color ?? "#ff2d92" }}
+              style={{ ["--ec" as any]: g.accent_color ?? "#c9ff3d" }}
             >
               <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-700 flex items-center justify-center font-display font-bold text-lg shadow-[0_0_22px_rgba(59,130,246,.28)] ring-1 ring-white/15 shrink-0">
                 {g.name.charAt(0).toUpperCase()}

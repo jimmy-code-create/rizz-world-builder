@@ -21,14 +21,14 @@ function ProfileSettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
-  const [accent, setAccent] = useState("#ff2d92");
+  const [accent, setAccent] = useState("#c9ff3d");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.display_name ?? "");
     setBio(profile.bio ?? "");
-    setAccent(profile.accent_color ?? "#ff2d92");
+    setAccent(profile.accent_color ?? "#c9ff3d");
   }, [profile]);
 
   async function uploadAvatar(file: File, kind: "avatar" | "banner") {

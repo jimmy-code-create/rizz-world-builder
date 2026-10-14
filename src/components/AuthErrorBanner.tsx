@@ -82,11 +82,11 @@ export function AuthErrorBanner({
   return (
     <div
       role="alert"
-      className="mb-4 rounded-2xl border border-[var(--rizz-pink)]/30 bg-[var(--rizz-pink)]/10 p-4 text-sm"
+      className="mb-4 rounded-[10px] border border-destructive/40 bg-destructive/10 p-4 text-sm"
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 h-8 w-8 shrink-0 rounded-lg bg-[var(--rizz-pink)]/20 flex items-center justify-center">
-          <Icon className="h-4 w-4 text-[var(--rizz-pink)]" />
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-destructive/20">
+          <Icon className="h-4 w-4 text-destructive" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground">{config.title}</p>
@@ -103,7 +103,7 @@ export function AuthErrorBanner({
               size="sm"
               onClick={() => onRetry()}
               disabled={disabled}
-              className="h-8 gap-1.5 bg-gradient-primary border-0 shadow-glow"
+              className="h-8 gap-1.5 rounded-[6px]"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${disabled ? "" : ""}`} />
               {disabled ? `Retry in ${seconds}s` : retryLabel}
@@ -113,7 +113,7 @@ export function AuthErrorBanner({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 glass border-white/10"
+                className="h-8 rounded-[6px] border-border bg-card"
                 onClick={() => window.location.reload()}
               >
                 Refresh page

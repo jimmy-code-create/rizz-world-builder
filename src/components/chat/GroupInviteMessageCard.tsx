@@ -25,7 +25,7 @@ export function GroupInviteMessageCard({ code, message }: Props) {
     staleTime: 60_000,
   });
   const group = preview.data;
-  const accent = group?.accent_color || "#ff2d92";
+  const accent = group?.accent_color || "#c9ff3d";
 
   return (
     <div className="w-full min-w-0 max-w-[78vw]">

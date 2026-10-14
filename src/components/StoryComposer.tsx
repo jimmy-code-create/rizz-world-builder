@@ -72,7 +72,7 @@ const FILTERS: { name: string; css: string }[] = [
   { name: "Vivid",      css: "saturate(1.6) contrast(1.1)" },
   { name: "Fade",       css: "contrast(0.9) brightness(1.1) saturate(0.85)" },
 ];
-const TEXT_COLORS = ["#ffffff","#000000","#ff3ea5","#7c3aed","#22d3ee","#fde047","#f97316","#10b981"];
+const TEXT_COLORS = ["#ffffff","#000000","#c9ff3d","#8a8a92","#22d3ee","#fde047","#f97316","#10b981"];
 const FONTS = ["display","sans","serif","mono"];
 const fontFor = (k?: string) => k === "serif" ? "Georgia, serif" : k === "mono" ? "ui-monospace, monospace" : k === "display" ? "var(--font-display, 'Space Grotesk'), system-ui" : "system-ui, sans-serif";
 
@@ -89,7 +89,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("none");
-  const [bg, setBg] = useState<string>("linear-gradient(135deg,#ff3ea5,#7c3aed)");
+  const [bg, setBg] = useState<string>("#131315");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | null>(null);
   const [history, setHistory] = useState<Overlay[][]>([]);
@@ -119,7 +119,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     if (!open) {
       setFile(null); setMediaUrl(null); setIsVideo(false);
       setOverlays([]); setSelected(null); setFilter("none");
-      setBg("linear-gradient(135deg,#ff3ea5,#7c3aed)"); setPanel(null);
+      setBg("#131315"); setPanel(null);
       setHistory([]); setEditingId(null);
       setAudience("everyone"); setHiddenFrom([]); setCaption("");
       setEditorText(""); setPeopleQuery(""); setPeopleHits([]);
@@ -641,7 +641,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <div className="px-2 pb-1 shrink-0">
           <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
             {[
-              "linear-gradient(135deg,#ff3ea5,#7c3aed)",
+              "#131315",
               "linear-gradient(135deg,#0ea5e9,#22d3ee)",
               "linear-gradient(135deg,#f97316,#ef4444)",
               "linear-gradient(135deg,#10b981,#22d3ee)",

@@ -11,8 +11,9 @@ import {
 import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { ReactorPeekProvider } from "@/components/reactions/ReactorPeek";
 import { RizzCat } from "@/components/RizzCat";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
@@ -27,7 +28,7 @@ function NotFoundComponent() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4">
       <div className="max-w-md text-center">
         <RizzCat mood="searching" size={132} className="mx-auto mb-1" />
         <h1 className="text-5xl font-bold text-foreground">404</h1>
@@ -53,7 +54,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
@@ -92,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },
       { name: "author", content: "RIZZ" },
-      { name: "theme-color", content: "#ff2d92" },
+      { name: "theme-color", content: "#0a0a0b" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
       { property: "og:description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { property: "og:type", content: "website" },
@@ -109,8 +110,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
+        // Display: Bricolage Grotesque (editorial, a bit odd on purpose).
+        // Text: Instrument Sans. Neither is a default AI-landing-page face.
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Instrument+Sans:wght@400;500;600;700&display=swap",
       },
       {
         rel: "stylesheet",
@@ -138,13 +141,27 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Public and marketing surfaces never show the floating cat.
+ *
+ * It is a signed-in companion, so it only mounts for a session on a product
+ * route — never on the landing page, auth, invite or onboarding screens, where
+ * a fixed bottom-right button sat on top of headlines and CTAs. Any overlay
+ * also pushes it aside via the `.overlay-hide` rule in styles.css.
+ */
+const COMPANION_HIDDEN_ROUTE =
+  /^\/(?:$|login|signup|reset-password|onboarding|tutorial|claim|join|join-realm|_app\/auth)/;
+
+function RizzCompanionLayer() {
+  const { user } = useAuth();
+  const companionEnabled = useRizzCompanionEnabled();
+  const location = useLocation();
+  if (!companionEnabled || !user || COMPANION_HIDDEN_ROUTE.test(location.pathname)) return null;
+  return <LilRizzCompanion />;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const location = useLocation();
-  const companionEnabled = useRizzCompanionEnabled();
-  // Lil Rizz floats over every signed-in screen (hands-free mode), but not on
-  // the auth/landing routes where it would get in the way.
-  const showLilRizz = !/^\/(?:login|signup|reset|onboarding|_app\/auth)/.test(location.pathname);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
@@ -159,8 +176,11 @@ function RootComponent() {
         <ThemeProvider>
           {/* Owns the live voice call so it survives navigation between pages. */}
           <VoiceCallProvider>
-            <Outlet />
-            {showLilRizz && companionEnabled && <LilRizzCompanion />}
+            {/* One shared reactor peek for every reaction chip in the app. */}
+            <ReactorPeekProvider>
+              <Outlet />
+              <RizzCompanionLayer />
+            </ReactorPeekProvider>
           </VoiceCallProvider>
           <Toaster />
         </ThemeProvider>

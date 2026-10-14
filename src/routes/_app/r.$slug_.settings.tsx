@@ -318,7 +318,7 @@ function OverviewSection({
   const [name, setName] = useState(realm.name);
   const [topic, setTopic] = useState(realm.topic ?? "");
   const [iconUrl, setIconUrl] = useState(realm.icon_url ?? "");
-  const [accent, setAccent] = useState(realm.accent_color ?? "#ff2d92");
+  const [accent, setAccent] = useState(realm.accent_color ?? "#c9ff3d");
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -454,7 +454,7 @@ function RolesSection({
                 <span
                   aria-hidden="true"
                   className="grid h-9 w-9 place-items-center rounded-xl text-xs font-bold"
-                  style={{ background: `${draft[role]?.color || "#ff2d92"}33`, color: draft[role]?.color || undefined }}
+                  style={{ background: `${draft[role]?.color || "#c9ff3d"}33`, color: draft[role]?.color || undefined }}
                 >
                   {role === "mod" ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                 </span>
@@ -466,7 +466,7 @@ function RolesSection({
                 </div>
                 <input
                   type="color"
-                  value={draft[role]?.color || "#ff2d92"}
+                  value={draft[role]?.color || "#c9ff3d"}
                   disabled={!canManage}
                   aria-label={`${role} colour`}
                   onChange={(e) =>

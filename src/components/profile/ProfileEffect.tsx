@@ -35,7 +35,7 @@ function ConfettiOverlay() {
     left: Math.random() * 100,
     delay: Math.random() * 4,
     duration: 3 + Math.random() * 3,
-    color: ["#ff2d92", "#a855f7", "#22d3ee", "#facc15", "#22c55e"][i % 5],
+    color: ["#c9ff3d", "#a855f7", "#22d3ee", "#facc15", "#22c55e"][i % 5],
     size: 6 + Math.random() * 6,
   })), []);
   return (

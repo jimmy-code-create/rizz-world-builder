@@ -435,7 +435,7 @@ export function ForumSettingsSheet({
                     <input
                       id="forum-accent"
                       type="color"
-                      value={draft.accent_color || "#ff2d92"}
+                      value={draft.accent_color || "#c9ff3d"}
                       onChange={(event) => patch({ accent_color: event.target.value })}
                       className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-[var(--forum-border)] bg-transparent"
                     />

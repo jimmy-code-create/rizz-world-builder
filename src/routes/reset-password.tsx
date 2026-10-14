@@ -56,7 +56,7 @@ function ResetPasswordPage() {
       {sent ? (
         <div className="space-y-4 text-sm text-muted-foreground">
           <p>If an account exists for <span className="text-foreground font-medium">{email}</span>, a reset link is on its way.</p>
-          <Button asChild className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+          <Button asChild className="h-11 w-full rounded-[6px] font-semibold">
             <Link to="/login">Back to log in</Link>
           </Button>
         </div>
@@ -64,9 +64,9 @@ function ResetPasswordPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 glass border-white/10" />
+            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 border-border bg-secondary" />
           </div>
-          <Button type="submit" disabled={loading} className="w-full h-11 bg-gradient-primary border-0 shadow-glow hover:opacity-90">
+          <Button type="submit" disabled={loading} className="h-11 w-full rounded-[6px] font-semibold">
             {loading ? "Sending…" : "Send reset link"}
           </Button>
           <div className="text-center">

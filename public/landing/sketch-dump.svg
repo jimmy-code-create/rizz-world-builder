@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Sketch dump page: a cat drawn in pencil beside two smaller studies">
+  <rect width="800" height="600" fill="#0f0f11"/>
+  <g stroke="#2b2b2f" stroke-width="1.5">
+    <path d="M0 150h800M0 300h800M0 450h800M200 0v600M400 0v600M600 0v600"/>
+  </g>
+  <g fill="none" stroke="#f4f1e7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+    <path d="M120 470c-30-90-20-210 20-280 12-22 34-34 58-30 26 4 42 22 52 44 12 26 16 58 20 92"/>
+    <path d="M270 296c6-30 12-58 26-80 14-22 34-32 54-24 22 8 32 30 36 56 4 26 4 54 2 80"/>
+    <path d="M150 214c-4-40-2-76 8-96 8-16 22-16 30 2 6 14 10 32 12 50"/>
+    <path d="M232 178c2-20 8-38 18-48 10-10 24-6 28 8 4 12 4 28 2 44"/>
+    <circle cx="176" cy="330" r="10" fill="#f4f1e7" stroke="none"/>
+    <circle cx="286" cy="330" r="10" fill="#f4f1e7" stroke="none"/>
+    <path d="M212 356c8 10 20 10 28 0"/>
+    <path d="M196 372c6 12 16 18 26 18s20-6 26-18"/>
+    <path d="M140 380 96 396M148 404 104 428M320 380l44 16M312 404l44 24"/>
+  </g>
+  <g fill="none" stroke="#c9ff3d" stroke-width="3" stroke-linecap="round" opacity="0.95">
+    <path d="M212 246c-6-10 2-18 14-14"/>
+    <path d="M470 120l24 24M494 120l-24 24"/>
+    <path d="M540 420v44M518 442h44"/>
+  </g>
+  <g fill="none" stroke="#f4f1e7" stroke-width="2.6" stroke-linecap="round" opacity="0.55">
+    <rect x="470" y="180" width="230" height="150" rx="6"/>
+    <path d="M470 300c40-30 70-10 100 12s60 24 100 6"/>
+    <path d="M500 210h120M500 232h84"/>
+  </g>
+  <g fill="none" stroke="#f4f1e7" stroke-width="2.6" stroke-linecap="round" opacity="0.4">
+    <rect x="470" y="370" width="230" height="110" rx="6"/>
+    <path d="M500 430h170M500 452h120"/>
+  </g>
+</svg>

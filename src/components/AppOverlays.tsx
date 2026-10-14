@@ -174,7 +174,7 @@ export function AppOverlays() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="fixed bottom-24 md:bottom-6 left-4 md:left-72 z-30 h-10 w-10 rounded-full glass-strong border border-white/10 grid place-items-center shadow-glow active:scale-95"
+            className="fixed bottom-24 left-4 z-30 grid h-10 w-10 place-items-center rounded-full border border-border bg-card active:scale-95 md:bottom-6 md:left-72"
             aria-label="Scroll to top"
           >
             <ArrowUp className="h-4 w-4" />
@@ -182,10 +182,12 @@ export function AppOverlays() {
         )}
       </AnimatePresence>
 
-      {/* Focus mode toggle — bottom right on desktop */}
+      {/* Focus mode toggle — bottom right on desktop. `data-overlay-hide` parks
+          it while a sheet or dialog is open so it never covers their rows. */}
       <button
+        data-overlay-hide
         onClick={() => setFocusMode((v) => !v)}
-        className={`hidden md:grid fixed bottom-6 right-6 z-30 h-10 w-10 rounded-full glass-strong border place-items-center shadow-glow active:scale-95 transition-colors ${focusMode ? "border-[var(--rizz-pink)] text-[var(--rizz-pink)]" : "border-white/10"}`}
+        className={`hidden md:grid fixed bottom-6 right-6 z-30 h-10 w-10 place-items-center rounded-full border bg-card active:scale-95 transition-colors ${focusMode ? "border-[var(--rizz-signal,var(--brand-signal))] text-[var(--brand-signal)]" : "border-border"}`}
         aria-label="Toggle focus mode"
         title="Focus mode (shift+F)"
       >

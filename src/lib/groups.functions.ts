@@ -77,7 +77,7 @@ const createGroupChatServer = createServerFn({ method: "POST" })
         slug: slugify(name),
         name,
         icon_url: data.iconUrl ?? null,
-        accent_color: "#ff2d92",
+        accent_color: "#c9ff3d",
       })
       .select("id, name, icon_url, member_count")
       .single();

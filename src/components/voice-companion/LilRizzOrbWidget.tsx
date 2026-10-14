@@ -152,16 +152,16 @@ export function LilRizzOrbWidget({
         aria-modal="false"
         aria-labelledby="lil-rizz-title"
         tabIndex={-1}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-[60] flex max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#120e19]/95 text-white shadow-[0_18px_70px_rgba(0,0,0,.54),0_0_46px_rgba(179,49,188,.12)] backdrop-blur-2xl md:bottom-5 md:right-5 md:max-h-[min(34rem,calc(100dvh-2.5rem))]"
+        className="overlay-hide fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-3 z-[60] flex max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[14px] border border-border bg-popover text-foreground shadow-[var(--shadow-2)] md:bottom-5 md:right-5 md:max-h-[min(34rem,calc(100dvh-2.5rem))]"
       >
-      <header className="flex items-center gap-3 border-b border-white/[.08] bg-gradient-to-r from-[#28152a] via-[#1b1424] to-[#111521] px-4 py-3.5">
+      <header className="flex items-center gap-3 border-b border-white/[.08] bg-[color-mix(in_srgb,var(--brand-signal)_9%,var(--brand-ink-2))] px-4 py-3.5">
         <div className="relative shrink-0">
           <CatAvatar className="h-11 w-11" mood={moodFrom(status, justSpoke)} mouthOpen={speaking ? undefined : 0} />
           <span
             aria-hidden="true"
             className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#191321] ${
               listening
-                ? "bg-pink-400 shadow-[0_0_9px_rgba(255,45,146,.8)]"
+                ? "bg-[var(--brand-signal)]"
                 : speaking
                   ? "bg-cyan-300"
                   : "bg-emerald-400"
@@ -171,7 +171,7 @@ export function LilRizzOrbWidget({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <h2 id="lil-rizz-title" className="truncate text-sm font-extrabold tracking-tight">Lil Rizz</h2>
-            <Sparkles aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-pink-300" />
+            <Sparkles aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--brand-signal)]" />
           </div>
           <p className="mt-0.5 text-[11px] text-white/55" aria-live="polite">
             {statusLabels[status]}
@@ -196,8 +196,8 @@ export function LilRizzOrbWidget({
       >
         {isGuest && !isAuthLoading && !lastUserMessage && !transcript && !reply && (
           <div className="flex min-h-24 flex-col items-center justify-center text-center">
-            <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-pink-300/15 bg-pink-400/[.08]">
-              <MessageCircle aria-hidden="true" className="h-5 w-5 text-pink-200" />
+            <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-[var(--brand-signal)]/15 bg-[var(--brand-signal)]/[.08]">
+              <MessageCircle aria-hidden="true" className="h-5 w-5 text-[var(--brand-signal)]" />
             </div>
             <p className="text-sm font-semibold">Come chat with me.</p>
             <p className="mt-1 max-w-52 text-xs leading-relaxed text-white/55">
@@ -213,8 +213,8 @@ export function LilRizzOrbWidget({
         )}
         {!isGuest && !isAuthLoading && !lastUserMessage && !transcript && !reply && (
           <div className="flex min-h-24 flex-col items-center justify-center text-center">
-            <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-pink-300/15 bg-pink-400/[.08]">
-              <MessageCircle aria-hidden="true" className="h-5 w-5 text-pink-200" />
+            <div className="mb-2 grid h-10 w-10 place-items-center rounded-2xl border border-[var(--brand-signal)]/15 bg-[var(--brand-signal)]/[.08]">
+              <MessageCircle aria-hidden="true" className="h-5 w-5 text-[var(--brand-signal)]" />
             </div>
             <p className="text-sm font-semibold">What’s the scene?</p>
             <p className="mt-1 max-w-52 text-xs leading-relaxed text-white/50">
@@ -224,8 +224,8 @@ export function LilRizzOrbWidget({
         )}
 
         {(lastUserMessage || (listening && transcript)) && (
-          <div className="ml-8 rounded-2xl rounded-br-md border border-pink-300/15 bg-pink-500/[.13] px-3.5 py-2.5">
-            <p className="mb-1 text-[9px] font-bold uppercase tracking-[.16em] text-pink-200/75">
+          <div className="ml-8 rounded-2xl rounded-br-md border border-[var(--brand-signal)]/25 bg-[var(--brand-signal)]/[.13] px-3.5 py-2.5">
+            <p className="mb-1 text-[9px] font-bold uppercase tracking-[.16em] text-[var(--brand-signal)]/75">
               You
             </p>
             <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-white/90">
@@ -302,7 +302,7 @@ export function LilRizzOrbWidget({
           aria-pressed={isConversationActive}
           className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
             listening
-              ? "border-pink-300/30 bg-pink-400/20 text-pink-100 shadow-[0_0_18px_rgba(255,45,146,.18)]"
+              ? "border-[var(--brand-signal)]/40 bg-[color-mix(in_srgb,var(--brand-signal)_20%,transparent)] text-foreground"
               : "border-white/10 bg-white/[.06] text-white/75 hover:bg-white/10 hover:text-white"
           }`}
         >
@@ -329,7 +329,7 @@ export function LilRizzOrbWidget({
           type="submit"
           disabled={!message.trim() || isBusy}
           aria-label="Send message"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-pink-400 to-fuchsia-600 text-white shadow-[0_4px_14px_rgba(221,45,160,.24)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--brand-signal)] text-[var(--brand-signal-ink)] shadow-[0_4px_14px_color-mix(in_srgb,var(--brand-signal)_30%,transparent)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isBusy ? (
             <LoaderCircle
@@ -493,13 +493,15 @@ function DraggableBubble({
       onPointerUp={onPointerUp}
       onContextMenu={(event) => event.preventDefault()}
       style={{ left: pos.x, top: pos.y, touchAction: "none" }}
-      className="fixed z-[60] h-16 w-16 select-none rounded-full border border-pink-300/30 bg-[#1a1224]/92 shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_30px_rgba(255,45,146,.28)] backdrop-blur-xl transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,.45),0_0_38px_rgba(255,45,146,.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      /* The floating cat steps aside while a sheet or dialog is open, so it can
+         never sit on top of a picker's rows. */
+      className="overlay-hide fixed z-[60] h-16 w-16 select-none rounded-full border border-border bg-card shadow-[var(--shadow-2)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
     >
       {listening && (
-        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border border-pink-400/40 motion-reduce:animate-none" />
+        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border border-[var(--brand-signal)]/40 motion-reduce:animate-none" />
       )}
       {isHandsFree && (
-        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#1a1224] bg-cyan-300" />
+        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--brand-ink-2)] bg-[var(--brand-signal)]" />
       )}
       <CatAvatar className="h-full w-full p-1.5" mood={mood} mouthRef={mouthRef} faceRef={faceRef} />
     </button>
@@ -529,7 +531,7 @@ function CatAvatar({
     <svg
       aria-hidden="true"
       viewBox="0 0 48 48"
-      className={`${className} drop-shadow-[0_2px_8px_rgba(255,45,146,.2)]`}
+      className={className}
     >
       <defs>
         <linearGradient
@@ -540,8 +542,8 @@ function CatAvatar({
           y2="43"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#553267" />
-          <stop offset="1" stopColor="#211629" />
+          <stop stopColor="#1c1c1f" />
+          <stop offset="1" stopColor="#0f0f11" />
         </linearGradient>
         <linearGradient
           id="lil-rizz-inner-ear"
@@ -551,8 +553,8 @@ function CatAvatar({
           y2="22"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#ff9acb" />
-          <stop offset="1" stopColor="#c56ae8" />
+          <stop stopColor="var(--brand-signal)" />
+          <stop offset="1" stopColor="var(--brand-signal-dim)" />
         </linearGradient>
       </defs>
       {/* Ears perk up when listening/surprised. */}
@@ -560,7 +562,7 @@ function CatAvatar({
         <path
           d="M8.5 21 12.2 6.5l10.1 8.1c1.2-.2 2.4-.2 3.6 0l10-8.1L40 21c1.1 2.2 1.7 4.3 1.7 6.4 0 9-7.6 14.8-17.7 14.8S6.3 36.4 6.3 27.4c0-2.1.8-4.3 2.2-6.4Z"
           fill="url(#lil-rizz-fur)"
-          stroke="#f9eaff"
+          stroke="var(--brand-paper)"
           strokeOpacity=".9"
           strokeWidth="1.5"
           strokeLinejoin="round"
@@ -577,32 +579,32 @@ function CatAvatar({
         {mood === "happy" ? (
           // Closed happy eyes ^ ^
           <>
-            <path d="M15 26.5c1.4-1.8 3.4-1.8 4.8 0M28.2 26.5c1.4-1.8 3.4-1.8 4.8 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" fill="none" />
+            <path d="M15 26.5c1.4-1.8 3.4-1.8 4.8 0M28.2 26.5c1.4-1.8 3.4-1.8 4.8 0" stroke="var(--brand-signal)" strokeWidth="2.3" strokeLinecap="round" fill="none" />
           </>
         ) : mood === "surprised" ? (
           // Big wide eyes
           <>
-            <circle cx="18" cy="25.5" r="3" fill="#fff5fb" />
-            <circle cx="30" cy="25.5" r="3" fill="#fff5fb" />
-            <circle cx="18" cy="25.5" r="1.4" fill="#211629" />
-            <circle cx="30" cy="25.5" r="1.4" fill="#211629" />
+            <circle cx="18" cy="25.5" r="3" fill="var(--brand-paper)" />
+            <circle cx="30" cy="25.5" r="3" fill="var(--brand-paper)" />
+            <circle cx="18" cy="25.5" r="1.4" fill="#0f0f11" />
+            <circle cx="30" cy="25.5" r="1.4" fill="#0f0f11" />
           </>
         ) : mood === "thinking" ? (
           // Glance up-left
           <>
-            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" />
-            <circle cx="17" cy="24.4" r=".8" fill="#c8f7ff" />
-            <circle cx="29" cy="24.4" r=".8" fill="#c8f7ff" />
+            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="var(--brand-signal)" strokeWidth="2.3" strokeLinecap="round" />
+            <circle cx="17" cy="24.4" r=".8" fill="var(--brand-paper)" />
+            <circle cx="29" cy="24.4" r=".8" fill="var(--brand-paper)" />
           </>
         ) : (
           // Default open eyes
           <>
-            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="#fff5fb" strokeWidth="2.3" strokeLinecap="round" />
-            <circle cx="18" cy="25" r=".8" fill="#c8f7ff" />
-            <circle cx="30" cy="25" r=".8" fill="#c8f7ff" />
+            <path d="M15.5 25.8c1.6-1.5 3.3-1.5 4.9 0m7.2 0c1.6-1.5 3.3-1.5 4.9 0" stroke="var(--brand-signal)" strokeWidth="2.3" strokeLinecap="round" />
+            <circle cx="18" cy="25" r=".8" fill="var(--brand-paper)" />
+            <circle cx="30" cy="25" r=".8" fill="var(--brand-paper)" />
           </>
         )}
-        <path d="m21.5 30.2 2.5 1.8 2.5-1.8-2.5-1.4-2.5 1.4Z" fill="#ff85c8" />
+        <path d="m21.5 30.2 2.5 1.8 2.5-1.8-2.5-1.4-2.5 1.4Z" fill="var(--brand-signal)" />
         {/* Mouth: a small stroked arc scaled on Y for talking. */}
         <g
           ref={mouthRef}
@@ -614,7 +616,7 @@ function CatAvatar({
         >
           <path
             d="M20.6 32.5c1 2.4 2.4 3.4 3.4 3.4s2.4-1 3.4-3.4"
-            stroke="#c8f7ff"
+            stroke="var(--brand-signal)"
             strokeWidth="1.7"
             strokeLinecap="round"
             fill="none"
@@ -623,7 +625,7 @@ function CatAvatar({
       </g>
       <path
         d="m10.7 29.8-4.2-.8m4.3 4-3.8.4m30.3-3.6 4.2-.8m-4.3 4 3.8.4"
-        stroke="#f9eaff"
+        stroke="var(--brand-signal)"
         strokeWidth="1.3"
         strokeLinecap="round"
         opacity=".85"
