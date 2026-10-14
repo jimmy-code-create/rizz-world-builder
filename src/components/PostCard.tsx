@@ -48,6 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { translateText, LANGUAGE_NAMES } from "@/lib/translate";
 import { loadPrefs } from "@/lib/prefs";
+import { PostReactionsSheet } from "@/components/reactions/PostReactionsSheet";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -233,6 +234,8 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [editOpen, setEditOpen] = useState(false);
   const [caption, setCaption] = useState(post.caption ?? "");
+  const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
+  const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -527,6 +530,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               </button>
             </div>
           )}
+          {!translatedCaption && post.caption && post.caption.trim().length > 3 && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Languages className="h-3 w-3" />
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
+              >
+                {isTranslating ? "Translating…" : `Translate post (${LANGUAGE_NAMES[loadPrefs().language] || "Preferred"})`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -577,7 +593,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       )}
 
       {Object.keys(grouped).length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
           {Object.entries(grouped).map(([emoji, { count, mine }]) => (
             <ReactionChipButton
               key={emoji}
@@ -588,6 +604,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               onToggle={() => toggleReaction(emoji)}
             />
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setInitialReactionTab("all");
+              setReactionsSheetOpen(true);
+            }}
+            className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors"
+          >
+            Reactions
+          </button>
         </div>
       )}
 
@@ -696,6 +722,13 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PostReactionsSheet
+        postId={post.id}
+        open={reactionsSheetOpen}
+        onOpenChange={setReactionsSheetOpen}
+        initialEmoji={initialReactionTab}
+      />
     </motion.article>
   );
 }

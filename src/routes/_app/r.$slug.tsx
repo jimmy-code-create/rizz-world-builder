@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessageSquare, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";

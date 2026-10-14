@@ -61,6 +61,7 @@ export function applyPrefs(p: Prefs) {
   document.documentElement.classList.toggle("focus-mode", p.focusMode);
   document.documentElement.classList.toggle("color-blind", p.colorBlind);
   document.documentElement.style.setProperty("--rizz-mention-color", p.mentionColor);
+  document.documentElement.lang = p.language || "en";
 }
 
 export function savePrefs(p: Prefs) {

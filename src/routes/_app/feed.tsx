@@ -16,6 +16,7 @@ import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { FeedSideDiscussion } from "@/components/FeedSideDiscussion";
 import { RizzCat } from "@/components/RizzCat";
 import { formatNumber } from "@/lib/formatters";
+import { useI18n } from "@/lib/i18n";
 import type { FeedPost } from "@/lib/posts";
 
 export const Route = createFileRoute("/_app/feed")({
@@ -37,10 +38,18 @@ function greetingFor(hour: number) {
 
 function FeedPage() {
   const { user, profile } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(FEED_PAGE_SIZE);
   const [activeSidePost, setActiveSidePost] = useState<FeedPost | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const greeting = (hour: number) => {
+    if (hour < 5) return t("good_evening");
+    if (hour < 12) return t("good_morning");
+    if (hour < 18) return t("good_afternoon");
+    return t("good_evening");
+  };
 
   // Listen for side discussion triggers from post cards
   useEffect(() => {
@@ -129,7 +138,7 @@ function FeedPage() {
               size="sm"
             />
             <p className="text-sm text-muted-foreground truncate leading-tight">
-              {greetingFor(new Date().getHours())},{" "}
+              {greeting(new Date().getHours())},{" "}
               <span className="font-semibold text-foreground">{name}</span>
             </p>
           </div>
@@ -143,7 +152,7 @@ function FeedPage() {
           </div>
         </div>
 
-        <SectionHeading title="Stories" hint="Fresh in the last 24 hours" />
+        <SectionHeading title={t("stories")} hint={t("fresh_stories")} />
         <StoriesStrip />
 
         <div id="feed-composer" className="scroll-mt-24">
@@ -152,7 +161,7 @@ function FeedPage() {
 
         <TrendingTagsRail />
 
-        <SectionHeading title="Latest drops" hint="Newest first, from everyone you follow" />
+        <SectionHeading title={t("latest_drops")} hint={t("drops_subtitle")} />
 
         {feed.isLoading && (
           <div className="space-y-4">
