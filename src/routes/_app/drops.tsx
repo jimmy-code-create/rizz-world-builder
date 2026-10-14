@@ -138,7 +138,7 @@ function Countdown({ to }: { to: string }) {
   const m = Math.floor((diff % 3.6e6) / 6e4);
   const s = Math.floor((diff % 6e4) / 1000);
   return (
-    <div className="glass border border-primary/30 rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0" className="border border-border bg-card rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0">
+    <div className="border border-border bg-card rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0">
       <Timer className="h-3 w-3 text-primary" />
       {h > 0 ? `${h}h ${m}m` : `${m}:${String(s).padStart(2, "0")}`}
     </div>
