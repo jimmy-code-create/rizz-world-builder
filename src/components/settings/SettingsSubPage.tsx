@@ -13,24 +13,24 @@ export function SettingsSubPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="max-w-xl space-y-5">
+    <div className="max-w-xl space-y-4">
       <Link
         to="/settings"
-        className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         Settings
       </Link>
 
-      <header className="flex items-start gap-3">
+      <header className="flex items-center gap-3">
         {icon && (
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md">
             {icon}
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold">{title}</h1>
-          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          <h1 className="font-display text-xl sm:text-2xl font-bold">{title}</h1>
+          {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
         </div>
       </header>
 
@@ -41,6 +41,6 @@ export function SettingsSubPage({
 
 export function SettingsCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={`glass rounded-3xl border border-white/5 p-5 ${className}`}>{children}</section>
+    <section className={`glass rounded-2xl border border-white/5 p-4 ${className}`}>{children}</section>
   );
 }

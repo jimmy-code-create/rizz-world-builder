@@ -61,7 +61,7 @@ const MULTI_DICTIONARY: Record<string, Record<string, string>> = {
   "thank you": { en: "thank you", es: "muchas gracias", fr: "merci beaucoup", de: "vielen dank", ja: "ありがとうございます", hi: "बहुत धन्यवाद", pt: "muito obrigado" },
 };
 
-function detectSourceLang(text: string): string {
+export function detectSourceLang(text: string): string {
   // Check Devanagari script (Hindi)
   if (/[\u0900-\u097F]/.test(text)) return "hi";
   // Check Japanese characters (Hiragana / Katakana / Kanji)

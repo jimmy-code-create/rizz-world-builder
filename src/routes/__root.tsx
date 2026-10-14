@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactorPeekProvider } from "@/components/reactions/ReactorPeek";
 import { RizzCat } from "@/components/RizzCat";
+import { LimeCatSplash } from "@/components/LimeCatSplash";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
@@ -140,6 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  pendingComponent: () => <LimeCatSplash />,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });

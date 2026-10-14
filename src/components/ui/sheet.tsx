@@ -52,21 +52,28 @@ const sheetVariants = cva(
 interface SheetContentProps
   extends
     React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  hideClose?: boolean;
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, hideClose = false, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     {/* `data-side` is what lets CSS keep the bottom sheet on phones and open a
         compact anchored card on desktop — see styles.css. */}
     <SheetPrimitive.Content ref={ref} data-side={side} className={cn(sheetVariants({ side }), className)} {...props}>
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
+      {!hideClose && (
+        <SheetPrimitive.Close
+          aria-label="Close"
+          className="absolute right-3 top-3 z-10 grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center rounded-full text-muted-foreground opacity-70 ring-offset-background transition-all hover:bg-white/10 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      )}
       {children}
     </SheetPrimitive.Content>
   </SheetPortal>

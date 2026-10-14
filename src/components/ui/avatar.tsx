@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { TOKENS, type PresenceState } from "@/lib/tokens";
 import { useStoriesStore } from "@/lib/stories-store";
+import { MediaViewer } from "@/components/media/MediaViewer";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -80,7 +81,13 @@ export function UserAvatar({
               : ""
         )}
       >
-        <AvatarPrimitive.Root className={cn("relative flex h-full w-full shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]", storyStatus !== "none" && "ring-2 ring-background")}>
+        <AvatarPrimitive.Root
+          className={cn(
+            "relative flex h-full w-full shrink-0 overflow-hidden rounded-full bg-[var(--brand-ink-3,#1c1c1f)]",
+            src ? "border border-[#2a2a2e]" : "border-0 shadow-none ring-0",
+            storyStatus !== "none" && "ring-2 ring-background",
+          )}
+        >
           <AvatarPrimitive.Image
             src={normalizeAvatarUrl(src) ?? undefined}
             alt={alt || fallback}
@@ -88,7 +95,7 @@ export function UserAvatar({
           />
           <AvatarPrimitive.Fallback
             className={cn(
-              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)]",
+              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] border-0 shadow-none ring-0",
               fontClass,
             )}
           >
@@ -137,7 +144,7 @@ const Avatar = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Root
     ref={ref}
-    className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[var(--brand-ink-3,#1c1c1f)]", className)}
+    className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#2a2a2e] bg-[var(--brand-ink-3,#1c1c1f)] shadow-none ring-0", className)}
     {...props}
   />
 ));
@@ -170,7 +177,7 @@ const AvatarFallback = React.forwardRef<
     <AvatarPrimitive.Fallback
       ref={ref}
       className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold",
+        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold border-0 shadow-none ring-0",
         cleanedClass,
       )}
       {...props}
@@ -180,3 +187,113 @@ const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
 export { Avatar, AvatarImage, AvatarFallback };
+
+export interface InteractiveAvatarProps extends UserAvatarProps {
+  onClick?: (event: React.MouseEvent) => void;
+  disableLongPressPhoto?: boolean;
+}
+
+/**
+ * InteractiveAvatar
+ * - Short tap: views active story if user has one; otherwise triggers onClick
+ * - 450ms long press: triggers full photo viewer with haptic vibration feedback
+ * - Prevents native callout popup (-webkit-touch-callout: none, contextmenu prevented)
+ */
+export function InteractiveAvatar({
+  onClick,
+  onStoryClick,
+  disableLongPressPhoto = false,
+  src,
+  ...props
+}: InteractiveAvatarProps) {
+  const [photoOpen, setPhotoOpen] = React.useState(false);
+  const timerRef = React.useRef<number | null>(null);
+  const startPos = React.useRef<{ x: number; y: number } | null>(null);
+  const didLongPress = React.useRef(false);
+
+  const clearTimer = React.useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    startPos.current = null;
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (disableLongPressPhoto || !src) return;
+    didLongPress.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    timerRef.current = window.setTimeout(() => {
+      didLongPress.current = true;
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(20);
+        } catch {}
+      }
+      setPhotoOpen(true);
+    }, 450);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!startPos.current) return;
+    const dist = Math.hypot(e.clientX - startPos.current.x, e.clientY - startPos.current.y);
+    if (dist > 10) {
+      clearTimer();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (didLongPress.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      didLongPress.current = false;
+      return;
+    }
+    if (onStoryClick) {
+      onStoryClick();
+    } else if (onClick) {
+      onClick(e);
+    }
+  };
+
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={clearTimer}
+        onPointerCancel={clearTimer}
+        onPointerLeave={clearTimer}
+        onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick(e as any);
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        className="inline-flex shrink-0 cursor-pointer touch-manipulation select-none outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full transition-transform active:scale-95"
+        style={{
+          WebkitTouchCallout: "none",
+          userSelect: "none",
+        }}
+      >
+        <UserAvatar src={src} {...props} />
+      </div>
+
+      {src && (
+        <MediaViewer
+          open={photoOpen}
+          src={normalizeAvatarUrl(src) ?? src}
+          alt={props.alt || props.fallback || "Avatar"}
+          onClose={() => setPhotoOpen(false)}
+        />
+      )}
+    </>
+  );
+}

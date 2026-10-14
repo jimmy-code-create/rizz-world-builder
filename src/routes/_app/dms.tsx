@@ -350,20 +350,20 @@ function DMsPage() {
         </motion.div>
       ) : (
         <>
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3 mb-3">
             <div className="min-w-0">
-              <h1 className="font-display text-3xl font-bold tracking-tight mb-1">Messages</h1>
-              <p className="text-sm text-muted-foreground">Start a conversation.</p>
+              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight">Messages</h1>
+              <p className="text-xs text-muted-foreground">Start a conversation.</p>
             </div>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setGroupSheetOpen(true)}
-              className="glass border-white/10 min-h-12 rounded-xl gap-2 shrink-0"
+              className="glass border-white/10 h-9 rounded-xl gap-1.5 shrink-0 text-xs"
             >
-              <Plus className="h-4 w-4" /> New group
+              <Plus className="h-3.5 w-3.5" /> New group
             </Button>
           </motion.div>
-          <p className="mt-2 mb-4 text-xs text-muted-foreground/80">Double tap a conversation to pick people and start a group.</p>
         </>
       )}
 

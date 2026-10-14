@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RizzCat } from "@/components/RizzCat";
+import { LimeCatSplash } from "@/components/LimeCatSplash";
 
 function AppErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error("App page error:", error);
@@ -37,5 +38,6 @@ function AppErrorComponent({ error, reset }: { error: unknown; reset: () => void
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
+  pendingComponent: () => <LimeCatSplash />,
   errorComponent: AppErrorComponent,
 });

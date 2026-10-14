@@ -175,20 +175,20 @@ function RealmsPage() {
 
   return (
     <div
-      className="space-y-6 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
+      className="space-y-4 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
       style={{ paddingTop: "max(0.25rem, env(safe-area-inset-top, 0px))" }}
     >
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-display text-3xl font-bold tracking-tight">Realms</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight">Realms</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Public spaces anyone can join — topics, announcements and drops.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
           <Dialog open={joinOpen} onOpenChange={(next) => { setJoinOpen(next); if (!next) { setCode(""); setPreview(null); } }}>
-            <Button variant="outline" className="glass h-11 border-white/10" onClick={() => setJoinOpen(true)}>
-              <KeyRound className="h-4 w-4 mr-1.5" />Join by code
+            <Button variant="outline" size="sm" className="glass h-9 border-white/10 text-xs" onClick={() => setJoinOpen(true)}>
+              <KeyRound className="h-3.5 w-3.5 mr-1.5" />Join by code
             </Button>
             <DialogContent className="glass-strong border-white/10">
               <DialogHeader><DialogTitle className="font-display">Join a realm</DialogTitle></DialogHeader>
@@ -221,7 +221,7 @@ function RealmsPage() {
           </Dialog>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1.5" />New realm</Button>
+              <Button size="sm" className="h-9 text-xs bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-3.5 w-3.5 mr-1.5" />New realm</Button>
             </DialogTrigger>
             <DialogContent className="glass-strong border-sky-300/20 shadow-[0_0_48px_rgba(59,130,246,0.14)]">
               <DialogHeader><DialogTitle className="font-display">Create a realm</DialogTitle></DialogHeader>                <div className="grid grid-cols-1 gap-3">
