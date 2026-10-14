@@ -175,7 +175,7 @@ export function MediaViewer({
         role="dialog"
         aria-modal="true"
         aria-label="Media viewer"
-        className="fixed inset-0 z-[95] flex items-center justify-center bg-black"
+        className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85 backdrop-blur-md transition-colors"
         style={{ opacity: dragY > 0 ? Math.max(0.4, 1 - dragY / 400) : 1 }}
       >
         <div
@@ -192,7 +192,7 @@ export function MediaViewer({
             src={src}
             alt={alt}
             draggable={false}
-            className="max-h-full max-w-full select-none object-contain"
+            className="max-h-full max-w-full select-none object-contain shadow-2xl"
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y + dragY}px, 0) scale(${scale})`,
               transition: interacting ? "none" : "transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1)",
@@ -204,7 +204,7 @@ export function MediaViewer({
           type="button"
           onClick={onClose}
           aria-label="Close media viewer"
-          className="absolute right-3 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="absolute right-3 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           style={{ top: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
         >
           <X className="h-6 w-6" />

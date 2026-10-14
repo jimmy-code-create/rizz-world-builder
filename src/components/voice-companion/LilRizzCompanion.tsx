@@ -58,7 +58,7 @@ export function LilRizzCompanion() {
     maxSilenceMs: 5 * 60 * 1000,
     onUtterance: (text) => handleUtteranceRef.current(text),
   });
-  const tts = useKokoroTTS({ browserFirst: true });
+  const tts = useKokoroTTS({ browserFirst: false });
   const {
     error: speechError,
     isListening,
