@@ -31,7 +31,15 @@ const STATUS_ICONS = { online: CircleIcon, idle: Moon, dnd: PhoneOff, invisible:
 const SWIPE_CLOSE_PX = 96;
 
 /** Tapping your avatar opens this: the four statuses and a custom status row. */
-export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function PresenceSheet({
+  open,
+  onOpenChange,
+  initialCustomOpen = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialCustomOpen?: boolean;
+}) {
   const presence = useSelfPresence();
   const [saving, setSaving] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -45,10 +53,11 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   useEffect(() => {
     setDragY(0);
     if (!open) return;
+    setCustomOpen(initialCustomOpen);
     const current = presence.customStatus;
     setEmoji(current?.emoji ?? "");
     setText(current?.text ?? "");
-  }, [open, presence.customStatus]);
+  }, [open, presence.customStatus, initialCustomOpen]);
 
   // Swipe down on the handle to dismiss.
   const onDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {

@@ -1,6 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText } from "lucide-react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift, MessageCircle, Bookmark, Sparkles, WandSparkles, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText, ChevronDown, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +22,7 @@ import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
 import { RizzCat } from "@/components/RizzCat";
-import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
+import { PRESENCE_STATUSES, statusLabel, statusShortLabel, useSelfPresence, type PresenceStatus, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 
 // Secondary UI and the decorative background are split out of the initial shell
@@ -64,6 +64,11 @@ export function AppShell() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [customStatusOpen, setCustomStatusOpen] = useState(false);
+  const closeStatusPicker = useCallback((open: boolean) => {
+    setStatusOpen(open);
+    if (!open) setCustomStatusOpen(false);
+  }, []);
   const presence = useSelfPresence();
   // Chat surfaces scroll themselves (their message list owns the viewport) and
   // hide the shell chrome. Realm settings lives at /r/<slug>/settings, which is
@@ -237,7 +242,19 @@ export function AppShell() {
           </Link>
         </nav>
 
-        <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
+        <ProfileMenu
+          profile={profile}
+          initial={initial}
+          signOut={signOut}
+          status={presence.status}
+          emoji={presence.customStatus?.emoji}
+          onStatus={() => setStatusOpen(true)}
+          onCustomStatus={() => {
+            setCustomStatusOpen(true);
+            setStatusOpen(true);
+          }}
+          onChooseStatus={presence.chooseStatus}
+        />
       </aside>}
 
       {/* Mobile top bar — brand, a full-width search field, then notifications
@@ -295,6 +312,11 @@ export function AppShell() {
             status={presence.status}
             emoji={presence.customStatus?.emoji}
             onStatus={() => setStatusOpen(true)}
+            onCustomStatus={() => {
+              setCustomStatusOpen(true);
+              setStatusOpen(true);
+            }}
+            onChooseStatus={presence.chooseStatus}
           />
         </div>
       </header>}
@@ -421,7 +443,11 @@ export function AppShell() {
           </button>
         </SheetContent>
       </Sheet>
-      <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
+      <PresenceSheet
+        open={statusOpen}
+        onOpenChange={closeStatusPicker}
+        initialCustomOpen={customStatusOpen}
+      />
       <ExternalLinkGuard />
       {/* Reaction bursts live outside the chats, so playing one never re-renders
           a message list. */}
@@ -456,6 +482,8 @@ function ProfileMenu({
   status,
   emoji,
   onStatus,
+  onCustomStatus,
+  onChooseStatus,
 }: {
   profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
   initial: string;
@@ -465,9 +493,21 @@ function ProfileMenu({
   status?: PublicPresence;
   emoji?: string | null;
   onStatus?: () => void;
+  onCustomStatus?: () => void;
+  onChooseStatus?: (status: PresenceStatus) => Promise<void>;
 }) {
+  const [statusExpanded, setStatusExpanded] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState("");
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+      if (!open) {
+        setStatusExpanded(false);
+        setConfirmSignOut(false);
+      }
+    }}>
       <DropdownMenuTrigger asChild>
         <button
           aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
@@ -494,46 +534,134 @@ function ProfileMenu({
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="glass-strong border-white/10 w-56">
-        <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">@{profile?.username}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {onStatus && (
-          <DropdownMenuItem onClick={onStatus}>
-            <span className="mr-2 grid h-4 w-4 place-items-center">
-              {emoji ? (
-                <span className="text-sm leading-none">{emoji}</span>
-              ) : status ? (
-                <StatusDot status={status} size={9} ring={false} />
-              ) : null}
-            </span>
-            Status · {status ? statusShortLabel(status) : "Online"}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild>
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        collisionPadding={12}
+        className="rizz-account-menu z-[90] w-[248px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-140px)] overflow-y-auto overflow-x-hidden rounded-[14px] border border-[#2a2a2e] bg-[#141416] py-1 text-[#f2efe6] shadow-[0_8px_24px_rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-1 data-[state=open]:duration-120 motion-reduce:data-[state=open]:animate-none"
+      >
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-11 cursor-pointer px-[14px] text-[13px] font-normal text-[#9a9aa0] focus:bg-[#1c1c1f] focus:text-[#f2efe6]">
           <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
-            <UserIcon className="mr-2 h-4 w-4" /> Profile
+            @{profile?.username ?? ""}
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/bookmarks"><Bookmark className="mr-2 h-4 w-4" /> Saved</Link>
+        {onStatus && (
+          <>
+            <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setStatusExpanded((expanded) => !expanded);
+              }}
+              aria-expanded={statusExpanded}
+              className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]"
+            >
+              <span className="flex-1">Status</span>
+              {status && <StatusDot status={status} size={8} ring={false} />}
+              <span className="text-[13px] font-normal text-[#9a9aa0]">{status ? statusLabel(status) : "Online"}</span>
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#9a9aa0] transition-transform ${statusExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+            </DropdownMenuItem>
+            {statusExpanded && (
+              <div role="group" aria-label="Choose your status" className="px-2 pb-1">
+                {PRESENCE_STATUSES.map((entry) => (
+                  <DropdownMenuItem
+                    key={entry.value}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      if (!onChooseStatus || statusSaving) return;
+                      setStatusError("");
+                      setStatusSaving(true);
+                      void onChooseStatus(entry.value)
+                        .then(() => setStatusExpanded(false))
+                        .catch((error: unknown) => {
+                          setStatusError(error instanceof Error ? error.message : "Couldn't update your status.");
+                        })
+                        .finally(() => setStatusSaving(false));
+                    }}
+                    disabled={statusSaving}
+                    role="menuitem"
+                    className="rizz-account-menu-row h-9 cursor-pointer gap-3 px-3 text-[13px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]"
+                  >
+                    <StatusDot status={entry.value} size={8} ring={false} />
+                    <span className="flex-1">{entry.label}</span>
+                    {status === entry.value && <Check className="h-4 w-4 shrink-0 text-[#f2efe6]" strokeWidth={1.75} />}
+                  </DropdownMenuItem>
+                ))}
+                {statusError && <p role="alert" className="px-3 py-1 text-xs text-[#ff8a8a]">{statusError}</p>}
+                <DropdownMenuItem
+                  onSelect={() => (onCustomStatus ?? onStatus)?.()}
+                  className="rizz-account-menu-row h-9 cursor-pointer px-3 text-[13px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]"
+                >
+                  Set a custom status
+                </DropdownMenuItem>
+              </div>
+            )}
+          </>
+        )}
+        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
+            <UserIcon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Profile
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/effects"><Sparkles className="mr-2 h-4 w-4" /> Effects</Link>
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/bookmarks"><Bookmark className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Saved</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/badges"><Trophy className="mr-2 h-4 w-4" /> Badges</Link>
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/effects">
+            <WandSparkles className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Effects
+            <span className="ml-auto rounded-full border border-[#c8ff3d] px-2 py-px text-[11px] font-medium leading-tight text-[#c8ff3d]">Soon</span>
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/badges"><Trophy className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Badges</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/settings/appearance"><Palette className="mr-2 h-4 w-4" /> Appearance</Link>
+        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/settings"><Settings className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Settings</Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" /> Sign out
+        <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
+          <Link to="/settings/appearance"><Palette className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Appearance</Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        {confirmSignOut ? (
+          <>
+            <DropdownMenuItem
+              disabled
+              className="rizz-account-menu-row h-9 px-[14px] text-[14px] font-medium text-[#ff5d5d] opacity-100 focus:bg-transparent"
+            >
+              Sign out?
+            </DropdownMenuItem>
+            <div className="flex px-2 pb-1">
+              <DropdownMenuItem
+                onSelect={() => void signOut()}
+                className="rizz-account-menu-row h-9 flex-1 justify-center text-[14px] font-medium text-[#ff5d5d] focus:bg-[#1c1c1f] focus:text-[#ff5d5d]"
+              >
+                Yes
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setConfirmSignOut(false);
+                }}
+                className="rizz-account-menu-row h-9 flex-1 justify-center text-[14px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6]"
+              >
+                Cancel
+              </DropdownMenuItem>
+            </div>
+          </>
+        ) : (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setConfirmSignOut(true);
+            }}
+            className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#ff5d5d] focus:bg-[#1c1c1f] focus:text-[#ff5d5d] data-[highlighted]:bg-[#1c1c1f]"
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Sign out
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
