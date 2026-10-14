@@ -37,6 +37,7 @@ import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { MarkdownText } from "@/components/MarkdownText";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { renderGifSegments } from "@/lib/gif-content";
@@ -855,9 +856,25 @@ function RealmPage() {
           {viewingMessage?.attachmentUrl && (
             <ChatMessageMedia src={viewingMessage.attachmentUrl} alt="Image shared in chat" />
           )}
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-            {viewingMessage?.body}
-          </p>
+          {viewingMessage?.body && (
+            <MarkdownText
+              text={viewingMessage.body}
+              className="break-words text-[15px] leading-relaxed"
+              renderPlainText={(plain) =>
+                renderCaptionWithTags(plain).map((part, index) =>
+                  part.mentionToken
+                    ? <span key={index} className="mention-highlight font-medium">{mentionLabels(part.mentionToken)}</span>
+                    : part.mention
+                      ? <Link key={index} to="/u/$username" params={{ username: part.mention }} className="mention-highlight font-medium hover:underline">{part.text}</Link>
+                      : part.tag
+                        ? <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="text-primary hover:underline font-medium">{part.text}</Link>
+                        : part.url
+                          ? <a key={index} href={part.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-400 hover:underline">{part.text}</a>
+                          : <span key={index}>{part.text}</span>,
+                )
+              }
+            />
+          )}
           {viewingMessage?.body && (
             <Button
               type="button"
@@ -1389,17 +1406,23 @@ function RealmPage() {
                                 className="inline-block h-7 w-7 align-middle mx-0.5 object-contain"
                               />
                             ) : (
-                              renderCaptionWithTags(part.text).map((p, pi) =>
-                                p.mentionToken
-                                  ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                  : p.mention
-                                  ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
-                                  : p.tag
-                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                                    : p.url
-                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
-                                      : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
-                              )
+                              <MarkdownText
+                                key={`${si}-${xi}`}
+                                text={part.text}
+                                renderPlainText={(plain) =>
+                                  renderCaptionWithTags(plain).map((p, pi) =>
+                                    p.mentionToken
+                                      ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                      : p.mention
+                                      ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
+                                      : p.tag
+                                        ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
+                                        : p.url
+                                          ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
+                                          : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
+                                  )
+                                }
+                              />
                             )
                           )
                     )}

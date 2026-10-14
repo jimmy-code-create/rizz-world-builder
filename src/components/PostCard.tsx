@@ -38,6 +38,7 @@ import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
+import { MarkdownText } from "@/components/MarkdownText";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { RizzVideoPlayer } from "@/components/RizzVideoPlayer";
 import { parseExternalReelLink } from "@/lib/external-reels";
@@ -483,28 +484,26 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
 
       {post.caption && (
         <div className="px-3 pb-2">
-          <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(showTranslated && translatedCaption ? translatedCaption : post.caption))}>
+          <div className={cn("text-sm leading-relaxed", emojiTextClass(showTranslated && translatedCaption ? translatedCaption : post.caption))}>
             {renderGifSegments(showTranslated && translatedCaption ? translatedCaption : post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
               ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
-              : renderCaptionWithTags(segment.value).map((p, i) => {
-              if (p.tag) {
-                return (
-                  <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                );
-              }
-              if (p.mention) {
-                return (
-                  <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>
-                );
-              }
-              if (p.url) {
-                return (
-                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
-                );
-              }
-              return <span key={i}>{p.text}</span>;
-            }))}
-          </p>
+              : <MarkdownText
+                  key={`text-${segmentIndex}`}
+                  text={segment.value}
+                  renderPlainText={(plain) => renderCaptionWithTags(plain).map((p, i) => {
+                    if (p.tag) {
+                      return <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>;
+                    }
+                    if (p.mention) {
+                      return <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>;
+                    }
+                    if (p.url) {
+                      return <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>;
+                    }
+                    return <span key={i}>{p.text}</span>;
+                  })}
+                />)}
+          </div>
           {showTranslated && (
             <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Languages className="h-3 w-3 text-primary" />

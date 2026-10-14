@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Upload, UserRound } from "lucide-react";
+import { Check, Loader2, Upload, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 import { DEFAULT_AVATARS } from "@/lib/default-avatars";
+import { CustomEmoji } from "@/components/CustomEmoji";
+import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 
 export const Route = createFileRoute("/_app/settings/profile")({
   head: () => ({ meta: [{ title: "Profile · Settings · RIZZ" }] }),
@@ -22,6 +24,7 @@ function ProfileSettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#c9ff3d");
+  const [interests, setInterests] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -29,6 +32,7 @@ function ProfileSettingsPage() {
     setDisplayName(profile.display_name ?? "");
     setBio(profile.bio ?? "");
     setAccent(profile.accent_color ?? "#c9ff3d");
+    setInterests(profile.interests ?? []);
   }, [profile]);
 
   async function uploadAvatar(file: File, kind: "avatar" | "banner") {
@@ -61,12 +65,22 @@ function ProfileSettingsPage() {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: displayName.trim() || null, bio: bio.trim() || null, accent_color: accent })
+      .update({ display_name: displayName.trim() || null, bio: bio.trim() || null, accent_color: accent, interests })
       .eq("id", user.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     await refreshProfile();
     toast.success("Profile saved");
+  }
+
+  function toggleInterest(interest: string) {
+    setInterests((current) =>
+      current.includes(interest)
+        ? current.filter((item) => item !== interest)
+        : current.length < 6
+          ? [...current, interest]
+          : current,
+    );
   }
 
   if (!profile) return null;
@@ -87,28 +101,30 @@ function ProfileSettingsPage() {
           <label className="cursor-pointer">
             <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")} />
             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 glass-strong px-4 py-2 text-sm font-medium hover:bg-white/5">
-              <Upload className="h-4 w-4" /> Change avatar
+              <Upload className="h-4 w-4" /> Upload a photo
             </span>
           </label>
         </div>
 
         <div>
-          <Label className="text-xs text-muted-foreground">Or pick a cat</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <Label className="text-xs text-muted-foreground">Or choose one of the six RIZZ cats</Label>
+          <div className="mt-2 grid grid-cols-6 gap-2" role="radiogroup" aria-label="Choose a profile cat">
             {DEFAULT_AVATARS.map((avatar) => {
               const active = profile.avatar_url === avatar.url;
               return (
                 <button
                   key={avatar.id}
                   type="button"
+                  role="radio"
                   aria-label={`Use the ${avatar.label} avatar`}
-                  aria-pressed={active}
+                  aria-checked={active}
                   onClick={() => void chooseAvatar(avatar.url)}
-                  className={`h-14 w-14 overflow-hidden rounded-full border-2 transition ${
+                  className={`relative aspect-square overflow-hidden rounded-full border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     active ? "border-primary shadow-md" : "border-white/10 hover:border-white/30"
                   }`}
                 >
-                  <img src={avatar.url} alt="" className="h-full w-full object-cover" />
+                  <img src={avatar.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  {active && <span className="absolute inset-0 grid place-items-center rounded-full bg-black/30 text-white"><Check className="h-4 w-4" /></span>}
                 </button>
               );
             })}
@@ -146,6 +162,35 @@ function ProfileSettingsPage() {
           <Label className="text-xs text-muted-foreground">Bio</Label>
           <Textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 240))} rows={3} className="mt-1 resize-none border-white/10 bg-transparent" />
           <p className="mt-1 text-[10px] text-muted-foreground">{240 - bio.length} chars left</p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs text-muted-foreground">Interests</Label>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{interests.length} / 6 selected</span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {TUTORIAL_INTERESTS.map(({ id, emoji }) => {
+              const active = interests.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={!active && interests.length >= 6}
+                  onClick={() => toggleInterest(id)}
+                  className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 ${
+                    active ? "border-primary bg-primary/10 text-foreground" : "border-white/10 bg-transparent hover:bg-white/5"
+                  }`}
+                >
+                  <CustomEmoji name={emoji} className="h-5 w-5 shrink-0" />
+                  <span>{id}</span>
+                  {active && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">These show on your public profile and help people find shared interests.</p>
         </div>
 
         <div>

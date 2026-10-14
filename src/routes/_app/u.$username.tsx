@@ -22,6 +22,8 @@ import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { useEquipped } from "@/lib/useEquipped";
+import { CustomEmoji } from "@/components/CustomEmoji";
+import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -341,6 +343,26 @@ function ProfilePage() {
       </div>
 
       {profile.bio && <p className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">{profile.bio}</p>}
+
+      {profile.interests?.length > 0 && (
+        <section className="px-1 md:px-2 mt-4" aria-label="Profile interests">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Into</h2>
+          <div className="flex flex-wrap gap-2">
+            {[...new Set(profile.interests)].map((interest) => {
+              const option = TUTORIAL_INTERESTS.find((item) => item.id === interest);
+              return (
+                <span
+                  key={interest}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium"
+                >
+                  {option && <CustomEmoji name={option.emoji} className="h-4 w-4" />}
+                  {interest}
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {badges.data && badges.data.length > 0 && (
         <div className="px-1 md:px-2 mt-4">

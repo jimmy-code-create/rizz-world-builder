@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Send, X, Loader2, BarChart3, Globe, Lock, Plus } from "lucide-react";
+import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, Bold, Italic, Strikethrough, Heading1, Code2, Quote, List } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -33,6 +33,45 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const postBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const insertMarkdown = (prefix: string, suffix = prefix, linePrefix = false) => {
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? caret;
+    const end = textarea?.selectionEnd ?? start;
+    let next = caption;
+    let selectionStart = start;
+    let selectionEnd = start;
+
+    if (linePrefix) {
+      const lineStart = caption.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+      const lineEndAt = caption.indexOf("\n", end);
+      const lineEnd = lineEndAt === -1 ? caption.length : lineEndAt;
+      const selectedLines = caption.slice(lineStart, lineEnd);
+      const formatted = selectedLines
+        .split("\n")
+        .map((line) => `${prefix}${line}`)
+        .join("\n");
+      next = `${caption.slice(0, lineStart)}${formatted}${caption.slice(lineEnd)}`.slice(0, 600);
+      selectionStart = lineStart;
+      selectionEnd = Math.min(lineStart + formatted.length, next.length);
+      if (start === end) selectionStart = selectionEnd = Math.min(lineStart + prefix.length, next.length);
+    } else {
+      const selectedText = caption.slice(start, end);
+      const innerText = selectedText || "text";
+      const replacement = `${prefix}${innerText}${suffix}`;
+      next = `${caption.slice(0, start)}${replacement}${caption.slice(end)}`.slice(0, 600);
+      selectionStart = Math.min(start + prefix.length, next.length);
+      selectionEnd = Math.min(selectionStart + innerText.length, next.length);
+    }
+
+    setCaption(next);
+    setCaret(selectionEnd);
+    requestAnimationFrame(() => {
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    });
+  };
 
   // Autosave caption draft to localStorage
   useEffect(() => {
@@ -117,6 +156,30 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
             className="bg-transparent border-0 resize-none min-h-[60px] focus-visible:ring-0 text-base placeholder:text-muted-foreground/60 px-0"
           />
+          <div className="mb-2 flex flex-wrap items-center gap-1 border-b border-white/5 pb-2" role="toolbar" aria-label="Post formatting">
+            {[
+              { label: "Bold", icon: Bold, action: () => insertMarkdown("**") },
+              { label: "Italic", icon: Italic, action: () => insertMarkdown("*") },
+              { label: "Strikethrough", icon: Strikethrough, action: () => insertMarkdown("~~") },
+              { label: "Heading", icon: Heading1, action: () => insertMarkdown("# ", "", true) },
+              { label: "Inline code", icon: Code2, action: () => insertMarkdown("`") },
+              { label: "Quote", icon: Quote, action: () => insertMarkdown("> ", "", true) },
+              { label: "Bullet list", icon: List, action: () => insertMarkdown("- ", "", true) },
+            ].map(({ label, icon: Icon, action }) => (
+              <button
+                key={label}
+                type="button"
+                aria-label={label}
+                title={label}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={action}
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ))}
+            <span className="ml-auto text-[10px] text-muted-foreground">Markdown supported</span>
+          </div>
           <MentionAutocomplete
             value={caption}
             caret={caret}
