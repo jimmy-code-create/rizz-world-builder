@@ -491,7 +491,7 @@ function RizzBreakdown({ score, data, loading, accent }: { score: number; data?:
   const total = rows.reduce((a, r) => a + r.pts, 0) || 1;
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6 text-center" className="border border-border bg-card rounded-2xl p-6 text-center">
+      <div className="border border-border bg-card rounded-2xl p-6 text-center">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">Rizz Score</div>
         <div className="font-display text-5xl font-bold mt-2 flex items-center justify-center gap-2" style={{ color: accent }}>
           <Sparkles className="h-8 w-8" />{formatNumber(score)}
