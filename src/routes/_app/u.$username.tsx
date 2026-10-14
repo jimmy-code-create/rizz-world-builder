@@ -10,13 +10,17 @@ import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star } from "lucide-react";
+import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
+import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Nameplate } from "@/components/profile/Nameplate";
+import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { useEquipped } from "@/lib/useEquipped";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -49,6 +53,8 @@ function ProfilePage() {
 
   const profile = profileQ.data;
   const isMe = profile && user?.id === profile.id;
+  const equippedQ = useEquipped(profile?.id);
+  const eq = equippedQ.data;
   // Presence for this profile: invisible accounts read as offline to others.
   const presenceRow = usePresence(profile?.id);
   const presenceStatus = publicStatusOf(presenceRow, Boolean(isMe));
@@ -251,24 +257,39 @@ function ProfilePage() {
               : `linear-gradient(135deg, ${accent}, var(--rizz-violet))`,
           }}
         >
+          {eq?.profile_effect && (
+            <ProfileEffectVisual slug={eq.profile_effect.slug} accent={eq.profile_effect.preview_color} />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
           <AvatarWithStatus status={presenceStatus} dotSize={18}>
-            <Avatar className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-background" style={{ boxShadow: `0 0 30px ${accent}80` }}>
-              <AvatarImage src={profile.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary text-3xl font-bold">{initial}</AvatarFallback>
-            </Avatar>
+            <AvatarDecoration
+              src={profile.avatar_url}
+              fallback={initial}
+              size={96}
+              effectSlug={eq?.avatar_decoration?.slug}
+              accent={eq?.avatar_decoration?.preview_color}
+              className="ring-4 ring-background rounded-full"
+            />
           </AvatarWithStatus>
         </div>
       </motion.div>
 
       <div className="px-1 md:px-2 mt-4 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight truncate">
-            {profile.display_name || profileUsername}
-          </h1>
-          <p className="text-sm text-muted-foreground">@{profileUsername}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display text-2xl font-bold tracking-tight">
+              <Nameplate
+                name={profile.display_name || profileUsername}
+                slug={eq?.nameplate?.slug}
+                accent={eq?.nameplate?.preview_color}
+                variant="badge"
+                className="text-xl md:text-2xl"
+              />
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {isMe ? "You" : statusLabel(presenceStatus)}
           </p>
@@ -284,6 +305,11 @@ function ProfilePage() {
             <Button variant="outline" size="sm" className="glass border-white/10" onClick={shareProfile}>
               <Share2 className="h-4 w-4" />
             </Button>
+            <Link to="/effects">
+              <Button variant="outline" size="sm" className="glass border-white/10 flex items-center gap-1.5">
+                <Wand2 className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Effects
+              </Button>
+            </Link>
             <Link to="/settings">
               <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
             </Link>
