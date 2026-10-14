@@ -213,7 +213,7 @@ function RealmsPage() {
                     {preview.status === "invalid" && <p className="text-rose-300">That code isn't valid.</p>}
                   </div>
                 )}
-                <Button onClick={handleAcceptInvite} disabled={joining || !code.trim() || preview?.status === "banned"} className="w-full bg-gradient-primary border-0 shadow-glow">
+                <Button onClick={handleAcceptInvite} disabled={joining || !code.trim() || preview?.status === "banned"} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
                   {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join realm"}
                 </Button>
               </div>
@@ -221,7 +221,7 @@ function RealmsPage() {
           </Dialog>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4 mr-1.5" />New realm</Button>
+              <Button className="h-11 bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1.5" />New realm</Button>
             </DialogTrigger>
             <DialogContent className="glass-strong border-sky-300/20 shadow-[0_0_48px_rgba(59,130,246,0.14)]">
               <DialogHeader><DialogTitle className="font-display">Create a realm</DialogTitle></DialogHeader>                <div className="grid grid-cols-1 gap-3">
@@ -247,7 +247,7 @@ function RealmsPage() {
                   {(["text", "announcement", "voice"] as const).map((k) => {
                     const Icon = KIND_ICON[k];
                     return (
-                      <button key={k} onClick={() => setKind(k)} className={`flex-1 p-3 rounded-xl border transition-all min-h-11 ${kind === k ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                      <button key={k} onClick={() => setKind(k)} className={`flex-1 p-3 rounded-xl border transition-all min-h-11 ${kind === k ? "border-primary bg-primary/10" : "border-white/10 glass"}`}>
                         <Icon className="h-4 w-4 mx-auto mb-1" />
                         <span className="text-xs capitalize">{k}</span>
                       </button>
@@ -255,10 +255,10 @@ function RealmsPage() {
                   })}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setIsPublic(true)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                  <button onClick={() => setIsPublic(true)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${isPublic ? "border-primary bg-primary/10" : "border-white/10 glass"}`}>
                     <Globe className="h-4 w-4" /><span className="text-xs">Public</span>
                   </button>
-                  <button onClick={() => setIsPublic(false)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${!isPublic ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10" : "border-white/10 glass"}`}>
+                  <button onClick={() => setIsPublic(false)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${!isPublic ? "border-primary bg-primary/10" : "border-white/10 glass"}`}>
                     <Lock className="h-4 w-4" /><span className="text-xs">Private (invite-only)</span>
                   </button>
                 </div>
@@ -266,7 +266,7 @@ function RealmsPage() {
                   <label className="text-xs text-muted-foreground">Accent</label>
                   <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-11 w-14 rounded-md bg-transparent border border-white/10" />
                 </div>
-                <Button onClick={handleCreate} disabled={creating || !name.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">
+                <Button onClick={handleCreate} disabled={creating || !name.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
                   {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create realm"}
                 </Button>
               </div>
@@ -344,7 +344,7 @@ function RealmsPage() {
                       <Button size="sm" variant="outline" className="glass border-white/10">Open</Button>
                     </Link>
                   ) : (
-                    <Button size="sm" onClick={() => void handleQuickJoin(realm.id)} className="ml-auto bg-gradient-primary border-0 shadow-glow">Join</Button>
+                    <Button size="sm" onClick={() => void handleQuickJoin(realm.id)} className="ml-auto bg-primary text-primary-foreground border-0 shadow-md">Join</Button>
                   )}
                 </div>
               </motion.div>

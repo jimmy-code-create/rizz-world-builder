@@ -58,7 +58,7 @@ function LoginPage() {
       subtitle="Back to your feed, your realms and whoever is in voice."
       footer={
         <>
-          New here? <Link to="/signup" className="font-medium text-[var(--rizz-pink)] hover:underline">Create an account</Link>
+          New here? <Link to="/signup" className="font-medium text-primary hover:underline">Create an account</Link>
         </>
       }
     >

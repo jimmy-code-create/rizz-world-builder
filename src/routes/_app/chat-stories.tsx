@@ -239,7 +239,7 @@ function ChatStoriesPage() {
       <header className="mb-5 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-            <MessageSquareText className="h-6 w-6 text-[var(--rizz-pink)]" /> Chat Stories
+            <MessageSquareText className="h-6 w-6 text-primary" /> Chat Stories
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Short stories told as texts. Tap through them one message at a time.
@@ -249,7 +249,7 @@ function ChatStoriesPage() {
           <button
             type="button"
             onClick={() => { setImportError(null); setIsImportOpen(true); }}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 bg-card/50 px-3 text-xs font-semibold text-muted-foreground transition hover:border-[var(--rizz-pink)]/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 bg-card/50 px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Upload className="h-4 w-4" />
             <span className="hidden sm:inline">Import JSON</span>
@@ -257,10 +257,9 @@ function ChatStoriesPage() {
           <button
             type="button"
             onClick={() => setIsGenOpen(true)}
-            className="group relative isolate inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full border border-[var(--rizz-pink)]/70 bg-background/55 px-4 text-xs font-bold text-foreground shadow-[0_0_22px_rgba(255,65,150,.18)] backdrop-blur-xl transition hover:border-[var(--rizz-pink)] hover:shadow-[0_0_28px_rgba(255,65,150,.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-primary bg-primary/10 px-4 text-xs font-bold text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <span className="absolute inset-0 -z-10 bg-gradient-to-r from-[var(--rizz-pink)]/15 via-transparent to-fuchsia-400/10 opacity-80" />
-            <Sparkles className="h-4 w-4 text-[var(--rizz-pink)]" />
+            <Wand2 className="h-4 w-4 text-primary" />
             <span className="hidden sm:inline">Generate with AI</span>
             <span className="sm:hidden">Generate</span>
           </button>
@@ -271,7 +270,7 @@ function ChatStoriesPage() {
         <DialogContent className="max-h-[92dvh] overflow-y-auto border border-border/70 bg-background/95 backdrop-blur-2xl sm:rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-left">
-              <Upload className="h-5 w-5 text-[var(--rizz-pink)]" /> Import a story JSON
+              <Upload className="h-5 w-5 text-primary" /> Import a story JSON
             </DialogTitle>
             <DialogDescription className="text-left">
               Author-only. The file is inserted under your account, so only stories
@@ -288,7 +287,7 @@ function ChatStoriesPage() {
                 const file = event.target.files?.[0];
                 if (file) void importStoryFile(file);
               }}
-              className="w-full cursor-pointer rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[var(--rizz-pink)]/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
+              className="w-full cursor-pointer rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-primary/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
             />
             <p className="rounded-xl border border-border/60 bg-card/40 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
               {'{ "title": "Room 4B", "hook": "…", "language": "hi", "genre": "horror",'}
@@ -322,14 +321,14 @@ function ChatStoriesPage() {
         }}
       >
         <DialogContent
-          className="max-h-[92dvh] overflow-y-auto border border-[var(--rizz-pink)]/25 bg-background/95 shadow-[0_24px_90px_rgba(20,8,24,.45)] backdrop-blur-2xl sm:rounded-2xl"
+          className="max-h-[92dvh] overflow-y-auto border border-primary/25 bg-background/95 shadow-[0_24px_90px_rgba(20,8,24,.45)] backdrop-blur-2xl sm:rounded-2xl"
           onEscapeKeyDown={(event) => { if (isGenerating) event.preventDefault(); }}
           onPointerDownOutside={(event) => { if (isGenerating) event.preventDefault(); }}
           onInteractOutside={(event) => { if (isGenerating) event.preventDefault(); }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-left">
-              <Wand2 className="h-5 w-5 text-[var(--rizz-pink)]" /> Make a chat story
+              <Wand2 className="h-5 w-5 text-primary" /> Make a chat story
             </DialogTitle>
             <DialogDescription className="text-left">
               Give the AI a premise. It will turn it into a branching conversation.
@@ -347,7 +346,7 @@ function ChatStoriesPage() {
                 rows={3}
                 disabled={isGenerating}
                 placeholder="A midnight elevator stops on a floor that shouldn't exist…"
-                className="w-full resize-y rounded-xl border border-border/70 bg-card/70 px-3 py-3 text-sm outline-none transition placeholder:text-muted-foreground/65 focus:border-[var(--rizz-pink)]/70 focus:ring-2 focus:ring-[var(--rizz-pink)]/15 disabled:opacity-60"
+                className="w-full resize-y rounded-xl border border-border/70 bg-card/70 px-3 py-3 text-sm outline-none transition placeholder:text-muted-foreground/65 focus:border-primary/70 focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
               />
               <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>At least 4 characters</span>
@@ -360,7 +359,7 @@ function ChatStoriesPage() {
                     type="button"
                     disabled={isGenerating}
                     onClick={() => setGenPrompt(prompt)}
-                    className="rounded-full border border-border/70 bg-card/55 px-3 py-1.5 text-left text-[11px] text-muted-foreground transition hover:border-[var(--rizz-pink)]/50 hover:text-foreground disabled:opacity-50"
+                    className="rounded-full border border-border/70 bg-card/55 px-3 py-1.5 text-left text-[11px] text-muted-foreground transition hover:border-primary/50 hover:text-foreground disabled:opacity-50"
                   >
                     {prompt}
                   </button>
@@ -377,7 +376,7 @@ function ChatStoriesPage() {
                       type="button"
                       aria-pressed={genCategory === genre}
                       onClick={() => setGenCategory(genre)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${genCategory === genre ? "border-[var(--rizz-pink)]/70 bg-[var(--rizz-pink)]/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${genCategory === genre ? "border-primary/70 bg-primary/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
                     >
                       {genre}
                     </button>
@@ -393,7 +392,7 @@ function ChatStoriesPage() {
                       type="button"
                       aria-pressed={genLang === language}
                       onClick={() => setGenLang(language)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${genLang === language ? "border-[var(--rizz-pink)]/70 bg-[var(--rizz-pink)]/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${genLang === language ? "border-primary/70 bg-primary/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
                     >
                       {language === "hi" ? "हिंदी" : "English"}
                     </button>
@@ -415,9 +414,9 @@ function ChatStoriesPage() {
               type="button"
               onClick={generateStory}
               disabled={isGenerating || genPrompt.trim().length < 4}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-primary px-5 text-sm font-bold text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-5 text-sm font-bold text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               {isGenerating ? "Creating story…" : "Create story"}
             </button>
           </DialogFooter>
@@ -430,7 +429,7 @@ function ChatStoriesPage() {
             key={c}
             onClick={() => setCat(c)}
             className={`shrink-0 px-4 h-9 rounded-full text-sm font-semibold capitalize ${
-              cat === c ? "bg-gradient-primary" : "glass"
+              cat === c ? "bg-primary text-primary-foreground" : "glass"
             }`}
           >
             {c}
@@ -461,7 +460,7 @@ function ChatStoriesPage() {
               type="button"
               aria-label={`Read ${s.title}`}
               onClick={() => setOpenId(s.id)}
-              className="absolute inset-0 z-0 flex w-full flex-col justify-between p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
+              className="absolute inset-0 z-0 flex w-full flex-col justify-between p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
             >
               <div className="relative">
                 <div className="flex items-start gap-2">
@@ -488,7 +487,7 @@ function ChatStoriesPage() {
                   aria-label={`Delete ${s.title}`}
                   title="Delete this story"
                   onClick={() => setStoryToDelete(s)}
-                  className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 text-destructive-foreground transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                  className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 text-destructive-foreground transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
@@ -498,7 +497,7 @@ function ChatStoriesPage() {
                 type="button"
                 aria-pressed={likes.data?.has(s.id) ?? false}
                 onClick={() => toggleLike(s.id)}
-                className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                className="inline-flex min-h-8 items-center gap-1 rounded-full bg-black/25 px-2 transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Heart className={`h-3.5 w-3.5 ${likes.data?.has(s.id) ? "fill-current" : ""}`} />
                 {likes.data?.has(s.id) ? "Liked" : "Like"}

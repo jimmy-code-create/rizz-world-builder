@@ -16,14 +16,14 @@ export function VoiceCallBar() {
 
   return (
     <div className="z-30 shrink-0 px-3 pb-2 md:mx-auto md:w-full md:max-w-3xl md:px-4">
-      <div className="flex items-center gap-2 rounded-2xl border border-white/10 glass-strong p-2 shadow-glow">
+      <div className="flex items-center gap-2 rounded-2xl border border-white/10 glass-strong p-2 shadow-md">
         <button
           type="button"
           onClick={openView}
           aria-label={`Return to the ${call.channelName} voice call`}
           className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-white/5"
         >
-          <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white">
+          <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
             <Volume2 className="h-5 w-5" />
             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />
           </span>
@@ -41,7 +41,7 @@ export function VoiceCallBar() {
             {participants.slice(0, 4).map((participant) => (
               <Avatar key={participant.user_id} className="h-7 w-7 ring-2 ring-background">
                 <AvatarImage src={participant.user?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                   {(participant.user?.display_name || participant.user?.username || "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -55,7 +55,7 @@ export function VoiceCallBar() {
           aria-label={muted ? "Unmute microphone" : "Mute microphone"}
           aria-pressed={!muted}
           onClick={toggleMute}
-          className={`h-12 w-12 shrink-0 rounded-full ${muted ? "glass border-white/10" : "border-0 bg-gradient-primary shadow-glow"}`}
+          className={`h-12 w-12 shrink-0 rounded-full ${muted ? "glass border-white/10" : "border-0 bg-primary text-primary-foreground shadow-md"}`}
         >
           {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </Button>

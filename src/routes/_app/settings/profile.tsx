@@ -80,9 +80,9 @@ function ProfileSettingsPage() {
     >
       <SettingsCard className="space-y-5">
         <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20 ring-2 ring-[var(--rizz-pink)]/40">
+          <Avatar className="h-20 w-20 ring-2 ring-primary/40">
             <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-2xl font-bold">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">{initial}</AvatarFallback>
           </Avatar>
           <label className="cursor-pointer">
             <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")} />
@@ -105,7 +105,7 @@ function ProfileSettingsPage() {
                   aria-pressed={active}
                   onClick={() => void chooseAvatar(avatar.url)}
                   className={`h-14 w-14 overflow-hidden rounded-full border-2 transition ${
-                    active ? "border-[var(--rizz-pink)] shadow-glow" : "border-white/10 hover:border-white/30"
+                    active ? "border-primary shadow-md" : "border-white/10 hover:border-white/30"
                   }`}
                 >
                   <img src={avatar.url} alt="" className="h-full w-full object-cover" />
@@ -156,7 +156,7 @@ function ProfileSettingsPage() {
           </div>
         </div>
 
-        <Button onClick={save} disabled={saving} className="w-full border-0 bg-gradient-primary shadow-glow">
+        <Button onClick={save} disabled={saving} className="w-full border-0 bg-primary text-primary-foreground shadow-md">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save profile"}
         </Button>
       </SettingsCard>

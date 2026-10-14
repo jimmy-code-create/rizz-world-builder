@@ -394,7 +394,7 @@ export function RealmForum({
             setComposerOpen(true);
           }}
           aria-label="New thread"
-          className="absolute bottom-5 right-5 z-30 grid h-12 w-12 place-items-center rounded-full border-0 bg-gradient-primary text-white shadow-glow transition-transform active:scale-95 sm:hidden"
+          className="absolute bottom-5 right-5 z-30 grid h-12 w-12 place-items-center rounded-full border-0 bg-primary text-primary-foreground shadow-md transition-transform active:scale-95 sm:hidden"
         >
           <Plus className="h-5 w-5" />
         </button>

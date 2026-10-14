@@ -124,7 +124,7 @@ function ReplyComposer({
         onClick={onSubmit}
         disabled={busy || !value.trim()}
         size="icon"
-        className="h-10 w-10 shrink-0 border-0 bg-gradient-primary"
+        className="h-10 w-10 shrink-0 border-0 bg-primary text-primary-foreground"
         aria-label="Send reply"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

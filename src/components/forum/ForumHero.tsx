@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Palette, Plus, Settings2, Sparkles, Users } from "lucide-react";
+import { Palette, Plus, Settings2, Flame, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ForumConfig } from "@/lib/forums";
 import { cn, formatCount } from "@/lib/utils";
@@ -96,7 +96,7 @@ export function ForumHero({
             {formatCount(threadCount)} {threadCount === 1 ? "thread" : "threads"}
           </span>
           <span className="forum-chip text-muted-foreground">
-            <Sparkles className="h-3 w-3" aria-hidden />
+            <Flame className="h-3 w-3 text-primary" aria-hidden />
             {postCount24h === 0 ? "Quiet today" : `${postCount24h} today`}
           </span>
           {muted && <span className="forum-chip text-[var(--forum-archived)]">Muted</span>}
@@ -116,7 +116,7 @@ export function ForumHero({
           <Button
             type="button"
             onClick={onNewPost}
-            className="h-11 min-w-0 flex-1 gap-2 border-0 bg-gradient-primary text-primary-foreground shadow-glow sm:flex-none sm:px-6"
+            className="h-11 min-w-0 flex-1 gap-2 border-0 bg-primary text-primary-foreground shadow-md sm:flex-none sm:px-6"
           >
             <Plus className="h-4 w-4" aria-hidden />
             <span className="truncate">New post</span>
@@ -197,7 +197,7 @@ export function ForumSlimHeader({
         type="button"
         size="sm"
         onClick={onNewPost}
-        className="h-9 shrink-0 gap-1.5 border-0 bg-gradient-primary px-3 text-primary-foreground"
+        className="h-9 shrink-0 gap-1.5 border-0 bg-primary text-primary-foreground px-3 text-primary-foreground"
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         New

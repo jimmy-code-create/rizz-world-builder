@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Gift, Plus, Timer, Loader2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { formatNumber } from "@/lib/formatters";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/drops")({
@@ -62,7 +63,7 @@ function DropsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Gift className="h-7 w-7 text-[var(--rizz-pink)]" /> Drops
+            <Gift className="h-7 w-7 text-primary" /> Drops
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Limited. Fast. Don't sleep.</p>
         </div>
@@ -94,17 +95,17 @@ function DropsPage() {
                 </div>
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-muted-foreground">{d.claim_count} / {d.claim_limit} claimed</span>
-                    <span className="font-bold" style={{ color: pct > 90 ? "var(--rizz-pink)" : undefined }}>{Math.round(pct)}%</span>
+                    <span className="text-muted-foreground">{formatNumber(d.claim_count)} / {formatNumber(d.claim_limit)} claimed</span>
+                    <span className="font-bold" style={{ color: pct > 90 ? "var(--brand-signal)" : undefined }}>{Math.round(pct)}%</span>
                   </div>
                   <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-primary transition-all" style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
                 <Button
                   onClick={() => claim(d.id)}
                   disabled={claimed || soldOut || !user}
-                  className={`w-full mt-4 ${claimed || soldOut ? "glass border border-white/10" : "bg-gradient-primary border-0 shadow-glow"}`}
+                  className={`w-full mt-4 ${claimed || soldOut ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
                   variant={claimed || soldOut ? "outline" : "default"}
                 >
                   {claimed ? "✓ Claimed" : soldOut ? "Sold out" : <><Sparkles className="h-4 w-4 mr-1" /> Claim now</>}
@@ -137,8 +138,8 @@ function Countdown({ to }: { to: string }) {
   const m = Math.floor((diff % 3.6e6) / 6e4);
   const s = Math.floor((diff % 6e4) / 1000);
   return (
-    <div className="glass border border-[var(--rizz-pink)]/30 rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0" style={{ boxShadow: "0 0 12px hsl(330 90% 60% / 0.3)" }}>
-      <Timer className="h-3 w-3 text-[var(--rizz-pink)]" />
+    <div className="glass border border-primary/30 rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0" className="border border-border bg-card rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0">
+      <Timer className="h-3 w-3 text-primary" />
       {h > 0 ? `${h}h ${m}m` : `${m}:${String(s).padStart(2, "0")}`}
     </div>
   );
@@ -179,7 +180,7 @@ function CreateDropDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4 mr-1" />Drop</Button>
+        <Button className="bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1" />Drop</Button>
       </DialogTrigger>
       <DialogContent className="glass-strong border-white/10">
         <DialogHeader><DialogTitle className="font-display">New drop</DialogTitle></DialogHeader>
@@ -200,7 +201,7 @@ function CreateDropDialog() {
               <Input type="number" value={hours} onChange={(e) => setHours(+e.target.value)} min={1} max={168} className="glass border-white/10" />
             </div>
           </div>
-          <Button onClick={create} disabled={busy || !title.trim()} className="w-full bg-gradient-primary border-0 shadow-glow">
+          <Button onClick={create} disabled={busy || !title.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Launch drop"}
           </Button>
         </div>

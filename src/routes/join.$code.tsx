@@ -104,7 +104,7 @@ function JoinPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg items-center justify-center px-4 py-10">
-      <section className="w-full rounded-3xl border border-white/10 bg-card/80 p-6 text-center shadow-glow-lg backdrop-blur-xl">
+      <section className="w-full rounded-3xl border border-white/10 bg-card/80 p-6 text-center shadow-lg backdrop-blur-xl">
         <Link to="/feed" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to RIZZ
         </Link>
@@ -120,13 +120,13 @@ function JoinPage() {
           </div>
         ) : group?.group_id ? (
           <>
-            <Avatar className="mx-auto mb-4 h-20 w-20 ring-2 ring-[var(--rizz-pink)]/50">
+            <Avatar className="mx-auto mb-4 h-20 w-20 ring-2 ring-primary/50">
               <AvatarImage src={group.icon_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-primary text-2xl font-bold">
+              <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
                 {group.group_name?.charAt(0).toUpperCase() ?? "G"}
               </AvatarFallback>
             </Avatar>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--rizz-pink)]">Group invitation</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Group invitation</p>
             <h1 className="mt-2 text-2xl font-extrabold">{group.group_name}</h1>
             {group.topic && <p className="mt-2 text-sm text-muted-foreground">{group.topic}</p>}
             <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground">
@@ -135,14 +135,14 @@ function JoinPage() {
             {statusMessage && <p role="alert" className="mt-4 text-sm text-destructive">{statusMessage}</p>}
             {alreadyMember && <p className="mt-4 text-sm text-muted-foreground">You’re already a member of this group.</p>}
             {canJoin && (user ? (
-              <Button onClick={() => join.mutate()} disabled={join.isPending} className="mt-6 w-full bg-gradient-primary">
+              <Button onClick={() => join.mutate()} disabled={join.isPending} className="mt-6 w-full bg-primary text-primary-foreground">
                 {join.isPending ? "Joining…" : "Join group"}
               </Button>
             ) : (
-              <Button onClick={signInToJoin} className="mt-6 w-full bg-gradient-primary">Log in to join</Button>
+              <Button onClick={signInToJoin} className="mt-6 w-full bg-primary text-primary-foreground">Log in to join</Button>
             ))}
             {alreadyMember && user && (
-              <Button onClick={() => nav({ to: "/g/$id", params: { id: group.group_id! } })} className="mt-6 w-full bg-gradient-primary">
+              <Button onClick={() => nav({ to: "/g/$id", params: { id: group.group_id! } })} className="mt-6 w-full bg-primary text-primary-foreground">
                 Open group
               </Button>
             )}

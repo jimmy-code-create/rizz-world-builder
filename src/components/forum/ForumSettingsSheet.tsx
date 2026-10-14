@@ -499,7 +499,7 @@ export function ForumSettingsSheet({
                       className={cn(
                         "flex-1 rounded-xl border px-3 py-2 text-[12px] font-semibold capitalize",
                         draft.default_layout === option
-                          ? "border-transparent bg-gradient-primary text-primary-foreground"
+                          ? "border-transparent bg-primary text-primary-foreground"
                           : "border-[var(--forum-border)] bg-[var(--forum-surface-sunken)]",
                       )}
                     >
@@ -547,7 +547,7 @@ export function ForumSettingsSheet({
                         className={cn(
                           "flex-1 rounded-xl border px-3 py-2 text-[12px] font-semibold capitalize",
                           draft.default_density === option
-                            ? "border-transparent bg-gradient-primary text-primary-foreground"
+                            ? "border-transparent bg-primary text-primary-foreground"
                             : "border-[var(--forum-border)] bg-[var(--forum-surface-sunken)]",
                         )}
                       >
@@ -816,7 +816,7 @@ export function ForumSettingsSheet({
                     type="button"
                     onClick={addTemplate}
                     disabled={busyRow === "template"}
-                    className="h-10 gap-1.5 border-0 bg-gradient-primary"
+                    className="h-10 gap-1.5 border-0 bg-primary text-primary-foreground"
                   >
                     <Plus className="h-4 w-4" aria-hidden /> Add template
                   </Button>
@@ -895,7 +895,7 @@ export function ForumSettingsSheet({
                         className={cn(
                           "flex-1 rounded-xl border px-3 py-2 text-[12px] font-semibold capitalize",
                           draft.post_permission === option
-                            ? "border-transparent bg-gradient-primary text-primary-foreground"
+                            ? "border-transparent bg-primary text-primary-foreground"
                             : "border-[var(--forum-border)] bg-[var(--forum-surface-sunken)]",
                         )}
                       >
@@ -918,7 +918,7 @@ export function ForumSettingsSheet({
                         className={cn(
                           "flex-1 rounded-xl border px-3 py-2 text-[12px] font-semibold capitalize",
                           draft.reply_permission === option
-                            ? "border-transparent bg-gradient-primary text-primary-foreground"
+                            ? "border-transparent bg-primary text-primary-foreground"
                             : "border-[var(--forum-border)] bg-[var(--forum-surface-sunken)]",
                         )}
                       >
@@ -1023,7 +1023,7 @@ export function ForumSettingsSheet({
             type="button"
             onClick={save}
             disabled={saving}
-            className="h-11 gap-2 border-0 bg-gradient-primary shadow-glow"
+            className="h-11 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
             Save forum

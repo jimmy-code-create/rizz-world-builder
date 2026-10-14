@@ -26,7 +26,7 @@ export function ReactionQuickBar({
             type="button"
             aria-label={`React with ${emoji}`}
             onClick={() => onPick(emoji)}
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-xl transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-xl transition-transform hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {emoji}
           </button>
@@ -36,7 +36,7 @@ export function ReactionQuickBar({
           aria-label={showMore ? "Hide more reactions" : "More reactions"}
           aria-expanded={showMore}
           onClick={() => setShowMore((open) => !open)}
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Plus className="h-5 w-5" />
         </button>
@@ -49,7 +49,7 @@ export function ReactionQuickBar({
               type="button"
               aria-label={`React with ${emoji}`}
               onClick={() => onPick(emoji)}
-              className="grid h-12 w-12 place-items-center rounded-lg text-xl transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="grid h-12 w-12 place-items-center rounded-lg text-xl transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {emoji}
             </button>

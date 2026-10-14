@@ -242,7 +242,7 @@ export function StoriesStrip() {
             className="flex shrink-0 flex-col items-center gap-1.5"
             aria-label="Add to your story"
           >
-            <div className="relative h-16 w-16 rounded-full bg-gradient-primary p-[2px] shadow-glow">
+            <div className="relative h-16 w-16 rounded-full bg-primary text-primary-foreground p-[2px] shadow-md">
               <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
                 <Plus className="h-6 w-6" />
               </div>
@@ -260,7 +260,7 @@ export function StoriesStrip() {
 
           {grouped.map((group, index) => {
             const story = group[0];
-            const accent = story.author?.accent_color || "var(--rizz-pink)";
+            const accent = story.author?.accent_color || "var(--brand-signal)";
             const unseen = hasUnseen(group);
             return (
               <button
@@ -277,13 +277,13 @@ export function StoriesStrip() {
                   className="relative h-16 w-16 rounded-full p-[2px]"
                   style={
                     unseen
-                      ? { background: `conic-gradient(from 0deg, ${accent}, var(--rizz-violet), ${accent})` }
+                      ? { background: `conic-gradient(from 0deg, ${accent}, var(--brand-paper-dim), ${accent})` }
                       : { background: "color-mix(in srgb, var(--foreground) 18%, transparent)" }
                   }
                 >
                   <Avatar className="h-full w-full ring-2 ring-background">
                     <AvatarImage src={story.author?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-gradient-primary text-xs font-bold">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                       {(story.author?.username ?? "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -548,7 +548,7 @@ function StoryViewer({
               type="button"
               onClick={onClose}
               aria-label="Close story"
-              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <X className="h-4 w-4" />
             </button>
@@ -587,7 +587,7 @@ function StoryViewer({
                 type="button"
                 onClick={() => setViewersOpen(true)}
                 aria-label="See story viewers and likes"
-                className="absolute right-16 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-11 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]"
+                className="absolute right-16 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-11 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Eye className="h-4 w-4" /> {story.like_count > 0 ? `${story.like_count} ❤` : "Viewers"}
               </button>
@@ -650,7 +650,7 @@ function StoryViewer({
               <button
                 type="button"
                 aria-label="Previous story"
-                className="absolute left-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-w-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
+                className="absolute left-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-w-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                 onClick={(event) => {
                   event.stopPropagation();
                   if (idx > 0) setIdx(idx - 1);
@@ -660,7 +660,7 @@ function StoryViewer({
               <button
                 type="button"
                 aria-label="Next story"
-                className="absolute right-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-e-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--rizz-pink)]"
+                className="absolute right-0 top-16 z-20 h-[calc(100%-4rem)] w-[12%] cursor-e-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                 onClick={(event) => {
                   event.stopPropagation();
                   if (idx + 1 < group.length) setIdx(idx + 1);
@@ -680,7 +680,7 @@ function StoryViewer({
                     className="pointer-events-none absolute grid place-items-center"
                     aria-hidden="true"
                   >
-                    <Heart className="h-24 w-24 fill-[var(--rizz-pink)] text-[var(--rizz-pink)] drop-shadow-[0_0_24px_rgba(255,65,150,0.65)]" />
+                    <Heart className="h-24 w-24 fill-primary text-primary drop-shadow-[0_0_24px_rgba(255,65,150,0.65)]" />
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -703,7 +703,7 @@ function StoryViewer({
                       {part.text}
                     </Link>
                   ) : part.tag ? (
-                    <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="font-medium text-[var(--rizz-pink)] hover:underline">
+                    <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="font-medium text-primary hover:underline">
                       {part.text}
                     </Link>
                   ) : (
@@ -720,9 +720,9 @@ function StoryViewer({
                 aria-pressed={isLiked}
                 disabled={!user}
                 onClick={() => void onToggleLike(story.id)}
-                className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+                className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   isLiked
-                    ? "border-[var(--rizz-pink)]/45 bg-[var(--rizz-pink)]/15 text-[var(--rizz-pink)]"
+                    ? "border-primary/45 bg-primary/15 text-primary"
                     : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/10"
                 }`}
               >
@@ -743,9 +743,9 @@ function StoryViewer({
                       aria-pressed={selected}
                       disabled={!user}
                       onClick={() => void toggleReaction(emoji)}
-                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
+                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         selected
-                          ? "border-[var(--rizz-violet)]/55 bg-[var(--rizz-violet)]/20"
+                          ? "border-muted-foreground/55 bg-muted-foreground/20"
                           : "border-transparent hover:border-white/10 hover:bg-white/[0.07]"
                       }`}
                     >
@@ -771,7 +771,7 @@ function StoryViewer({
                   disabled={!replyBody.trim() || replying}
                   size="icon"
                   aria-label="Send story reply"
-                  className="h-11 w-11 shrink-0 bg-gradient-primary"
+                  className="h-11 w-11 shrink-0 bg-primary text-primary-foreground"
                 >
                   {replying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
@@ -783,10 +783,10 @@ function StoryViewer({
                 <DialogTitle>Story insights</DialogTitle>
                 <div className="flex items-center gap-4 pb-1">
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-                    <Eye className="h-4 w-4 text-[var(--rizz-pink)]" /> {story.view_count} views
+                    <Eye className="h-4 w-4 text-primary" /> {story.view_count} views
                   </span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-                    <Heart className="h-4 w-4 fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" /> {story.like_count} likes
+                    <Heart className="h-4 w-4 fill-primary text-primary" /> {story.like_count} likes
                   </span>
                 </div>
                 {viewers.isLoading ? (

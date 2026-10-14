@@ -64,7 +64,7 @@ export function ReactionRoleDialog({ open, onOpenChange, messageId, roles, onCha
       <DialogContent className="glass-strong border-white/10">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
-            <UserCog className="h-5 w-5 text-[var(--rizz-pink)]" /> Reaction roles
+            <UserCog className="h-5 w-5 text-primary" /> Reaction roles
           </DialogTitle>
         </DialogHeader>
 
@@ -81,7 +81,7 @@ export function ReactionRoleDialog({ open, onOpenChange, messageId, roles, onCha
               onClick={() => setEmoji(candidate)}
               className={`h-9 w-9 rounded-xl border text-lg transition-colors ${
                 emoji === candidate
-                  ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/15"
+                  ? "border-primary bg-primary/15"
                   : "border-white/10 bg-white/[0.04] hover:bg-white/10"
               }`}
             >
@@ -106,7 +106,7 @@ export function ReactionRoleDialog({ open, onOpenChange, messageId, roles, onCha
                 onClick={() => setRole(value)}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
                   role === value
-                    ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/15"
+                    ? "border-primary bg-primary/15"
                     : "border-white/10 bg-white/[0.04] hover:bg-white/10"
                 }`}
               >
@@ -117,7 +117,7 @@ export function ReactionRoleDialog({ open, onOpenChange, messageId, roles, onCha
           </div>
         </div>
 
-        <Button className="w-full bg-gradient-primary border-0 shadow-glow" disabled={busy} onClick={() => void save()}>
+        <Button className="w-full bg-primary text-primary-foreground border-0 shadow-md" disabled={busy} onClick={() => void save()}>
           {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
           Save rule
         </Button>

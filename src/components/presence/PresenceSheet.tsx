@@ -315,7 +315,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   <Trash2 className="h-4 w-4" /> Clear
                 </Button>
               )}
-              <Button disabled={saving} onClick={() => void saveCustom()} className="h-12 flex-1 bg-gradient-primary">
+              <Button disabled={saving} onClick={() => void saveCustom()} className="h-12 flex-1 bg-primary text-primary-foreground">
                 Save
               </Button>
             </div>

@@ -68,9 +68,9 @@ function SettingsHubPage() {
         to="/settings/profile"
         className="flex items-center gap-4 rounded-3xl border border-white/5 glass p-4 transition-colors hover:bg-white/5"
       >
-        <Avatar className="h-14 w-14 ring-2 ring-[var(--rizz-pink)]/40">
+        <Avatar className="h-14 w-14 ring-2 ring-primary/40">
           <AvatarImage src={profile.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-gradient-primary text-xl font-bold">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{initial}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{profile.display_name || profile.username}</p>
@@ -87,7 +87,7 @@ function SettingsHubPage() {
         <AvatarWithStatus status={presence.status} dotSize={11}>
           <Avatar className="h-10 w-10">
             <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-sm font-bold">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initial}</AvatarFallback>
           </Avatar>
         </AvatarWithStatus>
         <span className="min-w-0 flex-1">
@@ -109,7 +109,7 @@ function SettingsHubPage() {
               index > 0 ? "border-t border-white/5" : ""
             }`}
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/[0.06] text-[var(--rizz-pink)]">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/[0.06] text-primary">
               <section.icon className="h-5 w-5" />
             </span>
             <span className="min-w-0 flex-1">

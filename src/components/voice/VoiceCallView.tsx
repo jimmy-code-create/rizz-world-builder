@@ -220,7 +220,7 @@ export function VoiceCallView() {
         />
         <header className="relative flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">Voice channel</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Voice channel</p>
             <h1 className="truncate font-display text-lg font-bold leading-tight">{call.channelName}</h1>
             <p role={error ? "alert" : undefined} className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}>
               {!error && <Wifi className="h-3 w-3" />}
@@ -248,9 +248,9 @@ export function VoiceCallView() {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
           {stageStream && (
-            <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-[var(--rizz-pink)]/40 bg-black shadow-glow">
+            <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-primary/40 bg-black shadow-md">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
-                <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
+                <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary">
                   <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{sharingScreen ? "Your screen" : `Screen shared by @${stageOwner}`}</span>
                 </span>
@@ -286,7 +286,7 @@ export function VoiceCallView() {
                   key={participant.user_id}
                   className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-all ${
                     speaking
-                      ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)]/10 shadow-[0_0_0_3px_var(--rizz-pink),0_0_24px_var(--rizz-glow)]"
+                      ? "border-primary bg-primary/10 shadow-[0_0_0_3px_var(--brand-signal),0_0_24px_transparent]"
                       : "border-white/10 glass"
                   }`}
                 >
@@ -294,9 +294,9 @@ export function VoiceCallView() {
                     <VideoTile stream={videoStream} />
                   ) : (
                     <>
-                      <Avatar className={`h-16 w-16 ${speaking ? "ring-2 ring-[var(--rizz-pink)]" : ""}`}>
+                      <Avatar className={`h-16 w-16 ${speaking ? "ring-2 ring-primary" : ""}`}>
                         <AvatarImage src={participant.user?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-gradient-primary text-lg font-bold">{initial}</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
                       </Avatar>
                       <p className="max-w-full truncate text-xs font-semibold">
                         @{username}
@@ -321,10 +321,10 @@ export function VoiceCallView() {
                     </span>
                   )}
                   {!videoStream && speaking && (
-                    <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">Speaking</span>
+                    <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">Speaking</span>
                   )}
                   {sharingIds.includes(participant.user_id) && !sharingScreen && (
-                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-[var(--rizz-pink)]/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--rizz-pink)]">
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-primary/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                       <MonitorPlay className="h-3 w-3" /> Sharing
                     </span>
                   )}
@@ -396,7 +396,7 @@ export function VoiceCallView() {
               aria-label={muted ? "Unmute microphone" : "Mute microphone"}
               aria-pressed={!muted}
               onClick={toggleMute}
-              className={`h-14 w-14 rounded-full ${muted ? "glass border-white/10" : "border-0 bg-gradient-primary shadow-glow"}`}
+              className={`h-14 w-14 rounded-full ${muted ? "glass border-white/10" : "border-0 bg-primary text-primary-foreground shadow-md"}`}
             >
               {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </Button>
@@ -407,7 +407,7 @@ export function VoiceCallView() {
               aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
               aria-pressed={cameraOn}
               onClick={toggleCamera}
-              className={`h-14 w-14 rounded-full ${cameraOn ? "border-0 bg-gradient-primary shadow-glow" : "glass border-white/10"}`}
+              className={`h-14 w-14 rounded-full ${cameraOn ? "border-0 bg-primary text-primary-foreground shadow-md" : "glass border-white/10"}`}
             >
               {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
             </Button>
@@ -433,7 +433,7 @@ export function VoiceCallView() {
               title={screenSupported ? undefined : "Screen sharing isn't available in this browser."}
               onClick={toggleScreenShare}
               className={`h-14 w-14 rounded-full ${
-                sharingScreen ? "border-0 bg-gradient-primary shadow-glow" : "glass border-white/10"
+                sharingScreen ? "border-0 bg-primary text-primary-foreground shadow-md" : "glass border-white/10"
               } disabled:opacity-50`}
             >
               {sharingScreen ? <ScreenShareOff className="h-5 w-5" /> : <ScreenShare className="h-5 w-5" />}

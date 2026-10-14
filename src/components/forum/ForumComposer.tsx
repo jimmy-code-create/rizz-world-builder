@@ -499,7 +499,7 @@ export function ForumComposer({
             type="button"
             onClick={() => void submit()}
             disabled={!canPost}
-            className="h-11 gap-2 border-0 bg-gradient-primary shadow-glow"
+            className="h-11 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
             {editing ? "Save changes" : "Publish"}

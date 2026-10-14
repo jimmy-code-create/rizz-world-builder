@@ -27,10 +27,10 @@ export function QuoteEmbed({ postId }: { postId: string }) {
       className="mx-4 mb-3 block rounded-2xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/20"
     >
       <div className="flex items-center gap-2">
-        <Quote className="h-3 w-3 shrink-0 text-[var(--rizz-pink)]" />
+        <Quote className="h-3 w-3 shrink-0 text-primary" />
         <Avatar className="h-5 w-5">
           <AvatarImage src={p.author?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-gradient-primary text-[9px]">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground text-[9px]">{initial}</AvatarFallback>
         </Avatar>
         <span className="truncate text-xs font-semibold">@{p.author?.username}</span>
       </div>

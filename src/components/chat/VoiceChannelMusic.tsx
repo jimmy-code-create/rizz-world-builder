@@ -123,13 +123,13 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
   return (
     <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
       <div className="flex items-center gap-2">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
           <Music className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
             Music bot
-            <span className="rounded-full border border-[var(--rizz-pink)]/30 bg-[var(--rizz-pink)]/10 px-1.5 py-px text-[9px] font-semibold normal-case tracking-normal text-[var(--rizz-pink)]">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-px text-[9px] font-semibold normal-case tracking-normal text-primary">
               voice only
             </span>
           </p>
@@ -199,7 +199,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
               size="sm"
               aria-pressed={loop}
               onClick={() => setLoop((value) => !value)}
-              className={`h-9 w-9 shrink-0 p-0 ${loop ? "bg-gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`h-9 w-9 shrink-0 p-0 ${loop ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               aria-label="Loop the current track"
             >
               <Repeat className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
                 });
                 toast.info("Shuffle changes the order you hear here; the queue itself stays in order.");
               }}
-              className={`h-9 w-9 shrink-0 p-0 ${shuffle ? "bg-gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`h-9 w-9 shrink-0 p-0 ${shuffle ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               aria-label="Shuffle the upcoming tracks"
             >
               <Shuffle className="h-4 w-4" />
@@ -297,7 +297,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
           <Button
             type="submit"
             disabled={!query.trim() || busy === "play"}
-            className="h-12 shrink-0 border-0 bg-gradient-primary text-primary-foreground sm:h-11 sm:w-auto"
+            className="h-12 shrink-0 border-0 bg-primary text-primary-foreground sm:h-11 sm:w-auto"
           >
             {busy === "play" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />}
             Play

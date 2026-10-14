@@ -65,7 +65,7 @@ function RichText({ text }: { text: string }) {
               key={index}
               to="/tag/$tag"
               params={{ tag: part.tag }}
-              className="font-medium text-[var(--rizz-pink)] hover:underline"
+              className="font-medium text-primary hover:underline"
             >
               {part.text}
             </Link>

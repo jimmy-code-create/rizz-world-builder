@@ -79,7 +79,7 @@ export function PollBlock({ postId }: { postId: string }) {
     return (
       <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
         <p className="text-xs text-muted-foreground">Poll results couldn’t load.</p>
-        <button type="button" onClick={() => void poll.refetch()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--rizz-pink)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]">Retry</button>
+        <button type="button" onClick={() => void poll.refetch()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Retry</button>
       </div>
     );
   }
@@ -93,8 +93,8 @@ export function PollBlock({ postId }: { postId: string }) {
   return (
     <section aria-label="Poll" className="relative mx-4 mb-3 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.05)] sm:p-4">
       <div className="mb-3 flex items-start gap-2.5">
-        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-[var(--rizz-pink)]/20 bg-[var(--rizz-pink)]/10">
-          <BarChart3 aria-hidden="true" className="h-4 w-4 text-[var(--rizz-pink)]" />
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10">
+          <BarChart3 aria-hidden="true" className="h-4 w-4 text-primary" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Community poll</p>
@@ -112,8 +112,8 @@ export function PollBlock({ postId }: { postId: string }) {
               disabled={revealed || vote.isPending || expired}
               aria-pressed={mine}
               onClick={() => vote.mutate(o.id)}
-              className={`group relative min-h-11 w-full overflow-hidden rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)] ${
-                mine ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/[0.07]" : "border-white/[0.09] bg-black/10"
+              className={`group relative min-h-11 w-full overflow-hidden rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                mine ? "border-primary/50 bg-primary/[0.07]" : "border-white/[0.09] bg-black/10"
               } ${revealed ? "cursor-default" : "hover:border-white/20 hover:bg-white/[0.045] active:bg-white/[0.08]"}`}
             >
               {revealed && (
@@ -122,11 +122,11 @@ export function PollBlock({ postId }: { postId: string }) {
                   animate={{ scaleX: pct / 100 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                   className="absolute inset-0 origin-left"
-                  style={{ background: mine ? "linear-gradient(90deg,color-mix(in oklab,var(--rizz-pink) 24%,transparent),transparent)" : "rgba(255,255,255,0.07)" }}
+                  style={{ background: mine ? "linear-gradient(90deg,color-mix(in oklab,var(--brand-signal) 24%,transparent),transparent)" : "rgba(255,255,255,0.07)" }}
                 />
               )}
               <span className="relative flex items-center gap-2.5">
-                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${mine ? "border-[var(--rizz-pink)] bg-[var(--rizz-pink)] text-white" : "border-white/25 group-hover:border-white/45"}`}>
+                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${mine ? "border-primary bg-primary text-primary-foreground" : "border-white/25 group-hover:border-white/45"}`}>
                   {mine && <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />}
                 </span>
                 <span className="flex-1 truncate font-medium">{o.label}</span>
@@ -143,7 +143,7 @@ export function PollBlock({ postId }: { postId: string }) {
             <button
               type="button"
               onClick={() => setVotersOpen(true)}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--rizz-pink)] hover:underline"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
             >
               <Users className="h-3 w-3" /> See who voted
             </button>
@@ -160,7 +160,7 @@ export function PollBlock({ postId }: { postId: string }) {
       <Dialog open={votersOpen} onOpenChange={setVotersOpen}>
         <DialogContent className="max-w-md bg-card text-card-foreground border border-border rounded-2xl p-5">
           <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
-            <Users className="h-4 w-4 text-[var(--rizz-pink)]" /> Who voted ({p.total_votes})
+            <Users className="h-4 w-4 text-primary" /> Who voted ({p.total_votes})
           </DialogTitle>
           <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {voters.isLoading && (

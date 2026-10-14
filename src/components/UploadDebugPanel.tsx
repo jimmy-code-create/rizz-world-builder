@@ -20,7 +20,7 @@ export function UploadDebugPanel() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Bug className="h-4 w-4 text-[var(--rizz-pink)]" />
+        <Bug className="h-4 w-4 text-primary" />
         <p className="text-sm font-bold flex-1">Upload debug ({traces.length})</p>
         <Button size="sm" variant="outline" onClick={copyAll} disabled={traces.length === 0}>
           <Copy className="h-3.5 w-3.5 mr-1" /> Copy

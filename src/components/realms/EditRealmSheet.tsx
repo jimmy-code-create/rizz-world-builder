@@ -141,7 +141,7 @@ export function EditRealmSheet({
       >
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-xl flex items-center gap-2">
-            <Pencil className="h-4 w-4 text-[var(--rizz-pink)]" /> Edit realm
+            <Pencil className="h-4 w-4 text-primary" /> Edit realm
           </SheetTitle>
         </SheetHeader>
 
@@ -174,7 +174,7 @@ export function EditRealmSheet({
                     setPhoto(null);
                     setRemovePhoto(true);
                   }}
-                  className="flex items-center gap-1.5 text-xs font-medium text-[var(--rizz-pink)]"
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Remove photo
                 </button>
@@ -238,7 +238,7 @@ export function EditRealmSheet({
               type="button"
               onClick={() => void save()}
               disabled={!canSave}
-              className="min-h-12 flex-1 rounded-xl border-0 bg-gradient-primary shadow-glow"
+              className="min-h-12 flex-1 rounded-xl border-0 bg-primary text-primary-foreground shadow-md"
             >
               {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Save"}
             </Button>

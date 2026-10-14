@@ -29,7 +29,7 @@ export function PinnedBar({
         className="flex min-h-[48px] min-w-0 flex-1 items-center gap-2 text-left"
         aria-label="Jump to pinned message"
       >
-        <Pin className="h-3.5 w-3.5 shrink-0 text-[var(--rizz-pink)]" />
+        <Pin className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {pinnedPreview(current.message?.body, current.message?.attachment_url)}
         </span>
@@ -50,7 +50,7 @@ export function PinnedBar({
 export function PinBadge() {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-[var(--rizz-pink)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--rizz-pink)]"
+      className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
       title="Pinned message"
     >
       <Pin className="h-2.5 w-2.5" />
@@ -109,7 +109,7 @@ export function PinnedListSheet({
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src={pin.message?.sender?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
                     {(pin.message?.sender?.username ?? "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

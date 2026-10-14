@@ -40,7 +40,7 @@ export function MessageSearchSheet({ open, onOpenChange, realmId, roomId, onJump
       <SheetContent side="right" className="glass-strong flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
         <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
-            <Search className="h-4 w-4 text-[var(--rizz-pink)]" /> Search messages
+            <Search className="h-4 w-4 text-primary" /> Search messages
           </SheetTitle>
         </SheetHeader>
 

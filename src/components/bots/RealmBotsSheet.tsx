@@ -112,7 +112,7 @@ export function RealmBotsSheet({
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-xl break-words">
             <span className="flex items-center gap-2">
-              <BotIcon className="h-5 w-5 text-[var(--rizz-violet)]" /> Bots
+              <BotIcon className="h-5 w-5 text-muted-foreground" /> Bots
             </span>
           </SheetTitle>
           <p className="text-xs text-muted-foreground">
@@ -161,7 +161,7 @@ export function RealmBotsSheet({
                 >
                   <Avatar className="h-9 w-9 shrink-0 ring-1 ring-white/10">
                     <AvatarImage src={bot.avatar_url ?? undefined} alt="" />
-                    <AvatarFallback className="bg-gradient-primary text-[11px] font-bold text-primary-foreground">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold text-primary-foreground">
                       {bot.is_builtin ? <BotIcon className="h-4 w-4" aria-hidden="true" /> : bot.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -230,7 +230,7 @@ export function RealmBotsSheet({
                       >
                         <Avatar className="h-9 w-9 shrink-0">
                           <AvatarImage src={bot.avatar_url ?? undefined} alt="" />
-                          <AvatarFallback className="bg-gradient-primary text-[11px] font-bold text-primary-foreground">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold text-primary-foreground">
                             {bot.is_builtin ? <BotIcon className="h-4 w-4" aria-hidden="true" /> : bot.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -240,7 +240,7 @@ export function RealmBotsSheet({
                         </div>
                         <Button
                           size="sm"
-                          className="h-9 shrink-0 border-0 bg-gradient-primary text-primary-foreground"
+                          className="h-9 shrink-0 border-0 bg-primary text-primary-foreground"
                           disabled={busy === `install:${bot.bot_id}`}
                           onClick={() =>
                             void run(
@@ -302,7 +302,7 @@ export function RealmBotsSheet({
                         onClick={() => setChannelKey(entry.key)}
                         className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${
                           active
-                            ? "border-[var(--rizz-pink)]/50 bg-[var(--rizz-pink)]/15 text-foreground"
+                            ? "border-primary/50 bg-primary/15 text-foreground"
                             : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
                         }`}
                       >

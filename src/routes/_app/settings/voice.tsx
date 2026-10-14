@@ -114,7 +114,7 @@ function VoiceAndSoundPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-sm font-bold">
-              <Volume2 className="h-4 w-4 text-[var(--rizz-pink)]" /> Master volume
+              <Volume2 className="h-4 w-4 text-primary" /> Master volume
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Multiplies music, voice and notification levels.
@@ -156,7 +156,7 @@ function VoiceAndSoundPage() {
 
       <SettingsCard>
         <h2 className="flex items-center gap-2 text-sm font-bold">
-          <Music2 className="h-4 w-4 text-[var(--rizz-pink)]" /> Separate levels
+          <Music2 className="h-4 w-4 text-primary" /> Separate levels
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Each channel is multiplied by the master volume.
@@ -187,7 +187,7 @@ function VoiceAndSoundPage() {
 
       <SettingsCard>
         <h2 className="flex items-center gap-2 text-sm font-bold">
-          <Mic className="h-4 w-4 text-[var(--rizz-pink)]" /> Microphone
+          <Mic className="h-4 w-4 text-primary" /> Microphone
         </h2>
         <div className="mt-3 space-y-4">
           <DevicePicker
@@ -233,7 +233,7 @@ function VoiceAndSoundPage() {
 
       <SettingsCard>
         <h2 className="flex items-center gap-2 text-sm font-bold">
-          <Headphones className="h-4 w-4 text-[var(--rizz-pink)]" /> Speakers
+          <Headphones className="h-4 w-4 text-primary" /> Speakers
         </h2>
         <div className="mt-3 space-y-3">
           <DevicePicker

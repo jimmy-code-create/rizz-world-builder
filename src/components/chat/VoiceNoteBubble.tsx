@@ -48,7 +48,7 @@ export function VoiceNoteBubble({
   return (
     <div
       className={`flex max-w-[75%] items-center gap-3 rounded-2xl px-3 py-2 ${
-        mine ? "bg-gradient-primary text-primary-foreground shadow-glow" : "glass border border-white/10"
+        mine ? "bg-primary text-primary-foreground shadow-md" : "glass border border-white/10"
       }`}
     >
       <button
@@ -75,7 +75,7 @@ export function VoiceNoteBubble({
               className="min-w-[2px] flex-1 rounded-full transition-opacity duration-150"
               style={{
                 height: `${Math.max(22, Math.min(100, b * 100))}%`,
-                background: played ? "var(--rizz-pink)" : "currentColor",
+                background: played ? "var(--brand-signal)" : "currentColor",
                 opacity: played ? 1 : 0.34,
               }}
             />

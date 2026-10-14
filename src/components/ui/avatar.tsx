@@ -117,7 +117,7 @@ const AvatarFallback = React.forwardRef<
 >(({ className, ...props }, ref) => {
   // Strip legacy lime/gradient classes to guarantee dark surface-2 for initials everywhere
   const cleanedClass = className
-    ?.replace(/bg-gradient-primary/g, "")
+    ?.replace(/bg-surface-2/g, "")
     ?.replace(/text-primary-foreground/g, "")
     ?.replace(/bg-primary/g, "");
 

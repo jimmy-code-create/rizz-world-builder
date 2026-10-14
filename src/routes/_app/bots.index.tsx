@@ -177,7 +177,7 @@ function BotDirectoryPage() {
               <div className="flex items-start gap-3">
                 <Avatar className="h-12 w-12 shrink-0 ring-1 ring-white/10">
                   <AvatarImage src={bot.avatar_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-gradient-primary font-bold text-primary-foreground">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-primary-foreground">
                     {bot.is_builtin ? <BotIcon className="h-5 w-5" aria-hidden="true" /> : bot.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -186,8 +186,8 @@ function BotDirectoryPage() {
                   <p className="flex flex-wrap items-center gap-2 font-display font-bold">
                     {bot.name}
                     {bot.is_builtin && (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-[var(--rizz-violet)]/45 bg-[var(--rizz-violet)]/15 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider text-[var(--rizz-violet)]">
-                        <Sparkles className="h-2.5 w-2.5" aria-hidden="true" /> Official
+                      <span className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/45 bg-muted-foreground/15 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <Bot className="h-2.5 w-2.5" aria-hidden="true" /> Official
                       </span>
                     )}
                     <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -220,7 +220,7 @@ function BotDirectoryPage() {
                               aria-hidden="true"
                               className={`h-3.5 w-3.5 ${
                                 (bot.my_rating ?? 0) >= star
-                                  ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]"
+                                  ? "fill-primary text-primary"
                                   : "text-muted-foreground/60"
                               }`}
                             />
@@ -250,7 +250,7 @@ function BotDirectoryPage() {
                 <Button
                   type="button"
                   size="sm"
-                  className="h-10 gap-1.5 border-0 bg-gradient-primary text-primary-foreground"
+                  className="h-10 gap-1.5 border-0 bg-primary text-primary-foreground"
                   onClick={() => {
                     setInstallingBot(bot);
                     if (!user) toast.error("Sign in to add a bot");
@@ -287,7 +287,7 @@ function BotDirectoryPage() {
                   type="button"
                   disabled={busyRealmId === realm.id}
                   onClick={() => void install(realm)}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-left transition-colors hover:border-[var(--rizz-pink)]/40 disabled:opacity-60"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-left transition-colors hover:border-primary/40 disabled:opacity-60"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{realm.name}</p>
@@ -296,13 +296,13 @@ function BotDirectoryPage() {
                   {busyRealmId === realm.id ? (
                     <span className="text-[11px] text-muted-foreground">Adding…</span>
                   ) : (
-                    <Check className="h-4 w-4 text-[var(--rizz-pink)]" />
+                    <Check className="h-4 w-4 text-primary" />
                   )}
                 </button>
               ))}
               <p className="text-[11px] text-muted-foreground">
                 Want a different realm? Open it and use its bot settings there.{" "}
-                <Link to="/realms" className="text-[var(--rizz-pink)] hover:underline">
+                <Link to="/realms" className="text-primary hover:underline">
                   Browse realms
                 </Link>
               </p>

@@ -5,7 +5,7 @@ import {
   MicOff,
   Minus,
   Send,
-  Sparkles,
+  Bot,
   Volume2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -171,7 +171,7 @@ export function LilRizzOrbWidget({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <h2 id="lil-rizz-title" className="truncate text-sm font-extrabold tracking-tight">Lil Rizz</h2>
-            <Sparkles aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--brand-signal)]" />
+            <Bot aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--brand-signal)]" />
           </div>
           <p className="mt-0.5 text-[11px] text-white/55" aria-live="polite">
             {statusLabels[status]}

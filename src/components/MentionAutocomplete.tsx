@@ -169,7 +169,7 @@ export function MentionAutocomplete({
             >
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={p.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-[11px] font-bold text-primary-foreground">
+                <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold text-primary-foreground">
                   {name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

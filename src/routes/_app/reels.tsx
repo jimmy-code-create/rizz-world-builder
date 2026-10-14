@@ -4,7 +4,7 @@ import { useCallback, useRef, useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
-  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Sparkles, Bookmark, Send, MoreVertical,
+  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, Send, MoreVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,7 @@ function ReelsPage() {
       <div className="absolute inset-x-3 top-3 z-30 flex items-center gap-2 pointer-events-none">
         <button
           onClick={() => setEditorOpen(true)}
-          className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-gradient-primary shadow-glow transition-transform active:scale-95"
+          className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-95"
           aria-label="Upload reel"
           title="Upload reel"
         >
@@ -154,7 +154,7 @@ function ReelsPage() {
         <div className="grid min-h-0 flex-1 place-items-center px-8 text-center">
           <div>
             <p className="text-muted-foreground mb-4">No reels yet — be the first to drop a vibe.</p>
-            <Button onClick={() => setEditorOpen(true)} className="bg-gradient-primary border-0 shadow-glow">
+            <Button onClick={() => setEditorOpen(true)} className="bg-primary text-primary-foreground border-0 shadow-md">
               <Upload className="h-4 w-4 mr-2" /> Upload a reel
             </Button>
           </div>
@@ -488,7 +488,7 @@ function ReelItem({
                   onClick={viewOriginal}
                   className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
                 >
-                  <ExternalLink className="h-4 w-4 text-[var(--rizz-violet)]" />
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
                   View original
                 </button>
               </PopoverContent>
@@ -498,14 +498,14 @@ function ReelItem({
             <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
                 <AvatarImage src={post.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
               {post.author?.verified_creator && <VerifiedCreatorTag />}
             </Link>
             <div className="flex items-center justify-around gap-1">
               <ReelAction
-                icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
+                icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
                 label={formatCount(likeCount)}
                 onClick={() => doLike()}
                 active={liked}
@@ -576,7 +576,7 @@ function ReelItem({
       {staticLikeFeedback && (
         <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
-            <Heart className="h-3.5 w-3.5 fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" />
+            <Heart className="h-3.5 w-3.5 fill-primary text-primary" />
             Liked
           </span>
         </span>
@@ -590,7 +590,7 @@ function ReelItem({
         </div>
       )}
       {!isExternal && <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
-        <div className="h-full bg-gradient-primary shadow-glow" style={{ width: `${progress}%` }} />
+        <div className="h-full bg-primary text-primary-foreground shadow-md" style={{ width: `${progress}%` }} />
       </div>}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
         {!isExternal && <button
@@ -629,15 +629,15 @@ function ReelItem({
                   onClick={() => setAutoplay((current) => !current)}
                   className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
                 >
-                  <span className="flex items-center gap-2"><Play className="h-4 w-4 text-[var(--rizz-pink)]" /> Autoplay</span>
-                  <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-[var(--rizz-pink)]" : "bg-white/25"}`}>
+                  <span className="flex items-center gap-2"><Play className="h-4 w-4 text-primary" /> Autoplay</span>
+                  <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-primary" : "bg-white/25"}`}>
                     <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
                   </span>
                 </button>
               </section>
               <section className="border-t border-white/10 pt-3">
                 <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
-                  <Gauge className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Playback speed
+                  <Gauge className="h-3.5 w-3.5 text-primary" /> Playback speed
                 </h3>
                 <div className="grid grid-cols-4 gap-1">
                   {[0.5, 1, 1.5, 2].map((value) => (
@@ -646,7 +646,7 @@ function ReelItem({
                       type="button"
                       aria-pressed={speed === value}
                       onClick={() => setSpeed(value)}
-                      className={`rounded-lg px-1.5 py-1.5 text-xs transition-colors ${speed === value ? "bg-gradient-primary text-white" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                      className={`rounded-lg px-1.5 py-1.5 text-xs transition-colors ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
                     >
                       {value}x
                     </button>
@@ -661,13 +661,13 @@ function ReelItem({
                   onClick={() => setCaptions((current) => !current)}
                   className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
                 >
-                  <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-[var(--rizz-pink)]" /> Captions</span>
+                  <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-primary" /> Captions</span>
                   <span className="text-xs text-muted-foreground">{captions ? "On" : "Off"}</span>
                 </button>
               </section>
               <section className="border-t border-white/10 pt-3">
                 <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--rizz-pink)]" /> Visual filter
+                  <Palette className="h-3.5 w-3.5 text-muted-foreground" /> Visual filter
                 </h3>
                 <div className="grid grid-cols-3 gap-1">
                   {(["none", "warm", "cool", "noir", "vivid"] as const).map((value) => (
@@ -676,7 +676,7 @@ function ReelItem({
                       type="button"
                       aria-pressed={filter === value}
                       onClick={() => setFilter(value)}
-                      className={`rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${filter === value ? "bg-gradient-primary text-white" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                      className={`rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${filter === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
                     >
                       {value === "none" ? "None" : value}
                     </button>
@@ -691,7 +691,7 @@ function ReelItem({
         <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-gradient-primary text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="font-bold text-sm">@{post.author?.username}</span>
           {post.author?.verified_creator && <VerifiedCreatorTag />}
@@ -703,7 +703,7 @@ function ReelItem({
       </div>
       <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
         <ReelAction
-          icon={<Heart className={`h-6 w-6 ${liked ? "fill-[var(--rizz-pink)] text-[var(--rizz-pink)]" : ""}`} />}
+          icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
           label={formatCount(likeCount)}
           onClick={() => doLike()}
           active={liked}
@@ -792,7 +792,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
             <div key={c.id} className="flex gap-2.5">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-gradient-primary text-xs">{(c.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(c.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold">@{c.author?.username}</p>
@@ -812,7 +812,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
             placeholder="Add a comment…"
             className="glass border-white/10"
           />
-          <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-gradient-primary border-0 shadow-glow shrink-0">
+          <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
             {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
@@ -979,7 +979,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                 {sourceMode === "upload" ? (
                   <label className="cursor-pointer flex flex-col items-center gap-3">
                     <input type="file" accept="video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
-                    <div className="h-16 w-16 rounded-full bg-gradient-primary grid place-items-center shadow-glow">
+                    <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-md">
                       <Upload className="h-7 w-7 text-white" />
                     </div>
                     <p className="font-bold text-white">Tap to upload video</p>
@@ -1023,7 +1023,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <label className="flex items-start gap-2 text-xs leading-relaxed">
                   <input
                     type="checkbox"
-                    className="mt-0.5 accent-[var(--rizz-pink)]"
+                    className="mt-0.5 accent-primary"
                     checked={rightsConfirmed}
                     onChange={(e) => setRightsConfirmed(e.target.checked)}
                   />
@@ -1070,7 +1070,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <button
                     onClick={() => setSong(null)}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                      song === null ? "bg-gradient-primary text-white shadow-glow" : "hover:bg-white/5"
+                      song === null ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
                     }`}
                   >
                     <div className="h-10 w-10 rounded-lg bg-white/10 grid place-items-center"><Music2 className="h-4 w-4" /></div>
@@ -1085,10 +1085,10 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                       key={s.id}
                       onClick={() => setSong(s.id)}
                       className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                        song === s.id ? "bg-gradient-primary text-white shadow-glow" : "hover:bg-white/5"
+                        song === s.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
                       }`}
                     >
-                      <div className="h-10 w-10 rounded-lg bg-[var(--rizz-pink)]/20 grid place-items-center text-base">🎵</div>
+                      <div className="h-10 w-10 rounded-lg bg-primary/20 grid place-items-center text-base">🎵</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold truncate">{s.title}</p>
                         <p className="text-xs opacity-70 truncate">{s.artist} · {s.bpm} BPM · {s.mood}</p>
@@ -1131,7 +1131,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           <Button
             onClick={() => mut.mutate()}
             disabled={mut.isPending || (sourceMode === "upload" ? !file : !canPublishLink)}
-            className="bg-gradient-primary border-0 shadow-glow px-6"
+            className="bg-primary text-primary-foreground border-0 shadow-md px-6"
           >
             {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}
           </Button>

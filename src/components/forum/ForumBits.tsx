@@ -135,7 +135,7 @@ export function AuthorLine({
     <div className="flex min-w-0 items-center gap-2">
       <Avatar className={cn(dim, "shrink-0 ring-1 ring-white/10")}>
         <AvatarImage src={avatarUrl ?? undefined} alt="" loading="lazy" decoding="async" />
-        <AvatarFallback className="bg-gradient-primary text-[10px] font-bold">
+        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
           {(name || "?").charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -180,7 +180,7 @@ export function ReplierFaces({ people, max = 4 }: { people: ForumReplier[]; max?
         return (
           <Avatar key={person.id} className="h-5 w-5 ring-2 ring-background">
             <AvatarImage src={person.avatar_url ?? undefined} alt={label} loading="lazy" decoding="async" />
-            <AvatarFallback className="bg-gradient-primary text-[8px] font-bold">
+            <AvatarFallback className="bg-primary text-primary-foreground text-[8px] font-bold">
               {label.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -324,7 +324,7 @@ export function ForumEmpty({
 /** One reusable "press to do the thing" button for empty states. */
 export function ForumEmptyAction({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
-    <Button type="button" onClick={onClick} className="mt-2 h-10 gap-2 border-0 bg-gradient-primary shadow-glow">
+    <Button type="button" onClick={onClick} className="mt-2 h-10 gap-2 border-0 bg-primary text-primary-foreground shadow-md">
       {children}
     </Button>
   );

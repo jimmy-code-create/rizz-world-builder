@@ -86,7 +86,7 @@ export function PushNotificationSettings() {
   return (
     <section className="glass rounded-3xl border border-white/5 p-5 space-y-5">
       <div className="flex items-start gap-3">
-        <Bell className="mt-0.5 h-5 w-5 text-[var(--rizz-pink)]" />
+        <Bell className="mt-0.5 h-5 w-5 text-primary" />
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg font-semibold">Push notifications</h2>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -124,7 +124,7 @@ export function PushNotificationSettings() {
             </>
           ) : (
             <Button
-              className="bg-gradient-primary border-0"
+              className="bg-primary text-primary-foreground border-0"
               disabled={busy !== null || setupMissing}
               onClick={() => void withBusy("enable", () => enablePushNotifications(user.id))}
             >
@@ -178,7 +178,7 @@ export function PushNotificationSettings() {
                   <span className="min-w-0 flex-1 truncate text-xs">{conversationId}</span>
                   <button
                     type="button"
-                    className="text-xs text-[var(--rizz-pink)]"
+                    className="text-xs text-primary"
                     onClick={() => void patchPrefs({
                       muted_conversations: prefs.muted_conversations.filter((id) => id !== conversationId),
                     })}

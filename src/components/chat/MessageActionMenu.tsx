@@ -175,7 +175,7 @@ export function MessageActionMenu({
     <div className="mb-1.5 flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.035] p-2">
       <Avatar className="mt-0.5 h-7 w-7 shrink-0">
         <AvatarImage src={preview.avatarUrl ?? undefined} alt="" />
-        <AvatarFallback className="bg-gradient-primary text-[10px] font-bold text-primary-foreground">
+        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold text-primary-foreground">
           {preview.author.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -215,7 +215,7 @@ export function MessageActionMenu({
             ref={index === 0 ? firstActionRef : undefined}
             type="button"
             onClick={() => select(action)}
-            className={`group flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-[12px] font-medium tracking-[0.01em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--rizz-pink)] ${
+            className={`group flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-[12px] font-medium tracking-[0.01em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
               action.destructive
                 ? "text-destructive hover:bg-destructive/10"
                 : "text-foreground/85 hover:bg-white/[0.07] hover:text-foreground"
@@ -226,7 +226,7 @@ export function MessageActionMenu({
               className={`h-4 w-4 shrink-0 ${
                 action.destructive
                   ? "text-destructive"
-                  : "text-[var(--rizz-violet)] transition-colors group-hover:text-[var(--rizz-pink)]"
+                  : "text-muted-foreground transition-colors group-hover:text-primary"
               }`}
               strokeWidth={1.9}
             />
@@ -247,7 +247,7 @@ export function MessageActionMenu({
       aria-label={triggerRole === "button" ? "Open message actions" : "Message actions"}
       aria-haspopup="dialog"
       aria-expanded={open}
-      className="inline-flex max-w-full rounded-[inherit] align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rizz-pink)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="inline-flex max-w-full rounded-[inherit] align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       style={{ touchAction: "pan-y", WebkitTouchCallout: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -334,7 +334,7 @@ export function MessageActionMenu({
       >
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-[var(--rizz-pink)]/45 to-transparent"
+          className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent"
         />
         {previewHeader}
         {reactionBar && (

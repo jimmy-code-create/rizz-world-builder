@@ -111,7 +111,7 @@ function JoinRealmPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg items-center justify-center px-4 py-10">
-      <section className="w-full rounded-3xl border border-white/10 glass-strong p-6 text-center shadow-glow-lg">
+      <section className="w-full rounded-3xl border border-white/10 glass-strong p-6 text-center shadow-lg">
         <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to RIZZ
         </Link>
@@ -130,10 +130,10 @@ function JoinRealmPage() {
           </div>
         ) : preview?.realm_id ? (
           <>
-            <span className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-gradient-primary shadow-glow">
+            <span className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-primary text-primary-foreground shadow-md">
               <Hash className="h-9 w-9 text-white" />
             </span>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--rizz-pink)]">Realm invitation</p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Realm invitation</p>
             <h1 className="mt-2 font-display text-2xl font-extrabold">{preview.realm_name ?? "A realm"}</h1>
             {preview.topic && <p className="mt-2 text-sm text-muted-foreground">{preview.topic}</p>}
             <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground">
@@ -147,14 +147,14 @@ function JoinRealmPage() {
               <Button
                 onClick={() => join.mutate()}
                 disabled={join.isPending}
-                className="mt-6 h-11 w-full border-0 bg-gradient-primary text-primary-foreground shadow-glow"
+                className="mt-6 h-11 w-full border-0 bg-primary text-primary-foreground shadow-md"
               >
                 {join.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join realm"}
               </Button>
             ) : (
               <Button
                 onClick={signInToJoin}
-                className="mt-6 h-11 w-full border-0 bg-gradient-primary text-primary-foreground shadow-glow"
+                className="mt-6 h-11 w-full border-0 bg-primary text-primary-foreground shadow-md"
               >
                 Log in to join
               </Button>
@@ -163,7 +163,7 @@ function JoinRealmPage() {
             {alreadyMember && (
               <Button
                 onClick={() => void openRealm(preview.realm_id!)}
-                className="mt-6 h-11 w-full border-0 bg-gradient-primary text-primary-foreground shadow-glow"
+                className="mt-6 h-11 w-full border-0 bg-primary text-primary-foreground shadow-md"
               >
                 Open realm
               </Button>
