@@ -758,8 +758,13 @@
   opacity: 1;
 }
 @media (hover: none) {
-  /* Touch devices keep the gutter clear and rely on the message menu. */
-  .realm-message__time { display: none; }
+  /* Touch devices keep the gutter reserved so continuation messages stay perfectly aligned under group starts */
+  .realm-message__time {
+    visibility: hidden;
+    width: var(--chat-avatar);
+    flex: 0 0 auto;
+    display: block;
+  }
 }
 
 /* ============ DATE SEPARATORS ============ */

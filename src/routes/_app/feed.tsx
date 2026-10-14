@@ -140,10 +140,6 @@ function FeedPage() {
                 {formatNumber(todayCount)} new
               </span>
             )}
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              live
-            </span>
           </div>
         </div>
 

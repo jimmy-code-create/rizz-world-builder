@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi } from "lucide-react";
+import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
-import { channelVolume, useSoundSettings } from "@/lib/sound-settings";
+import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchRealmRoomMessages, sendRealmRoomMessage } from "@/lib/realms";
+import { toast } from "sonner";
 import {
   loadPeerAudio,
   peerGain,
@@ -189,6 +196,29 @@ export function VoiceCallView() {
   // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
   const musicBot = useMusicBotInCall();
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [soundSettings, setSoundSettings] = useSoundSettings();
+  const [chatBody, setChatBody] = useState("");
+  const peerAudio = usePeerAudio();
+  const qc = useQueryClient();
+
+  const roomMessages = useQuery({
+    queryKey: ["realm-room-messages", call?.channelId],
+    enabled: chatOpen && !!call?.channelId,
+    queryFn: () => fetchRealmRoomMessages(call!.channelId),
+    refetchInterval: 3000,
+  });
+
+  const sendMut = useMutation({
+    mutationFn: () => sendRealmRoomMessage(call!.channelId, user!.id, chatBody.trim()),
+    onSuccess: () => {
+      setChatBody("");
+      qc.invalidateQueries({ queryKey: ["realm-room-messages", call?.channelId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!call || !viewOpen) return null;
 
   const videosByPeer = new Map(
@@ -238,8 +268,28 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
+            aria-label="Open VC text chat"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${chatOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setChatOpen((v) => !v)}
+            title="VC Text Chat"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Voice settings"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${settingsOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setSettingsOpen(true)}
+            title="Voice Settings"
+          >
+            <Sliders className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             aria-label="Minimize call"
-            className="glass h-12 w-12 shrink-0 border-white/10"
+            className="glass h-11 w-11 shrink-0 border-white/10"
             onClick={closeView}
           >
             <ChevronDown className="h-5 w-5" />
@@ -459,6 +509,196 @@ export function VoiceCallView() {
           </p>
           {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
+
+        {/* Voice Settings Dialog */}
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="glass-strong border-white/10 max-w-md w-full max-h-[85vh] overflow-y-auto space-y-4">
+            <DialogHeader>
+              <DialogTitle className="font-display flex items-center gap-2">
+                <Sliders className="h-5 w-5 text-primary" /> Voice & Audio Settings
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 text-xs">
+              {/* Output Volume */}
+              <div className="space-y-2">
+                <div className="flex justify-between font-medium">
+                  <span className="text-foreground">Voice Volume</span>
+                  <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.voice)}</span>
+                </div>
+                <Slider
+                  value={[Math.round(soundSettings.voice * 100)]}
+                  min={0}
+                  max={200}
+                  step={5}
+                  onValueChange={([val]) => setSoundSettings({ voice: val / 100 })}
+                />
+              </div>
+
+              {/* Music Bot Volume */}
+              <div className="space-y-2">
+                <div className="flex justify-between font-medium">
+                  <span className="text-foreground">Music Bot Volume</span>
+                  <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.music)}</span>
+                </div>
+                <Slider
+                  value={[Math.round(soundSettings.music * 100)]}
+                  min={0}
+                  max={200}
+                  step={5}
+                  onValueChange={([val]) => setSoundSettings({ music: val / 100 })}
+                />
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs font-semibold">Noise Suppression</Label>
+                    <p className="text-[11px] text-muted-foreground">Filters background noise and echo</p>
+                  </div>
+                  <Switch
+                    checked={soundSettings.noiseSuppression}
+                    onCheckedChange={(v) => setSoundSettings({ noiseSuppression: v })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs font-semibold">Self Mute</Label>
+                    <p className="text-[11px] text-muted-foreground">Mute your microphone in this call</p>
+                  </div>
+                  <Switch checked={muted} onCheckedChange={toggleMute} />
+                </div>
+              </div>
+
+              {/* Participants Volume Management */}
+              <div className="space-y-2.5 pt-3 border-t border-white/10">
+                <Label className="text-xs font-semibold text-foreground">In-Call Members ({participants.length})</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {participants.map((p) => {
+                    const isMe = p.user_id === user?.id;
+                    const uName = p.user?.display_name || p.user?.username || "user";
+                    const isPeerMuted = peerAudio.muted.includes(p.user_id);
+                    const peerVol = peerVolumeOf(peerAudio, p.user_id);
+
+                    return (
+                      <div key={p.user_id} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="h-7 w-7 shrink-0">
+                            <AvatarImage src={p.user?.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-bold">
+                              {uName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-xs font-medium">
+                            {uName} {isMe && "(you)"}
+                          </span>
+                        </div>
+                        {!isMe && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-mono text-muted-foreground">{peerVol}%</span>
+                            <Slider
+                              value={[peerVol]}
+                              min={0}
+                              max={100}
+                              step={5}
+                              onValueChange={([val]) => setPeerVolume(p.user_id, val)}
+                              className="w-16"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => togglePeerMute(p.user_id)}
+                              aria-label={isPeerMuted ? "Unmute member" : "Mute member"}
+                            >
+                              {isPeerMuted ? <VolumeX className="h-3.5 w-3.5 text-destructive" /> : <Volume2 className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* VC Chat Sheet */}
+        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+          <SheetContent side="right" className="glass-strong border-white/10 w-full sm:max-w-md p-0 flex flex-col z-[140]">
+            <SheetHeader className="p-4 border-b border-white/10 flex flex-row items-center justify-between">
+              <SheetTitle className="font-display text-sm font-bold flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat
+              </SheetTitle>
+              <Button variant="ghost" size="icon" onClick={() => setChatOpen(false)} className="h-8 w-8 rounded-full">
+                <X className="h-4 w-4" />
+              </Button>
+            </SheetHeader>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+              {roomMessages.isLoading && (
+                <p className="py-6 text-center text-xs text-muted-foreground">Loading chat…</p>
+              )}
+              {!roomMessages.isLoading && (roomMessages.data ?? []).length === 0 && (
+                <p className="py-12 text-center text-xs text-muted-foreground">No messages in VC chat yet. Say hello!</p>
+              )}
+              {roomMessages.data?.map((msg) => {
+                const author = (msg.author ?? msg.sender ?? {}) as any;
+                const aName = author.display_name || author.username || "user";
+                return (
+                  <div key={msg.id} className="flex items-start gap-2 text-xs">
+                    <Avatar className="h-6 w-6 shrink-0 mt-0.5">
+                      <AvatarImage src={author.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary text-primary-foreground font-bold">
+                        {aName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="font-semibold text-foreground truncate">{aName}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-foreground/90 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">
+                        {msg.body}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-3 border-t border-white/10 bg-black/20 shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (chatBody.trim() && user) sendMut.mutate();
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  value={chatBody}
+                  onChange={(e) => setChatBody(e.target.value)}
+                  placeholder="Message voice chat…"
+                  maxLength={500}
+                  className="flex-1 h-10 px-3.5 rounded-full border border-white/10 bg-black/40 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!chatBody.trim() || sendMut.isPending}
+                  className="h-10 w-10 shrink-0 rounded-full bg-primary text-primary-foreground"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </FullScreenLayer>
   );

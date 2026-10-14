@@ -242,9 +242,9 @@ export function StoriesStrip() {
             className="flex shrink-0 flex-col items-center gap-1.5"
             aria-label="Add to your story"
           >
-            <div className="relative h-16 w-16 rounded-full bg-primary text-primary-foreground p-[2px] shadow-md">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                <Plus className="h-6 w-6" />
+            <div className="relative h-16 w-16 rounded-full p-[2px] ring-2 ring-primary bg-primary/20 transition-transform hover:scale-105 active:scale-95 shadow-[0_0_12px_rgba(200,255,61,0.25)]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-card hover:bg-surface-2 transition-colors">
+                <Plus className="h-6 w-6 text-primary stroke-[2.5]" />
               </div>
             </div>
             <span className="text-[10px] font-medium text-muted-foreground">Your story</span>

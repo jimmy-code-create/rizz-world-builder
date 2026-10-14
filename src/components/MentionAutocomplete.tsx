@@ -74,7 +74,7 @@ export function MentionAutocomplete({
         .order("rizz_score", { ascending: false })
         .limit(ROW_LIMIT);
       if (scoped) req = req.in("id", memberIds!);
-      if (q) req = req.ilike("username", `${q}%`);
+      if (q) req = req.or(`username.ilike.${q}%,display_name.ilike.%${q}%`);
       const { data } = await req;
       if (!ctl.signal.aborted) {
         setHits((data as ProfileHit[]) ?? []);
