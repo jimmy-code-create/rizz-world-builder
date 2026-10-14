@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -496,18 +495,23 @@ function ProfileMenu({
   onCustomStatus?: () => void;
   onChooseStatus?: (status: PresenceStatus) => Promise<void>;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   return (
-    <DropdownMenu onOpenChange={(open) => {
-      if (!open) {
-        setStatusExpanded(false);
-        setConfirmSignOut(false);
-      }
-    }}>
+    <DropdownMenu
+      open={menuOpen}
+      onOpenChange={(open) => {
+        setMenuOpen(open);
+        if (!open) {
+          setStatusExpanded(false);
+          setConfirmSignOut(false);
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <button
           aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
@@ -539,8 +543,20 @@ function ProfileMenu({
         side="bottom"
         sideOffset={8}
         collisionPadding={12}
-        className="rizz-account-menu z-[90] w-[248px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-140px)] overflow-y-auto overflow-x-hidden rounded-[14px] border border-[#2a2a2e] bg-[#141416] py-1 text-[#f2efe6] shadow-[0_8px_24px_rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-1 data-[state=open]:duration-120 motion-reduce:data-[state=open]:animate-none"
+        className="rizz-account-menu z-[90] w-[248px] max-w-[calc(100vw-24px)] max-h-[calc(100dvh-140px)] overflow-y-auto overflow-x-hidden rounded-[14px] border border-[#2a2a2e] bg-[#141416] py-[6px] text-[#f2efe6] shadow-[0_8px_24px_rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-1 data-[state=open]:duration-120 motion-reduce:data-[state=open]:animate-none"
       >
+        <style>{`
+          .rizz-account-menu[data-state="open"] {
+            animation-duration: 120ms !important;
+            animation-timing-function: ease-out;
+          }
+          @media (hover: none) {
+            .rizz-account-menu .rizz-account-menu-row { min-height: 44px; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .rizz-account-menu[data-state="open"] { animation: none !important; }
+          }
+        `}</style>
         <DropdownMenuItem asChild className="rizz-account-menu-row h-11 cursor-pointer px-[14px] text-[13px] font-normal text-[#9a9aa0] focus:bg-[#1c1c1f] focus:text-[#f2efe6]">
           <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
             @{profile?.username ?? ""}
@@ -548,7 +564,7 @@ function ProfileMenu({
         </DropdownMenuItem>
         {onStatus && (
           <>
-            <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+            <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
@@ -573,7 +589,7 @@ function ProfileMenu({
                       setStatusError("");
                       setStatusSaving(true);
                       void onChooseStatus(entry.value)
-                        .then(() => setStatusExpanded(false))
+                        .then(() => setMenuOpen(false))
                         .catch((error: unknown) => {
                           setStatusError(error instanceof Error ? error.message : "Couldn't update your status.");
                         })
@@ -599,7 +615,7 @@ function ProfileMenu({
             )}
           </>
         )}
-        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />
         <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
           <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
             <UserIcon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Profile
@@ -617,14 +633,14 @@ function ProfileMenu({
         <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
           <Link to="/badges"><Trophy className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Badges</Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />
         <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
           <Link to="/settings"><Settings className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Settings</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="rizz-account-menu-row h-10 cursor-pointer gap-3 px-[14px] text-[15px] font-medium text-[#f2efe6] focus:bg-[#1c1c1f] focus:text-[#f2efe6] data-[highlighted]:bg-[#1c1c1f]">
           <Link to="/settings/appearance"><Palette className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} /> Appearance</Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 border-[#2a2a2e]" />
+        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />
         {confirmSignOut ? (
           <>
             <DropdownMenuItem
