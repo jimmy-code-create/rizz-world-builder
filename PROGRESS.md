@@ -159,3 +159,7 @@
 ### Phase 24: Message long-press lag
 - [x] Root causes: two racing 320ms long-press timers per press (row + menu trigger = double vibrate + double open) and 80 mounted Sheet/Popover portal trees per channel - **DONE**
 - [x] `MessageActionMenu` takes `detectPress` (realm rows opt out; double-tap/context-menu/keyboard untouched) and mounts its overlay only for the open row (open animation intact); DMs/groups unchanged - **DONE**
+
+### Phase 25: Award-a-badge redesign (from your screenshot)
+- [x] Fixed the exact error you hit: handle lookup is case-insensitive (`Jimmy` finds `@jimmy`, LIKE wildcards escaped) - **DONE**
+- [x] Award card matches the app: uppercase Admin label, live preview (big glowing cat icon + name + tier chip + flavor from the DB row), lime chips, pill input + lime Award - **DONE**

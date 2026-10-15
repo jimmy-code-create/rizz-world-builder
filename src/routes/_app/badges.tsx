@@ -4,8 +4,9 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadges, type Badge } from "@/lib/badges";
-import { BADGE_SET } from "@/lib/badge-set";
+import { BADGE_SET, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
 import { BadgeChip } from "@/components/BadgeChip";
+import { BadgeIcon } from "@/components/BadgeIcon";
 import { Award, Lock, Sparkles, CheckCircle2, Search, Trophy, ShieldCheck, Share2 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -61,10 +62,12 @@ export function BadgesPage() {
     try {
       const badgeRow = (all.data ?? []).find((b) => b.slug === grantSlug);
       if (!badgeRow) throw new Error("That badge isn't in the database yet — apply the badge migration first.");
+      // Handles are case-insensitive: "Jimmy" finds @jimmy.
+      // Backslash-escape LIKE wildcards so "100%_real" still matches literally.
       const { data: target, error: lookupError } = await supabase
         .from("profiles")
         .select("id")
-        .eq("username", handle)
+        .ilike("username", handle.replace(/([%_\\])/g, "\\$1"))
         .maybeSingle();
       if (lookupError) throw lookupError;
       if (!target) throw new Error(`No account @${handle} found.`);
@@ -367,13 +370,45 @@ export function BadgesPage() {
       </div>
 
       {adminCheck.data === true && (
-        <div className="glass rounded-3xl p-5 border border-white/10 space-y-3">
+        <div className="glass rounded-3xl p-5 border border-white/10 space-y-4">
           <div>
-            <h2 className="font-display text-base font-bold">Award a badge</h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8A8A8E]">Admin</p>
+            <h2 className="font-display text-base font-bold mt-0.5">Award a badge</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Admin only. Type your own @handle to assign one to yourself.
+              Type your own @handle to assign one to yourself.
             </p>
           </div>
+
+          {(() => {
+            const entry = canonicalFor(grantSlug) ?? BADGE_SET[0];
+            const dbRow = (all.data ?? []).find((b) => b.slug === entry.slug);
+            const glow = dbRow?.color ?? entry.glow;
+            return (
+              <div
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                style={{ boxShadow: `0 0 24px ${glow}22` }}
+              >
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
+                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} glow={glow} size={30} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">
+                    {dbRow?.name ?? entry.name}
+                    <span
+                      className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                      style={{ borderColor: `${glow}55`, color: glow }}
+                    >
+                      {TIER_LABEL[entry.tier]}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {dbRow?.description ?? entry.flavor}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Badge to award">
             {BADGE_SET.map((entry) => {
               const selected = grantSlug === entry.slug;
