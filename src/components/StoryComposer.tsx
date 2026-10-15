@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -357,9 +358,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       style={{ height: "100dvh" }}
     >
       <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
-        <button onClick={onClose} className="h-9 w-9 rounded-full glass-strong grid place-items-center">
-          <X className="h-5 w-5" />
-        </button>
+        <CloseButton onClick={onClose} aria-label="Close" className="glass-strong" />
         <div className="flex items-center gap-2">
           <button onClick={undo} disabled={history.length === 0} className="h-9 w-9 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Undo">
             <Undo2 className="h-5 w-5" />

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sliders, Mic, Volume2, VolumeX, Activity, Headphones, Sparkles } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CloseButton } from "@/components/ui/close-button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -292,11 +293,14 @@ export function VoiceSettingsSheet({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="glass-strong z-[140] rounded-t-3xl border-white/10 p-0 max-h-[85vh] flex flex-col overflow-hidden">
-          <SheetHeader className="p-4 pr-12 border-b border-white/10 text-left shrink-0">
+        <SheetContent hideClose side="bottom" className="glass-strong z-[140] rounded-t-3xl border-white/10 p-0 max-h-[85vh] flex flex-col overflow-hidden">
+          <SheetHeader className="flex flex-row items-center justify-between p-3.5 px-4 border-b border-white/10 text-left shrink-0">
             <SheetTitle className="font-display flex items-center gap-2 text-base">
               <Sliders className="h-4 w-4 text-primary" /> Voice & Audio Settings
             </SheetTitle>
+            <SheetClose asChild>
+              <CloseButton />
+            </SheetClose>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
         </SheetContent>
@@ -306,11 +310,14 @@ export function VoiceSettingsSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 max-w-md w-full p-0 max-h-[85vh] flex flex-col overflow-hidden">
-        <DialogHeader className="p-4 pr-12 border-b border-white/10 shrink-0">
+      <DialogContent hideClose className="glass-strong border-white/10 max-w-md w-full p-0 max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex flex-row items-center justify-between p-3.5 px-4 border-b border-white/10 shrink-0">
           <DialogTitle className="font-display flex items-center gap-2">
             <Sliders className="h-5 w-5 text-primary" /> Voice & Audio Settings
           </DialogTitle>
+          <DialogClose asChild>
+            <CloseButton />
+          </DialogClose>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
       </DialogContent>

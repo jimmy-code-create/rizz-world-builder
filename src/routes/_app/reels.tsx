@@ -14,7 +14,8 @@ import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CloseButton } from "@/components/ui/close-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -780,11 +781,15 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        hideClose
         className="glass-strong border-white/10 rounded-t-3xl max-h-[80dvh] flex flex-col pb-[max(env(safe-area-inset-bottom),0.75rem)]"
       >
-        <SheetHeader className="text-left">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <SheetTitle className="font-display text-lg">Comments</SheetTitle>
-        </SheetHeader>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
+        </div>
         <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-3">
           {comments.isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
           {comments.data?.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Be the first to comment ✨</p>}

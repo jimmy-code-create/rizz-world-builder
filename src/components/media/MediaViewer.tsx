@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { X } from "lucide-react";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { CloseButton } from "@/components/ui/close-button";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -200,15 +200,12 @@ export function MediaViewer({
           />
         </div>
 
-        <button
-          type="button"
+        <CloseButton
           onClick={onClose}
           aria-label="Close media viewer"
-          className="absolute right-3 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="absolute right-3 z-10 bg-white/10 text-white backdrop-blur-md hover:bg-white/25"
           style={{ top: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
-        >
-          <X className="h-6 w-6" />
-        </button>
+        />
       </div>
     </FullScreenLayer>
   );

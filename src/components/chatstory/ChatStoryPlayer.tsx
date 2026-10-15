@@ -10,8 +10,8 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
-  X,
 } from "lucide-react";
+import { CloseButton } from "@/components/ui/close-button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import panelOne from "@/assets/chatstory/room4b-panel-1.jpg";
 import panelTwo from "@/assets/chatstory/room4b-panel-2.jpg";
@@ -474,9 +474,7 @@ export function ChatStoryPlayer({
             className="relative z-10 flex items-center gap-3 px-4 pb-3"
             style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 12px)" }}
           >
-            <button onClick={onClose} aria-label="Close story" className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-              <X className="h-5 w-5" />
-            </button>
+            <CloseButton onClick={onClose} aria-label="Close story" className="glass-strong" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold">{title}</p>
               <p className="truncate text-[11px] text-muted-foreground">{activeSceneLabel}</p>

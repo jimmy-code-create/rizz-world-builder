@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { toast } from "sonner";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CloseButton } from "@/components/ui/close-button";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchReactorProfiles, reactorsQueryKey, type ReactionGroup, type ReactionScope } from "@/lib/reactions";
 import { reactionHaptic, triggerReactionBurst, triggerBurstOnElement } from "@/components/chat/ReactionBurst";
@@ -275,11 +276,15 @@ function ReactorsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        hideClose
         className="glass-strong z-[110] max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
-        <SheetHeader className="text-left">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <SheetTitle className="font-display text-lg">Reactions</SheetTitle>
-        </SheetHeader>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
+        </div>
         <div className="mt-3 space-y-4">
           {groups.map((group) => (
             <section key={group.emoji}>

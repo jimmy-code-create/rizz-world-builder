@@ -44,3 +44,12 @@
 
 ### Phase 7: Final Regression Checklist
 - [ ] Item 15: Cross-surface verification: no console errors, mobile touch targets >= 44px, accessibility tags, prefers-reduced-motion compliance, zero purple gradients - **NOT STARTED**
+
+---
+
+## Discord-Style Polish (5 Tasks)
+- [x] Task 1: One Close (X) Button (Investigate cause of double X, unify with shared `<CloseButton />` 44x44px target, single 20px SVG stroke 2 cream #f2efe6 at 70%/100%, lime :focus-visible ring, flex header vertical alignment, replace ad-hoc close buttons across sheets/dialogs/stories/viewers) - **DONE**
+- [ ] Task 2: Small set of 12 custom animated cat emojis - **NOT STARTED**
+- [ ] Task 3: Status, fast and Discord-style - **NOT STARTED**
+- [ ] Task 4: Discord-style unified profile card - **NOT STARTED**
+- [ ] Task 5: Discord-style mention highlight + chat polish - **NOT STARTED**

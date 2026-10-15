@@ -3,7 +3,8 @@ import { Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ChoiceMark } from "@/components/ui/choice-mark";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -178,13 +179,21 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        hideClose
         className="glass-strong rounded-t-3xl border-white/10 max-h-[88dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
       >
         <div className="sheet-drag-handle mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
-        <SheetTitle className="font-display text-lg">Status</SheetTitle>
-        <SheetDescription className="text-xs text-muted-foreground">
-          Choose how you appear, or add a short custom status.
-        </SheetDescription>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="font-display text-lg">Status</SheetTitle>
+            <SheetDescription className="text-xs text-muted-foreground">
+              Choose how you appear, or add a short custom status.
+            </SheetDescription>
+          </div>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
+        </div>
 
         <div className="mt-4 space-y-1" role="radiogroup" aria-label="Status">
           {PRESENCE_STATUSES.map((entry) => {

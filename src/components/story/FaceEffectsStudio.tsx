@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Slider } from "@/components/ui/slider";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import {
@@ -281,14 +282,11 @@ export function FaceEffectsStudio({
             className="flex shrink-0 items-center justify-between px-3 py-2"
             style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
           >
-            <button
-              type="button"
+            <CloseButton
               onClick={onClose}
               aria-label="Close the lens studio"
-              className="grid h-11 w-11 place-items-center rounded-full glass-strong"
-            >
-              <X className="h-5 w-5" />
-            </button>
+              className="glass-strong"
+            />
             <div className="flex items-center gap-2">
               <span className="rounded-full glass-strong px-2.5 py-1 text-[11px] font-semibold">
                 {effect ? effect.name : "Lenses"}

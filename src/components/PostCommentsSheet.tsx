@@ -4,7 +4,8 @@ import { ChevronUp, CornerDownRight, Maximize2, Send, ArrowDownUp } from "lucide
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { CloseButton } from "@/components/ui/close-button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -296,11 +297,11 @@ export function PostCommentsSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        hideClose
         onOpenAutoFocus={(event) => event.preventDefault()}
         className="flex h-[92dvh] w-[min(100vw-1rem,44rem)] max-w-none flex-col gap-0 overflow-hidden rounded-3xl border-white/10 glass-strong p-0 sm:h-[86dvh]"
       >
-        {/* pr-12 keeps the sort control clear of the dialog's own close button. */}
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 py-3 pl-4 pr-12">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 py-2.5 px-4">
           <DialogTitle className="min-w-0 truncate font-display text-base font-bold">
             Comments{" "}
             {comments.data ? (
@@ -309,17 +310,22 @@ export function PostCommentsSheet({
               </span>
             ) : null}
           </DialogTitle>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-label={sort === "top" ? "Sorted by top voted. Switch to newest" : "Sorted by newest. Switch to top voted"}
-            onClick={() => setSort((s) => (s === "top" ? "new" : "top"))}
-            className="h-8 shrink-0 gap-1.5 border-white/10 bg-white/5 px-2.5 text-xs"
-          >
-            <ArrowDownUp className="h-3.5 w-3.5" />
-            <span className="hidden min-[360px]:inline">{sort === "top" ? "Top voted" : "Newest"}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={sort === "top" ? "Sorted by top voted. Switch to newest" : "Sorted by newest. Switch to top voted"}
+              onClick={() => setSort((s) => (s === "top" ? "new" : "top"))}
+              className="h-8 shrink-0 gap-1.5 border-white/10 bg-white/5 px-2.5 text-xs"
+            >
+              <ArrowDownUp className="h-3.5 w-3.5" />
+              <span className="hidden min-[360px]:inline">{sort === "top" ? "Top voted" : "Newest"}</span>
+            </Button>
+            <DialogClose asChild>
+              <CloseButton />
+            </DialogClose>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4">
