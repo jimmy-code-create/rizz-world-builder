@@ -163,3 +163,6 @@
 ### Phase 25: Award-a-badge redesign (from your screenshot)
 - [x] Fixed the exact error you hit: handle lookup is case-insensitive (`Jimmy` finds `@jimmy`, LIKE wildcards escaped) - **DONE**
 - [x] Award card matches the app: uppercase Admin label, live preview (big glowing cat icon + name + tier chip + flavor from the DB row), lime chips, pill input + lime Award - **DONE**
+
+### Phase 26: Image uploads in posts
+- [x] Composer image button (preview + remove + uploading state, 50MB/type guards); backend + feed already supported images, only the picker was missing; image-only posts allowed - **DONE**
