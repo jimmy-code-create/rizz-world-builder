@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { listRealmMembers, type RealmMember as RealmMemberRow, type RealmRoom } from "@/lib/realms";
-import { canModerateRealm } from "@/lib/realm-roles";
+import { canModerateRealm, realmRoleLabel } from "@/lib/realm-roles";
 import {
   channelPermissionsKey,
   describePermissionError,
@@ -280,7 +280,7 @@ export function ChannelPermissionsBody({
                       <p className="truncate text-sm font-bold">{name}</p>
                       <p className="truncate text-[11px] text-muted-foreground">
                         {isMod
-                          ? "Owner or moderator · always allowed"
+                          ? `${realmRoleLabel(member.role as never)} · always allowed`
                           : busy
                             ? "Saving…"
                             : allowed
@@ -324,11 +324,17 @@ export function ChannelPermissionsSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* Flex column: the header stays pinned and only the body scrolls, so a
+          long member list can never trap iOS rubber-banding or steal taps.
+          overscroll-contain keeps the drag inside instead of scrolling the page
+          underneath the sheet (which made the whole thing feel frozen). */}
       <SheetContent
         side="bottom"
-        className="glass-strong z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        className="glass-strong z-[70] flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10"
       >
-        <SheetHeader className="text-left">
+        <SheetHeader
+          className="shrink-0 border-b border-white/10 bg-background/60 px-6 pb-4 pt-5 text-left backdrop-blur-md"
+        >
           <SheetTitle className="font-display text-xl break-words">
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
@@ -341,14 +347,16 @@ export function ChannelPermissionsSheet({
           </p>
         </SheetHeader>
 
-        <ChannelPermissionsBody
-          realmId={realmId}
-          realmName={realmName}
-          rooms={rooms}
-          canModerate={canModerate}
-          realmReactionsMode={realmReactionsMode}
-          active={open}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-[max(env(safe-area-inset-bottom),1rem)]">
+          <ChannelPermissionsBody
+            realmId={realmId}
+            realmName={realmName}
+            rooms={rooms}
+            canModerate={canModerate}
+            realmReactionsMode={realmReactionsMode}
+            active={open}
+          />
+        </div>
       </SheetContent>
     </Sheet>
   );

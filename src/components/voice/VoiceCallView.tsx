@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi } from "lucide-react";
+import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SlidersVertical, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
@@ -158,6 +159,7 @@ export function VoiceCallAudio() {
 
 export function VoiceCallView() {
   const { user } = useAuth();
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const {
     call,
     viewOpen,
@@ -235,6 +237,16 @@ export function VoiceCallView() {
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
             </Button>
           )}
+          {/* Per-call audio: devices, volume, noise suppression, mic test. */}
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Voice settings"
+            className="glass h-12 w-12 shrink-0 border-white/10"
+            onClick={() => setVoiceSettingsOpen(true)}
+          >
+            <SlidersVertical className="h-5 w-5" />
+          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -459,7 +471,14 @@ export function VoiceCallView() {
           </p>
           {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
+
       </div>
+      <VoiceSettingsSheet
+        open={voiceSettingsOpen}
+        onOpenChange={setVoiceSettingsOpen}
+        realmId={call.realmId}
+        channelName={call.channelName}
+      />
     </FullScreenLayer>
   );
 }

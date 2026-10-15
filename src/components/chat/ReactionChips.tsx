@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { toast } from "sonner";
@@ -248,6 +249,7 @@ function ReactorsSheet({
   messageId,
   groups,
   reactorsFor,
+  onToggle,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -255,7 +257,12 @@ function ReactorsSheet({
   messageId: string;
   groups: ReactionGroup[];
   reactorsFor: (messageId: string, emoji: string) => string[];
+  /** Toggles my reaction — the sheet's "Remove" button calls this. */
+  onToggle: (emoji: string) => Promise<boolean>;
 }) {
+  const { user } = useAuth();
+  const myId = user?.id ?? null;
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
   const userIds = open ? [...new Set(groups.flatMap((group) => reactorsFor(messageId, group.emoji)))] : [];
   const profiles = useQuery({
     queryKey: reactorsQueryKey(scope, messageId, `all:${groups.map((group) => group.emoji).join("")}`),
@@ -265,18 +272,12 @@ function ReactorsSheet({
   });
 
   const byId = new Map(
-    (profiles.data ?? []).map((person: { id: string; username: string | null; display_name: string | null; avatar_url: string | null }) => [
-      person.id,
-      person,
-    ]),
+    (profiles.data ?? []).map((person: { id: string; username: string | null; display_name: string | null; avatar_url: string | null }) => [person.id, person]),
   );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="glass-strong z-[70] max-h-[70dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
-      >
+      <SheetContent side="bottom" className="glass-strong z-[70] max-h-[70dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]">
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-lg">Reactions</SheetTitle>
         </SheetHeader>
@@ -284,20 +285,15 @@ function ReactorsSheet({
           {groups.map((group) => (
             <section key={group.emoji}>
               <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-                <span aria-hidden="true" className="text-[15px]">
-                  {group.emoji}
-                </span>
-                <span className="text-muted-foreground">
-                  {group.count} {group.count === 1 ? "reaction" : "reactions"}
-                </span>
+                <span aria-hidden="true" className="text-[15px]">{group.emoji}</span>
+                <span className="text-muted-foreground">{group.count} {group.count === 1 ? "reaction" : "reactions"}</span>
               </h3>
               <div className="mt-1.5 space-y-1">
-                {profiles.isLoading && (
-                  <p className="px-1 text-xs text-muted-foreground">Loading…</p>
-                )}
+                {profiles.isLoading && <p className="px-1 text-xs text-muted-foreground">Loading…</p>}
                 {reactorsFor(messageId, group.emoji).map((userId) => {
                   const person = byId.get(userId);
                   const name = person?.display_name || person?.username || "Someone";
+                  const mine = userId === myId;
                   return (
                     <div key={`${group.emoji}-${userId}`} className="flex min-h-12 items-center gap-3 rounded-2xl px-1">
                       <Avatar className="h-8 w-8">
@@ -306,7 +302,21 @@ function ReactorsSheet({
                           {name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="min-w-0 truncate text-sm">{name}</span>
+                      <span className="min-w-0 truncate text-sm">{mine ? "You" : name}</span>
+                      {mine && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setRemovingKey(`${group.emoji}:${userId}`);
+                            void onToggle(group.emoji).then(() => setRemovingKey(null));
+                          }}
+                          disabled={removingKey === `${group.emoji}:${userId}`}
+                          className="ml-auto rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground disabled:opacity-60"
+                        >
+                          {removingKey === `${group.emoji}:${userId}` ? "Removing…" : "Remove"}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -375,7 +385,16 @@ export function ReactionChips({
               canReact={canReact}
               pulse={pulseFor(group.emoji)}
               label="Tap to toggle, long press to see who reacted."
-              peekTarget={{ emoji: group.emoji, count: group.count, source: { kind: "message", id: messageId } }}
+              peekTarget={{
+                emoji: group.emoji,
+                count: group.count,
+                source: { kind: "message", id: messageId },
+                // Remove works here too: the peek's "Remove" action calls the
+                // same store-backed toggle the chip uses (single source of truth).
+                ...(group.mine
+                  ? { remove: () => { void onToggle(group.emoji); } }
+                  : {}),
+              }}
               onToggle={() => onToggle(group.emoji)}
               onLongPress={() => setSheetOpen(true)}
             />
@@ -406,6 +425,7 @@ export function ReactionChips({
         messageId={messageId}
         groups={groups}
         reactorsFor={reactorsFor}
+        onToggle={onToggle}
       />
     </>
   );

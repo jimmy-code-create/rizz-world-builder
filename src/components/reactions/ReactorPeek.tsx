@@ -40,7 +40,18 @@ export type ReactorSource =
   /** Reactors already in the payload — nothing to fetch (chat does this). */
   | { kind: "known"; reactors: Reactor[] };
 
-export type ReactionTarget = { emoji: string; count: number; source: ReactorSource };
+/**
+ * One chip's peek target: which item, which emoji, and — when the surface can
+ * remove a reaction — the toggle to call for a "Remove" action on your own row.
+ * The surface owns its RPC; the peek only displays it.
+ */
+export type ReactionTarget = {
+  emoji: string;
+  count: number;
+  source: ReactorSource;
+  /** Removes MY reaction. Omit on surfaces that cannot (or shouldn't) offer it. */
+  remove?: () => void | Promise<unknown>;
+};
 
 const TABLE = {
   post: "post_reactions",
@@ -175,7 +186,7 @@ export function ReactorPeekProvider({ children }: { children: ReactNode }) {
   return (
     <PeekContext.Provider value={value}>
       {children}
-      {peek && (
+          {peek && (
         <div
           ref={panelRef}
           id={tooltipId}
@@ -183,14 +194,14 @@ export function ReactorPeekProvider({ children }: { children: ReactNode }) {
           style={placement}
           className="pointer-events-none fixed z-[300] w-[min(20rem,calc(100vw-1rem))] rounded-[10px] border border-border bg-popover p-3 shadow-[var(--shadow-2)] transition-opacity duration-150"
         >
-          <PeekBody target={peek.target} />
+          <PeekBody target={peek.target} onClose={close} />
         </div>
       )}
     </PeekContext.Provider>
   );
 }
 
-function PeekBody({ target }: { target: ReactionTarget }) {
+function PeekBody({ target, onClose }: { target: ReactionTarget; onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data, isLoading } = useReactorList(target);
@@ -252,6 +263,19 @@ function PeekBody({ target }: { target: ReactionTarget }) {
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {isYou ? "You" : reactor.name}
                   </span>
+                  {isYou && target.remove && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void Promise.resolve(target.remove!()).then(() => onClose());
+                      }}
+                      className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               );
             })}

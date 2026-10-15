@@ -194,11 +194,40 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       qc.setQueryData(queryKey, next);
       return { queryKey, previous };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["feed"] });
+    onSuccess: (_data, variables) => {
+      // SINGLE SOURCE OF TRUTH: the server owns the count. Reconcile the
+      // reaction list once after the toggle so a chip never lies (a remote
+      // SINGLE SOURCE OF TRUTH: the server owns the count. Reconcile the
+      // reaction list once after the toggle so a chip never lies (a remote
+      // echo, a failed remove or a count the feed cached wrong, all self-heal
+      // here). The feed's cached reaction_count is nudged in place instead of
+      // invalidated — no refetch, no flicker, no stale number.
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
+      if (variables) {
+        const delta = variables.mine ? -1 : 1;
+        qc.setQueriesData<{ id: string; reaction_count?: number }[]>({ queryKey: ["feed"] }, (posts) =>
+          posts?.map((entry) =>
+            entry.id === post.id
+              ? { ...entry, reaction_count: Math.max(0, (entry.reaction_count ?? 0) + delta) }
+              : entry,
+          ),
+        );
+      }
     },
     onError: (e: Error, _variables, context) => {
       if (context) qc.setQueryData(context.queryKey, context.previous);
+      // A failed remove also leaves the cached reaction_count off by one —
+      // reconcile the post list the same way a success would.
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
+      const mine = _variables?.mine;
+      const mine = _variables?.mine;
+      qc.setQueriesData<{ id: string; reaction_count?: number }[]>({ queryKey: ["feed"] }, (posts) =>
+        posts?.map((entry) =>
+          entry.id === post.id
+            ? { ...entry, reaction_count: Math.max(0, (entry.reaction_count ?? 0) + (mine ? 1 : -1)) }
+            : entry,
+        ),
+      );
       toast.error(e.message);
     },
   });
@@ -511,7 +540,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               emoji={emoji}
               count={count}
               mine={mine}
-              target={{ emoji, count, source: { kind: "post", id: post.id } }}
+              // Remove works end to end: the peek's "Remove" button calls the
+              // same toggle the chip itself uses (one source of truth).
+              target={{
+                emoji,
+                count,
+                source: { kind: "post", id: post.id },
+                ...(mine && user ? { remove: () => toggleReaction(emoji) } : {}),
+              }}
               onToggle={() => toggleReaction(emoji)}
             />
           ))}
@@ -866,7 +902,12 @@ function CommentInteractions({ commentId }: { commentId: string }) {
           emoji={emoji}
           count={grouped[emoji]?.count ?? 0}
           mine={grouped[emoji]?.mine ?? false}
-          target={{ emoji, count: grouped[emoji]?.count ?? 0, source: { kind: "comment", id: commentId } }}
+          target={{
+            emoji,
+            count: grouped[emoji]?.count ?? 0,
+            source: { kind: "comment", id: commentId },
+            ...(grouped[emoji]?.mine ? { remove: () => react.mutate(emoji) } : {}),
+          }}
           onToggle={() => react.mutate(emoji)}
           className="h-5 gap-1 px-1.5 text-[10px]"
           title={`React ${emoji}`}

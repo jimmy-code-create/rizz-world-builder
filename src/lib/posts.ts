@@ -282,7 +282,9 @@ export async function addReaction(postId: string, userId: string, emoji: string)
 }
 
 export async function removeReaction(postId: string, userId: string, emoji: string) {
-  return addReaction(postId, userId, emoji);
+  const { data, error } = await (supabase.rpc as any)("toggle_post_reaction", { _post_id: postId, _emoji: emoji });
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchReactions(postId: string) {
