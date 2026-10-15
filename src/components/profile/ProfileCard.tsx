@@ -2,10 +2,8 @@ import { Fragment, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AtSign, Award, BadgeCheck, Ban, Camera, Check, Crown, Flame, Flag, Gamepad2, Gem, Gift, Globe,
-  Hand, Hash, Heart, Image as ImageIcon, Leaf, Link2, MapPin, Medal, MessageCircle, Mic, Moon,
-  MoreHorizontal, Music, Palette, PartyPopper, Pencil, Phone, Rocket, ShieldCheck, Sparkles, Sprout,
-  Star, Sun, ThumbsUp, Trophy, UserCheck, UserPlus, VolumeX, Volume2, Wand2, Zap, type LucideIcon,
+  AtSign, Ban, Check, Flag, Link2, MessageCircle, MoreHorizontal,
+  Pencil, Phone, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CustomStatusLine, StatusIcon } from "@/components/presence/StatusDot";
+import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence/StatusDot";
+import { BadgeIcon } from "@/components/BadgeIcon";
+import { canonBadges, canonicalFor } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -51,59 +51,7 @@ export function formatCount(value: number): string {
   return `${(value / 1_000_000).toFixed(abs % 1_000_000 === 0 ? 0 : 1)}M`;
 }
 
-/**
- * Badge rows store icon keys (badges.icon = "badge-check", "hash", "image"…),
- * never display text — so map names to real lucide glyphs, let actual emoji
- * render as-is, and fall back to a medal. The pill must never print
- * "badge-check" or "BadgeCheck".
- */
-const BADGE_ICONS: Record<string, LucideIcon> = {
-  "badge-check": BadgeCheck, badgecheck: BadgeCheck, "check-badge": BadgeCheck, "check-circle": BadgeCheck,
-  verified: BadgeCheck, certified: BadgeCheck, check: Check,
-  award: Award, trophy: Trophy, medal: Medal, crown: Crown, gem: Gem, diamond: Gem,
-  star: Star, sparkles: Sparkles, sparkle: Sparkles, fire: Flame, flame: Flame, "on-fire": Flame,
-  zap: Zap, bolt: Zap, lightning: Zap,
-  heart: Heart, "thumbs-up": ThumbsUp, like: ThumbsUp, hand: Hand, wave: Hand,
-  leaf: Leaf, sprout: Sprout, seedling: Sprout, early: Sprout,
-  gift: Gift, rocket: Rocket, "party-popper": PartyPopper, party: PartyPopper,
-  "shield-check": ShieldCheck, shield: ShieldCheck, security: ShieldCheck,
-  camera: Camera, photo: Camera, image: ImageIcon, media: ImageIcon,
-  hash: Hash, tag: Hash,
-  music: Music, mic: Mic, microphone: Mic, "gamepad-2": Gamepad2, gamepad: Gamepad2, game: Gamepad2,
-  sun: Sun, moon: Moon, globe: Globe, world: Globe, map: MapPin, "map-pin": MapPin, pin: MapPin,
-  pen: Pencil, pencil: Pencil, edit: Pencil, palette: Palette, art: Palette, wand: Wand2, "wand-2": Wand2,
-  "message-circle": MessageCircle, chat: MessageCircle, comment: MessageCircle,
-};
-
-function BadgeGlyph({ icon, className }: { icon: string; className?: string }) {
-  const key = (icon || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
-  const Glyph = key ? BADGE_ICONS[key] : undefined;
-  if (Glyph) return <Glyph aria-hidden="true" className={className} />;
-  // A real emoji stays a glyph; a bare unknown key never leaks out as text.
-  if (icon && /[^\x20-\x7e]/.test(icon)) {
-    return (
-      <span aria-hidden="true" className="inline-flex items-center justify-center text-[13px] leading-none">
-        {icon}
-      </span>
-    );
-  }
-  return <Award aria-hidden="true" className={className} />;
-}
-
 type CardBadge = { slug: string; name: string; icon: string; color: string; description: string; earnedAt?: string | null };
-
-/** Dedupe by slug; Verified first, then Top 10, founder, the rest. */
-function orderBadges(list: CardBadge[]): CardBadge[] {
-  const seen = new Set<string>();
-  const unique = list.filter((badge) => {
-    if (!badge.slug || seen.has(badge.slug)) return false;
-    seen.add(badge.slug);
-    return true;
-  });
-  const weight = (badge: CardBadge) =>
-    badge.slug === "verified" ? 0 : badge.slug === "top-10" ? 1 : /founder/i.test(badge.slug) ? 2 : 3;
-  return [...unique].sort((a, b) => weight(a) - weight(b));
-}
 
 const REALM_ROLE_META: Record<string, { label: string; color: string }> = {
   owner: { label: "Owner", color: "#ffc457" },
@@ -180,9 +128,9 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           description: b.description ?? "",
           earnedAt: typeof b.awarded_at === "string" ? b.awarded_at : null,
         }));
-        // "Verified" is an earned badge (badges.slug = verified / verified_creator),
+        // Badge set v2: identity-verified = the "no-cap" badge,
         // never a profiles column.
-        const isVerified = earnedBadges.some((b) => b.slug === "verified" || b.slug === "verified_creator");
+        const isVerified = earnedBadges.some((b) => b.slug === "no-cap");
         return {
           deleted: false,
           id: String(p.id ?? userId),
@@ -199,7 +147,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           rank: typeof d.rank === "number" ? d.rank : null,
           followers: Number(d.followers ?? 0),
           following: Number(d.following ?? 0),
-          badges: earnedBadges.filter((b) => b.slug !== "verified" && b.slug !== "verified_creator"),
+          badges: earnedBadges,
           mutualPreview: d.mutual_preview ?? [],
           mutualTotal: Number(d.mutual_total ?? 0),
           viewerFollows: !!d.viewer_follows,
@@ -298,8 +246,8 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
       })
       .filter(Boolean) as CardBadge[]);
   } catch { /* badges are best-effort */ }
-  const verified = badges.some((b) => b.slug === "verified" || b.slug === "verified_creator");
-  if (verified) badges = badges.filter((b) => b.slug !== "verified" && b.slug !== "verified_creator");
+  // Badge set v2: identity-verified = the "no-cap" badge.
+  const verified = badges.some((b) => b.slug === "no-cap");
 
   return {
     deleted: false,
@@ -357,6 +305,7 @@ export function ProfileCard({
   onMention,
   onCall,
   onOpenChange,
+  onEditStatus,
 }: {
   userId: string;
   username?: string | null;
@@ -368,6 +317,8 @@ export function ProfileCard({
   onMention?: (username: string) => void;
   onCall?: (userId: string) => void;
   onOpenChange?: (open: boolean) => void;
+  /** Owner tap on the status pill opens the status editor. */
+  onEditStatus?: () => void;
 }) {
   const { user: me } = useAuth();
   const nav = useNavigate();
@@ -568,18 +519,10 @@ export function ProfileCard({
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  const computedBadges: CardBadge[] = orderBadges([
-    ...(d.verified
-      ? [{ slug: "verified", name: "Verified", icon: "badge-check", color: "#c8ff3d", description: "Verified creator", earnedAt: null }]
-      : []),
-    ...(d.rank != null && d.rank <= 10
-      ? [{ slug: "top-10", name: "Top 10", icon: "trophy", color: "#c8ff3d", description: `Ranked #${d.rank} on the leaderboard`, earnedAt: null }]
-      : []),
-    ...(d.createdAt && new Date(d.createdAt).getTime() < new Date("2025-01-01").getTime()
-      ? [{ slug: "early", name: "Early user", icon: "sprout", color: "#c8ff3d", description: "Here since the early days", earnedAt: null }]
-      : []),
-    ...d.badges,
-  ]).slice(0, 24);
+  // Badge set v2: exactly the 5 canonical badges, in set order. Synthetic
+  // entries (verified/top-10/early) are gone — rank and verification show
+  // next to the name instead.
+  const computedBadges: CardBadge[] = canonBadges(d.badges).slice(0, 24);
   const badgePreview = computedBadges.slice(0, 4);
   const badgeOverflow = computedBadges.length - badgePreview.length;
 
@@ -591,8 +534,17 @@ export function ProfileCard({
     ? new Date(realmRow.data.joined_at).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  const statusLine = customStatus && (customStatus.emoji || customStatus.text) ? (
-    <CustomStatusLine status={{ emoji: customStatus.emoji, text: customStatus.text }} className="mt-1 text-[13px] text-muted-foreground" />
+  const hasStatus = customStatus && (customStatus.emoji || customStatus.text);
+  const statusPill = hasStatus ? (
+    <StatusPill
+      emoji={customStatus.emoji}
+      text={customStatus.text}
+      expiresAt={presenceRow?.custom_status_expires_at ?? null}
+      onActivate={isSelf ? onEditStatus : undefined}
+      className="mt-1.5"
+    />
+  ) : isSelf && onEditStatus ? (
+    <StatusPill emptyLabel="+ Set status" onActivate={onEditStatus} className="mt-1.5" />
   ) : null;
 
   // Plain bio segments get line breaks (pre-wrap) and live mentions.
@@ -684,6 +636,7 @@ export function ProfileCard({
                 {d.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+            <AvatarStatusBadge emoji={customStatus?.emoji} size={18} />
             <span
               className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[3px]"
               title={status}
@@ -726,9 +679,9 @@ export function ProfileCard({
               @{d.username}
               {d.pronouns && <span className="text-muted-foreground"> · {d.pronouns}</span>}
             </p>
-            {statusLine}
+            {statusPill}
 
-            {/* Badges: icon-only pills, the sheet tells the full story */}
+            {/* Badges: the 5 canonical cat-emoji pills, the sheet tells the full story */}
             {computedBadges.length > 0 && (
               <div className="mt-2.5 flex items-center gap-1.5" aria-label={`${computedBadges.length} badges`}>
                 {badgePreview.map((badge) => (
@@ -741,7 +694,7 @@ export function ProfileCard({
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
                     style={{ color: badge.color }}
                   >
-                    <BadgeGlyph icon={badge.icon} className="h-[18px] w-[18px]" />
+                    <BadgeIcon icon={badge.icon} glow={badge.color} size={20} />
                   </button>
                 ))}
                 {badgeOverflow > 0 && (
@@ -924,16 +877,28 @@ export function ProfileCard({
               <CloseButton aria-label="Close badges" onClick={() => setBadgesOpen(false)} />
             </div>
             <ul className="mt-2 space-y-2">
-              {computedBadges.map((badge) => (
+              {computedBadges.map((badge) => {
+                const canon = canonicalFor(badge.slug);
+                return (
                 <li key={badge.slug} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <span
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]"
                     style={{ color: badge.color }}
                   >
-                    <BadgeGlyph icon={badge.icon} className="h-5 w-5" />
+                    <BadgeIcon icon={badge.icon} glow={badge.color} size={20} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[#f2efe6]">{badge.name}</p>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">
+                      {badge.name}
+                      {canon && (
+                        <span
+                          className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                          style={{ borderColor: `${canon.glow}55`, color: canon.glow }}
+                        >
+                          {canon.tier}
+                        </span>
+                      )}
+                    </p>
                     {badge.description && <p className="mt-0.5 text-xs text-muted-foreground">{badge.description}</p>}
                     {badge.earnedAt && (
                       <p className="mt-1 text-[11px] text-muted-foreground">
@@ -942,7 +907,8 @@ export function ProfileCard({
                     )}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         </DialogContent>
@@ -1021,12 +987,14 @@ export function ProfileCardDialog({
   onOpenChange,
   onMention,
   onCall,
+  onEditStatus,
 }: {
   user: ProfileCardUser | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMention?: (username: string) => void;
   onCall?: (userId: string) => void;
+  onEditStatus?: () => void;
 }) {
   const triggerRef = useRef<HTMLElement | null>(null);
   if (open && !triggerRef.current && typeof document !== "undefined") {
@@ -1059,6 +1027,7 @@ export function ProfileCardDialog({
             onMention={onMention}
             onCall={onCall}
             onOpenChange={handleChange}
+            onEditStatus={onEditStatus}
           />
         )}
       </DialogContent>

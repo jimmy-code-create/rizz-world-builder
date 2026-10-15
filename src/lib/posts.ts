@@ -100,7 +100,9 @@ export async function addVerifiedCreatorFlags<T extends { author_id: string; aut
     .from("user_badges")
     .select("user_id, badges!inner(slug)")
     .in("user_id", authorIds)
-    .eq("badges.slug", "verified_creator");
+    // Badge set v2: identity-verified = the "no-cap" badge. The
+    // `verified_creator` flag name is kept so call sites don't churn.
+    .eq("badges.slug", "no-cap");
   if (error) throw error;
 
   const verifiedIds = new Set((data ?? []).map((badge) => badge.user_id));
