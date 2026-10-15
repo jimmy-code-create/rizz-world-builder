@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Cat sitting inside an empty box">
   <title>Empty box</title>
-  <path d="M46 70 L50 30 L80 60 Z" fill="#12101A" />
-  <path d="M114 70 L110 30 L80 60 Z" fill="#12101A" />
-  <path d="M53 66 L56 40 L73 60 Z" fill="#8B72FF" />
-  <path d="M107 66 L104 40 L87 60 Z" fill="#8B72FF" />
-  <ellipse cx="80" cy="88" rx="42" ry="37" fill="#12101A" />
+  <path d="M46 70 L50 30 L80 60 Z" fill="#141416" />
+  <path d="M114 70 L110 30 L80 60 Z" fill="#141416" />
+  <path d="M53 66 L56 40 L73 60 Z" fill="#C8FF3D" />
+  <path d="M107 66 L104 40 L87 60 Z" fill="#C8FF3D" />
+  <ellipse cx="80" cy="88" rx="42" ry="37" fill="#141416" />
   <circle cx="64" cy="84" r="10.5" fill="#FFFFFF" />
   <circle cx="96" cy="84" r="10.5" fill="#FFFFFF" />
-  <circle cx="64" cy="85" r="4.8" fill="#12101A" />
-  <circle cx="96" cy="85" r="4.8" fill="#12101A" />
-  <path d="M73 99h14l-7 8z" fill="#8B72FF" />
-  <path d="M40 97L26 101M40 106l-14 6M120 97l14 4M120 106l14 6" stroke="#8B72FF" stroke-width="3.4" stroke-linecap="round" />
-  <path d="M18 112 L48 94 L80 112 L50 130 Z" fill="#8B72FF" />
-  <path d="M142 112 L112 94 L80 112 L110 130 Z" fill="#8B72FF" />
-  <rect x="26" y="112" width="108" height="44" rx="9" fill="#6C4BFF" />
-  <path d="M80 112v44" stroke="#12101A" stroke-opacity="0.22" stroke-width="4" />
+  <circle cx="64" cy="85" r="4.8" fill="#0b0b0c" />
+  <circle cx="96" cy="85" r="4.8" fill="#0b0b0c" />
+  <path d="M73 99h14l-7 8z" fill="#C8FF3D" />
+  <path d="M40 97L26 101M40 106l-14 6M120 97l14 4M120 106l14 6" stroke="#C8FF3D" stroke-width="3.4" stroke-linecap="round" />
+  <path d="M18 112 L48 94 L80 112 L50 130 Z" fill="#C8FF3D" opacity="0.85" />
+  <path d="M142 112 L112 94 L80 112 L110 130 Z" fill="#C8FF3D" opacity="0.85" />
+  <rect x="26" y="112" width="108" height="44" rx="9" fill="#2a2a2e" stroke="#C8FF3D" stroke-width="1" />
+  <path d="M80 112v44" stroke="#141416" stroke-opacity="0.5" stroke-width="3" />
 </svg>

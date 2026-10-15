@@ -24,6 +24,8 @@ import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/Profi
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
+import { MarkdownText } from "@/components/MarkdownText";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -342,7 +344,39 @@ function ProfilePage() {
         ) : null}
       </div>
 
-      {profile.bio && <p className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">{profile.bio}</p>}
+      {profile.bio && (
+        <div className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <MarkdownText
+            text={profile.bio}
+            renderPlainText={(plain) =>
+              renderCaptionWithTags(plain).map((p, i) => {
+                if (p.tag) {
+                  return (
+                    <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">
+                      {p.text}
+                    </Link>
+                  );
+                }
+                if (p.mention) {
+                  return (
+                    <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">
+                      {p.text}
+                    </Link>
+                  );
+                }
+                if (p.url) {
+                  return (
+                    <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">
+                      {p.text}
+                    </a>
+                  );
+                }
+                return <span key={i}>{p.text}</span>;
+              })
+            }
+          />
+        </div>
+      )}
 
       {profile.interests?.length > 0 && (
         <section className="px-1 md:px-2 mt-4" aria-label="Profile interests">

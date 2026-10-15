@@ -1,4 +1,4 @@
-import { Mic, MicOff, PhoneOff, Volume2, Radio } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Volume2, Maximize2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
@@ -68,6 +68,16 @@ export function VoiceCallBar() {
           }`}
         >
           {muted ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Expand voice call"
+          onClick={openView}
+          className="h-11 w-11 shrink-0 rounded-xl glass border-white/10 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Maximize2 className="h-4.5 w-4.5" />
         </Button>
 
         <Button

@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /**
  * Per-person voice control.
  *
@@ -67,6 +69,21 @@ export function togglePeerMute(userId: string): PeerAudioState {
     ? current.muted.filter((id) => id !== userId)
     : [...current.muted, userId];
   return savePeerAudio({ ...current, muted });
+}
+
+/** React hook tracking local peer volume and mute states live. */
+export function usePeerAudio(): PeerAudioState {
+  const [state, setState] = useState<PeerAudioState>(loadPeerAudio);
+  useEffect(() => {
+    const refresh = () => setState(loadPeerAudio());
+    window.addEventListener(PEER_AUDIO_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(PEER_AUDIO_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return state;
 }
 
 /** The 0..1 multiplier call audio should apply for one person. */

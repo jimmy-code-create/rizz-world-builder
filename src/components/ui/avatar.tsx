@@ -7,8 +7,28 @@ import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { TOKENS, type PresenceState } from "@/lib/tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { MediaViewer } from "@/components/media/MediaViewer";
+import { ProfilePreviewDialog } from "@/components/ProfilePreview";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+
+export const AVATAR_FALLBACK_PALETTE = [
+  { bg: "#2c2d35", text: "#f2efe6" }, // Slate
+  { bg: "#363024", text: "#f2efe6" }, // Warm bronze/amber
+  { bg: "#223328", text: "#f2efe6" }, // Pine
+  { bg: "#362629", text: "#f2efe6" }, // Rust umber
+  { bg: "#2d2636", text: "#f2efe6" }, // Heather
+  { bg: "#203036", text: "#f2efe6" }, // Spruce
+  { bg: "#362c20", text: "#f2efe6" }, // Espresso
+  { bg: "#27272b", text: "#f2efe6" }, // Asphalt
+];
+
+export function getAvatarPalette(seed: string = "") {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_FALLBACK_PALETTE[hash % AVATAR_FALLBACK_PALETTE.length];
+}
 
 const AVATAR_SIZES: Record<AvatarSize, { box: number; font: string; dot: number }> = {
   xs: { box: 24, font: "text-[10px]", dot: 7 },
@@ -56,6 +76,10 @@ export function UserAvatar({
   const dotSize = config ? config.dot : Math.max(7, Math.round(pixelBox * 0.22));
 
   const storiesStore = useStoriesStore();
+  const palette = React.useMemo(
+    () => getAvatarPalette(fallback || alt || userId || ""),
+    [fallback, alt, userId]
+  );
   const storyStatus = hasStory !== undefined
     ? (hasStory === true ? "unseen" : hasStory === false ? "none" : hasStory)
     : userId
@@ -94,8 +118,9 @@ export function UserAvatar({
             className="aspect-square h-full w-full object-cover"
           />
           <AvatarPrimitive.Fallback
+            style={{ backgroundColor: palette.bg, color: palette.text }}
             className={cn(
-              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] border-0 shadow-none ring-0",
+              "flex h-full w-full items-center justify-center font-semibold border-0 shadow-none ring-0",
               fontClass,
             )}
           >
@@ -165,9 +190,11 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => {
-  // Strip legacy lime/gradient classes to guarantee dark surface-2 for initials everywhere
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> & { seed?: string }
+>(({ className, style, seed, children, ...props }, ref) => {
+  const seedString = seed || (typeof children === "string" ? children : "");
+  const palette = getAvatarPalette(seedString);
+  // Strip legacy lime/gradient classes to guarantee tasteful palette for initials everywhere
   const cleanedClass = className
     ?.replace(/bg-surface-2/g, "")
     ?.replace(/text-primary-foreground/g, "")
@@ -176,12 +203,15 @@ const AvatarFallback = React.forwardRef<
   return (
     <AvatarPrimitive.Fallback
       ref={ref}
+      style={{ backgroundColor: palette.bg, color: palette.text, ...style }}
       className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold border-0 shadow-none ring-0",
+        "flex h-full w-full items-center justify-center rounded-full font-semibold border-0 shadow-none ring-0",
         cleanedClass,
       )}
       {...props}
-    />
+    >
+      {children}
+    </AvatarPrimitive.Fallback>
   );
 });
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
@@ -189,17 +219,19 @@ AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 export { Avatar, AvatarImage, AvatarFallback };
 
 export interface InteractiveAvatarProps extends UserAvatarProps {
+  username?: string | null;
   onClick?: (event: React.MouseEvent) => void;
   disableLongPressPhoto?: boolean;
 }
 
 /**
  * InteractiveAvatar
- * - Short tap: views active story if user has one; otherwise triggers onClick
+ * - Short tap: views active story if user has one; otherwise triggers onClick or opens profile sheet
  * - 450ms long press: triggers full photo viewer with haptic vibration feedback
  * - Prevents native callout popup (-webkit-touch-callout: none, contextmenu prevented)
  */
 export function InteractiveAvatar({
+  username,
   onClick,
   onStoryClick,
   disableLongPressPhoto = false,
@@ -207,6 +239,7 @@ export function InteractiveAvatar({
   ...props
 }: InteractiveAvatarProps) {
   const [photoOpen, setPhotoOpen] = React.useState(false);
+  const [profileSheetOpen, setProfileSheetOpen] = React.useState(false);
   const timerRef = React.useRef<number | null>(null);
   const startPos = React.useRef<{ x: number; y: number } | null>(null);
   const didLongPress = React.useRef(false);
@@ -253,6 +286,8 @@ export function InteractiveAvatar({
       onStoryClick();
     } else if (onClick) {
       onClick(e);
+    } else if (username) {
+      setProfileSheetOpen(true);
     }
   };
 
@@ -283,7 +318,7 @@ export function InteractiveAvatar({
           userSelect: "none",
         }}
       >
-        <UserAvatar src={src} {...props} />
+        <UserAvatar src={src} onStoryClick={onStoryClick} {...props} />
       </div>
 
       {src && (
@@ -292,6 +327,14 @@ export function InteractiveAvatar({
           src={normalizeAvatarUrl(src) ?? src}
           alt={props.alt || props.fallback || "Avatar"}
           onClose={() => setPhotoOpen(false)}
+        />
+      )}
+
+      {username && (
+        <ProfilePreviewDialog
+          username={username}
+          open={profileSheetOpen}
+          onOpenChange={setProfileSheetOpen}
         />
       )}
     </>

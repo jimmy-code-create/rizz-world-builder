@@ -92,6 +92,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const burstTimer = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const [reactionsNearViewport, setReactionsNearViewport] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => () => {
@@ -277,6 +278,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     }
   };
 
+  const viewerLang = loadPrefs().language || "en";
+  const detectedSource = post.caption ? detectSourceLang(post.caption) : null;
+  const canTranslate = Boolean(post.caption?.trim() && (!detectedSource || detectedSource !== viewerLang));
+
   const deleteMut = useMutation({
     mutationFn: () => deletePost(post.id),
     onSuccess: () => {
@@ -427,14 +432,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <DropdownMenuItem onClick={quoteThis}>
               <Quote className="mr-2 h-4 w-4" /> Quote post
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
-              <Languages className="mr-2 h-4 w-4" />
-              {isTranslating
-                ? "Translating…"
-                : showTranslated
-                  ? "Show original"
-                  : `Translate (${LANGUAGE_NAMES[loadPrefs().language] || "Preferred"})`}
-            </DropdownMenuItem>
+            {canTranslate && (
+              <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
+                <Languages className="mr-2 h-4 w-4" />
+                {isTranslating
+                  ? "Translating…"
+                  : showTranslated
+                    ? "Show original"
+                    : `Translate (${LANGUAGE_NAMES[viewerLang] || "Preferred"})`}
+              </DropdownMenuItem>
+            )}
             {externalVideo?.ok && (
               <DropdownMenuItem onClick={viewOriginal}>
                 <ExternalLink className="mr-2 h-4 w-4" /> View original
@@ -576,14 +583,25 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <img
-              src={post.media_url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="w-full max-h-[min(48dvh,390px)] object-contain"
-              onError={() => setMediaFailed(true)}
-            />
+            <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
+              {!imageLoaded && (
+                <div
+                  className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px]"
+                  aria-hidden="true"
+                />
+              )}
+              <img
+                src={post.media_url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setMediaFailed(true)}
+                className={`w-full max-h-[min(48dvh,390px)] object-contain transition-all duration-300 ${
+                  imageLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
+                }`}
+              />
+            </div>
           )}
           <AnimatePresence>
             {!externalVideo?.ok && burst > 0 && (
@@ -630,12 +648,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      <footer className="flex h-10 items-center gap-1 px-3 border-t border-white/5 mt-2">
+      <footer className="flex h-11 items-center gap-1 px-3 border-t border-white/5 mt-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`h-8 px-2 relative gap-1.5 before:absolute before:-inset-1 before:content-[''] ${liked ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
@@ -649,7 +667,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
             setShowComments((s) => !s);
           }}
-          className="h-8 px-2 relative gap-1.5 text-muted-foreground before:absolute before:-inset-1 before:content-['']"
+          className="h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 text-muted-foreground"
         >
           <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
@@ -657,11 +675,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']" aria-label="React to post">
+            <Button variant="ghost" size="sm" className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground" aria-label="React to post">
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 glass-strong border-white/10">
+          <PopoverContent className="w-auto p-2 bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,#2a2a2e)] rounded-xl shadow-xl">
             <div className="flex gap-1">
               {QUICK_EMOJIS.map((e) => (
                 <button
@@ -669,7 +687,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   type="button"
                   onClick={() => toggleReaction(e)}
                   aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-white/10"
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 hover:bg-white/10 active:scale-95"
                 >
                   {e}
                 </button>
@@ -682,7 +700,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={`h-8 w-8 p-0 relative before:absolute before:-inset-1 before:content-[''] ${saved ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative ${saved ? "text-primary" : "text-muted-foreground"}`}
           aria-label="Save post"
         >
           <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
@@ -691,7 +709,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={sharePost}
-          className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']"
+          className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground"
           aria-label="Share post"
         >
           <Share2 className="h-4 w-4" />
@@ -1002,9 +1020,9 @@ function CommentInteractions({ commentId }: { commentId: string }) {
 function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
   const eq = useEquipped(post.author_id);
   const deco = eq.data?.avatar_decoration;
-  return (
-    <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
-      {deco ? (
+  if (deco) {
+    return (
+      <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
         <AvatarDecoration
           src={normalizeAvatarUrl(post.author?.avatar_url) ?? undefined}
           fallback={initial}
@@ -1012,15 +1030,17 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           effectSlug={deco.slug}
           accent={deco.preview_color || accent}
         />
-      ) : (
-        <InteractiveAvatar
-          src={post.author?.avatar_url}
-          fallback={initial}
-          size="md"
-          userId={post.author_id}
-        />
-      )}
-    </ProfilePreviewTrigger>
+      </ProfilePreviewTrigger>
+    );
+  }
+  return (
+    <InteractiveAvatar
+      src={post.author?.avatar_url}
+      fallback={initial}
+      size="md"
+      userId={post.author_id}
+      username={post.author?.username}
+    />
   );
 }
 

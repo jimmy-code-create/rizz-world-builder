@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Flame, Hash, Clock, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { UserAvatar } from "@/components/ui/avatar";
+import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { fetchTrendingTags } from "@/lib/hashtags";
@@ -153,10 +153,12 @@ function ExplorePage() {
               params={{ username: p.username }}
               className="rounded-xl p-3 flex min-h-[56px] items-center gap-3 hover:bg-surface-2 border border-border bg-card transition-colors"
             >
-              <UserAvatar
+              <InteractiveAvatar
                 src={p.avatar_url}
                 fallback={p.display_name || p.username}
                 size="md"
+                userId={p.id}
+                username={p.username}
               />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate text-foreground">{p.display_name || p.username}</p>

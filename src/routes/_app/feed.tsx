@@ -127,8 +127,8 @@ function FeedPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start w-full">
-      <div className="xl:col-span-8 min-w-0 space-y-5">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full">
+      <div className="xl:col-span-8 min-w-0 space-y-4">
         {/* Compact greeting bar */}
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -189,7 +189,11 @@ function FeedPage() {
 
         <div className="space-y-4">
           {shown.map((p, i) => (
-            <div key={p.id}>
+            <div
+              key={p.id}
+              className="list-item-rise"
+              style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
+            >
               <PostCard post={p} liked={likes.data?.has(p.id)} />
               {i === 2 && <div className="xl:hidden"><FollowSuggestions /></div>}
             </div>

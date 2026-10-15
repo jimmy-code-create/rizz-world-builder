@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Cat looking up at a question mark">
   <title>Searching</title>
-  <path d="M34 74 L38 32 L70 62 Z" fill="#12101A" />
-  <path d="M114 74 L110 32 L78 62 Z" fill="#12101A" />
-  <path d="M41 70 L44 42 L63 62 Z" fill="#8B72FF" />
-  <path d="M107 70 L104 42 L85 62 Z" fill="#8B72FF" />
-  <ellipse cx="74" cy="90" rx="43" ry="37" fill="#12101A" />
+  <path d="M34 74 L38 32 L70 62 Z" fill="#141416" />
+  <path d="M114 74 L110 32 L78 62 Z" fill="#141416" />
+  <path d="M41 70 L44 42 L63 62 Z" fill="#C8FF3D" />
+  <path d="M107 70 L104 42 L85 62 Z" fill="#C8FF3D" />
+  <ellipse cx="74" cy="90" rx="43" ry="37" fill="#141416" />
   <circle cx="58" cy="86" r="11" fill="#FFFFFF" />
   <circle cx="92" cy="86" r="11" fill="#FFFFFF" />
-  <circle cx="61" cy="82" r="5" fill="#12101A" />
-  <circle cx="95" cy="82" r="5" fill="#12101A" />
-  <path d="M67 102h14l-7 8z" fill="#8B72FF" />
-  <path d="M30 98L16 102M30 107l-14 6M118 98l14 4M118 107l14 6" stroke="#8B72FF" stroke-width="3.4" stroke-linecap="round" />
-  <path d="M124 40c7-3 16 2 16 11 0 8-10 9-10 17" stroke="#8B72FF" stroke-width="6" fill="none" stroke-linecap="round" />
-  <circle cx="130" cy="82" r="4.4" fill="#8B72FF" />
-  <path d="M120 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#8B72FF" />
+  <circle cx="61" cy="82" r="5" fill="#0b0b0c" />
+  <circle cx="95" cy="82" r="5" fill="#0b0b0c" />
+  <path d="M67 102h14l-7 8z" fill="#C8FF3D" />
+  <path d="M30 98L16 102M30 107l-14 6M118 98l14 4M118 107l14 6" stroke="#C8FF3D" stroke-width="3.4" stroke-linecap="round" />
+  <path d="M124 40c7-3 16 2 16 11 0 8-10 9-10 17" stroke="#C8FF3D" stroke-width="6" fill="none" stroke-linecap="round" />
+  <circle cx="130" cy="82" r="4.4" fill="#C8FF3D" />
+  <path d="M120 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#C8FF3D" />
 </svg>
