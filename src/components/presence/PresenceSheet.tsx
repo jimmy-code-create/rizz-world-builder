@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Smile, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { IconTile } from "@/components/ui/icon-tile";
-import { ChoiceMark } from "@/components/ui/choice-mark";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CustomStatusLine, StatusDot, StatusIcon, ThoughtBubble } from "@/components/presence/StatusDot";
+import { StatusIcon, StatusBubble } from "@/components/presence/StatusDot";
+import { CatEmojiPicker } from "@/components/emoji/CatEmojiPicker";
+import { StatusEmoji } from "@/lib/cat-emoji-text";
 import {
   PRESENCE_STATUSES,
   customStatusExpiry,
@@ -16,143 +14,117 @@ import {
   type PresenceStatus,
 } from "@/lib/presence";
 
-const EXPIRY_OPTIONS = [
-  { value: "30m", label: "30 minutes" },
+type ExpiryChoice = "1h" | "4h" | "today" | "never";
+
+const EXPIRY_CHIPS: Array<{ value: ExpiryChoice; label: string }> = [
   { value: "1h", label: "1 hour" },
   { value: "4h", label: "4 hours" },
   { value: "today", label: "Today" },
   { value: "never", label: "Never" },
-] as const;
-
-const EMOJI_CATEGORIES = [
-  {
-    name: "RIZZ Vibes",
-    emojis: ["🔥", "✨", "⚡", "👑", "💯", "💀", "🤙", "😎", "🐱", "💖", "🏆", "👾", "💫", "🚀", "🍕", "☕", "🌿", "🎉"],
-  },
-  {
-    name: "Cats & Rizz",
-    emojis: ["🐱", "🐈", "🐾", "😸", "😹", "😻", "😽", "😼", "🙀", "😿", "😾", "🦁", "🦊", "🐼", "🐸", "🦄"],
-  },
-  {
-    name: "Moods",
-    emojis: ["😊", "😎", "🥳", "😴", "🤔", "🥹", "😤", "🤯", "🤩", "🫡", "🫠", "👀", "🤐", "😇", "😈", "🥶", "😴", "🤤"],
-  },
-  {
-    name: "Activity",
-    emojis: ["🎧", "🎮", "💻", "📚", "⚽", "🏋️", "🛹", "🎨", "🍿", "🍕", "☕", "🏖️", "🚲", "🎤", "🎬", "🎸", "🥊", "🏊"],
-  },
 ];
 
-const QUICK_EMOJI = ["🔥", "🎧", "💤", "🍿", "💪", "📚", "🎮", "✨", "👑", "🐱", "💀", "⚡"];
+const QUICK_PICKS: Array<{ emoji: string; text: string }> = [
+  { emoji: ":cat_music:", text: "Vibing" },
+  { emoji: ":cat_think:", text: "Studying" },
+  { emoji: ":cat_sleep:", text: "Sleeping" },
+  { emoji: ":cat_hype:", text: "Hyped" },
+  { emoji: ":cat_wave:", text: "Be right back" },
+];
 
-/** Tapping your avatar opens this: the four statuses and a custom status row. */
+const LAST_EXPIRY_KEY = "rizz-status-expiry";
+
+function loadLastExpiry(): ExpiryChoice {
+  try {
+    const v = localStorage.getItem(LAST_EXPIRY_KEY);
+    if (v === "1h" || v === "4h" || v === "today" || v === "never") return v;
+  } catch {}
+  return "today";
+}
+
+const DESCRIPTIONS: Partial<Record<PresenceStatus, string>> = {
+  dnd: "You won't get notifications",
+  invisible: "You'll appear offline",
+};
+
+/** Compact Discord-style presence + custom status. Phone = bottom sheet (max 60dvh). */
 export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const presence = useSelfPresence();
-  const [saving, setSaving] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
-  const [optimisticStatus, setOptimisticStatus] = useState<PresenceStatus | null>(null);
-  /* Feedback for a local control belongs next to that control, so it renders in
-     the row that changed instead of as a toast at the bottom of the window. */
-  const [feedback, setFeedback] = useState<{
-    kind: "saved" | "error";
-    status: PresenceStatus;
-    text?: string;
-  } | null>(null);
-
-  // Inline feedback fades on its own; no intervention needed.
-  useEffect(() => {
-    if (!feedback) return;
-    const timer = window.setTimeout(() => setFeedback(null), 2400);
-    return () => window.clearTimeout(timer);
-  }, [feedback]);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [emoji, setEmoji] = useState("");
   const [text, setText] = useState("");
-  const [expiry, setExpiry] = useState<(typeof EXPIRY_OPTIONS)[number]["value"]>("1h");
-  const [showAllEmojis, setShowAllEmojis] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(0);
-  const [dragY, setDragY] = useState(0);
-  const dragStartY = useRef<number | null>(null);
+  const [expiry, setExpiry] = useState<ExpiryChoice>(() => loadLastExpiry());
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedTick, setSavedTick] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Prefill the form from the saved status whenever the sheet opens.
+  // Prefill whenever the sheet opens.
   useEffect(() => {
-    setDragY(0);
     if (!open) return;
+    setEditorOpen(false);
+    setEmojiOpen(false);
+    setError(null);
+    setSavedTick(false);
     const current = presence.customStatus;
     setEmoji(current?.emoji ?? "");
     setText(current?.text ?? "");
-  }, [open, presence.customStatus]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Swipe down on the handle to dismiss.
-  const onDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    dragStartY.current = event.clientY;
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const onDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragStartY.current === null) return;
-    setDragY(Math.max(0, event.clientY - dragStartY.current));
-  };
-  const onDragEnd = () => {
-    if (dragStartY.current === null) return;
-    const shouldClose = dragY > SWIPE_CLOSE_PX;
-    dragStartY.current = null;
-    setDragY(0);
-    if (shouldClose) onOpenChange(false);
-  };
-
-  // Back (Android gesture or browser button) closes the sheet rather than
-  // leaving the page: one history entry is pushed while it is open and stepped
-  // back over when it closes some other way, so the next Back still goes where
-  // the user expects.
+  // Expired statuses disappear without a refresh: re-render at expiry.
   useEffect(() => {
-    if (!open) return;
-    const marker = "rizzStatusSheet";
-    let closedByBack = false;
-    window.history.pushState({ ...(window.history.state ?? {}), [marker]: true }, "");
-    const onPop = () => {
-      closedByBack = true;
-      onOpenChange(false);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      const state = window.history.state as Record<string, unknown> | null;
-      if (!closedByBack && state?.[marker]) window.history.back();
-    };
-  }, [open, onOpenChange]);
+    const raw = (presence.row as { custom_status_expires_at?: string | null } | null)?.custom_status_expires_at;
+    if (!raw) return;
+    const ms = new Date(raw).getTime() - Date.now();
+    if (ms <= 0) {
+      void presence.refresh();
+      return;
+    }
+    const t = window.setTimeout(() => void presence.refresh(), Math.min(ms + 500, 2_147_483_647));
+    return () => window.clearTimeout(t);
+  }, [presence.row, presence.refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const activeStatus = optimisticStatus ?? presence.status;
+  useEffect(() => {
+    if (editorOpen && open) {
+      const t = window.setTimeout(() => inputRef.current?.focus(), 60);
+      return () => window.clearTimeout(t);
+    }
+  }, [editorOpen, open]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_EXPIRY_KEY, expiry);
+    } catch {}
+  }, [expiry]);
 
   const choose = async (status: PresenceStatus) => {
-    setOptimisticStatus(status);
     try {
       await presence.chooseStatus(status);
-      setFeedback({ kind: "saved", status });
-    } catch (error) {
-      setOptimisticStatus(null);
-      setFeedback({
-        kind: "error",
-        status,
-        text: error instanceof Error ? error.message : "Couldn't save your status, try again",
-      });
+      onOpenChange(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save, try again");
     }
   };
 
-  const saveCustom = async () => {
-    if (!emoji.trim() && !text.trim()) {
-      toast.error("Add an emoji or a few words first");
+  const doSave = async (e?: string, t?: string, exp?: ExpiryChoice) => {
+    const nextEmoji = (e ?? emoji).trim();
+    const nextText = (t ?? text).trim();
+    const nextExpiry = exp ?? expiry;
+    if (!nextEmoji && !nextText) {
+      setError("Add an emoji or a few words first");
       return;
     }
     setSaving(true);
+    setError(null);
     try {
-      await presence.saveCustomStatus(
-        emoji.trim() || null,
-        text.trim() || null,
-        customStatusExpiry(expiry),
-      );
-      toast.success("Custom status saved");
-      setCustomOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't save your status, try again");
+      await presence.saveCustomStatus(nextEmoji || null, nextText || null, customStatusExpiry(nextExpiry));
+      setSavedTick(true);
+      window.setTimeout(() => {
+        setSavedTick(false);
+        onOpenChange(false);
+      }, 600);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save, try again");
     } finally {
       setSaving(false);
     }
@@ -164,269 +136,248 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       await presence.clearCustomStatus();
       setEmoji("");
       setText("");
-      toast.success("Custom status cleared");
-      setCustomOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't clear your status, try again");
+      setEditorOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't clear, try again");
     } finally {
       setSaving(false);
     }
   };
 
-  const isDnd = activeStatus === "dnd";
+  const activeStatus = presence.status;
+  const custom = presence.customStatus;
+  const showCounter = text.length > 45;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         hideClose
-        className="glass-strong rounded-t-3xl border-white/10 max-h-[88dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
+        className="mx-auto max-h-[60dvh] w-full overflow-y-auto rounded-t-3xl border-white/10 glass-strong pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:max-w-sm sm:rounded-3xl sm:mb-4"
       >
-        <div className="sheet-drag-handle mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
-        <div className="flex items-center justify-between gap-3">
+        <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
+        <div className="flex items-center gap-3">
+          {editorOpen && (
+            <button
+              type="button"
+              onClick={() => setEditorOpen(false)}
+              aria-label="Back to status"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[#f2efe6]/70 hover:bg-white/10 hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <div className="min-w-0 flex-1">
-            <SheetTitle className="font-display text-lg">Status</SheetTitle>
-            <SheetDescription className="text-xs text-muted-foreground">
-              Choose how you appear, or add a short custom status.
-            </SheetDescription>
+            <SheetTitle className="font-display text-lg">{editorOpen ? "Custom status" : "Status"}</SheetTitle>
+            {!editorOpen && (
+              <SheetDescription className="text-xs text-muted-foreground">
+                Choose how you appear.
+              </SheetDescription>
+            )}
           </div>
           <SheetClose asChild>
             <CloseButton />
           </SheetClose>
         </div>
 
-        <div className="mt-4 space-y-1" role="radiogroup" aria-label="Status">
-          {PRESENCE_STATUSES.map((entry) => {
-            const active = activeStatus === entry.value;
-            return (
-              <button
-                key={entry.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => void choose(entry.value)}
-                className={`flex min-h-[52px] w-full items-center gap-3 rounded-[10px] border px-3 text-left transition-colors ${
-                  active ? "border-border bg-secondary" : "border-transparent hover:bg-secondary"
-                }`}
-              >
-                {/* Fixed square, centred glyph with Discord-style custom status icon */}
-                <IconTile
-                  size="md"
-                  radius="9999px"
-                  style={{ background: `${entry.color}20` }}
-                >
-                  <StatusIcon status={entry.value} size={20} />
-                </IconTile>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    {entry.label}
-                    {entry.value === "dnd" && isDnd && (
-                      <span className="rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-300">
-                        Do not disturb
-                      </span>
-                    )}
-                  </span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{entry.hint}</span>
-                </span>
-                {/* Inline confirmation, right where the change happened. */}
-                {feedback && feedback.status === entry.value && (
-                  <span
-                    role="status"
-                    className={`shrink-0 text-[11px] font-medium ${
-                      feedback.kind === "error" ? "text-destructive" : "text-[var(--brand-signal)]"
-                    }`}
+        {!editorOpen ? (
+          <>
+            <div className="mt-3 space-y-0.5" role="radiogroup" aria-label="Presence">
+              {PRESENCE_STATUSES.map((entry) => {
+                const selected = activeStatus === entry.value;
+                return (
+                  <button
+                    key={entry.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => void choose(entry.value)}
+                    className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
                   >
-                    {feedback.kind === "error" ? feedback.text ?? "Couldn't save" : "Saved"}
-                  </span>
-                )}
-                {/* Box and tick in one element, so they can never drift apart. */}
-                <ChoiceMark checked={active} />
-              </button>
-            );
-          })}
-        </div>
-
-        {presence.customStatus && (
-          <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-white/10 glass px-3 py-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <ThoughtBubble
-                emoji={presence.customStatus.emoji}
-                text={presence.customStatus.text}
-              />
+                    <StatusIcon status={entry.value} size={18} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-[#f2efe6]">{entry.label}</span>
+                      {DESCRIPTIONS[entry.value] && (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {DESCRIPTIONS[entry.value]}
+                        </span>
+                      )}
+                    </span>
+                    {selected && <Check className="h-4 w-4 shrink-0 text-[#c8ff3d]" aria-label="Selected" />}
+                  </button>
+                );
+              })}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCustomOpen(true)}
-              className="text-xs text-primary hover:text-primary/80 shrink-0 h-8 px-2"
-            >
-              Edit
-            </Button>
-          </div>
-        )}
+            {error && (
+              <p role="alert" className="mt-2 text-xs text-destructive">
+                {error}
+              </p>
+            )}
 
-        {!customOpen ? (
-          <button
-            type="button"
-            onClick={() => setCustomOpen(true)}
-            className="mt-3 flex min-h-[52px] w-full items-center gap-3 rounded-[10px] border border-border bg-card px-3 text-left text-sm font-medium hover:bg-secondary"
-          >
-            <Smile className="h-4 w-4 text-muted-foreground" />
-            Set a custom status
-          </button>
+            <button
+              type="button"
+              onClick={() => setEditorOpen(true)}
+              className="mt-2 flex min-h-[44px] w-full items-center gap-3 rounded-xl border border-[#2a2a2e] bg-[#141416] px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+            >
+              {custom && (custom.emoji || custom.text) ? (
+                <>
+                  <span className="min-w-0 flex-1">
+                    <StatusBubble emoji={custom.emoji} text={custom.text} />
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Clear status"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void clearCustom();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        void clearCustom();
+                      }
+                    }}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Set a custom status</span>
+              )}
+            </button>
+          </>
         ) : (
-          <div className="mt-3 space-y-3 rounded-[10px] border border-border bg-card p-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAllEmojis((prev) => !prev)}
-                aria-label="Pick emoji"
-                title="Pick emoji"
-                className={`grid h-12 w-14 shrink-0 place-items-center rounded-xl border transition-all text-xl ${
-                  showAllEmojis
-                    ? "border-primary bg-primary/15 shadow-sm"
-                    : "border-white/10 glass hover:border-white/20"
-                }`}
-              >
-                {emoji || "🔥"}
-              </button>
+          <div
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void doSave();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                setEditorOpen(false);
+              }
+            }}
+          >
+            <div className="mt-3 flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setEmojiOpen((v) => !v)}
+                  aria-label="Pick status emoji"
+                  aria-expanded={emojiOpen}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#2a2a2e] bg-[#141416] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                >
+                  {emoji ? <StatusEmoji emoji={emoji} size={22} /> : <span className="text-xl">😊</span>}
+                </button>
+                {emojiOpen && (
+                  <div className="absolute bottom-full left-0 z-50 mb-2 w-[19rem] rounded-2xl border border-[#2a2a2e] bg-[#141416] p-2 shadow-2xl">
+                    <CatEmojiPicker
+                      value={emoji}
+                      size={28}
+                      onPick={(code) => {
+                        setEmoji(code);
+                        setEmojiOpen(false);
+                        inputRef.current?.focus();
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
               <Input
+                ref={inputRef}
                 value={text}
-                onChange={(event) => setText(event.target.value)}
+                onChange={(e) => setText(e.target.value)}
                 maxLength={60}
                 placeholder="What's happening?"
                 aria-label="Status text"
-                className="h-12 flex-1"
+                className="h-11 flex-1"
               />
             </div>
+            {showCounter && <p className="mt-1 text-right text-[11px] text-muted-foreground">{text.length}/60</p>}
 
-            {/* Quick Emojis strip */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {QUICK_EMOJI.map((value) => (
+            <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Quick picks">
+              {QUICK_PICKS.map((q) => (
                 <button
-                  key={value}
+                  key={q.text}
                   type="button"
                   onClick={() => {
-                    setEmoji(value);
+                    setEmoji(q.emoji);
+                    setText(q.text);
+                    void doSave(q.emoji, q.text, expiry);
                   }}
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-base transition-colors ${
-                    emoji === value
-                      ? "border-primary bg-primary/20 scale-105"
-                      : "border-white/5 hover:bg-white/10"
-                  }`}
-                  aria-label={`Use ${value}`}
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#2a2a2e] bg-[#1c1c1f] px-3 text-[13px] text-[#f2efe6] transition-colors hover:border-[#c8ff3d]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
                 >
-                  {value}
+                  <StatusEmoji emoji={q.emoji} size={16} />
+                  {q.text}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setShowAllEmojis((s) => !s)}
-                className={`h-9 px-2.5 shrink-0 rounded-xl border text-xs font-semibold transition-colors flex items-center gap-1 ${
-                  showAllEmojis ? "border-primary bg-primary text-primary-foreground" : "border-white/10 glass text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Smile className="h-3.5 w-3.5" />
-                <span>More</span>
-              </button>
             </div>
 
-            {/* Expanded Emoji Drawer with RIZZ categories */}
-            {showAllEmojis && (
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-3 space-y-2.5 animate-in fade-in-0 duration-150">
-                <div className="flex gap-1 overflow-x-auto no-scrollbar border-b border-white/10 pb-1.5">
-                  {EMOJI_CATEGORIES.map((cat, idx) => (
-                    <button
-                      key={cat.name}
-                      type="button"
-                      onClick={() => setActiveCategory(idx)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                        activeCategory === idx
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-6 gap-1 max-h-36 overflow-y-auto pr-0.5">
-                  {EMOJI_CATEGORIES[activeCategory].emojis.map((em) => (
-                    <button
-                      key={em}
-                      type="button"
-                      onClick={() => {
-                        setEmoji(em);
-                        setShowAllEmojis(false);
-                      }}
-                      className={`grid h-10 w-full place-items-center rounded-xl text-lg hover:bg-white/10 active:scale-95 transition-transform ${
-                        emoji === em ? "bg-primary/20 ring-1 ring-primary" : ""
-                      }`}
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] text-muted-foreground">
-                  <span>Tap any emoji to set</span>
-                  {emoji && (
-                    <button
-                      type="button"
-                      onClick={() => setEmoji("")}
-                      className="text-destructive hover:underline font-medium"
-                    >
-                      Clear emoji
-                    </button>
-                  )}
-                </div>
-              </div>
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Clear after
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Clear after">
+              {EXPIRY_CHIPS.map((o) => {
+                const selected = expiry === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setExpiry(o.value)}
+                    className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+                      selected
+                        ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
+                        : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {error && (
+              <p role="alert" className="mt-2 text-xs text-destructive">
+                {error}
+              </p>
             )}
 
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs text-muted-foreground">{text.length}/60</Label>
-              <select
-                value={expiry}
-                onChange={(event) => setExpiry(event.target.value as typeof expiry)}
-                aria-label="Status expiry"
-                className="h-10 rounded-xl border border-white/10 glass bg-transparent px-3 text-sm"
-              >
-                {EXPIRY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    Clear after {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" className="h-12 flex-1 glass border-white/10" onClick={() => setCustomOpen(false)}>
-                Cancel
-              </Button>
-              {presence.customStatus && (
+            <div className="mt-3 flex items-center gap-2">
+              {custom && (
                 <Button
+                  type="button"
                   variant="ghost"
                   disabled={saving}
                   onClick={() => void clearCustom()}
-                  className="h-12 gap-1.5 glass border-white/10 text-destructive"
+                  className="h-11 flex-1"
                 >
-                  <Trash2 className="h-4 w-4" /> Clear
+                  Clear status
                 </Button>
               )}
-              <Button disabled={saving} onClick={() => void saveCustom()} className="h-12 flex-1 bg-primary text-primary-foreground">
-                Save
+              <Button type="button" variant="ghost" onClick={() => setEditorOpen(false)} className="h-11 flex-1">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => void doSave()}
+                className="h-11 flex-1 bg-[#c8ff3d] text-[#0b0b0c] hover:bg-[#c8ff3d]/90"
+              >
+                {savedTick ? (
+                  <span className="flex items-center gap-1.5">
+                    <Check className="h-4 w-4" /> Saved
+                  </span>
+                ) : (
+                  "Save"
+                )}
               </Button>
             </div>
           </div>
         )}
-
-        <div className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
-          <StatusDot status={presence.status} />
-          <span>
-            {presence.status === "invisible"
-              ? "You appear offline to everyone, but you can use RIZZ as usual."
-              : "Idle kicks in after 5 minutes away, unless you pick a status yourself."}
-          </span>
-        </div>
       </SheetContent>
     </Sheet>
   );

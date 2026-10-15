@@ -6,6 +6,8 @@ import { CloseButton } from "@/components/ui/close-button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchReactorProfiles, reactorsQueryKey, type ReactionGroup, type ReactionScope } from "@/lib/reactions";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 import { reactionHaptic, triggerReactionBurst, triggerBurstOnElement } from "@/components/chat/ReactionBurst";
 import type { ReactionPulse } from "@/lib/useChatReactions";
 import {
@@ -226,7 +228,10 @@ function ReactionChip({
       }}
     >
       <span className="text-[13px]" aria-hidden="true">
-        {emoji}
+        {(() => {
+          const cat = catNameForShortcode(emoji);
+          return cat ? <CatEmoji name={cat} size={16} animate={pulse?.emoji === emoji ? "once" : false} /> : emoji;
+        })()}
       </span>
       <motion.span
         key={count}
@@ -289,8 +294,11 @@ function ReactorsSheet({
           {groups.map((group) => (
             <section key={group.emoji}>
               <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-                <span aria-hidden="true" className="text-[15px]">
-                  {group.emoji}
+                <span aria-hidden="true" className="inline-grid place-items-center text-[15px]">
+                  {(() => {
+                    const cat = catNameForShortcode(group.emoji);
+                    return cat ? <CatEmoji name={cat} size={18} animate={false} /> : group.emoji;
+                  })()}
                 </span>
                 <span className="text-muted-foreground">
                   {group.count} {group.count === 1 ? "reaction" : "reactions"}

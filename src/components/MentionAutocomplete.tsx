@@ -13,7 +13,8 @@ type ProfileHit = {
 /** PostgREST gets unhappy with very long in.() lists; members beyond this are
  *  still matched by typing, just not listed upfront. */
 const MAX_MEMBERS = 300;
-const ROW_LIMIT = 12;
+/** Typing @ shows up to 6 members above the composer. */
+const ROW_LIMIT = 6;
 
 /** Detects the mention token the caret is inside, e.g. `@par|` → "par". */
 export function getMentionQuery(text: string, caret: number): string | null {

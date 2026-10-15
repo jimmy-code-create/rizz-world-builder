@@ -42,6 +42,8 @@ import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
+import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
@@ -879,17 +881,24 @@ function RealmPage() {
               text={viewingMessage.body}
               className="break-words text-[15px] leading-relaxed"
               renderPlainText={(plain) =>
-                renderCaptionWithTags(plain).map((part, index) =>
-                  part.mentionToken
-                    ? <span key={index} className="mention-highlight font-medium">{mentionLabels(part.mentionToken)}</span>
-                    : part.mention
-                      ? <Link key={index} to="/u/$username" params={{ username: part.mention }} className="mention-highlight font-medium hover:underline">{part.text}</Link>
-                      : part.tag
-                        ? <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="text-primary hover:underline font-medium">{part.text}</Link>
-                        : part.url
-                          ? <a key={index} href={part.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-400 hover:underline">{part.text}</a>
-                          : <span key={index}>{part.text}</span>,
-                )
+                renderCaptionWithTags(plain).map((part, index) => {
+                  if (part.text && /^@(everyone|here)$/i.test(part.text)) {
+                    return <span key={index} className="mention-highlight">{part.text}</span>;
+                  }
+                  if (part.mentionToken) {
+                    return <span key={index} className="mention-highlight">{mentionLabels(part.mentionToken)}</span>;
+                  }
+                  if (part.mention) {
+                    return <Link key={index} to="/u/$username" params={{ username: part.mention }} className="mention-highlight">{part.text}</Link>;
+                  }
+                  if (part.tag) {
+                    return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="text-primary hover:underline font-medium">{part.text}</Link>;
+                  }
+                  if (part.url) {
+                    return <a key={index} href={part.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-400 hover:underline">{part.text}</a>;
+                  }
+                  return <span key={index}>{renderTextWithCatEmoji(part.text, `modal-${index}`)}</span>;
+                })
               }
             />
           )}
@@ -1284,7 +1293,7 @@ function RealmPage() {
               )
             );
             const mentionClasses = mentionsMe
-              ? "bg-[#f0b232]/12 hover:bg-[#f0b232]/18 border-l-[3px] border-[#f0b232] pl-2.5 transition-colors"
+              ? "realm-message--mentions-me"
               : "";
 
             // Profile preview handler on avatar or name tap
@@ -1353,7 +1362,7 @@ function RealmPage() {
                   className="rounded-full shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
                   aria-label={`View ${authorName}'s profile`}
                 >
-                  <Avatar className="h-9 w-9 shrink-0 ring-2 cursor-pointer hover:opacity-90" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
+                  <Avatar className="h-9 w-9 shrink-0 cursor-pointer hover:opacity-90">
                     <AvatarImage src={authorAvatar ?? undefined} />
                     <AvatarFallback
                       className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
@@ -1521,11 +1530,17 @@ function RealmPage() {
                             key={`${si}-${xi}`}
                             text={part.text}
                             renderPlainText={(plain) =>
-                              renderCaptionWithTags(plain).map((p, pi) =>
-                                p.mentionToken
-                                  ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                  : p.mention
-                                  ? (
+                              renderCaptionWithTags(plain).map((p, pi) => {
+                                // @everyone / @here use the same pill.
+                                if (p.text && /^@(everyone|here)$/i.test(p.text)) {
+                                  return (
+                                    <span key={`${si}-${xi}-${pi}`} className="mention-highlight">
+                                      {p.text}
+                                    </span>
+                                  );
+                                }
+                                if (p.mentionToken) {
+                                  return (
                                     <button
                                       key={`${si}-${xi}-${pi}`}
                                       type="button"
@@ -1533,26 +1548,68 @@ function RealmPage() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setPreviewUser({
-                                          userId: "",
-                                          username: p.mention!,
-                                          displayName: p.mention!,
+                                          userId: p.mentionToken!,
+                                          username: mentionLabels(p.mentionToken!).replace(/^@/, ""),
+                                          displayName: mentionLabels(p.mentionToken!),
                                         });
                                       }}
-                                      className={
-                                        p.mention.toLowerCase() === myUsername
-                                          ? "bg-[#f0b232]/30 text-amber-300 font-semibold px-1 py-0.5 rounded hover:underline inline cursor-pointer text-left"
-                                          : "mention-highlight font-medium hover:underline cursor-pointer"
-                                      }
+                                      className="mention-highlight cursor-pointer"
+                                    >
+                                      {mentionLabels(p.mentionToken!)}
+                                    </button>
+                                  );
+                                }
+                                if (p.mention) {
+                                  // Unknown @names stay plain text.
+                                  const hit = (members.data ?? []).find(
+                                    (mm) =>
+                                      (mm.profile as { username?: string } | null)?.username?.toLowerCase() ===
+                                      p.mention!.toLowerCase(),
+                                  );
+                                  if (!hit) return <span key={`${si}-${xi}-${pi}`}>{p.text}</span>;
+                                  return (
+                                    <button
+                                      key={`${si}-${xi}-${pi}`}
+                                      type="button"
+                                      data-interactive="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const prof = hit.profile as {
+                                          username?: string;
+                                          display_name?: string | null;
+                                          avatar_url?: string | null;
+                                        } | null;
+                                        setPreviewUser({
+                                          userId: hit.user_id,
+                                          username: prof?.username ?? p.mention!,
+                                          displayName: prof?.display_name ?? p.mention!,
+                                          avatarUrl: prof?.avatar_url ?? null,
+                                          realmRole: hit.role ?? null,
+                                        });
+                                      }}
+                                      className="mention-highlight cursor-pointer"
                                     >
                                       {p.text}
                                     </button>
-                                  )
-                                  : p.tag
-                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                                    : p.url
-                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
-                                      : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
-                              )
+                                  );
+                                }
+                                if (p.tag) {
+                                  return (
+                                    <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
+                                  );
+                                }
+                                if (p.url) {
+                                  return (
+                                    <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
+                                  );
+                                }
+                                // Inline cat shortcodes (:cat_love: -> 22px, only-emoji -> 40px).
+                                return (
+                                  <span key={`${si}-${xi}-${pi}`}>
+                                    {renderTextWithCatEmoji(p.text, `${si}-${xi}-${pi}`)}
+                                  </span>
+                                );
+                              })
                             }
                           />
                         )
@@ -1794,6 +1851,17 @@ function RealmPage() {
             emptyHint="No realm member matches that name."
             onPick={(username) => {
               const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = inputRef.current;
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+            }}
+          />
+          <CatAutocomplete
+            value={body}
+            caret={caret}
+            onPick={(shortcode) => {
+              const next = replaceCatShortcode(body, caret, shortcode);
               setBody(next.value);
               setCaret(next.caret);
               const el = inputRef.current;

@@ -49,7 +49,7 @@
 
 ## Discord-Style Polish (5 Tasks)
 - [x] Task 1: One Close (X) Button (Investigate cause of double X, unify with shared `<CloseButton />` 44x44px target, single 20px SVG stroke 2 cream #f2efe6 at 70%/100%, lime :focus-visible ring, flex header vertical alignment, replace ad-hoc close buttons across sheets/dialogs/stories/viewers) - **DONE**
-- [ ] Task 2: Small set of 12 custom animated cat emojis - **NOT STARTED**
-- [ ] Task 3: Status, fast and Discord-style - **NOT STARTED**
-- [ ] Task 4: Discord-style unified profile card - **NOT STARTED**
-- [ ] Task 5: Discord-style mention highlight + chat polish - **NOT STARTED**
+- [x] Task 2: Small set of 12 custom animated cat emojis (`src/components/emoji/CatEmoji.tsx`, `src/components/emoji/cat-emoji-manifest.ts`, `src/components/emoji/CatEmojiPicker.tsx`, `src/lib/cat-emoji-text.tsx`, `src/components/chat/ReactionQuickBar.tsx`, `src/components/chat/ReactionChips.tsx`, `src/components/presence/PresenceSheet.tsx`, `src/styles.css`) - **DONE**
+- [x] Task 3: Status, fast and Discord-style (`src/components/presence/PresenceSheet.tsx`, `src/components/presence/StatusDot.tsx`, `src/components/AppShell.tsx`, `src/routes/_app/u.$username.tsx`) - **DONE**
+- [x] Task 4: Discord-style unified profile card (`src/components/profile/ProfileCard.tsx`, `src/components/realms/RealmProfilePreviewDialog.tsx`, `src/components/ProfilePreview.tsx`) - **DONE**
+- [x] Task 5: Discord-style mention highlight + chat polish (`src/styles.css`, `src/lib/chat-appearance.ts`, `src/components/bots/BotBadge.tsx`, `src/components/MentionAutocomplete.tsx`, `src/routes/_app/r.$slug.tsx`) - **DONE**
