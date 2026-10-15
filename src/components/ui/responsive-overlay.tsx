@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IconButton } from "@/components/ui/icon-button";
+import { CloseButton } from "@/components/ui/close-button";
 
 export interface ResponsiveOverlayProps {
   open: boolean;
@@ -95,14 +94,7 @@ export function ResponsiveOverlay({
 
             {showClose && (
               <DialogPrimitive.Close asChild>
-                <IconButton
-                  aria-label="Close"
-                  size="sm"
-                  variant="ghost"
-                  className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </IconButton>
+                <CloseButton />
               </DialogPrimitive.Close>
             )}
           </div>

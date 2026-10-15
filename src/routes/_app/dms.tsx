@@ -8,6 +8,7 @@ import { previewText } from "@/lib/formatters";
 import { MessageCircle, Search, X, Check, Users, UsersRound, Camera, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -328,15 +329,11 @@ function DMsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 flex items-center gap-2 rounded-2xl glass border border-white/10 p-2"
         >
-          <Button
-            variant="ghost"
-            size="icon"
+          <CloseButton
             onClick={exitSelection}
             aria-label="Cancel selection"
-            className="h-12 w-12 shrink-0 rounded-xl"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            className="rounded-xl"
+          />
           <span className="min-w-0 flex-1 text-sm font-semibold">
             {selected.length} selected <span className="font-normal text-muted-foreground">(max {MAX_GROUP_PICKS})</span>
           </span>

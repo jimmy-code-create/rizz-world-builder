@@ -1,4 +1,5 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CloseButton } from "@/components/ui/close-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarWithStatus, ThoughtBubble } from "@/components/presence/StatusDot";
 import { usePresence, publicCustomStatus, publicStatusOf, statusLabel } from "@/lib/presence";
@@ -67,7 +68,7 @@ export function RealmProfilePreviewDialog({ user: targetUser, open, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 p-0 overflow-hidden sm:max-w-[380px] rounded-3xl max-w-[92vw]">
+      <DialogContent hideClose className="glass-strong border-white/10 p-0 overflow-hidden sm:max-w-[380px] rounded-3xl max-w-[92vw]">
         <DialogHeader className="sr-only">
           <DialogTitle>Profile of {displayName}</DialogTitle>
         </DialogHeader>
@@ -79,8 +80,8 @@ export function RealmProfilePreviewDialog({ user: targetUser, open, onOpenChange
             background: `linear-gradient(135deg, ${accentColor}44 0%, #141416 100%)`,
           }}
         >
-          {/* Top-right badge indicators */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {/* Top-right badge indicators and close button */}
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-30">
             {isBot && (
               <span className="flex items-center gap-1 rounded-full bg-indigo-500/80 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider backdrop-blur-sm">
                 <Bot className="h-3 w-3" /> BOT
@@ -91,6 +92,9 @@ export function RealmProfilePreviewDialog({ user: targetUser, open, onOpenChange
                 <Shield className="h-3 w-3" /> {targetUser.realmRole}
               </span>
             )}
+            <DialogClose asChild>
+              <CloseButton className="bg-black/35 backdrop-blur-sm" />
+            </DialogClose>
           </div>
         </div>
 

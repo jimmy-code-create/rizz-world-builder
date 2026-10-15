@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag } from "lucide-react";
@@ -840,7 +841,7 @@ function DMPage() {
         <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
-          <button onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="text-muted-foreground"><X className="h-4 w-4" /></button>
+          <CloseButton onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="h-8 w-8 min-h-0 min-w-0" />
         </div>
       )}
 

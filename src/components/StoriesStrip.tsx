@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Eye, Heart, Loader2, Plus, Send, X } from "lucide-react";
+import { CloseButton } from "@/components/ui/close-button";
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -599,14 +600,11 @@ function StoryViewer({
               ))}
             </div>
 
-            <button
-              type="button"
+            <CloseButton
               onClick={onClose}
               aria-label="Close story"
-              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 bg-black/55 backdrop-blur-md"
+            />
 
             <div className="absolute left-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 flex items-center gap-2 rounded-full bg-black/45 px-2 py-1.5 backdrop-blur-md">
               <Avatar className="h-7 w-7 ring-1 ring-white/35">

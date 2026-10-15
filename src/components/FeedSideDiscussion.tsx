@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, X, Send, ChevronUp, CornerDownRight, Sparkles, Flame, Users } from "lucide-react";
+import { MessageSquare, Send, ChevronUp, CornerDownRight, Sparkles, Flame, Users } from "lucide-react";
+import { CloseButton } from "@/components/ui/close-button";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -188,15 +189,10 @@ export function FeedSideDiscussion({
             <p className="text-[10px] text-muted-foreground truncate leading-tight">@{activePost.author?.username}</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
+        <CloseButton
           onClick={onClose}
-          className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
           aria-label="Close discussion pane"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        />
       </div>
 
       {/* Post Caption Preview */}
