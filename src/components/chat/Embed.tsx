@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { isHttpsUrl, type EmbedData } from "@/lib/embeds";
+import { isHttpsUrl, type EmbedButton, type EmbedData } from "@/lib/embeds";
 
 function LinkText({ text }: { text: string }) {
   const parts = text.split(/(https:\/\/[^\s]+)/g);
@@ -41,7 +41,14 @@ function SafeLink({ href, children, className = "" }: { href: string; children: 
  * thumbnail on the right, footer + timestamp. Plain text only — React escapes
  * everything, links are https-only, images lazy-load. Fits 380px.
  */
-export function Embed({ embed }: { embed: EmbedData }) {
+export function Embed({
+  embed,
+  onAction,
+}: {
+  embed: EmbedData;
+  /** Wired by chat rows; previews simply render the button inert. */
+  onAction?: (button: EmbedButton) => void;
+}) {
   const [imageOk, setImageOk] = useState(true);
   const [thumbOk, setThumbOk] = useState(true);
   const color = embed.color ?? "#2a2a2e";
@@ -113,6 +120,20 @@ export function Embed({ embed }: { embed: EmbedData }) {
               ))}
             </div>
           )}
+          {embed.button && (
+            <div className="mt-2.5">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onAction?.(embed.button!);
+                }}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#c8ff3d]/45 bg-[#c8ff3d]/10 px-4 text-[13px] font-bold text-[#c8ff3d] transition-colors hover:bg-[#c8ff3d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
+              >
+                {embed.button.label || "Say hi"}
+              </button>
+            </div>
+          )}
           {(embed.footer?.text || embed.timestamp) && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               {embed.footer?.icon_url && isHttpsUrl(embed.footer.icon_url) && (
@@ -152,12 +173,19 @@ export function Embed({ embed }: { embed: EmbedData }) {
 }
 
 /** The embed cards under a bot message's text (max 10, enforced server-side). */
-export function EmbedList({ embeds }: { embeds: EmbedData[] | null | undefined }) {
+export function EmbedList({
+  embeds,
+  onAction,
+}: {
+  embeds: EmbedData[] | null | undefined;
+  /** Called for card buttons — chat tails wire the wave + profile open. */
+  onAction?: (button: EmbedButton, embed: EmbedData) => void;
+}) {
   if (!embeds || embeds.length === 0) return null;
   return (
     <div className="mt-2 space-y-2">
       {embeds.slice(0, 10).map((embed, i) => (
-        <Embed key={i} embed={embed} />
+        <Embed key={i} embed={embed} onAction={onAction ? (button) => onAction(button, embed) : undefined} />
       ))}
     </div>
   );

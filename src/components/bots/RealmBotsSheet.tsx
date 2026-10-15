@@ -19,6 +19,7 @@ import {
   uninstallRealmBot,
 } from "@/lib/bots";
 import { WebhookBotsSection } from "@/components/bots/WebhookBotsSection";
+import { BuiltinBotEmbeds } from "@/components/bots/BuiltinBotEmbeds";
 
 /**
  * Realm → Bots.
@@ -285,6 +286,18 @@ export function RealmBotsSheet({
                 />
               </section>
             )}
+
+            {/* Built-in bot embeds (owners/admins edit) */}
+            <BuiltinBotEmbeds
+              realmId={realmId}
+              realmName={realmName}
+              rooms={rooms}
+              defaultRoomId={rooms.find((room) => room.kind !== "voice")?.id ?? null}
+              canManage={canManage}
+              bots={(bots.data?.bots ?? [])
+                .filter((bot) => bot.is_builtin)
+                .map((bot) => ({ bot_id: bot.bot_id, name: bot.name }))}
+            />
 
             {/* Webhook posting bots (owners/admins) */}
             <WebhookBotsSection

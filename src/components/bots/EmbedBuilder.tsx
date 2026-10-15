@@ -131,14 +131,17 @@ export function EmbedBuilder({
   );
 }
 
-function EmbedForm({
+export function EmbedForm({
   index,
   embed,
+  label,
   onPatch,
   onRemove,
 }: {
   index: number;
   embed: EmbedData;
+  /** Header text; defaults to "Embed {n}" (the template editor says the bot's name). */
+  label?: string;
   onPatch: (next: EmbedData) => void;
   onRemove?: () => void;
 }) {
@@ -151,7 +154,7 @@ function EmbedForm({
   return (
     <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-2.5">
       <div className="flex items-center gap-2">
-        <p className="flex-1 text-xs font-bold">Embed {index + 1}</p>
+        <p className="flex-1 text-xs font-bold">{label ?? `Embed ${index + 1}`}</p>
         {onRemove && (
           <Button type="button" size="sm" variant="ghost" onClick={onRemove} aria-label={`Remove embed ${index + 1}`} className="h-9 text-rose-300">
             <Minus className="h-4 w-4" />

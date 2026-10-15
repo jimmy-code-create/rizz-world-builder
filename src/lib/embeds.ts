@@ -11,6 +11,20 @@
 
 export type EmbedField = { name: string; value: string; inline?: boolean };
 
+/**
+ * Optional action row under an embed. Only the built-in bots use it today
+ * (the welcome card's "Say hi"): tapping waves at the message and opens the
+ * member's card. Webhook bodies never reach this — see sanitizeEmbed options.
+ */
+export type EmbedButton = {
+  /** Button text, e.g. "👋 Say hi" (max 40 chars). */
+  label?: string;
+  /** Only "wave" exists today: toggles a 👋 on the message. */
+  action?: "wave";
+  /** Member id whose card opens on tap; {token} in bot templates. */
+  user_id?: string;
+};
+
 export type EmbedData = {
   title?: string;
   url?: string;
@@ -23,6 +37,8 @@ export type EmbedData = {
   fields?: EmbedField[];
   footer?: { text?: string; icon_url?: string };
   timestamp?: string;
+  /** Optional action button (built-in bots only today). */
+  button?: EmbedButton;
 };
 
 export const EMBED_LIMITS = {
@@ -66,7 +82,10 @@ function httpsOrEmpty(value: unknown): string | undefined {
  * Validate + sanitize one raw embed. Returns the clean embed or a friendly
  * error message naming the exact field that broke a limit.
  */
-export function sanitizeEmbed(raw: unknown): { embed?: EmbedData; error?: string } {
+export function sanitizeEmbed(
+  raw: unknown,
+  options?: { allowButton?: boolean },
+): { embed?: EmbedData; error?: string } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: "Each embed must be an object" };
   }
@@ -175,6 +194,31 @@ export function sanitizeEmbed(raw: unknown): { embed?: EmbedData; error?: string
     const time = new Date(input.timestamp);
     if (Number.isNaN(time.getTime())) return { error: "Embed timestamp must be a valid date" };
     embed.timestamp = time.toISOString();
+  }
+
+  // Action buttons ride along only for callers that opt in (built-in bot
+  // templates). Webhook bodies never reach this branch, so they cannot ask
+  // for a button.
+  if (input.button !== undefined && options?.allowButton) {
+    if (!input.button || typeof input.button !== "object" || Array.isArray(input.button)) {
+      return { error: "Embed button must be an object" };
+    }
+    const button = input.button as Record<string, unknown>;
+    const label = plainText(button.label, 41);
+    if (typeof button.label === "string" && label.length > 40) {
+      return { error: "Button labels can be up to 40 characters" };
+    }
+    const action = button.action === undefined ? "wave" : button.action;
+    if (action !== "wave") return { error: "Buttons only support the wave action" };
+    const userId = typeof button.user_id === "string" ? button.user_id : undefined;
+    if (userId && !/^\{[a-zA-Z]+\}$/.test(userId) && !/^[0-9a-fA-F-]{36}$/.test(userId)) {
+      return { error: "Button user must be a member id or {token}" };
+    }
+    embed.button = {
+      label: take(label || "👋 Say hi"),
+      action: "wave",
+      ...(userId ? { user_id: userId } : {}),
+    };
   }
 
   if (total > EMBED_LIMITS.total) {

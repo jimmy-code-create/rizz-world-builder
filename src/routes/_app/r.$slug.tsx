@@ -273,6 +273,34 @@ function RealmPage() {
   const reactions = useChatReactions("realm", messageIds, {
     myMessageIds: messageRows.filter((message: { sender_id: string | null }) => message.sender_id === user?.id).map((message: { id: string }) => message.id),
   });
+  // The welcome card's "Say hi" button opens the new member's profile. All we
+  // get is the id, so fetch just enough for the card header; the card loads
+  // the rest itself and degrades gracefully when the profile is missing.
+  async function openMemberCard(userId: string) {
+    let profile: {
+      username?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
+      accent_color?: string | null;
+    } | null = null;
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url, accent_color")
+        .eq("id", userId)
+        .maybeSingle();
+      profile = data ?? null;
+    } catch {
+      // The card falls back to what it can fetch itself.
+    }
+    setPreviewUser({
+      userId,
+      username: profile?.username ?? "member",
+      displayName: profile?.display_name || profile?.username || "Member",
+      avatarUrl: profile?.avatar_url ?? null,
+      accentColor: profile?.accent_color ?? null,
+    });
+  }
   // Members and voice participants share one presence request.
   const presence = usePresenceMap([
     ...(members.data ?? []).map((member) => member.user_id),
@@ -1659,8 +1687,17 @@ function RealmPage() {
                         )
                       );
                     })}
-                    {/* Webhook-bot embed cards sit under any text content. */}
-                    <EmbedList embeds={(m.embeds ?? null) as EmbedData[] | null} />
+                    {/* Bot embed cards sit under any text content. A card
+                        button ("👋 Say hi") waves at the message and opens
+                        the member's profile card. */}
+                    <EmbedList
+                      embeds={(m.embeds ?? null) as EmbedData[] | null}
+                      onAction={(button) => {
+                        if (button.action !== "wave" || !m.id) return;
+                        void reactions.toggle(m.id, "👋");
+                        if (button.user_id) void openMemberCard(button.user_id);
+                      }}
+                    />
                   </div>
                 </MessageActionMenu>
                 {/* Rich payloads: polls and queued tracks carry their own card. */}
