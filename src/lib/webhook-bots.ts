@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateBotToken, hashBotToken } from "@/lib/bots";
 import type { EmbedData } from "@/lib/embeds";
+import { untypedFrom } from "@/lib/untyped-db";
 
 export type WebhookBot = {
   id: string;
@@ -18,8 +19,7 @@ export const webhookBotsKey = (realmId: string) => ["realm-webhook-bots", realmI
 /** Webhook bots live behind a pending migration; missing table => empty list. */
 export async function fetchWebhookBots(realmId: string): Promise<WebhookBot[]> {
   try {
-    const { data, error } = await (supabase.from as never)("realm_bots" as never)
-      // @ts-expect-error pending migration table
+    const { data, error } = await untypedFrom(supabase)("realm_bots")
       .select("id, realm_id, name, avatar_url, created_by, default_room_id, revoked, created_at")
       .eq("realm_id", realmId)
       .eq("revoked", false)
@@ -46,8 +46,7 @@ export async function createWebhookBot(input: {
   if (name.length < 2) throw new Error("Give the bot a name (2–32 characters)");
   const secret = generateBotToken().replace(/^rbot_/, "rwh_");
   const tokenHash = await hashBotToken(secret);
-  const { data, error } = await (supabase.from as never)("realm_bots" as never)
-    // @ts-expect-error pending migration table
+  const { data, error } = await untypedFrom(supabase)("realm_bots")
     .insert({
       realm_id: input.realmId,
       name,
@@ -64,8 +63,7 @@ export async function createWebhookBot(input: {
 export async function regenerateWebhookSecret(botId: string): Promise<string> {
   const secret = generateBotToken().replace(/^rbot_/, "rwh_");
   const tokenHash = await hashBotToken(secret);
-  const { error } = await (supabase.from as never)("realm_bots" as never)
-    // @ts-expect-error pending migration table
+  const { error } = await untypedFrom(supabase)("realm_bots")
     .update({ token_hash: tokenHash })
     .eq("id", botId);
   if (error) throw new Error(mapBotError(error.message));
@@ -73,16 +71,14 @@ export async function regenerateWebhookSecret(botId: string): Promise<string> {
 }
 
 export async function revokeWebhookBot(botId: string): Promise<void> {
-  const { error } = await (supabase.from as never)("realm_bots" as never)
-    // @ts-expect-error pending migration table
+  const { error } = await untypedFrom(supabase)("realm_bots")
     .update({ revoked: true })
     .eq("id", botId);
   if (error) throw new Error(mapBotError(error.message));
 }
 
 export async function setWebhookBotChannel(botId: string, roomId: string | null): Promise<void> {
-  const { error } = await (supabase.from as never)("realm_bots" as never)
-    // @ts-expect-error pending migration table
+  const { error } = await untypedFrom(supabase)("realm_bots")
     .update({ default_room_id: roomId })
     .eq("id", botId);
   if (error) throw new Error(mapBotError(error.message));

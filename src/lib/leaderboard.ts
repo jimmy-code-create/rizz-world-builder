@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { untypedRpc } from "@/lib/untyped-db";
 
 export type BoardPeriod = "today" | "week" | "all";
 
@@ -47,16 +48,13 @@ export async function fetchBoardPage(
   }
 
   try {
-    const { data, error } = await (supabase.rpc as never)(
-      "get_leaderboard" as never,
-      {
-        _period: period,
-        _following_only: followingOnly,
-        _viewer: viewerId,
-        _limit: limit,
-        _offset: offset,
-      } as never,
-    );
+    const { data, error } = await untypedRpc(supabase)("get_leaderboard", {
+      _period: period,
+      _following_only: followingOnly,
+      _viewer: viewerId,
+      _limit: limit,
+      _offset: offset,
+    });
     if (error) throw error;
     const rows = ((data ?? []) as Array<{
       user_id: string;

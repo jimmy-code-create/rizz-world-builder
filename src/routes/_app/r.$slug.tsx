@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
+import { untypedFrom } from "@/lib/untyped-db";
 import { useAuth } from "@/lib/auth";
 import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm, setRealmRoomLock } from "@/lib/realms";
 import { Switch } from "@/components/ui/switch";
@@ -357,8 +358,7 @@ function RealmPage() {
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Record<string, { name: string; avatar_url: string | null }>> => {
       try {
-        const { data, error } = await (supabase.from as never)("realm_bots" as never)
-          // @ts-expect-error pending migration table
+        const { data, error } = await untypedFrom(supabase)("realm_bots")
           .select("id, name, avatar_url")
           .in("id", webhookBotIds);
         if (error) throw error;

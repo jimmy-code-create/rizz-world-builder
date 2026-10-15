@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sanitizeWebhookBody } from "@/lib/embeds";
+import { untypedFrom } from "@/lib/untyped-db";
 
 /**
  * Realm webhook-bot delivery.
@@ -54,8 +55,7 @@ export const Route = createFileRoute("/api/bot-webhook/$botId/$secret")({
         // Verify the secret against the stored hash.
         const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
         const secretHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-        const { data: bot, error: botError } = await (admin.from as never)("realm_bots" as never)
-          // @ts-expect-error realm_bots is added by a pending migration
+        const { data: bot, error: botError } = await untypedFrom(admin)("realm_bots")
           .select("id, realm_id, name, avatar_url, token_hash, created_by, default_room_id, revoked")
           .eq("id", botId)
           .maybeSingle();
@@ -72,8 +72,7 @@ export const Route = createFileRoute("/api/bot-webhook/$botId/$secret")({
 
         // 30 messages/minute per bot.
         const windowStart = new Date(Date.now() - 60_000).toISOString();
-        const { data: usage } = await (admin.from as never)("realm_bot_rate_limits" as never)
-          // @ts-expect-error pending migration table
+        const { data: usage } = await untypedFrom(admin)("realm_bot_rate_limits")
           .select("window_started_at, used")
           .eq("bot_id", row.id)
           .maybeSingle();
@@ -82,8 +81,7 @@ export const Route = createFileRoute("/api/bot-webhook/$botId/$secret")({
         if (inWindow && usageRow.used >= 30) {
           return json({ ok: false, error: "Rate limited: 30 messages per minute" }, 429);
         }
-        await (admin.from as never)("realm_bot_rate_limits" as never)
-          // @ts-expect-error pending migration table
+        await untypedFrom(admin)("realm_bot_rate_limits")
           .upsert({
             bot_id: row.id,
             window_started_at: inWindow ? usageRow.window_started_at : new Date().toISOString(),
@@ -106,21 +104,21 @@ export const Route = createFileRoute("/api/bot-webhook/$botId/$secret")({
           realmId = (room as { realm_id: string }).realm_id;
         }
 
-        const { error: insertError } = await admin.from("messages").insert({
+        // `messages` is typed, but these three columns arrive with the same
+        // pending migration the bots do, so the insert goes through the untyped
+        // accessor instead of one @ts-expect-error per column.
+        const { error: insertError } = await untypedFrom(admin)("messages").insert({
           realm_id: realmId,
           realm_room_id: roomId,
           sender_id: row.created_by,
-          // @ts-expect-error webhook_bot_id is added by a pending migration
           webhook_bot_id: row.id,
           body: clean.content ?? "",
-          // @ts-expect-error embeds is added by a pending migration
           embeds: clean.embeds ?? null,
-          // @ts-expect-error webhook_meta is added by a pending migration
           webhook_meta:
             clean.username || clean.avatar_url
               ? { ...(clean.username ? { name: clean.username } : {}), ...(clean.avatar_url ? { avatar_url: clean.avatar_url } : {}) }
               : null,
-        } as never);
+        });
         if (insertError) {
           return json({ ok: false, error: "Couldn't deliver that message" }, 502);
         }
