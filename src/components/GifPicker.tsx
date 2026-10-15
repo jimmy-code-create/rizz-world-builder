@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
+import { Crown, Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
+import { RealmCustomEmojiTab } from "@/components/chat/RealmEmojiPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -20,7 +21,7 @@ type Sticker = {
   animated: boolean;
 };
 
-type PickerTab = "emoji" | "gifs" | "stickers";
+type PickerTab = "emoji" | "gifs" | "stickers" | "realm";
 type EmojiEntry = { emoji: string; name: string; group: string };
 
 const GIF_MARKER = (url: string) => `![gif](${url})`;
@@ -192,7 +193,16 @@ const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
 /** The quick-pick row above the sections. */
 const TOP_EMOJIS = EMOJIS.slice(0, 12);
 
-export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
+export function GifPicker({
+    onSelect,
+    realmId,
+    realmCanManage,
+  }: {
+    onSelect: (marker: string) => void;
+    /** When set, a fourth "Realm" tab offers this realm's custom emoji. */
+    realmId?: string | null;
+    realmCanManage?: boolean;
+  }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PickerTab>("emoji");
@@ -300,7 +310,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           size="icon"
           aria-label={t("emoji_picker")}
           title={t("emoji_picker")}
-          className="shrink-0 text-primary"
+          className="shrink-0 text-primary h-11 w-11"
         >
           <Smile className="h-5 w-5" />
         </Button>
@@ -324,6 +334,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
               ["emoji", "Emoji", Smile],
               ["gifs", "GIFs", Image],
               ["stickers", "Stickers", Sparkles],
+              ...(realmId ? [["realm", "Realm", Crown] as const] : []),
             ] as const
           ).map(([value, label, Icon]) => (
             <button
@@ -344,7 +355,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           ))}
         </div>
 
-        {tab !== "gifs" || apiKey ? (
+        {tab !== "realm" && (tab !== "gifs" || apiKey) ? (
           <div className="relative mb-2.5">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -609,6 +620,17 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
             </p>
           </>
         )}
+
+        {tab === "realm" && realmId ? (
+          <RealmCustomEmojiTab
+            realmId={realmId}
+            canManage={!!realmCanManage}
+            onPick={(token) => {
+              onSelect(token);
+              setOpen(false);
+            }}
+          />
+        ) : null}
         </div>
       </SheetContent>
     </Sheet>

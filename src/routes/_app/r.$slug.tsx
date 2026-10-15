@@ -14,7 +14,7 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessageSquare, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessageSquare, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -59,7 +59,6 @@ import { LevelsSheet } from "@/components/chat/LevelsSheet";
 import { VoiceChannelMusic } from "@/components/chat/VoiceChannelMusic";
 import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
-import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
 import { RealmProfilePreviewDialog, type RealmProfilePreviewUser } from "@/components/realms/RealmProfilePreviewDialog";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
@@ -124,6 +123,10 @@ function RealmPage() {
   });
   const [joined, setJoined] = useState(false);
   const [body, setBody] = useState("");
+  // Collapse the auto-growing composer once the message is sent.
+  useEffect(() => {
+    if (body === "" && inputRef.current) inputRef.current.style.height = "auto";
+  }, [body]);
   const [sending, setSending] = useState(false);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
@@ -133,7 +136,7 @@ function RealmPage() {
   const [newRoomKind, setNewRoomKind] = useState<RealmRoomKind>("text");
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [caret, setCaret] = useState(0);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -164,7 +167,6 @@ function RealmPage() {
   const [threadRoot, setThreadRoot] = useState<{ id: string; body: string; author: string | null } | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
 
@@ -1646,13 +1648,6 @@ function RealmPage() {
         onScheduled={() => { setBody(""); setCaret(0); }}
       />
       <PollDialog open={pollOpen} onOpenChange={setPollOpen} realmId={c.id} roomId={slashRoomId} />
-      <RealmEmojiPicker
-        open={emojiOpen}
-        onOpenChange={setEmojiOpen}
-        realmId={c.id}
-        canManage={canModerate}
-        onPick={(token) => setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `)}
-      />
       <ReactionRoleDialog
         open={!!reactionRoleMessageId}
         onOpenChange={(open) => { if (!open) setReactionRoleMessageId(null); }}
@@ -1705,17 +1700,7 @@ function RealmPage() {
             Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A moderator can switch it back on.
           </p>
         )}
-        <div className="mx-auto flex w-full max-w-3xl gap-2">
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
-          <button
-            type="button"
-            aria-label="Custom emoji"
-            onClick={() => setEmojiOpen(true)}
-            disabled={!joined}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
-          >
-            <SmilePlus className="h-4 w-4" />
-          </button>
+        <div className="mx-auto flex w-full max-w-3xl items-end gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -1739,6 +1724,13 @@ function RealmPage() {
           {/* The slider and the mention popup both anchor to the input wrapper, so
               they can never end up on opposite sides of the composer. */}
           <div className="relative min-w-0 flex-1">
+            <div className="absolute bottom-1 right-1 z-10">
+              <GifPicker
+                onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)}
+                realmId={c.id}
+                realmCanManage={canModerate}
+              />
+            </div>
             <AnimatePresence>
               {slashMenuOpen && (
                 <div className="absolute inset-x-0 bottom-full z-40 mb-2">
@@ -1752,17 +1744,21 @@ function RealmPage() {
                 </div>
               )}
             </AnimatePresence>
-          <Input
+          <textarea
             ref={inputRef}
+            rows={1}
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
               setSlashHidden(false);
               setSlashIndex(0);
               setCaret(e.target.selectionStart ?? e.target.value.length);
+              const el = e.target;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
             }}
-            onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-            onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+            onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
             onKeyDown={(e) => {
               // Arrow keys and Enter belong to the slash menu while it has rows;
               // the no-match hint does not steal Enter, so the message still sends.
@@ -1785,7 +1781,8 @@ function RealmPage() {
             placeholder={composerBlock ?? "Message"}
             disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
             maxLength={500}
-            className="composer-input glass border-white/10"
+            enterKeyHint="send"
+            className="composer-input glass min-h-[44px] w-full resize-none overflow-y-auto border-white/10 py-3 pl-3 pr-12 text-[16px]"
           />
           <MentionAutocomplete
             value={body}
@@ -1801,7 +1798,7 @@ function RealmPage() {
             }}
           />
           </div>
-          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
+          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md shrink-0 h-11 w-11">
             <Send className="h-4 w-4" />
           </Button>
         </div>

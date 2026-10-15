@@ -1144,7 +1144,7 @@ function DMPage() {
               </button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex items-end gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <input
             ref={imageInputRef}
@@ -1204,11 +1204,11 @@ function DMPage() {
           {body.trim() || imageFile ? (
             <>
               {body.trim() && (
-                <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send">
+                <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground h-11 w-11" aria-label="Schedule send">
                   <Clock className="h-4 w-4" />
                 </Button>
               )}
-              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md h-11 w-11" aria-label={sendingMessage ? "Sending message" : "Send message"}>
                 <Send className="h-4 w-4" />
               </Button>
             </>

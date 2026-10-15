@@ -596,7 +596,7 @@ function GroupRoom() {
               </Button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex items-end gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
           <input
             ref={imageInputRef}
@@ -654,7 +654,7 @@ function GroupRoom() {
               }}
             />
           </div>
-          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
+          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md h-11 w-11" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
             <Send className="h-4 w-4" />
           </Button>
           </div>
