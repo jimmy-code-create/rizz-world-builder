@@ -192,6 +192,7 @@ export function useVoiceCall({
       const next = new Set<string>();
       const threshold = speakingThreshold(micSensitivityRef.current) || SPEAKING_THRESHOLD;
       analysersRef.current.forEach((entry, peerId) => {
+        if (peerId === userId && mutedRef.current) return;
         entry.analyser.getByteTimeDomainData(entry.buffer);
         let sum = 0;
         for (let index = 0; index < entry.buffer.length; index += 1) {
@@ -253,15 +254,11 @@ export function useVoiceCall({
 
     const scheduleIceRestart = (peerId: string, entry: PeerConnection) => {
       if (disposed || entry.retryTimer) return;
-      if (entry.retryCount >= 4) {
-        setConnectionError(
-          turnConfiguredRef.current
-            ? "The call connection failed. Check your network and tap Retry."
-            : "The call connection failed. A TURN relay is needed for some mobile networks.",
-        );
+      if (entry.retryCount >= 5) {
+        setConnectionError("Disconnected - tap to retry");
         return;
       }
-      const delay = Math.min(700 * 2 ** entry.retryCount, 5600);
+      const delay = Math.min(1000 * 2 ** entry.retryCount, 16000);
       entry.retryCount += 1;
       entry.retryTimer = window.setTimeout(() => {
         entry.retryTimer = undefined;

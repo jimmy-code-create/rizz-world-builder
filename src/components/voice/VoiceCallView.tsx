@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send } from "lucide-react";
+import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -8,7 +8,17 @@ import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -18,6 +28,7 @@ import { fetchRealmRoomMessages, sendRealmRoomMessage } from "@/lib/realms";
 import { toast } from "sonner";
 import {
   loadPeerAudio,
+  usePeerAudio,
   peerGain,
   peerVolumeOf,
   PEER_AUDIO_EVENT,
@@ -25,25 +36,6 @@ import {
   togglePeerMute,
   type PeerAudioState,
 } from "@/lib/peer-audio";
-
-/**
- * Per-person voice settings, live. Every tile can turn one person up, down or
- * off for this device only — the same idea as Discord's per-user volume, and it
- * never touches what they send or what anyone else hears.
- */
-function usePeerAudio(): PeerAudioState {
-  const [state, setState] = useState(loadPeerAudio);
-  useEffect(() => {
-    const refresh = () => setState(loadPeerAudio());
-    window.addEventListener(PEER_AUDIO_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(PEER_AUDIO_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  return state;
-}
 
 function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
   const peerAudio = usePeerAudio();
@@ -100,11 +92,11 @@ function PeerVolumeControl({ userId, username }: { userId: string; username: str
  * in some browsers, so the picker is best-effort: when it is missing, playback
  * stays on the system default instead of failing.
  */
-function RemoteAudio({ stream, onBlocked, peerId }: { stream: MediaStream; onBlocked: () => void; peerId?: string }) {
+function RemoteAudio({ stream, onBlocked, peerId, deafened = false }: { stream: MediaStream; onBlocked: () => void; peerId?: string; deafened?: boolean }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [settings] = useSoundSettings();
   const peerAudio = usePeerAudio();
-  const volume = channelVolume(settings, "voice");
+  const volume = deafened ? 0 : channelVolume(settings, "voice");
 
   useEffect(() => {
     const element = audioRef.current;
@@ -116,10 +108,11 @@ function RemoteAudio({ stream, onBlocked, peerId }: { stream: MediaStream; onBlo
   useEffect(() => {
     const element = audioRef.current;
     if (!element) return;
+    element.muted = Boolean(deafened);
     // `volume` is capped at 1 by the browser for streamed/live audio, which is
     // why the settings screen says so next to the Voice & TTS slider.
     element.volume = Math.min(1, Math.max(0, volume * peerGain(peerAudio, peerId)));
-  }, [volume, peerAudio, peerId]);
+  }, [volume, peerAudio, peerId, deafened]);
 
   useEffect(() => {
     const element = audioRef.current;
@@ -152,12 +145,12 @@ function VideoTile({ stream }: { stream: MediaStream }) {
  * rendered by the provider, not by the view.
  */
 export function VoiceCallAudio() {
-  const { call, remoteStreams, markPlaybackBlocked } = useVoiceCallContext();
+  const { call, remoteStreams, markPlaybackBlocked, deafened } = useVoiceCallContext();
   if (!call) return null;
   return (
     <>
       {remoteStreams.map(({ peerId, stream }) => (
-        <RemoteAudio key={peerId} stream={stream} peerId={peerId} onBlocked={markPlaybackBlocked} />
+        <RemoteAudio key={peerId} stream={stream} peerId={peerId} onBlocked={markPlaybackBlocked} deafened={deafened} />
       ))}
     </>
   );
@@ -180,12 +173,14 @@ export function VoiceCallView() {
     screenSupported,
     screenError,
     muted,
+    deafened,
     cameraOn,
     cameraReady,
     facing,
     status,
     error,
     toggleMute,
+    toggleDeafen,
     toggleCamera,
     flipCamera,
     toggleScreenShare,
@@ -197,11 +192,20 @@ export function VoiceCallView() {
   const musicBot = useMusicBotInCall();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [soundSettings, setSoundSettings] = useSoundSettings();
   const [chatBody, setChatBody] = useState("");
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
+
+  const handleLeaveClick = () => {
+    if (call?.isHost && participants.length > 1) {
+      setConfirmLeaveOpen(true);
+    } else {
+      leaveCall();
+    }
+  };
 
   const roomMessages = useQuery({
     queryKey: ["realm-room-messages", call?.channelId],
@@ -334,9 +338,9 @@ export function VoiceCallView() {
               return (
                 <div
                   key={participant.user_id}
-                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-all ${
+                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-all duration-200 ${
                     speaking
-                      ? "border-primary bg-primary/10 shadow-[0_0_0_3px_var(--brand-signal),0_0_24px_transparent]"
+                      ? "border-primary bg-primary/10 shadow-[0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(200,255,61,0.35)]"
                       : "border-white/10 glass"
                   }`}
                 >
@@ -344,10 +348,24 @@ export function VoiceCallView() {
                     <VideoTile stream={videoStream} />
                   ) : (
                     <>
-                      <Avatar className={`h-16 w-16 ${speaking ? "ring-2 ring-primary" : ""}`}>
-                        <AvatarImage src={participant.user?.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar
+                          className={`h-16 w-16 transition-all duration-200 ${
+                            speaking
+                              ? "ring-4 ring-primary ring-offset-2 ring-offset-[#0b0714] shadow-[0_0_18px_rgba(200,255,61,0.65)]"
+                              : ""
+                          }`}
+                        >
+                          <AvatarImage src={participant.user?.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
+                        </Avatar>
+                        {speaking && (
+                          <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -inset-1 rounded-full animate-ping bg-primary/30"
+                          />
+                        )}
+                      </div>
                       <p className="max-w-full truncate text-xs font-semibold">
                         @{username}
                         {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
@@ -436,66 +454,96 @@ export function VoiceCallView() {
         )}
 
         <div
-          className="relative shrink-0 border-t border-white/5 glass-strong px-4 pt-3"
+          className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
-          <div className="mx-auto flex max-w-md items-center justify-center gap-3">
-            <Button
-              variant={muted ? "outline" : "default"}
-              size="icon"
+          <div className="mx-auto flex max-w-lg items-center justify-between sm:justify-center gap-1.5 sm:gap-3">
+            {/* Mute */}
+            <button
+              type="button"
+              onClick={toggleMute}
               aria-label={muted ? "Unmute microphone" : "Mute microphone"}
               aria-pressed={!muted}
-              onClick={toggleMute}
-              className={`h-14 w-14 rounded-full ${muted ? "glass border-white/10" : "border-0 bg-primary text-primary-foreground shadow-md"}`}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
+                muted
+                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
+                  : "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+              }`}
             >
-              {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-            </Button>
+              {muted ? <MicOff className="h-5 w-5 mb-0.5" /> : <Mic className="h-5 w-5 mb-0.5" />}
+              <span className="text-[10px] font-semibold leading-none">{muted ? "Unmute" : "Mute"}</span>
+            </button>
 
-            <Button
-              variant={cameraOn ? "default" : "outline"}
-              size="icon"
-              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-              aria-pressed={cameraOn}
-              onClick={toggleCamera}
-              className={`h-14 w-14 rounded-full ${cameraOn ? "border-0 bg-primary text-primary-foreground shadow-md" : "glass border-white/10"}`}
+            {/* Deafen */}
+            <button
+              type="button"
+              onClick={toggleDeafen}
+              aria-label={deafened ? "Undeafen incoming audio" : "Deafen incoming audio"}
+              aria-pressed={deafened}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
+                deafened
+                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
+                  : "glass border-white/10 text-foreground hover:bg-white/10"
+              }`}
             >
-              {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-            </Button>
+              {deafened ? <VolumeX className="h-5 w-5 mb-0.5 text-destructive" /> : <Headphones className="h-5 w-5 mb-0.5" />}
+              <span className="text-[10px] font-semibold leading-none">{deafened ? "Undeafen" : "Deafen"}</span>
+            </button>
 
-            {cameraOn && (
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Flip camera"
-                onClick={flipCamera}
-                className="glass h-14 w-14 rounded-full border-white/10 md:hidden"
-              >
-                <SwitchCamera className="h-5 w-5" />
-              </Button>
-            )}
-
-            <Button
-              variant={sharingScreen ? "default" : "outline"}
-              size="icon"
-              aria-label={sharingScreen ? "Stop sharing your screen" : "Share your screen"}
-              aria-pressed={sharingScreen}
+            {/* Share Screen */}
+            <button
+              type="button"
+              onClick={toggleScreenShare}
               disabled={!screenSupported}
               title={screenSupported ? undefined : "Screen sharing isn't available in this browser."}
-              onClick={toggleScreenShare}
-              className={`h-14 w-14 rounded-full ${
-                sharingScreen ? "border-0 bg-primary text-primary-foreground shadow-md" : "glass border-white/10"
-              } disabled:opacity-50`}
+              aria-label={sharingScreen ? "Stop sharing screen" : "Share screen"}
+              aria-pressed={sharingScreen}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
+                sharingScreen
+                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+                  : "glass border-white/10 text-foreground hover:bg-white/10"
+              }`}
             >
-              {sharingScreen ? <ScreenShareOff className="h-5 w-5" /> : <ScreenShare className="h-5 w-5" />}
-            </Button>
+              {sharingScreen ? <ScreenShareOff className="h-5 w-5 mb-0.5" /> : <ScreenShare className="h-5 w-5 mb-0.5" />}
+              <span className="text-[10px] font-semibold leading-none">{sharingScreen ? "Stop" : "Share"}</span>
+            </button>
 
+            {/* Camera */}
+            <button
+              type="button"
+              onClick={toggleCamera}
+              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
+              aria-pressed={cameraOn}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
+                cameraOn
+                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+                  : "glass border-white/10 text-foreground hover:bg-white/10"
+              }`}
+            >
+              {cameraOn ? <Video className="h-5 w-5 mb-0.5" /> : <VideoOff className="h-5 w-5 mb-0.5" />}
+              <span className="text-[10px] font-semibold leading-none">Camera</span>
+            </button>
+
+            {/* Settings */}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Voice settings"
+              className="glass border-white/10 text-foreground hover:bg-white/10 flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95"
+            >
+              <Sliders className="h-5 w-5 mb-0.5 text-primary" />
+              <span className="text-[10px] font-semibold leading-none">Settings</span>
+            </button>
+
+            {/* Leave */}
             <Button
               variant="outline"
               aria-label="Leave call"
-              onClick={leaveCall}
-              className="h-14 rounded-full border-destructive/40 bg-destructive/15 px-6 text-destructive hover:bg-destructive/25"
+              onClick={handleLeaveClick}
+              className="min-h-[50px] rounded-2xl border-destructive/40 bg-destructive/15 px-4 sm:px-6 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
             >
-              <PhoneOff className="mr-2 h-5 w-5" /> Leave
+              <PhoneOff className="h-5 w-5" />
+              <span>Leave</span>
             </Button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
@@ -510,121 +558,40 @@ export function VoiceCallView() {
           {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
         </div>
 
-        {/* Voice Settings Dialog */}
-        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogContent className="glass-strong border-white/10 max-w-md w-full max-h-[85vh] overflow-y-auto space-y-4">
-            <DialogHeader>
-              <DialogTitle className="font-display flex items-center gap-2">
-                <Sliders className="h-5 w-5 text-primary" /> Voice & Audio Settings
-              </DialogTitle>
-            </DialogHeader>
+        {/* Voice Settings Sheet */}
+        <VoiceSettingsSheet
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          muted={muted}
+          onToggleMute={toggleMute}
+          participants={participants}
+          currentUserId={user?.id}
+          peerAudio={peerAudio}
+        />
 
-            <div className="space-y-4 text-xs">
-              {/* Output Volume */}
-              <div className="space-y-2">
-                <div className="flex justify-between font-medium">
-                  <span className="text-foreground">Voice Volume</span>
-                  <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.voice)}</span>
-                </div>
-                <Slider
-                  value={[Math.round(soundSettings.voice * 100)]}
-                  min={0}
-                  max={200}
-                  step={5}
-                  onValueChange={([val]) => setSoundSettings({ voice: val / 100 })}
-                />
-              </div>
-
-              {/* Music Bot Volume */}
-              <div className="space-y-2">
-                <div className="flex justify-between font-medium">
-                  <span className="text-foreground">Music Bot Volume</span>
-                  <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.music)}</span>
-                </div>
-                <Slider
-                  value={[Math.round(soundSettings.music * 100)]}
-                  min={0}
-                  max={200}
-                  step={5}
-                  onValueChange={([val]) => setSoundSettings({ music: val / 100 })}
-                />
-              </div>
-
-              {/* Toggles */}
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs font-semibold">Noise Suppression</Label>
-                    <p className="text-[11px] text-muted-foreground">Filters background noise and echo</p>
-                  </div>
-                  <Switch
-                    checked={soundSettings.noiseSuppression}
-                    onCheckedChange={(v) => setSoundSettings({ noiseSuppression: v })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs font-semibold">Self Mute</Label>
-                    <p className="text-[11px] text-muted-foreground">Mute your microphone in this call</p>
-                  </div>
-                  <Switch checked={muted} onCheckedChange={toggleMute} />
-                </div>
-              </div>
-
-              {/* Participants Volume Management */}
-              <div className="space-y-2.5 pt-3 border-t border-white/10">
-                <Label className="text-xs font-semibold text-foreground">In-Call Members ({participants.length})</Label>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {participants.map((p) => {
-                    const isMe = p.user_id === user?.id;
-                    const uName = p.user?.display_name || p.user?.username || "user";
-                    const isPeerMuted = peerAudio.muted.includes(p.user_id);
-                    const peerVol = peerVolumeOf(peerAudio, p.user_id);
-
-                    return (
-                      <div key={p.user_id} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="h-7 w-7 shrink-0">
-                            <AvatarImage src={p.user?.avatar_url ?? undefined} />
-                            <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-bold">
-                              {uName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate text-xs font-medium">
-                            {uName} {isMe && "(you)"}
-                          </span>
-                        </div>
-                        {!isMe && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] font-mono text-muted-foreground">{peerVol}%</span>
-                            <Slider
-                              value={[peerVol]}
-                              min={0}
-                              max={100}
-                              step={5}
-                              onValueChange={([val]) => setPeerVolume(p.user_id, val)}
-                              className="w-16"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              onClick={() => togglePeerMute(p.user_id)}
-                              aria-label={isPeerMuted ? "Unmute member" : "Mute member"}
-                            >
-                              {isPeerMuted ? <VolumeX className="h-3.5 w-3.5 text-destructive" /> : <Volume2 className="h-3.5 w-3.5" />}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Host Leave Confirmation Dialog */}
+        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
+          <AlertDialogContent className="glass-strong border-white/10 max-w-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display">Leave & End Call?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You are the host of this voice call. Leaving will end the call for everyone in the room.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="glass border-white/10">Stay</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setConfirmLeaveOpen(false);
+                  leaveCall();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Leave & End Call
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>
