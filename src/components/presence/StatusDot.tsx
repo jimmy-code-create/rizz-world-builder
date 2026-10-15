@@ -138,7 +138,9 @@ export function StatusDotButton({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const row = usePresence(userId);
+  // Lazy: a closed dot subscribes to nothing. Voice tiles render one dot
+  // per member, so eager queries here multiplied into a fan-out storm.
+  const row = usePresence(open ? userId : undefined);
   // Invisible users read as offline to everyone but themselves.
   const hidden = !!row && !isSelf && row.status === "invisible";
   const expired =
@@ -197,6 +199,110 @@ function expiryLabel(expiresAt: string | null): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `Clears in ${hours}h.`;
   return "Clears today.";
+}
+
+function PillEmoji({ emoji, size = 16 }: { emoji: string; size?: number }) {
+  const catName = catNameForShortcode(emoji);
+  if (catName) return <CatEmoji name={catName} size={size} animate={false} />;
+  return (
+    <span aria-hidden className="shrink-0 leading-none" style={{ fontSize: size }}>
+      {emoji}
+    </span>
+  );
+}
+
+/**
+ * <StatusPill>: the status line under @handle. Rounded-full pill, emoji +
+ * truncated text, no thought-bubble tail. The owner taps to edit (opens the
+ * status sheet); everyone else gets a popover with the full text + expiry.
+ * Empty + owner = dashed "+ Set status" pill. Renders nothing otherwise.
+ */
+export function StatusPill({
+  emoji,
+  text,
+  expiresAt,
+  onActivate,
+  emptyLabel,
+  className = "",
+}: {
+  emoji?: string | null;
+  text?: string | null;
+  expiresAt?: string | null;
+  onActivate?: () => void;
+  emptyLabel?: string | null;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!emoji && !text) {
+    if (emptyLabel == null || !onActivate) return null;
+    return (
+      <button
+        type="button"
+        onClick={onActivate}
+        aria-label={emptyLabel}
+        className={`status-bubble-in inline-flex max-w-[min(70vw,20rem)] items-center gap-1.5 rounded-full border border-dashed border-white/25 bg-transparent px-2.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:border-[#c8ff3d]/60 hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${className}`}
+      >
+        <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{emptyLabel}</span>
+      </button>
+    );
+  }
+  const inner = (
+    <>
+      {emoji && <PillEmoji emoji={emoji} />}
+      {text && <span className="min-w-0 truncate text-[13px] leading-tight text-[#f2efe6]">{text}</span>}
+    </>
+  );
+  const pillCls = `status-bubble-in inline-flex max-w-[min(70vw,20rem)] items-center gap-1.5 rounded-full border border-[#2a2a2e] bg-[#1c1c1f] px-2.5 py-1.5 text-left ${className}`;
+  if (onActivate) {
+    return (
+      <button
+        type="button"
+        onClick={onActivate}
+        aria-label={text ? `Edit status: ${text}` : "Edit status"}
+        className={`${pillCls} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]`}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={text ? `Show full status: ${text}` : "Show full status"}
+          aria-expanded={open}
+          className={`${pillCls} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]`}
+        >
+          {inner}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-64 rounded-2xl border-[#2a2a2e] bg-[#1c1c1f] p-3">
+        <span className="flex items-start gap-2 text-sm">
+          {emoji && <PillEmoji emoji={emoji} size={20} />}
+          {text && <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-snug text-[#f2efe6]">{text}</span>}
+        </span>
+        <span className="mt-1 block text-[11px] text-muted-foreground">{expiryLabel(expiresAt ?? null)}</span>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * The status emoji badge pinned to the avatar's bottom-left corner.
+ * Display-only (the dot on the bottom-right handles taps).
+ */
+export function AvatarStatusBadge({ emoji, size = 16 }: { emoji?: string | null; size?: number }) {
+  if (!emoji) return null;
+  return (
+    <span
+      aria-hidden
+      className="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full border border-[#2a2a2e] bg-[#1c1c1f] p-1"
+    >
+      <PillEmoji emoji={emoji} size={size} />
+    </span>
+  );
 }
 
 /**

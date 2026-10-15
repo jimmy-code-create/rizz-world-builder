@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { ProfileCardDialog, bannerToneFor, formatCount } from "@/components/profile/ProfileCard";
-import { CustomStatusLine, StatusIcon } from "@/components/presence/StatusDot";
+import { CustomStatusLine, StatusIcon, AvatarStatusBadge } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -324,6 +324,7 @@ export function AccountMenu({
                 {initial}
               </AvatarFallback>
             </Avatar>
+            <AvatarStatusBadge emoji={custom?.emoji} size={14} />
             <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[2px]">
               <StatusIcon status={selfPresence.status} size={16} />
             </span>

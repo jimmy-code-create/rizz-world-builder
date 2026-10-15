@@ -16,7 +16,7 @@ import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { CustomStatusLine, StatusBubble, StatusDotButton } from "@/components/presence/StatusDot";
+import { StatusDotButton, StatusPill, AvatarStatusBadge } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
@@ -297,6 +297,7 @@ function ProfilePage() {
               accent={eq?.avatar_decoration?.preview_color}
               className="ring-4 ring-background rounded-full"
             />
+            <AvatarStatusBadge emoji={customStatus?.emoji} />
             <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
               <StatusDotButton
                 userId={profile.id}
@@ -307,22 +308,6 @@ function ProfilePage() {
               />
             </span>
           </span>
-        </div>
-        {/* Mood bubble: top-right of the avatar, overlapping the banner. The
-            wrapper is click-through so the banner keeps its taps; the bubble
-            itself stays tappable. At 380px: left edge 122 + max 228 < 368. */}
-        <div className="pointer-events-none absolute left-[122px] md:left-[132px] right-3 top-2 z-10 flex justify-start">
-          <div className="pointer-events-auto min-w-0">
-            {customStatus && (customStatus.emoji || customStatus.text) ? (
-              <StatusBubble
-                emoji={customStatus.emoji}
-                text={customStatus.text}
-                onActivate={isMe ? () => setStatusOpen(true) : undefined}
-              />
-            ) : isMe ? (
-              <StatusBubble emptyLabel="Set status" onActivate={() => setStatusOpen(true)} />
-            ) : null}
-          </div>
         </div>
       </motion.div>
 
@@ -341,7 +326,17 @@ function ProfilePage() {
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
           {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
-          <CustomStatusLine status={customStatus} className="mt-1 text-xs text-muted-foreground" />
+          {customStatus && (customStatus.emoji || customStatus.text) ? (
+            <StatusPill
+              emoji={customStatus.emoji}
+              text={customStatus.text}
+              expiresAt={presenceRow?.custom_status_expires_at ?? null}
+              onActivate={isMe ? () => setStatusOpen(true) : undefined}
+              className="mt-1.5"
+            />
+          ) : isMe ? (
+            <StatusPill emptyLabel="+ Set status" onActivate={() => setStatusOpen(true)} className="mt-1.5" />
+          ) : null}
         </div>
         {isMe ? (
           <div className="flex gap-2">
