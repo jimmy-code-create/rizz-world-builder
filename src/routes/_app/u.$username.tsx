@@ -16,7 +16,7 @@ import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { AvatarWithStatus, CustomStatusLine, StatusBubble } from "@/components/presence/StatusDot";
+import { CustomStatusLine, StatusBubble, StatusDotButton } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
@@ -288,7 +288,7 @@ function ProfilePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
-          <AvatarWithStatus status={presenceStatus} dotSize={18}>
+          <span className="relative inline-flex shrink-0">
             <AvatarDecoration
               src={profile.avatar_url}
               fallback={initial}
@@ -297,7 +297,16 @@ function ProfilePage() {
               accent={eq?.avatar_decoration?.preview_color}
               className="ring-4 ring-background rounded-full"
             />
-          </AvatarWithStatus>
+            <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
+              <StatusDotButton
+                userId={profile.id}
+                username={profileUsername}
+                status={presenceStatus}
+                isSelf={Boolean(isMe)}
+                size={18}
+              />
+            </span>
+          </span>
         </div>
         {/* Mood bubble: top-right of the avatar, overlapping the banner. The
             wrapper is click-through so the banner keeps its taps; the bubble

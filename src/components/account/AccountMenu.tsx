@@ -367,11 +367,14 @@ export function AccountMenu({
             <StatusIcon status={selfPresence.status} size={10} />
           </span>
           <span className="min-w-0 flex-1 truncate text-left font-medium">Status</span>
-          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex min-w-0 shrink-0 items-center gap-1 text-xs text-muted-foreground">
             {custom?.emoji ? (
               <StatusEmoji emoji={custom.emoji} size={14} />
             ) : null}
             {statusShortLabel(selfPresence.status)}
+            {custom?.text ? (
+              <span className="max-w-[140px] truncate">· {custom.text}</span>
+            ) : null}
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform", statusExpanded && "rotate-180")}
               aria-hidden

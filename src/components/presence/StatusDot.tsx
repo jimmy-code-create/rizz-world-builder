@@ -2,7 +2,7 @@ import { type ReactNode, useState } from "react";
 import { Plus } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
-import { statusLabel, type PublicPresence } from "@/lib/presence";
+import { statusLabel, usePresence, type PublicPresence } from "@/lib/presence";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
@@ -115,6 +115,88 @@ export function StatusDot({
       <StatusIcon status={status} size={size} />
     </span>
   );
+}
+
+/**
+ * A tappable presence dot: tap (or long-press, which resolves to a tap on
+ * release) opens a small popover with the status, the custom status and
+ * when it clears. Nothing renders broken when no status is set.
+ */
+export function StatusDotButton({
+  userId,
+  username,
+  status,
+  isSelf,
+  size = 12,
+  className = "",
+}: {
+  userId: string;
+  username?: string | null;
+  status: PublicPresence;
+  isSelf?: boolean;
+  size?: number;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const row = usePresence(userId);
+  // Invisible users read as offline to everyone but themselves.
+  const hidden = !!row && !isSelf && row.status === "invisible";
+  const expired =
+    !!row?.custom_status_expires_at && new Date(row.custom_status_expires_at).getTime() <= Date.now();
+  const custom =
+    !row || hidden || expired
+      ? null
+      : row.custom_status_emoji || row.custom_status_text
+        ? {
+            emoji: row.custom_status_emoji,
+            text: row.custom_status_text,
+            expiresAt: row.custom_status_expires_at,
+          }
+        : null;
+
+  const who = username ? `@${username}` : "This user";
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${who} is ${statusLabel(status)}. Show status`}
+          aria-expanded={open}
+          onClick={(event) => event.stopPropagation()}
+          className={`grid place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${className}`}
+        >
+          <StatusIcon status={status} size={size} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="center" className="w-60 rounded-2xl border-[#2a2a2e] bg-[#1c1c1f] p-3">
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">
+          <StatusIcon status={status} size={14} />
+          {who} · {statusLabel(status)}
+        </p>
+        {custom ? (
+          <>
+            <div className="mt-1.5 text-[13px]">
+              <CustomStatusLine status={custom} className="text-muted-foreground" />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{expiryLabel(custom.expiresAt)}</p>
+          </>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">No custom status set.</p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function expiryLabel(expiresAt: string | null): string {
+  if (!expiresAt) return "Stays on until cleared.";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return "Clearing…";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `Clears in ${minutes}m.`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Clears in ${hours}h.`;
+  return "Clears today.";
 }
 
 /**
