@@ -47,6 +47,15 @@ export interface VoiceSettingsSheetProps {
   onTogglePeerMute?: (peerId: string) => void;
 }
 
+type SettingsTab = "devices" | "mic" | "volume" | "members";
+
+const TABS: Array<{ id: SettingsTab; label: string }> = [
+  { id: "devices", label: "Devices" },
+  { id: "mic", label: "Microphone" },
+  { id: "volume", label: "Volume" },
+  { id: "members", label: "Members" },
+];
+
 let cachedDevices: MediaDeviceInfo[] = [];
 
 export function VoiceSettingsSheet({
@@ -73,6 +82,7 @@ export function VoiceSettingsSheet({
   const [draft, setDraft] = useState(soundSettings);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const [tab, setTab] = useState<SettingsTab>("mic");
   useEffect(() => {
     if (open) {
       const fresh = loadSoundSettings();
@@ -90,6 +100,18 @@ export function VoiceSettingsSheet({
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>(() => cachedDevices);
   const [sinkSupported, setSinkSupported] = useState(false);
+  // Mount the (heavy) content a frame after the sheet starts opening: ~15
+  // Radix portals + avatars mounting in the same frame as the slide animation
+  // is what dropped frames on phones.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setMounted(false);
+      return;
+    }
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, [open ]);
 
   useEffect(() => {
     setSinkSupported(
@@ -134,224 +156,277 @@ export function VoiceSettingsSheet({
     };
   }, [devices]);
 
-  const content = (
-    <div className="space-y-4 text-xs">
-      {/* Input Device */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Mic className="h-3.5 w-3.5 text-primary" /> Input Device
-        </Label>
-        <Select
-          value={draft.inputDeviceId ?? "default"}
-          onValueChange={(val) => {
-            const next = { ...draftRef.current, inputDeviceId: val === "default" ? null : val };
-            draftRef.current = next;
-            setDraft(next);
-            commitDraft();
-          }}
-        >
-          <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs">
-            <SelectValue placeholder="System Default" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#141416] border-[#2a2a2e] text-xs">
-            <SelectItem value="default">System Default</SelectItem>
-            {inputs.map((d, i) => (
-              <SelectItem key={d.deviceId || `input-${i}`} value={d.deviceId}>
-                {d.label || `Microphone ${i + 1}`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+  const tabBar = (
+    <div role="tablist" aria-label="Settings sections" className="flex gap-1.5 overflow-x-auto pb-1">
+      {TABS.map((entry) => {
+        const selected = tab === entry.id;
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => setTab(entry.id)}
+            className={`h-11 shrink-0 rounded-full border px-4 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+              selected
+                ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
+                : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {entry.label}
+            {entry.id === "members" && participants.length > 0 ? ` · ${participants.length}` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
 
-      {/* Output Device */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Headphones className="h-3.5 w-3.5 text-primary" /> Output Device
-        </Label>
-        <Select
-          value={draft.outputDeviceId ?? "default"}
-          onValueChange={(val) => {
-            const next = { ...draftRef.current, outputDeviceId: val === "default" ? null : val };
-            draftRef.current = next;
-            setDraft(next);
-            commitDraft();
-          }}
-          disabled={!sinkSupported}
-        >
-          <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs disabled:opacity-50">
-            <SelectValue placeholder="System Default" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#141416] border-[#2a2a2e] text-xs">
-            <SelectItem value="default">System Default</SelectItem>
-            {outputs.map((d, i) => (
-              <SelectItem key={d.deviceId || `output-${i}`} value={d.deviceId}>
-                {d.label || `Speaker ${i + 1}`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Live Mic Test Meter */}
-      <MicLiveMeter
-        open={open}
-        inputDeviceId={draft.inputDeviceId}
-        noiseSuppression={draft.noiseSuppression}
-        sensitivity={draft.micSensitivity}
-      />
-
-      {/* Mic Sensitivity Slider */}
-      <div className="space-y-2 pt-2 border-t border-white/10">
-        <div className="flex justify-between font-medium">
-          <span className="text-foreground">Mic Sensitivity</span>
-          <span className="text-muted-foreground font-mono">
-            {Math.round(draft.micSensitivity * 100)}%
-          </span>
-        </div>
-        <Slider
-          value={[Math.round(draft.micSensitivity * 100)]}
-          min={0}
-          max={100}
-          step={5}
-          onValueChange={([val]) => setDraft((d) => ({ ...d, micSensitivity: (val ?? 50) / 100 }))}
-          onValueCommit={commitDraft}
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Activation threshold before the lime speaking ring turns on.
-        </p>
-      </div>
-
-      {/* Output Voice Volume */}
-      <div className="space-y-2 pt-2 border-t border-white/10">
-        <div className="flex justify-between font-medium">
-          <span className="text-foreground">Voice Volume</span>
-          <span className="text-muted-foreground font-mono">{formatVolume(draft.voice)}</span>
-        </div>
-        <Slider
-          value={[Math.round(draft.voice * 100)]}
-          min={0}
-          max={200}
-          step={5}
-          onValueChange={([val]) => setDraft((d) => ({ ...d, voice: (val ?? 100) / 100 }))}
-          onValueCommit={commitDraft}
-        />
-      </div>
-
-      {/* Music Bot Volume */}
-      <div className="space-y-2 pt-2 border-t border-white/10">
-        <div className="flex justify-between font-medium">
-          <span className="text-foreground">Music Bot Volume</span>
-          <span className="text-muted-foreground font-mono">{formatVolume(draft.music)}</span>
-        </div>
-        <Slider
-          value={[Math.round(draft.music * 100)]}
-          min={0}
-          max={200}
-          step={5}
-          onValueChange={([val]) => setDraft((d) => ({ ...d, music: (val ?? 80) / 100 }))}
-          onValueCommit={commitDraft}
-        />
-      </div>
-
-      {/* Toggles */}
-      <div className="space-y-3 pt-2 border-t border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-xs font-semibold">Noise Suppression</Label>
-            <p className="text-[11px] text-muted-foreground">Filters background noise and echo cancellation</p>
-          </div>
-          <Switch
-            checked={draft.noiseSuppression}
-            onCheckedChange={(v) => {
-              const next = { ...draftRef.current, noiseSuppression: v };
+  // One tab mounts at a time: opening the sheet builds a single light
+  // section instead of every select, meter, slider and avatar at once.
+  const content =
+    tab === "devices" ? (
+      <div className="space-y-4 text-xs">
+        {/* Input Device */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold flex items-center gap-1.5">
+            <Mic className="h-3.5 w-3.5 text-primary" /> Input Device
+          </Label>
+          <Select
+            value={draft.inputDeviceId ?? "default"}
+            onValueChange={(val) => {
+              const next = { ...draftRef.current, inputDeviceId: val === "default" ? null : val };
               draftRef.current = next;
               setDraft(next);
               commitDraft();
             }}
+          >
+            <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs">
+              <SelectValue placeholder="System Default" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#141416] border-[#2a2a2e] text-xs">
+              <SelectItem value="default">System Default</SelectItem>
+              {inputs.map((d, i) => (
+                <SelectItem key={d.deviceId || `input-${i}`} value={d.deviceId}>
+                  {d.label || `Microphone ${i + 1}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Output Device */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold flex items-center gap-1.5">
+            <Headphones className="h-3.5 w-3.5 text-primary" /> Output Device
+          </Label>
+          <Select
+            value={draft.outputDeviceId ?? "default"}
+            onValueChange={(val) => {
+              const next = { ...draftRef.current, outputDeviceId: val === "default" ? null : val };
+              draftRef.current = next;
+              setDraft(next);
+              commitDraft();
+            }}
+            disabled={!sinkSupported}
+          >
+            <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs disabled:opacity-50">
+              <SelectValue placeholder="System Default" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#141416] border-[#2a2a2e] text-xs">
+              <SelectItem value="default">System Default</SelectItem>
+              {outputs.map((d, i) => (
+                <SelectItem key={d.deviceId || `output-${i}`} value={d.deviceId}>
+                  {d.label || `Speaker ${i + 1}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    ) : tab === "mic" ? (
+      <div className="space-y-4 text-xs">
+        {/* Live Mic Test Meter */}
+        <MicLiveMeter
+          open={open}
+          inputDeviceId={draft.inputDeviceId}
+          noiseSuppression={draft.noiseSuppression}
+          sensitivity={draft.micSensitivity}
+        />
+
+        {/* Mic Sensitivity Slider */}
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <div className="flex justify-between font-medium">
+            <span className="text-foreground">Mic Sensitivity</span>
+            <span className="text-muted-foreground font-mono">
+              {Math.round(draft.micSensitivity * 100)}%
+            </span>
+          </div>
+          <Slider
+            value={[Math.round(draft.micSensitivity * 100)]}
+            min={0}
+            max={100}
+            step={5}
+            onValueChange={([val]) => setDraft((d) => ({ ...d, micSensitivity: (val ?? 50) / 100 }))}
+            onValueCommit={commitDraft}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Activation threshold before the lime speaking ring turns on.
+          </p>
+        </div>
+
+        {/* Toggles */}
+        <div className="space-y-3 pt-2 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs font-semibold">Noise Suppression</Label>
+              <p className="text-[11px] text-muted-foreground">Filters background noise and echo cancellation</p>
+            </div>
+            <Switch
+              checked={draft.noiseSuppression}
+              onCheckedChange={(v) => {
+                const next = { ...draftRef.current, noiseSuppression: v };
+                draftRef.current = next;
+                setDraft(next);
+                commitDraft();
+              }}
+            />
+          </div>
+
+          {onToggleMute && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs font-semibold">Self Mute</Label>
+                <p className="text-[11px] text-muted-foreground">Mute your microphone in this call</p>
+              </div>
+              <Switch checked={muted} onCheckedChange={onToggleMute} />
+            </div>
+          )}
+        </div>
+      </div>
+    ) : tab === "volume" ? (
+      <div className="space-y-4 text-xs">
+        {/* Output Voice Volume */}
+        <div className="space-y-2">
+          <div className="flex justify-between font-medium">
+            <span className="text-foreground">Voice Volume</span>
+            <span className="text-muted-foreground font-mono">{formatVolume(draft.voice)}</span>
+          </div>
+          <Slider
+            value={[Math.round(draft.voice * 100)]}
+            min={0}
+            max={100}
+            step={5}
+            onValueChange={([val]) => setDraft((d) => ({ ...d, voice: (val ?? 100) / 100 }))}
+            onValueCommit={commitDraft}
           />
         </div>
 
-        {onToggleMute && (
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-xs font-semibold">Self Mute</Label>
-              <p className="text-[11px] text-muted-foreground">Mute your microphone in this call</p>
-            </div>
-            <Switch checked={muted} onCheckedChange={onToggleMute} />
+        {/* Music Bot Volume */}
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <div className="flex justify-between font-medium">
+            <span className="text-foreground">Music Bot Volume</span>
+            <span className="text-muted-foreground font-mono">{formatVolume(draft.music)}</span>
           </div>
+          <Slider
+            value={[Math.round(draft.music * 100)]}
+            min={0}
+            max={100}
+            step={5}
+            onValueChange={([val]) => setDraft((d) => ({ ...d, music: (val ?? 80) / 100 }))}
+            onValueCommit={commitDraft}
+          />
+        </div>
+      </div>
+    ) : (
+      <div className="space-y-2.5 text-xs">
+        {/* Participants Volume Management (when in call) */}
+        {participants.length === 0 ? (
+          <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-muted-foreground">
+            Nobody else is here yet.
+          </p>
+        ) : (
+          <>
+            <Label className="text-xs font-semibold text-foreground">In-Call Members ({participants.length})</Label>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {participants.map((p) => {
+                const isMe = p.user_id === currentUserId;
+                const uName = p.user?.display_name || p.user?.username || "user";
+                const isPeerMuted = peerAudio.muted.includes(p.user_id);
+                const peerVol = peerDraft[p.user_id] ?? peerVolumeOf(peerAudio, p.user_id);
+
+                return (
+                  <div key={p.user_id} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage src={p.user?.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-bold">
+                          {uName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-xs font-medium">
+                        {uName} {isMe && "(you)"}
+                      </span>
+                    </div>
+                    {!isMe && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-mono text-muted-foreground">{peerVol}%</span>
+                        <Slider
+                          value={[peerVol]}
+                          min={0}
+                          max={100}
+                          step={5}
+                          onValueChange={([val]) =>
+                            setPeerDraft((d) => ({ ...d, [p.user_id]: val ?? 100 }))
+                          }
+                          onValueCommit={([val]) => {
+                            const v = val ?? peerDraft[p.user_id] ?? 100;
+                            setPeerDraft((d) => {
+                              const next = { ...d };
+                              delete next[p.user_id];
+                              return next;
+                            });
+                            if (onSetPeerVolume) onSetPeerVolume(p.user_id, v);
+                            else setPeerVolume(p.user_id, v);
+                          }}
+                          className="w-16"
+                          aria-label={`Volume for ${uName}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            if (onTogglePeerMute) onTogglePeerMute(p.user_id);
+                            else togglePeerMute(p.user_id);
+                          }}
+                          aria-label={isPeerMuted ? `Unmute ${uName}` : `Mute ${uName}`}
+                        >
+                          {isPeerMuted ? <VolumeX className="h-3.5 w-3.5 text-destructive" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
+    );
 
-      {/* Participants Volume Management (when in call) */}
-      {participants.length > 0 && (
-        <div className="space-y-2.5 pt-3 border-t border-white/10">
-          <Label className="text-xs font-semibold text-foreground">In-Call Members ({participants.length})</Label>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {participants.map((p) => {
-              const isMe = p.user_id === currentUserId;
-              const uName = p.user?.display_name || p.user?.username || "user";
-              const isPeerMuted = peerAudio.muted.includes(p.user_id);
-              const peerVol = peerDraft[p.user_id] ?? peerVolumeOf(peerAudio, p.user_id);
-
-              return (
-                <div key={p.user_id} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar className="h-7 w-7 shrink-0">
-                      <AvatarImage src={p.user?.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-bold">
-                        {uName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-xs font-medium">
-                      {uName} {isMe && "(you)"}
-                    </span>
-                  </div>
-                  {!isMe && (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-mono text-muted-foreground">{peerVol}%</span>
-                      <Slider
-                        value={[peerVol]}
-                        min={0}
-                        max={100}
-                        step={5}
-                        onValueChange={([val]) =>
-                          setPeerDraft((d) => ({ ...d, [p.user_id]: val ?? 100 }))
-                        }
-                        onValueCommit={([val]) => {
-                          const v = val ?? peerDraft[p.user_id] ?? 100;
-                          setPeerDraft((d) => {
-                            const next = { ...d };
-                            delete next[p.user_id];
-                            return next;
-                          });
-                          if (onSetPeerVolume) onSetPeerVolume(p.user_id, v);
-                          else setPeerVolume(p.user_id, v);
-                        }}
-                        className="w-16"
-                        aria-label={`Volume for ${uName}`}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          if (onTogglePeerMute) onTogglePeerMute(p.user_id);
-                          else togglePeerMute(p.user_id);
-                        }}
-                        aria-label={isPeerMuted ? `Unmute ${uName}` : `Mute ${uName}`}
-                      >
-                        {isPeerMuted ? <VolumeX className="h-3.5 w-3.5 text-destructive" /> : <Volume2 className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+  const body = (
+    <>
+      {tabBar}
+      {mounted ? (
+        content
+      ) : (
+        <div className="space-y-3" aria-hidden>
+          <div className="h-12 animate-pulse rounded-xl bg-white/5" />
+          <div className="h-12 animate-pulse rounded-xl bg-white/5" />
+          <div className="h-24 animate-pulse rounded-xl bg-white/5" />
         </div>
       )}
-    </div>
+    </>
   );
 
   if (isMobile) {
@@ -366,7 +441,7 @@ export function VoiceSettingsSheet({
               <CloseButton />
             </SheetClose>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">{body}</div>
         </SheetContent>
       </Sheet>
     );
@@ -383,7 +458,7 @@ export function VoiceSettingsSheet({
             <CloseButton />
           </DialogClose>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">{body}</div>
       </DialogContent>
     </Dialog>
   );

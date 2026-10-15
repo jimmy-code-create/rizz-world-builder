@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, Copy, ExternalLink, Gamepad2, Minimize2, PhoneOff, X } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { GameIcon } from "@/components/GameIcon";
 import { inviteText, isValidGameUrl, type GameEntry, type RoomActivity } from "@/lib/activities";
 
 // Real games need forms (logins, nicknames), popups and fullscreen; scripts
@@ -51,7 +52,7 @@ export function ActivityPanel({
     return (
       <div className="hidden w-[380px] shrink-0 md:block">
         <div className="sticky top-0 flex items-center gap-2 rounded-2xl border border-[#c8ff3d]/40 bg-[#141416] p-2">
-          <span aria-hidden className="text-xl leading-none">{activity.gameIcon}</span>
+          <GameIcon icon={activity.gameIcon} size={22} />
           <button
             type="button"
             onClick={onReopen}
@@ -125,7 +126,7 @@ export function ActivityPanel({
             <ChevronLeft className="h-5 w-5" />
           </button>
         ) : null}
-        <span aria-hidden className="text-xl leading-none">{activity.gameIcon}</span>
+        <GameIcon icon={activity.gameIcon} size={22} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold text-[#f2efe6]">{activity.gameName}</span>
           <span className="block truncate text-[11px] text-muted-foreground">
@@ -232,8 +233,12 @@ export function JoinGameBanner({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 p-3">
-      <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#c8ff3d]/15 text-2xl leading-none">
-        {activity.gameIcon || <Gamepad2 className="h-5 w-5 text-[#c8ff3d]" />}
+      <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#c8ff3d]/15">
+        {activity.gameIcon ? (
+          <GameIcon icon={activity.gameIcon} size={26} />
+        ) : (
+          <Gamepad2 className="h-5 w-5 text-[#c8ff3d]" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-[#f2efe6]">

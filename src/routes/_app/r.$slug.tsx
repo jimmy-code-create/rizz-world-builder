@@ -82,6 +82,9 @@ const CREATABLE_ROOM_KINDS: RealmRoomKind[] = ["text", "announcement", "voice", 
 
 /** Member lists paginate instead of mounting every row of a big realm at once. */
 const MEMBER_PAGE_SIZE = 25;
+// Chat renders only the newest window; older messages page in on demand.
+// (Unbounded AnimatePresence lists + per-row presence queries were the realm lag.)
+const MESSAGE_PAGE_SIZE = 80;
 
 type RealmChannelCall = {
   room: { id: string; realm_room_id: string | null; host_id: string; title: string };
@@ -144,6 +147,7 @@ function RealmPage() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [visibleMembers, setVisibleMembers] = useState(MEMBER_PAGE_SIZE);
+  const [messageLimit, setMessageLimit] = useState(MESSAGE_PAGE_SIZE);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [pinIndex, setPinIndex] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -269,6 +273,13 @@ function RealmPage() {
   // return makes React throw "Rendered more hooks than during the previous
   // render" as soon as the realm query resolves, which blanked this page.
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
+  // Newest window only; the room resets the window when switching channels.
+  useEffect(() => {
+    setMessageLimit(MESSAGE_PAGE_SIZE);
+  }, [activeRoomId]);
+  const visibleRows =
+    messageRows.length > messageLimit ? messageRows.slice(messageRows.length - messageLimit) : messageRows;
+  const hiddenCount = messageRows.length - visibleRows.length;
   const messageIds = messageRows.map((message: { id: string }) => message.id);
   const reactions = useChatReactions("realm", messageIds, {
     myMessageIds: messageRows.filter((message: { sender_id: string | null }) => message.sender_id === user?.id).map((message: { id: string }) => message.id),
@@ -1288,7 +1299,18 @@ function RealmPage() {
           </div>
         )}
         <AnimatePresence initial={false}>
-          {messageRows.map((m: any, index: number) => {
+          {hiddenCount > 0 && (
+            <div className="flex justify-center pb-2">
+              <button
+                type="button"
+                onClick={() => setMessageLimit((limit) => limit + MESSAGE_PAGE_SIZE)}
+                className="min-h-[44px] rounded-full border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
+                Show earlier messages ({hiddenCount} hidden)
+              </button>
+            </div>
+          )}
+          {visibleRows.map((m: any, index: number) => {
             const mine = m.sender_id === user?.id;
             // A bot message has no sender at all: it carries bot_id and the joined
             // bot row instead. Human authors may arrive as `author` or `sender`
@@ -1331,7 +1353,7 @@ function RealmPage() {
                 attachmentUrl: m.attachment_url ?? null,
                 embeds: (m.embeds ?? null) as EmbedData[] | null,
               });
-            const previous = messageRows[index - 1];
+            const previous = visibleRows[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;

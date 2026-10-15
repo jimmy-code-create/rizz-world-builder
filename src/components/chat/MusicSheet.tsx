@@ -1,16 +1,30 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Music, SkipForward, Square } from "lucide-react";
+import { Loader2, Music, Pause, Play, SkipForward, Square } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatDuration, musicQueueKey, runMusicCommand, useMusicQueue } from "@/lib/music";
+
+export type MusicNowPlaying = {
+  title?: string | null;
+  artist?: string | null;
+  artworkUrl?: string | null;
+  singing: boolean;
+  blocked: boolean;
+  canToggle: boolean;
+  note?: string | null;
+};
 
 type MusicSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   realmId: string;
   roomId: string | null;
+  /** In-call transport. When omitted the sheet is queue-only (realm page). */
+  nowPlaying?: MusicNowPlaying | null;
+  onToggleNowPlaying?: () => void;
+  onRetryNowPlaying?: () => void;
 };
 
 /**
@@ -18,7 +32,7 @@ type MusicSheetProps = {
  * composer's `/play`, so this panel is read-mostly: it shows what is coming up
  * and offers the two commands people reach for most, /skip and /stop.
  */
-export function MusicSheet({ open, onOpenChange, realmId, roomId }: MusicSheetProps) {
+export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, onToggleNowPlaying, onRetryNowPlaying }: MusicSheetProps) {
   const queue = useMusicQueue(realmId, roomId, open);
   const qc = useQueryClient();
   const [busy, setBusy] = useState<"skip" | "stop" | null>(null);
@@ -49,6 +63,59 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId }: MusicSheetPr
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {nowPlaying && (
+            <div className="mb-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.07] p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Now playing</p>
+              <div className="mt-2 flex items-center gap-3">
+                {nowPlaying.artworkUrl ? (
+                  <img
+                    src={nowPlaying.artworkUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                  />
+                ) : (
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-500/25 text-emerald-100">
+                    <Music className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {nowPlaying.title ?? "Nothing queued"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {nowPlaying.blocked
+                      ? (nowPlaying.note ?? "Tap retry to let MUSIC BOT sing")
+                      : nowPlaying.singing
+                        ? `Singing${nowPlaying.artist ? ` · ${nowPlaying.artist}` : ""}`
+                        : (nowPlaying.artist ?? "Paused")}
+                  </p>
+                </div>
+                {nowPlaying.blocked ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="glass h-9 shrink-0 gap-1.5 border-white/10 text-xs"
+                    onClick={() => onRetryNowPlaying?.()}
+                  >
+                    <Play className="h-3.5 w-3.5" /> Retry
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="glass h-9 w-9 shrink-0 border-white/10 !px-0"
+                    disabled={!nowPlaying.canToggle}
+                    onClick={() => onToggleNowPlaying?.()}
+                    aria-label={nowPlaying.singing ? "Pause music" : "Play music"}
+                  >
+                    {nowPlaying.singing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {tracks.length === 0 ? "Queue empty" : `Up next · ${tracks.length}`}

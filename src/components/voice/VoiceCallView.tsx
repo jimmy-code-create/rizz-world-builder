@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -19,6 +19,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
+import { MusicSheet } from "@/components/chat/MusicSheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
 import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusDot";
 import { ActivityShelf } from "@/components/voice/ActivityShelf";
@@ -215,8 +217,12 @@ export function VoiceCallView() {
   const [chatOpen, setChatOpen] = useState(false);
   const [shelfOpen, setShelfOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [bannerDismissedAt, setBannerDismissedAt] = useState<number | null>(null);
+  // One panel layout at a time: mounting both side + overlay iframes loaded
+  // the game twice (double audio, double CPU) on every screen size.
+  const isMobileView = useIsMobile();
   const [soundSettings, setSoundSettings] = useSoundSettings();
   const [chatBody, setChatBody] = useState("");
   const peerAudio = usePeerAudio();
@@ -357,6 +363,16 @@ export function VoiceCallView() {
             title="Activities"
           >
             <Gamepad2 className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Music"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${musicOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setMusicOpen(true)}
+            title="Music"
+          >
+            <Music className="h-5 w-5" />
           </Button>
           <Button
             variant="outline"
@@ -518,7 +534,12 @@ export function VoiceCallView() {
             })}
 
             {musicBot.enabled && (
-              <div className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center">
+              <button
+                type="button"
+                onClick={() => setMusicOpen(true)}
+                aria-label="Open music controls"
+                className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
                 <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
                   {!musicBot.track
                     ? "In call"
@@ -534,30 +555,19 @@ export function VoiceCallView() {
                     <Music className="h-6 w-6" aria-hidden="true" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 px-1">
-                  <p className="truncate text-xs font-semibold">MUSIC BOT</p>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                <span className="min-w-0 px-1">
+                  <span className="block truncate text-xs font-semibold">MUSIC BOT</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {musicBot.track
                       ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
-                      : "Nothing queued — /play a song in this channel"}
-                  </p>
-                </div>
-                {musicBot.track && (
-                  <button
-                    type="button"
-                    onClick={() => musicBotControls.toggle()}
-                    disabled={!musicBot.track.preview_url}
-                    aria-label={musicBot.singing ? "Pause MUSIC BOT" : "Play MUSIC BOT"}
-                    className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-background/80 transition active:scale-95 disabled:opacity-50"
-                  >
-                    {musicBot.singing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </button>
-                )}
-              </div>
+                      : "Nothing queued — tap for music"}
+                  </span>
+                </span>
+              </button>
             )}
             </div>
             </div>
-            {panelOpen && roomActivity.activity && (
+            {panelOpen && roomActivity.activity && !isMobileView && (
               <ActivityPanel
                 layout="side"
                 activity={roomActivity.activity}
@@ -573,17 +583,8 @@ export function VoiceCallView() {
           </div>
         </div>
 
-        {musicBot.track && musicBot.blocked && (
-          <button
-            type="button"
-            onClick={() => musicBotControls.retry()}
-            className="mx-auto mb-2 flex shrink-0 items-center gap-2 rounded-full bg-emerald-400/15 px-4 py-2 text-xs font-semibold text-emerald-200 transition active:scale-95"
-          >
-            <Play className="h-3.5 w-3.5" aria-hidden="true" />
-            {musicBot.note ?? "Tap to let MUSIC BOT sing"}
-          </button>
-        )}
-
+        {/* Music section: full now-playing + queue + transport live in the
+            music sheet now; the tile above is just an icon entry point. */}
         <div
           className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
@@ -700,8 +701,29 @@ export function VoiceCallView() {
           peerAudio={peerAudio}
         />
 
-        {/* Host Leave Confirmation Dialog */}
-        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
+        <MusicSheet
+          open={musicOpen}
+          onOpenChange={setMusicOpen}
+          realmId={call.realmId}
+          roomId={call.channelId}
+          nowPlaying={
+            musicBot.enabled
+              ? {
+                  title: musicBot.track?.title ?? null,
+                  artist: musicBot.track?.artist ?? null,
+                  artworkUrl: musicBot.track?.artwork_url ?? null,
+                  singing: musicBot.singing,
+                  blocked: musicBot.blocked,
+                  canToggle: !!musicBot.track?.preview_url,
+                  note: musicBot.note ?? null,
+                }
+              : null
+          }
+          onToggleNowPlaying={() => musicBotControls.toggle()}
+          onRetryNowPlaying={() => musicBotControls.retry()}
+        />
+
+        {/* Host Leave Confirmation Dialog */}        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
           <AlertDialogContent className="glass-strong border-white/10 max-w-sm">
             <AlertDialogHeader>
               <AlertDialogTitle className="font-display">Leave & End Call?</AlertDialogTitle>
@@ -727,7 +749,7 @@ export function VoiceCallView() {
         {/* Game Activities shelf + live panel (voice keeps running: the call
             engine is provider-owned, this UI is only a sibling). */}
         <ActivityShelf open={shelfOpen} onOpenChange={setShelfOpen} onPick={(entry) => void handlePickGame(entry)} />
-        {panelOpen && roomActivity.activity && (
+        {panelOpen && roomActivity.activity && isMobileView && (
           <ActivityPanel
             layout="overlay"
             activity={roomActivity.activity}

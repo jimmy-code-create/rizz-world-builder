@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift,
   MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
+  Gamepad2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,6 +56,7 @@ const sideTabs = [
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { to: "/games", label: "Games", icon: Gamepad2 },
   { to: "/bots", label: "Bots", icon: Bot },
 ] as const;
 

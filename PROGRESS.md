@@ -144,3 +144,14 @@
 - [x] Panel hardened: sandbox extended to forms/popups/modals (real games need logins + fullscreen; stated deviation from the original string), open-in-new-tab button so a framing-blocked host never strands you, shelf probes each URL (no-cors) and flags dead ones "Unreachable" - **DONE**
 - [x] `MediaViewer`: pure black backdrop (was 85% + blur) + body scroll/overscroll lock while open, restored on close; zoom/pan/dismiss untouched - **DONE**
 - [x] tsc identical to baseline, `vite build` exit 0 - **DONE**
+
+### Phase 22: Realm lag fixes + games page + settings categories + music section
+- [x] Realm chat renders newest 80 messages with "Show earlier messages" paging (was unbounded AnimatePresence + per-row queries); member list was already capped - **DONE**
+- [x] `StatusDotButton` subscribes to presence only while its popover is open (was one live query per voice tile); voice settings sheet mounts content a frame after open; settings reorganized into Devices/Microphone/Volume/Members tabs with one tab mounted at a time - **DONE**
+- [x] Game panel mounts ONE iframe (was side + overlay both loading the game = double audio/CPU); `/games` page lists the registry with cat-emoji `GameIcon`s, Play launches into the live call or opens solo games externally; Games added to nav + shelf "Browse all games" link - **DONE**
+- [x] Music: header Music icon button opens the music section (now-playing + transport + queue + skip/clear); in-call tile is now a compact icon entry point; blocked-banner retry moved into the sheet; audio engine untouched - **DONE**
+
+### Phase 23 (partial, in tree): status-to-avatar + canonical 5-badge set
+- [x] Banner status pill removed; avatar gets bottom-left emoji badge + bottom-right tappable dot; `StatusPill` (rounded-full, no tail) under @handle on profile + mini cards, `+ Set status` for owner, popover with expiry for others - **DONE**
+- [x] Canonical badge set lib (`rare/epic/mythic` + cat icons + tier glows), `BadgeIcon` everywhere, `BadgeRow`/ProfileCard filter to the 5, post chip renamed Main Character, `no-cap` replaces `verified_creator` for verification - **DONE**
+- [ ] `20261023000000_badge_set_v2.sql` proven 7/7 in PGlite but NOT yet applied in Supabase — old badge rows stay invisible until applied; companion removal + /badges rebuild + share image still open

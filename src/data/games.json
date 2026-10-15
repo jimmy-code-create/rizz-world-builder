@@ -2,7 +2,7 @@
   {
     "id": "gamenest",
     "name": "Party Games",
-    "icon": "🎲",
+    "icon": ":cat_hype:",
     "url": "https://jackbox.tv/",
     "type": "multiplayer-hub",
     "players": "2-8",
@@ -12,7 +12,7 @@
   {
     "id": "draw-guess",
     "name": "Draw & Guess",
-    "icon": "✏️",
+    "icon": ":cat_think:",
     "url": "https://skribbl.io/",
     "type": "room-link",
     "players": "2+",
@@ -23,7 +23,7 @@
   {
     "id": "quick-play",
     "name": "2048",
-    "icon": "🔢",
+    "icon": ":cat_cool:",
     "url": "https://gabrielecirulli.github.io/2048/",
     "type": "embed",
     "players": "1",

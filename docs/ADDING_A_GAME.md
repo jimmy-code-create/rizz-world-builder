@@ -28,7 +28,8 @@ The shelf is config-only. **One JSON entry in `src/data/games.json` — nothing 
 Field notes:
 
 - `id` — unique, lowercase, no spaces.
-- `icon` — any emoji, rendered as-is.
+- `icon` — a cat-emoji shortcode (`":cat_hype:"`) rendered with the app's own
+  cat set. A raw emoji glyph still renders, but new entries use shortcodes.
 - `url` — must be a real `https://` URL or the panel shows a "no link yet" card instead of a broken iframe. (`PASTE_…` placeholders never launch.)
 - `type` — exactly one of the three values above.
 - `players` — free text (`"2-16"`, `"1+"`).

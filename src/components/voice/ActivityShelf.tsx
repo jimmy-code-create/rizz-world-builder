@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { ChevronRight, Gamepad2 } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { CloseButton } from "@/components/ui/close-button";
+import { Link } from "@tanstack/react-router";
+import { GameIcon } from "@/components/GameIcon";
 import { getGames, type GameEntry } from "@/lib/activities";
 
 /**
@@ -47,9 +49,9 @@ function GameRow({ game, onPick }: { game: GameEntry; onPick: (entry: GameEntry)
       >
         <span
           aria-hidden
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f] text-2xl leading-none"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f]"
         >
-          {game.icon}
+          <GameIcon icon={game.icon} size={26} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
@@ -99,8 +101,8 @@ export function ActivityShelf({
         <div className="sticky top-0 z-10 shrink-0 bg-[#141416]/95 backdrop-blur">
           <div className="mx-auto mb-2 mt-2.5 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
           <div className="flex items-center gap-3 px-4 pb-2">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#c8ff3d]/15 text-[#c8ff3d]" aria-hidden>
-              <Gamepad2 className="h-5 w-5" />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#c8ff3d]/15" aria-hidden>
+              <GameIcon icon=":cat_hype:" size={24} />
             </span>
             <div className="min-w-0 flex-1">
               <SheetTitle className="font-display text-lg">Activities</SheetTitle>
@@ -115,6 +117,13 @@ export function ActivityShelf({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
+          <Link
+            to="/games"
+            onClick={() => onOpenChange(false)}
+            className="mb-2 flex min-h-[44px] items-center justify-center gap-1.5 rounded-2xl border border-[#c8ff3d]/30 bg-[#c8ff3d]/10 text-sm font-bold text-[#c8ff3d] transition-colors hover:bg-[#c8ff3d]/15"
+          >
+            <Gamepad2 className="h-4 w-4" /> Browse all games
+          </Link>
           {games.length === 0 ? (
             <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
               No games yet. Add one entry to <span className="font-mono text-xs">src/data/games.json</span>.
