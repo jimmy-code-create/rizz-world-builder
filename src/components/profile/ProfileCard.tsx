@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AtSign, Ban, Check, Flag, Link2, MessageCircle, MoreHorizontal,
-  Pencil, Phone, UserCheck, UserPlus, VolumeX, Volume2,
+  AtSign, Award, BadgeCheck, Ban, Camera, Check, Crown, Flame, Flag, Gamepad2, Gem, Gift, Globe,
+  Hand, Hash, Heart, Image as ImageIcon, Leaf, Link2, MapPin, Medal, MessageCircle, Mic, Moon,
+  MoreHorizontal, Music, Palette, PartyPopper, Pencil, Phone, Rocket, ShieldCheck, Sparkles, Sprout,
+  Star, Sun, ThumbsUp, Trophy, UserCheck, UserPlus, VolumeX, Volume2, Wand2, Zap, type LucideIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +27,10 @@ export type ProfileCardUser = {
   displayName?: string | null;
   avatarUrl?: string | null;
   realmRole?: string | null;
+  /** Realm the card was opened from — enables the "In this realm" section. */
+  realmId?: string | null;
+  /** Their accent color, when a caller already knows it. */
+  accentColor?: string | null;
   isBot?: boolean;
   botName?: string | null;
 };
@@ -36,7 +42,77 @@ export function bannerToneFor(seed: string): string {
   return `hsl(${h} 18% 14%)`;
 }
 
-type CardBadge = { slug: string; name: string; icon: string; color: string; description: string };
+/** 943 → "943" · 12,400 → "12.4K" · 500,000 → "500K" · 1,200,000 → "1.2M" */
+export function formatCount(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const abs = Math.abs(value);
+  if (abs < 10_000) return value.toLocaleString("en-US");
+  if (abs < 1_000_000) return `${(value / 1000).toFixed(abs >= 100_000 || abs % 1000 === 0 ? 0 : 1)}K`;
+  return `${(value / 1_000_000).toFixed(abs % 1_000_000 === 0 ? 0 : 1)}M`;
+}
+
+/**
+ * Badge rows store icon keys (badges.icon = "badge-check", "hash", "image"…),
+ * never display text — so map names to real lucide glyphs, let actual emoji
+ * render as-is, and fall back to a medal. The pill must never print
+ * "badge-check" or "BadgeCheck".
+ */
+const BADGE_ICONS: Record<string, LucideIcon> = {
+  "badge-check": BadgeCheck, badgecheck: BadgeCheck, "check-badge": BadgeCheck, "check-circle": BadgeCheck,
+  verified: BadgeCheck, certified: BadgeCheck, check: Check,
+  award: Award, trophy: Trophy, medal: Medal, crown: Crown, gem: Gem, diamond: Gem,
+  star: Star, sparkles: Sparkles, sparkle: Sparkles, fire: Flame, flame: Flame, "on-fire": Flame,
+  zap: Zap, bolt: Zap, lightning: Zap,
+  heart: Heart, "thumbs-up": ThumbsUp, like: ThumbsUp, hand: Hand, wave: Hand,
+  leaf: Leaf, sprout: Sprout, seedling: Sprout, early: Sprout,
+  gift: Gift, rocket: Rocket, "party-popper": PartyPopper, party: PartyPopper,
+  "shield-check": ShieldCheck, shield: ShieldCheck, security: ShieldCheck,
+  camera: Camera, photo: Camera, image: ImageIcon, media: ImageIcon,
+  hash: Hash, tag: Hash,
+  music: Music, mic: Mic, microphone: Mic, "gamepad-2": Gamepad2, gamepad: Gamepad2, game: Gamepad2,
+  sun: Sun, moon: Moon, globe: Globe, world: Globe, map: MapPin, "map-pin": MapPin, pin: MapPin,
+  pen: Pencil, pencil: Pencil, edit: Pencil, palette: Palette, art: Palette, wand: Wand2, "wand-2": Wand2,
+  "message-circle": MessageCircle, chat: MessageCircle, comment: MessageCircle,
+};
+
+function BadgeGlyph({ icon, className }: { icon: string; className?: string }) {
+  const key = (icon || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  const Glyph = key ? BADGE_ICONS[key] : undefined;
+  if (Glyph) return <Glyph aria-hidden="true" className={className} />;
+  // A real emoji stays a glyph; a bare unknown key never leaks out as text.
+  if (icon && /[^\x20-\x7e]/.test(icon)) {
+    return (
+      <span aria-hidden="true" className="inline-flex items-center justify-center text-[13px] leading-none">
+        {icon}
+      </span>
+    );
+  }
+  return <Award aria-hidden="true" className={className} />;
+}
+
+type CardBadge = { slug: string; name: string; icon: string; color: string; description: string; earnedAt?: string | null };
+
+/** Dedupe by slug; Verified first, then Top 10, founder, the rest. */
+function orderBadges(list: CardBadge[]): CardBadge[] {
+  const seen = new Set<string>();
+  const unique = list.filter((badge) => {
+    if (!badge.slug || seen.has(badge.slug)) return false;
+    seen.add(badge.slug);
+    return true;
+  });
+  const weight = (badge: CardBadge) =>
+    badge.slug === "verified" ? 0 : badge.slug === "top-10" ? 1 : /founder/i.test(badge.slug) ? 2 : 3;
+  return [...unique].sort((a, b) => weight(a) - weight(b));
+}
+
+const REALM_ROLE_META: Record<string, { label: string; color: string }> = {
+  owner: { label: "Owner", color: "#ffc457" },
+  admin: { label: "Admin", color: "#ff8f6b" },
+  mod: { label: "Moderator", color: "#7dd3fc" },
+  moderator: { label: "Moderator", color: "#7dd3fc" },
+  member: { label: "Member", color: "#a1a1aa" },
+  bot: { label: "Bot", color: "#c8ff3d" },
+};
 
 type CardData = {
   deleted: boolean;
@@ -45,6 +121,7 @@ type CardData = {
   displayName: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  accentColor: string | null;
   bio: string | null;
   pronouns: string | null;
   verified: boolean;
@@ -95,12 +172,13 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
         if (d.deleted || !d.profile) return deletedCard(userId);
         const p = d.profile;
         const str = (v: unknown) => (typeof v === "string" ? v : null);
-        const earnedBadges = (d.earned_badges ?? []).map((b) => ({
+        const earnedBadges: CardBadge[] = (d.earned_badges ?? []).map((b) => ({
           slug: b.slug ?? "badge",
           name: b.name ?? "Badge",
           icon: b.icon ?? "🏅",
           color: b.color ?? "#c8ff3d",
           description: b.description ?? "",
+          earnedAt: typeof b.awarded_at === "string" ? b.awarded_at : null,
         }));
         // "Verified" is an earned badge (badges.slug = verified / verified_creator),
         // never a profiles column.
@@ -112,6 +190,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           displayName: str(p.display_name) ?? str(p.username) ?? "Member",
           avatarUrl: str(p.avatar_url),
           bannerUrl: str(p.banner_url),
+          accentColor: str(p.accent_color),
           bio: str(p.bio),
           pronouns: str(p.pronouns),
           verified: p.verified === true || isVerified,
@@ -153,6 +232,11 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   try {
     const { data: ext } = await supabase.from("profiles").select("pronouns").eq("id", userId).maybeSingle();
     pronouns = str((ext as Record<string, unknown> | null)?.pronouns);
+  } catch { /* column missing */ }
+  let accentColor: string | null = null;
+  try {
+    const { data: accent } = await supabase.from("profiles").select("accent_color").eq("id", userId).maybeSingle();
+    accentColor = str((accent as Record<string, unknown> | null)?.accent_color);
   } catch { /* column missing */ }
 
   const score = Number(p.rizz_score ?? 0);
@@ -202,8 +286,17 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   // Earned badges from user_badges — this is also where "verified" comes from.
   let badges: CardBadge[] = [];
   try {
-    const { data: ub } = await supabase.from("user_badges").select("badge:badges(slug, name, icon, color, description)").eq("user_id", userId).limit(8);
-    badges = (((ub ?? []) as Array<{ badge: CardBadge | CardBadge[] | null }>).map((r) => Array.isArray(r.badge) ? r.badge[0] : r.badge).filter(Boolean) as CardBadge[]);
+    const { data: ub } = await supabase
+      .from("user_badges")
+      .select("awarded_at, badge:badges(slug, name, icon, color, description)")
+      .eq("user_id", userId)
+      .limit(24);
+    badges = (((ub ?? []) as unknown as Array<{ awarded_at: string | null; badge: CardBadge | CardBadge[] | null }>)
+      .map((row) => {
+        const badge = Array.isArray(row.badge) ? row.badge[0] : row.badge;
+        return badge ? { ...badge, earnedAt: row.awarded_at ?? null } : null;
+      })
+      .filter(Boolean) as CardBadge[]);
   } catch { /* badges are best-effort */ }
   const verified = badges.some((b) => b.slug === "verified" || b.slug === "verified_creator");
   if (verified) badges = badges.filter((b) => b.slug !== "verified" && b.slug !== "verified_creator");
@@ -215,6 +308,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     displayName: str(p.display_name) ?? str(p.username) ?? "Member",
     avatarUrl: str(p.avatar_url),
     bannerUrl: str(p.banner_url),
+    accentColor,
     bio: str(p.bio),
     pronouns,
     verified,
@@ -236,7 +330,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
 function deletedCard(userId: string): CardData {
   return {
     deleted: true, id: userId, username: "deleted", displayName: "Deleted user",
-    avatarUrl: null, bannerUrl: null, bio: null, pronouns: null, verified: false,
+    avatarUrl: null, bannerUrl: null, accentColor: null, bio: null, pronouns: null, verified: false,
     createdAt: null, rizzScore: 0, rank: null, followers: 0, following: 0,
     badges: [], mutualPreview: [], mutualTotal: 0, viewerFollows: false,
     blockedByViewer: false, blockedViewer: false, mutedByViewer: false,
@@ -244,10 +338,13 @@ function deletedCard(userId: string): CardData {
 }
 
 /**
- * ONE shared <ProfileCard userId>. Banner + overlapping avatar + realtime
- * presence dot, pronouns + custom status line, tappable badges, bio/member
- * since, stats (score/rank/followers/following), mutuals, Message / Follow /
- * Call / "..." menu, View full profile. Graceful blocked/deleted states.
+ * ONE shared <ProfileCard userId>. Tall banner with a fade into the card,
+ * accent-ringed avatar + realtime presence dot, handle/pronouns/custom status,
+ * proof-of-life badges (4 icon pills + a sheet with the full story), bio with
+ * tappable mentions and links, member-since, the realm section when a realm is
+ * known, formatted stats — with tappable follower lists — mutuals, Message /
+ * Follow / Call, Block-Report-Mute in the menu and a real View-full-profile
+ * button. Graceful blocked/deleted/no-data states throughout.
  */
 export function ProfileCard({
   userId,
@@ -255,6 +352,8 @@ export function ProfileCard({
   displayName: displayNameHint,
   avatarUrl: avatarUrlHint,
   realmRole,
+  realmId,
+  accentColor: accentColorHint,
   onMention,
   onCall,
   onOpenChange,
@@ -264,6 +363,8 @@ export function ProfileCard({
   displayName?: string | null;
   avatarUrl?: string | null;
   realmRole?: string | null;
+  realmId?: string | null;
+  accentColor?: string | null;
   onMention?: (username: string) => void;
   onCall?: (userId: string) => void;
   onOpenChange?: (open: boolean) => void;
@@ -273,7 +374,8 @@ export function ProfileCard({
   const qc = useQueryClient();
   const [bioExpanded, setBioExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [badgeTip, setBadgeTip] = useState<string | null>(null);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+  const [listMode, setListMode] = useState<null | "followers" | "following">(null);
   const dragStart = useRef<number | null>(null);
 
   const isSelf = me?.id === userId;
@@ -282,6 +384,51 @@ export function ProfileCard({
     queryFn: () => fetchCardData(userId, me?.id ?? null),
     enabled: !!userId,
     staleTime: 30_000,
+  });
+  // When the card knows which realm it was opened from, resolve the real
+  // membership row (role + join date); otherwise fall back to the hint.
+  const realmRow = useQuery({
+    queryKey: ["profile-card-realm", userId, realmId ?? "none"],
+    enabled: !!realmId && !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("realm_members")
+          .select("role, joined_at")
+          .eq("realm_id", realmId!)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        return (data as { role: string; joined_at: string } | null) ?? null;
+      } catch {
+        return null; // realm context is decoration, never a blocker
+      }
+    },
+  });
+  // Followers / following sheet — fetched when opened, a page at a time.
+  const listQuery = useQuery({
+    queryKey: ["profile-card-list", userId, listMode],
+    enabled: !!listMode && !!userId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const column = listMode === "followers" ? "follower_id" : "following_id";
+      const match = listMode === "followers" ? "following_id" : "follower_id";
+      const { data: rows, error } = await (supabase as any)
+        .from("follows")
+        .select(column)
+        .eq(match, userId)
+        .limit(50);
+      if (error) throw error;
+      const ids = ((rows ?? []) as Array<Record<string, string>>).map((row) => row[column]).filter(Boolean);
+      if (ids.length === 0) return [];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .in("id", ids);
+      return ((profiles ?? []) as Array<{ id: string; username: string | null; display_name: string | null; avatar_url: string | null }>)
+        .sort((a, b) => (a.display_name || a.username || "").localeCompare(b.display_name || b.username || ""));
+    },
   });
   // Same realtime presence store as the profile page.
   const presenceRow = usePresence(userId);
@@ -359,7 +506,7 @@ export function ProfileCard({
   if (card.isLoading) {
     return (
       <div className="p-0" role="status" aria-label="Loading profile">
-        <div className="skeleton-shimmer h-[100px] w-full" />
+        <div className="skeleton-shimmer h-[132px] w-full" />
         <div className="flex items-end gap-3 px-4">
           <div className="skeleton-shimmer -mt-10 h-20 w-20 rounded-full" />
           <div className="mb-1 flex-1 space-y-2 pb-1">
@@ -368,7 +515,9 @@ export function ProfileCard({
           </div>
         </div>
         <div className="space-y-2 p-4">
+          <div className="skeleton-shimmer h-11 rounded-full" />
           <div className="skeleton-shimmer h-20 rounded-xl" />
+          <div className="skeleton-shimmer h-11 rounded-xl" />
           <div className="skeleton-shimmer h-11 rounded-xl" />
         </div>
       </div>
@@ -414,24 +563,58 @@ export function ProfileCard({
   }
 
   const bannerBg = d.bannerUrl ? `url(${d.bannerUrl}) center/cover` : bannerToneFor(userId);
+  const ringColor = d.accentColor ?? accentColorHint ?? "#c8ff3d";
   const joinDate = d.createdAt
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  const computedBadges: CardBadge[] = [
+  const computedBadges: CardBadge[] = orderBadges([
+    ...(d.verified
+      ? [{ slug: "verified", name: "Verified", icon: "badge-check", color: "#c8ff3d", description: "Verified creator", earnedAt: null }]
+      : []),
     ...(d.rank != null && d.rank <= 10
-      ? [{ slug: "top-10", name: "Top 10", icon: "🏆", color: "#c8ff3d", description: `Ranked #${d.rank} on the leaderboard` }]
+      ? [{ slug: "top-10", name: "Top 10", icon: "trophy", color: "#c8ff3d", description: `Ranked #${d.rank} on the leaderboard`, earnedAt: null }]
       : []),
-    ...(d.verified ? [{ slug: "verified", name: "Verified", icon: "✔", color: "#f2efe6", description: "Verified creator" }] : []),
     ...(d.createdAt && new Date(d.createdAt).getTime() < new Date("2025-01-01").getTime()
-      ? [{ slug: "early", name: "Early user", icon: "🌱", color: "#c8ff3d", description: "Here since the early days" }]
+      ? [{ slug: "early", name: "Early user", icon: "sprout", color: "#c8ff3d", description: "Here since the early days", earnedAt: null }]
       : []),
-    ...d.badges.slice(0, 5),
-  ].slice(0, 6);
+    ...d.badges,
+  ]).slice(0, 24);
+  const badgePreview = computedBadges.slice(0, 4);
+  const badgeOverflow = computedBadges.length - badgePreview.length;
+
+  const realmRoleValue = realmRow.data?.role ?? realmRole ?? null;
+  const realmRoleMeta = realmRoleValue
+    ? REALM_ROLE_META[realmRoleValue] ?? { label: realmRoleValue, color: "#c8ff3d" }
+    : null;
+  const realmJoinedAt = realmRow.data?.joined_at
+    ? new Date(realmRow.data.joined_at).toLocaleDateString([], { month: "long", year: "numeric" })
+    : null;
 
   const statusLine = customStatus && (customStatus.emoji || customStatus.text) ? (
     <CustomStatusLine status={{ emoji: customStatus.emoji, text: customStatus.text }} className="mt-1 text-[13px] text-muted-foreground" />
   ) : null;
+
+  // Plain bio segments get line breaks (pre-wrap) and live mentions.
+  const renderBioPlain = (text: string) => (
+    <>
+      {text.split(/(@[a-zA-Z0-9][a-zA-Z0-9_.-]{0,30})/g).map((part, index) =>
+        part.startsWith("@") && part.length > 1 ? (
+          <Link
+            key={`mention-${index}`}
+            to="/u/$username"
+            params={{ username: part.slice(1) }}
+            className="mention-highlight"
+            onClick={() => close()}
+          >
+            {part}
+          </Link>
+        ) : (
+          <Fragment key={`plain-${index}`}>{part}</Fragment>
+        ),
+      )}
+    </>
+  );
 
   return (
     <div
@@ -443,8 +626,9 @@ export function ProfileCard({
         dragStart.current = null;
       }}
     >
-      {/* Banner 100px */}
-      <div className="relative h-[100px] w-full" style={{ background: bannerBg }}>
+      {/* Taller banner with a fade into the card */}
+      <div className="relative h-[132px] w-full overflow-hidden" style={{ background: bannerBg }}>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#141416] to-transparent" aria-hidden="true" />
         <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
@@ -490,11 +674,11 @@ export function ProfileCard({
         </div>
       </div>
 
-      <div className="px-4 pb-4">
-        {/* Avatar overlapping banner + presence dot */}
-        <div className="-mt-10 flex items-end justify-between gap-3">
+      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {/* Avatar overlapping banner, accent ring + presence dot */}
+        <div className="-mt-11 flex items-end justify-between gap-3">
           <span className="relative inline-flex">
-            <Avatar className="h-20 w-20 rounded-full ring-[6px] ring-[#141416]">
+            <Avatar className="h-20 w-20 rounded-full" style={{ boxShadow: `0 0 0 3px #141416, 0 0 0 6px ${ringColor}` }}>
               <AvatarImage src={avatarSrc ?? undefined} className="object-cover" />
               <AvatarFallback className="rounded-full bg-[#1c1c1f] text-2xl font-bold text-[#f2efe6]">
                 {d.displayName.charAt(0).toUpperCase()}
@@ -544,28 +728,33 @@ export function ProfileCard({
             </p>
             {statusLine}
 
-            {/* Badges (tap for tooltip) */}
+            {/* Badges: icon-only pills, the sheet tells the full story */}
             {computedBadges.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Badges">
-                {computedBadges.map((b) => (
+              <div className="mt-2.5 flex items-center gap-1.5" aria-label={`${computedBadges.length} badges`}>
+                {badgePreview.map((badge) => (
                   <button
-                    key={b.slug}
+                    key={badge.slug}
                     type="button"
-                    title={b.description || b.name}
-                    aria-label={`${b.name}${b.description ? `: ${b.description}` : ""}`}
-                    onClick={() => setBadgeTip((t) => (t === b.slug ? null : b.slug))}
-                    className="flex min-h-[44px] min-w-[44px] items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 text-xs font-semibold text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                    onClick={() => setBadgesOpen(true)}
+                    title={badge.name}
+                    aria-label={badge.name}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                    style={{ color: badge.color }}
                   >
-                    <span aria-hidden>{b.icon}</span>
-                    <span className="hidden min-[380px]:inline">{b.name}</span>
+                    <BadgeGlyph icon={badge.icon} className="h-[18px] w-[18px]" />
                   </button>
                 ))}
+                {badgeOverflow > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBadgesOpen(true)}
+                    aria-label={`See all ${computedBadges.length} badges`}
+                    className="h-11 shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-bold text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                  >
+                    +{badgeOverflow}
+                  </button>
+                )}
               </div>
-            )}
-            {badgeTip && (
-              <p role="status" className="mt-1.5 rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-xs text-muted-foreground">
-                {computedBadges.find((b) => b.slug === badgeTip)?.description ?? badgeTip}
-              </p>
             )}
 
             {/* Inner panel */}
@@ -573,8 +762,8 @@ export function ProfileCard({
               {d.bio ? (
                 <>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">About me</p>
-                  <div className={`mt-1 text-sm leading-snug text-foreground/90 ${bioExpanded ? "" : "line-clamp-3"}`}>
-                    <MarkdownText text={d.bio} />
+                  <div className={`mt-1 whitespace-pre-wrap text-sm font-normal leading-relaxed text-foreground/90 ${bioExpanded ? "" : "line-clamp-3"}`}>
+                    <MarkdownText text={d.bio} renderPlainText={renderBioPlain} />
                     {!bioExpanded && d.bio.length > 180 && (
                       <button type="button" onClick={() => setBioExpanded(true)} className="mt-0.5 min-h-[44px] text-xs font-semibold text-[#c8ff3d] hover:underline">
                         more
@@ -593,34 +782,60 @@ export function ProfileCard({
                   <p className="mt-0.5 text-sm text-[#f2efe6]">{joinDate}</p>
                 </>
               )}
-              {realmRole && realmRole !== "member" && (
+              {(realmRoleMeta || realmJoinedAt) && (
                 <>
                   <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                     In this realm
                   </p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    <span className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-white/10 px-2.5 text-xs text-[#f2efe6]">
-                      <span className="h-2 w-2 rounded-full bg-[#c8ff3d]" />
-                      {realmRole}
-                    </span>
-                  </div>
+                  {realmRoleMeta && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        className="inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold"
+                        style={{ borderColor: `${realmRoleMeta.color}55`, color: realmRoleMeta.color }}
+                      >
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: realmRoleMeta.color }} aria-hidden="true" />
+                        {realmRoleMeta.label}
+                      </span>
+                    </div>
+                  )}
+                  {realmJoinedAt && <p className="mt-1.5 text-xs text-muted-foreground">Joined realm {realmJoinedAt}</p>}
                 </>
               )}
             </div>
 
-            {/* Stats */}
-            <div className="mt-3 grid grid-cols-4 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.03] py-2.5 text-center">
-              {[
-                { value: d.rizzScore, label: "Rizz" },
-                { value: d.rank != null ? `#${d.rank}` : "—", label: "Rank" },
-                { value: d.followers, label: "Followers" },
-                { value: d.following, label: "Following" },
-              ].map((s) => (
-                <div key={s.label}>
-                  <p className="truncate text-sm font-bold tabular-nums text-foreground">{s.value}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
+            {/* Stats — followers/following open their lists */}
+            <div className="mt-3 grid grid-cols-4 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.03] py-1 text-center">
+              <div className="py-1.5">
+                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.rizzScore)}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Rizz</p>
+              </div>
+              <div className="py-1.5">
+                <p className="truncate text-sm font-bold tabular-nums text-foreground">
+                  {d.rank != null ? `#${d.rank}` : "—"}
+                  {d.rank != null && d.rank <= 10 && (
+                    <Trophy aria-hidden="true" className="ml-0.5 inline h-3.5 w-3.5 -translate-y-px text-[#c8ff3d]" />
+                  )}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Rank</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setListMode("followers")}
+                aria-label={`See ${d.followers} followers`}
+                className="min-h-11 py-1.5 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+              >
+                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.followers)}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Followers</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setListMode("following")}
+                aria-label={`See ${d.following} following`}
+                className="min-h-11 py-1.5 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+              >
+                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.following)}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Following</p>
+              </button>
             </div>
 
             {/* Mutual followers */}
@@ -646,8 +861,8 @@ export function ProfileCard({
             {/* Actions */}
             <div className="mt-3 flex gap-2">
               {isSelf ? (
-                <Button asChild className="h-11 flex-1 bg-[#c8ff3d] text-[#0b0b0c] hover:bg-[#c8ff3d]/90">
-                  <Link to="/settings/profile">
+                <Button asChild variant="outline" className="h-11 flex-1 border-white/15">
+                  <Link to="/settings/profile" onClick={() => close()}>
                     <Pencil className="h-4 w-4" /> Edit profile
                   </Link>
                 </Button>
@@ -686,16 +901,115 @@ export function ProfileCard({
                 </Button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => { close(); void nav({ to: "/u/$username", params: { username: d.username } }); }}
-              className="mx-auto mt-1 flex min-h-[44px] items-center justify-center px-4 text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline"
-            >
-              View full profile
-            </button>
+            <Button asChild variant="secondary" className="mt-2 h-11 w-full">
+              <Link to="/u/$username" params={{ username: d.username }} onClick={() => close()}>
+                View full profile
+              </Link>
+            </Button>
           </>
         )}
       </div>
+
+      {/* Badges sheet: icon, name, description, the day it was earned */}
+      <Dialog open={badgesOpen} onOpenChange={setBadgesOpen}>
+        <DialogContent
+          hideClose
+          className="left-0 right-0 top-auto bottom-0 max-h-[76dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        >
+          <DialogTitle className="sr-only">Badges</DialogTitle>
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden="true" />
+          <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display text-base font-bold text-[#f2efe6]">Badges ({computedBadges.length})</h3>
+              <CloseButton aria-label="Close badges" onClick={() => setBadgesOpen(false)} />
+            </div>
+            <ul className="mt-2 space-y-2">
+              {computedBadges.map((badge) => (
+                <li key={badge.slug} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <span
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]"
+                    style={{ color: badge.color }}
+                  >
+                    <BadgeGlyph icon={badge.icon} className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[#f2efe6]">{badge.name}</p>
+                    {badge.description && <p className="mt-0.5 text-xs text-muted-foreground">{badge.description}</p>}
+                    {badge.earnedAt && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Earned {new Date(badge.earnedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Followers / following sheet */}
+      <Dialog open={listMode !== null} onOpenChange={(open) => { if (!open) setListMode(null); }}>
+        <DialogContent
+          hideClose
+          className="left-0 right-0 top-auto bottom-0 max-h-[76dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        >
+          <DialogTitle className="sr-only">{listMode === "followers" ? "Followers" : "Following"}</DialogTitle>
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden="true" />
+          <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display text-base font-bold text-[#f2efe6]">
+                {listMode === "followers" ? "Followers" : "Following"}
+              </h3>
+              <CloseButton aria-label="Close list" onClick={() => setListMode(null)} />
+            </div>
+            {listQuery.isLoading ? (
+              <div className="mt-3 space-y-2" aria-busy="true">
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} className="h-14 animate-pulse rounded-2xl bg-white/5" />
+                ))}
+              </div>
+            ) : listQuery.isError ? (
+              <p role="alert" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
+                Couldn&apos;t load this list. Try again in a moment.
+              </p>
+            ) : (listQuery.data ?? []).length === 0 ? (
+              <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
+                {listMode === "followers" ? "No followers yet." : "Not following anyone yet."}
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-1">
+                {(listQuery.data ?? []).map((row) => (
+                  <li key={row.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setListMode(null);
+                        close();
+                        void nav({ to: "/u/$username", params: { username: row.username ?? row.id } });
+                      }}
+                      className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                    >
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={row.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-[#1c1c1f] text-sm font-bold text-[#f2efe6]">
+                          {(row.display_name || row.username || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[#f2efe6]">
+                          {row.display_name || row.username || "Member"}
+                        </span>
+                        {row.username && <span className="block truncate text-xs text-muted-foreground">@{row.username}</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -740,6 +1054,8 @@ export function ProfileCardDialog({
             displayName={user.displayName}
             avatarUrl={user.avatarUrl}
             realmRole={user.realmRole}
+            realmId={user.realmId}
+            accentColor={user.accentColor}
             onMention={onMention}
             onCall={onCall}
             onOpenChange={handleChange}

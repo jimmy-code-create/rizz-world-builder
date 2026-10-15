@@ -299,6 +299,7 @@ function RealmPage() {
       displayName: profile?.display_name || profile?.username || "Member",
       avatarUrl: profile?.avatar_url ?? null,
       accentColor: profile?.accent_color ?? null,
+      realmId: realm.data?.id ?? null,
     });
   }
   // Members and voice participants share one presence request.
@@ -1375,6 +1376,7 @@ function RealmPage() {
                 displayName: authorName,
                 avatarUrl: authorAvatar,
                 accentColor: authorAccent,
+                realmId: realm.data?.id ?? null,
                 isBot,
                 botName: botRow?.name ?? null,
                 realmRole: (members.data as RealmMemberRow[] | undefined)?.find((mem) => mem.user_id === m.sender_id)?.role ?? null,
@@ -1623,6 +1625,7 @@ function RealmPage() {
                                           userId: p.mentionToken!,
                                           username: mentionLabels(p.mentionToken!).replace(/^@/, ""),
                                           displayName: mentionLabels(p.mentionToken!),
+                                          realmId: realm.data?.id ?? null,
                                         });
                                       }}
                                       className="mention-highlight cursor-pointer"
@@ -1657,6 +1660,7 @@ function RealmPage() {
                                           displayName: prof?.display_name ?? p.mention!,
                                           avatarUrl: prof?.avatar_url ?? null,
                                           realmRole: hit.role ?? null,
+                                          realmId: realm.data?.id ?? null,
                                         });
                                       }}
                                       className="mention-highlight cursor-pointer"
