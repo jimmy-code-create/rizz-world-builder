@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquare, X, Send, ChevronUp, CornerDownRight, Sparkles, Flame, Users } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
@@ -176,12 +176,13 @@ export function FeedSideDiscussion({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <Avatar className="h-6 w-6 shrink-0">
-            <AvatarImage src={activePost.author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-              {postAuthor.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <InteractiveAvatar
+            src={activePost.author?.avatar_url}
+            fallback={postAuthor.charAt(0).toUpperCase()}
+            size={24}
+            userId={activePost.author_id}
+            username={activePost.author?.username}
+          />
           <div className="min-w-0">
             <p className="text-xs font-semibold truncate leading-tight">Discussion</p>
             <p className="text-[10px] text-muted-foreground truncate leading-tight">@{activePost.author?.username}</p>

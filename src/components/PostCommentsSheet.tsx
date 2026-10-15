@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, CornerDownRight, Maximize2, Send, ArrowDownUp } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,12 +118,13 @@ const CommentRowView = memo(function CommentRowView({
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
-          <Avatar className="h-6 w-6 shrink-0">
-            <AvatarImage src={author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-[9px] font-bold">
-              {name.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <InteractiveAvatar
+            src={author?.avatar_url}
+            fallback={name.charAt(0).toUpperCase()}
+            size={24}
+            userId={comment.author_id}
+            username={author?.username}
+          />
           <ProfilePreviewTrigger username={author?.username ?? null} className="min-w-0 truncate text-xs font-semibold">
             {name}
           </ProfilePreviewTrigger>

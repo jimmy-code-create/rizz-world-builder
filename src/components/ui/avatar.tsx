@@ -7,6 +7,7 @@ import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { TOKENS, type PresenceState } from "@/lib/tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { MediaViewer } from "@/components/media/MediaViewer";
+import { ProfilePreviewDialog } from "@/components/ProfilePreview";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -218,17 +219,19 @@ AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 export { Avatar, AvatarImage, AvatarFallback };
 
 export interface InteractiveAvatarProps extends UserAvatarProps {
+  username?: string | null;
   onClick?: (event: React.MouseEvent) => void;
   disableLongPressPhoto?: boolean;
 }
 
 /**
  * InteractiveAvatar
- * - Short tap: views active story if user has one; otherwise triggers onClick
+ * - Short tap: views active story if user has one; otherwise triggers onClick or opens profile sheet
  * - 450ms long press: triggers full photo viewer with haptic vibration feedback
  * - Prevents native callout popup (-webkit-touch-callout: none, contextmenu prevented)
  */
 export function InteractiveAvatar({
+  username,
   onClick,
   onStoryClick,
   disableLongPressPhoto = false,
@@ -236,6 +239,7 @@ export function InteractiveAvatar({
   ...props
 }: InteractiveAvatarProps) {
   const [photoOpen, setPhotoOpen] = React.useState(false);
+  const [profileSheetOpen, setProfileSheetOpen] = React.useState(false);
   const timerRef = React.useRef<number | null>(null);
   const startPos = React.useRef<{ x: number; y: number } | null>(null);
   const didLongPress = React.useRef(false);
@@ -282,6 +286,8 @@ export function InteractiveAvatar({
       onStoryClick();
     } else if (onClick) {
       onClick(e);
+    } else if (username) {
+      setProfileSheetOpen(true);
     }
   };
 
@@ -312,7 +318,7 @@ export function InteractiveAvatar({
           userSelect: "none",
         }}
       >
-        <UserAvatar src={src} {...props} />
+        <UserAvatar src={src} onStoryClick={onStoryClick} {...props} />
       </div>
 
       {src && (
@@ -321,6 +327,14 @@ export function InteractiveAvatar({
           src={normalizeAvatarUrl(src) ?? src}
           alt={props.alt || props.fallback || "Avatar"}
           onClose={() => setPhotoOpen(false)}
+        />
+      )}
+
+      {username && (
+        <ProfilePreviewDialog
+          username={username}
+          open={profileSheetOpen}
+          onOpenChange={setProfileSheetOpen}
         />
       )}
     </>

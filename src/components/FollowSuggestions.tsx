@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserAvatar } from "@/components/ui/avatar";
+import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -69,9 +69,13 @@ export function FollowSuggestions() {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
           return (
             <div key={p.id} className="flex items-center gap-3">
-              <Link to="/u/$username" params={{ username: p.username }}>
-                <UserAvatar src={p.avatar_url} fallback={initial} size="sm" userId={p.id} />
-              </Link>
+              <InteractiveAvatar
+                src={p.avatar_url}
+                fallback={initial}
+                size="sm"
+                userId={p.id}
+                username={p.username}
+              />
               <Link to="/u/$username" params={{ username: p.username }} className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.display_name || p.username}</p>
                 <p className="text-xs text-muted-foreground truncate">@{p.username} · {p.rizz_score} rizz</p>

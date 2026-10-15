@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown } from "lucide-react";
-import { UserAvatar } from "@/components/ui/avatar";
+import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/formatters";
 
@@ -48,10 +48,12 @@ function LeaderboardPage() {
             <div className={`w-8 text-center font-display font-bold ${i === 0 ? "text-primary" : "text-muted-foreground"}`}>
               {i === 0 ? <Crown className="h-5 w-5 mx-auto" /> : `#${i + 1}`}
             </div>
-            <UserAvatar
+            <InteractiveAvatar
               src={p.avatar_url}
               fallback={p.display_name || p.username}
               size="md"
+              userId={p.id}
+              username={p.username}
             />
             <div className="flex-1 min-w-0">
               <p className="font-semibold truncate text-foreground">{p.display_name || p.username}</p>

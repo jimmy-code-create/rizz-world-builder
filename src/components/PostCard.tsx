@@ -1008,9 +1008,9 @@ function CommentInteractions({ commentId }: { commentId: string }) {
 function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
   const eq = useEquipped(post.author_id);
   const deco = eq.data?.avatar_decoration;
-  return (
-    <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
-      {deco ? (
+  if (deco) {
+    return (
+      <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
         <AvatarDecoration
           src={normalizeAvatarUrl(post.author?.avatar_url) ?? undefined}
           fallback={initial}
@@ -1018,15 +1018,17 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           effectSlug={deco.slug}
           accent={deco.preview_color || accent}
         />
-      ) : (
-        <InteractiveAvatar
-          src={post.author?.avatar_url}
-          fallback={initial}
-          size="md"
-          userId={post.author_id}
-        />
-      )}
-    </ProfilePreviewTrigger>
+      </ProfilePreviewTrigger>
+    );
+  }
+  return (
+    <InteractiveAvatar
+      src={post.author?.avatar_url}
+      fallback={initial}
+      size="md"
+      userId={post.author_id}
+      username={post.author?.username}
+    />
   );
 }
 

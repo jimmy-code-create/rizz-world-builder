@@ -28,7 +28,7 @@
 - [x] Item 7: Account menu: 248px width, right-aligned, `#141416` background, 14px radius, compact 40px/44px rows, expandable inline status picker (no truncation), inline "Sign out?" confirm (`src/components/AppShell.tsx`) - **DONE**
 
 ### Phase 3: Avatar Interactions
-- [ ] Item 8: Universal `InteractiveAvatar` component: tap = open story or navigate to profile; long-press 450ms = full photo lightbox viewer with pinch-to-zoom and swipe-down dismiss; zero browser callout menus (`src/components/ui/avatar.tsx`, `src/components/posts/PostCard.tsx`, `src/components/comments/CommentList.tsx`) - **PARTLY**
+- [x] Item 8: Universal `InteractiveAvatar` component: tap = open story or profile preview sheet; long-press 450ms = full photo lightbox viewer with pinch-to-zoom and swipe-down dismiss; zero browser callout menus (`src/components/ui/avatar.tsx`, `src/components/PostCard.tsx`, `src/components/PostCommentsSheet.tsx`, `src/components/FollowSuggestions.tsx`, `src/routes/_app/explore.tsx`, `src/routes/_app/leaderboard.tsx`) - **DONE**
 
 ### Phase 4: Voice Chat Polish
 - [ ] Item 9: Dedicated `VoiceSettingsSheet` with working mic sensitivity sliders, noise suppression toggle, input/output device pickers, and live mic test meter (`src/components/voice/VoiceSettingsSheet.tsx`, `src/components/voice/VoiceCallView.tsx`) - **PARTLY**
