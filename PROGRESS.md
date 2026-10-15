@@ -176,3 +176,6 @@
 
 ### Phase 29: One loading screen
 - [x] Single `AppLoader` (brand mark + lime bar, reduced-motion safe) for the auth gate + both route transitions; ambient lazy chunks already mount with null fallbacks; orphaned mascot splash deleted - **DONE**
+
+### Phase 30: Boot splash de-catted
+- [x] Cold-start splash drops the lime-cat SVG + "server cat" copy for the brand loader (logo + lime bar, neutral status copy, retry kept) - **DONE**
