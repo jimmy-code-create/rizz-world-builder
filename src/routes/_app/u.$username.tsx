@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { AvatarWithStatus, CustomStatusLine, ThoughtBubble } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -267,7 +267,7 @@ function ProfilePage() {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
-        <div className="absolute -bottom-12 left-4 md:left-6">
+        <div className="absolute -bottom-12 left-4 md:left-6 flex items-end gap-3">
           <AvatarWithStatus status={presenceStatus} dotSize={18}>
             <AvatarDecoration
               src={profile.avatar_url}
@@ -278,6 +278,14 @@ function ProfilePage() {
               className="ring-4 ring-background rounded-full"
             />
           </AvatarWithStatus>
+          {customStatus && (customStatus.emoji || customStatus.text) && (
+            <div className="mb-2 hidden sm:block">
+              <ThoughtBubble
+                emoji={customStatus.emoji}
+                text={customStatus.text}
+              />
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -298,11 +306,13 @@ function ProfilePage() {
           <p className="mt-0.5 text-xs text-muted-foreground">
             {isMe ? "You" : statusLabel(presenceStatus)}
           </p>
-          {customStatus && (
-            <CustomStatusLine
-              status={customStatus}
-              className="mt-1.5 w-fit rounded-full border border-white/10 glass px-3 py-1.5 text-xs font-medium"
-            />
+          {customStatus && (customStatus.emoji || customStatus.text) && (
+            <div className="mt-2 sm:hidden">
+              <ThoughtBubble
+                emoji={customStatus.emoji}
+                text={customStatus.text}
+              />
+            </div>
           )}
         </div>
         {isMe ? (
