@@ -118,6 +118,245 @@ export type Database = {
           },
         ]
       }
+      bot_commands: {
+        Row: {
+          bot_id: string
+          created_at: string
+          description: string
+          enabled_globally: boolean
+          id: string
+          name: string
+          options: Json
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          description?: string
+          enabled_globally?: boolean
+          id?: string
+          name: string
+          options?: Json
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          description?: string
+          enabled_globally?: boolean
+          id?: string
+          name?: string
+          options?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_commands_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_interactions: {
+        Row: {
+          args: string
+          bot_id: string
+          command_name: string
+          created_at: string
+          id: string
+          realm_id: string
+          realm_room_id: string | null
+          responded_at: string | null
+          response_body: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          args?: string
+          bot_id: string
+          command_name: string
+          created_at?: string
+          id?: string
+          realm_id: string
+          realm_room_id?: string | null
+          responded_at?: string | null
+          response_body?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          args?: string
+          bot_id?: string
+          command_name?: string
+          created_at?: string
+          id?: string
+          realm_id?: string
+          realm_room_id?: string | null
+          responded_at?: string | null
+          response_body?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_interactions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_interactions_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_interactions_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_interactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_rate_limits: {
+        Row: {
+          bot_id: string
+          used: number
+          window_started_at: string
+        }
+        Insert: {
+          bot_id: string
+          used?: number
+          window_started_at?: string
+        }
+        Update: {
+          bot_id?: string
+          used?: number
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_rate_limits_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: true
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_ratings: {
+        Row: {
+          bot_id: string
+          created_at: string
+          rating: number
+          review: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          rating: number
+          review?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          rating?: number
+          review?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_ratings_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bots: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          delivery: string
+          description: string
+          id: string
+          is_builtin: boolean
+          is_public: boolean
+          name: string
+          owner_id: string | null
+          scopes: string[]
+          token_hash: string
+          token_prefix: string
+          token_rotated_at: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          delivery?: string
+          description?: string
+          id?: string
+          is_builtin?: boolean
+          is_public?: boolean
+          name: string
+          owner_id?: string | null
+          scopes?: string[]
+          token_hash: string
+          token_prefix?: string
+          token_rotated_at?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          delivery?: string
+          description?: string
+          id?: string
+          is_builtin?: boolean
+          is_public?: boolean
+          name?: string
+          owner_id?: string | null
+          scopes?: string[]
+          token_hash?: string
+          token_prefix?: string
+          token_rotated_at?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bots_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           callee_id: string
@@ -849,6 +1088,52 @@ export type Database = {
           },
         ]
       }
+      group_pinned_messages: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          message_id: string
+          pinned_by: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          message_id: string
+          pinned_by: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          message_id?: string
+          pinned_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_pinned_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_pinned_messages_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "group_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_pinned_messages_pinned_by_fkey"
+            columns: ["pinned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           accent_color: string | null
@@ -909,29 +1194,104 @@ export type Database = {
         }
         Relationships: []
       }
+      link_preview_hides: {
+        Row: {
+          created_at: string
+          hidden_by: string
+          message_id: string
+          message_scope: string
+        }
+        Insert: {
+          created_at?: string
+          hidden_by: string
+          message_id: string
+          message_scope: string
+        }
+        Update: {
+          created_at?: string
+          hidden_by?: string
+          message_id?: string
+          message_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_preview_hides_hidden_by_fkey"
+            columns: ["hidden_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      link_previews: {
+        Row: {
+          description: string | null
+          domain: string
+          failed: boolean
+          fetched_at: string
+          image_url: string | null
+          kind: string
+          site_name: string | null
+          title: string | null
+          url: string
+        }
+        Insert: {
+          description?: string | null
+          domain: string
+          failed?: boolean
+          fetched_at?: string
+          image_url?: string | null
+          kind?: string
+          site_name?: string | null
+          title?: string | null
+          url: string
+        }
+        Update: {
+          description?: string | null
+          domain?: string
+          failed?: boolean
+          fetched_at?: string
+          image_url?: string | null
+          kind?: string
+          site_name?: string | null
+          title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       message_reactions: {
         Row: {
+          bot_id: string | null
           created_at: string
           emoji: string
           message_id: string
           message_type: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          bot_id?: string | null
           created_at?: string
           emoji: string
           message_id: string
           message_type?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          bot_id?: string | null
           created_at?: string
           emoji?: string
           message_id?: string
           message_type?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "message_reactions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "message_reactions_user_id_fkey"
             columns: ["user_id"]
@@ -945,32 +1305,50 @@ export type Database = {
         Row: {
           attachment_url: string | null
           body: string
+          bot_id: string | null
+          card: Json | null
           created_at: string
           id: string
+          parent_id: string | null
           realm_id: string
           realm_room_id: string | null
+          reply_count: number
           reply_to: string | null
-          sender_id: string
+          sender_id: string | null
+          system: boolean
+          thread_root: string | null
         }
         Insert: {
           attachment_url?: string | null
           body: string
+          bot_id?: string | null
+          card?: Json | null
           created_at?: string
           id?: string
+          parent_id?: string | null
           realm_id: string
           realm_room_id?: string | null
+          reply_count?: number
           reply_to?: string | null
-          sender_id: string
+          sender_id?: string | null
+          system?: boolean
+          thread_root?: string | null
         }
         Update: {
           attachment_url?: string | null
           body?: string
+          bot_id?: string | null
+          card?: Json | null
           created_at?: string
           id?: string
+          parent_id?: string | null
           realm_id?: string
           realm_room_id?: string | null
+          reply_count?: number
           reply_to?: string | null
-          sender_id?: string
+          sender_id?: string | null
+          system?: boolean
+          thread_root?: string | null
         }
         Relationships: [
           {
@@ -978,6 +1356,20 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -999,6 +1391,83 @@ export type Database = {
             columns: ["reply_to"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_thread_root_fkey"
+            columns: ["thread_root"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_queue: {
+        Row: {
+          artist: string | null
+          artwork_url: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          position: number
+          preview_url: string | null
+          realm_id: string
+          realm_room_id: string | null
+          requested_by: string | null
+          status: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          artist?: string | null
+          artwork_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          position?: number
+          preview_url?: string | null
+          realm_id: string
+          realm_room_id?: string | null
+          requested_by?: string | null
+          status?: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          artist?: string | null
+          artwork_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          position?: number
+          preview_url?: string | null
+          realm_id?: string
+          realm_room_id?: string | null
+          requested_by?: string | null
+          status?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_queue_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "music_queue_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "music_queue_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1141,38 +1610,34 @@ export type Database = {
       pinned_messages: {
         Row: {
           created_at: string
-          group_id: string
           id: string
           message_id: string
           pinned_by: string
+          realm_id: string
+          realm_room_id: string | null
         }
         Insert: {
           created_at?: string
-          group_id: string
           id?: string
           message_id: string
           pinned_by: string
+          realm_id: string
+          realm_room_id?: string | null
         }
         Update: {
           created_at?: string
-          group_id?: string
           id?: string
           message_id?: string
           pinned_by?: string
+          realm_id?: string
+          realm_room_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "pinned_messages_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "pinned_messages_message_id_fkey"
             columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "group_messages"
+            isOneToOne: true
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -1180,6 +1645,20 @@ export type Database = {
             columns: ["pinned_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_messages_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_messages_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -1732,6 +2211,106 @@ export type Database = {
           },
         ]
       }
+      realm_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          realm_id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          realm_id: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          realm_id?: string
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_audit_log_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_automod: {
+        Row: {
+          banned_words: string[]
+          block_links: boolean
+          mention_limit: number
+          min_account_age_days: number
+          raid_mode: boolean
+          realm_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          banned_words?: string[]
+          block_links?: boolean
+          mention_limit?: number
+          min_account_age_days?: number
+          raid_mode?: boolean
+          realm_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          banned_words?: string[]
+          block_links?: boolean
+          mention_limit?: number
+          min_account_age_days?: number
+          raid_mode?: boolean
+          realm_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_automod_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: true
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_automod_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       realm_bans: {
         Row: {
           banned_by: string
@@ -1774,6 +2353,208 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_bot_command_settings: {
+        Row: {
+          command_id: string
+          enabled: boolean
+          id: string
+          realm_id: string
+          realm_room_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          command_id: string
+          enabled?: boolean
+          id?: string
+          realm_id: string
+          realm_room_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          command_id?: string
+          enabled?: boolean
+          id?: string
+          realm_id?: string
+          realm_room_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_bot_command_settings_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "bot_commands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bot_command_settings_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bot_command_settings_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_bot_installs: {
+        Row: {
+          bot_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          installed_by: string | null
+          realm_id: string
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          installed_by?: string | null
+          realm_id: string
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          installed_by?: string | null
+          realm_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_bot_installs_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bot_installs_installed_by_fkey"
+            columns: ["installed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bot_installs_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_channel_permissions: {
+        Row: {
+          can_write: boolean
+          id: string
+          realm_id: string
+          realm_room_id: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          can_write?: boolean
+          id?: string
+          realm_id: string
+          realm_room_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          can_write?: boolean
+          id?: string
+          realm_id?: string
+          realm_room_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_channel_permissions_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_channel_permissions_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_channel_permissions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_channel_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_custom_emoji: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          name: string
+          realm_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name: string
+          realm_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          realm_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_custom_emoji_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_custom_emoji_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
             referencedColumns: ["id"]
           },
         ]
@@ -1961,6 +2742,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "realm_forum_posts_best_reply_id_fkey"
+            columns: ["best_reply_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "realm_forum_posts_forum_id_fkey"
             columns: ["forum_id"]
             isOneToOne: false
@@ -1997,39 +2785,6 @@ export type Database = {
           },
         ]
       }
-      realm_forum_reads: {
-        Row: {
-          last_seen_at: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          last_seen_at?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          last_seen_at?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "realm_forum_reads_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "realm_forum_posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "realm_forum_reads_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       realm_forum_reactions: {
         Row: {
           created_at: string
@@ -2059,6 +2814,39 @@ export type Database = {
           },
           {
             foreignKeyName: "realm_forum_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_forum_reads: {
+        Row: {
+          last_seen_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_forum_reads_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_forum_reads_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2424,6 +3212,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "realm_forums_guidelines_post_id_fkey"
+            columns: ["guidelines_post_id"]
+            isOneToOne: false
+            referencedRelation: "realm_forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "realm_forums_realm_id_fkey"
             columns: ["realm_id"]
             isOneToOne: false
@@ -2492,22 +3287,31 @@ export type Database = {
       }
       realm_members: {
         Row: {
+          can_manage_bots: boolean
           joined_at: string
           realm_id: string
           role: Database["public"]["Enums"]["realm_role"]
+          timeout_until: string | null
           user_id: string
+          warn_points: number
         }
         Insert: {
+          can_manage_bots?: boolean
           joined_at?: string
           realm_id: string
           role?: Database["public"]["Enums"]["realm_role"]
+          timeout_until?: string | null
           user_id: string
+          warn_points?: number
         }
         Update: {
+          can_manage_bots?: boolean
           joined_at?: string
           realm_id?: string
           role?: Database["public"]["Enums"]["realm_role"]
+          timeout_until?: string | null
           user_id?: string
+          warn_points?: number
         }
         Relationships: [
           {
@@ -2526,35 +3330,306 @@ export type Database = {
           },
         ]
       }
+      realm_poll_votes: {
+        Row: {
+          created_at: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          option_index?: number
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "realm_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_polls: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          message_id: string | null
+          multi: boolean
+          options: Json
+          question: string
+          realm_id: string
+          realm_room_id: string | null
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          message_id?: string | null
+          multi?: boolean
+          options: Json
+          question: string
+          realm_id: string
+          realm_room_id?: string | null
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          message_id?: string | null
+          multi?: boolean
+          options?: Json
+          question?: string
+          realm_id?: string
+          realm_room_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_polls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_polls_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_polls_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_reaction_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          emoji: string
+          id: string
+          message_id: string
+          realm_id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          emoji: string
+          id?: string
+          message_id: string
+          realm_id: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          emoji?: string
+          id?: string
+          message_id?: string
+          realm_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_reaction_roles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_reaction_roles_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_reaction_roles_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_reports: {
+        Row: {
+          body_snapshot: string | null
+          created_at: string
+          id: string
+          message_id: string | null
+          realm_id: string
+          reason: string
+          reporter_id: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          body_snapshot?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          realm_id: string
+          reason?: string
+          reporter_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          body_snapshot?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          realm_id?: string
+          reason?: string
+          reporter_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_reports_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_role_settings: {
+        Row: {
+          color: string | null
+          permissions: string[]
+          realm_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          permissions?: string[]
+          realm_id: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          permissions?: string[]
+          realm_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_role_settings_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       realm_rooms: {
         Row: {
           created_at: string
           id: string
           is_default: boolean
+          is_private: boolean
           kind: string
+          mods_only: boolean
           name: string
           position: number
+          reactions_mode: string
           realm_id: string
+          slowmode_seconds: number
           topic: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_default?: boolean
+          is_private?: boolean
           kind?: string
+          mods_only?: boolean
           name: string
           position?: number
+          reactions_mode?: string
           realm_id: string
+          slowmode_seconds?: number
           topic?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_default?: boolean
+          is_private?: boolean
           kind?: string
+          mods_only?: boolean
           name?: string
           position?: number
+          reactions_mode?: string
           realm_id?: string
+          slowmode_seconds?: number
           topic?: string | null
         }
         Relationships: [
@@ -2567,53 +3642,377 @@ export type Database = {
           },
         ]
       }
+      realm_scheduled_messages: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          id: string
+          realm_id: string
+          realm_room_id: string | null
+          scheduled_for: string
+          sent_message_id: string | null
+          status: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by: string
+          id?: string
+          realm_id: string
+          realm_room_id?: string | null
+          scheduled_for: string
+          sent_message_id?: string | null
+          status?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          realm_id?: string
+          realm_room_id?: string | null
+          scheduled_for?: string
+          sent_message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_scheduled_messages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_scheduled_messages_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_scheduled_messages_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_scheduled_messages_sent_message_id_fkey"
+            columns: ["sent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_xp: {
+        Row: {
+          last_awarded_at: string | null
+          messages: number
+          realm_id: string
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          last_awarded_at?: string | null
+          messages?: number
+          realm_id: string
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          last_awarded_at?: string | null
+          messages?: number
+          realm_id?: string
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_xp_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_xp_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       realms: {
         Row: {
           accent_color: string | null
+          allow_member_bots: boolean
           created_at: string
           icon_url: string | null
           id: string
           is_public: boolean
           kind: Database["public"]["Enums"]["realm_type"]
           member_count: number
+          mod_log_room_id: string | null
           name: string
           owner_id: string
+          reactions_mode: string
           slug: string
           topic: string | null
           updated_at: string
+          verification_level: number
+          warn_threshold: number
+          warn_timeout_minutes: number
+          welcome_enabled: boolean
+          welcome_message: string | null
+          xp_enabled: boolean
         }
         Insert: {
           accent_color?: string | null
+          allow_member_bots?: boolean
           created_at?: string
           icon_url?: string | null
           id?: string
           is_public?: boolean
           kind?: Database["public"]["Enums"]["realm_type"]
           member_count?: number
+          mod_log_room_id?: string | null
           name: string
           owner_id: string
+          reactions_mode?: string
           slug: string
           topic?: string | null
           updated_at?: string
+          verification_level?: number
+          warn_threshold?: number
+          warn_timeout_minutes?: number
+          welcome_enabled?: boolean
+          welcome_message?: string | null
+          xp_enabled?: boolean
         }
         Update: {
           accent_color?: string | null
+          allow_member_bots?: boolean
           created_at?: string
           icon_url?: string | null
           id?: string
           is_public?: boolean
           kind?: Database["public"]["Enums"]["realm_type"]
           member_count?: number
+          mod_log_room_id?: string | null
           name?: string
           owner_id?: string
+          reactions_mode?: string
           slug?: string
           topic?: string | null
           updated_at?: string
+          verification_level?: number
+          warn_threshold?: number
+          warn_timeout_minutes?: number
+          welcome_enabled?: boolean
+          welcome_message?: string | null
+          xp_enabled?: boolean
         }
         Relationships: [
           {
+            foreignKeyName: "realms_mod_log_room_id_fkey"
+            columns: ["mod_log_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "realms_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rizz_bot_battles: {
+        Row: {
+          challenger_id: string
+          challenger_line: string | null
+          collect_until: string
+          created_at: string
+          id: string
+          message_a_id: string | null
+          message_b_id: string | null
+          realm_id: string
+          realm_room_id: string | null
+          status: string
+          target_id: string
+          target_line: string | null
+          vote_until: string | null
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id: string
+          challenger_line?: string | null
+          collect_until?: string
+          created_at?: string
+          id?: string
+          message_a_id?: string | null
+          message_b_id?: string | null
+          realm_id: string
+          realm_room_id?: string | null
+          status?: string
+          target_id: string
+          target_line?: string | null
+          vote_until?: string | null
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string
+          challenger_line?: string | null
+          collect_until?: string
+          created_at?: string
+          id?: string
+          message_a_id?: string | null
+          message_b_id?: string | null
+          realm_id?: string
+          realm_room_id?: string | null
+          status?: string
+          target_id?: string
+          target_line?: string | null
+          vote_until?: string | null
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rizz_bot_battles_challenger_id_fkey"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_battles_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_battles_realm_room_id_fkey"
+            columns: ["realm_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_battles_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_battles_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rizz_bot_cooldowns: {
+        Row: {
+          command: string
+          next_at: string
+          realm_id: string
+          user_id: string
+        }
+        Insert: {
+          command: string
+          next_at?: string
+          realm_id: string
+          user_id: string
+        }
+        Update: {
+          command?: string
+          next_at?: string
+          realm_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rizz_bot_cooldowns_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_cooldowns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rizz_bot_lines: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+        }
+        Relationships: []
+      }
+      rizz_bot_points: {
+        Row: {
+          points: number
+          realm_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          points?: number
+          realm_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          points?: number
+          realm_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rizz_bot_points_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rizz_bot_points_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2878,6 +4277,47 @@ export type Database = {
           },
         ]
       }
+      user_presence: {
+        Row: {
+          custom_status_emoji: string | null
+          custom_status_expires_at: string | null
+          custom_status_text: string | null
+          last_seen_at: string | null
+          manual: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          custom_status_emoji?: string | null
+          custom_status_expires_at?: string | null
+          custom_status_text?: string | null
+          last_seen_at?: string | null
+          manual?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          custom_status_emoji?: string | null
+          custom_status_expires_at?: string | null
+          custom_status_text?: string | null
+          last_seen_at?: string | null
+          manual?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_presence_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profile_effects: {
         Row: {
           acquired_at: string
@@ -2935,6 +4375,7 @@ export type Database = {
           muted: boolean
           role: Database["public"]["Enums"]["voice_role"]
           room_id: string
+          sharing_screen: boolean
           user_id: string
         }
         Insert: {
@@ -2943,6 +4384,7 @@ export type Database = {
           muted?: boolean
           role?: Database["public"]["Enums"]["voice_role"]
           room_id: string
+          sharing_screen?: boolean
           user_id: string
         }
         Update: {
@@ -2951,6 +4393,7 @@ export type Database = {
           muted?: boolean
           role?: Database["public"]["Enums"]["voice_role"]
           room_id?: string
+          sharing_screen?: boolean
           user_id?: string
         }
         Relationships: [
@@ -3032,7 +4475,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_group_invite: { Args: { _code: string }; Returns: string }
+      accept_group_invite: { Args: { _code: string }; Returns: Json }
       accept_realm_invite: { Args: { _code: string }; Returns: string }
       assert_realm_action_rate: {
         Args: { limit_per_hour: number }
@@ -3050,6 +4493,37 @@ export type Database = {
         Args: { _callee_id: string; _video?: boolean }
         Returns: string
       }
+      bot_api: {
+        Args: { _action: string; _payload?: Json; _token_hash: string }
+        Returns: Json
+      }
+      bot_command_allowed_in_channel: {
+        Args: { _command_id: string; _realm_id: string; _realm_room_id: string }
+        Returns: boolean
+      }
+      bot_consume_rate_limit: {
+        Args: { _bot_id: string; _limit: number; _window_seconds: number }
+        Returns: boolean
+      }
+      bot_directory: { Args: { _search?: string }; Returns: Json }
+      bot_insert_message: {
+        Args: {
+          _body: string
+          _bot_id: string
+          _card?: Json
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: string
+      }
+      bot_installed_in_realm: {
+        Args: { _bot_id: string; _realm_id: string }
+        Returns: boolean
+      }
+      can_manage_realm_bots: {
+        Args: { _realm_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_read_realm: { Args: { _realm_id: string }; Returns: boolean }
       can_view_author: {
         Args: {
@@ -3058,9 +4532,64 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_view_story: {
+        Args: {
+          _author: string
+          _hidden_from: string[]
+          _visibility: Database["public"]["Enums"]["post_visibility"]
+        }
+        Returns: boolean
+      }
+      cancel_realm_message: { Args: { _id: string }; Returns: Json }
+      channel_reactions_allowed: {
+        Args: { _realm_id: string; _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      channel_write_allowed: {
+        Args: { _realm_id: string; _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      clear_custom_status: { Args: never; Returns: undefined }
+      clear_realm_warns: {
+        Args: { _realm_id: string; _user_id: string }
+        Returns: Json
+      }
+      create_bot: {
+        Args: {
+          _avatar_url: string
+          _delivery: string
+          _description: string
+          _name: string
+          _scopes: string[]
+          _token_hash: string
+          _token_prefix: string
+          _webhook_url: string
+        }
+        Returns: Json
+      }
+      create_bot_interaction: {
+        Args: {
+          _args?: string
+          _command_id: string
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: Json
+      }
       create_realm_invite: {
         Args: { _expires_at?: string; _max_uses?: number; _realm_id: string }
         Returns: string
+      }
+      create_realm_poll: {
+        Args: {
+          _minutes?: number
+          _multi?: boolean
+          _options: Json
+          _question: string
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: Json
       }
       create_realm_secure: {
         Args: {
@@ -3072,10 +4601,86 @@ export type Database = {
         }
         Returns: string
       }
+      delete_bot: { Args: { _bot_id: string }; Returns: Json }
+      delete_bot_command: {
+        Args: { _bot_id: string; _command_id: string }
+        Returns: Json
+      }
       delete_realm: { Args: { _realm_id: string }; Returns: undefined }
+      delete_realm_emoji: { Args: { _id: string }; Returns: Json }
+      delete_realm_reaction_role: { Args: { _id: string }; Returns: Json }
       end_stale_voice_rooms: {
         Args: { _max_host_absence_minutes?: number }
         Returns: number
+      }
+      forum_archive_stale: { Args: { _realm_id?: string }; Returns: number }
+      forum_create_post: {
+        Args: {
+          _as_guidelines?: boolean
+          _attachments?: string[]
+          _body: string
+          _cover_url?: string
+          _fields?: Json
+          _room_id: string
+          _status_id?: string
+          _tag_ids?: string[]
+          _template_id?: string
+          _title: string
+        }
+        Returns: Json
+      }
+      forum_create_reply: {
+        Args: { _body: string; _parent_id?: string; _post_id: string }
+        Returns: Json
+      }
+      forum_delete_post: { Args: { _post_id: string }; Returns: Json }
+      forum_delete_reply: { Args: { _reply_id: string }; Returns: Json }
+      forum_ensure_config: { Args: { _room_id: string }; Returns: string }
+      forum_mark_read: { Args: { _post_id: string }; Returns: Json }
+      forum_moderate_post: {
+        Args: { _action: string; _post_id: string }
+        Returns: Json
+      }
+      forum_muted: {
+        Args: { _post: string; _realm: string; _room: string; _user: string }
+        Returns: boolean
+      }
+      forum_save_settings: {
+        Args: { _room_id: string; _settings: Json }
+        Returns: Json
+      }
+      forum_seed_defaults: { Args: { _forum_id: string }; Returns: undefined }
+      forum_set_best_answer: {
+        Args: { _post_id: string; _reply_id: string }
+        Returns: Json
+      }
+      forum_tags_valid: {
+        Args: { _forum_id: string; _tag_ids: string[] }
+        Returns: boolean
+      }
+      forum_toggle_like: { Args: { _post_id: string }; Returns: Json }
+      forum_toggle_reaction: {
+        Args: { _emoji: string; _post_id: string }
+        Returns: Json
+      }
+      forum_toggle_reply_like: { Args: { _reply_id: string }; Returns: Json }
+      forum_toggle_reply_reaction: {
+        Args: { _emoji: string; _reply_id: string }
+        Returns: Json
+      }
+      forum_toggle_tag_follow: { Args: { _tag_id: string }; Returns: Json }
+      forum_update_post: {
+        Args: {
+          _attachments?: string[]
+          _body: string
+          _cover_url?: string
+          _fields?: Json
+          _post_id: string
+          _status_id?: string
+          _tag_ids?: string[]
+          _title: string
+        }
+        Returns: Json
       }
       get_group_invite_preview: {
         Args: { _code: string }
@@ -3112,8 +4717,20 @@ export type Database = {
         Args: { _message_id: string }
         Returns: undefined
       }
+      hide_link_preview: {
+        Args: { _message_id: string; _scope: string }
+        Returns: boolean
+      }
+      install_realm_bot: {
+        Args: { _bot_id: string; _realm_id: string }
+        Returns: Json
+      }
       is_blocked_pair: { Args: { _a: string; _b: string }; Returns: boolean }
       is_close_friend: {
+        Args: { _owner: string; _viewer: string }
+        Returns: boolean
+      }
+      is_follower: {
         Args: { _owner: string; _viewer: string }
         Returns: boolean
       }
@@ -3125,18 +4742,42 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      is_locked_voice_room_for: {
+        Args: { _room: string; _user: string }
+        Returns: boolean
+      }
       is_realm_member: { Args: { _realm_id: string }; Returns: boolean }
+      is_realm_moderator: {
+        Args: { _realm: string; _user: string }
+        Returns: boolean
+      }
+      is_realm_room_locked: { Args: { _room: string }; Returns: boolean }
+      is_user_do_not_disturb: { Args: { _user_id: string }; Returns: boolean }
       join_realm: { Args: { _realm_id: string }; Returns: string }
       kick_realm_member: {
         Args: { _realm_id: string; _user_id: string }
         Returns: undefined
       }
       leave_realm: { Args: { _realm_id: string }; Returns: undefined }
+      list_realm_bans: { Args: { _realm_id: string }; Returns: Json }
+      list_realm_invites: { Args: { _realm_id: string }; Returns: Json }
+      list_realm_reports: { Args: { _realm_id: string }; Returns: Json }
+      moderate_delete_message: {
+        Args: { _message_id: string; _reason?: string }
+        Returns: Json
+      }
+      music_add: {
+        Args: { _realm_id: string; _realm_room_id: string; _track: Json }
+        Returns: Json
+      }
+      my_bots: { Args: never; Returns: Json }
+      my_realm_xp: { Args: { _realm_id: string }; Returns: Json }
       notify_mentions: {
         Args: { _actor: string; _body: string; _data: Json; _type: string }
         Returns: undefined
       }
       pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
+      pin_message: { Args: { _message_id: string }; Returns: undefined }
       preview_group_invite: {
         Args: { _code: string }
         Returns: {
@@ -3161,26 +4802,276 @@ export type Database = {
           topic: string
         }[]
       }
+      rate_bot: {
+        Args: { _bot_id: string; _rating: number; _review?: string }
+        Returns: Json
+      }
+      realm_all_permissions: { Args: never; Returns: string[] }
+      realm_audit: {
+        Args: {
+          _action: string
+          _actor: string
+          _detail: string
+          _realm_id: string
+          _target_user: string
+        }
+        Returns: undefined
+      }
+      realm_audit_log: {
+        Args: { _limit?: number; _realm_id: string }
+        Returns: Json
+      }
+      realm_bots: { Args: { _realm_id: string }; Returns: Json }
+      realm_can: {
+        Args: { _permission: string; _realm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      realm_can_manage: {
+        Args: { _realm: string; _user?: string }
+        Returns: boolean
+      }
+      realm_can_moderate: {
+        Args: { _realm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      realm_default_mod_permissions: { Args: never; Returns: string[] }
+      realm_is_member: {
+        Args: { _realm: string; _user?: string }
+        Returns: boolean
+      }
+      realm_leaderboard: {
+        Args: { _limit?: number; _realm_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          is_me: boolean
+          level: number
+          messages: number
+          rank: number
+          user_id: string
+          username: string
+          xp: number
+        }[]
+      }
+      realm_level_for: { Args: { _xp: number }; Returns: number }
+      realm_member_status: { Args: { _realm_id: string }; Returns: Json }
+      realm_owner_permissions: { Args: never; Returns: string[] }
       realm_role_of: {
         Args: { _realm: string; _user: string }
         Returns: string
       }
+      realm_settings: { Args: { _realm_id: string }; Returns: Json }
+      realm_slash_commands: {
+        Args: { _realm_id: string; _realm_room_id: string }
+        Returns: Json
+      }
+      realm_system_message: {
+        Args: { _body: string; _realm_id: string; _realm_room_id: string }
+        Returns: string
+      }
+      regenerate_bot_token: {
+        Args: { _bot_id: string; _token_hash: string; _token_prefix: string }
+        Returns: Json
+      }
+      register_bot_command: {
+        Args: {
+          _bot_id: string
+          _description: string
+          _name: string
+          _options?: Json
+        }
+        Returns: Json
+      }
+      reorder_realm_rooms: {
+        Args: { _realm_id: string; _room_ids: string[] }
+        Returns: Json
+      }
+      report_realm_message: {
+        Args: { _message_id: string; _reason?: string }
+        Returns: Json
+      }
+      resolve_realm_report: {
+        Args: { _report_id: string; _resolution?: string }
+        Returns: Json
+      }
       revoke_realm_invite: { Args: { _invite_id: string }; Returns: undefined }
+      rizz_bot_settle_realm: { Args: { _realm_id: string }; Returns: number }
+      run_builtin_bot_command: {
+        Args: {
+          _args: string
+          _command: string
+          _override_body?: string
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: Json
+      }
+      run_music_bot_command: {
+        Args: {
+          _args: string
+          _command: string
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: Json
+      }
+      safe_uuid: { Args: { _text: string }; Returns: string }
+      save_realm_emoji: {
+        Args: { _kind?: string; _name: string; _realm_id: string; _url: string }
+        Returns: Json
+      }
+      schedule_realm_message: {
+        Args: {
+          _body: string
+          _realm_id: string
+          _realm_room_id: string
+          _scheduled_for: string
+        }
+        Returns: Json
+      }
+      search_realm_messages: {
+        Args: {
+          _limit?: number
+          _query: string
+          _realm_id: string
+          _realm_room_id?: string
+        }
+        Returns: {
+          author_name: string
+          body: string
+          bot_name: string
+          card: Json
+          created_at: string
+          id: string
+          realm_room_id: string
+          reply_count: number
+          room_name: string
+          sender_id: string
+          thread_root: string
+        }[]
+      }
+      send_due_scheduled_messages: {
+        Args: { _limit?: number }
+        Returns: number
+      }
       send_test_push: { Args: never; Returns: undefined }
+      set_bot_command_channel_enabled: {
+        Args: {
+          _command_id: string
+          _enabled: boolean
+          _realm_id: string
+          _realm_room_id: string
+        }
+        Returns: Json
+      }
+      set_bot_public: {
+        Args: { _bot_id: string; _public: boolean }
+        Returns: Json
+      }
       set_call_status: {
         Args: { _call_id: string; _status: string }
         Returns: undefined
       }
+      set_channel_reactions_mode: {
+        Args: { _mode: string; _realm_id: string; _room_id: string }
+        Returns: undefined
+      }
+      set_channel_write_permission: {
+        Args: {
+          _can_write: boolean
+          _realm_id: string
+          _room_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      set_custom_status: {
+        Args: { _emoji: string; _expires_at?: string; _text: string }
+        Returns: undefined
+      }
+      set_presence_status: {
+        Args: { _manual?: boolean; _status: string }
+        Returns: undefined
+      }
+      set_realm_allow_member_bots: {
+        Args: { _allow: boolean; _realm_id: string }
+        Returns: Json
+      }
+      set_realm_automod: {
+        Args: {
+          _banned_words: string[]
+          _block_links: boolean
+          _mention_limit: number
+          _min_account_age_days: number
+          _mod_log_room_id: string
+          _raid_mode: boolean
+          _realm_id: string
+          _verification_level: number
+          _warn_threshold: number
+          _warn_timeout_minutes: number
+        }
+        Returns: Json
+      }
+      set_realm_bot_enabled: {
+        Args: { _bot_id: string; _enabled: boolean; _realm_id: string }
+        Returns: Json
+      }
+      set_realm_member_manage_bots: {
+        Args: { _allowed: boolean; _realm_id: string; _user_id: string }
+        Returns: Json
+      }
       set_realm_member_role: {
         Args: { _realm_id: string; _role: string; _user_id: string }
         Returns: undefined
+      }
+      set_realm_reaction_role: {
+        Args: { _emoji: string; _message_id: string; _role: string }
+        Returns: Json
+      }
+      set_realm_role_settings: {
+        Args: {
+          _color: string
+          _permissions: string[]
+          _realm_id: string
+          _role: string
+        }
+        Returns: Json
+      }
+      set_realm_room_lock: {
+        Args: { _locked: boolean; _room_id: string }
+        Returns: boolean
+      }
+      set_realm_welcome: {
+        Args: { _enabled: boolean; _message?: string; _realm_id: string }
+        Returns: Json
+      }
+      set_realm_xp_enabled: {
+        Args: { _enabled: boolean; _realm_id: string }
+        Returns: Json
+      }
+      timeout_realm_member: {
+        Args: {
+          _minutes: number
+          _realm_id: string
+          _reason?: string
+          _user_id: string
+        }
+        Returns: Json
       }
       toggle_comment_like: { Args: { _comment_id: string }; Returns: Json }
       toggle_comment_reaction: {
         Args: { _comment_id: string; _emoji: string }
         Returns: Json
       }
+      toggle_dm_reaction: {
+        Args: { _emoji: string; _message_id: string }
+        Returns: Json
+      }
       toggle_like: { Args: { _post_id: string }; Returns: Json }
+      toggle_message_reaction: {
+        Args: { _emoji: string; _message_id: string; _message_type?: string }
+        Returns: Json
+      }
       toggle_post_reaction: {
         Args: { _emoji: string; _post_id: string }
         Returns: Json
@@ -3189,10 +5080,19 @@ export type Database = {
         Args: { _emoji: string; _story_id: string }
         Returns: boolean
       }
+      transfer_realm_ownership: {
+        Args: { _realm_id: string; _user_id: string }
+        Returns: Json
+      }
       unban_realm_member: {
         Args: { _realm_id: string; _user_id: string }
         Returns: undefined
       }
+      uninstall_realm_bot: {
+        Args: { _bot_id: string; _realm_id: string }
+        Returns: Json
+      }
+      unpin_message: { Args: { _message_id: string }; Returns: undefined }
       unsend_direct_message: {
         Args: { _message_id: string }
         Returns: undefined
@@ -3200,6 +5100,17 @@ export type Database = {
       unsend_group_message: {
         Args: { _message_id: string }
         Returns: undefined
+      }
+      update_bot: {
+        Args: {
+          _avatar_url: string
+          _bot_id: string
+          _delivery: string
+          _description: string
+          _name: string
+          _webhook_url: string
+        }
+        Returns: Json
       }
       update_realm: {
         Args: {
@@ -3212,12 +5123,45 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_realm_overview: {
+        Args: {
+          _accent_color: string
+          _icon_url: string
+          _name: string
+          _realm_id: string
+          _topic: string
+        }
+        Returns: Json
+      }
+      update_realm_room_settings: {
+        Args: {
+          _is_private: boolean
+          _name: string
+          _room_id: string
+          _slowmode_seconds: number
+          _topic: string
+        }
+        Returns: Json
+      }
+      vote_realm_poll: {
+        Args: { _option: number; _poll_id: string }
+        Returns: Json
+      }
+      warn_realm_member: {
+        Args: {
+          _points?: number
+          _realm_id: string
+          _reason: string
+          _user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       group_member_role: "owner" | "admin" | "member"
-      post_visibility: "public" | "close_friends" | "followers" | "following"
+      post_visibility: "public" | "close_friends" | "followers"
       profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
       realm_role: "owner" | "mod" | "member"
       realm_type: "text" | "announcement" | "drops" | "voice"
@@ -3352,7 +5296,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       group_member_role: ["owner", "admin", "member"],
-      post_visibility: ["public", "close_friends", "followers", "following"],
+      post_visibility: ["public", "close_friends", "followers"],
       profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
       realm_role: ["owner", "mod", "member"],
       realm_type: ["text", "announcement", "drops", "voice"],
