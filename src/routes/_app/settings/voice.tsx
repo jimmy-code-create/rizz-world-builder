@@ -205,14 +205,9 @@ function VoiceAndSoundPage() {
             <p className="mt-0.5 text-xs text-muted-foreground">
               How loud you must be before the green speaking ring lights up.
             </p>
-            <Slider
-              className="mt-2"
-              value={[Math.round(settings.micSensitivity * 100)]}
-              min={0}
-              max={100}
-              step={5}
-              onValueChange={([value]) => update({ micSensitivity: (value ?? 50) / 100 })}
-              aria-label="Mic sensitivity"
+            <MicSensitivitySlider
+              value={settings.micSensitivity}
+              onCommit={(v) => update({ micSensitivity: v })}
             />
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -288,14 +283,10 @@ function VoiceAndSoundPage() {
                     {override === undefined ? "Default" : formatVolume(override)}
                   </span>
                 </div>
-                <Slider
-                  className="mt-2"
-                  value={[Math.round((override ?? 1) * 100)]}
-                  min={0}
-                  max={200}
-                  step={5}
-                  onValueChange={([value]) => setRealmVolume(realm.id, value ?? 100)}
-                  aria-label={`${realm.name} bot volume`}
+                <RealmVolumeSlider
+                  realmName={realm.name}
+                  value={override ?? 1}
+                  onCommit={(v) => setRealmVolume(realm.id, Math.round(v * 100))}
                 />
                 {override !== undefined && (
                   <button
@@ -328,7 +319,57 @@ function VoiceAndSoundPage() {
   );
 }
 
-/** A 0–200% slider with the saved value and the effective (multiplied) level. */
+/** Per-realm bot volume: local draft while dragging, commit on release. */
+function RealmVolumeSlider({
+  realmName,
+  value,
+  onCommit,
+}: {
+  realmName: string;
+  value: number;
+  onCommit: (v: number) => void;
+}) {
+  const [draft, setDraft] = useState<number | null>(null);
+  return (
+    <Slider
+      className="mt-2"
+      value={[Math.round((draft ?? value) * 100)]}
+      min={0}
+      max={200}
+      step={5}
+      onValueChange={([v]) => setDraft((v ?? 100) / 100)}
+      onValueCommit={([v]) => {
+        setDraft(null);
+        onCommit((v ?? 100) / 100);
+      }}
+      aria-label={`${realmName} bot volume`}
+    />
+  );
+}
+
+/** 0–100% mic threshold: local draft while dragging, commit on release. */
+function MicSensitivitySlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState<number | null>(null);
+  return (
+    <Slider
+      className="mt-2"
+      value={[Math.round((draft ?? value) * 100)]}
+      min={0}
+      max={100}
+      step={5}
+      onValueChange={([v]) => setDraft((v ?? 50) / 100)}
+      onValueCommit={([v]) => {
+        setDraft(null);
+        onCommit((v ?? 50) / 100);
+      }}
+      aria-label="Mic sensitivity"
+    />
+  );
+}
+
+/** A 0–200% slider with the saved value and the effective (multiplied) level.
+ *  Drags update a local draft; the global store commits on release so one
+ *  slider can't re-render every sound subscriber per tick. */
 function VolumeSlider({
   label,
   value,
@@ -342,12 +383,14 @@ function VolumeSlider({
   hint?: string;
   onChange: (value: number) => void;
 }) {
+  const [draft, setDraft] = useState<number | null>(null);
+  const shown = draft ?? value;
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold">{label}</span>
         <span className="text-sm font-bold tabular-nums">
-          {formatVolume(value)}
+          {formatVolume(shown)}
           {effective !== undefined && Math.abs(effective - value) > 0.001 && (
             <span className="ml-1 text-[11px] font-medium text-muted-foreground">
               → {formatVolume(effective)}
@@ -357,11 +400,16 @@ function VolumeSlider({
       </div>
       <Slider
         className="mt-2"
-        value={[Math.round(value * 100)]}
+        value={[Math.round(shown * 100)]}
         min={0}
         max={200}
         step={5}
-        onValueChange={([next]) => onChange((next ?? 100) / 100)}
+        onValueChange={([next]) => setDraft((next ?? 100) / 100)}
+        onValueCommit={([next]) => {
+          const v = (next ?? 100) / 100;
+          setDraft(null);
+          onChange(v);
+        }}
         aria-label={label}
       />
       {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}

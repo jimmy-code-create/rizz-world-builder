@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sliders, Mic, Volume2, VolumeX, Activity, Headphones, Sparkles } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatVolume, useSoundSettings } from "@/lib/sound-settings";
+import { formatVolume, loadSoundSettings, useSoundSettings } from "@/lib/sound-settings";
 import {
   usePeerAudio,
   peerVolumeOf,
@@ -65,6 +65,29 @@ export function VoiceSettingsSheet({
   const internalPeerAudio = usePeerAudio();
   const peerAudio = propPeerAudio ?? internalPeerAudio;
 
+  // Slider drags write to a LOCAL draft at 60fps and commit to the global
+  // store only on release (onValueCommit). The old code called the global
+  // setter on every onValueChange tick, which re-rendered the sheet plus every
+  // useSoundSettings subscriber (remote audio nodes, music player, call view)
+  // per tick — that fan-out is what made the sheet feel laggy.
+  const [draft, setDraft] = useState(soundSettings);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  useEffect(() => {
+    if (open) {
+      const fresh = loadSoundSettings();
+      draftRef.current = fresh;
+      setDraft(fresh);
+      setPeerDraft({});
+    }
+  }, [open]);
+  const commitDraft = useCallback(() => {
+    setSoundSettings({ ...draftRef.current });
+  }, [setSoundSettings]);
+
+  // Per-peer volume drafts, same reason: commit on release, not per tick.
+  const [peerDraft, setPeerDraft] = useState<Record<string, number>>({});
+
   const [devices, setDevices] = useState<MediaDeviceInfo[]>(() => cachedDevices);
   const [sinkSupported, setSinkSupported] = useState(false);
 
@@ -92,11 +115,24 @@ export function VoiceSettingsSheet({
     const timer = setTimeout(() => {
       void refreshDevices();
     }, 150);
-    return () => clearTimeout(timer);
+    // A plugged/unplugged headset while the sheet is open refreshes the lists.
+    const onDeviceChange = () => {
+      void refreshDevices();
+    };
+    navigator.mediaDevices?.addEventListener?.("devicechange", onDeviceChange);
+    return () => {
+      clearTimeout(timer);
+      navigator.mediaDevices?.removeEventListener?.("devicechange", onDeviceChange);
+    };
   }, [open, refreshDevices]);
 
-  const inputs = devices.filter((device) => device.kind === "audioinput");
-  const outputs = devices.filter((device) => device.kind === "audiooutput");
+  const { inputs, outputs } = useMemo(() => {
+    const all = devices.length > 0 ? devices : cachedDevices;
+    return {
+      inputs: all.filter((device) => device.kind === "audioinput"),
+      outputs: all.filter((device) => device.kind === "audiooutput"),
+    };
+  }, [devices]);
 
   const content = (
     <div className="space-y-4 text-xs">
@@ -106,8 +142,13 @@ export function VoiceSettingsSheet({
           <Mic className="h-3.5 w-3.5 text-primary" /> Input Device
         </Label>
         <Select
-          value={soundSettings.inputDeviceId ?? "default"}
-          onValueChange={(val) => setSoundSettings({ inputDeviceId: val === "default" ? null : val })}
+          value={draft.inputDeviceId ?? "default"}
+          onValueChange={(val) => {
+            const next = { ...draftRef.current, inputDeviceId: val === "default" ? null : val };
+            draftRef.current = next;
+            setDraft(next);
+            commitDraft();
+          }}
         >
           <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs">
             <SelectValue placeholder="System Default" />
@@ -129,8 +170,13 @@ export function VoiceSettingsSheet({
           <Headphones className="h-3.5 w-3.5 text-primary" /> Output Device
         </Label>
         <Select
-          value={soundSettings.outputDeviceId ?? "default"}
-          onValueChange={(val) => setSoundSettings({ outputDeviceId: val === "default" ? null : val })}
+          value={draft.outputDeviceId ?? "default"}
+          onValueChange={(val) => {
+            const next = { ...draftRef.current, outputDeviceId: val === "default" ? null : val };
+            draftRef.current = next;
+            setDraft(next);
+            commitDraft();
+          }}
           disabled={!sinkSupported}
         >
           <SelectTrigger className="h-10 bg-white/[0.04] border-white/10 text-xs disabled:opacity-50">
@@ -149,9 +195,10 @@ export function VoiceSettingsSheet({
 
       {/* Live Mic Test Meter */}
       <MicLiveMeter
-        inputDeviceId={soundSettings.inputDeviceId}
-        noiseSuppression={soundSettings.noiseSuppression}
-        sensitivity={soundSettings.micSensitivity}
+        open={open}
+        inputDeviceId={draft.inputDeviceId}
+        noiseSuppression={draft.noiseSuppression}
+        sensitivity={draft.micSensitivity}
       />
 
       {/* Mic Sensitivity Slider */}
@@ -159,15 +206,16 @@ export function VoiceSettingsSheet({
         <div className="flex justify-between font-medium">
           <span className="text-foreground">Mic Sensitivity</span>
           <span className="text-muted-foreground font-mono">
-            {Math.round(soundSettings.micSensitivity * 100)}%
+            {Math.round(draft.micSensitivity * 100)}%
           </span>
         </div>
         <Slider
-          value={[Math.round(soundSettings.micSensitivity * 100)]}
+          value={[Math.round(draft.micSensitivity * 100)]}
           min={0}
           max={100}
           step={5}
-          onValueChange={([val]) => setSoundSettings({ micSensitivity: (val ?? 50) / 100 })}
+          onValueChange={([val]) => setDraft((d) => ({ ...d, micSensitivity: (val ?? 50) / 100 }))}
+          onValueCommit={commitDraft}
         />
         <p className="text-[11px] text-muted-foreground">
           Activation threshold before the lime speaking ring turns on.
@@ -178,14 +226,15 @@ export function VoiceSettingsSheet({
       <div className="space-y-2 pt-2 border-t border-white/10">
         <div className="flex justify-between font-medium">
           <span className="text-foreground">Voice Volume</span>
-          <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.voice)}</span>
+          <span className="text-muted-foreground font-mono">{formatVolume(draft.voice)}</span>
         </div>
         <Slider
-          value={[Math.round(soundSettings.voice * 100)]}
+          value={[Math.round(draft.voice * 100)]}
           min={0}
           max={200}
           step={5}
-          onValueChange={([val]) => setSoundSettings({ voice: val / 100 })}
+          onValueChange={([val]) => setDraft((d) => ({ ...d, voice: (val ?? 100) / 100 }))}
+          onValueCommit={commitDraft}
         />
       </div>
 
@@ -193,14 +242,15 @@ export function VoiceSettingsSheet({
       <div className="space-y-2 pt-2 border-t border-white/10">
         <div className="flex justify-between font-medium">
           <span className="text-foreground">Music Bot Volume</span>
-          <span className="text-muted-foreground font-mono">{formatVolume(soundSettings.music)}</span>
+          <span className="text-muted-foreground font-mono">{formatVolume(draft.music)}</span>
         </div>
         <Slider
-          value={[Math.round(soundSettings.music * 100)]}
+          value={[Math.round(draft.music * 100)]}
           min={0}
           max={200}
           step={5}
-          onValueChange={([val]) => setSoundSettings({ music: val / 100 })}
+          onValueChange={([val]) => setDraft((d) => ({ ...d, music: (val ?? 80) / 100 }))}
+          onValueCommit={commitDraft}
         />
       </div>
 
@@ -212,8 +262,13 @@ export function VoiceSettingsSheet({
             <p className="text-[11px] text-muted-foreground">Filters background noise and echo cancellation</p>
           </div>
           <Switch
-            checked={soundSettings.noiseSuppression}
-            onCheckedChange={(v) => setSoundSettings({ noiseSuppression: v })}
+            checked={draft.noiseSuppression}
+            onCheckedChange={(v) => {
+              const next = { ...draftRef.current, noiseSuppression: v };
+              draftRef.current = next;
+              setDraft(next);
+              commitDraft();
+            }}
           />
         </div>
 
@@ -237,7 +292,7 @@ export function VoiceSettingsSheet({
               const isMe = p.user_id === currentUserId;
               const uName = p.user?.display_name || p.user?.username || "user";
               const isPeerMuted = peerAudio.muted.includes(p.user_id);
-              const peerVol = peerVolumeOf(peerAudio, p.user_id);
+              const peerVol = peerDraft[p.user_id] ?? peerVolumeOf(peerAudio, p.user_id);
 
               return (
                 <div key={p.user_id} className="flex items-center justify-between gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5">
@@ -260,9 +315,18 @@ export function VoiceSettingsSheet({
                         min={0}
                         max={100}
                         step={5}
-                        onValueChange={([val]) => {
-                          if (onSetPeerVolume) onSetPeerVolume(p.user_id, val);
-                          else setPeerVolume(p.user_id, val);
+                        onValueChange={([val]) =>
+                          setPeerDraft((d) => ({ ...d, [p.user_id]: val ?? 100 }))
+                        }
+                        onValueCommit={([val]) => {
+                          const v = val ?? peerDraft[p.user_id] ?? 100;
+                          setPeerDraft((d) => {
+                            const next = { ...d };
+                            delete next[p.user_id];
+                            return next;
+                          });
+                          if (onSetPeerVolume) onSetPeerVolume(p.user_id, v);
+                          else setPeerVolume(p.user_id, v);
                         }}
                         className="w-16"
                         aria-label={`Volume for ${uName}`}
@@ -326,10 +390,12 @@ export function VoiceSettingsSheet({
 }
 
 function MicLiveMeter({
+  open,
   inputDeviceId,
   noiseSuppression,
   sensitivity,
 }: {
+  open: boolean;
   inputDeviceId?: string | null;
   noiseSuppression: boolean;
   sensitivity: number;
@@ -366,6 +432,12 @@ function MicLiveMeter({
     return () => stop();
   }, [stop]);
 
+  // Closing the sheet releases the mic: the test stream used to stay alive
+  // (and fight the call engine's own analyser) until unmount or manual stop.
+  useEffect(() => {
+    if (!open) stop();
+  }, [open, stop]);
+
   const start = async () => {
     stop();
     try {
@@ -381,25 +453,32 @@ function MicLiveMeter({
       audioContextRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
+      // 128 bins is plenty for a level meter; the old 256 doubled per-frame work.
+      analyser.fftSize = 128;
       analyser.smoothingTimeConstant = 0.4;
       source.connect(analyser);
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
+      let lastPaint = 0;
 
       const updateMeter = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / bufferLength;
-        const normalized = Math.min(100, Math.round((avg / 128) * 100));
-        if (barRef.current) {
-          barRef.current.style.width = `${normalized}%`;
-          const above = normalized >= Math.round(sensitivityRef.current * 100);
-          barRef.current.style.backgroundColor = above ? "var(--primary, #c8ff3d)" : "rgba(200, 255, 61, 0.5)";
+        // ~12fps is all a level bar needs; rAF at 60fps just burned CPU.
+        const now = performance.now();
+        if (now - lastPaint >= 80) {
+          lastPaint = now;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / bufferLength;
+          const normalized = Math.min(100, Math.round((avg / 128) * 100));
+          if (barRef.current) {
+            barRef.current.style.width = `${normalized}%`;
+            const above = normalized >= Math.round(sensitivityRef.current * 100);
+            barRef.current.style.backgroundColor = above ? "var(--primary, #c8ff3d)" : "rgba(200, 255, 61, 0.5)";
+          }
         }
         animFrameRef.current = requestAnimationFrame(updateMeter);
       };

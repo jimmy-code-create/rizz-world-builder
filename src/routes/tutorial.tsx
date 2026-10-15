@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { getPendingInvitePath } from "@/lib/onboarding";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
@@ -62,6 +63,13 @@ function TutorialPage() {
       if (updateError) throw updateError;
       await refreshProfile();
       toast.success("You're all set.");
+      // Someone who followed an invite link finishes joining instead of
+      // landing on the feed (same rule as login/signup).
+      const pendingInvite = getPendingInvitePath();
+      if (pendingInvite) {
+        window.location.replace(pendingInvite);
+        return;
+      }
       nav({ to: "/feed" });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Couldn't save your interests.");
@@ -209,8 +217,8 @@ function TutorialPage() {
           disabled={busy}
           onClick={() =>
             void finish(
-              profile.interests ?? [],
-              step === 2 ? selectedAvatar : profile.avatar_url ?? DEFAULT_AVATARS[0].url,
+              step === 2 ? (profile.interests ?? []) : (profile.interests ?? selected),
+              selectedAvatar,
             )
           }
           className="h-11"
