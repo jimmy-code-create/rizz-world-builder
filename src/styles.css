@@ -91,9 +91,12 @@
   --tracking-display: -0.035em;
 
   /* Spacing */
-  --space-gutter: clamp(1.25rem, 5vw, 5rem);
-  --space-section: clamp(4rem, 9vw, 8rem);
-  --space-stack: 1.25rem;
+  --gutter-mobile: 12px;
+  --gutter-desktop: 16px;
+  --space-gutter: clamp(12px, 3vw, 16px);
+  --space-section: clamp(3rem, 7vw, 6rem);
+  --space-stack: 1rem;
+  --card-padding: 12px;
 
   /* Layering hierarchy:
      content (0) -> sticky (20) -> nav (30) -> fullscreen (50/70) -> overlay (100) -> popover/menu (150) -> toast (200) */

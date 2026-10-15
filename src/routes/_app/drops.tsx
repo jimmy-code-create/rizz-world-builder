@@ -60,12 +60,12 @@ function DropsPage() {
 
   return (
     <div>
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-end justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Gift className="h-7 w-7 text-primary" /> Drops
+          <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2 text-foreground">
+            <Gift className="h-6 w-6 text-primary" /> Drops
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Limited. Fast. Don't sleep.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Limited. Fast. Don't sleep.</p>
         </div>
         <CreateDropDialog />
       </motion.div>

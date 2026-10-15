@@ -24,8 +24,8 @@
 - [x] Item 5: Center "+" action button styled with `#c8ff3d` lime circle, black icon, 44px tap target, active scale (`src/components/AppShell.tsx`) - **DONE**
 
 ### Phase 2: Compact Spacing & Account Menu
-- [ ] Item 6: Compact spacing tokens, gutters (12px mobile, 16px desktop), 12px card padding, 44px action hit area, conditional translate button, slim trending pill, drops header polish (`src/index.css`, `src/components/posts/PostCard.tsx`, `src/components/trending/TrendingBar.tsx`) - **NOT DONE**
-- [ ] Item 7: Account menu: 248px width, right-aligned, `#141416` background, 14px radius, compact 40px/44px rows, expandable inline status picker (no truncation), inline "Sign out?" confirm (`src/components/AppShell.tsx`) - **PARTLY**
+- [x] Item 6: Compact spacing tokens, gutters (12px mobile, 16px desktop), 12px card padding, 44px action hit area, conditional translate button, slim trending pill, drops header polish (`src/styles.css`, `src/components/PostCard.tsx`, `src/components/TrendingTagsRail.tsx`, `src/routes/_app/drops.tsx`, `src/routes/_app/feed.tsx`) - **DONE**
+- [x] Item 7: Account menu: 248px width, right-aligned, `#141416` background, 14px radius, compact 40px/44px rows, expandable inline status picker (no truncation), inline "Sign out?" confirm (`src/components/AppShell.tsx`) - **DONE**
 
 ### Phase 3: Avatar Interactions
 - [ ] Item 8: Universal `InteractiveAvatar` component: tap = open story or navigate to profile; long-press 450ms = full photo lightbox viewer with pinch-to-zoom and swipe-down dismiss; zero browser callout menus (`src/components/ui/avatar.tsx`, `src/components/posts/PostCard.tsx`, `src/components/comments/CommentList.tsx`) - **PARTLY**

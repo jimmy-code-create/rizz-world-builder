@@ -277,6 +277,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     }
   };
 
+  const viewerLang = loadPrefs().language || "en";
+  const detectedSource = post.caption ? detectSourceLang(post.caption) : null;
+  const canTranslate = Boolean(post.caption?.trim() && (!detectedSource || detectedSource !== viewerLang));
+
   const deleteMut = useMutation({
     mutationFn: () => deletePost(post.id),
     onSuccess: () => {
@@ -427,14 +431,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <DropdownMenuItem onClick={quoteThis}>
               <Quote className="mr-2 h-4 w-4" /> Quote post
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
-              <Languages className="mr-2 h-4 w-4" />
-              {isTranslating
-                ? "Translating…"
-                : showTranslated
-                  ? "Show original"
-                  : `Translate (${LANGUAGE_NAMES[loadPrefs().language] || "Preferred"})`}
-            </DropdownMenuItem>
+            {canTranslate && (
+              <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
+                <Languages className="mr-2 h-4 w-4" />
+                {isTranslating
+                  ? "Translating…"
+                  : showTranslated
+                    ? "Show original"
+                    : `Translate (${LANGUAGE_NAMES[viewerLang] || "Preferred"})`}
+              </DropdownMenuItem>
+            )}
             {externalVideo?.ok && (
               <DropdownMenuItem onClick={viewOriginal}>
                 <ExternalLink className="mr-2 h-4 w-4" /> View original
@@ -630,12 +636,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      <footer className="flex h-10 items-center gap-1 px-3 border-t border-white/5 mt-2">
+      <footer className="flex h-11 items-center gap-1 px-3 border-t border-white/5 mt-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`h-8 px-2 relative gap-1.5 before:absolute before:-inset-1 before:content-[''] ${liked ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
@@ -649,7 +655,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
             setShowComments((s) => !s);
           }}
-          className="h-8 px-2 relative gap-1.5 text-muted-foreground before:absolute before:-inset-1 before:content-['']"
+          className="h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 text-muted-foreground"
         >
           <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
@@ -657,7 +663,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']" aria-label="React to post">
+            <Button variant="ghost" size="sm" className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground" aria-label="React to post">
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -682,7 +688,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={`h-8 w-8 p-0 relative before:absolute before:-inset-1 before:content-[''] ${saved ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative ${saved ? "text-primary" : "text-muted-foreground"}`}
           aria-label="Save post"
         >
           <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
@@ -691,7 +697,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={sharePost}
-          className="h-8 w-8 p-0 relative text-muted-foreground before:absolute before:-inset-1 before:content-['']"
+          className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground"
           aria-label="Share post"
         >
           <Share2 className="h-4 w-4" />

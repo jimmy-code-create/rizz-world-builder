@@ -127,8 +127,8 @@ function FeedPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start w-full">
-      <div className="xl:col-span-8 min-w-0 space-y-5">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full">
+      <div className="xl:col-span-8 min-w-0 space-y-4">
         {/* Compact greeting bar */}
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
