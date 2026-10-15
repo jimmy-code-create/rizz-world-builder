@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
@@ -32,6 +32,7 @@ import { compressChatImage } from "@/lib/chat-media";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { nameColorFor } from "@/lib/chat-appearance";
 
@@ -516,17 +517,25 @@ function GroupRoom() {
                           {renderGifSegments(m.body).map((seg, si) =>
                             seg.isGif || seg.isSticker
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                              : renderCaptionWithTags(seg.value).map((p, pi) =>
-                                  p.mentionToken
-                                    ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                    : p.mention
-                                      ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                      : p.tag
-                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
-                                        : p.url
-                                          ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                          : <span key={`${si}-${pi}`}>{p.text}</span>
-                                )
+                              : (
+                                <MarkdownText
+                                  key={si}
+                                  text={seg.value}
+                                  renderPlainText={(plain) =>
+                                    renderCaptionWithTags(plain).map((p, pi) =>
+                                      p.mentionToken
+                                        ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                        : p.mention
+                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                          : p.tag
+                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                            : p.url
+                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                    )
+                                  }
+                                />
+                              )
                           )}
                         </>
                       )}

@@ -31,10 +31,17 @@ export const TOKENS = {
     legendary: "#facc15",
     mythic: "#ec4899",
   },
+  space: {
+    4: "4px",
+    8: "8px",
+    12: "12px",
+    16: "16px",
+    24: "24px",
+  },
   gutter: {
-    mobile: "16px",
-    tablet: "24px",
-    desktop: "32px",
+    mobile: "12px",
+    tablet: "16px",
+    desktop: "24px",
   },
   radii: {
     sm: "4px",
@@ -52,10 +59,12 @@ export const TOKENS = {
   },
   zIndex: {
     content: 0,
-    sticky: 10,
-    nav: 20,
-    overlay: 30,
-    toast: 40,
+    sticky: 20,
+    nav: 30,
+    fullscreen: 70,
+    overlay: 100,
+    popover: 150,
+    toast: 200,
   },
   motion: {
     fast: "150ms",

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Headphones, Mic, Music2, Volume1, Volume2 } from "lucide-react";
-import { toast } from "sonner";
+import { Headphones, Mic, Music2, Volume1, Volume2, Activity } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -205,14 +205,9 @@ function VoiceAndSoundPage() {
             <p className="mt-0.5 text-xs text-muted-foreground">
               How loud you must be before the green speaking ring lights up.
             </p>
-            <Slider
-              className="mt-2"
-              value={[Math.round(settings.micSensitivity * 100)]}
-              min={0}
-              max={100}
-              step={5}
-              onValueChange={([value]) => update({ micSensitivity: (value ?? 50) / 100 })}
-              aria-label="Mic sensitivity"
+            <MicSensitivitySlider
+              value={settings.micSensitivity}
+              onCommit={(v) => update({ micSensitivity: v })}
             />
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -228,6 +223,12 @@ function VoiceAndSoundPage() {
               onCheckedChange={(checked) => update({ noiseSuppression: checked })}
             />
           </div>
+
+          <MicLiveMeter
+            inputDeviceId={settings.inputDeviceId}
+            noiseSuppression={settings.noiseSuppression}
+            sensitivity={settings.micSensitivity}
+          />
         </div>
       </SettingsCard>
 
@@ -282,14 +283,10 @@ function VoiceAndSoundPage() {
                     {override === undefined ? "Default" : formatVolume(override)}
                   </span>
                 </div>
-                <Slider
-                  className="mt-2"
-                  value={[Math.round((override ?? 1) * 100)]}
-                  min={0}
-                  max={200}
-                  step={5}
-                  onValueChange={([value]) => setRealmVolume(realm.id, value ?? 100)}
-                  aria-label={`${realm.name} bot volume`}
+                <RealmVolumeSlider
+                  realmName={realm.name}
+                  value={override ?? 1}
+                  onCommit={(v) => setRealmVolume(realm.id, Math.round(v * 100))}
                 />
                 {override !== undefined && (
                   <button
@@ -322,7 +319,57 @@ function VoiceAndSoundPage() {
   );
 }
 
-/** A 0–200% slider with the saved value and the effective (multiplied) level. */
+/** Per-realm bot volume: local draft while dragging, commit on release. */
+function RealmVolumeSlider({
+  realmName,
+  value,
+  onCommit,
+}: {
+  realmName: string;
+  value: number;
+  onCommit: (v: number) => void;
+}) {
+  const [draft, setDraft] = useState<number | null>(null);
+  return (
+    <Slider
+      className="mt-2"
+      value={[Math.round((draft ?? value) * 100)]}
+      min={0}
+      max={200}
+      step={5}
+      onValueChange={([v]) => setDraft((v ?? 100) / 100)}
+      onValueCommit={([v]) => {
+        setDraft(null);
+        onCommit((v ?? 100) / 100);
+      }}
+      aria-label={`${realmName} bot volume`}
+    />
+  );
+}
+
+/** 0–100% mic threshold: local draft while dragging, commit on release. */
+function MicSensitivitySlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState<number | null>(null);
+  return (
+    <Slider
+      className="mt-2"
+      value={[Math.round((draft ?? value) * 100)]}
+      min={0}
+      max={100}
+      step={5}
+      onValueChange={([v]) => setDraft((v ?? 50) / 100)}
+      onValueCommit={([v]) => {
+        setDraft(null);
+        onCommit((v ?? 50) / 100);
+      }}
+      aria-label="Mic sensitivity"
+    />
+  );
+}
+
+/** A 0–200% slider with the saved value and the effective (multiplied) level.
+ *  Drags update a local draft; the global store commits on release so one
+ *  slider can't re-render every sound subscriber per tick. */
 function VolumeSlider({
   label,
   value,
@@ -336,12 +383,14 @@ function VolumeSlider({
   hint?: string;
   onChange: (value: number) => void;
 }) {
+  const [draft, setDraft] = useState<number | null>(null);
+  const shown = draft ?? value;
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold">{label}</span>
         <span className="text-sm font-bold tabular-nums">
-          {formatVolume(value)}
+          {formatVolume(shown)}
           {effective !== undefined && Math.abs(effective - value) > 0.001 && (
             <span className="ml-1 text-[11px] font-medium text-muted-foreground">
               → {formatVolume(effective)}
@@ -351,11 +400,16 @@ function VolumeSlider({
       </div>
       <Slider
         className="mt-2"
-        value={[Math.round(value * 100)]}
+        value={[Math.round(shown * 100)]}
         min={0}
         max={200}
         step={5}
-        onValueChange={([next]) => onChange((next ?? 100) / 100)}
+        onValueChange={([next]) => setDraft((next ?? 100) / 100)}
+        onValueCommit={([next]) => {
+          const v = (next ?? 100) / 100;
+          setDraft(null);
+          onChange(v);
+        }}
         aria-label={label}
       />
       {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
@@ -401,6 +455,124 @@ function DevicePicker({
         </SelectContent>
       </Select>
       {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function MicLiveMeter({
+  inputDeviceId,
+  noiseSuppression,
+  sensitivity,
+}: {
+  inputDeviceId?: string | null;
+  noiseSuppression: boolean;
+  sensitivity: number;
+}) {
+  const [active, setActive] = useState(false);
+  const [level, setLevel] = useState(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  const stop = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+      streamRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setLevel(0);
+    setActive(false);
+  }, []);
+
+  useEffect(() => {
+    return () => stop();
+  }, [stop]);
+
+  const start = async () => {
+    stop();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
+          noiseSuppression,
+          echoCancellation: true,
+        },
+      });
+      streamRef.current = stream;
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.4;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateMeter = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / bufferLength;
+        const normalized = Math.min(100, Math.round((avg / 128) * 100));
+        setLevel(normalized);
+        animFrameRef.current = requestAnimationFrame(updateMeter);
+      };
+      setActive(true);
+      updateMeter();
+    } catch {
+      toast.error("Could not access microphone for live test");
+      stop();
+    }
+  };
+
+  const isAboveThreshold = level >= Math.round(sensitivity * 100);
+
+  return (
+    <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          <Activity className="h-3.5 w-3.5 text-primary" /> Live Mic Level
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant={active ? "outline" : "default"}
+          onClick={active ? stop : start}
+          className={`h-7 px-2.5 text-xs rounded-lg ${active ? "glass border-white/10 text-muted-foreground" : "bg-primary text-primary-foreground shadow-sm"}`}
+        >
+          {active ? "Stop test" : "Test mic"}
+        </Button>
+      </div>
+
+      <div className="relative h-3 w-full overflow-hidden rounded-full bg-surface-2 border border-border">
+        <div
+          className={`h-full transition-all duration-75 rounded-full ${isAboveThreshold ? "bg-primary" : "bg-primary/50"}`}
+          style={{ width: `${level}%` }}
+        />
+        {/* Speaking threshold marker */}
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-white/70 shadow-sm"
+          style={{ left: `${Math.round(sensitivity * 100)}%` }}
+          title={`Activation threshold: ${Math.round(sensitivity * 100)}%`}
+        />
+      </div>
+
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>0%</span>
+        <span>Threshold: {Math.round(sensitivity * 100)}%</span>
+        <span>100%</span>
+      </div>
     </div>
   );
 }

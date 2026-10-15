@@ -3,20 +3,24 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift,
   MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
+  Gamepad2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
+import { AccountMenu } from "@/components/account/AccountMenu";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
@@ -24,9 +28,12 @@ import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
+import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
-import { statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
+import { AppLoader } from "@/components/AppLoader";
+import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
+import { useI18n } from "@/lib/i18n";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
@@ -49,6 +56,7 @@ const sideTabs = [
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
   { to: "/badges", label: "Badges", icon: Trophy },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { to: "/games", label: "Games", icon: Gamepad2 },
   { to: "/bots", label: "Bots", icon: Bot },
 ] as const;
 
@@ -60,16 +68,56 @@ const mobileTabs = [
 
 export function AppShell() {
   const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
+  const { t } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
   const presence = useSelfPresence();
 
   const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
+  const isWidePage = path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Preserve and restore main scroll position across tabs and reloads
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (!mainEl) return;
+
+    const saved = sessionStorage.getItem(`rizz_main_scroll_${path}`);
+    if (saved !== null) {
+      const scrollY = parseInt(saved, 10);
+      if (!isNaN(scrollY) && scrollY > 0) {
+        requestAnimationFrame(() => {
+          if (mainRef.current) mainRef.current.scrollTop = scrollY;
+        });
+      }
+    }
+
+    const onScroll = () => {
+      sessionStorage.setItem(`rizz_main_scroll_${path}`, String(mainEl.scrollTop));
+    };
+
+    mainEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      mainEl.removeEventListener("scroll", onScroll);
+    };
+  }, [path]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      if (mainRef.current) {
+        sessionStorage.setItem(`rizz_main_scroll_${path}`, String(mainRef.current.scrollTop));
+      }
+    };
+    window.addEventListener("pagehide", onBeforeUnload);
+    return () => window.removeEventListener("pagehide", onBeforeUnload);
+  }, [path]);
 
   // Close the More sheet whenever the route changes
   useEffect(() => { setMoreOpen(false); }, [path]);
@@ -158,11 +206,7 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center">
-        <RizzCat mood="peek" size={76} className="animate-pulse" />
-      </div>
-    );
+    return <AppLoader />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
@@ -196,10 +240,9 @@ export function AppShell() {
       {!isConversation && (
         <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
           <Link to="/feed" className="flex items-center gap-2.5 mb-6 px-2 group" aria-label="RIZZ home">
-            <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-display font-bold text-base transition-transform group-hover:scale-105">
-              R
+            <div className="h-10 w-10 rounded-2xl bg-surface-2 border border-border flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+              <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
             </div>
-            <img src="/brand/rizz-cat-logo.svg" alt="" className="h-8 w-8 shrink-0" />
             <span className="font-display text-xl font-bold tracking-tight text-foreground">RIZZ</span>
           </Link>
 
@@ -217,8 +260,8 @@ export function AppShell() {
               className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-all hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {presence.customStatus?.emoji ? (
-                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
-                  {presence.customStatus.emoji}
+                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center leading-none">
+                  <StatusEmoji emoji={presence.customStatus.emoji} size={18} />
                 </span>
               ) : (
                 <StatusDot status={presence.status} size={12} ring={false} />
@@ -267,7 +310,7 @@ export function AppShell() {
             </Link>
           </nav>
 
-          <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
+          <AccountMenu profile={profile} initial={initial} signOut={signOut} />
         </aside>
       )}
 
@@ -280,23 +323,19 @@ export function AppShell() {
           <Link
             to="/feed"
             aria-label="RIZZ home"
-            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary font-display text-base font-bold text-primary-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-surface-3"
           >
-            R
+            <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
           </Link>
 
-          <button
-            type="button"
-            onClick={openSearch}
-            aria-label="Search RIZZ"
+          <Link
+            to="/explore"
+            aria-label="Search and Explore RIZZ"
             className="flex h-11 min-h-[44px] min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">Search people, tags, chats</span>
-            <kbd className="hidden shrink-0 rounded-md border border-border bg-surface-3 px-1.5 py-0.5 font-sans text-[10px] font-semibold min-[400px]:block">
-              ⌘K
-            </kbd>
-          </button>
+            <span className="min-w-0 flex-1 truncate">{t("search_placeholder")}</span>
+          </Link>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <Link
@@ -311,25 +350,28 @@ export function AppShell() {
                 </span>
               )}
             </Link>
-            <ProfileMenu
+            <AccountMenu
               profile={profile}
               initial={initial}
               signOut={signOut}
               compact
-              status={presence.status}
-              emoji={presence.customStatus?.emoji}
               onStatus={() => setStatusOpen(true)}
             />
           </div>
         </header>
       )}
 
-      {/* Content - strictly using token gutters: 16px (px-4), 24px (sm:px-6), 32px (lg:px-8) */}
-      <main className={`relative z-10 flex min-h-0 flex-1 flex-col ${
-        isConversation || isReels
-          ? "w-full overflow-hidden"
-          : "mx-auto w-full max-w-3xl overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
-      }`}>
+      {/* Content - strictly using token gutters: 12px (px-3), 16px (sm:px-4), 24px (lg:px-6) */}
+      <main
+        ref={mainRef}
+        className={`relative z-10 flex min-h-0 flex-1 flex-col ${
+          isConversation || isReels
+            ? "w-full overflow-hidden"
+            : isWidePage
+              ? "mx-auto w-full max-w-7xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
+              : "mx-auto w-full max-w-3xl overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 md:py-4"
+        }`}
+      >
         <Outlet />
       </main>
 
@@ -340,32 +382,35 @@ export function AppShell() {
       {!isConversation && (
         <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
           <div className="flex items-center justify-between gap-1">
-            {mobileTabs.slice(0, 2).map((t) => (
-              <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
-            ))}
+            {mobileTabs.slice(0, 2).map((tab) => {
+              const label = tab.to === "/feed" ? t("feed") : tab.to === "/reels" ? t("reels") : tab.label;
+              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+            })}
             {!isReels && (
               <button
+                type="button"
                 onClick={() => setComposerOpen(true)}
-                className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-4 focus-visible:outline-none"
+                className="flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
                 aria-label="New post"
               >
-                <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
-                  <Plus className="h-5 w-5" />
+                <div className="h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-[#c8ff3d] text-[#0a0a0b] flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring">
+                  <Plus className="h-6 w-6 stroke-[2.5]" />
                 </div>
               </button>
             )}
-            {mobileTabs.slice(2).map((t) => (
-              <NavBtn key={t.to} to={t.to} label={t.label} Icon={t.icon} active={isActive(t.to)} />
-            ))}
+            {mobileTabs.slice(2).map((tab) => {
+              const label = tab.to === "/dms" ? t("messages") : tab.label;
+              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+            })}
             <button
               onClick={() => setMoreOpen(true)}
               className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
-              aria-label="More"
+              aria-label={t("more")}
             >
               <div className="p-1 rounded-lg">
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground">More</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{t("more")}</span>
             </button>
           </div>
         </nav>
@@ -433,13 +478,6 @@ export function AppShell() {
               <Bookmark className="h-5 w-5" />
               <span className="text-[11px] font-medium">Saved</span>
             </Link>
-            <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
-              <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Effects</span>
-              <span className="absolute top-1 right-1 text-[8px] font-bold border border-primary text-primary px-1 rounded-full">
-                Soon
-              </span>
-            </Link>
             <Link to="/settings" className={navTile(path === "/settings")}>
               <Settings className="h-5 w-5" />
               <span className="text-[11px] font-medium">Settings</span>
@@ -451,13 +489,33 @@ export function AppShell() {
           </div>
 
           <button
-            onClick={() => { setMoreOpen(false); signOut(); }}
+            onClick={() => { setMoreOpen(false); setMobileSignOutConfirm(true); }}
             className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
           >
             <LogOut className="h-4 w-4" /> Sign out
           </button>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
+        <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Sign out of @{profile?.username}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to sign back in to access your messages, feed, and saved posts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
       <ExternalLinkGuard />
@@ -489,99 +547,3 @@ function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: 
   );
 }
 
-function ProfileMenu({
-  profile,
-  initial,
-  signOut,
-  compact,
-  status,
-  emoji,
-  onStatus,
-}: {
-  profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
-  initial: string;
-  signOut: () => Promise<void>;
-  compact?: boolean;
-  status?: PublicPresence;
-  emoji?: string | null;
-  onStatus?: () => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label={status ? `Your profile. Status: ${statusLabel(status)}` : "Your profile"}
-          className={`relative flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            compact
-              ? "h-11 w-11 justify-center rounded-full hover:bg-surface-2 active:bg-surface-3"
-              : "p-2 rounded-xl hover:bg-surface-2 w-full min-h-[44px]"
-          }`}
-        >
-          <div className="relative inline-flex items-center justify-center">
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={initial}
-              size={compact ? "sm" : "md"}
-              presence={emoji ? undefined : status}
-            />
-            {emoji && (
-              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-border text-[9px] leading-none">
-                {emoji}
-              </span>
-            )}
-          </div>
-          {!compact && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
-            </div>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-popover border-border w-56 shadow-xl">
-        <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">@{profile?.username}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {onStatus && (
-          <DropdownMenuItem onClick={onStatus} className="min-h-[44px] cursor-pointer">
-            <span className="mr-2 grid h-4 w-4 place-items-center">
-              {emoji ? (
-                <span className="text-sm leading-none">{emoji}</span>
-              ) : status ? (
-                <StatusDot status={status} size={9} ring={false} />
-              ) : null}
-            </span>
-            Status · {status ? statusShortLabel(status) : "Online"}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/u/$username" params={{ username: profile?.username ?? "" }}>
-            <UserIcon className="mr-2 h-4 w-4" /> Profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/bookmarks"><Bookmark className="mr-2 h-4 w-4" /> Saved</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/effects" className="flex items-center justify-between">
-            <span className="flex items-center"><Palette className="mr-2 h-4 w-4" /> Effects</span>
-            <span className="text-[9px] font-bold border border-primary text-primary px-1 rounded-full">Soon</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/badges"><Trophy className="mr-2 h-4 w-4" /> Badges</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-[44px] cursor-pointer">
-          <Link to="/settings/appearance"><Palette className="mr-2 h-4 w-4" /> Appearance</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="min-h-[44px] cursor-pointer text-destructive focus:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" /> Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}

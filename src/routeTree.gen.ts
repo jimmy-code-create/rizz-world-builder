@@ -26,6 +26,7 @@ import { Route as AppDropsRouteImport } from './routes/_app/drops'
 import { Route as AppEffectsRouteImport } from './routes/_app/effects'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
+import { Route as AppGamesRouteImport } from './routes/_app/games'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
@@ -57,6 +58,7 @@ import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
 import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
 import { Route as AppRSlugSettingsRouteImport } from './routes/_app/r.$slug_.settings'
+import { Route as ApiBotWebhookBotIdSecretRouteImport } from './routes/api.bot-webhook.$botId.$secret'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -140,6 +142,11 @@ const AppExploreRoute = AppExploreRouteImport.update({
 const AppFeedRoute = AppFeedRouteImport.update({
   id: '/feed',
   path: '/feed',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGamesRoute = AppGamesRouteImport.update({
+  id: '/games',
+  path: '/games',
   getParentRoute: () => AppRoute,
 } as any)
 const AppGroupsRoute = AppGroupsRouteImport.update({
@@ -298,6 +305,12 @@ const AppRSlugSettingsRoute = AppRSlugSettingsRouteImport.update({
   path: '/r/$slug/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiBotWebhookBotIdSecretRoute =
+  ApiBotWebhookBotIdSecretRouteImport.update({
+    id: '/api/bot-webhook/$botId/$secret',
+    path: '/api/bot-webhook/$botId/$secret',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -316,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
+  '/games': typeof AppGamesRoute
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
@@ -347,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/bots/': typeof AppBotsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -364,6 +379,7 @@ export interface FileRoutesByTo {
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
+  '/games': typeof AppGamesRoute
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
@@ -395,6 +411,7 @@ export interface FileRoutesByTo {
   '/bots': typeof AppBotsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -415,6 +432,7 @@ export interface FileRoutesById {
   '/_app/effects': typeof AppEffectsRoute
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
+  '/_app/games': typeof AppGamesRoute
   '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
@@ -446,6 +464,7 @@ export interface FileRoutesById {
   '/_app/bots/': typeof AppBotsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/r/$slug_/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -466,6 +485,7 @@ export interface FileRouteTypes {
     | '/effects'
     | '/explore'
     | '/feed'
+    | '/games'
     | '/groups'
     | '/leaderboard'
     | '/notifications'
@@ -497,6 +517,7 @@ export interface FileRouteTypes {
     | '/bots/'
     | '/settings/'
     | '/r/$slug/settings'
+    | '/api/bot-webhook/$botId/$secret'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -514,6 +535,7 @@ export interface FileRouteTypes {
     | '/effects'
     | '/explore'
     | '/feed'
+    | '/games'
     | '/groups'
     | '/leaderboard'
     | '/notifications'
@@ -545,6 +567,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/settings'
     | '/r/$slug/settings'
+    | '/api/bot-webhook/$botId/$secret'
   id:
     | '__root__'
     | '/'
@@ -564,6 +587,7 @@ export interface FileRouteTypes {
     | '/_app/effects'
     | '/_app/explore'
     | '/_app/feed'
+    | '/_app/games'
     | '/_app/groups'
     | '/_app/leaderboard'
     | '/_app/notifications'
@@ -595,6 +619,7 @@ export interface FileRouteTypes {
     | '/_app/bots/'
     | '/_app/settings/'
     | '/_app/r/$slug_/settings'
+    | '/api/bot-webhook/$botId/$secret'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -613,6 +638,7 @@ export interface RootRouteChildren {
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiBotWebhookBotIdSecretRoute: typeof ApiBotWebhookBotIdSecretRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -734,6 +760,13 @@ declare module '@tanstack/react-router' {
       path: '/feed'
       fullPath: '/feed'
       preLoaderRoute: typeof AppFeedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/games': {
+      id: '/_app/games'
+      path: '/games'
+      fullPath: '/games'
+      preLoaderRoute: typeof AppGamesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/groups': {
@@ -953,6 +986,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRSlugSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/bot-webhook/$botId/$secret': {
+      id: '/api/bot-webhook/$botId/$secret'
+      path: '/api/bot-webhook/$botId/$secret'
+      fullPath: '/api/bot-webhook/$botId/$secret'
+      preLoaderRoute: typeof ApiBotWebhookBotIdSecretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -979,6 +1019,7 @@ interface AppRouteChildren {
   AppEffectsRoute: typeof AppEffectsRoute
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
+  AppGamesRoute: typeof AppGamesRoute
   AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
@@ -1011,6 +1052,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEffectsRoute: AppEffectsRoute,
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
+  AppGamesRoute: AppGamesRoute,
   AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
@@ -1074,6 +1116,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiBotWebhookBotIdSecretRoute: ApiBotWebhookBotIdSecretRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

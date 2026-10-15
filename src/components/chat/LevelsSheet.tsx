@@ -1,7 +1,8 @@
 import { Crown, Loader2, Trophy } from "lucide-react";
 import { UserAvatar } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CloseButton } from "@/components/ui/close-button";
 import { levelProgress, useLeaderboard, useMyXp } from "@/lib/realm-xp";
 
 type LevelsSheetProps = {
@@ -20,11 +21,14 @@ export function LevelsSheet({ open, onOpenChange, realmId }: LevelsSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="glass-strong flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
-        <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
+      <SheetContent hideClose side="right" className="glass-strong flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
+        <SheetHeader className="flex flex-row items-center justify-between shrink-0 border-b border-white/10 px-4 py-2.5 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
             <Trophy className="h-4 w-4 text-primary" /> Levels
           </SheetTitle>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">

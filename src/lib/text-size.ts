@@ -25,7 +25,7 @@ function graphemes(text: string): string[] {
  */
 export function emojiTextClass(
   text: string | null | undefined,
-  scale: "post" | "comment" = "post",
+  scale: "post" | "comment" | "chat" = "post",
 ): string | null {
   if (!text) return null;
   const trimmed = text.trim();
@@ -43,6 +43,11 @@ export function emojiTextClass(
 
   // Pure emoji: the whole message is the emoji.
   if (emojis.length === visible.length) {
+    if (scale === "chat") {
+      if (emojis.length <= 3) return "text-[3rem] leading-[1.2] py-1 inline-block";
+      if (emojis.length <= 9) return "text-2xl leading-snug py-0.5 inline-block";
+      return "text-xl leading-snug";
+    }
     if (scale === "comment") {
       if (emojis.length <= 3) return "text-2xl leading-tight";
       if (emojis.length <= 9) return "text-xl leading-snug";
@@ -54,7 +59,7 @@ export function emojiTextClass(
   }
 
   // Emoji with a few words around them: a gentle bump, never huge.
-  if (scale === "comment") {
+  if (scale === "comment" || scale === "chat") {
     return emojiShare >= 0.5 ? "text-base leading-relaxed" : null;
   }
   if (emojiShare >= 0.5) return "text-lg leading-relaxed";

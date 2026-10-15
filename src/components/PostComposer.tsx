@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Send, X, Loader2, BarChart3, Globe, Lock, Plus } from "lucide-react";
+import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { createPost, rollbackCreatedPost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const DRAFT_KEY = "rizz:post-draft";
 
@@ -30,8 +31,41 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [pollHours, setPollHours] = useState(24);
   const [visibility, setVisibility] = useState<"public" | "close_friends">("public");
   const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const postBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const clearImage = () => {
+    setImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setImageFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const pickImage = (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files can be attached here.");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("That image is over 50MB — pick a smaller one.");
+      return;
+    }
+    if (file.size === 0) {
+      toast.error("That file is empty. Pick another one.");
+      return;
+    }
+    setImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setImageFile(file);
+  };
 
   // Autosave caption draft to localStorage
   useEffect(() => {
@@ -50,7 +84,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
-       if (!caption.trim() && !quoteId && !pollOn) throw new Error("Write something before posting");
+       if (!caption.trim() && !quoteId && !pollOn && !imageFile) throw new Error("Write something or add an image before posting");
       if (pollOn && pollOptions.filter((o) => o.trim()).length < 2) {
         throw new Error("A poll needs at least 2 options");
       }
@@ -59,6 +93,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
         caption,
         visibility,
         quotePostId: quoteId,
+        file: imageFile ?? undefined,
       });
       if (pollOn && row?.id) {
         try {
@@ -82,6 +117,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       setPollQuestion("");
       setPollOptions(["", ""]);
       setVisibility("public");
+      clearImage();
       if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
@@ -109,7 +145,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             placeholder="Drop something hot…"
             value={caption}
             onChange={(e) => {
-              setCaption(e.target.value.slice(0, 600));
+              setCaption(e.target.value);
               setCaret(e.target.selectionStart ?? e.target.value.length);
             }}
             onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
@@ -121,7 +157,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             caret={caret}
             onPick={(username) => {
               const { value, caret: nc } = replaceMention(caption, caret, username);
-              setCaption(value.slice(0, 600));
+              setCaption(value);
               setCaret(nc);
               requestAnimationFrame(() => {
                 const ta = textareaRef.current;
@@ -137,6 +173,32 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 onClick={() => setQuoteId(null)}
                 className="absolute right-6 top-2 grid h-7 w-7 place-items-center rounded-full glass-strong hover:bg-destructive/20"
                 aria-label="Remove quote"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {imagePreview && (
+            <div className="relative mt-2 inline-block">
+              <img
+                src={imagePreview}
+                alt="Attached image preview"
+                className="h-28 w-auto max-w-full rounded-2xl border border-white/10 object-cover"
+              />
+              {mut.isPending && (
+                <div className="absolute inset-0 grid place-items-center rounded-2xl bg-black/50 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={clearImage}
+                disabled={mut.isPending}
+                className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full glass-strong hover:bg-destructive/20 disabled:opacity-50"
+                aria-label="Remove image"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -191,7 +253,26 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
-              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 600))} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                aria-label="Attach an image"
+                onChange={(e) => {
+                  pickImage(e.target.files?.[0]);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${imageFile ? "text-primary bg-white/5" : "text-primary"}`}
+                aria-label="Attach an image"
+                aria-pressed={!!imageFile}
+              >
+                <ImagePlus className="h-5 w-5" />
+              </button>
+              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`)} />
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}
@@ -211,15 +292,12 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 {visibility === "close_friends" ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
                 <span className="hidden sm:inline">{visibility === "close_friends" ? "Close friends" : "Everyone"}</span>
               </button>
-              <span className="text-[11px] text-muted-foreground ml-1 tabular-nums">
-                {600 - caption.length}
-              </span>
             </div>
             <Button
               ref={postBtnRef}
               size="sm"
               onClick={() => mut.mutate()}
-               disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn)}
+               disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn && !imageFile)}
               className="bg-primary text-primary-foreground border-0 shadow-md hover:opacity-90 px-5"
             >
               {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" /> Post</>}

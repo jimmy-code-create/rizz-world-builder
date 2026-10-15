@@ -6,7 +6,7 @@ import { generateLilRizzReply, type LilRizzTurn } from "@/lib/lil-rizz.functions
 import { resolveVoiceCommand, type CommandMatch } from "@/lib/rizz-commands";
 import { playListeningStartSound, playListeningStopSound } from "@/lib/rizz-sounds";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { LilRizzOrbWidget } from "./LilRizzOrbWidget";
 
 function getLilRizzFailureMessage(error: unknown) {
@@ -58,7 +58,7 @@ export function LilRizzCompanion() {
     maxSilenceMs: 5 * 60 * 1000,
     onUtterance: (text) => handleUtteranceRef.current(text),
   });
-  const tts = useKokoroTTS({ browserFirst: true });
+  const tts = useKokoroTTS({ browserFirst: false });
   const {
     error: speechError,
     isListening,

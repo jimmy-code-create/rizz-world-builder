@@ -7,6 +7,7 @@ import {
   Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, Send, MoreVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GifPicker } from "@/components/GifPicker";
@@ -14,14 +15,15 @@ import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CloseButton } from "@/components/ui/close-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";
@@ -204,7 +206,11 @@ function CaptionText({ caption }: { caption: string }) {
         ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
         : renderCaptionWithTags(segment.value).map((part, index) => {
         if (part.mention) {
-          return <Link key={index} to="/u/$username" params={{ username: part.mention }} onClick={(event) => event.stopPropagation()} className="mention-highlight font-semibold underline underline-offset-2">{part.text}</Link>;
+          return (
+            <ProfilePreviewTrigger key={index} username={part.mention} className="mention-highlight font-semibold underline underline-offset-2">
+              {part.text}
+            </ProfilePreviewTrigger>
+          );
         }
         if (part.tag) {
           return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
@@ -495,14 +501,14 @@ function ReelItem({
             </Popover>
           </div>
           <div className="shrink-0 px-4 py-3 text-white">
-            <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
+            <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
                 <AvatarImage src={post.author?.avatar_url ?? undefined} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
               {post.author?.verified_creator && <VerifiedCreatorTag />}
-            </Link>
+            </ProfilePreviewTrigger>
             <div className="flex items-center justify-around gap-1">
               <ReelAction
                 icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
@@ -688,14 +694,14 @@ function ReelItem({
         </Popover>}
       </div>
       <div className="absolute left-3 right-[5.5rem] bottom-3 z-10 text-white drop-shadow md:left-6 md:bottom-5">
-        <Link to="/u/$username" params={{ username: post.author?.username ?? "" }} className="flex items-center gap-2 mb-2">
+        <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
             <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="font-bold text-sm">@{post.author?.username}</span>
           {post.author?.verified_creator && <VerifiedCreatorTag />}
-        </Link>
+        </ProfilePreviewTrigger>
         {captions && post.caption && <p className="max-w-full text-[13px] leading-snug line-clamp-3 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 inline-block break-words"><CaptionText caption={post.caption} /></p>}
         <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
           <Music2 className="h-3.5 w-3.5" /> {isExternal ? "Linked video" : `Original audio · @${post.author?.username}`}
@@ -780,11 +786,15 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        hideClose
         className="glass-strong border-white/10 rounded-t-3xl max-h-[80dvh] flex flex-col pb-[max(env(safe-area-inset-bottom),0.75rem)]"
       >
-        <SheetHeader className="text-left">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <SheetTitle className="font-display text-lg">Comments</SheetTitle>
-        </SheetHeader>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
+        </div>
         <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-3">
           {comments.isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
           {comments.data?.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Be the first to comment ✨</p>}

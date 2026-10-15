@@ -1,24 +1,23 @@
-import * as Icons from "lucide-react";
 import type { Badge } from "@/lib/badges";
-import { RARITY_GLOW } from "@/lib/badges";
+import { canonBadges } from "@/lib/badge-set";
+import { BadgeIcon } from "@/components/BadgeIcon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function BadgeChip({ badge, size = "md" }: { badge: Badge; size?: "sm" | "md" | "lg" }) {
-  const Icon = (Icons as any)[badge.icon] ?? Icons.Award;
-  const dim = size === "sm" ? "h-6 w-6" : size === "lg" ? "h-10 w-10" : "h-8 w-8";
+  const box = size === "sm" ? "h-6 w-6" : size === "lg" ? "h-10 w-10" : "h-8 w-8";
   const iconSize = size === "sm" ? 12 : size === "lg" ? 20 : 16;
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div
-            className={`${dim} rounded-xl flex items-center justify-center border border-white/10 backdrop-blur-md transition-transform hover:scale-110`}
+            className={`${box} rounded-xl flex items-center justify-center border border-white/10 backdrop-blur-md transition-transform hover:scale-110`}
             style={{
               background: `linear-gradient(135deg, ${badge.color}33, ${badge.color}11)`,
-              boxShadow: `${RARITY_GLOW[badge.rarity]} ${badge.color}66`,
+              boxShadow: `0 0 12px ${badge.color}66`,
             }}
           >
-            <Icon size={iconSize} color={badge.color} strokeWidth={2.5} />
+            <BadgeIcon icon={badge.icon} glow={badge.color} size={iconSize} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="glass-strong border-white/10">
@@ -35,10 +34,11 @@ export function BadgeChip({ badge, size = "md" }: { badge: Badge; size?: "sm" | 
   );
 }
 
+/** Profile + hover-card rows show set badges only, in canonical order. */
 export function BadgeRow({ badges, max = 5, size = "md" }: { badges: Badge[]; max?: number; size?: "sm" | "md" | "lg" }) {
-  if (!badges.length) return null;
-  const shown = badges.slice(0, max);
-  const extra = badges.length - shown.length;
+  const shown = canonBadges(badges).slice(0, max);
+  const extra = canonBadges(badges).length - shown.length;
+  if (!shown.length) return null;
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {shown.map((b) => <BadgeChip key={b.id} badge={b} size={size} />)}

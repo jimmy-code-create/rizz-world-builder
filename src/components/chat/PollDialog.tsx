@@ -3,7 +3,7 @@ import { BarChart3, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { createRealmPoll } from "@/lib/realm-polls";
 
 type PollDialogProps = {

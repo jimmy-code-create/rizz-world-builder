@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Code2, Copy, ImageOff } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
+import { MarkdownText } from "@/components/MarkdownText";
 import { MusicPlayer } from "@/components/music/MusicPlayer";
 import { parseForumBody, type ForumBlock } from "@/lib/forum-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -57,48 +58,52 @@ function CodeBlock({ language, code }: { language: string | null; code: string }
 /** Text with the feed's tag/mention/url behaviour, never inserting whitespace. */
 function RichText({ text }: { text: string }) {
   return (
-    <p className="forum-prose whitespace-pre-wrap break-words">
-      {renderCaptionWithTags(text).map((part, index) => {
-        if (part.tag) {
-          return (
-            <Link
-              key={index}
-              to="/tag/$tag"
-              params={{ tag: part.tag }}
-              className="font-medium text-primary hover:underline"
-            >
-              {part.text}
-            </Link>
-          );
-        }
-        if (part.mention) {
-          return (
-            <Link
-              key={index}
-              to="/u/$username"
-              params={{ username: part.mention }}
-              className="mention-highlight font-medium hover:underline"
-            >
-              {part.text}
-            </Link>
-          );
-        }
-        if (part.url) {
-          return (
-            <a
-              key={index}
-              href={part.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="break-all text-[var(--forum-accent)] hover:underline"
-            >
-              {part.text}
-            </a>
-          );
-        }
-        return <span key={index}>{part.text}</span>;
-      })}
-    </p>
+    <MarkdownText
+      text={text}
+      className="forum-prose break-words"
+      renderPlainText={(plain) =>
+        renderCaptionWithTags(plain).map((part, index) => {
+          if (part.tag) {
+            return (
+              <Link
+                key={index}
+                to="/tag/$tag"
+                params={{ tag: part.tag }}
+                className="font-medium text-primary hover:underline"
+              >
+                {part.text}
+              </Link>
+            );
+          }
+          if (part.mention) {
+            return (
+              <Link
+                key={index}
+                to="/u/$username"
+                params={{ username: part.mention }}
+                className="mention-highlight font-medium hover:underline"
+              >
+                {part.text}
+              </Link>
+            );
+          }
+          if (part.url) {
+            return (
+              <a
+                key={index}
+                href={part.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="break-all text-[var(--forum-accent)] hover:underline"
+              >
+                {part.text}
+              </a>
+            );
+          }
+          return <span key={index}>{part.text}</span>;
+        })
+      }
+    />
   );
 }
 

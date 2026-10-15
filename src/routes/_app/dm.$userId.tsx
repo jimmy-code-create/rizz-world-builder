@@ -6,12 +6,13 @@ import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -44,6 +45,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
+import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
@@ -839,7 +841,7 @@ function DMPage() {
         <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
-          <button onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="text-muted-foreground"><X className="h-4 w-4" /></button>
+          <CloseButton onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="h-8 w-8 min-h-0 min-w-0" />
         </div>
       )}
 
@@ -996,18 +998,26 @@ function DMPage() {
                           {renderGifSegments(rest).map((seg, si) =>
                             seg.isGif || seg.isSticker
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                              : renderCaptionWithTags(seg.value).map((p, pi) =>
-                                  p.mentionToken
-                                    ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                    : p.mention
-                                      // The bubble itself is a button, so a tap on a link must not
-                                      // also toggle the message actions popover.
-                                      ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                      : p.tag
-                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
-                                        : p.url
-                                          ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                          : <span key={`${si}-${pi}`}>{p.text}</span>
+                              : (
+                                <MarkdownText
+                                  key={si}
+                                  text={seg.value}
+                                  renderPlainText={(plain) =>
+                                    renderCaptionWithTags(plain).map((p, pi) =>
+                                      p.mentionToken
+                                        ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                        : p.mention
+                                          // The bubble itself is a button, so a tap on a link must not
+                                          // also toggle the message actions popover.
+                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                          : p.tag
+                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                            : p.url
+                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                    )
+                                  }
+                                />
                               )
                           )}
                         </>

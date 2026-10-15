@@ -91,9 +91,22 @@
   --tracking-display: -0.035em;
 
   /* Spacing */
-  --space-gutter: clamp(1.25rem, 5vw, 5rem);
-  --space-section: clamp(4rem, 9vw, 8rem);
-  --space-stack: 1.25rem;
+  --gutter-mobile: 12px;
+  --gutter-desktop: 16px;
+  --space-gutter: clamp(12px, 3vw, 16px);
+  --space-section: clamp(3rem, 7vw, 6rem);
+  --space-stack: 1rem;
+  --card-padding: 12px;
+
+  /* Layering hierarchy:
+     content (0) -> sticky (20) -> nav (30) -> fullscreen (50/70) -> overlay (100) -> popover/menu (150) -> toast (200) */
+  --z-content: 0;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-fullscreen: 70;
+  --z-overlay: 100;
+  --z-popover: 150;
+  --z-toast: 200;
 
   /* Elevation: flat. Never a glow. */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -748,8 +761,13 @@
   opacity: 1;
 }
 @media (hover: none) {
-  /* Touch devices keep the gutter clear and rely on the message menu. */
-  .realm-message__time { display: none; }
+  /* Touch devices keep the gutter reserved so continuation messages stay perfectly aligned under group starts */
+  .realm-message__time {
+    visibility: hidden;
+    width: var(--chat-avatar);
+    flex: 0 0 auto;
+    display: block;
+  }
 }
 
 /* ============ DATE SEPARATORS ============ */
@@ -826,21 +844,23 @@
   .chat-media-skeleton { animation: none; }
 }
 
-/* ============ RIZZ NOTIFICATIONS ============ */
+/* ============ RIZZ NOTIFICATIONS (glass toast host) ============ */
 .rizz-toaster {
-  --width: min(384px, calc(100vw - 1.5rem));
-  z-index: 100;
+  --width: min(420px, calc(100vw - 1.5rem));
+  z-index: var(--z-toast, 200);
 }
 
+/* Top-center, clear of the status bar and of the composer/keyboard on mobile.
+   Older styles pinned this host to the bottom, so the position must win. */
 .rizz-toaster[data-sonner-toaster] {
-  top: auto !important;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
+  top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+  bottom: auto !important;
 }
 
-@media (min-width: 768px) {
-  .rizz-toaster[data-sonner-toaster] {
-    bottom: 16px !important;
-  }
+/* Enter/exit stay under 250ms; the card, its accent rail and the countdown all
+   live in <GlassToast /> so each type stays legible on any wallpaper. */
+.rizz-toaster [data-sonner-toast] {
+  transition-duration: 200ms !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -850,120 +870,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/*
- * The toast is the app's voice, so it wears the app's shape: a dark glass card
- * with a tinted icon chip and a coloured rail down the leading edge. Every
- * variant only swaps two variables (--rizz-toast-accent for the rail, chip and
- * glow, --rizz-toast-tint for the chip fill), so the family stays consistent.
- */
-.rizz-toaster [data-sonner-toast].rizz-toast {
-  --rizz-toast-accent: var(--brand-signal);
-  --rizz-toast-tint: color-mix(in srgb, var(--brand-signal) 16%, transparent);
-  width: var(--width);
-  min-height: 0;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 11px 14px 11px 12px;
-  border: 1px solid var(--brand-line);
-  border-radius: 10px;
-  background: var(--brand-ink-2);
-  color: var(--brand-paper);
-  box-shadow: var(--shadow-2);
-  font-family: var(--font-sans);
-}
-
-.rizz-toaster [data-sonner-toast].rizz-toast:hover {
-  border-color: color-mix(in srgb, var(--brand-paper) 22%, transparent);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
-  --rizz-toast-accent: oklch(0.72 0.19 20);
-  --rizz-toast-tint: oklch(0.72 0.19 20 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="success"].rizz-toast {
-  --rizz-toast-accent: oklch(0.8 0.16 155);
-  --rizz-toast-tint: oklch(0.8 0.16 155 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="info"].rizz-toast {
-  --rizz-toast-accent: oklch(0.82 0.13 205);
-  --rizz-toast-tint: oklch(0.82 0.13 205 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="warning"].rizz-toast {
-  --rizz-toast-accent: oklch(0.84 0.16 85);
-  --rizz-toast-tint: oklch(0.84 0.16 85 / 0.16);
-}
-
-.rizz-toaster .rizz-toast-title {
-  min-width: 0;
-  white-space: normal;
-  color: var(--brand-paper);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.rizz-toaster .rizz-toast-description {
-  white-space: normal;
-  margin-top: 2px;
-  color: var(--brand-paper-dim);
-  font-size: 12.5px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-/* Icon chip: the glyph sits in a tinted circle so the type reads at a glance
-   without a full coloured border competing with the message. */
-.rizz-toaster .rizz-toast-icon {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  margin-top: 1px;
-  border-radius: 999px;
-  background: var(--rizz-toast-tint);
-  color: var(--rizz-toast-accent);
-}
-
-.rizz-toaster .rizz-toast-icon svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2.4;
-}
-
-.rizz-toaster .rizz-toast-action,
-.rizz-toaster .rizz-toast-cancel {
-  min-height: 30px;
-  border-radius: 999px;
-  padding: 0 13px;
-  font-size: 12px;
-  font-weight: 650;
-  transition: filter 150ms ease, background-color 150ms ease;
-}
-
-.rizz-toaster .rizz-toast-action {
-  background: var(--brand-signal);
-  color: var(--brand-signal-ink);
-}
-
-.rizz-toaster .rizz-toast-action:hover {
-  filter: brightness(1.1);
-}
-
-.rizz-toaster .rizz-toast-cancel {
-  background: color-mix(in srgb, var(--brand-paper) 8%, transparent);
-  color: var(--brand-paper-dim);
-}
-
-.rizz-toaster .rizz-toast-cancel:hover {
-  background: color-mix(in srgb, var(--brand-paper) 14%, transparent);
+  .rizz-toaster [data-sonner-toast] {
+    transition-duration: 1ms !important;
+  }
 }
 
 /* ============ LANDING MOTION (all of it optional) ============
@@ -1012,6 +921,24 @@
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer-sweep {
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+.list-item-rise {
+  animation: rizz-rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-item-rise {
+    animation: none !important;
+  }
+  .animate-shimmer-sweep {
+    animation: none !important;
+  }
 }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
@@ -1187,6 +1114,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   background-image: radial-gradient(color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1.5px);
   background-size: 22px 22px;
   contain: strict;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .nc-orb, .nc-beam, .nc-grain { display: none; }
 .nc-orb {
@@ -1230,9 +1159,9 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @keyframes nc-sweep { 0% { transform: translateX(-60vw) skewX(-18deg); } 100% { transform: translateX(140vw) skewX(-18deg); } }
 
 /* ============ EFFECT BUDGET — MOBILE ============
-   The texture is static now, so phones simply get a slightly denser grid. */
+   Mobile gets a clean solid surface to eliminate GPU raster jank during scroll. */
 @media (max-width: 767.98px) {
-  .nightclub-canvas { background-size: 18px 18px; }
+  .nightclub-canvas { display: none; }
   .feed-post-card { transition: border-color 200ms ease; }
 }
 /* The app's own "Reduced motion" setting also stops the decorative layers. */
@@ -1356,6 +1285,10 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     border-color 220ms ease,
     box-shadow 220ms ease;
 }
+.feed-post-card:focus,
+.feed-post-card:focus-visible {
+  outline: none;
+}
 .rizz-claim-cat {
   display: inline-grid;
   width: 1.35rem;
@@ -1398,10 +1331,7 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     animation: none;
   }
 }
-.feed-post-card:focus-within {
-  border-color: color-mix(in srgb, var(--brand-signal) 55%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-signal) 28%, transparent);
-}
+/* Focus-within removed: only explicit keyboard :focus-visible rings on controls may show */
 .post-media-frame {
   border-block: 1px solid var(--brand-line);
 }
@@ -1410,6 +1340,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-paper) 5%, transparent);
 }
 .feed-post-card > footer > button {
+  height: 2rem;
+  min-height: 2rem;
   border-radius: 9999px;
   transition:
     background-color 160ms ease,
@@ -1512,9 +1444,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
    feedback sheet, because it keys off the primitive's data-side. */
 @media (hover: hover) and (pointer: fine) and (min-width: 641px) {
   [role="dialog"][data-state="open"][data-side="bottom"] {
-    inset-inline: auto 1.5rem;
-    width: min(26rem, calc(100vw - 3rem));
-    max-width: 26rem;
+    inset-inline: 0;
+    margin-inline: auto;
+    bottom: 1.5rem;
+    width: min(28rem, calc(100vw - 3rem));
+    max-width: 28rem;
     max-height: min(70dvh, 40rem);
     border: 1px solid var(--brand-line);
     border-radius: var(--radius-card);
@@ -1675,7 +1609,109 @@ body:has([role="dialog"][data-state="open"]) .overlay-hide {
   border-top: 1px solid var(--forum-border);
 }
 
-[data-reduced-motion="true"] .forum-card:hover,
-[data-reduced-motion="true"] .forum-card:active {
-  transform: none;
+/* ============ TASK 5: unified mention style ============ */
+.mention-highlight {
+  display: inline;
+  margin: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 500;
+  color: #c8ff3d;
+  background-color: rgba(200, 255, 61, 0.14);
+  white-space: inherit;
 }
+a.mention-highlight:hover,
+button.mention-highlight:hover,
+.mention-highlight:hover {
+  background-color: #c8ff3d;
+  color: #0b0b0c;
+  text-decoration: none;
+}
+/* message that mentions me: lime wash + 3px lime bar inside the row */
+.realm-message--mentions-me {
+  background: rgba(200, 255, 61, 0.07);
+  box-shadow: inset 3px 0 0 #c8ff3d;
+  border-radius: 2px;
+}
+/* unread-mention count badge on channel chips */
+.mention-count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background: #c8ff3d;
+  color: #0b0b0c;
+  font-size: 11px;
+  font-weight: 700;
+}
+/* bots: cream name + small FILLED BOT tag */
+.bot-tag {
+  display: inline-grid;
+  place-items: center;
+  height: 1.125rem;
+  padding: 0 0.375rem;
+  border-radius: 4px;
+  background: #1c1c1f;
+  color: #f2efe6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* ============ TASK 2: cat emoji animations (CSS keyframes only) ============ */
+.cat-emoji { line-height: 0; }
+.cat-emoji svg { display: block; overflow: visible; }
+.cat-emoji .fx { transform-box: fill-box; transform-origin: center; }
+/* picker grids: animate only on hover/press/focus */
+.cat-emoji--hover .fx { animation-play-state: paused; }
+.cat-emoji--hover:hover .fx, .cat-emoji--hover:active .fx, .cat-emoji--hover:focus-visible .fx,
+button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:focus-visible .cat-emoji--hover .fx {
+  animation-play-state: running;
+}
+/* reaction just added: plays once 600ms */
+.cat-emoji--once .fx { animation-iteration-count: 1; animation-duration: 600ms !important; }
+/* loop budget gates .cat-emoji--loop offscreen/paused states */
+.cat-emoji--loop .fx { animation-play-state: running; }
+.cat-emoji--cat_love .fx { animation: cat-pulse 1200ms ease-in-out infinite; }
+.cat-emoji--cat_cool .fx-glint { animation: cat-glint 1600ms ease-in-out infinite; }
+.cat-emoji--cat_sleep .fx-z { animation: cat-float-up 1800ms ease-out infinite; }
+.cat-emoji--cat_sleep .fx-z2 { animation: cat-float-up 1800ms ease-out 300ms infinite; }
+.cat-emoji--cat_lol .fx { animation: cat-shake 700ms ease-in-out infinite; }
+.cat-emoji--cat_wow .fx { animation: cat-pop 900ms ease-out infinite; }
+.cat-emoji--cat_sus .fx-slide { animation: cat-slide 1400ms ease-in-out infinite; }
+.cat-emoji--cat_music .fx { animation: cat-bob 600ms ease-in-out infinite; }
+.cat-emoji--cat_hype .fx-flick { animation: cat-flick 500ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.cat-emoji--cat_gg .fx-crown { animation: cat-wiggle 1200ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.cat-emoji--cat_sad .fx-tear { animation: cat-drop 1300ms ease-in infinite; }
+.cat-emoji--cat_wave .fx-paw { animation: cat-wave 900ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.cat-emoji--cat_think .fx-dot1 { animation: cat-blink 1200ms ease-in-out infinite; }
+.cat-emoji--cat_think .fx-dot2 { animation: cat-blink 1200ms ease-in-out 200ms infinite; }
+.cat-emoji--cat_think .fx-dot3 { animation: cat-blink 1200ms ease-in-out 400ms infinite; }
+@keyframes cat-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes cat-glint { 0%,100% { opacity: 0.25; transform: translateX(0); } 50% { opacity: 1; transform: translateX(6px); } }
+@keyframes cat-float-up { 0% { opacity: 0; transform: translateY(4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes cat-shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+@keyframes cat-pop { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+@keyframes cat-slide { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-3px); } }
+@keyframes cat-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes cat-flick { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15, 0.9); opacity: 0.8; } }
+@keyframes cat-wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+@keyframes cat-drop { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(7px); } }
+@keyframes cat-wave { 0%,100% { transform: rotate(0); } 50% { transform: rotate(22deg); } }
+@keyframes cat-blink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+/* status bubble pop-in (scale .9 to 1, 160ms) + a subtle idle float */
+@keyframes status-bubble-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.status-bubble-in { animation: status-bubble-in 160ms ease-out; }
+@keyframes status-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.status-bubble-float { animation: status-bubble-float 5s ease-in-out 200ms infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cat-emoji .fx, .cat-emoji .fx-heart, .cat-emoji .fx-glint, .cat-emoji .fx-z, .cat-emoji .fx-z2,
+  .cat-emoji .fx-pupil, .cat-emoji .fx-slide, .cat-emoji .fx-flick, .cat-emoji .fx-crown,
+  .cat-emoji .fx-tear, .cat-emoji .fx-paw, .cat-emoji .fx-dot1, .cat-emoji .fx-dot2, .cat-emoji .fx-dot3,
+  .status-bubble-in, .status-bubble-float { animation: none !important; }
+}
+[data-reduced-motion="true"] .cat-emoji .fx,
+[data-reduced-motion="true"] .status-bubble-in,
+[data-reduced-motion="true"] .status-bubble-float { animation: none !important; }

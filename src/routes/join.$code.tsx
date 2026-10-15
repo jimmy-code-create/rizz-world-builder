@@ -7,7 +7,7 @@ import { acceptInvite, previewGroupInvite } from "@/lib/groups";
 import { PENDING_GROUP_INVITE_KEY as PENDING_INVITE_KEY } from "@/lib/onboarding";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/join/$code")({
   head: () => ({

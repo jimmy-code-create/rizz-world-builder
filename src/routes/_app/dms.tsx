@@ -8,10 +8,11 @@ import { previewText } from "@/lib/formatters";
 import { MessageCircle, Search, X, Check, Users, UsersRound, Camera, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { listMyGroups, type Group } from "@/lib/groups";
 import { MAX_GROUP_PICKS, createGroupChat } from "@/lib/groups.functions";
 import { squareImageFile } from "@/lib/image-square";
@@ -50,6 +51,7 @@ function DMsPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"all" | "direct" | "groups">("all");
   /** Long-pressed inbox row — opens the profile/delete sheet for that person. */
   const [rowMenu, setRowMenu] = useState<{ id: string; username: string | null; display_name: string | null } | null>(null);
   /** Chats deleted on this device: hidden here, and the messages you sent are removed. */
@@ -209,7 +211,19 @@ function DMsPage() {
     );
   }, [threads.data, q]);
 
+  const filteredGroups = useMemo(() => {
+    const list = groups.data ?? [];
+    if (!q.trim()) return list;
+    const t = q.toLowerCase();
+    return list.filter((g) => g.name.toLowerCase().includes(t));
+  }, [groups.data, q]);
+
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const activeThreads = useMemo(
+    () => filtered.filter(({ other }) => !hiddenDms.includes(other.id)),
+    [filtered, hiddenDms],
+  );
 
   const exitSelection = () => {
     setSelecting(false);
@@ -315,15 +329,11 @@ function DMsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 flex items-center gap-2 rounded-2xl glass border border-white/10 p-2"
         >
-          <Button
-            variant="ghost"
-            size="icon"
+          <CloseButton
             onClick={exitSelection}
             aria-label="Cancel selection"
-            className="h-12 w-12 shrink-0 rounded-xl"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            className="rounded-xl"
+          />
           <span className="min-w-0 flex-1 text-sm font-semibold">
             {selected.length} selected <span className="font-normal text-muted-foreground">(max {MAX_GROUP_PICKS})</span>
           </span>
@@ -337,165 +347,285 @@ function DMsPage() {
         </motion.div>
       ) : (
         <>
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3 mb-3">
             <div className="min-w-0">
-              <h1 className="font-display text-3xl font-bold tracking-tight mb-1">Messages</h1>
-              <p className="text-sm text-muted-foreground">Start a conversation.</p>
+              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight">Messages</h1>
+              <p className="text-xs text-muted-foreground">Start a conversation.</p>
             </div>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setGroupSheetOpen(true)}
-              className="glass border-white/10 min-h-12 rounded-xl gap-2 shrink-0"
+              className="glass border-white/10 h-9 rounded-xl gap-1.5 shrink-0 text-xs"
             >
-              <Plus className="h-4 w-4" /> New group
+              <Plus className="h-3.5 w-3.5" /> New group
             </Button>
           </motion.div>
-          <p className="mt-2 mb-4 text-xs text-muted-foreground/80">Double tap a conversation to pick people and start a group.</p>
         </>
       )}
 
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search conversations…" className="pl-9 glass border-white/10" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={tab === "groups" ? "Search groups…" : tab === "direct" ? "Search messages…" : "Search conversations…"}
+          className="pl-9 h-11 border-border bg-card"
+        />
       </div>
 
-      {!selecting && (groups.data ?? []).length > 0 && (
-        <div className="mb-5">
-          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Groups</h2>
-          <div className="space-y-2">
-            {(groups.data ?? []).map((g) => (
+      {/* Segmented Filter Tabs */}
+      {!selecting && (
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-2 border border-border mb-4">
+          <button
+            type="button"
+            onClick={() => setTab("all")}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
+              tab === "all"
+                ? "bg-card text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All ({activeThreads.length + filteredGroups.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("direct")}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
+              tab === "direct"
+                ? "bg-card text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Direct ({activeThreads.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("groups")}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
+              tab === "groups"
+                ? "bg-card text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Groups ({filteredGroups.length})
+          </button>
+        </div>
+      )}
+
+      {/* "All" view: Groups Rail + Direct messages */}
+      {tab === "all" && !selecting && filteredGroups.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Groups
+            </h2>
+            <button
+              type="button"
+              onClick={() => setTab("groups")}
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              See all ({filteredGroups.length})
+            </button>
+          </div>
+          <div className="no-scrollbar -mx-4 flex items-center gap-3 overflow-x-auto px-4 pb-1">
+            <button
+              type="button"
+              onClick={() => setGroupSheetOpen(true)}
+              className="flex flex-col items-center gap-1.5 shrink-0 group"
+            >
+              <div className="h-12 w-12 rounded-2xl border border-dashed border-border bg-card group-hover:border-primary/50 group-hover:bg-surface-2 flex items-center justify-center transition-colors">
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground truncate max-w-16">New</span>
+            </button>
+            {filteredGroups.map((g) => (
               <button
                 key={g.id}
                 type="button"
                 onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
-                className="glass w-full rounded-2xl p-4 border border-white/5 flex items-center gap-3 text-left transition-colors hover:border-white/15"
+                className="flex flex-col items-center gap-1.5 shrink-0 group"
               >
-                <GroupAvatar group={g} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">{g.name}</p>
-                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                    <Users className="h-3 w-3 shrink-0" /> {g.member_count} member{g.member_count === 1 ? "" : "s"}
-                  </p>
+                <div className="relative">
+                  <GroupAvatar group={g} size="md" />
+                  <span className="absolute -bottom-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-surface-3 px-1 text-[9px] font-bold text-foreground border border-border">
+                    {g.member_count}
+                  </span>
                 </div>
+                <span className="text-[11px] font-medium text-foreground truncate max-w-16 text-center">
+                  {g.name}
+                </span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="space-y-2">
-        {threads.isError && (
-          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
-            Messages couldn’t load. Check your connection, then refresh to try again.
-          </div>
-        )}
-        {threads.isPending && !threads.isError && (
-          <div className="space-y-2">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
-          </div>
-        )}
-        {filtered.filter(({ other }) => !hiddenDms.includes(other.id)).map(({ other, last, unread }) => {
-          const isSelected = selectedSet.has(other.id);
-          const peerStatus = publicCustomStatus(presence.rows[other.id], false);
-          return (
-            <Fragment key={other.id}>
-            <button
-              type="button"
-              onClick={() => {
-                if (suppressRowTap.current) {
-                  suppressRowTap.current = false;
-                  return;
-                }
-                handleRowTap(other);
-              }}
-              onPointerDown={() => startLongPress(other)}
-              onPointerUp={cancelLongPress}
-              onPointerMove={cancelLongPress}
-              onPointerLeave={cancelLongPress}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setRowMenu(other);
-              }}
-              aria-pressed={selecting ? isSelected : undefined}
-              className={`glass w-full min-h-12 rounded-2xl p-4 border flex items-center gap-3 text-left transition-colors ${
-                isSelected
-                  ? "border-primary/60 shadow-md"
-                  : unread > 0
-                    ? "border-primary/30 shadow-md"
-                    : "border-white/5 hover:border-white/15"
-              }`}
+      {/* "Groups" dedicated tab */}
+      {tab === "groups" && !selecting && (
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Your Groups
+            </h2>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setGroupSheetOpen(true)}
+              className="h-8 text-xs gap-1.5 rounded-lg border-border bg-card"
             >
-              <div className="relative shrink-0">
-                <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={12}>
-                  <Avatar className={`h-12 w-12 ring-2 ${isSelected ? "ring-primary" : "ring-primary/40"}`}>
-                    <AvatarImage src={other.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                </AvatarWithStatus>
-                {isSelected && (
-                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold truncate">{other.display_name || other.username}</p>
-                {peerStatus && (
-                  <CustomStatusLine status={peerStatus} className="text-[11px] text-primary/90" />
-                )}
-                <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{previewText(last.body)}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-[10px] text-muted-foreground">{fmtTime(last.created_at)}</span>
-                {unread > 0 && (
-                  <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
-                )}
-              </div>
-            </button>
-            <Sheet
-              open={rowMenu?.id === other.id}
-              onOpenChange={(nextOpen) => {
-                if (!nextOpen) setRowMenu(null);
-              }}
-            >
-              <SheetContent
-                side="bottom"
-                className="glass-strong border-white/10 rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+              <Plus className="h-3.5 w-3.5" /> Create
+            </Button>
+          </div>
+          {filteredGroups.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">No groups found.</p>
+              <Button onClick={() => setGroupSheetOpen(true)} size="sm" className="bg-primary text-primary-foreground font-semibold">
+                <Plus className="h-4 w-4 mr-1" /> New group
+              </Button>
+            </div>
+          ) : (
+            filteredGroups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
+                className="w-full rounded-xl p-3 border border-border bg-card hover:bg-surface-2 flex items-center gap-3 text-left transition-colors"
               >
-                <SheetHeader className="text-left">
-                  <SheetTitle className="font-display text-lg">
-                    {other.display_name || other.username}
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = other.username;
-                      setRowMenu(null);
-                      if (target) nav({ to: "/u/$username", params: { username: target } });
-                    }}
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-semibold transition hover:bg-white/[0.08]"
-                  >
-                    View profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void deleteThread(other)}
-                    className="w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-left text-sm font-semibold text-destructive transition hover:bg-destructive/20"
-                  >
-                    Delete chat
-                  </button>
-                  <p className="px-1 pt-1 text-[11px] text-muted-foreground">
-                    Deleting removes the messages you sent and hides this chat from your inbox.
+                <GroupAvatar group={g} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate text-foreground">{g.name}</p>
+                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                    <Users className="h-3.5 w-3.5 shrink-0" /> {g.member_count} member{g.member_count === 1 ? "" : "s"}
                   </p>
                 </div>
-              </SheetContent>
-            </Sheet>
-            </Fragment>
-          );
-        })}
-      </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Direct messages list (shown on "all" and "direct") */}
+      {tab !== "groups" && (
+        <div className="space-y-2">
+          {tab === "all" && filteredGroups.length > 0 && activeThreads.length > 0 && (
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1">
+              Direct Messages
+            </h2>
+          )}
+          {threads.isError && (
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+              Messages couldn’t load. Check your connection, then refresh to try again.
+            </div>
+          )}
+          {threads.isPending && !threads.isError && (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+            </div>
+          )}
+          {activeThreads.map(({ other, last, unread }) => {
+            const isSelected = selectedSet.has(other.id);
+            const peerStatus = publicCustomStatus(presence.rows[other.id], false);
+            return (
+              <Fragment key={other.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (suppressRowTap.current) {
+                    suppressRowTap.current = false;
+                    return;
+                  }
+                  handleRowTap(other);
+                }}
+                onPointerDown={() => startLongPress(other)}
+                onPointerUp={cancelLongPress}
+                onPointerMove={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setRowMenu(other);
+                }}
+                aria-pressed={selecting ? isSelected : undefined}
+                className={`w-full min-h-[56px] rounded-xl p-3 border flex items-center gap-3 text-left transition-colors ${
+                  isSelected
+                    ? "border-primary bg-primary/10"
+                    : unread > 0
+                      ? "border-primary/40 bg-card"
+                      : "border-border bg-card hover:bg-surface-2"
+                }`}
+              >
+                <div className="relative shrink-0">
+                  <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={10}>
+                    <Avatar className={`h-11 w-11 ring-1 ${isSelected ? "ring-primary" : "ring-border"}`}>
+                      <AvatarImage src={other.avatar_url ?? undefined} />
+                      <AvatarFallback className="bg-surface-2 text-foreground font-semibold text-xs">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </AvatarWithStatus>
+                  {isSelected && (
+                    <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate text-foreground">{other.display_name || other.username}</p>
+                  {peerStatus && (
+                    <CustomStatusLine status={peerStatus} className="text-[11px] text-primary/90" />
+                  )}
+                  <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{previewText(last.body)}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="text-[10px] text-muted-foreground">{fmtTime(last.created_at)}</span>
+                  {unread > 0 && (
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
+                  )}
+                </div>
+              </button>
+              <Sheet
+                open={rowMenu?.id === other.id}
+                onOpenChange={(nextOpen) => {
+                  if (!nextOpen) setRowMenu(null);
+                }}
+              >
+                <SheetContent
+                  side="bottom"
+                  className="bg-card border-border rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+                >
+                  <SheetHeader className="text-left">
+                    <SheetTitle className="font-display text-lg">
+                      {other.display_name || other.username}
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = other.username;
+                        setRowMenu(null);
+                        if (target) nav({ to: "/u/$username", params: { username: target } });
+                      }}
+                      className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-left text-sm font-semibold transition hover:bg-surface-3"
+                    >
+                      View profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteThread(other)}
+                      className="w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-left text-sm font-semibold text-destructive transition hover:bg-destructive/20"
+                    >
+                      Delete chat
+                    </button>
+                    <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                      Deleting removes the messages you sent and hides this chat from your inbox.
+                    </p>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              </Fragment>
+            );
+          })}
+        </div>
+      )}
 
       {!threads.isError && !threads.isPending && filtered.length === 0 && (
         <div className="glass rounded-3xl p-8 text-center">
@@ -599,13 +729,17 @@ function DMsPage() {
   );
 }
 
-function GroupAvatar({ group }: { group: Group }) {
+function GroupAvatar({ group, size = "md" }: { group: Group; size?: "sm" | "md" }) {
+  const dim = size === "sm" ? "h-11 w-11 text-sm rounded-xl" : "h-12 w-12 text-base rounded-2xl";
   return (
-    <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-400 to-blue-700 grid place-items-center font-display font-bold text-lg ring-1 ring-white/15">
+    <div className={`${dim} shrink-0 overflow-hidden bg-surface-2 border border-border grid place-items-center font-display font-bold text-foreground`}>
       {group.icon_url ? (
         <img src={group.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
       ) : (
-        group.name.charAt(0).toUpperCase()
+        <span className="flex items-center gap-0.5">
+          <Users className="h-3.5 w-3.5 text-muted-foreground mr-0.5" />
+          {group.name.charAt(0).toUpperCase()}
+        </span>
       )}
     </div>
   );

@@ -32,10 +32,12 @@ type SettingsSection = {
     | "/settings/preferences"
     | "/settings/voice"
     | "/settings/blocked"
-    | "/settings/account";
+    | "/settings/account"
+    | "/effects";
   label: string;
   description: string;
   icon: LucideIcon;
+  soon?: boolean;
 };
 
 const SECTIONS: SettingsSection[] = [
@@ -46,6 +48,7 @@ const SECTIONS: SettingsSection[] = [
   { to: "/settings/preferences", label: "Preferences", description: "Feeds, media, text size and language", icon: Sliders },
   { to: "/settings/blocked", label: "Blocked accounts", description: "People you've blocked", icon: Shield },
   { to: "/settings/account", label: "Account", description: "Your data, sign out and delete", icon: UserCog },
+  { to: "/effects", label: "Effects", description: "Animated profile effects", icon: Palette, soon: true },
 ];
 
 function SettingsHubPage() {
@@ -61,16 +64,16 @@ function SettingsHubPage() {
   const initial = (profile.display_name || profile.username || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="max-w-xl space-y-5">
-      <h1 className="font-display text-3xl font-bold">Settings</h1>
+    <div className="max-w-xl space-y-4">
+      <h1 className="font-display text-xl sm:text-2xl font-bold">Settings</h1>
 
       <Link
         to="/settings/profile"
-        className="flex items-center gap-4 rounded-3xl border border-white/5 glass p-4 transition-colors hover:bg-white/5"
+        className="flex items-center gap-3.5 rounded-2xl border border-white/5 glass p-3.5 transition-colors hover:bg-white/5"
       >
-        <Avatar className="h-14 w-14 ring-2 ring-primary/40">
+        <Avatar className="h-12 w-12 ring-2 ring-primary/40">
           <AvatarImage src={profile.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{profile.display_name || profile.username}</p>
@@ -82,7 +85,7 @@ function SettingsHubPage() {
       <button
         type="button"
         onClick={() => setStatusOpen(true)}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-3xl border border-white/5 glass px-4 text-left transition-colors hover:bg-white/5"
+        className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-white/5 glass px-4 py-2.5 text-left transition-colors hover:bg-white/5"
       >
         <AvatarWithStatus status={presence.status} dotSize={11}>
           <Avatar className="h-10 w-10">
@@ -100,21 +103,28 @@ function SettingsHubPage() {
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
 
-      <nav className="overflow-hidden rounded-3xl border border-white/5 glass">
+      <nav className="overflow-hidden rounded-2xl border border-white/5 glass">
         {SECTIONS.map((section, index) => (
           <Link
             key={section.to}
             to={section.to}
-            className={`flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/5 ${
+            className={`flex min-h-[56px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/5 ${
               index > 0 ? "border-t border-white/5" : ""
             }`}
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/[0.06] text-primary">
-              <section.icon className="h-5 w-5" />
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.06] text-primary">
+              <section.icon className="h-4.5 w-4.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">{section.label}</span>
-              <span className="block truncate text-xs text-muted-foreground">{section.description}</span>
+              <span className="flex items-center gap-2 text-sm font-semibold leading-tight">
+                {section.label}
+                {section.soon && (
+                  <span className="rounded-full border border-primary px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary">
+                    Soon
+                  </span>
+                )}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground mt-0.5">{section.description}</span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </Link>

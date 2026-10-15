@@ -12,16 +12,21 @@ import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { StatusDotButton, StatusPill, AvatarStatusBadge } from "@/components/presence/StatusDot";
+import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { useEquipped } from "@/lib/useEquipped";
+import { CustomEmoji } from "@/components/CustomEmoji";
+import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
+import { MarkdownText } from "@/components/MarkdownText";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -37,6 +42,7 @@ function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -87,6 +93,24 @@ function ProfilePage() {
       }
     })();
   }, [profile, user, isMe]);
+
+  // Re-render the moment a custom status expires: realtime only fires on row
+  // changes, and an expiry passing is silent.
+  const statusExpiresAt =
+    (presenceRow as { custom_status_expires_at?: string | null } | null)?.custom_status_expires_at ?? null;
+  useEffect(() => {
+    if (!statusExpiresAt || !profile) return;
+    const ms = new Date(statusExpiresAt).getTime() - Date.now();
+    if (ms <= 0) {
+      void qc.invalidateQueries({ queryKey: ["presence-user", profile.id] });
+      return;
+    }
+    const t = window.setTimeout(
+      () => void qc.invalidateQueries({ queryKey: ["presence-user", profile.id] }),
+      Math.min(ms + 500, 2_147_483_647),
+    );
+    return () => window.clearTimeout(t);
+  }, [statusExpiresAt, profile, qc]);
 
   const posts = useQuery({
     queryKey: ["user-posts", profile?.id],
@@ -264,7 +288,7 @@ function ProfilePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
-          <AvatarWithStatus status={presenceStatus} dotSize={18}>
+          <span className="relative inline-flex shrink-0">
             <AvatarDecoration
               src={profile.avatar_url}
               fallback={initial}
@@ -273,7 +297,17 @@ function ProfilePage() {
               accent={eq?.avatar_decoration?.preview_color}
               className="ring-4 ring-background rounded-full"
             />
-          </AvatarWithStatus>
+            <AvatarStatusBadge emoji={customStatus?.emoji} />
+            <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
+              <StatusDotButton
+                userId={profile.id}
+                username={profileUsername}
+                status={presenceStatus}
+                isSelf={Boolean(isMe)}
+                size={18}
+              />
+            </span>
+          </span>
         </div>
       </motion.div>
 
@@ -291,15 +325,18 @@ function ProfilePage() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {isMe ? "You" : statusLabel(presenceStatus)}
-          </p>
-          {customStatus && (
-            <CustomStatusLine
-              status={customStatus}
-              className="mt-1.5 w-fit rounded-full border border-white/10 glass px-3 py-1.5 text-xs font-medium"
+          {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
+          {customStatus && (customStatus.emoji || customStatus.text) ? (
+            <StatusPill
+              emoji={customStatus.emoji}
+              text={customStatus.text}
+              expiresAt={presenceRow?.custom_status_expires_at ?? null}
+              onActivate={isMe ? () => setStatusOpen(true) : undefined}
+              className="mt-1.5"
             />
-          )}
+          ) : isMe ? (
+            <StatusPill emptyLabel="+ Set status" onActivate={() => setStatusOpen(true)} className="mt-1.5" />
+          ) : null}
         </div>
         {isMe ? (
           <div className="flex gap-2">
@@ -340,7 +377,59 @@ function ProfilePage() {
         ) : null}
       </div>
 
-      {profile.bio && <p className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">{profile.bio}</p>}
+      {profile.bio && (
+        <div className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <MarkdownText
+            text={profile.bio}
+            renderPlainText={(plain) =>
+              renderCaptionWithTags(plain).map((p, i) => {
+                if (p.tag) {
+                  return (
+                    <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">
+                      {p.text}
+                    </Link>
+                  );
+                }
+                if (p.mention) {
+                  return (
+                    <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">
+                      {p.text}
+                    </Link>
+                  );
+                }
+                if (p.url) {
+                  return (
+                    <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">
+                      {p.text}
+                    </a>
+                  );
+                }
+                return <span key={i}>{p.text}</span>;
+              })
+            }
+          />
+        </div>
+      )}
+
+      {profile.interests?.length > 0 && (
+        <section className="px-1 md:px-2 mt-4" aria-label="Profile interests">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Into</h2>
+          <div className="flex flex-wrap gap-2">
+            {[...new Set(profile.interests)].map((interest) => {
+              const option = TUTORIAL_INTERESTS.find((item) => item.id === interest);
+              return (
+                <span
+                  key={interest}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium"
+                >
+                  {option && <CustomEmoji name={option.emoji} className="h-4 w-4" />}
+                  {interest}
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {badges.data && badges.data.length > 0 && (
         <div className="px-1 md:px-2 mt-4">
@@ -366,8 +455,8 @@ function ProfilePage() {
         <Calendar className="h-3 w-3" /> Joined {joined}
       </div>
 
-      <Tabs defaultValue="posts" className="mt-8">
-        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-2xl p-1">
+      <Tabs defaultValue="posts" className="mt-4">
+        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-xl p-1">
           <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
           <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
           <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
@@ -375,9 +464,9 @@ function ProfilePage() {
           <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="posts" className="mt-6 space-y-4">
+        <TabsContent value="posts" className="mt-4 space-y-3">
           {posts.isLoading ? (
-            <div className="h-40 animate-pulse rounded-3xl glass" />
+            <div className="h-40 animate-pulse rounded-2xl glass" />
           ) : posts.data?.length === 0 ? (
             <EmptyState label="No posts yet" />
           ) : (
@@ -385,9 +474,9 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="reels" className="mt-6">
+        <TabsContent value="reels" className="mt-4">
           {reelsQ.isLoading ? (
-            <div className="h-40 animate-pulse rounded-3xl glass" />
+            <div className="h-40 animate-pulse rounded-2xl glass" />
           ) : reelsQ.data?.length === 0 ? (
             <EmptyState label="No reels yet" />
           ) : (
@@ -404,20 +493,20 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="realms" className="mt-6 space-y-2">
+        <TabsContent value="realms" className="mt-4 space-y-2">
           {realmsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-3xl glass" />
+            <div className="h-24 animate-pulse rounded-2xl glass" />
           ) : realmsQ.data?.length === 0 ? (
             <EmptyState label="No realms owned" />
           ) : (
             realmsQ.data?.map((c) => (
-              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--brand-paper-dim))` }}>
                     #
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{c.name}</div>
+                    <div className="font-semibold text-sm truncate">{c.name}</div>
                     {c.topic && <div className="text-xs text-muted-foreground truncate">{c.topic}</div>}
                   </div>
                   <div className="text-xs text-muted-foreground">{c.member_count} members</div>
@@ -427,14 +516,14 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="groups" className="mt-6 space-y-2">
+        <TabsContent value="groups" className="mt-4 space-y-2">
           {groupsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-3xl glass" />
+            <div className="h-24 animate-pulse rounded-2xl glass" />
           ) : groupsQ.data?.length === 0 ? (
             <EmptyState label="Not in any groups yet" />
           ) : (
             groupsQ.data?.map((g) => (
-              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-2xl p-4 hover:bg-white/5 transition-colors">
+              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-3">
                   {g.icon_url ? (
                     <img src={g.icon_url} width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-xl object-cover" alt="" />
@@ -444,7 +533,7 @@ function ProfilePage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{g.name}</div>
+                    <div className="font-semibold text-sm truncate">{g.name}</div>
                     {g.topic && <div className="text-xs text-muted-foreground truncate">{g.topic}</div>}
                   </div>
                   <div className="text-xs text-muted-foreground">{g.member_count}</div>
@@ -454,7 +543,7 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="rizz" className="mt-6">
+        <TabsContent value="rizz" className="mt-4">
           <RizzBreakdown score={profile.rizz_score} data={rizzBreakdown.data} loading={rizzBreakdown.isLoading} accent={accent} />
         </TabsContent>
       </Tabs>
@@ -467,6 +556,7 @@ function ProfilePage() {
           mode={listOpen}
         />
       )}
+      {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
     </div>
   );
 }

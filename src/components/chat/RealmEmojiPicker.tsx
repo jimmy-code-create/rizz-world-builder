@@ -12,7 +12,7 @@ import {
   saveRealmEmoji,
   uploadRealmEmoji,
 } from "@/lib/realm-emoji";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type RealmEmojiPickerProps = {
   open: boolean;

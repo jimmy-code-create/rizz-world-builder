@@ -349,6 +349,7 @@ export function ForumToolbar({
   tags,
   activeTagIds,
   onToggleTag,
+  onClearTags,
   leading,
   trailing,
 }: {
@@ -361,6 +362,7 @@ export function ForumToolbar({
   tags: ForumTag[];
   activeTagIds: string[];
   onToggleTag: (tagId: string) => void;
+  onClearTags?: () => void;
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
 }) {
@@ -382,7 +384,7 @@ export function ForumToolbar({
           {activeTagIds.length > 0 && (
             <button
               type="button"
-              onClick={() => activeTagIds.forEach(onToggleTag)}
+              onClick={onClearTags ?? (() => activeTagIds.forEach(onToggleTag))}
               className="forum-chip shrink-0 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" aria-hidden />

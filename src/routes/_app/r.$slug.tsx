@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Shield, UserMinus, UserX, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -14,10 +14,10 @@ import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } f
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessageSquare, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
@@ -37,10 +37,15 @@ import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
+import { MarkdownText } from "@/components/MarkdownText";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
+import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
+import { EmbedList } from "@/components/chat/Embed";
+import type { EmbedData } from "@/lib/embeds";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
@@ -60,6 +65,7 @@ import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
+import { RealmProfilePreviewDialog, type RealmProfilePreviewUser } from "@/components/realms/RealmProfilePreviewDialog";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { threadLabel } from "@/lib/realm-threads";
 import { flushDueScheduledMessages } from "@/lib/realm-schedule";
@@ -76,6 +82,9 @@ const CREATABLE_ROOM_KINDS: RealmRoomKind[] = ["text", "announcement", "voice", 
 
 /** Member lists paginate instead of mounting every row of a big realm at once. */
 const MEMBER_PAGE_SIZE = 25;
+// Chat renders only the newest window; older messages page in on demand.
+// (Unbounded AnimatePresence lists + per-row presence queries were the realm lag.)
+const MESSAGE_PAGE_SIZE = 80;
 
 type RealmChannelCall = {
   room: { id: string; realm_room_id: string | null; host_id: string; title: string };
@@ -96,7 +105,22 @@ export const Route = createFileRoute("/_app/r/$slug")({
 function RealmPage() {
   const { slug } = Route.useParams();
   const search = Route.useSearch();
-  const { user } = useAuth();
+  const { user, profile: myProfile } = useAuth();
+  const myUsername = myProfile?.username?.toLowerCase();
+  const myUserId = user?.id;
+
+  const [previewUser, setPreviewUser] = useState<RealmProfilePreviewUser | null>(null);
+  const rowPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rowPressOrigin = useRef<{ x: number; y: number } | null>(null);
+
+  const clearRowTimer = () => {
+    if (rowPressTimer.current) {
+      clearTimeout(rowPressTimer.current);
+      rowPressTimer.current = null;
+    }
+    rowPressOrigin.current = null;
+  };
+
   const qc = useQueryClient();
   const nav = useNavigate();
   const realm = useQuery({ queryKey: ["realm", slug], queryFn: () => fetchRealmBySlug(slug) });
@@ -123,6 +147,7 @@ function RealmPage() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [visibleMembers, setVisibleMembers] = useState(MEMBER_PAGE_SIZE);
+  const [messageLimit, setMessageLimit] = useState(MESSAGE_PAGE_SIZE);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [pinIndex, setPinIndex] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -135,6 +160,7 @@ function RealmPage() {
     time: string;
     body: string;
     attachmentUrl: string | null;
+    embeds?: EmbedData[] | null;
   } | null>(null);
   const [botsOpen, setBotsOpen] = useState(false);
   // Slash-command popup: which row is highlighted, and whether Escape dismissed
@@ -149,11 +175,13 @@ function RealmPage() {
   const [pollOpen, setPollOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
+  const [showVoiceChat, setShowVoiceChat] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
-    enabled: !!realm.data && membersOpen,
+    enabled: !!realm.data?.id,
     queryFn: () => listRealmMembers(realm.data!.id),
+    staleTime: 60_000,
   });
 
   const rooms = useQuery({
@@ -245,10 +273,46 @@ function RealmPage() {
   // return makes React throw "Rendered more hooks than during the previous
   // render" as soon as the realm query resolves, which blanked this page.
   const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
+  // Newest window only; the room resets the window when switching channels.
+  useEffect(() => {
+    setMessageLimit(MESSAGE_PAGE_SIZE);
+  }, [activeRoomId]);
+  const visibleRows =
+    messageRows.length > messageLimit ? messageRows.slice(messageRows.length - messageLimit) : messageRows;
+  const hiddenCount = messageRows.length - visibleRows.length;
   const messageIds = messageRows.map((message: { id: string }) => message.id);
   const reactions = useChatReactions("realm", messageIds, {
     myMessageIds: messageRows.filter((message: { sender_id: string | null }) => message.sender_id === user?.id).map((message: { id: string }) => message.id),
   });
+  // The welcome card's "Say hi" button opens the new member's profile. All we
+  // get is the id, so fetch just enough for the card header; the card loads
+  // the rest itself and degrades gracefully when the profile is missing.
+  async function openMemberCard(userId: string) {
+    let profile: {
+      username?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
+      accent_color?: string | null;
+    } | null = null;
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url, accent_color")
+        .eq("id", userId)
+        .maybeSingle();
+      profile = data ?? null;
+    } catch {
+      // The card falls back to what it can fetch itself.
+    }
+    setPreviewUser({
+      userId,
+      username: profile?.username ?? "member",
+      displayName: profile?.display_name || profile?.username || "Member",
+      avatarUrl: profile?.avatar_url ?? null,
+      accentColor: profile?.accent_color ?? null,
+      realmId: realm.data?.id ?? null,
+    });
+  }
   // Members and voice participants share one presence request.
   const presence = usePresenceMap([
     ...(members.data ?? []).map((member) => member.user_id),
@@ -280,6 +344,33 @@ function RealmPage() {
   const realmCommands = useRealmSlashCommands(realm.data?.id, slashRoomId);
   // `<@userId>` tokens in any visible message resolve to a username once.
   const mentionLabels = useMentionLabels((messageRows as { body?: string }[]).map((row) => row.body));
+  // Webhook-bot identity rows for messages carrying webhook_bot_id (one query
+  // for the visible list; missing table before the migration => empty map).
+  const webhookBotIds = useMemo(
+    () => [...new Set((messageRows as { webhook_bot_id?: string }[]).map((row) => row.webhook_bot_id).filter(Boolean))] as string[],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [messageRows],
+  );
+  const webhookBots = useQuery({
+    queryKey: ["webhook-bot-rows", webhookBotIds],
+    enabled: webhookBotIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, { name: string; avatar_url: string | null }>> => {
+      try {
+        const { data, error } = await (supabase.from as never)("realm_bots" as never)
+          // @ts-expect-error pending migration table
+          .select("id, name, avatar_url")
+          .in("id", webhookBotIds);
+        if (error) throw error;
+        return Object.fromEntries(
+          ((data ?? []) as Array<{ id: string; name: string; avatar_url: string | null }>).map((b) => [b.id, b]),
+        );
+      } catch {
+        return {};
+      }
+    },
+  });
+  const webhookBotMap = webhookBots.data ?? {};
   const slashQuery = parseSlashCommand(body);
   const slashMatches = slashQuery ? filterSlashCommands(realmCommands.commands, slashQuery.name) : [];
   // The menu only shows while the command word itself is being typed, so the
@@ -814,8 +905,9 @@ function RealmPage() {
         onOpenChange={setPermissionsOpen}
         realmId={c.id}
         realmName={c.name}
+        ownerId={c.owner_id}
         rooms={rooms.data ?? []}
-        canModerate={canModerate}
+        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
         realmReactionsMode={(c.reactions_mode ?? "everyone") as "everyone" | "mods"}
       />
 
@@ -826,6 +918,7 @@ function RealmPage() {
         realmName={c.name}
         rooms={(rooms.data ?? []) as RealmRoom[]}
         isOwner={myRole === "owner" || c.owner_id === user?.id}
+        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
       />
 
       {/* One message, full size: opened from "View message" in the long-press
@@ -853,9 +946,33 @@ function RealmPage() {
           {viewingMessage?.attachmentUrl && (
             <ChatMessageMedia src={viewingMessage.attachmentUrl} alt="Image shared in chat" />
           )}
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-            {viewingMessage?.body}
-          </p>
+          {viewingMessage?.body && (
+            <MarkdownText
+              text={viewingMessage.body}
+              className="break-words text-[15px] leading-relaxed"
+              renderPlainText={(plain) =>
+                renderCaptionWithTags(plain).map((part, index) => {
+                  if (part.text && /^@(everyone|here)$/i.test(part.text)) {
+                    return <span key={index} className="mention-highlight">{part.text}</span>;
+                  }
+                  if (part.mentionToken) {
+                    return <span key={index} className="mention-highlight">{mentionLabels(part.mentionToken)}</span>;
+                  }
+                  if (part.mention) {
+                    return <Link key={index} to="/u/$username" params={{ username: part.mention }} className="mention-highlight">{part.text}</Link>;
+                  }
+                  if (part.tag) {
+                    return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="text-primary hover:underline font-medium">{part.text}</Link>;
+                  }
+                  if (part.url) {
+                    return <a key={index} href={part.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-400 hover:underline">{part.text}</a>;
+                  }
+                  return <span key={index}>{renderTextWithCatEmoji(part.text, `modal-${index}`)}</span>;
+                })
+              }
+            />
+          )}
+          {!!viewingMessage?.embeds?.length && <EmbedList embeds={viewingMessage.embeds} />}
           {viewingMessage?.body && (
             <Button
               type="button"
@@ -1063,9 +1180,9 @@ function RealmPage() {
               <Button
                 type="button"
                 onClick={() => openCallView()}
-                className="min-h-11 shrink-0 gap-2 glass border-white/10"
+                className="min-h-10 px-3.5 shrink-0 gap-1.5 border border-primary/50 bg-primary/20 text-primary hover:bg-primary/30 font-semibold text-xs shadow-md"
               >
-                <Mic className="h-4 w-4" /> Open call
+                <Mic className="h-3.5 w-3.5" /> Open call
               </Button>
             ) : (
               <Button
@@ -1108,25 +1225,103 @@ function RealmPage() {
         />
       )}
 
-      {activeRoom?.kind !== "forum" && (
+      {/* Dedicated Voice Stage when voice room is open without text chat active */}
+      {activeRoom?.kind === "voice" && !showVoiceChat && (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none">
+          <div className="relative mb-5">
+            <div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
+            <div className="relative h-20 w-20 rounded-3xl bg-primary/10 border-2 border-primary/40 grid place-items-center text-primary shadow-[0_0_24px_rgba(200,255,61,0.2)]">
+              <Mic className="h-9 w-9" />
+            </div>
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">{activeRoom.name}</h2>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            {activeChannelPeople.length > 0
+              ? `${activeChannelPeople.length} connected in voice`
+              : "Voice channel is currently empty — jump in and start the vibe!"}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {activeCall?.channelId === activeRoom.id ? (
+              <Button
+                size="lg"
+                onClick={() => openCallView()}
+                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
+              >
+                <Mic className="h-4 w-4" /> Open Voice Call
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                disabled={joiningVoice}
+                onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
+                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
+              >
+                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join Voice Channel"}
+              </Button>
+            )}
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setShowVoiceChat(true)}
+              className="h-11 px-4 gap-2 glass border-white/10 hover:bg-white/10 text-xs"
+            >
+              <MessageSquare className="h-4 w-4" /> Open VC Text Chat
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
       <div
         onClick={media.onMediaClick}
         className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
       >
         {media.viewer}
+        {activeRoom?.kind === "voice" && showVoiceChat && (
+          <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat · {activeRoom.name}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowVoiceChat(false)}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Back to Stage
+            </Button>
+          </div>
+        )}
         {activeRoom?.kind !== "voice" && activeRoom && (
           <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Hash className="h-3 w-3" />{activeRoom.name}
           </div>
         )}
         <AnimatePresence initial={false}>
-          {messageRows.map((m: any, index: number) => {
+          {hiddenCount > 0 && (
+            <div className="flex justify-center pb-2">
+              <button
+                type="button"
+                onClick={() => setMessageLimit((limit) => limit + MESSAGE_PAGE_SIZE)}
+                className="min-h-[44px] rounded-full border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
+                Show earlier messages ({hiddenCount} hidden)
+              </button>
+            </div>
+          )}
+          {visibleRows.map((m: any, index: number) => {
             const mine = m.sender_id === user?.id;
             // A bot message has no sender at all: it carries bot_id and the joined
             // bot row instead. Human authors may arrive as `author` or `sender`
             // depending on which query loaded them, so both are accepted.
             const botRow = (m.bot ?? null) as { name: string; avatar_url: string | null } | null;
-            const isBot = !!m.bot_id;
+            // Webhook bots: identity from the per-message override, else the bot row.
+            const webhookMeta = (m.webhook_meta ?? null) as { name?: string; avatar_url?: string } | null;
+            const webhookRow = (m.webhook_bot_id ? webhookBotMap[m.webhook_bot_id] : null) as
+              | { name: string; avatar_url: string | null }
+              | null;
+            const isBot = !!m.bot_id || !!m.webhook_bot_id;
             const authorProfile = (m.author ?? m.sender ?? null) as {
               username: string | null;
               display_name: string | null;
@@ -1134,11 +1329,13 @@ function RealmPage() {
               accent_color?: string | null;
             } | null;
             const authorName = isBot
-              ? botRow?.name ?? "Bot"
+              ? webhookMeta?.name || webhookRow?.name || botRow?.name || "Bot"
               : authorProfile?.display_name || authorProfile?.username || "Member";
-            const authorAvatar = isBot ? botRow?.avatar_url ?? null : authorProfile?.avatar_url ?? null;
+            const authorAvatar = isBot
+              ? webhookMeta?.avatar_url || webhookRow?.avatar_url || botRow?.avatar_url || null
+              : authorProfile?.avatar_url ?? null;
             const authorAccent = isBot ? null : authorProfile?.accent_color ?? null;
-            const authorInitial = (isBot ? botRow?.name ?? "B" : authorProfile?.username ?? "?")
+            const authorInitial = (isBot ? authorName : authorProfile?.username ?? "?")
               .charAt(0)
               .toUpperCase();
             // Realm names use the shared palette (or the author's own accent),
@@ -1154,8 +1351,9 @@ function RealmPage() {
                 time: new Date(m.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
                 body: m.body ?? "",
                 attachmentUrl: m.attachment_url ?? null,
+                embeds: (m.embeds ?? null) as EmbedData[] | null,
               });
-            const previous = messageRows[index - 1];
+            const previous = visibleRows[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
@@ -1170,25 +1368,103 @@ function RealmPage() {
             if ((m as { system?: boolean }).system) {
               return <SystemLine key={m.id} text={m.body} />;
             }
+
+            // Check if this message mentions the current user (Discord-style mention highlight)
+            const mentionsMe = Boolean(
+              user &&
+              m.sender_id !== user.id &&
+              (
+                (myUsername && (
+                  new RegExp(`@${myUsername}\\b`, "i").test(m.body) ||
+                  m.body.toLowerCase().includes(`@${myUsername}`)
+                )) ||
+                (myUserId && m.body.includes(`<@${myUserId}>`)) ||
+                /@(everyone|here)\b/i.test(m.body)
+              )
+            );
+            const mentionClasses = mentionsMe
+              ? "realm-message--mentions-me"
+              : "";
+
+            // Profile preview handler on avatar or name tap
+            const handleAuthorClick = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              // Bots have no user profile to open; without this the card was
+              // handed a null user id and crashed.
+              if (isBot || !m.sender_id) return;
+              setPreviewUser({
+                userId: m.sender_id,
+                username: authorProfile?.username ?? authorName,
+                displayName: authorName,
+                avatarUrl: authorAvatar,
+                accentColor: authorAccent,
+                realmId: realm.data?.id ?? null,
+                isBot,
+                botName: botRow?.name ?? null,
+                realmRole: (members.data as RealmMemberRow[] | undefined)?.find((mem) => mem.user_id === m.sender_id)?.role ?? null,
+              });
+            };
+
+            // Long press handler for the entire message row (touch / mouse)
+            const handleRowPointerDown = (e: React.PointerEvent) => {
+              if (e.pointerType === "mouse" && e.button !== 0) return;
+              if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]")) return;
+              clearRowTimer();
+              rowPressOrigin.current = { x: e.clientX, y: e.clientY };
+              rowPressTimer.current = setTimeout(() => {
+                rowPressTimer.current = null;
+                if (typeof navigator !== "undefined" && navigator.vibrate) {
+                  try { navigator.vibrate(35); } catch {}
+                }
+                setOpenMessageId(m.id);
+              }, 320);
+            };
+
+            const handleRowPointerMove = (e: React.PointerEvent) => {
+              if (!rowPressOrigin.current) return;
+              const dx = e.clientX - rowPressOrigin.current.x;
+              const dy = e.clientY - rowPressOrigin.current.y;
+              if (dx * dx + dy * dy > 20 * 20) {
+                clearRowTimer();
+              }
+            };
+
             return (
               <Fragment key={m.id}>
               {newDay && <DateSeparator date={m.created_at} />}
-              {/* Realm chat is Discord-style flat rows, not bubbles. */}
+              {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
               <motion.div
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`realm-message ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""}`}
+                onPointerDown={handleRowPointerDown}
+                onPointerMove={handleRowPointerMove}
+                onPointerUp={clearRowTimer}
+                onPointerCancel={clearRowTimer}
+                onContextMenu={(e) => {
+                  if ((e.target as HTMLElement).closest("a, input, textarea, button")) return;
+                  e.preventDefault();
+                  setOpenMessageId(m.id);
+                }}
+                className={`realm-message select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${mentionClasses}`}
               >
               {(startsGroup ? (
-                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
-                  <AvatarImage src={authorAvatar ?? undefined} />
-                  <AvatarFallback
-                    className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
-                  >
-                    {authorInitial}
-                  </AvatarFallback>
-                </Avatar>
+                <button
+                  type="button"
+                  data-interactive="true"
+                  onClick={handleAuthorClick}
+                  className="rounded-full shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
+                  aria-label={`View ${authorName}'s profile`}
+                >
+                  <Avatar className="h-9 w-9 shrink-0 cursor-pointer hover:opacity-90">
+                    <AvatarImage src={authorAvatar ?? undefined} />
+                    <AvatarFallback
+                      className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
+                    >
+                      {authorInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               ) : (
                 // Same author, same day: the avatar gutter carries the time
                 // instead, revealed on hover (and never shown on touch, where
@@ -1197,7 +1473,15 @@ function RealmPage() {
               ))}
               <div className="flex-1 min-w-0">
                 {startsGroup && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-bold text-sm" style={{ color: authorColor }}>{authorName}</span>
+                  <button
+                    type="button"
+                    data-interactive="true"
+                    onClick={handleAuthorClick}
+                    className="font-bold text-sm cursor-pointer hover:underline text-left"
+                    style={{ color: authorColor }}
+                  >
+                    {authorName}
+                  </button>
                   {isBot && <BotBadge />}
                   {pinnedIds.has(m.id) && <PinBadge />}
                   <span className="text-[10px] text-muted-foreground">
@@ -1216,10 +1500,16 @@ function RealmPage() {
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                   align={mine ? "right" : "left"}
+                  // The row already detects long-press (it covers media and
+                  // avatar areas the trigger doesn't wrap); the menu keeps
+                  // double-tap, context menu and keyboard.
+                  detectPress={false}
                   // The quick bar mirrors the channel's reaction policy; the RPC
                   // and its trigger enforce it again server-side.
-                  reactionBar={canAddReactions ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
+                  // A message that has not been saved yet has no id to react to.
+                  reactionBar={canAddReactions && !String(m.id).startsWith("pending-") ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
                   onDoubleTap={() => {
+                    if (String(m.id).startsWith("pending-")) return;
                     burstOverMessage(m.id, DOUBLE_TAP_REACTION);
                     reactionHaptic();
                     void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
@@ -1311,34 +1601,133 @@ function RealmPage() {
                         ]),
                   ]}
                 >
-                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "comment") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
-                    {renderGifSegments(m.body).map((seg, si) =>
-                      seg.isGif || seg.isSticker
-                        ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                        : splitEmojiSegments(seg.value, emojiNames).map((part, xi) =>
-                            part.name ? (
-                              <img
-                                key={`${si}-${xi}`}
-                                src={emojiByName.get(part.name)}
-                                alt={part.name}
-                                title={`:${part.name}:`}
-                                className="inline-block h-7 w-7 align-middle mx-0.5 object-contain"
-                              />
-                            ) : (
-                              renderCaptionWithTags(part.text).map((p, pi) =>
-                                p.mentionToken
-                                  ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                  : p.mention
-                                  ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
-                                  : p.tag
-                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                                    : p.url
-                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
-                                      : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
-                              )
-                            )
-                          )
-                    )}
+                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
+                    {renderGifSegments(m.body).map((seg, si) => {
+                      if (seg.isGif || seg.isSticker) {
+                        return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
+                      }
+                      const parts = splitEmojiSegments(seg.value, emojiNames);
+                      const hasText = parts.some((p) => !p.name && p.text && p.text.trim().length > 0);
+                      const emojiCount = parts.filter((p) => p.name).length;
+                      const isJumboji = !hasText && emojiCount > 0;
+                      const emojiClass = isJumboji
+                        ? (emojiCount <= 3
+                            ? "inline-block h-12 w-12 align-middle mx-1 my-0.5 object-contain"
+                            : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain")
+                        : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
+
+                      return parts.map((part, xi) =>
+                        part.name ? (
+                          <img
+                            key={`${si}-${xi}`}
+                            src={emojiByName.get(part.name)}
+                            alt={part.name}
+                            title={`:${part.name}:`}
+                            className={emojiClass}
+                          />
+                        ) : (
+                          <MarkdownText
+                            key={`${si}-${xi}`}
+                            text={part.text}
+                            renderPlainText={(plain) =>
+                              renderCaptionWithTags(plain).map((p, pi) => {
+                                // @everyone / @here use the same pill.
+                                if (p.text && /^@(everyone|here)$/i.test(p.text)) {
+                                  return (
+                                    <span key={`${si}-${xi}-${pi}`} className="mention-highlight">
+                                      {p.text}
+                                    </span>
+                                  );
+                                }
+                                if (p.mentionToken) {
+                                  return (
+                                    <button
+                                      key={`${si}-${xi}-${pi}`}
+                                      type="button"
+                                      data-interactive="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewUser({
+                                          userId: p.mentionToken!,
+                                          username: mentionLabels(p.mentionToken!).replace(/^@/, ""),
+                                          displayName: mentionLabels(p.mentionToken!),
+                                          realmId: realm.data?.id ?? null,
+                                        });
+                                      }}
+                                      className="mention-highlight cursor-pointer"
+                                    >
+                                      {mentionLabels(p.mentionToken!)}
+                                    </button>
+                                  );
+                                }
+                                if (p.mention) {
+                                  // Unknown @names stay plain text.
+                                  const hit = (members.data ?? []).find(
+                                    (mm) =>
+                                      (mm.profile as { username?: string } | null)?.username?.toLowerCase() ===
+                                      p.mention!.toLowerCase(),
+                                  );
+                                  if (!hit) return <span key={`${si}-${xi}-${pi}`}>{p.text}</span>;
+                                  return (
+                                    <button
+                                      key={`${si}-${xi}-${pi}`}
+                                      type="button"
+                                      data-interactive="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const prof = hit.profile as {
+                                          username?: string;
+                                          display_name?: string | null;
+                                          avatar_url?: string | null;
+                                        } | null;
+                                        setPreviewUser({
+                                          userId: hit.user_id,
+                                          username: prof?.username ?? p.mention!,
+                                          displayName: prof?.display_name ?? p.mention!,
+                                          avatarUrl: prof?.avatar_url ?? null,
+                                          realmRole: hit.role ?? null,
+                                          realmId: realm.data?.id ?? null,
+                                        });
+                                      }}
+                                      className="mention-highlight cursor-pointer"
+                                    >
+                                      {p.text}
+                                    </button>
+                                  );
+                                }
+                                if (p.tag) {
+                                  return (
+                                    <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
+                                  );
+                                }
+                                if (p.url) {
+                                  return (
+                                    <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
+                                  );
+                                }
+                                // Inline cat shortcodes (:cat_love: -> 22px, only-emoji -> 40px).
+                                return (
+                                  <span key={`${si}-${xi}-${pi}`}>
+                                    {renderTextWithCatEmoji(p.text, `${si}-${xi}-${pi}`)}
+                                  </span>
+                                );
+                              })
+                            }
+                          />
+                        )
+                      );
+                    })}
+                    {/* Bot embed cards sit under any text content. A card
+                        button ("👋 Say hi") waves at the message and opens
+                        the member's profile card. */}
+                    <EmbedList
+                      embeds={(m.embeds ?? null) as EmbedData[] | null}
+                      onAction={(button) => {
+                        if (button.action !== "wave" || !m.id) return;
+                        void reactions.toggle(m.id, "👋");
+                        if (button.user_id) void openMemberCard(button.user_id);
+                      }}
+                    />
                   </div>
                 </MessageActionMenu>
                 {/* Rich payloads: polls and queued tracks carry their own card. */}
@@ -1467,7 +1856,19 @@ function RealmPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {activeRoom?.kind !== "forum" && (
+      <RealmProfilePreviewDialog
+        user={previewUser}
+        open={!!previewUser}
+        onOpenChange={(open) => {
+          if (!open) setPreviewUser(null);
+        }}
+        onMention={(uname) => {
+          setBody((prev) => `${prev ? prev.trim() + " " : ""}@${uname} `);
+          inputRef.current?.focus();
+        }}
+      />
+
+      {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
         {myWriteBlocked && (
           <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
@@ -1563,6 +1964,17 @@ function RealmPage() {
             emptyHint="No realm member matches that name."
             onPick={(username) => {
               const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = inputRef.current;
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+            }}
+          />
+          <CatAutocomplete
+            value={body}
+            caret={caret}
+            onPick={(shortcode) => {
+              const next = replaceCatShortcode(body, caret, shortcode);
               setBody(next.value);
               setCaret(next.caret);
               const el = inputRef.current;

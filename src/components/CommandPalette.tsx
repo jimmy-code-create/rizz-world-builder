@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/ui/avatar";
 import { formatNumber } from "@/lib/formatters";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type Hit = { kind: "user"; id: string; username: string; display_name: string | null; avatar_url: string | null }
   | { kind: "tag"; tag: string; post_count: number };

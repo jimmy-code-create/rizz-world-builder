@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot as BotIcon, Hash, Megaphone, Plus, ShieldAlert, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import {
   setRealmBotEnabled,
   uninstallRealmBot,
 } from "@/lib/bots";
+import { WebhookBotsSection } from "@/components/bots/WebhookBotsSection";
+import { BuiltinBotEmbeds } from "@/components/bots/BuiltinBotEmbeds";
 
 /**
  * Realm → Bots.
@@ -34,6 +36,7 @@ export function RealmBotsSheet({
   realmName,
   rooms,
   isOwner,
+  canModerate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,6 +44,7 @@ export function RealmBotsSheet({
   realmName: string;
   rooms: RealmRoom[];
   isOwner: boolean;
+  canModerate?: boolean;
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export function RealmBotsSheet({
   ];
   const channel = channels.find((entry) => entry.key === channelKey) ?? channels[0];
 
-  const canManage = bots.data?.can_manage ?? false;
+  const canManage = isOwner || Boolean(canModerate) || (bots.data?.can_manage ?? false) || (bots.data?.allow_member_bots ?? false);
   const installedIds = new Set((bots.data?.bots ?? []).map((bot) => bot.bot_id));
   const installable = useMemo(
     () => (directory.data ?? []).filter((bot) => !installedIds.has(bot.bot_id)),
@@ -107,7 +111,7 @@ export function RealmBotsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="glass-strong z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        className="glass-strong z-[110] max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-xl break-words">
@@ -282,6 +286,26 @@ export function RealmBotsSheet({
                 />
               </section>
             )}
+
+            {/* Built-in bot embeds (owners/admins edit) */}
+            <BuiltinBotEmbeds
+              realmId={realmId}
+              realmName={realmName}
+              rooms={rooms}
+              defaultRoomId={rooms.find((room) => room.kind !== "voice")?.id ?? null}
+              canManage={canManage}
+              bots={(bots.data?.bots ?? [])
+                .filter((bot) => bot.is_builtin)
+                .map((bot) => ({ bot_id: bot.bot_id, name: bot.name }))}
+            />
+
+            {/* Webhook posting bots (owners/admins) */}
+            <WebhookBotsSection
+              realmId={realmId}
+              realmName={realmName}
+              rooms={rooms}
+              canManage={isOwner || Boolean(canModerate)}
+            />
 
             {/* Per-channel command switches */}
             {(bots.data?.bots ?? []).some((bot) => bot.commands.length > 0) && (

@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Eye, Heart, Loader2, Plus, Send, X } from "lucide-react";
+import { CloseButton } from "@/components/ui/close-button";
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { useMentionLabels } from "@/lib/mention-tokens";
+import { useStoriesStore } from "@/lib/stories-store";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * The stories row at the top of the feed, and the full-screen viewer.
@@ -64,7 +67,8 @@ function loadSeen(): SeenMap {
 }
 
 export function StoriesStrip() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { t } = useI18n();
   const [stories, setStories] = useState<Story[]>([]);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -232,23 +236,68 @@ export function StoriesStrip() {
     return group.some((story) => new Date(story.created_at) > new Date(last));
   };
 
+  useEffect(() => {
+    const active = new Set(stories.map((s) => s.author_id));
+    const unseen = new Set(
+      grouped.filter((g) => hasUnseen(g)).map((g) => g[0].author_id),
+    );
+    useStoriesStore.getState().setActiveAuthors(active, unseen);
+  }, [stories, seen, grouped]);
+
+  const myGroupIdx = grouped.findIndex((g) => g[0].author_id === user?.id);
+  const myStories = myGroupIdx >= 0 ? grouped[myGroupIdx] : [];
+  const myHasUnseen = myStories.length > 0 && hasUnseen(myStories);
+
   return (
     <>
       <div className="-mx-4 mb-5 overflow-x-auto px-4 scrollbar-hide md:mx-0 md:px-0">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setComposerOpen(true)}
-            className="flex shrink-0 flex-col items-center gap-1.5"
-            aria-label="Add to your story"
-          >
-            <div className="relative h-16 w-16 rounded-full bg-primary text-primary-foreground p-[2px] shadow-md">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                <Plus className="h-6 w-6" />
-              </div>
+          {/* "Your Story" button styled just like Instagram */}
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  if (myStories.length > 0 && myGroupIdx >= 0) {
+                    setViewing(myGroupIdx);
+                    markSeen(user!.id, myStories[0].created_at);
+                  } else {
+                    setComposerOpen(true);
+                  }
+                }}
+                className={`relative h-16 w-16 rounded-full p-[2.5px] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  myStories.length > 0
+                    ? myHasUnseen
+                      ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_12px_rgba(220,39,67,0.35)]"
+                      : "border-2 border-white/25"
+                    : "border-2 border-dashed border-white/20 hover:border-primary/60"
+                }`}
+                aria-label={myStories.length > 0 ? "View your story" : "Add to your story"}
+              >
+                <Avatar className="h-full w-full ring-2 ring-background">
+                  <AvatarImage src={profile?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
+                    {(profile?.display_name || profile?.username || "You").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+
+              {/* Plus badge on bottom-right corner */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setComposerOpen(true);
+                }}
+                title="Add to story"
+                aria-label="Add to story"
+                className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-primary text-primary-foreground border-2 border-background grid place-items-center shadow-md hover:scale-110 active:scale-90 transition-transform"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[3]" />
+              </button>
             </div>
-            <span className="text-[10px] font-medium text-muted-foreground">Your story</span>
-          </button>
+            <span className="text-[10px] font-medium text-foreground/90">{t("your_story")}</span>
+          </div>
 
           {loading &&
             [0, 1, 2].map((index) => (
@@ -258,43 +307,42 @@ export function StoriesStrip() {
               </div>
             ))}
 
-          {grouped.map((group, index) => {
+          {grouped.filter((g) => g[0].author_id !== user?.id).map((group) => {
             const story = group[0];
-            const accent = story.author?.accent_color || "var(--brand-signal)";
             const unseen = hasUnseen(group);
+            const actualIdx = grouped.indexOf(group);
             return (
               <button
                 type="button"
                 key={story.author_id}
                 onClick={() => {
-                  setViewing(index);
+                  setViewing(actualIdx);
                   markSeen(story.author_id, story.created_at);
                 }}
-                className="flex shrink-0 flex-col items-center gap-1.5"
+                className="flex shrink-0 flex-col items-center gap-1.5 transition-transform hover:scale-105 active:scale-95"
                 aria-label={`${unseen ? "Unseen story" : "Story"} from @${story.author?.username ?? "user"}`}
               >
                 <div
-                  className="relative h-16 w-16 rounded-full p-[2px]"
-                  style={
+                  className={`relative h-16 w-16 rounded-full p-[2.5px] ${
                     unseen
-                      ? { background: `conic-gradient(from 0deg, ${accent}, var(--brand-paper-dim), ${accent})` }
-                      : { background: "color-mix(in srgb, var(--foreground) 18%, transparent)" }
-                  }
+                      ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_14px_rgba(220,39,67,0.3)]"
+                      : "border-2 border-white/20"
+                  }`}
                 >
                   <Avatar className="h-full w-full ring-2 ring-background">
                     <AvatarImage src={story.author?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                       {(story.author?.username ?? "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {story.like_count > 0 && (
-                    <span className="absolute -bottom-0.5 -right-0.5 inline-flex items-center gap-0.5 rounded-full border border-black/40 bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
-                      <Heart className="h-2.5 w-2.5 fill-current" />
+                    <span className="absolute -bottom-0.5 -right-0.5 inline-flex items-center gap-0.5 rounded-full border border-black/40 bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
+                      <Heart className="h-2.5 w-2.5 fill-rose-500 text-rose-500" />
                       {story.like_count}
                     </span>
                   )}
                 </div>
-                <span className="max-w-[64px] truncate text-[10px] font-medium">
+                <span className="max-w-[64px] truncate text-[10px] font-medium text-muted-foreground">
                   @{story.author?.username ?? "?"}
                 </span>
               </button>
@@ -377,6 +425,8 @@ function StoryViewer({
   const mentionLabel = useMentionLabels(captionBodies);
   const isMine = !!user && user.id === story?.author_id;
   const isLiked = likedIds.has(storyId);
+  const qc = useQueryClient();
+  const reactionsKey = useMemo(() => ["story-reactions", user?.id, storyId], [user?.id, storyId]);
 
   /**
    * Likes are saved in `story_likes`; reactions are saved in `story_reactions`.
@@ -384,7 +434,7 @@ function StoryViewer({
    * without anything being persisted.
    */
   const reactions = useQuery({
-    queryKey: ["story-reactions", user?.id, storyId],
+    queryKey: reactionsKey,
     enabled: !!user && !!story,
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("story_reactions")
@@ -403,15 +453,21 @@ function StoryViewer({
       return;
     }
     const selected = myReactions.includes(emoji);
+    const prev = myReactions;
+    const next = selected ? prev.filter((e) => e !== emoji) : [...prev, emoji];
+
+    // Optimistic update for instant feedback
+    qc.setQueryData<string[]>(reactionsKey, next);
+
     const query = (supabase.from as any)("story_reactions");
     const { error } = selected
       ? await query.delete().eq("story_id", storyId).eq("user_id", user.id).eq("emoji", emoji)
       : await query.insert({ story_id: storyId, user_id: user.id, emoji });
     if (error) {
+      qc.setQueryData<string[]>(reactionsKey, prev);
       toast.error("Couldn't save that reaction.");
       return;
     }
-    void reactions.refetch();
   };
 
   const viewers = useQuery({
@@ -544,14 +600,11 @@ function StoryViewer({
               ))}
             </div>
 
-            <button
-              type="button"
+            <CloseButton
               onClick={onClose}
               aria-label="Close story"
-              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 bg-black/55 backdrop-blur-md"
+            />
 
             <div className="absolute left-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 flex items-center gap-2 rounded-full bg-black/45 px-2 py-1.5 backdrop-blur-md">
               <Avatar className="h-7 w-7 ring-1 ring-white/35">

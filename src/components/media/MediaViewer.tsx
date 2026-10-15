@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { X } from "lucide-react";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { CloseButton } from "@/components/ui/close-button";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -63,6 +63,21 @@ export function MediaViewer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Lock the screen while viewing: the page behind can't scroll, so the
+  // whole viewport stays a black photo stage.
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [open ]);
 
   const toggleZoom = useCallback(() => {
     setInteracting(false);
@@ -175,7 +190,7 @@ export function MediaViewer({
         role="dialog"
         aria-modal="true"
         aria-label="Media viewer"
-        className="fixed inset-0 z-[95] flex items-center justify-center bg-black"
+        className="fixed inset-0 z-[95] flex items-center justify-center bg-black transition-colors"
         style={{ opacity: dragY > 0 ? Math.max(0.4, 1 - dragY / 400) : 1 }}
       >
         <div
@@ -192,7 +207,7 @@ export function MediaViewer({
             src={src}
             alt={alt}
             draggable={false}
-            className="max-h-full max-w-full select-none object-contain"
+            className="max-h-full max-w-full select-none object-contain shadow-2xl"
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y + dragY}px, 0) scale(${scale})`,
               transition: interacting ? "none" : "transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1)",
@@ -200,15 +215,12 @@ export function MediaViewer({
           />
         </div>
 
-        <button
-          type="button"
+        <CloseButton
           onClick={onClose}
           aria-label="Close media viewer"
-          className="absolute right-3 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="absolute right-3 z-10 bg-white/10 text-white backdrop-blur-md hover:bg-white/25"
           style={{ top: "max(env(safe-area-inset-top, 0px), 0.75rem)" }}
-        >
-          <X className="h-6 w-6" />
-        </button>
+        />
       </div>
     </FullScreenLayer>
   );

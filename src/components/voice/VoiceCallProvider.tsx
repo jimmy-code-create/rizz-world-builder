@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   updateParticipant,
 } from "@/lib/voice";
 import { useVoiceCall } from "@/lib/voice-room-audio";
+import { useCallWakeLock } from "@/lib/wake-lock";
 import { VoiceCallAudio, VoiceCallView } from "@/components/voice/VoiceCallView";
 import { MusicBotAudio, MusicBotBoundary } from "@/components/voice/MusicBotInCall";
 
@@ -61,6 +62,7 @@ type VoiceCallContextValue = {
   viewOpen: boolean;
   busy: boolean;
   muted: boolean;
+  deafened: boolean;
   cameraOn: boolean;
   facing: "user" | "environment";
   participants: CallParticipantRow[];
@@ -84,6 +86,7 @@ type VoiceCallContextValue = {
   openView: () => void;
   closeView: () => void;
   toggleMute: () => void;
+  toggleDeafen: () => void;
   toggleCamera: () => void;
   flipCamera: () => void;
   toggleScreenShare: () => void;
@@ -134,10 +137,13 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   const [call, setCall] = useState<ActiveCall | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [deafened, setDeafened] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [busy, setBusy] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<VoiceChannelRef | null>(null);
+
+  useCallWakeLock(Boolean(call));
 
   const callRef = useRef<ActiveCall | null>(null);
   const pendingSwitchRef = useRef<VoiceChannelRef | null>(null);
@@ -262,6 +268,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     setCall(null);
     setViewOpen(false);
     setMuted(false);
+    setDeafened(false);
     setCameraOn(false);
     setFacing("user");
     if (!current || !userIdRef.current) return;
@@ -295,6 +302,16 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const toggleDeafen = useCallback(() => {
+    setDeafened((wasDeafened) => {
+      const next = !wasDeafened;
+      if (next && !muted) {
+        toggleMute();
+      }
+      return next;
+    });
+  }, [muted, toggleMute]);
 
   const toggleCamera = useCallback(() => setCameraOn((previous) => !previous), []);
   const flipCamera = useCallback(() => setFacing((previous) => (previous === "user" ? "environment" : "user")), []);
@@ -336,6 +353,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       viewOpen,
       busy,
       muted,
+      deafened,
       cameraOn,
       facing,
       participants,
@@ -362,6 +380,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       openView: () => setViewOpen(true),
       closeView: () => setViewOpen(false),
       toggleMute,
+      toggleDeafen,
       toggleCamera,
       flipCamera,
       toggleScreenShare,
@@ -375,6 +394,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       viewOpen,
       busy,
       muted,
+      deafened,
       cameraOn,
       facing,
       participants,
@@ -397,6 +417,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       joinChannel,
       leaveCall,
       toggleMute,
+      toggleDeafen,
       toggleCamera,
       flipCamera,
       toggleScreenShare,

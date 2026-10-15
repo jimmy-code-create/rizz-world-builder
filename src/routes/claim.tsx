@@ -10,17 +10,25 @@ import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
 import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/claim")({
   component: ClaimUsernamePage,
   head: () => ({ meta: [{ title: "Claim your @ · RIZZ" }] }),
 });
 
+/** Handles nobody can impersonate or squat on. */
+const RESERVED_USERNAMES = new Set([
+  "admin", "administrator", "root", "support", "help", "rizz", "official",
+  "system", "moderator", "mod", "staff", "api", "feed", "explore", "settings",
+  "notifications", "login", "signup", "claim", "tutorial", "null", "undefined",
+]);
+
 function ClaimUsernamePage() {
   const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const nav = useNavigate();
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   // The dedicated pick: every account chooses its cat the first time it logs in.
   const [avatar, setAvatar] = useState<string>(() =>
     profile?.avatar_url && isDefaultAvatar(profile.avatar_url) ? profile.avatar_url : DEFAULT_AVATARS[0].url,
@@ -28,12 +36,47 @@ function ClaimUsernamePage() {
   const [busy, setBusy] = useState(false);
   const [errorKind, setErrorKind] = useState<AuthErrorKind | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  // Live availability: debounced exact-match lookup as they type.
+  const [availability, setAvailability] = useState<"idle" | "checking" | "free" | "taken" | "invalid">("idle");
 
   useEffect(() => {
     if (loading) return;
     if (!user) nav({ to: "/" });
     else if (!profileError && profile?.username) nav({ to: getPostAuthPath(profile) });
   }, [loading, user, profile, profileError, nav]);
+
+  // Profile can arrive after first paint (stale avatar otherwise).
+  useEffect(() => {
+    if (profile?.avatar_url && isDefaultAvatar(profile.avatar_url)) setAvatar(profile.avatar_url);
+    if (!displayName && profile?.display_name) setDisplayName(profile.display_name);
+  }, [profile?.avatar_url, profile?.display_name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const value = username.trim().toLowerCase();
+    if (!value) {
+      setAvailability("idle");
+      return;
+    }
+    if (!/^[a-z0-9_]{3,20}$/.test(value) || RESERVED_USERNAMES.has(value)) {
+      setAvailability("invalid");
+      return;
+    }
+    setAvailability("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", value)
+          .limit(1);
+        if (error) throw error;
+        setAvailability(!data || data.length === 0 ? "free" : "taken");
+      } catch {
+        setAvailability("idle");
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [username]);
 
   if (loading) {
     return (
@@ -46,8 +89,16 @@ function ClaimUsernamePage() {
   const claim = async (event: React.FormEvent) => {
     event.preventDefault();
     const normalized = username.trim().toLowerCase();
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(normalized)) {
+    if (!/^[a-z0-9_]{3,20}$/.test(normalized)) {
       toast.error("Username: 3–20 chars, letters/numbers/underscore");
+      return;
+    }
+    if (RESERVED_USERNAMES.has(normalized)) {
+      toast.error("That name is reserved — try another one");
+      return;
+    }
+    if (availability === "taken") {
+      toast.error("That username is taken — try another one");
       return;
     }
     if (!user) return;
@@ -55,9 +106,10 @@ function ClaimUsernamePage() {
     setBusy(true);
     setErrorKind(null);
     try {
+      const name = displayName.trim().slice(0, 40) || normalized;
       const { data, error } = await supabase
         .from("profiles")
-        .update({ username: normalized, display_name: profile?.display_name || normalized, avatar_url: avatar })
+        .update({ username: normalized, display_name: profile?.display_name || name, avatar_url: avatar })
         .eq("id", user.id)
         .is("username", null)
         .select("id")
@@ -77,7 +129,7 @@ function ClaimUsernamePage() {
         }
         const { error: insertError } = await supabase
           .from("profiles")
-          .upsert({ id: user.id, username: normalized, display_name: normalized, avatar_url: avatar });
+          .upsert({ id: user.id, username: normalized, display_name: name, avatar_url: avatar });
         if (insertError) throw insertError;
       }
 
@@ -154,10 +206,35 @@ function ClaimUsernamePage() {
               onChange={(event) => setUsername(event.target.value)}
               className="h-11 border-border bg-secondary pl-7"
               placeholder="yourname"
+              aria-describedby="claim-username-status"
             />
           </div>
+          <p id="claim-username-status" role="status" className="text-xs" aria-live="polite">
+            {availability === "checking" && <span className="text-muted-foreground">Checking availability…</span>}
+            {availability === "free" && <span className="font-medium text-[#c8ff3d]">@{username.trim().toLowerCase()} is available</span>}
+            {availability === "taken" && <span className="font-medium text-destructive">That username is taken</span>}
+            {availability === "invalid" && username.trim() && (
+              <span className="text-muted-foreground">3–20 chars, letters/numbers/underscore</span>
+            )}
+          </p>
         </div>
-        <Button type="submit" disabled={busy} className="h-11 w-full rounded-[6px] font-semibold">
+        <div className="space-y-2">
+          <Label htmlFor="claim-display">Display name <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Input
+            id="claim-display"
+            maxLength={40}
+            autoComplete="nickname"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            className="h-11 border-border bg-secondary"
+            placeholder="What should people call you?"
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={busy || availability === "taken" || availability === "checking"}
+          className="h-11 w-full rounded-[6px] font-semibold"
+        >
           {busy ? "Saving…" : "Claim username"}
         </Button>
       </form>

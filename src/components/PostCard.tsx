@@ -2,13 +2,13 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { useEquipped } from "@/lib/useEquipped";
@@ -38,14 +38,18 @@ import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
+import { MarkdownText } from "@/components/MarkdownText";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { RizzVideoPlayer } from "@/components/RizzVideoPlayer";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
+import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate";
+import { loadPrefs } from "@/lib/prefs";
+import { PostReactionsSheet } from "@/components/reactions/PostReactionsSheet";
 
 const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
@@ -88,6 +92,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const burstTimer = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const [reactionsNearViewport, setReactionsNearViewport] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => () => {
@@ -220,7 +225,6 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       // reconcile the post list the same way a success would.
       void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
       const mine = _variables?.mine;
-      const mine = _variables?.mine;
       qc.setQueriesData<{ id: string; reaction_count?: number }[]>({ queryKey: ["feed"] }, (posts) =>
         posts?.map((entry) =>
           entry.id === post.id
@@ -260,6 +264,51 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [editOpen, setEditOpen] = useState(false);
   const [caption, setCaption] = useState(post.caption ?? "");
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
+  const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
+
+  const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslated, setShowTranslated] = useState(false);
+  const [translatedLang, setTranslatedLang] = useState<string>("");
+
+  const handleTranslate = async () => {
+    if (!post.caption?.trim()) {
+      toast.info("No caption to translate");
+      return;
+    }
+    const currentLang = loadPrefs().language || "en";
+    const langLabel = LANGUAGE_NAMES[currentLang] ?? currentLang;
+
+    if (showTranslated) {
+      setShowTranslated(false);
+      return;
+    }
+
+    if (translatedCaption && translatedLang === currentLang) {
+      setShowTranslated(true);
+      toast.success(`Translated to ${langLabel}`);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translated = await translateText(post.caption, currentLang);
+      setTranslatedCaption(translated);
+      setTranslatedLang(currentLang);
+      setShowTranslated(true);
+      toast.success(`Translated to ${langLabel}`);
+    } catch {
+      toast.error(`Could not translate to ${langLabel}`);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const viewerLang = loadPrefs().language || "en";
+  const detectedSource = post.caption ? detectSourceLang(post.caption) : null;
+  const canTranslate = Boolean(post.caption?.trim() && (!detectedSource || detectedSource !== viewerLang));
 
   const deleteMut = useMutation({
     mutationFn: () => deletePost(post.id),
@@ -374,9 +423,9 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="feed-post-card relative isolate mb-4 overflow-hidden rounded-[1.75rem]"
+      className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
     >
-      <header className="flex items-center gap-3 p-4 pb-3">
+      <header className="flex items-center gap-2.5 p-3 pb-2">
         <AuthorAvatarLink post={post} accent={accent} initial={initial} />
         <div className="flex-1 min-w-0">
           <AuthorNameLink post={post} />
@@ -411,9 +460,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <DropdownMenuItem onClick={quoteThis}>
               <Quote className="mr-2 h-4 w-4" /> Quote post
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.success("Translated to English (preview)")}>
-              <Languages className="mr-2 h-4 w-4" /> Translate
-            </DropdownMenuItem>
+            {canTranslate && (
+              <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
+                <Languages className="mr-2 h-4 w-4" />
+                {isTranslating
+                  ? "Translating…"
+                  : showTranslated
+                    ? "Show original"
+                    : `Translate (${LANGUAGE_NAMES[viewerLang] || "Preferred"})`}
+              </DropdownMenuItem>
+            )}
             {externalVideo?.ok && (
               <DropdownMenuItem onClick={viewOriginal}>
                 <ExternalLink className="mr-2 h-4 w-4" /> View original
@@ -462,36 +518,81 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </header>
 
       {post.caption && (
-        <p className={cn("px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap", emojiTextClass(post.caption))}>
-          {renderGifSegments(post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
-            ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
-            : renderCaptionWithTags(segment.value).map((p, i) => {
-            if (p.tag) {
-              return (
-                <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-              );
-            }
-            if (p.mention) {
-              return (
-                <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>
-              );
-            }
-            if (p.url) {
-              return (
-                <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>
-              );
-            }
-            return <span key={i}>{p.text}</span>;
-          }))}
-        </p>
+        <div className="px-3 pb-2">
+          <div className={cn("text-sm leading-relaxed", emojiTextClass(showTranslated && translatedCaption ? translatedCaption : post.caption))}>
+            {renderGifSegments(showTranslated && translatedCaption ? translatedCaption : post.caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
+              ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
+              : <MarkdownText
+                  key={`text-${segmentIndex}`}
+                  text={segment.value}
+                  renderPlainText={(plain) => renderCaptionWithTags(plain).map((p, i) => {
+                    if (p.tag) {
+                      return <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>;
+                    }
+                    if (p.mention) {
+                      return <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>;
+                    }
+                    if (p.url) {
+                      return <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>;
+                    }
+                    return <span key={i}>{p.text}</span>;
+                  })}
+                />)}
+          </div>
+          {showTranslated && (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Languages className="h-3 w-3 text-primary" />
+              <span>Translated to {LANGUAGE_NAMES[translatedLang] ?? translatedLang}</span>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => setShowTranslated(false)}
+                className="font-medium text-primary hover:underline focus-visible:outline-none"
+              >
+                See original
+              </button>
+            </div>
+          )}
+          {!showTranslated && translatedCaption && (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Languages className="h-3 w-3" />
+              <button
+                type="button"
+                onClick={() => setShowTranslated(true)}
+                className="font-medium text-primary hover:underline focus-visible:outline-none"
+              >
+                See translation ({LANGUAGE_NAMES[translatedLang] ?? translatedLang})
+              </button>
+            </div>
+          )}
+          {(() => {
+            const detectedSource = detectSourceLang(post.caption);
+            const userLang = loadPrefs().language || "en";
+            const isDifferentLang = detectedSource !== userLang;
+            if (!isDifferentLang || translatedCaption || post.caption.trim().length <= 3) return null;
+            return (
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Languages className="h-3 w-3" />
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={isTranslating}
+                  className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
+                >
+                  {isTranslating ? "Translating…" : `Translate post (${LANGUAGE_NAMES[userLang] || "Preferred"})`}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
       )}
 
       {post.quote_post_id && <QuoteEmbed postId={post.quote_post_id} />}
       <PollBlock postId={post.id} />
 
-      {post.media_url && (
+      {post.media_url && !mediaFailed && (
         <div
-          className="post-media-frame relative max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
+          className="post-media-frame relative mb-2 max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
           onClick={
             externalVideo?.ok
               ? undefined
@@ -510,7 +611,25 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <img src={post.media_url} alt="" loading="lazy" decoding="async" className="w-full max-h-[min(48dvh,390px)] object-contain" />
+            <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
+              {!imageLoaded && (
+                <div
+                  className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px]"
+                  aria-hidden="true"
+                />
+              )}
+              <img
+                src={post.media_url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setMediaFailed(true)}
+                className={`w-full max-h-[min(48dvh,390px)] object-contain transition-all duration-300 ${
+                  imageLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
+                }`}
+              />
+            </div>
           )}
           <AnimatePresence>
             {!externalVideo?.ok && burst > 0 && (
@@ -533,7 +652,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       )}
 
       {Object.keys(grouped).length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+        <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
           {Object.entries(grouped).map(([emoji, { count, mine }]) => (
             <ReactionChipButton
               key={emoji}
@@ -551,38 +670,53 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               onToggle={() => toggleReaction(emoji)}
             />
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setInitialReactionTab("all");
+              setReactionsSheetOpen(true);
+            }}
+            aria-label="View all reactions"
+            title="View all reactions"
+            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors shrink-0"
+          >
+            <Users className="h-3 w-3" />
+          </button>
         </div>
       )}
 
-      <footer className="flex items-center gap-1 px-2 py-2 border-t border-white/5 mt-3">
+      <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-white/5 mt-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-8 px-2.5 relative gap-1.5 rounded-full touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
-            <Heart className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
+            <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
           </motion.span>
           <span className="text-xs font-medium">{formatCount(likeCount)}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowComments((s) => !s)}
-          className="gap-1.5 text-muted-foreground"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
+            setShowComments((s) => !s);
+          }}
+          className="h-8 px-2.5 relative gap-1.5 rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0"
         >
-          <MessageCircle className="h-5 w-5" />
+          <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
         <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="React to post">
-              <Smile className="h-5 w-5" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1" aria-label="React to post">
+              <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 glass-strong border-white/10">
+          <PopoverContent className="w-auto p-2 bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,#2a2a2e)] rounded-xl shadow-xl">
             <div className="flex gap-1">
               {QUICK_EMOJIS.map((e) => (
                 <button
@@ -590,7 +724,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   type="button"
                   onClick={() => toggleReaction(e)}
                   aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-white/10"
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 hover:bg-white/10 active:scale-95"
                 >
                   {e}
                 </button>
@@ -603,18 +737,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={saved ? "text-primary" : "text-muted-foreground"}
+          className={`h-8 w-8 p-0 relative rounded-full touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1 ${saved ? "text-primary" : "text-muted-foreground"}`}
           aria-label="Save post"
         >
-          <Bookmark className={`h-5 w-5 ${saved ? "fill-current" : ""}`} />
+          <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={sharePost}
-          className="text-muted-foreground"
+          className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
+          aria-label="Share post"
         >
-          <Share2 className="h-5 w-5" />
+          <Share2 className="h-4 w-4" />
         </Button>
       </footer>
 
@@ -656,6 +791,13 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PostReactionsSheet
+        postId={post.id}
+        open={reactionsSheetOpen}
+        onOpenChange={setReactionsSheetOpen}
+        initialEmoji={initialReactionTab}
+      />
     </motion.article>
   );
 }
@@ -920,9 +1062,9 @@ function CommentInteractions({ commentId }: { commentId: string }) {
 function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
   const eq = useEquipped(post.author_id);
   const deco = eq.data?.avatar_decoration;
-  return (
-    <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
-      {deco ? (
+  if (deco) {
+    return (
+      <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
         <AvatarDecoration
           src={normalizeAvatarUrl(post.author?.avatar_url) ?? undefined}
           fallback={initial}
@@ -930,13 +1072,17 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
           effectSlug={deco.slug}
           accent={deco.preview_color || accent}
         />
-      ) : (
-        <Avatar className="h-10 w-10 ring-2" style={{ boxShadow: `0 0 0 2px ${accent}40` }}>
-          <AvatarImage src={post.author?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initial}</AvatarFallback>
-        </Avatar>
-      )}
-    </ProfilePreviewTrigger>
+      </ProfilePreviewTrigger>
+    );
+  }
+  return (
+    <InteractiveAvatar
+      src={post.author?.avatar_url}
+      fallback={initial}
+      size="md"
+      userId={post.author_id}
+      username={post.author?.username}
+    />
   );
 }
 

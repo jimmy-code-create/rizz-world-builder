@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IconButton } from "@/components/ui/icon-button";
+import { CloseButton } from "@/components/ui/close-button";
 
 export interface ResponsiveOverlayProps {
   open: boolean;
@@ -50,7 +49,7 @@ export function ResponsiveOverlay({
       <DialogPrimitive.Portal>
         {/* Dimmed backdrop */}
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[var(--z-overlay,30)] bg-black/75 backdrop-blur-xs transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
+          className="fixed inset-0 z-[var(--z-overlay,100)] bg-black/75 backdrop-blur-xs transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
         />
 
         {/* Overlay Content */}
@@ -68,7 +67,7 @@ export function ResponsiveOverlay({
             }
           }}
           className={cn(
-            "fixed z-[calc(var(--z-overlay,30)+1)] bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,rgba(244,241,231,0.13))] text-[var(--brand-paper,#f4f1e7)] shadow-2xl focus:outline-none",
+            "fixed z-[calc(var(--z-overlay,100)+1)] bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,rgba(244,241,231,0.13))] text-[var(--brand-paper,#f4f1e7)] shadow-2xl focus:outline-none",
             isMobile
               ? "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl p-5 pb-[max(env(safe-area-inset-bottom,0px)+1rem,1.25rem)] overflow-y-auto animate-in slide-in-from-bottom duration-200"
               : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] rounded-2xl p-6 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150",
@@ -95,14 +94,7 @@ export function ResponsiveOverlay({
 
             {showClose && (
               <DialogPrimitive.Close asChild>
-                <IconButton
-                  aria-label="Close"
-                  size="sm"
-                  variant="ghost"
-                  className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </IconButton>
+                <CloseButton />
               </DialogPrimitive.Close>
             )}
           </div>

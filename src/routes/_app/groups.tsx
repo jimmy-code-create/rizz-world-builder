@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth";
 import { listMyGroups, createGroup, acceptInvite, extractInviteCode } from "@/lib/groups";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/groups")({
   head: () => ({ meta: [{ title: "Groups · RIZZ" }] }),

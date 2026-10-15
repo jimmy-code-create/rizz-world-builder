@@ -270,18 +270,24 @@ export function useSelfPresence() {
     statusRef.current = next;
     manualRef.current = manual;
     lastWrite.current = { status: next, at: Date.now() };
-    if (manual) setSelfPresenceCache(next);
+    if (manual) {
+      setSelfPresenceCache(next);
+      qc.setQueryData<PresenceRow | null>(["presence-self", user?.id], (current) =>
+        current ? { ...current, status: next, manual: true } : current,
+      );
+    }
     try {
       await writePresence(next, manual);
-      if (manual) {
-        qc.setQueryData<PresenceRow | null>(["presence-self", user?.id], (current) =>
-          current ? { ...current, status: next, manual: true } : current,
-        );
-      }
     } catch (error) {
       statusRef.current = previous.status;
       manualRef.current = previous.manual;
       lastWrite.current = { status: previous.status, at: 0 };
+      if (manual) {
+        setSelfPresenceCache(previous.status);
+        qc.setQueryData<PresenceRow | null>(["presence-self", user?.id], (current) =>
+          current ? { ...current, status: previous.status, manual: previous.manual } : current,
+        );
+      }
       throw error;
     }
   };
@@ -302,12 +308,16 @@ export function useSelfPresence() {
     if (!user?.id) return;
 
     let idleTimer = 0;
+    let lastActivityCheck = 0;
     const goIdle = () => {
       if (manualRef.current || statusRef.current === "invisible") return;
       if (statusRef.current === "idle") return;
       void apply("idle", false).catch(() => {});
     };
     const onActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityCheck < 5000) return; // Throttle to once per 5 seconds
+      lastActivityCheck = now;
       window.clearTimeout(idleTimer);
       idleTimer = window.setTimeout(goIdle, IDLE_AFTER_MS);
       if (manualRef.current) return;

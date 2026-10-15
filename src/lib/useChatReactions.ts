@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import {
@@ -141,9 +141,13 @@ export function useChatReactions(
         await toggleReaction(scope, messageId, emoji);
         return true;
       } catch (error) {
-        // Roll the chip back so the UI never lies about the saved state.
+        // Roll the chip back so the UI never lies about the saved state, and
+        // offer one-tap retry. Retrying repeats the intended action: after a
+        // failed add the row is gone, after a failed remove it is still there.
         qc.setQueryData(key, previous);
-        toast.error(error instanceof Error ? error.message : "Couldn't react, try again");
+        toast.error(error instanceof Error ? error.message : "Couldn't react", {
+          action: { label: "Retry", onClick: () => void toggle(messageId, emoji) },
+        });
         return false;
       }
     },

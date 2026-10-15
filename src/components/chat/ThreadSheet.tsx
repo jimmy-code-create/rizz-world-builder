@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { fetchThread, sendThreadReply, threadKey, type ThreadMessage } from "@/lib/realm-threads";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type ThreadSheetProps = {
   open: boolean;

@@ -8,7 +8,7 @@ import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/compon
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/lib/auth";
 import { getPendingInvitePath, getPostAuthPath } from "@/lib/onboarding";
 

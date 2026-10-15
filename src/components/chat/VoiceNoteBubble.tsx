@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Loader2, Volume2 } from "lucide-react";
 import { formatDuration, voiceNoteUrl, waveformBars } from "@/lib/voice-notes";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function VoiceNoteBubble({
   path,

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gamenest",
+    "name": "Party Games",
+    "icon": ":cat_hype:",
+    "url": "https://jackbox.tv/",
+    "type": "multiplayer-hub",
+    "players": "2-8",
+    "description": "Jackbox party packs — host reads the room code off their game",
+    "sharedCode": false
+  },
+  {
+    "id": "draw-guess",
+    "name": "Draw & Guess",
+    "icon": ":cat_think:",
+    "url": "https://skribbl.io/",
+    "type": "room-link",
+    "players": "2+",
+    "description": "Draw and guess together on skribbl.io",
+    "roomParam": "room",
+    "sharedCode": false
+  },
+  {
+    "id": "quick-play",
+    "name": "2048",
+    "icon": ":cat_cool:",
+    "url": "https://gabrielecirulli.github.io/2048/",
+    "type": "embed",
+    "players": "1",
+    "description": "Solo number puzzle while you hang out"
+  }
+]

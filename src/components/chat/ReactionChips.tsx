@@ -2,10 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
-import { toast } from "sonner";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { toast } from "@/lib/toast";
+import { CloseButton } from "@/components/ui/close-button";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchReactorProfiles, reactorsQueryKey, type ReactionGroup, type ReactionScope } from "@/lib/reactions";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 import { reactionHaptic, triggerReactionBurst, triggerBurstOnElement } from "@/components/chat/ReactionBurst";
 import type { ReactionPulse } from "@/lib/useChatReactions";
 import {
@@ -226,7 +229,10 @@ function ReactionChip({
       }}
     >
       <span className="text-[13px]" aria-hidden="true">
-        {emoji}
+        {(() => {
+          const cat = catNameForShortcode(emoji);
+          return cat ? <CatEmoji name={cat} size={16} animate={pulse?.emoji === emoji ? "once" : false} /> : emoji;
+        })()}
       </span>
       <motion.span
         key={count}
@@ -277,16 +283,30 @@ function ReactorsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="glass-strong z-[70] max-h-[70dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]">
-        <SheetHeader className="text-left">
+      <SheetContent
+        side="bottom"
+        hideClose
+        className="glass-strong z-[110] max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <SheetTitle className="font-display text-lg">Reactions</SheetTitle>
-        </SheetHeader>
+          <SheetClose asChild>
+            <CloseButton />
+          </SheetClose>
+        </div>
         <div className="mt-3 space-y-4">
           {groups.map((group) => (
             <section key={group.emoji}>
               <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-                <span aria-hidden="true" className="text-[15px]">{group.emoji}</span>
-                <span className="text-muted-foreground">{group.count} {group.count === 1 ? "reaction" : "reactions"}</span>
+                <span aria-hidden="true" className="inline-grid place-items-center text-[15px]">
+                  {(() => {
+                    const cat = catNameForShortcode(group.emoji);
+                    return cat ? <CatEmoji name={cat} size={18} animate={false} /> : group.emoji;
+                  })()}
+                </span>
+                <span className="text-muted-foreground">
+                  {group.count} {group.count === 1 ? "reaction" : "reactions"}
+                </span>
               </h3>
               <div className="mt-1.5 space-y-1">
                 {profiles.isLoading && <p className="px-1 text-xs text-muted-foreground">Loading…</p>}

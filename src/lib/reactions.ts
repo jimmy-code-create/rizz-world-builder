@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Chat reactions for DMs, realm chat and group chat.
  *
  * All three go through SECURITY DEFINER RPCs so membership is enforced in the
- * database — see supabase/migrations/20261013000000_fix_chat_reaction_rpcs.sql.
+ * database — see supabase/migrations/20261013000000_fix_chat_reaction_rpcs.sql
+ * and 20261022000000_fix_realm_reaction_toggle.sql (the partial-index repair).
  *  * DMs use `dm_reactions` + toggle_dm_reaction(_message_id uuid, _emoji text)
  *  * Realm and group messages share `message_reactions` with a message_type of
  *    'realm' / 'group' + toggle_message_reaction(_message_id, _emoji, _message_type)
@@ -28,7 +29,7 @@ export const MORE_REACTIONS = [
 export const DOUBLE_TAP_REACTION = "❤️";
 
 /** Never surface the raw database error to the user. */
-export const REACTION_FAILED_MESSAGE = "Couldn't react, try again";
+export const REACTION_FAILED_MESSAGE = "Couldn't react";
 
 function rpcName(scope: ReactionScope) {
   return scope === "dm" ? "toggle_dm_reaction" : "toggle_message_reaction";
@@ -83,11 +84,26 @@ export async function toggleReaction(scope: ReactionScope, messageId: string, em
     scope === "dm"
       ? { _message_id: messageId, _emoji: emoji }
       : { _message_id: messageId, _emoji: emoji, _message_type: scope };
-  const { error } = await (supabase.rpc as any)(rpcName(scope), args);
-  if (error) {
-    // The RPC's own error text is for developers, not users.
-    console.error(`[reactions] ${rpcName(scope)} failed`, error);
-    throw new Error(REACTION_FAILED_MESSAGE);
+
+  const call = async () => {
+    const { error } = await (supabase.rpc as any)(rpcName(scope), args);
+    if (error) throw error;
+  };
+
+  try {
+    await call();
+  } catch (firstError) {
+    // One automatic retry before the chip rolls back: a dropped connection or a
+    // just-reloaded PostgREST schema cache both clear on the second attempt.
+    console.warn(`[reactions] ${rpcName(scope)} failed, retrying once`, firstError);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    try {
+      await call();
+    } catch (error) {
+      // The RPC's own error text is for developers, not users.
+      console.error(`[reactions] ${rpcName(scope)} failed`, error);
+      throw new Error(REACTION_FAILED_MESSAGE);
+    }
   }
 }
 

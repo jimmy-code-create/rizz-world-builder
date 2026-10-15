@@ -14,7 +14,7 @@ import {
   Webhook,
   Zap,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,11 +53,6 @@ export const Route = createFileRoute("/_app/bots/developer")({
   head: () => ({ meta: [{ title: "Bot developer · RIZZ" }] }),
   component: BotDeveloperPage,
 });
-
-const DELIVERY_LABEL: Record<BotDelivery, string> = {
-  webhook: "Webhook — RIZZ POSTs each interaction to your URL",
-  gateway: "Gateway — your worker polls for interactions",
-};
 
 type Draft = {
   botId: string | null;
@@ -472,41 +467,46 @@ function BotFormDialog({
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="bot-delivery" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Delivery
-              </span>
-              <Select
-                value={draft.delivery}
-                onValueChange={(value) => update({ delivery: value as BotDelivery })}
-              >
-                <SelectTrigger className="glass h-11 border-white/10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(DELIVERY_LABEL) as BotDelivery[]).map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {DELIVERY_LABEL[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="bot-webhook" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {draft.delivery === "webhook" ? "Webhook URL" : "Webhook URL (optional)"}
               </label>
-              <Input
-                id="bot-webhook"
-                value={draft.webhookUrl}
-                onChange={(event) => update({ webhookUrl: event.target.value })}
-                placeholder="https://your-bot.example.com/rizz"
-                className="glass border-white/10"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Only https URLs are accepted, and the URL is never exposed to other members.
+              <select
+                id="bot-delivery"
+                value={draft.delivery}
+                disabled={saving}
+                onChange={(event) => {
+                  const delivery = event.target.value as BotDelivery;
+                  update({ delivery, webhookUrl: delivery === "webhook" ? draft.webhookUrl : "" });
+                }}
+                className="h-11 w-full rounded-xl border border-white/10 bg-card px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
+              >
+                <option value="webhook">Webhook</option>
+                <option value="gateway">Gateway</option>
+              </select>
+              <p id="bot-delivery-help" className="text-[11px] text-muted-foreground">
+                {draft.delivery === "webhook"
+                  ? "RIZZ sends each interaction to your HTTPS webhook."
+                  : "Your worker polls RIZZ for pending interactions."}
               </p>
             </div>
+
+            {draft.delivery === "webhook" && (
+              <div className="space-y-1.5">
+                <label htmlFor="bot-webhook" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Webhook URL
+                </label>
+                <Input
+                  id="bot-webhook"
+                  value={draft.webhookUrl}
+                  onChange={(event) => update({ webhookUrl: event.target.value })}
+                  placeholder="https://your-bot.example.com/rizz"
+                  className="glass border-white/10"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Only HTTPS URLs are accepted. This URL is never shown to other members.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-1">
               <Button

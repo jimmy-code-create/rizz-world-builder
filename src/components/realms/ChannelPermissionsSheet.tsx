@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { listRealmMembers, type RealmMember as RealmMemberRow, type RealmRoom } from "@/lib/realms";
 import { canModerateRealm, realmRoleLabel } from "@/lib/realm-roles";
 import {
@@ -30,6 +30,7 @@ type ChannelOption = {
 type ChannelPermissionsBodyProps = {
   realmId: string;
   realmName: string;
+  ownerId?: string | null;
   rooms: RealmRoom[];
   canModerate: boolean;
   realmReactionsMode?: ReactionsMode;
@@ -52,6 +53,7 @@ type ChannelPermissionsBodyProps = {
 export function ChannelPermissionsBody({
   realmId,
   realmName,
+  ownerId,
   rooms,
   canModerate,
   realmReactionsMode = "everyone",
@@ -94,10 +96,17 @@ export function ChannelPermissionsBody({
   const loadFailed = permissions.isError || members.isError;
 
   const rows: RealmMemberRow[] = (members.data ?? []) as RealmMemberRow[];
-  const denied = new Set(
+  const activeRoomId = channel?.roomId ?? null;
+  const deniedUsers = new Set(
     permissions.permissions
-      .filter((row) => !row.can_write && row.realm_id === realmId)
-      .map(permissionChannelKey),
+      .filter((row) => {
+        if (row.can_write || row.realm_id !== realmId) return false;
+        if (activeRoomId == null) {
+          return row.realm_room_id == null || row.realm_room_id === realmId;
+        }
+        return row.realm_room_id === activeRoomId;
+      })
+      .map((row) => row.user_id),
   );
 
   const reactionsMode: ReactionsMode =
@@ -262,8 +271,9 @@ export function ChannelPermissionsBody({
               )}
               {rows.map((member) => {
                 const name = member.profile?.display_name || member.profile?.username || "Member";
-                const isMod = canModerateRealm(member.role as never);
-                const allowed = isMod || !denied.has(channel?.key ?? realmId);
+                const isOwner = Boolean(ownerId && member.user_id === ownerId);
+                const isDenied = deniedUsers.has(member.user_id);
+                const allowed = isOwner ? true : !isDenied;
                 const busy = busyKey === `${channel?.key}:${member.user_id}`;
                 return (
                   <div
@@ -279,18 +289,20 @@ export function ChannelPermissionsBody({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">{name}</p>
                       <p className="truncate text-[11px] text-muted-foreground">
-                        {isMod
-                          ? `${realmRoleLabel(member.role as never)} · always allowed`
-                          : busy
-                            ? "Saving…"
-                            : allowed
-                              ? "Can send messages"
-                              : "Read only"}
+                        {isOwner
+                          ? "Realm owner · always allowed"
+                          : realmRoleLabel(member.role) === "Moderator"
+                            ? "Moderator · always allowed"
+                            : busy
+                              ? "Saving…"
+                              : allowed
+                                ? "Can send messages"
+                                : "Read only"}
                       </p>
                     </div>
                     <Switch
                       checked={allowed}
-                      disabled={!canModerate || isMod || busy || !channel}
+                      disabled={!canModerate || isOwner || busy || !channel}
                       aria-label={`${name} can send messages in ${channel?.label ?? "this channel"}`}
                       onCheckedChange={(next) => void toggleMember(member, next)}
                     />
@@ -315,6 +327,7 @@ export function ChannelPermissionsSheet({
   onOpenChange,
   realmId,
   realmName,
+  ownerId,
   rooms,
   canModerate,
   realmReactionsMode = "everyone",
@@ -330,7 +343,7 @@ export function ChannelPermissionsSheet({
           underneath the sheet (which made the whole thing feel frozen). */}
       <SheetContent
         side="bottom"
-        className="glass-strong z-[70] flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10"
+        className="glass-strong z-[110] flex max-h-[88dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10"
       >
         <SheetHeader
           className="shrink-0 border-b border-white/10 bg-background/60 px-6 pb-4 pt-5 text-left backdrop-blur-md"
@@ -351,6 +364,7 @@ export function ChannelPermissionsSheet({
           <ChannelPermissionsBody
             realmId={realmId}
             realmName={realmName}
+            ownerId={ownerId}
             rooms={rooms}
             canModerate={canModerate}
             realmReactionsMode={realmReactionsMode}
@@ -372,6 +386,7 @@ export function ChannelPermissionsSheet({
 export function ChannelPermissionsPanel({
   realmId,
   realmName,
+  ownerId,
   rooms,
   canModerate,
   realmReactionsMode = "everyone",
@@ -394,6 +409,7 @@ export function ChannelPermissionsPanel({
       <ChannelPermissionsBody
         realmId={realmId}
         realmName={realmName}
+        ownerId={ownerId}
         rooms={rooms}
         canModerate={canModerate}
         realmReactionsMode={realmReactionsMode}

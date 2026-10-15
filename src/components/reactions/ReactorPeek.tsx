@@ -135,15 +135,20 @@ export function ReactorPeekProvider({ children }: { children: ReactNode }) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
+    const onScroll = () => close();
+
     document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [peek, close]);
 
-  // Position: above by default, below when there is no room, clamped sideways.
+  // Position: above by default, clamped inside the card, never over the header.
   useEffect(() => {
     if (!peek) return;
     const place = () => {
@@ -153,23 +158,41 @@ export function ReactorPeekProvider({ children }: { children: ReactNode }) {
       const height = panel.offsetHeight;
       const width = panel.offsetWidth;
       const margin = 8;
-      // A chip in the bottom strip of the screen is sitting over the composer:
-      // always render below it so nothing covers the input.
-      const overComposer = window.innerHeight - rect.bottom < 140;
-      const fitsAbove = rect.top - height - margin > margin;
-      const below = overComposer || !fitsAbove;
-      const top = below ? rect.bottom + margin : rect.top - height - margin;
-      const left = Math.min(
-        Math.max(margin, rect.left + rect.width / 2 - width / 2),
-        window.innerWidth - width - margin,
-      );
+
+      const cardEl = peek.anchor.closest("article") || peek.anchor.closest(".feed-post-card");
+      const cardRect = cardEl?.getBoundingClientRect();
+
+      const minTop = cardRect ? cardRect.top + 56 : margin;
+      const maxBottom = cardRect ? cardRect.bottom - margin : window.innerHeight - margin;
+      const minLeft = cardRect ? Math.max(margin, cardRect.left + margin) : margin;
+      const maxRight = cardRect
+        ? Math.min(window.innerWidth - width - margin, cardRect.right - width - margin)
+        : window.innerWidth - width - margin;
+
+      // Position above the chip by default; if that would cover the header or go offscreen, position below
+      let top = rect.top - height - margin;
+      if (top < minTop) {
+        top = rect.bottom + margin;
+      }
+      top = Math.max(minTop, Math.min(top, maxBottom - height));
+
+      let left = rect.left + rect.width / 2 - width / 2;
+      left = Math.max(minLeft, Math.min(left, maxRight));
+
       setPlacement({ opacity: 1, top, left, position: "fixed" });
     };
+
     place();
-    window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && panelRef.current) {
+      ro = new ResizeObserver(() => place());
+      ro.observe(panelRef.current);
+    }
+
     return () => {
-      window.removeEventListener("scroll", place, true);
+      ro?.disconnect();
       window.removeEventListener("resize", place);
     };
   }, [peek]);
@@ -230,6 +253,8 @@ function PeekBody({ target, onClose }: { target: ReactionTarget; onClose: () => 
 
   const reactors = known ?? data?.reactors ?? [];
   const total = known ? known.length : data?.total ?? target.count;
+  const isCompact = total < 4;
+  const skeletonCount = Math.min(Math.max(1, target.count), 4);
   const shown = reactors.slice(0, MAX_SHOWN);
   const others = Math.max(0, total - shown.length);
 
@@ -242,9 +267,9 @@ function PeekBody({ target, onClose }: { target: ReactionTarget; onClose: () => 
         <span className="font-display text-sm font-semibold">{reactionName(target.emoji)}</span>
         <span className="ml-auto font-mono text-[11px] text-muted-foreground">{total}</span>
       </p>
-      <div className="max-h-56 space-y-1 overflow-y-auto">
+      <div className={isCompact ? "space-y-1 overflow-hidden" : "max-h-48 space-y-1 overflow-y-auto pr-1"}>
         {isLoading && !known
-          ? [0, 1, 2].map((row) => (
+          ? Array.from({ length: skeletonCount }).map((_, row) => (
               <div key={row} className="flex items-center gap-2 py-1">
                 <span className="skeleton-shimmer h-6 w-6 shrink-0 rounded-full" />
                 <span className="skeleton-shimmer h-3 w-24 rounded-full" />
@@ -370,7 +395,13 @@ export function useReactorPeek(target: ReactionTarget | null) {
     };
   }
 
+  const isCoarse = () => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(pointer: coarse)").matches;
+  };
+
   const show = (immediate: boolean) => {
+    if (isCoarse()) return; // Never show on touch devices
     const node = anchorRef.current;
     if (node) ctx.open(target, node, immediate || ctx.isOpen);
   };
@@ -378,36 +409,29 @@ export function useReactorPeek(target: ReactionTarget | null) {
   return {
     anchorRef,
     describedBy: ctx.describedBy(key),
-    /** Opens straight away — used by surfaces that run their own long-press. */
-    openNow: () => show(true),
+    openNow: () => {
+      if (!isCoarse()) show(true);
+    },
     close: () => ctx.close(),
     triggerProps: {
       onPointerEnter: (event: ReactPointerEvent) => {
-        if (event.pointerType === "touch") return;
+        if (event.pointerType === "touch" || isCoarse()) return;
         show(false);
       },
       onPointerLeave: (event: ReactPointerEvent) => {
         if (event.pointerType === "touch") return;
         ctx.close();
       },
-      onFocus: () => show(true),
-      onBlur: () => ctx.close(),
-      onTouchStart: () => {
-        clearLongPress();
-        longPressRef.current = setTimeout(() => {
-          peekedRef.current = true;
+      onFocus: (event: React.FocusEvent<HTMLElement>) => {
+        if (isCoarse()) return;
+        // Only trigger on explicit keyboard focus (:focus-visible)
+        if (event.target.matches(":focus-visible")) {
           show(true);
-        }, LONG_PRESS_DELAY);
+        }
       },
-      onTouchEnd: clearLongPress,
-      onTouchMove: clearLongPress,
-      onTouchCancel: clearLongPress,
+      onBlur: () => ctx.close(),
     },
     guardClick: (fn: () => void) => () => {
-      if (peekedRef.current) {
-        peekedRef.current = false;
-        return;
-      }
       fn();
     },
   };

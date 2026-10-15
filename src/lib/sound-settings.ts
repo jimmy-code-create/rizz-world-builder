@@ -77,19 +77,52 @@ function normalize(raw: Partial<SoundSettings> | null | undefined): SoundSetting
   };
 }
 
+let cachedSettings: SoundSettings | null = null;
+let saveStorageTimeout: ReturnType<typeof setTimeout> | null = null;
+let dispatchEventTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function loadSoundSettings(): SoundSettings {
-  if (typeof localStorage === "undefined") return DEFAULT_SOUND_SETTINGS;
-  try {
-    return normalize(JSON.parse(localStorage.getItem(SOUND_SETTINGS_KEY) || "{}") as Partial<SoundSettings>);
-  } catch {
-    return DEFAULT_SOUND_SETTINGS;
+  if (cachedSettings) return cachedSettings;
+  if (typeof localStorage === "undefined") {
+    cachedSettings = DEFAULT_SOUND_SETTINGS;
+    return cachedSettings;
   }
+  try {
+    const raw = localStorage.getItem(SOUND_SETTINGS_KEY);
+    cachedSettings = raw ? normalize(JSON.parse(raw) as Partial<SoundSettings>) : DEFAULT_SOUND_SETTINGS;
+  } catch {
+    cachedSettings = DEFAULT_SOUND_SETTINGS;
+  }
+  return cachedSettings;
 }
 
-export function saveSoundSettings(next: SoundSettings) {
+export function saveSoundSettings(next: SoundSettings, immediate = false): SoundSettings {
   const normalized = normalize(next);
-  if (typeof localStorage !== "undefined") localStorage.setItem(SOUND_SETTINGS_KEY, JSON.stringify(normalized));
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(SOUND_SETTINGS_EVENT));
+  cachedSettings = normalized;
+
+  // Debounce writing to disk so rapid slider dragging doesn't freeze the main thread
+  if (typeof localStorage !== "undefined") {
+    if (saveStorageTimeout) clearTimeout(saveStorageTimeout);
+    saveStorageTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem(SOUND_SETTINGS_KEY, JSON.stringify(normalized));
+      } catch {}
+    }, 200);
+  }
+
+  // Throttle event dispatch to ~50ms so WebAudio gain updates don't lock the thread
+  if (typeof window !== "undefined") {
+    if (immediate) {
+      if (dispatchEventTimeout) clearTimeout(dispatchEventTimeout);
+      dispatchEventTimeout = null;
+      window.dispatchEvent(new Event(SOUND_SETTINGS_EVENT));
+    } else if (!dispatchEventTimeout) {
+      dispatchEventTimeout = setTimeout(() => {
+        dispatchEventTimeout = null;
+        window.dispatchEvent(new Event(SOUND_SETTINGS_EVENT));
+      }, 50);
+    }
+  }
   return normalized;
 }
 
@@ -112,18 +145,26 @@ export function formatVolume(multiplier: number): string {
   return `${Math.round(multiplier * 100)}%`;
 }
 
-/** Live settings + a setter, kept in sync across tabs and components. */
+/** Live settings + a setter, kept in sync across tabs and components without UI lag. */
 export function useSoundSettings(): [SoundSettings, (patch: Partial<SoundSettings>) => SoundSettings] {
   const [settings, setSettings] = useState<SoundSettings>(() => loadSoundSettings());
 
   useEffect(() => {
-    const sync = () => setSettings(loadSoundSettings());
-    window.addEventListener(SOUND_SETTINGS_EVENT, sync);
-    window.addEventListener("storage", sync);
-    sync();
+    const onInternalChange = () => {
+      // Internal sound event: cachedSettings already has the latest in-memory object
+      setSettings(loadSoundSettings());
+    };
+    const onExternalStorage = () => {
+      // External storage change from another tab: invalidate cache and reload
+      cachedSettings = null;
+      setSettings(loadSoundSettings());
+    };
+
+    window.addEventListener(SOUND_SETTINGS_EVENT, onInternalChange);
+    window.addEventListener("storage", onExternalStorage);
     return () => {
-      window.removeEventListener(SOUND_SETTINGS_EVENT, sync);
-      window.removeEventListener("storage", sync);
+      window.removeEventListener(SOUND_SETTINGS_EVENT, onInternalChange);
+      window.removeEventListener("storage", onExternalStorage);
     };
   }, []);
 

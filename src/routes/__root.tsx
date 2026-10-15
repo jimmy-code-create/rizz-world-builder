@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   useLocation,
+  ScrollRestoration,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
@@ -15,6 +16,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactorPeekProvider } from "@/components/reactions/ReactorPeek";
 import { RizzCat } from "@/components/RizzCat";
+import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
@@ -139,6 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  pendingComponent: () => <AppLoader />,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
@@ -148,9 +151,67 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          #boot-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0b0b0c;
+            color: #f2efe6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: opacity 0.25s ease-out;
+            user-select: none;
+            -webkit-user-select: none;
+          }
+          @keyframes boot-bar-slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(300%); }
+          }
+          .boot-bar-fill {
+            animation: boot-bar-slide 1.2s ease-in-out infinite;
+          }
+        `,
+          }}
+        />
       </head>
       <body>
+        <div id="boot-splash" role="status" aria-live="polite">
+          <img src="/brand/rizz-cat-logo.svg" alt="" aria-hidden width="48" height="48" style={{ objectFit: "contain" }} />
+          <div aria-hidden style={{ marginTop: "16px", width: "128px", height: "4px", borderRadius: "9999px", background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+            <div className="boot-bar-fill" style={{ height: "100%", width: "33%", borderRadius: "9999px", background: "#c8ff3d" }} />
+          </div>
+          <p id="boot-status-text" style={{ marginTop: "16px", fontSize: "13px", fontWeight: "600", color: "#a1a1aa", letterSpacing: "0.02em" }}>
+            Waking up the server…
+          </p>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) el.textContent = "Almost ready…";
+            }, 4000);
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) el.textContent = "Waking up server from cold start…";
+            }, 8000);
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) {
+                el.innerHTML = 'Still connecting… <a href="javascript:location.reload()" style="color:#c8ff3d;text-decoration:underline;margin-left:6px;">Tap to retry</a>';
+              }
+            }, 12000);
+          `,
+            }}
+          />
+        </div>
         {children}
+        <ScrollRestoration getKey={(location) => location.pathname} />
         <Scripts />
       </body>
     </html>
@@ -178,6 +239,14 @@ function RizzCompanionLayer() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const splash = document.getElementById("boot-splash");
+    if (splash) {
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 260);
+    }
+  }, []);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;

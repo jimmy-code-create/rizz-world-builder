@@ -51,6 +51,14 @@ export type MessageActionMenuProps = {
   onDoubleTap?: () => void;
   /** Who wrote it and what it says, shown above the actions. */
   preview?: MessageActionPreview;
+  /**
+   * Whether the trigger runs its own long-press timer. Set false when the
+   * parent already detects long-press (e.g. realm rows cover media + avatar
+   * areas the trigger doesn't wrap) — two racing 320ms timers meant double
+   * vibration and double open state per press. Double-tap, context menu and
+   * keyboard still work with this off.
+   */
+  detectPress?: boolean;
 };
 
 type PressOrigin = {
@@ -74,6 +82,7 @@ export function MessageActionMenu({
   reactionBar,
   onDoubleTap,
   preview,
+  detectPress = true,
 }: MessageActionMenuProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<PressOrigin | null>(null);
@@ -110,6 +119,7 @@ export function MessageActionMenu({
     if ((event.target as HTMLElement).closest("button, a, input, textarea, [role='button']")) {
       return;
     }
+    if (!detectPress) return;
 
     clearPress();
     longPressFired.current = false;
@@ -172,19 +182,19 @@ export function MessageActionMenu({
   const select = (action: MessageActionDescriptor) => handleSelect(action);
 
   const previewHeader = preview ? (
-    <div className="mb-1.5 flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.035] p-2">
-      <Avatar className="mt-0.5 h-7 w-7 shrink-0">
+    <div className="mb-2 flex items-start gap-3 rounded-2xl border border-white/10 bg-card p-3 shadow-md">
+      <Avatar className="mt-0.5 h-8 w-8 shrink-0 ring-1 ring-white/15">
         <AvatarImage src={preview.avatarUrl ?? undefined} alt="" />
-        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold text-primary-foreground">
+        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
           {preview.author.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-[11px] font-semibold">
+        <p className="flex items-baseline gap-1.5 text-xs font-semibold text-foreground">
           <span className="truncate">{preview.author}</span>
-          {preview.time && <span className="shrink-0 font-normal text-muted-foreground">{preview.time}</span>}
+          {preview.time && <span className="shrink-0 font-normal text-[10px] text-muted-foreground">{preview.time}</span>}
         </p>
-        <p className="mt-0.5 line-clamp-4 whitespace-pre-wrap break-words text-[12px] leading-snug text-foreground/85">
+        <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/95">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
@@ -197,7 +207,7 @@ export function MessageActionMenu({
           }}
           aria-label="Open this message"
           title="Open this message"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
         >
           <Maximize2 className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -284,10 +294,14 @@ export function MessageActionMenu({
     return (
       <>
         {trigger}
+        {/* The overlay mounts only for the open row: 80 closed portal trees
+            (focus traps, scroll locks, reaction bars) per channel was the
+            long-press jank. Open animation still plays on mount. */}
+        {open ? (
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="glass-strong z-[80] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="glass-strong z-[100] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
@@ -307,6 +321,7 @@ export function MessageActionMenu({
             {actionRows}
           </SheetContent>
         </Sheet>
+        ) : null}
       </>
     );
   }
@@ -314,6 +329,7 @@ export function MessageActionMenu({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      {open ? (
       <PopoverContent
         align={align === "left" ? "start" : "end"}
         side="top"
@@ -348,6 +364,7 @@ export function MessageActionMenu({
         )}
         {actionRows}
       </PopoverContent>
+      ) : null}
     </Popover>
   );
 }

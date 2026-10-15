@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /**
  * Per-person voice control.
  *
@@ -18,19 +20,31 @@ export type PeerAudioState = {
 
 export const DEFAULT_PEER_AUDIO: PeerAudioState = { volumes: {}, muted: [] };
 
+let cachedPeerAudio: PeerAudioState | null = null;
+let savePeerStorageTimeout: ReturnType<typeof setTimeout> | null = null;
+let dispatchPeerEventTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function loadPeerAudio(): PeerAudioState {
-  if (typeof localStorage === "undefined") return DEFAULT_PEER_AUDIO;
+  if (cachedPeerAudio) return cachedPeerAudio;
+  if (typeof localStorage === "undefined") {
+    cachedPeerAudio = DEFAULT_PEER_AUDIO;
+    return cachedPeerAudio;
+  }
   try {
     const raw = localStorage.getItem(PEER_AUDIO_KEY);
-    if (!raw) return DEFAULT_PEER_AUDIO;
+    if (!raw) {
+      cachedPeerAudio = DEFAULT_PEER_AUDIO;
+      return cachedPeerAudio;
+    }
     const parsed = JSON.parse(raw) as Partial<PeerAudioState>;
-    return {
+    cachedPeerAudio = {
       volumes: parsed.volumes && typeof parsed.volumes === "object" ? parsed.volumes : {},
       muted: Array.isArray(parsed.muted) ? parsed.muted : [],
     };
   } catch {
-    return DEFAULT_PEER_AUDIO;
+    cachedPeerAudio = DEFAULT_PEER_AUDIO;
   }
+  return cachedPeerAudio;
 }
 
 export function savePeerAudio(next: PeerAudioState): PeerAudioState {
@@ -42,13 +56,24 @@ export function savePeerAudio(next: PeerAudioState): PeerAudioState {
     ),
     muted: [...new Set(next.muted)],
   };
-  try {
-    localStorage.setItem(PEER_AUDIO_KEY, JSON.stringify(clean));
-  } catch {
-    /* storage unavailable — settings simply don't persist */
+  cachedPeerAudio = clean;
+
+  if (typeof localStorage !== "undefined") {
+    if (savePeerStorageTimeout) clearTimeout(savePeerStorageTimeout);
+    savePeerStorageTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem(PEER_AUDIO_KEY, JSON.stringify(clean));
+      } catch {}
+    }, 200);
   }
+
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(PEER_AUDIO_EVENT, { detail: clean }));
+    if (!dispatchPeerEventTimeout) {
+      dispatchPeerEventTimeout = setTimeout(() => {
+        dispatchPeerEventTimeout = null;
+        window.dispatchEvent(new CustomEvent(PEER_AUDIO_EVENT, { detail: clean }));
+      }, 50);
+    }
   }
   return clean;
 }
@@ -67,6 +92,27 @@ export function togglePeerMute(userId: string): PeerAudioState {
     ? current.muted.filter((id) => id !== userId)
     : [...current.muted, userId];
   return savePeerAudio({ ...current, muted });
+}
+
+/** React hook tracking local peer volume and mute states live without lag. */
+export function usePeerAudio(): PeerAudioState {
+  const [state, setState] = useState<PeerAudioState>(loadPeerAudio);
+  useEffect(() => {
+    const onInternalChange = () => {
+      setState(loadPeerAudio());
+    };
+    const onExternalStorage = () => {
+      cachedPeerAudio = null;
+      setState(loadPeerAudio());
+    };
+    window.addEventListener(PEER_AUDIO_EVENT, onInternalChange);
+    window.addEventListener("storage", onExternalStorage);
+    return () => {
+      window.removeEventListener(PEER_AUDIO_EVENT, onInternalChange);
+      window.removeEventListener("storage", onExternalStorage);
+    };
+  }, []);
+  return state;
 }
 
 /** The 0..1 multiplier call audio should apply for one person. */
