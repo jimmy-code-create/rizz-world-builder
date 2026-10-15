@@ -18,6 +18,7 @@ import {
   setRealmBotEnabled,
   uninstallRealmBot,
 } from "@/lib/bots";
+import { WebhookBotsSection } from "@/components/bots/WebhookBotsSection";
 
 /**
  * Realm → Bots.
@@ -284,6 +285,14 @@ export function RealmBotsSheet({
                 />
               </section>
             )}
+
+            {/* Webhook posting bots (owners/admins) */}
+            <WebhookBotsSection
+              realmId={realmId}
+              realmName={realmName}
+              rooms={rooms}
+              canManage={isOwner || Boolean(canModerate)}
+            />
 
             {/* Per-channel command switches */}
             {(bots.data?.bots ?? []).some((bot) => bot.commands.length > 0) && (

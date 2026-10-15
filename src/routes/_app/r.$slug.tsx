@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Shield, UserMinus, UserX, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -44,6 +44,8 @@ import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
 import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
+import { EmbedList } from "@/components/chat/Embed";
+import type { EmbedData } from "@/lib/embeds";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
@@ -154,6 +156,7 @@ function RealmPage() {
     time: string;
     body: string;
     attachmentUrl: string | null;
+    embeds?: EmbedData[] | null;
   } | null>(null);
   const [botsOpen, setBotsOpen] = useState(false);
   // Slash-command popup: which row is highlighted, and whether Escape dismissed
@@ -301,6 +304,33 @@ function RealmPage() {
   const realmCommands = useRealmSlashCommands(realm.data?.id, slashRoomId);
   // `<@userId>` tokens in any visible message resolve to a username once.
   const mentionLabels = useMentionLabels((messageRows as { body?: string }[]).map((row) => row.body));
+  // Webhook-bot identity rows for messages carrying webhook_bot_id (one query
+  // for the visible list; missing table before the migration => empty map).
+  const webhookBotIds = useMemo(
+    () => [...new Set((messageRows as { webhook_bot_id?: string }[]).map((row) => row.webhook_bot_id).filter(Boolean))] as string[],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [messageRows],
+  );
+  const webhookBots = useQuery({
+    queryKey: ["webhook-bot-rows", webhookBotIds],
+    enabled: webhookBotIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, { name: string; avatar_url: string | null }>> => {
+      try {
+        const { data, error } = await (supabase.from as never)("realm_bots" as never)
+          // @ts-expect-error pending migration table
+          .select("id, name, avatar_url")
+          .in("id", webhookBotIds);
+        if (error) throw error;
+        return Object.fromEntries(
+          ((data ?? []) as Array<{ id: string; name: string; avatar_url: string | null }>).map((b) => [b.id, b]),
+        );
+      } catch {
+        return {};
+      }
+    },
+  });
+  const webhookBotMap = webhookBots.data ?? {};
   const slashQuery = parseSlashCommand(body);
   const slashMatches = slashQuery ? filterSlashCommands(realmCommands.commands, slashQuery.name) : [];
   // The menu only shows while the command word itself is being typed, so the
@@ -902,6 +932,7 @@ function RealmPage() {
               }
             />
           )}
+          {!!viewingMessage?.embeds?.length && <EmbedList embeds={viewingMessage.embeds} />}
           {viewingMessage?.body && (
             <Button
               type="button"
@@ -1234,7 +1265,12 @@ function RealmPage() {
             // bot row instead. Human authors may arrive as `author` or `sender`
             // depending on which query loaded them, so both are accepted.
             const botRow = (m.bot ?? null) as { name: string; avatar_url: string | null } | null;
-            const isBot = !!m.bot_id;
+            // Webhook bots: identity from the per-message override, else the bot row.
+            const webhookMeta = (m.webhook_meta ?? null) as { name?: string; avatar_url?: string } | null;
+            const webhookRow = (m.webhook_bot_id ? webhookBotMap[m.webhook_bot_id] : null) as
+              | { name: string; avatar_url: string | null }
+              | null;
+            const isBot = !!m.bot_id || !!m.webhook_bot_id;
             const authorProfile = (m.author ?? m.sender ?? null) as {
               username: string | null;
               display_name: string | null;
@@ -1242,11 +1278,13 @@ function RealmPage() {
               accent_color?: string | null;
             } | null;
             const authorName = isBot
-              ? botRow?.name ?? "Bot"
+              ? webhookMeta?.name || webhookRow?.name || botRow?.name || "Bot"
               : authorProfile?.display_name || authorProfile?.username || "Member";
-            const authorAvatar = isBot ? botRow?.avatar_url ?? null : authorProfile?.avatar_url ?? null;
+            const authorAvatar = isBot
+              ? webhookMeta?.avatar_url || webhookRow?.avatar_url || botRow?.avatar_url || null
+              : authorProfile?.avatar_url ?? null;
             const authorAccent = isBot ? null : authorProfile?.accent_color ?? null;
-            const authorInitial = (isBot ? botRow?.name ?? "B" : authorProfile?.username ?? "?")
+            const authorInitial = (isBot ? authorName : authorProfile?.username ?? "?")
               .charAt(0)
               .toUpperCase();
             // Realm names use the shared palette (or the author's own accent),
@@ -1262,6 +1300,7 @@ function RealmPage() {
                 time: new Date(m.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
                 body: m.body ?? "",
                 attachmentUrl: m.attachment_url ?? null,
+                embeds: (m.embeds ?? null) as EmbedData[] | null,
               });
             const previous = messageRows[index - 1];
             const startsGroup = !previous ||
@@ -1615,6 +1654,8 @@ function RealmPage() {
                         )
                       );
                     })}
+                    {/* Webhook-bot embed cards sit under any text content. */}
+                    <EmbedList embeds={(m.embeds ?? null) as EmbedData[] | null} />
                   </div>
                 </MessageActionMenu>
                 {/* Rich payloads: polls and queued tracks carry their own card. */}

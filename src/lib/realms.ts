@@ -24,6 +24,11 @@ export type RealmMessage = {
   /** Set only on a bot message. */
   bot_id?: string | null;
   bot?: { id: string; name: string; avatar_url: string | null; is_builtin: boolean } | null;
+  /** Set only on a realm webhook-bot message (pending migration column). */
+  webhook_bot_id?: string | null;
+  webhook_meta?: { name?: string; avatar_url?: string } | null;
+  /** Discord-style embed cards (pending migration column, max 10). */
+  embeds?: import("@/lib/embeds").EmbedData[] | null;
   body: string;
   created_at: string;
   reply_to: string | null;
