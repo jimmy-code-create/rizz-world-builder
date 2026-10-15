@@ -20,19 +20,30 @@ export type PeerAudioState = {
 
 export const DEFAULT_PEER_AUDIO: PeerAudioState = { volumes: {}, muted: [] };
 
+let cachedPeerAudio: PeerAudioState | null = null;
+let savePeerStorageTimeout: any = null;
+
 export function loadPeerAudio(): PeerAudioState {
-  if (typeof localStorage === "undefined") return DEFAULT_PEER_AUDIO;
+  if (cachedPeerAudio) return cachedPeerAudio;
+  if (typeof localStorage === "undefined") {
+    cachedPeerAudio = DEFAULT_PEER_AUDIO;
+    return cachedPeerAudio;
+  }
   try {
     const raw = localStorage.getItem(PEER_AUDIO_KEY);
-    if (!raw) return DEFAULT_PEER_AUDIO;
+    if (!raw) {
+      cachedPeerAudio = DEFAULT_PEER_AUDIO;
+      return cachedPeerAudio;
+    }
     const parsed = JSON.parse(raw) as Partial<PeerAudioState>;
-    return {
+    cachedPeerAudio = {
       volumes: parsed.volumes && typeof parsed.volumes === "object" ? parsed.volumes : {},
       muted: Array.isArray(parsed.muted) ? parsed.muted : [],
     };
   } catch {
-    return DEFAULT_PEER_AUDIO;
+    cachedPeerAudio = DEFAULT_PEER_AUDIO;
   }
+  return cachedPeerAudio;
 }
 
 export function savePeerAudio(next: PeerAudioState): PeerAudioState {
@@ -44,11 +55,17 @@ export function savePeerAudio(next: PeerAudioState): PeerAudioState {
     ),
     muted: [...new Set(next.muted)],
   };
-  try {
-    localStorage.setItem(PEER_AUDIO_KEY, JSON.stringify(clean));
-  } catch {
-    /* storage unavailable — settings simply don't persist */
+  cachedPeerAudio = clean;
+
+  if (typeof localStorage !== "undefined") {
+    if (savePeerStorageTimeout) clearTimeout(savePeerStorageTimeout);
+    savePeerStorageTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem(PEER_AUDIO_KEY, JSON.stringify(clean));
+      } catch {}
+    }, 150);
   }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(PEER_AUDIO_EVENT, { detail: clean }));
   }
@@ -75,7 +92,10 @@ export function togglePeerMute(userId: string): PeerAudioState {
 export function usePeerAudio(): PeerAudioState {
   const [state, setState] = useState<PeerAudioState>(loadPeerAudio);
   useEffect(() => {
-    const refresh = () => setState(loadPeerAudio());
+    const refresh = () => {
+      cachedPeerAudio = null;
+      setState(loadPeerAudio());
+    };
     window.addEventListener(PEER_AUDIO_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {

@@ -189,6 +189,7 @@ function RealmSettingsPage() {
             <PermissionsSection
               realmId={payload.realm.id}
               realmName={payload.realm.name}
+              ownerId={payload.realm.owner_id}
               reactionsMode={(payload.realm as { reactions_mode?: ReactionsMode | null }).reactions_mode ?? "everyone"}
               // The server rule is role-based (is_realm_moderator), not the
               // per-role switches above, so owner and mod both get the toggles.
@@ -527,11 +528,13 @@ function RolesSection({
 function PermissionsSection({
   realmId,
   realmName,
+  ownerId,
   reactionsMode,
   canManage,
 }: {
   realmId: string;
   realmName: string;
+  ownerId?: string | null;
   reactionsMode: ReactionsMode;
   canManage: boolean;
 }) {
@@ -541,6 +544,7 @@ function PermissionsSection({
     <ChannelPermissionsPanel
       realmId={realmId}
       realmName={realmName}
+      ownerId={ownerId}
       rooms={(rooms.data ?? []) as RealmRoom[]}
       canModerate={canManage}
       realmReactionsMode={reactionsMode}

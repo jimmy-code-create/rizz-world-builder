@@ -817,6 +817,7 @@ function RealmPage() {
         onOpenChange={setPermissionsOpen}
         realmId={c.id}
         realmName={c.name}
+        ownerId={c.owner_id}
         rooms={rooms.data ?? []}
         canModerate={canModerate}
         realmReactionsMode={(c.reactions_mode ?? "everyone") as "everyone" | "mods"}
@@ -1393,39 +1394,50 @@ function RealmPage() {
                   ]}
                 >
                   <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
-                    {renderGifSegments(m.body).map((seg, si) =>
-                      seg.isGif || seg.isSticker
-                        ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                        : splitEmojiSegments(seg.value, emojiNames).map((part, xi) =>
-                            part.name ? (
-                              <img
-                                key={`${si}-${xi}`}
-                                src={emojiByName.get(part.name)}
-                                alt={part.name}
-                                title={`:${part.name}:`}
-                                className="inline-block h-7 w-7 align-middle mx-0.5 object-contain"
-                              />
-                            ) : (
-                              <MarkdownText
-                                key={`${si}-${xi}`}
-                                text={part.text}
-                                renderPlainText={(plain) =>
-                                  renderCaptionWithTags(plain).map((p, pi) =>
-                                    p.mentionToken
-                                      ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                      : p.mention
-                                      ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
-                                      : p.tag
-                                        ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                                        : p.url
-                                          ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
-                                          : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
-                                  )
-                                }
-                              />
-                            )
-                          )
-                    )}
+                    {renderGifSegments(m.body).map((seg, si) => {
+                      if (seg.isGif || seg.isSticker) {
+                        return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
+                      }
+                      const parts = splitEmojiSegments(seg.value, emojiNames);
+                      const hasText = parts.some((p) => !p.name && p.text && p.text.trim().length > 0);
+                      const emojiCount = parts.filter((p) => p.name).length;
+                      const isJumboji = !hasText && emojiCount > 0;
+                      const emojiClass = isJumboji
+                        ? (emojiCount <= 3
+                            ? "inline-block h-12 w-12 align-middle mx-1 my-0.5 object-contain"
+                            : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain")
+                        : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
+
+                      return parts.map((part, xi) =>
+                        part.name ? (
+                          <img
+                            key={`${si}-${xi}`}
+                            src={emojiByName.get(part.name)}
+                            alt={part.name}
+                            title={`:${part.name}:`}
+                            className={emojiClass}
+                          />
+                        ) : (
+                          <MarkdownText
+                            key={`${si}-${xi}`}
+                            text={part.text}
+                            renderPlainText={(plain) =>
+                              renderCaptionWithTags(plain).map((p, pi) =>
+                                p.mentionToken
+                                  ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                  : p.mention
+                                  ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
+                                  : p.tag
+                                    ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
+                                    : p.url
+                                      ? <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
+                                      : <span key={`${si}-${xi}-${pi}`}>{p.text}</span>
+                              )
+                            }
+                          />
+                        )
+                      );
+                    })}
                   </div>
                 </MessageActionMenu>
                 {/* Rich payloads: polls and queued tracks carry their own card. */}

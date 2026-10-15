@@ -77,18 +77,37 @@ function normalize(raw: Partial<SoundSettings> | null | undefined): SoundSetting
   };
 }
 
+let cachedSettings: SoundSettings | null = null;
+let saveStorageTimeout: any = null;
+
 export function loadSoundSettings(): SoundSettings {
-  if (typeof localStorage === "undefined") return DEFAULT_SOUND_SETTINGS;
-  try {
-    return normalize(JSON.parse(localStorage.getItem(SOUND_SETTINGS_KEY) || "{}") as Partial<SoundSettings>);
-  } catch {
-    return DEFAULT_SOUND_SETTINGS;
+  if (cachedSettings) return cachedSettings;
+  if (typeof localStorage === "undefined") {
+    cachedSettings = DEFAULT_SOUND_SETTINGS;
+    return cachedSettings;
   }
+  try {
+    cachedSettings = normalize(JSON.parse(localStorage.getItem(SOUND_SETTINGS_KEY) || "{}") as Partial<SoundSettings>);
+  } catch {
+    cachedSettings = DEFAULT_SOUND_SETTINGS;
+  }
+  return cachedSettings;
 }
 
 export function saveSoundSettings(next: SoundSettings) {
   const normalized = normalize(next);
-  if (typeof localStorage !== "undefined") localStorage.setItem(SOUND_SETTINGS_KEY, JSON.stringify(normalized));
+  cachedSettings = normalized;
+
+  // Debounce writing to disk so rapid slider dragging doesn't freeze the main thread
+  if (typeof localStorage !== "undefined") {
+    if (saveStorageTimeout) clearTimeout(saveStorageTimeout);
+    saveStorageTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem(SOUND_SETTINGS_KEY, JSON.stringify(normalized));
+      } catch {}
+    }, 150);
+  }
+
   if (typeof window !== "undefined") window.dispatchEvent(new Event(SOUND_SETTINGS_EVENT));
   return normalized;
 }
@@ -117,10 +136,12 @@ export function useSoundSettings(): [SoundSettings, (patch: Partial<SoundSetting
   const [settings, setSettings] = useState<SoundSettings>(() => loadSoundSettings());
 
   useEffect(() => {
-    const sync = () => setSettings(loadSoundSettings());
+    const sync = () => {
+      cachedSettings = null; // force reload from storage if external event fired
+      setSettings(loadSoundSettings());
+    };
     window.addEventListener(SOUND_SETTINGS_EVENT, sync);
     window.addEventListener("storage", sync);
-    sync();
     return () => {
       window.removeEventListener(SOUND_SETTINGS_EVENT, sync);
       window.removeEventListener("storage", sync);

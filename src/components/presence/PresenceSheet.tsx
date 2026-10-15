@@ -23,7 +23,26 @@ const EXPIRY_OPTIONS = [
   { value: "never", label: "Never" },
 ] as const;
 
-const QUICK_EMOJI = ["🔥", "🎧", "💤", "🍿", "💪", "📚", "🎮", "✨"];
+const EMOJI_CATEGORIES = [
+  {
+    name: "RIZZ Vibes",
+    emojis: ["🔥", "✨", "⚡", "👑", "💯", "💀", "🤙", "😎", "🐱", "💖", "🏆", "👾", "💫", "🚀", "🍕", "☕", "🌿", "🎉"],
+  },
+  {
+    name: "Cats & Rizz",
+    emojis: ["🐱", "🐈", "🐾", "😸", "😹", "😻", "😽", "😼", "🙀", "😿", "😾", "🦁", "🦊", "🐼", "🐸", "🦄"],
+  },
+  {
+    name: "Moods",
+    emojis: ["😊", "😎", "🥳", "😴", "🤔", "🥹", "😤", "🤯", "🤩", "🫡", "🫠", "👀", "🤐", "😇", "😈", "🥶", "😴", "🤤"],
+  },
+  {
+    name: "Activity",
+    emojis: ["🎧", "🎮", "💻", "📚", "⚽", "🏋️", "🛹", "🎨", "🍿", "🍕", "☕", "🏖️", "🚲", "🎤", "🎬", "🎸", "🥊", "🏊"],
+  },
+];
+
+const QUICK_EMOJI = ["🔥", "🎧", "💤", "🍿", "💪", "📚", "🎮", "✨", "👑", "🐱", "💀", "⚡"];
 
 // Online = dot, Idle = moon, Do not disturb = crossed-out phone (it mutes the
 // ping and the ringer), Invisible = grey ring.
@@ -54,6 +73,8 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const [emoji, setEmoji] = useState("");
   const [text, setText] = useState("");
   const [expiry, setExpiry] = useState<(typeof EXPIRY_OPTIONS)[number]["value"]>("1h");
+  const [showAllEmojis, setShowAllEmojis] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(0);
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef<number | null>(null);
 
@@ -253,14 +274,19 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
         ) : (
           <div className="mt-3 space-y-3 rounded-[10px] border border-border bg-card p-3">
             <div className="flex items-center gap-2">
-              <Input
-                value={emoji}
-                onChange={(event) => setEmoji(event.target.value)}
-                maxLength={16}
-                placeholder="🔥"
-                aria-label="Status emoji"
-                className="h-12 w-16 shrink-0 text-center text-lg"
-              />
+              <button
+                type="button"
+                onClick={() => setShowAllEmojis((prev) => !prev)}
+                aria-label="Pick emoji"
+                title="Pick emoji"
+                className={`grid h-12 w-14 shrink-0 place-items-center rounded-xl border transition-all text-xl ${
+                  showAllEmojis
+                    ? "border-primary bg-primary/15 shadow-sm"
+                    : "border-white/10 glass hover:border-white/20"
+                }`}
+              >
+                {emoji || "🔥"}
+              </button>
               <Input
                 value={text}
                 onChange={(event) => setText(event.target.value)}
@@ -271,19 +297,87 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               />
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
+            {/* Quick Emojis strip */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
               {QUICK_EMOJI.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setEmoji(value)}
-                  className="grid h-10 w-10 place-items-center rounded-xl border border-white/5 text-lg hover:bg-white/5"
+                  onClick={() => {
+                    setEmoji(value);
+                  }}
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-base transition-colors ${
+                    emoji === value
+                      ? "border-primary bg-primary/20 scale-105"
+                      : "border-white/5 hover:bg-white/10"
+                  }`}
                   aria-label={`Use ${value}`}
                 >
                   {value}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setShowAllEmojis((s) => !s)}
+                className={`h-9 px-2.5 shrink-0 rounded-xl border text-xs font-semibold transition-colors flex items-center gap-1 ${
+                  showAllEmojis ? "border-primary bg-primary text-primary-foreground" : "border-white/10 glass text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Smile className="h-3.5 w-3.5" />
+                <span>More</span>
+              </button>
             </div>
+
+            {/* Expanded Emoji Drawer with RIZZ categories */}
+            {showAllEmojis && (
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-3 space-y-2.5 animate-in fade-in-0 duration-150">
+                <div className="flex gap-1 overflow-x-auto no-scrollbar border-b border-white/10 pb-1.5">
+                  {EMOJI_CATEGORIES.map((cat, idx) => (
+                    <button
+                      key={cat.name}
+                      type="button"
+                      onClick={() => setActiveCategory(idx)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                        activeCategory === idx
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-6 gap-1 max-h-36 overflow-y-auto pr-0.5">
+                  {EMOJI_CATEGORIES[activeCategory].emojis.map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => {
+                        setEmoji(em);
+                        setShowAllEmojis(false);
+                      }}
+                      className={`grid h-10 w-full place-items-center rounded-xl text-lg hover:bg-white/10 active:scale-95 transition-transform ${
+                        emoji === em ? "bg-primary/20 ring-1 ring-primary" : ""
+                      }`}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] text-muted-foreground">
+                  <span>Tap any emoji to set</span>
+                  {emoji && (
+                    <button
+                      type="button"
+                      onClick={() => setEmoji("")}
+                      className="text-destructive hover:underline font-medium"
+                    >
+                      Clear emoji
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-2">
               <Label className="text-xs text-muted-foreground">{text.length}/60</Label>
