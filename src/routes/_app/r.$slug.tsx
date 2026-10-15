@@ -1450,8 +1450,10 @@ function RealmPage() {
                   align={mine ? "right" : "left"}
                   // The quick bar mirrors the channel's reaction policy; the RPC
                   // and its trigger enforce it again server-side.
-                  reactionBar={canAddReactions ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
+                  // A message that has not been saved yet has no id to react to.
+                  reactionBar={canAddReactions && !String(m.id).startsWith("pending-") ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
                   onDoubleTap={() => {
+                    if (String(m.id).startsWith("pending-")) return;
                     burstOverMessage(m.id, DOUBLE_TAP_REACTION);
                     reactionHaptic();
                     void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
