@@ -835,7 +835,7 @@ function RealmPage() {
         realmName={c.name}
         ownerId={c.owner_id}
         rooms={rooms.data ?? []}
-        canModerate={canModerate}
+        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
         realmReactionsMode={(c.reactions_mode ?? "everyone") as "everyone" | "mods"}
       />
 
@@ -846,6 +846,7 @@ function RealmPage() {
         realmName={c.name}
         rooms={(rooms.data ?? []) as RealmRoom[]}
         isOwner={myRole === "owner" || c.owner_id === user?.id}
+        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
       />
 
       {/* One message, full size: opened from "View message" in the long-press
