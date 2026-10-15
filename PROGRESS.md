@@ -166,3 +166,10 @@
 
 ### Phase 26: Image uploads in posts
 - [x] Composer image button (preview + remove + uploading state, 50MB/type guards); backend + feed already supported images, only the picker was missing; image-only posts allowed - **DONE**
+
+### Phase 27: Custom badge art, Discord-style display
+- [x] Five hand-drawn SVG badge icons (crown, clapperboard, mic, bolt, verified seal) with tier glows — no prompt emojis, no generic lucide; rendered via `CustomBadgeArt` everywhere badges show (rows, card pills + sheet, award preview, Main Character chip) with tooltips like Discord - **DONE**
+- [x] Migration + PGlite test updated to art keys and re-proven
+
+### Phase 28: Badge share image
+- [x] Share button now generates a branded 1080x1350 PNG (near-black, lime accents, tier glow, app fonts via `document.fonts`, rasterized live badge SVG, avatar + name + @handle + unlocked date) — Web Share with file on mobile, download fallback; user-cancel silently ignored - **DONE**

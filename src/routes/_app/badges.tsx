@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllBadges, fetchUserBadges, type Badge } from "@/lib/badges";
+import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
 import { BADGE_SET, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
 import { BadgeChip } from "@/components/BadgeChip";
 import { BadgeIcon } from "@/components/BadgeIcon";
+import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
 import { Award, Lock, Sparkles, CheckCircle2, Search, Trophy, ShieldCheck, Share2 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,12 @@ export const Route = createFileRoute("/_app/badges")({
 type FilterTab = "all" | "unlocked" | "locked" | "legendary" | "epic" | "rare" | "common";
 
 export function BadgesPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const all = useQuery({ queryKey: ["badges-all"], queryFn: fetchAllBadges });
   const mine = useQuery({
     queryKey: ["badges-mine", user?.id],
-    queryFn: () => fetchUserBadges(user!.id),
+    queryFn: () => fetchUserBadgesWithDates(user!.id),
     enabled: !!user,
   });
 
@@ -87,7 +88,11 @@ export function BadgesPage() {
     }
   };
 
-  const owned = useMemo(() => new Set((mine.data ?? []).map((b) => b.id)), [mine.data]);
+  const owned = useMemo(() => new Set((mine.data ?? []).map((r) => r.badge.id)), [mine.data]);
+  const awardedAtFor = useMemo(
+    () => new Map((mine.data ?? []).map((r) => [r.badge.slug, r.awardedAt])),
+    [mine.data],
+  );
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -119,10 +124,30 @@ export function BadgesPage() {
     });
   }, [all.data, owned, filter, search]);
 
-  const copyBadgeLink = () => {
-    if (typeof window !== "undefined" && active) {
-      navigator.clipboard.writeText(`${window.location.origin}/badges`);
-      toast.success("Badge showcase link copied");
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async () => {
+    if (!active || sharing) return;
+    setSharing(true);
+    try {
+      const blob = await buildBadgeSharePng({
+        badgeName: active.name,
+        flavor: active.description,
+        slug: active.slug,
+        tier: active.rarity,
+        glow: active.color,
+        unlockedAt: isActiveOwned ? (awardedAtFor.get(active.slug) ?? null) : null,
+        displayName: profile?.display_name || profile?.username || "RIZZ member",
+        username: profile?.username || "member",
+        avatarUrl: profile?.avatar_url ?? null,
+      });
+      const result = await shareBadgePng(blob, `rizz-badge-${active.slug}.png`);
+      toast.success(result === "shared" ? "Badge shared" : "Badge image downloaded");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error(error instanceof Error ? error.message : "Couldn't make the image");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -288,7 +313,9 @@ export function BadgesPage() {
               <div className="flex flex-col items-center text-center py-4 space-y-3">
                 <div className="scale-125 my-2">
                   {isActiveOwned ? (
-                    <BadgeChip badge={active} size="lg" />
+                    <span data-badge-art className="inline-flex">
+                      <BadgeChip badge={active} size="lg" />
+                    </span>
                   ) : (
                     <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-lg">
                       <Lock className="h-6 w-6 text-muted-foreground" />
@@ -343,11 +370,12 @@ export function BadgesPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={copyBadgeLink}
-                  className="w-full gap-2 border-white/10 bg-white/[0.04] text-xs h-10 hover:bg-white/[0.08]"
+                  disabled={sharing}
+                  onClick={() => void handleShare()}
+                  className="w-full gap-2 border-white/10 bg-white/[0.04] text-xs h-10 hover:bg-white/[0.08] disabled:opacity-60"
                 >
                   <Share2 className="h-3.5 w-3.5" />
-                  Share
+                  {sharing ? "Making image…" : "Share"}
                 </Button>
                 {isActiveOwned && (
                   <Button
@@ -389,7 +417,7 @@ export function BadgesPage() {
                 style={{ boxShadow: `0 0 24px ${glow}22` }}
               >
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
-                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} glow={glow} size={30} />
+                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} slug={entry.slug} glow={glow} size={30} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">
