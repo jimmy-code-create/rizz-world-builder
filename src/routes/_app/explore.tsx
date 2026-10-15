@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Flame, Hash, Clock, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
+import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { fetchTrendingTags } from "@/lib/hashtags";
@@ -147,11 +148,10 @@ function ExplorePage() {
         <h2 className="font-display font-semibold text-base mb-2.5 text-foreground">Top creators</h2>
         <div className="space-y-2">
           {search.data?.map((p) => (
-            <Link
+            <ProfilePreviewTrigger
               key={p.id}
-              to="/u/$username"
-              params={{ username: p.username }}
-              className="rounded-xl p-3 flex min-h-[56px] items-center gap-3 hover:bg-surface-2 border border-border bg-card transition-colors"
+              username={p.username}
+              className="rounded-xl p-3 flex min-h-[56px] w-full items-center gap-3 hover:bg-surface-2 border border-border bg-card transition-colors text-left"
             >
               <InteractiveAvatar
                 src={p.avatar_url}
@@ -168,7 +168,7 @@ function ExplorePage() {
                 <p className="text-[11px] text-muted-foreground">Rizz</p>
                 <p className="font-display font-bold text-sm text-primary">{formatNumber(p.rizz_score)}</p>
               </div>
-            </Link>
+            </ProfilePreviewTrigger>
           ))}
         </div>
       </section>

@@ -50,6 +50,11 @@
 - [x] Leaderboard upgrade: skeleton loaders, error retry, empty state, refresh button, self-rank banner + YOU badge, top-3 medals, tie-break ordering, tap-any-row profile card (`src/routes/_app/leaderboard.tsx`) - **DONE**
 - [x] Onboarding: live username availability, display-name field, reserved-name blocklist, late-profile avatar sync, invite-link honored after tutorial, skip keeps picked cat (`src/routes/claim.tsx`, `src/routes/tutorial.tsx`) - **DONE**
 
+### Phase 9: Top Rizz Podium + Discord Profile Card (backend proposed, not applied)
+- [x] Leaderboard redesign: podium top-3 (crown center), uniform rank-4+ rows, Today/Week/All-time tabs, Everyone/Following filter, sticky "You're #N · X to pass @user" bar with scroll-to-me, rank ▲▼ arrows, >0 rizz only, How-to-earn sheet, infinite scroll 50/page, skeleton, pull-to-refresh, realtime top-10 (`src/lib/leaderboard.ts`, `src/routes/_app/leaderboard.tsx`) - **DONE (UI; period boards need migration)**
+- [x] Discord profile card: single `<ProfileCard userId>` (banner, presence dot, pronouns, status line, tappable badges, bio/member-since, score/rank/followers/following, mutuals, Message/Follow/Call + Copy/Block/Report/Mute menu, View full profile, Edit own, blocked/deleted states), tapped from leaderboard/feed/reels/comments/chat/explore/notifications (`src/components/profile/ProfileCard.tsx`, `src/components/ProfilePreview.tsx`, `src/components/realms/RealmProfilePreviewDialog.tsx`, `src/routes/_app/reels.tsx`, `src/routes/_app/explore.tsx`, `src/routes/_app/notifications.tsx`) - **DONE (RPC-first, direct-query fallback)**
+- [ ] DB migration (ASKED, NOT APPLIED): `supabase/migrations/20261020000000_rizz_events.sql` (rizz_events + award_rizz + get_leaderboard, RLS no-client-write, index on (created_at, user_id)) and `20261020010000_profile_card.sql` (pronouns/status_text/badges columns + get_profile_card) - **WAITING FOR OK**
+
 ---
 
 ## Discord-Style Polish (5 Tasks)

@@ -87,7 +87,10 @@ export function ProfilePreviewDialog({
         )}
         {p && (
           <ProfileCard
-            user={{ userId: p.id, username: p.username, displayName: p.display_name, avatarUrl: p.avatar_url }}
+            userId={p.id}
+            username={p.username}
+            displayName={p.display_name}
+            avatarUrl={p.avatar_url}
             onOpenChange={onOpenChange}
           />
         )}
