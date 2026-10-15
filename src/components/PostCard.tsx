@@ -650,12 +650,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      <footer className="flex h-11 items-center gap-1 px-3 border-t border-white/5 mt-1">
+      <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-white/5 mt-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
-          className={`h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 ${liked ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-8 px-2.5 relative gap-1.5 rounded-full touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
@@ -669,7 +669,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
             setShowComments((s) => !s);
           }}
-          className="h-9 min-h-[44px] min-w-[44px] px-2.5 relative gap-1.5 text-muted-foreground"
+          className="h-8 px-2.5 relative gap-1.5 rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0"
         >
           <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
@@ -677,7 +677,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <PostCommentsButton postId={post.id} />
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground" aria-label="React to post">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1" aria-label="React to post">
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -702,7 +702,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => bookmarkMut.mutate()}
-          className={`h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative ${saved ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-8 w-8 p-0 relative rounded-full touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1 ${saved ? "text-primary" : "text-muted-foreground"}`}
           aria-label="Save post"
         >
           <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
@@ -711,7 +711,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={sharePost}
-          className="h-9 w-9 min-h-[44px] min-w-[44px] p-0 relative text-muted-foreground"
+          className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
           aria-label="Share post"
         >
           <Share2 className="h-4 w-4" />

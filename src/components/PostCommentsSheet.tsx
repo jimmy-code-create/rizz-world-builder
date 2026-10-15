@@ -422,7 +422,7 @@ export function PostCommentsButton({ postId }: { postId: string }) {
         size="icon"
         onClick={() => setOpen(true)}
         aria-label="Open the full-screen comments page"
-        className="text-muted-foreground"
+        className="h-8 w-8 text-muted-foreground rounded-full relative touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
       >
         <Maximize2 className="h-4 w-4" />
       </Button>
