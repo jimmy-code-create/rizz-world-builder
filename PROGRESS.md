@@ -173,3 +173,6 @@
 
 ### Phase 28: Badge share image
 - [x] Share button now generates a branded 1080x1350 PNG (near-black, lime accents, tier glow, app fonts via `document.fonts`, rasterized live badge SVG, avatar + name + @handle + unlocked date) — Web Share with file on mobile, download fallback; user-cancel silently ignored - **DONE**
+
+### Phase 29: One loading screen
+- [x] Single `AppLoader` (brand mark + lime bar, reduced-motion safe) for the auth gate + both route transitions; ambient lazy chunks already mount with null fallbacks; orphaned mascot splash deleted - **DONE**

@@ -30,7 +30,7 @@ import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
-import { LimeCatSplash } from "@/components/LimeCatSplash";
+import { AppLoader } from "@/components/AppLoader";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
@@ -206,7 +206,7 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return <LimeCatSplash />;
+    return <AppLoader />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
