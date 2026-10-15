@@ -1308,6 +1308,7 @@ export type Database = {
           bot_id: string | null
           card: Json | null
           created_at: string
+          embeds: Json | null
           id: string
           parent_id: string | null
           realm_id: string
@@ -1317,6 +1318,8 @@ export type Database = {
           sender_id: string | null
           system: boolean
           thread_root: string | null
+          webhook_bot_id: string | null
+          webhook_meta: Json | null
         }
         Insert: {
           attachment_url?: string | null
@@ -1324,6 +1327,7 @@ export type Database = {
           bot_id?: string | null
           card?: Json | null
           created_at?: string
+          embeds?: Json | null
           id?: string
           parent_id?: string | null
           realm_id: string
@@ -1333,6 +1337,8 @@ export type Database = {
           sender_id?: string | null
           system?: boolean
           thread_root?: string | null
+          webhook_bot_id?: string | null
+          webhook_meta?: Json | null
         }
         Update: {
           attachment_url?: string | null
@@ -1340,6 +1346,7 @@ export type Database = {
           bot_id?: string | null
           card?: Json | null
           created_at?: string
+          embeds?: Json | null
           id?: string
           parent_id?: string | null
           realm_id?: string
@@ -1349,6 +1356,8 @@ export type Database = {
           sender_id?: string | null
           system?: boolean
           thread_root?: string | null
+          webhook_bot_id?: string | null
+          webhook_meta?: Json | null
         }
         Relationships: [
           {
@@ -1398,6 +1407,13 @@ export type Database = {
             columns: ["thread_root"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_webhook_bot_id_fkey"
+            columns: ["webhook_bot_id"]
+            isOneToOne: false
+            referencedRelation: "realm_bots"
             referencedColumns: ["id"]
           },
         ]
@@ -2108,14 +2124,17 @@ export type Database = {
         Row: {
           accent_color: string | null
           avatar_url: string | null
+          badges: string[]
           banner_url: string | null
           bio: string | null
           created_at: string
           display_name: string | null
           id: string
           interests: string[]
+          pronouns: string | null
           reduced_motion: boolean
           rizz_score: number
+          status_text: string | null
           theme_mode: string
           theme_preset: string
           trial_active: boolean
@@ -2128,14 +2147,17 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           avatar_url?: string | null
+          badges?: string[]
           banner_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           id: string
           interests?: string[]
+          pronouns?: string | null
           reduced_motion?: boolean
           rizz_score?: number
+          status_text?: string | null
           theme_mode?: string
           theme_preset?: string
           trial_active?: boolean
@@ -2148,14 +2170,17 @@ export type Database = {
         Update: {
           accent_color?: string | null
           avatar_url?: string | null
+          badges?: string[]
           banner_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           interests?: string[]
+          pronouns?: string | null
           reduced_motion?: boolean
           rizz_score?: number
+          status_text?: string | null
           theme_mode?: string
           theme_preset?: string
           trial_active?: boolean
@@ -2448,6 +2473,90 @@ export type Database = {
           },
           {
             foreignKeyName: "realm_bot_installs_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_bot_rate_limits: {
+        Row: {
+          bot_id: string
+          used: number
+          window_started_at: string
+        }
+        Insert: {
+          bot_id: string
+          used?: number
+          window_started_at?: string
+        }
+        Update: {
+          bot_id?: string
+          used?: number
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_bot_rate_limits_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: true
+            referencedRelation: "realm_bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realm_bots: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          default_room_id: string | null
+          id: string
+          name: string
+          realm_id: string
+          revoked: boolean
+          token_hash: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          default_room_id?: string | null
+          id?: string
+          name: string
+          realm_id: string
+          revoked?: boolean
+          token_hash: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          default_room_id?: string | null
+          id?: string
+          name?: string
+          realm_id?: string
+          revoked?: boolean
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realm_bots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bots_default_room_id_fkey"
+            columns: ["default_room_id"]
+            isOneToOne: false
+            referencedRelation: "realm_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realm_bots_realm_id_fkey"
             columns: ["realm_id"]
             isOneToOne: false
             referencedRelation: "realms"
@@ -4019,6 +4128,38 @@ export type Database = {
           },
         ]
       }
+      rizz_events: {
+        Row: {
+          created_at: string
+          id: number
+          points: number
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          points: number
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          points?: number
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rizz_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           author_id: string
@@ -4485,6 +4626,10 @@ export type Database = {
         Args: { _slug: string; _user: string }
         Returns: undefined
       }
+      award_rizz: {
+        Args: { _points: number; _reason: string; _user_id: string }
+        Returns: undefined
+      }
       ban_realm_member: {
         Args: { _realm_id: string; _reason?: string; _user_id: string }
         Returns: undefined
@@ -4521,6 +4666,10 @@ export type Database = {
         Returns: boolean
       }
       can_manage_realm_bots: {
+        Args: { _realm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_realm_webhook_bots: {
         Args: { _realm_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4694,6 +4843,24 @@ export type Database = {
           topic: string
         }[]
       }
+      get_leaderboard: {
+        Args: {
+          _following_only?: boolean
+          _limit?: number
+          _offset?: number
+          _period?: string
+          _viewer?: string
+        }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          prev_rank: number
+          rank: number
+          score: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_post_counts: {
         Args: { _post_ids: string[] }
         Returns: {
@@ -4701,6 +4868,10 @@ export type Database = {
           like_count: number
           post_id: string
         }[]
+      }
+      get_profile_card: {
+        Args: { _user_id: string; _viewer?: string }
+        Returns: Json
       }
       has_role: {
         Args: {
