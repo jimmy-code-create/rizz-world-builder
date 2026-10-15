@@ -1449,6 +1449,8 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-paper) 5%, transparent);
 }
 .feed-post-card > footer > button {
+  height: 2rem;
+  min-height: 2rem;
   border-radius: 9999px;
   transition:
     background-color 160ms ease,

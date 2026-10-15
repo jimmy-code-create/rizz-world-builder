@@ -44,6 +44,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
+import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
@@ -996,18 +997,26 @@ function DMPage() {
                           {renderGifSegments(rest).map((seg, si) =>
                             seg.isGif || seg.isSticker
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                              : renderCaptionWithTags(seg.value).map((p, pi) =>
-                                  p.mentionToken
-                                    ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                    : p.mention
-                                      // The bubble itself is a button, so a tap on a link must not
-                                      // also toggle the message actions popover.
-                                      ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                      : p.tag
-                                        ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
-                                        : p.url
-                                          ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                          : <span key={`${si}-${pi}`}>{p.text}</span>
+                              : (
+                                <MarkdownText
+                                  key={si}
+                                  text={seg.value}
+                                  renderPlainText={(plain) =>
+                                    renderCaptionWithTags(plain).map((p, pi) =>
+                                      p.mentionToken
+                                        ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                        : p.mention
+                                          // The bubble itself is a button, so a tap on a link must not
+                                          // also toggle the message actions popover.
+                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                          : p.tag
+                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                            : p.url
+                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                    )
+                                  }
+                                />
                               )
                           )}
                         </>
