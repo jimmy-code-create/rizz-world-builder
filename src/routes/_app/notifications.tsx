@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RizzCat } from "@/components/RizzCat";
+import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · RIZZ" }] }),
@@ -115,7 +116,13 @@ function NotificationsPage() {
               <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center"><Icon className="h-5 w-5 text-primary" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm flex-1 min-w-0">
-                  <span className="font-bold">@{n.actor?.username}</span>{" "}
+                  {n.actor?.username ? (
+                    <ProfilePreviewTrigger username={n.actor.username} className="font-bold hover:underline">
+                      @{n.actor.username}
+                    </ProfilePreviewTrigger>
+                  ) : (
+                    <span className="font-bold">@someone</span>
+                  )}{" "}
                   {n.type === "like" ? "liked your post"
                     : n.type === "comment" ? "commented on your post"
                     : n.type === "follow" ? "started following you"
