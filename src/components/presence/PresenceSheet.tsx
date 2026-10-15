@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { CircleDashed, Circle as CircleIcon, Moon, PhoneOff, Smile, Trash2 } from "lucide-react";
+import { Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ChoiceMark } from "@/components/ui/choice-mark";
@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CustomStatusLine, StatusDot } from "@/components/presence/StatusDot";
+import { CustomStatusLine, StatusDot, StatusIcon, ThoughtBubble } from "@/components/presence/StatusDot";
 import {
   PRESENCE_STATUSES,
   customStatusExpiry,
@@ -44,18 +44,12 @@ const EMOJI_CATEGORIES = [
 
 const QUICK_EMOJI = ["🔥", "🎧", "💤", "🍿", "💪", "📚", "🎮", "✨", "👑", "🐱", "💀", "⚡"];
 
-// Online = dot, Idle = moon, Do not disturb = crossed-out phone (it mutes the
-// ping and the ringer), Invisible = grey ring.
-const STATUS_ICONS = { online: CircleIcon, idle: Moon, dnd: PhoneOff, invisible: CircleDashed } as const;
-
-/** Drag the handle this far down and the sheet closes. */
-const SWIPE_CLOSE_PX = 96;
-
 /** Tapping your avatar opens this: the four statuses and a custom status row. */
 export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const presence = useSelfPresence();
   const [saving, setSaving] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] = useState<PresenceStatus | null>(null);
   /* Feedback for a local control belongs next to that control, so it renders in
      the row that changed instead of as a toast at the bottom of the window. */
   const [feedback, setFeedback] = useState<{
@@ -125,11 +119,15 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     };
   }, [open, onOpenChange]);
 
+  const activeStatus = optimisticStatus ?? presence.status;
+
   const choose = async (status: PresenceStatus) => {
+    setOptimisticStatus(status);
     try {
       await presence.chooseStatus(status);
       setFeedback({ kind: "saved", status });
     } catch (error) {
+      setOptimisticStatus(null);
       setFeedback({
         kind: "error",
         status,
@@ -174,39 +172,23 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     }
   };
 
-  const isDnd = presence.status === "dnd";
+  const isDnd = activeStatus === "dnd";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         className="glass-strong rounded-t-3xl border-white/10 max-h-[88dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
-        style={
-          dragY
-            ? { transform: `translateY(${dragY}px)`, transition: "none" }
-            : { transition: "transform 200ms ease-out" }
-        }
       >
-        {/* The grabber and the title are the drag surface, so a swipe never
-            fights the sheet's own scrolling. */}
-        <div
-          className="cursor-grab touch-none select-none active:cursor-grabbing"
-          onPointerDown={onDragStart}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
-        >
-          <div className="sheet-drag-handle mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
-          <SheetTitle className="font-display text-lg">Status</SheetTitle>
-          <SheetDescription className="text-xs text-muted-foreground">
-            Choose how you appear, or add a short custom status.
-          </SheetDescription>
-        </div>
+        <div className="sheet-drag-handle mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
+        <SheetTitle className="font-display text-lg">Status</SheetTitle>
+        <SheetDescription className="text-xs text-muted-foreground">
+          Choose how you appear, or add a short custom status.
+        </SheetDescription>
 
         <div className="mt-4 space-y-1" role="radiogroup" aria-label="Status">
           {PRESENCE_STATUSES.map((entry) => {
-            const Icon = STATUS_ICONS[entry.value];
-            const active = presence.status === entry.value;
+            const active = activeStatus === entry.value;
             return (
               <button
                 key={entry.value}
@@ -218,13 +200,13 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   active ? "border-border bg-secondary" : "border-transparent hover:bg-secondary"
                 }`}
               >
-                {/* Fixed square, centred glyph — the icon can't sit off-centre. */}
+                {/* Fixed square, centred glyph with Discord-style custom status icon */}
                 <IconTile
                   size="md"
                   radius="9999px"
-                  style={{ background: `${entry.color}26` }}
+                  style={{ background: `${entry.color}20` }}
                 >
-                  <Icon style={{ color: entry.color }} />
+                  <StatusIcon status={entry.value} size={20} />
                 </IconTile>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-sm font-semibold">
@@ -256,9 +238,21 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
         </div>
 
         {presence.customStatus && (
-          <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-border bg-card px-3 py-2.5 text-sm">
-            <Smile className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <CustomStatusLine status={presence.customStatus} className="min-w-0 flex-1 text-muted-foreground" />
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-white/10 glass px-3 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <ThoughtBubble
+                emoji={presence.customStatus.emoji}
+                text={presence.customStatus.text}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCustomOpen(true)}
+              className="text-xs text-primary hover:text-primary/80 shrink-0 h-8 px-2"
+            >
+              Edit
+            </Button>
           </div>
         )}
 

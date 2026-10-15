@@ -61,6 +61,7 @@ import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
+import { RealmProfilePreviewDialog, type RealmProfilePreviewUser } from "@/components/realms/RealmProfilePreviewDialog";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { threadLabel } from "@/lib/realm-threads";
 import { flushDueScheduledMessages } from "@/lib/realm-schedule";
@@ -97,7 +98,22 @@ export const Route = createFileRoute("/_app/r/$slug")({
 function RealmPage() {
   const { slug } = Route.useParams();
   const search = Route.useSearch();
-  const { user } = useAuth();
+  const { user, profile: myProfile } = useAuth();
+  const myUsername = myProfile?.username?.toLowerCase();
+  const myUserId = user?.id;
+
+  const [previewUser, setPreviewUser] = useState<RealmProfilePreviewUser | null>(null);
+  const rowPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rowPressOrigin = useRef<{ x: number; y: number } | null>(null);
+
+  const clearRowTimer = () => {
+    if (rowPressTimer.current) {
+      clearTimeout(rowPressTimer.current);
+      rowPressTimer.current = null;
+    }
+    rowPressOrigin.current = null;
+  };
+
   const qc = useQueryClient();
   const nav = useNavigate();
   const realm = useQuery({ queryKey: ["realm", slug], queryFn: () => fetchRealmBySlug(slug) });
@@ -1252,25 +1268,99 @@ function RealmPage() {
             if ((m as { system?: boolean }).system) {
               return <SystemLine key={m.id} text={m.body} />;
             }
+
+            // Check if this message mentions the current user (Discord-style mention highlight)
+            const mentionsMe = Boolean(
+              user &&
+              m.sender_id !== user.id &&
+              (
+                (myUsername && (
+                  new RegExp(`@${myUsername}\\b`, "i").test(m.body) ||
+                  m.body.toLowerCase().includes(`@${myUsername}`)
+                )) ||
+                (myUserId && m.body.includes(`<@${myUserId}>`)) ||
+                /@(everyone|here)\b/i.test(m.body)
+              )
+            );
+            const mentionClasses = mentionsMe
+              ? "bg-[#f0b232]/12 hover:bg-[#f0b232]/18 border-l-[3px] border-[#f0b232] pl-2.5 transition-colors"
+              : "";
+
+            // Profile preview handler on avatar or name tap
+            const handleAuthorClick = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              setPreviewUser({
+                userId: m.sender_id,
+                username: authorProfile?.username ?? authorName,
+                displayName: authorName,
+                avatarUrl: authorAvatar,
+                accentColor: authorAccent,
+                isBot,
+                botName: botRow?.name ?? null,
+                realmRole: (members.data as RealmMemberRow[] | undefined)?.find((mem) => mem.user_id === m.sender_id)?.role ?? null,
+              });
+            };
+
+            // Long press handler for the entire message row (touch / mouse)
+            const handleRowPointerDown = (e: React.PointerEvent) => {
+              if (e.pointerType === "mouse" && e.button !== 0) return;
+              if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]")) return;
+              clearRowTimer();
+              rowPressOrigin.current = { x: e.clientX, y: e.clientY };
+              rowPressTimer.current = setTimeout(() => {
+                rowPressTimer.current = null;
+                if (typeof navigator !== "undefined" && navigator.vibrate) {
+                  try { navigator.vibrate(35); } catch {}
+                }
+                setOpenMessageId(m.id);
+              }, 320);
+            };
+
+            const handleRowPointerMove = (e: React.PointerEvent) => {
+              if (!rowPressOrigin.current) return;
+              const dx = e.clientX - rowPressOrigin.current.x;
+              const dy = e.clientY - rowPressOrigin.current.y;
+              if (dx * dx + dy * dy > 20 * 20) {
+                clearRowTimer();
+              }
+            };
+
             return (
               <Fragment key={m.id}>
               {newDay && <DateSeparator date={m.created_at} />}
-              {/* Realm chat is Discord-style flat rows, not bubbles. */}
+              {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
               <motion.div
                 id={`msg-${m.id}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`realm-message ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""}`}
+                onPointerDown={handleRowPointerDown}
+                onPointerMove={handleRowPointerMove}
+                onPointerUp={clearRowTimer}
+                onPointerCancel={clearRowTimer}
+                onContextMenu={(e) => {
+                  if ((e.target as HTMLElement).closest("a, input, textarea, button")) return;
+                  e.preventDefault();
+                  setOpenMessageId(m.id);
+                }}
+                className={`realm-message select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${mentionClasses}`}
               >
               {(startsGroup ? (
-                <Avatar className="h-9 w-9 shrink-0 ring-2" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
-                  <AvatarImage src={authorAvatar ?? undefined} />
-                  <AvatarFallback
-                    className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
-                  >
-                    {authorInitial}
-                  </AvatarFallback>
-                </Avatar>
+                <button
+                  type="button"
+                  data-interactive="true"
+                  onClick={handleAuthorClick}
+                  className="rounded-full shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
+                  aria-label={`View ${authorName}'s profile`}
+                >
+                  <Avatar className="h-9 w-9 shrink-0 ring-2 cursor-pointer hover:opacity-90" style={{ boxShadow: `0 0 10px color-mix(in srgb, ${authorColor} 40%, transparent)` }}>
+                    <AvatarImage src={authorAvatar ?? undefined} />
+                    <AvatarFallback
+                      className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
+                    >
+                      {authorInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               ) : (
                 // Same author, same day: the avatar gutter carries the time
                 // instead, revealed on hover (and never shown on touch, where
@@ -1279,7 +1369,15 @@ function RealmPage() {
               ))}
               <div className="flex-1 min-w-0">
                 {startsGroup && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-bold text-sm" style={{ color: authorColor }}>{authorName}</span>
+                  <button
+                    type="button"
+                    data-interactive="true"
+                    onClick={handleAuthorClick}
+                    className="font-bold text-sm cursor-pointer hover:underline text-left"
+                    style={{ color: authorColor }}
+                  >
+                    {authorName}
+                  </button>
                   {isBot && <BotBadge />}
                   {pinnedIds.has(m.id) && <PinBadge />}
                   <span className="text-[10px] text-muted-foreground">
@@ -1426,7 +1524,28 @@ function RealmPage() {
                                 p.mentionToken
                                   ? <span key={`${si}-${xi}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
                                   : p.mention
-                                  ? <Link key={`${si}-${xi}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium hover:underline">{p.text}</Link>
+                                  ? (
+                                    <button
+                                      key={`${si}-${xi}-${pi}`}
+                                      type="button"
+                                      data-interactive="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewUser({
+                                          userId: "",
+                                          username: p.mention!,
+                                          displayName: p.mention!,
+                                        });
+                                      }}
+                                      className={
+                                        p.mention.toLowerCase() === myUsername
+                                          ? "bg-[#f0b232]/30 text-amber-300 font-semibold px-1 py-0.5 rounded hover:underline inline cursor-pointer text-left"
+                                          : "mention-highlight font-medium hover:underline cursor-pointer"
+                                      }
+                                    >
+                                      {p.text}
+                                    </button>
+                                  )
                                   : p.tag
                                     ? <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
                                     : p.url
@@ -1565,6 +1684,18 @@ function RealmPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RealmProfilePreviewDialog
+        user={previewUser}
+        open={!!previewUser}
+        onOpenChange={(open) => {
+          if (!open) setPreviewUser(null);
+        }}
+        onMention={(uname) => {
+          setBody((prev) => `${prev ? prev.trim() + " " : ""}@${uname} `);
+          inputRef.current?.focus();
+        }}
+      />
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">

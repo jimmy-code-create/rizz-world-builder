@@ -110,7 +110,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             placeholder="Drop something hot…"
             value={caption}
             onChange={(e) => {
-              setCaption(e.target.value.slice(0, 600));
+              setCaption(e.target.value);
               setCaret(e.target.selectionStart ?? e.target.value.length);
             }}
             onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
@@ -122,7 +122,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             caret={caret}
             onPick={(username) => {
               const { value, caret: nc } = replaceMention(caption, caret, username);
-              setCaption(value.slice(0, 600));
+              setCaption(value);
               setCaret(nc);
               requestAnimationFrame(() => {
                 const ta = textareaRef.current;
@@ -192,7 +192,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
-              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 600))} />
+              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`)} />
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}
@@ -212,29 +212,6 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 {visibility === "close_friends" ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
                 <span className="hidden sm:inline">{visibility === "close_friends" ? "Close friends" : "Everyone"}</span>
               </button>
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      tabIndex={0}
-                      role="status"
-                      aria-label={`${600 - caption.length} characters remaining`}
-                      className={`text-[11px] ml-1 tabular-nums font-mono cursor-help px-1.5 py-0.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
-                        600 - caption.length < 50
-                          ? "text-amber-400 font-bold"
-                          : 600 - caption.length < 20
-                            ? "text-destructive font-bold"
-                            : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {600 - caption.length}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs font-sans">
-                    <p>{600 - caption.length} characters remaining (max 600)</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
             <Button
               ref={postBtnRef}
