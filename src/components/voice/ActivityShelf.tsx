@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Gamepad2 } from "lucide-react";
+import { Gamepad2, Play } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { CloseButton } from "@/components/ui/close-button";
 import { Link } from "@tanstack/react-router";
 import { GameIcon } from "@/components/GameIcon";
-import { getGames, type GameEntry } from "@/lib/activities";
+import { getGames, type GameEntry, type RoomActivity } from "@/lib/activities";
 
 /**
  * Best-effort reachability: a no-cors fetch resolves on ANY http response
@@ -37,28 +37,50 @@ function useReachable(url: string): boolean | null {
   return state;
 }
 
-function GameRow({ game, onPick }: { game: GameEntry; onPick: (entry: GameEntry) => void }) {
+function GameRow({
+  game,
+  live,
+  liveCount,
+  onPick,
+}: {
+  game: GameEntry;
+  live: boolean;
+  liveCount: number;
+  onPick: (entry: GameEntry) => void;
+}) {
   const reachable = useReachable(game.url);
   return (
-    <li>
+    <li
+      className={`overflow-hidden rounded-2xl border transition-colors ${
+        live ? "border-[#c8ff3d]/40 bg-[#c8ff3d]/[0.06]" : "border-white/10 bg-white/[0.03]"
+      }`}
+    >
       <button
         type="button"
         onClick={() => onPick(game)}
-        aria-label={`Play ${game.name}, ${game.players} players${reachable === false ? ", site unreachable" : ""}`}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-left transition-colors hover:border-white/10 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        aria-label={`Play ${game.name}, ${game.players} players${reachable === false ? ", site unreachable" : ""}${
+          live ? `, ${liveCount} playing now` : ""
+        }`}
+        className="flex min-h-[76px] w-full items-center gap-3 p-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
       >
         <span
           aria-hidden
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f]"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f]"
         >
-          <GameIcon icon={game.icon} size={26} />
+          <GameIcon icon={game.icon} size={32} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate text-sm font-bold text-[#f2efe6]">{game.name}</span>
-            <span className="shrink-0 rounded-full border border-[#2a2a2e] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              {game.players}
-            </span>
+            {live && liveCount > 0 ? (
+              <span className="shrink-0 rounded-full bg-[#c8ff3d]/15 px-2 py-0.5 text-[10px] font-bold text-[#c8ff3d]">
+                {liveCount} playing
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full border border-[#2a2a2e] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {game.players}
+              </span>
+            )}
             {reachable === false && (
               <span className="shrink-0 rounded-full border border-[#ff5d5d]/40 px-2 py-0.5 text-[10px] font-bold text-[#ff5d5d]">
                 Unreachable
@@ -69,7 +91,12 @@ function GameRow({ game, onPick }: { game: GameEntry; onPick: (entry: GameEntry)
             {game.description}
           </span>
         </span>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span
+          aria-hidden
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#c8ff3d] text-[#0b0b0c]"
+        >
+          <Play className="h-4 w-4 fill-current" />
+        </span>
       </button>
     </li>
   );
@@ -84,10 +111,14 @@ export function ActivityShelf({
   open,
   onOpenChange,
   onPick,
+  liveActivity,
+  liveCount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (entry: GameEntry) => void;
+  liveActivity: RoomActivity | null;
+  liveCount: number;
 }) {
   const games = getGames();
 
@@ -129,10 +160,19 @@ export function ActivityShelf({
               No games yet. Add one entry to <span className="font-mono text-xs">src/data/games.json</span>.
             </p>
           ) : (
-            <ul className="space-y-1 pb-1">
-              {games.map((game) => (
-                <GameRow key={game.id} game={game} onPick={onPick} />
-              ))}
+            <ul className="space-y-2 pb-1">
+              {games.map((game) => {
+                const live = liveActivity?.gameId === game.id;
+                return (
+                  <GameRow
+                    key={game.id}
+                    game={game}
+                    live={live}
+                    liveCount={live ? liveCount : 0}
+                    onPick={onPick}
+                  />
+                );
+              })}
             </ul>
           )}
         </div>

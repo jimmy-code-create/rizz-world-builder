@@ -259,7 +259,8 @@ export function VoiceCallView() {
     participants.find((participant) => participant.user_id === user?.id)?.user?.display_name ||
     participants.find((participant) => participant.user_id === user?.id)?.user?.username ||
     "Someone";
-  const roomActivity = useRoomActivity(call?.roomId ?? null, user ? { id: user.id, name: selfName } : null);
+  const roomActivity = useRoomActivity(call?.roomId ?? null, user ? { id: user.id, name: selfName } : null, panelOpen);
+  const playingCount = Object.keys(roomActivity.players).length;
   const prevActivityRef = useRef<RoomActivity | null>(null);
   useEffect(() => {
     const prev = prevActivityRef.current;
@@ -399,6 +400,7 @@ export function VoiceCallView() {
           <div className="relative shrink-0 px-3 pt-3 sm:px-4">
             <JoinGameBanner
               activity={roomActivity.activity}
+              playingCount={playingCount}
               onJoin={() => {
                 setPanelMinimized(false);
                 setPanelOpen(true);
@@ -447,6 +449,7 @@ export function VoiceCallView() {
               const tileRow = presenceMap.rows[participant.user_id] ?? null;
               const tileStatus = publicStatusOf(tileRow, isMe);
               const tileCustom = publicCustomStatus(tileRow, isMe);
+              const playingGame = roomActivity.players[participant.user_id]?.gameName ?? null;
 
               return (
                 <div
@@ -492,10 +495,17 @@ export function VoiceCallView() {
                         @{username}
                         {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
                       </p>
-                      {tileCustom && (tileCustom.emoji || tileCustom.text) && (
-                        <span className="max-w-full">
-                          <CustomStatusLine status={tileCustom} className="-mt-1 truncate text-[11px]" />
+                      {playingGame ? (
+                        <span className="max-w-full truncate text-[11px] font-semibold text-[#c8ff3d]">
+                          Playing {playingGame}
                         </span>
+                      ) : (
+                        tileCustom &&
+                        (tileCustom.emoji || tileCustom.text) && (
+                          <span className="max-w-full">
+                            <CustomStatusLine status={tileCustom} className="-mt-1 truncate text-[11px]" />
+                          </span>
+                        )
                       )}
                     </>
                   )}
@@ -507,8 +517,15 @@ export function VoiceCallView() {
                           @{username}
                           {isMe && " (you)"}
                         </span>
-                        {tileCustom && (tileCustom.emoji || tileCustom.text) && (
-                          <CustomStatusLine status={tileCustom} className="truncate text-[10px] text-white/70" />
+                        {playingGame ? (
+                          <span className="block truncate text-[10px] font-semibold text-[#c8ff3d]">
+                            Playing {playingGame}
+                          </span>
+                        ) : (
+                          tileCustom &&
+                          (tileCustom.emoji || tileCustom.text) && (
+                            <CustomStatusLine status={tileCustom} className="truncate text-[10px] text-white/70" />
+                          )
                         )}
                       </span>
                       {participant.muted && <MicOff className="h-3.5 w-3.5 shrink-0 text-white/80" />}
@@ -573,6 +590,7 @@ export function VoiceCallView() {
                 activity={roomActivity.activity}
                 entry={getGame(roomActivity.activity.gameId)}
                 canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
+                playingCount={playingCount}
                 minimized={panelMinimized}
                 onMinimize={() => setPanelMinimized(true)}
                 onReopen={() => setPanelMinimized(false)}
@@ -748,13 +766,14 @@ export function VoiceCallView() {
 
         {/* Game Activities shelf + live panel (voice keeps running: the call
             engine is provider-owned, this UI is only a sibling). */}
-        <ActivityShelf open={shelfOpen} onOpenChange={setShelfOpen} onPick={(entry) => void handlePickGame(entry)} />
+        <ActivityShelf open={shelfOpen} onOpenChange={setShelfOpen} onPick={(entry) => void handlePickGame(entry)} liveActivity={roomActivity.activity} liveCount={playingCount} />
         {panelOpen && roomActivity.activity && isMobileView && (
           <ActivityPanel
             layout="overlay"
             activity={roomActivity.activity}
             entry={getGame(roomActivity.activity.gameId)}
             canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
+            playingCount={playingCount}
             minimized={false}
             onMinimize={() => setPanelOpen(false)}
             onReopen={() => setPanelOpen(true)}

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Music, Pause, Play, SkipForward, Square } from "lucide-react";
+import { Loader2, Music, Pause, Play, Plus, SkipForward, Square, Volume2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { formatDuration, musicQueueKey, runMusicCommand, useMusicQueue } from "@/lib/music";
+import { useSoundSettings } from "@/lib/sound-settings";
 
 export type MusicNowPlaying = {
   title?: string | null;
@@ -36,6 +39,9 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
   const queue = useMusicQueue(realmId, roomId, open);
   const qc = useQueryClient();
   const [busy, setBusy] = useState<"skip" | "stop" | null>(null);
+  const [addTitle, setAddTitle] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [soundSettings, setSoundSettings] = useSoundSettings();
 
   const run = async (command: "skip" | "stop") => {
     setBusy(command);
@@ -52,6 +58,23 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
   };
 
   const tracks = queue.data ?? [];
+
+  const addSong = async () => {
+    const title = addTitle.trim();
+    if (!title || adding) return;
+    setAdding(true);
+    try {
+      const result = await runMusicCommand("play", { args: title, realmId, roomId });
+      if (result.ok === false) throw new Error(result.error || "The music bot didn't answer");
+      toast.success(result.body || "Queued.");
+      setAddTitle("");
+      await qc.invalidateQueries({ queryKey: musicQueueKey(realmId, roomId) });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The music bot didn't answer");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -116,6 +139,50 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
               </div>
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <Input
+              value={addTitle}
+              onChange={(e) => setAddTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void addSong();
+                }
+              }}
+              placeholder="Add a song…"
+              aria-label="Add a song"
+              maxLength={120}
+              className="h-11 flex-1 rounded-full border-[#2a2a2e] bg-[#141416] text-sm"
+            />
+            <Button
+              type="button"
+              disabled={adding || !addTitle.trim()}
+              onClick={() => void addSong()}
+              aria-label="Queue song"
+              className="h-11 w-11 shrink-0 rounded-full bg-[#c8ff3d] !px-0 text-[#0b0b0c] hover:bg-[#c8ff3d]/90 disabled:opacity-50"
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <Slider
+              value={[Math.round((soundSettings.music ?? 0.8) * 100)]}
+              min={0}
+              max={100}
+              step={5}
+              onValueCommit={([val]) =>
+                setSoundSettings({ ...soundSettings, music: (val ?? 80) / 100 })
+              }
+              aria-label="Music volume"
+              className="flex-1"
+            />
+            <span className="w-10 shrink-0 text-right font-mono text-[11px] text-muted-foreground">
+              {Math.round((soundSettings.music ?? 0.8) * 100)}%
+            </span>
+          </div>
+
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {tracks.length === 0 ? "Queue empty" : `Up next · ${tracks.length}`}

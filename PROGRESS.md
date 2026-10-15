@@ -154,4 +154,4 @@
 ### Phase 23 (partial, in tree): status-to-avatar + canonical 5-badge set
 - [x] Banner status pill removed; avatar gets bottom-left emoji badge + bottom-right tappable dot; `StatusPill` (rounded-full, no tail) under @handle on profile + mini cards, `+ Set status` for owner, popover with expiry for others - **DONE**
 - [x] Canonical badge set lib (`rare/epic/mythic` + cat icons + tier glows), `BadgeIcon` everywhere, `BadgeRow`/ProfileCard filter to the 5, post chip renamed Main Character, `no-cap` replaces `verified_creator` for verification - **DONE**
-- [ ] `20261023000000_badge_set_v2.sql` proven 7/7 in PGlite but NOT yet applied in Supabase — old badge rows stay invisible until applied; companion removal + /badges rebuild + share image still open
+- [ ] `20261022000000_fix_realm_reaction_toggle.sql`, `20261022010000_bot_embed_templates.sql` and `20261023000000_badge_set_v2.sql` proven in PGlite but NOT yet applied in Supabase — old badge rows stay invisible until applied; companion removal + /badges rebuild + share image still open

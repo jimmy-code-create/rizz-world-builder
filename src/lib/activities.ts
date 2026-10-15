@@ -89,17 +89,60 @@ export function inviteText(entry: GameEntry, roomCode: string | null): string {
   return `Join my ${entry.name} game at ${entry.url} with room code ${roomCode}`;
 }
 
+/** Who has the game open right now, by user id (Discord-style "N playing"). */
+export type ActivityPlayers = Record<string, { gameId: string; gameName: string }>;
+
 /**
  * Live activity state for one voice room. The launcher broadcasts start/end;
- * presence carries the current game so late joiners sync it on subscribe.
+ * presence carries the current game so late joiners sync it on subscribe,
+ * plus each member's playing flag for live counts.
  */
-export function useRoomActivity(roomId: string | null, me: { id: string; name: string } | null) {
+export function useRoomActivity(
+  roomId: string | null,
+  me: { id: string; name: string } | null,
+  playing = false,
+) {
   const [activity, setActivity] = useState<RoomActivity | null>(null);
+  const [players, setPlayers] = useState<ActivityPlayers>({});
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const activityRef = useRef<RoomActivity | null>(null);
   activityRef.current = activity;
   const meRef = useRef(me);
   meRef.current = me;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+
+  const trackSelf = useCallback(() => {
+    channelRef.current
+      ?.track({ activity: activityRef.current, playing: playingRef.current })
+      .catch(() => {});
+  }, []);
+
+  const readPresence = useCallback(() => {
+    const channel = channelRef.current;
+    if (!channel) return;
+    try {
+      const state = channel.presenceState() as Record<
+        string,
+        Array<{ activity?: RoomActivity | null; playing?: boolean }>
+      >;
+      let latest: RoomActivity | null = null;
+      const nextPlayers: ActivityPlayers = {};
+      for (const [key, presences] of Object.entries(state)) {
+        for (const tracked of presences) {
+          const candidate = tracked?.activity ?? null;
+          if (candidate && (!latest || candidate.startedAt > latest.startedAt)) latest = candidate;
+          if (tracked?.playing && candidate && typeof candidate.gameId === "string") {
+            nextPlayers[key] = { gameId: candidate.gameId, gameName: candidate.gameName };
+          }
+        }
+      }
+      if (latest) setActivity(latest);
+      setPlayers(nextPlayers);
+    } catch {
+      /* presence is best-effort */
+    }
+  }, []);
 
   useEffect(() => {
     if (!roomId || !meRef.current) return;
@@ -112,30 +155,28 @@ export function useRoomActivity(roomId: string | null, me: { id: string; name: s
       const next = payload as RoomActivity | null;
       if (next && typeof next.gameId === "string" && typeof next.url === "string") {
         setActivity(next);
+        readPresence();
       }
     });
     channel.on("broadcast", { event: "activity-end" }, () => {
       setActivity(null);
+      setPlayers({});
+      readPresence();
     });
     channel.on("presence", { event: "sync" }, () => {
-      try {
-        const state = channel.presenceState() as Record<string, Array<{ activity?: RoomActivity | null }>>;
-        let latest: RoomActivity | null = null;
-        for (const presences of Object.values(state)) {
-          for (const tracked of presences) {
-            const candidate = tracked?.activity ?? null;
-            if (candidate && (!latest || candidate.startedAt > latest.startedAt)) latest = candidate;
-          }
-        }
-        if (latest) setActivity(latest);
-      } catch {
-        /* presence is best-effort */
-      }
+      readPresence();
+    });
+    channel.on("presence", { event: "join" }, () => {
+      readPresence();
+    });
+    channel.on("presence", { event: "leave" }, () => {
+      readPresence();
     });
 
     subscribeSafely(channel, (status) => {
       if (status === "SUBSCRIBED") {
-        channel.track({ activity: activityRef.current }).catch(() => {});
+        trackSelf();
+        readPresence();
       }
     });
     return () => {
@@ -146,7 +187,12 @@ export function useRoomActivity(roomId: string | null, me: { id: string; name: s
       }
       channelRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, readPresence, trackSelf]);
+
+  // My playing flag follows the panel: open = playing, closed = not.
+  useEffect(() => {
+    trackSelf();
+  }, [playing, trackSelf]);
 
   const start = useCallback(async (entry: GameEntry): Promise<RoomActivity | null> => {
     const meNow = meRef.current;
@@ -164,7 +210,7 @@ export function useRoomActivity(roomId: string | null, me: { id: string; name: s
     };
     setActivity(next);
     try {
-      await channelRef.current?.track({ activity: next });
+      await channelRef.current?.track({ activity: next, playing: playingRef.current });
       await channelRef.current?.send({ type: "broadcast", event: "activity-start", payload: next });
     } catch {
       /* local state still opens the panel */
@@ -174,13 +220,14 @@ export function useRoomActivity(roomId: string | null, me: { id: string; name: s
 
   const end = useCallback(async () => {
     setActivity(null);
+    setPlayers({});
     try {
-      await channelRef.current?.track({ activity: null });
+      await channelRef.current?.track({ activity: null, playing: playingRef.current });
       await channelRef.current?.send({ type: "broadcast", event: "activity-end", payload: {} });
     } catch {
       /* local state still clears */
     }
   }, []);
 
-  return { activity, start, end };
+  return { activity, players, start, end };
 }

@@ -18,6 +18,7 @@ export function ActivityPanel({
   activity,
   entry,
   canEnd,
+  playingCount,
   layout,
   minimized,
   onMinimize,
@@ -28,6 +29,7 @@ export function ActivityPanel({
   activity: RoomActivity;
   entry: GameEntry | null;
   canEnd: boolean;
+  playingCount: number;
   layout: "side" | "overlay";
   minimized: boolean;
   onMinimize: () => void;
@@ -131,6 +133,7 @@ export function ActivityPanel({
           <span className="block truncate text-sm font-bold text-[#f2efe6]">{activity.gameName}</span>
           <span className="block truncate text-[11px] text-muted-foreground">
             Started by {activity.startedByName}
+            {playingCount > 0 && ` · ${playingCount} playing`}
           </span>
         </span>
         {canEnd && (
@@ -224,10 +227,12 @@ export function ActivityPanel({
 /** "X started Y" banner: every room member can jump in with one tap. */
 export function JoinGameBanner({
   activity,
+  playingCount,
   onJoin,
   onDismiss,
 }: {
   activity: RoomActivity;
+  playingCount: number;
   onJoin: () => void;
   onDismiss: () => void;
 }) {
@@ -245,6 +250,7 @@ export function JoinGameBanner({
           {activity.startedByName} started {activity.gameName}
         </p>
         <p className="truncate text-xs text-muted-foreground">
+          {playingCount > 0 ? `${playingCount} playing · ` : ""}
           {activity.roomCode ? `Room ${activity.roomCode} · ` : ""}Voice keeps running.
         </p>
       </div>

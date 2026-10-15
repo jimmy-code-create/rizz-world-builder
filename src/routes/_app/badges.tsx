@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadges, type Badge } from "@/lib/badges";
+import { BADGE_SET } from "@/lib/badge-set";
 import { BadgeChip } from "@/components/BadgeChip";
 import { Award, Lock, Sparkles, CheckCircle2, Search, Trophy, ShieldCheck, Share2 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
@@ -20,12 +22,67 @@ type FilterTab = "all" | "unlocked" | "locked" | "legendary" | "epic" | "rare" |
 
 export function BadgesPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const all = useQuery({ queryKey: ["badges-all"], queryFn: fetchAllBadges });
   const mine = useQuery({
     queryKey: ["badges-mine", user?.id],
     queryFn: () => fetchUserBadges(user!.id),
     enabled: !!user,
   });
+
+  // Admin-only award tool (best-effort gate; RLS "admins grant badges"
+  // is the real enforcement). Lets the team grant any of the 5 badges —
+  // including to yourself for testing — without touching the database.
+  const adminCheck = useQuery({
+    queryKey: ["am-admin", user?.id],
+    enabled: !!user,
+    staleTime: 300_000,
+    queryFn: async (): Promise<boolean> => {
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user!.id);
+        if (error) throw error;
+        return ((data ?? []) as Array<{ role: string }>).some((r) => r.role === "admin");
+      } catch {
+        return false;
+      }
+    },
+  });
+  const [grantSlug, setGrantSlug] = useState(BADGE_SET[0].slug);
+  const [grantUser, setGrantUser] = useState("");
+  const [granting, setGranting] = useState(false);
+
+  const awardBadge = async () => {
+    const handle = grantUser.trim().replace(/^@/, "");
+    if (!handle || granting) return;
+    setGranting(true);
+    try {
+      const badgeRow = (all.data ?? []).find((b) => b.slug === grantSlug);
+      if (!badgeRow) throw new Error("That badge isn't in the database yet — apply the badge migration first.");
+      const { data: target, error: lookupError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", handle)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (!target) throw new Error(`No account @${handle} found.`);
+      const { error: insertError } = await supabase
+        .from("user_badges")
+        .insert({ user_id: (target as { id: string }).id, badge_id: badgeRow.id });
+      if (insertError) throw insertError;
+      toast.success(`Awarded ${badgeRow.name} to @${handle}`);
+      setGrantUser("");
+      if ((target as { id: string }).id === user?.id) {
+        void qc.invalidateQueries({ queryKey: ["badges-mine", user?.id] });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't award that badge");
+    } finally {
+      setGranting(false);
+    }
+  };
 
   const owned = useMemo(() => new Set((mine.data ?? []).map((b) => b.id)), [mine.data]);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
@@ -308,6 +365,62 @@ export function BadgesPage() {
           )}
         </aside>
       </div>
+
+      {adminCheck.data === true && (
+        <div className="glass rounded-3xl p-5 border border-white/10 space-y-3">
+          <div>
+            <h2 className="font-display text-base font-bold">Award a badge</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Admin only. Type your own @handle to assign one to yourself.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Badge to award">
+            {BADGE_SET.map((entry) => {
+              const selected = grantSlug === entry.slug;
+              return (
+                <button
+                  key={entry.slug}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setGrantSlug(entry.slug)}
+                  className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+                    selected
+                      ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
+                      : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {entry.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={grantUser}
+              onChange={(e) => setGrantUser(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void awardBadge();
+                }
+              }}
+              placeholder="@username"
+              aria-label="Username to award"
+              maxLength={40}
+              className="h-11 flex-1 rounded-full border-[#2a2a2e] bg-[#141416]"
+            />
+            <Button
+              type="button"
+              disabled={granting || !grantUser.trim()}
+              onClick={() => void awardBadge()}
+              className="h-11 rounded-full bg-[#c8ff3d] px-5 text-sm font-bold text-[#0b0b0c] hover:bg-[#c8ff3d]/90 disabled:opacity-50"
+            >
+              {granting ? "Awarding…" : "Award"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

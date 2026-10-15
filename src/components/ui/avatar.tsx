@@ -226,7 +226,7 @@ export interface InteractiveAvatarProps extends UserAvatarProps {
 
 /**
  * InteractiveAvatar
- * - Short tap: views active story if user has one; otherwise triggers onClick or opens profile sheet
+ * - Short tap: views active story if user has one; otherwise the full photo
  * - 450ms long press: triggers full photo viewer with haptic vibration feedback
  * - Prevents native callout popup (-webkit-touch-callout: none, contextmenu prevented)
  */
@@ -282,8 +282,11 @@ export function InteractiveAvatar({
       didLongPress.current = false;
       return;
     }
+    // One tap: story if they posted one, otherwise the full photo.
     if (onStoryClick) {
       onStoryClick();
+    } else if (src) {
+      setPhotoOpen(true);
     } else if (onClick) {
       onClick(e);
     } else if (username) {
