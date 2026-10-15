@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Eye, Heart, Loader2, Plus, Send, X } from "lucide-react";
+import { AtSign, Eye, Heart, Loader2, Plus, Send, X } from "lucide-react";
 import { CloseButton } from "@/components/ui/close-button";
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
@@ -766,6 +766,8 @@ function StoryViewer({
               </p>
             )}
 
+            {/* React row: the like chip and the quick emoji live in one capsule,
+                so the bar reads as a single control instead of floating emoji. */}
             <div className="flex min-h-[62px] items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2">
               <button
                 type="button"
@@ -773,7 +775,7 @@ function StoryViewer({
                 aria-pressed={isLiked}
                 disabled={!user}
                 onClick={() => void onToggleLike(story.id)}
-                className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   isLiked
                     ? "border-primary/45 bg-primary/15 text-primary"
                     : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/10"
@@ -785,7 +787,7 @@ function StoryViewer({
                 <span className="text-xs font-bold tabular-nums">{story.like_count}</span>
               </button>
 
-              <div className="flex min-w-0 flex-1 justify-between gap-1">
+              <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-between gap-0.5 overflow-x-auto rounded-full border border-white/[0.08] bg-white/[0.03] p-1">
                 {quickReactions.map((emoji) => {
                   const selected = myReactions.includes(emoji);
                   return (
@@ -796,10 +798,10 @@ function StoryViewer({
                       aria-pressed={selected}
                       disabled={!user}
                       onClick={() => void toggleReaction(emoji)}
-                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         selected
-                          ? "border-muted-foreground/55 bg-muted-foreground/20"
-                          : "border-transparent hover:border-white/10 hover:bg-white/[0.07]"
+                          ? "bg-primary/20 ring-1 ring-primary/45"
+                          : "hover:bg-white/10"
                       }`}
                     >
                       {emoji}
@@ -810,21 +812,24 @@ function StoryViewer({
             </div>
 
             {user && !isMine && (
-              <form onSubmit={sendStoryReply} className="flex items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2">
-                <Input
-                  value={replyBody}
-                  onChange={(event) => setReplyBody(event.target.value)}
-                  maxLength={2000}
-                  aria-label="Reply to story"
-                  placeholder="Reply to their inbox…"
-                  className="h-11 min-w-0 border-white/10 bg-black/20"
-                />
+              <form onSubmit={sendStoryReply} className="flex items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2.5">
+                <div className="relative min-w-0 flex-1">
+                  <AtSign className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <Input
+                    value={replyBody}
+                    onChange={(event) => setReplyBody(event.target.value)}
+                    maxLength={2000}
+                    aria-label="Reply to story"
+                    placeholder="Reply to their inbox…"
+                    className="h-11 min-w-0 rounded-full border-white/10 bg-black/25 pl-10"
+                  />
+                </div>
                 <Button
                   type="submit"
                   disabled={!replyBody.trim() || replying}
                   size="icon"
                   aria-label="Send story reply"
-                  className="h-11 w-11 shrink-0 bg-primary text-primary-foreground"
+                  className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95"
                 >
                   {replying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>

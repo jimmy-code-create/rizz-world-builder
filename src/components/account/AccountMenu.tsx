@@ -211,9 +211,25 @@ export function AccountMenu({
       </span>
     ) : null;
 
+  // One icon treatment for every row: a 28px tile keeps the menu on a grid, and
+  // lets the sign-out row read red without a separate branch for the markup.
+  const rowIcon = (Icon: typeof Bookmark, danger = false) => (
+    <span
+      aria-hidden
+      className={cn(
+        "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
+        danger
+          ? "border-[#ff5d5d]/25 bg-[#ff5d5d]/10 text-[#ff5d5d]"
+          : "border-white/[0.07] bg-white/[0.04] text-muted-foreground",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </span>
+  );
+
   const linkInner = (Icon: typeof Bookmark, label: string, count?: number) => (
     <>
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      {rowIcon(Icon)}
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
       {count !== undefined ? countChip(count) : null}
     </>
@@ -269,7 +285,7 @@ export function AccountMenu({
     if (isMobile) {
       return (
         <button key={key} type="button" onClick={onAction} aria-label={opts?.ariaLabel ?? label} className={cls}>
-          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          {rowIcon(Icon, opts?.danger)}
           <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         </button>
       );
@@ -285,7 +301,7 @@ export function AccountMenu({
         className={cn("cursor-pointer focus:bg-white/[0.06]", opts?.danger && "focus:text-[#ff5d5d]")}
       >
         <span className="flex w-full items-center gap-3 px-3 py-0 text-sm">
-          <Icon className={cn("h-4 w-4 shrink-0", opts?.danger ? "text-[#ff5d5d]" : "text-muted-foreground")} aria-hidden />
+          {rowIcon(Icon, opts?.danger)}
           <span className={cn("min-w-0 flex-1 truncate text-left", opts?.danger && "text-[#ff5d5d]")}>{label}</span>
         </span>
       </DropdownMenuItem>
@@ -307,15 +323,22 @@ export function AccountMenu({
         aria-label={`Open your profile card, @${username}`}
         className="block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
       >
-        <span
-          className="block h-20 w-full"
-          style={{
-            background: stats?.bannerUrl
-              ? `url(${stats.bannerUrl}) center/cover`
-              : bannerToneFor(userId ?? username),
-          }}
-          aria-hidden
-        />
+        <span className="relative block h-24 w-full overflow-hidden" aria-hidden>
+          <span
+            className="absolute inset-0"
+            style={{
+              background: stats?.bannerUrl
+                ? `url(${stats.bannerUrl}) center/cover`
+                : bannerToneFor(userId ?? username),
+            }}
+          />
+          {/* Same accent wash as the profile card, so the two surfaces match. */}
+          <span
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
+          />
+          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
+        </span>
         <span className="flex items-center gap-3 px-3">
           <span className="relative -mt-6 inline-flex shrink-0">
             <Avatar className="h-12 w-12 rounded-full ring-2 ring-[#141416]">
@@ -335,20 +358,31 @@ export function AccountMenu({
             <CustomStatusLine status={custom} className="mt-0.5 text-xs text-muted-foreground" />
           </span>
         </span>
-        <span className="flex items-center gap-4 border-t border-white/[0.06] px-3 py-2 text-xs text-muted-foreground">
+        {/* Three labelled counts instead of one run-on line, so the numbers read
+            as a stat block and each one is skimmable. */}
+        <span className="flex items-stretch gap-2 border-t border-white/[0.06] px-3 py-2.5">
           {menuQuery.isLoading ? (
             <>
-              <span className="h-3 w-16 animate-pulse rounded bg-white/10" aria-hidden />
-              <span className="h-3 w-20 animate-pulse rounded bg-white/10" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
               <span className="sr-only">Loading stats</span>
             </>
           ) : (
             <>
-              <span>
-                <span className="font-bold text-[#f2efe6]">{formatCount(stats?.rizzScore ?? 0)}</span> Rizz
+              <span className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="font-mono text-sm font-bold text-[#c8ff3d]">{formatCount(stats?.rizzScore ?? 0)}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Rizz</span>
               </span>
-              <span>
-                <span className="font-bold text-[#f2efe6]">{formatCount(stats?.followers ?? 0)}</span> Followers
+              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
+              <span className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.followers ?? 0)}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Followers</span>
+              </span>
+              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
+              <span className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.badges ?? 0)}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Badges</span>
               </span>
             </>
           )}
@@ -475,7 +509,7 @@ export function AccountMenu({
           aria-label="Switch account"
           className={rowCls}
         >
-          <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          {rowIcon(UserPlus)}
           <span className="min-w-0 flex-1 truncate text-left">Switch account</span>
           <ChevronDown
             className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", accountsExpanded && "rotate-180")}
@@ -518,7 +552,7 @@ export function AccountMenu({
               onClick={() => void doSwitchAccount()}
               className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
             >
-              <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              {rowIcon(UserPlus)}
               Add account
             </button>
           </div>

@@ -2,7 +2,7 @@ import { Fragment, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AtSign, Ban, Check, Flag, Link2, MessageCircle, MoreHorizontal,
+  AtSign, Ban, Check, ChevronRight, Flag, Link2, MessageCircle, MoreHorizontal,
   Pencil, Phone, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -18,6 +18,7 @@ import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence"
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
+import { untypedRpc } from "@/lib/untyped-db";
 import { useAuth } from "@/lib/auth";
 
 /** Legacy shape (realm chat passes these); userId is the only required field. */
@@ -98,10 +99,10 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   // 1) Prefer the server function (profile + stats + rank + mutuals in one call).
   try {
     if (!profileCardRpcMissing) {
-      const { data, error } = await (supabase.rpc as never)("get_profile_card" as never, {
+      const { data, error } = await untypedRpc(supabase)("get_profile_card", {
         _user_id: userId,
         _viewer: viewerId,
-      } as never);
+      });
       if (error) {
         const rpcError = error as { code?: string; message?: string };
         if (rpcError.code === "PGRST202" || /could not find the function/i.test(rpcError.message ?? "")) {
@@ -188,25 +189,35 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   } catch { /* column missing */ }
 
   const score = Number(p.rizz_score ?? 0);
+  // NOTE: PostgREST builders are only PromiseLike, so each one is wrapped in a
+  // real Promise before `.then(...).catch(...)` — `.catch` does not exist on
+  // PromiseLike and that is what used to break this fallback path.
   const [followers, following, rankRow, rel] = await Promise.all([
-    supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", userId)
-      .then((r) => r.count ?? 0).catch(() => 0),
-    supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", userId)
-      .then((r) => r.count ?? 0).catch(() => 0),
+    Promise.resolve(supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", userId))
+      .then((r) => r.count ?? 0)
+      .catch(() => 0),
+    Promise.resolve(supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", userId))
+      .then((r) => r.count ?? 0)
+      .catch(() => 0),
     score > 0
-      ? supabase.from("profiles").select("id", { count: "exact", head: true }).gt("rizz_score", score)
-          .then((r) => (r.count ?? 0) + 1).catch(() => null)
+      ? Promise.resolve(supabase.from("profiles").select("id", { count: "exact", head: true }).gt("rizz_score", score))
+          .then((r) => (r.count ?? 0) + 1)
+          .catch(() => null)
       : Promise.resolve(null),
     viewerId
       ? Promise.all([
-          supabase.from("follows").select("follower_id").eq("follower_id", viewerId).eq("following_id", userId).maybeSingle()
-            .then((r) => !!r.data).catch(() => false),
-          supabase.from("blocks").select("blocker_id").eq("blocker_id", viewerId).eq("blocked_id", userId).maybeSingle()
-            .then((r) => !!r.data).catch(() => false),
-          supabase.from("blocks").select("blocker_id").eq("blocker_id", userId).eq("blocked_id", viewerId).maybeSingle()
-            .then((r) => !!r.data).catch(() => false),
-          supabase.from("mutes").select("muter_id").eq("muter_id", viewerId).eq("muted_id", userId).maybeSingle()
-            .then((r) => !!r.data).catch(() => false),
+          Promise.resolve(supabase.from("follows").select("follower_id").eq("follower_id", viewerId).eq("following_id", userId).maybeSingle())
+            .then((r) => !!r.data)
+            .catch(() => false),
+          Promise.resolve(supabase.from("blocks").select("blocker_id").eq("blocker_id", viewerId).eq("blocked_id", userId).maybeSingle())
+            .then((r) => !!r.data)
+            .catch(() => false),
+          Promise.resolve(supabase.from("blocks").select("blocker_id").eq("blocker_id", userId).eq("blocked_id", viewerId).maybeSingle())
+            .then((r) => !!r.data)
+            .catch(() => false),
+          Promise.resolve(supabase.from("mutes").select("muter_id").eq("muter_id", viewerId).eq("muted_id", userId).maybeSingle())
+            .then((r) => !!r.data)
+            .catch(() => false),
         ])
       : Promise.resolve([false, false, false, false] as const),
   ]);
@@ -578,9 +589,17 @@ export function ProfileCard({
         dragStart.current = null;
       }}
     >
-      {/* Taller banner with a fade into the card */}
-      <div className="relative h-[132px] w-full overflow-hidden" style={{ background: bannerBg }}>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#141416] to-transparent" aria-hidden="true" />
+      {/* Banner: the uploaded image (or a muted tone from the id) gets an accent
+          wash, a hairline highlight and a long fade, so the card has depth
+          without ever flashing a bright block of colour. */}
+      <div className="relative h-[148px] w-full overflow-hidden" style={{ background: bannerBg }}>
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+          style={{ background: `radial-gradient(130% 100% at 12% 0%, ${ringColor}33, transparent 62%)` }}
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.09]" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#141416] via-[#141416]/80 to-transparent" aria-hidden="true" />
         <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
@@ -630,7 +649,10 @@ export function ProfileCard({
         {/* Avatar overlapping banner, accent ring + presence dot */}
         <div className="-mt-11 flex items-end justify-between gap-3">
           <span className="relative inline-flex">
-            <Avatar className="h-20 w-20 rounded-full" style={{ boxShadow: `0 0 0 3px #141416, 0 0 0 6px ${ringColor}` }}>
+            <Avatar
+              className="h-[84px] w-[84px] rounded-full"
+              style={{ boxShadow: `0 0 0 3px #141416, 0 0 0 6px ${ringColor}, 0 14px 34px -18px ${ringColor}` }}
+            >
               <AvatarImage src={avatarSrc ?? undefined} className="object-cover" />
               <AvatarFallback className="rounded-full bg-[#1c1c1f] text-2xl font-bold text-[#f2efe6]">
                 {d.displayName.charAt(0).toUpperCase()}
@@ -664,21 +686,40 @@ export function ProfileCard({
           </div>
         ) : (
           <>
-            {/* Name / handle / pronouns / status */}
-            <div className="mt-2 flex items-center gap-1.5">
-              <h2 className="truncate font-display text-xl font-bold leading-tight text-[#f2efe6]" style={{ fontSize: 20 }}>
+            {/* Name / handle / pronouns / realm role / status */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <h2 className="truncate font-display text-[22px] font-bold leading-tight tracking-tight text-[#f2efe6]">
                 {d.displayName}
               </h2>
               {d.verified && (
-                <span title="Verified" aria-label="Verified" className="shrink-0 text-[#c8ff3d]">
-                  <Check className="h-4 w-4" />
+                <span
+                  title="Verified"
+                  aria-label="Verified"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 text-[#c8ff3d]"
+                >
+                  <Check className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              @{d.username}
-              {d.pronouns && <span className="text-muted-foreground"> · {d.pronouns}</span>}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              <p className="text-sm text-muted-foreground">
+                @{d.username}
+                {d.pronouns && <span className="text-muted-foreground"> · {d.pronouns}</span>}
+              </p>
+              {realmRoleMeta && (
+                <span
+                  className="inline-flex h-6 items-center gap-1.5 rounded-full border px-2 text-[11px] font-bold uppercase tracking-wider"
+                  style={{
+                    borderColor: `${realmRoleMeta.color}55`,
+                    background: `${realmRoleMeta.color}14`,
+                    color: realmRoleMeta.color,
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: realmRoleMeta.color }} aria-hidden="true" />
+                  {realmRoleMeta.label}
+                </span>
+              )}
+            </div>
             {statusPill}
 
             {/* Badges: the 5 canonical cat-emoji pills, the sheet tells the full story */}
@@ -710,8 +751,9 @@ export function ProfileCard({
               </div>
             )}
 
-            {/* Inner panel */}
-            <div className="mt-3 rounded-xl bg-[#1c1c1f] p-3" style={{ borderRadius: 12 }}>
+            {/* Inner panel: the bio, then the two dates people actually look for.
+                The realm role lives up by the handle so it is not repeated here. */}
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
               {d.bio ? (
                 <>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">About me</p>
@@ -727,67 +769,56 @@ export function ProfileCard({
               ) : (
                 <p className="text-sm text-muted-foreground">{isSelf ? "Tell people who you are — edit your profile to add a bio." : "No bio yet."}</p>
               )}
-              {joinDate && (
-                <>
-                  <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Member since
-                  </p>
-                  <p className="mt-0.5 text-sm text-[#f2efe6]">{joinDate}</p>
-                </>
-              )}
-              {(realmRoleMeta || realmJoinedAt) && (
-                <>
-                  <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    In this realm
-                  </p>
-                  {realmRoleMeta && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span
-                        className="inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold"
-                        style={{ borderColor: `${realmRoleMeta.color}55`, color: realmRoleMeta.color }}
-                      >
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: realmRoleMeta.color }} aria-hidden="true" />
-                        {realmRoleMeta.label}
-                      </span>
+              {(joinDate || realmJoinedAt) && (
+                <div className="mt-3.5 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-3">
+                  {joinDate && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Member since</p>
+                      <p className="mt-1 truncate text-sm font-medium text-[#f2efe6]">{joinDate}</p>
                     </div>
                   )}
-                  {realmJoinedAt && <p className="mt-1.5 text-xs text-muted-foreground">Joined realm {realmJoinedAt}</p>}
-                </>
+                  {realmJoinedAt && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">In this realm</p>
+                      <p className="mt-1 truncate text-sm font-medium text-[#f2efe6]">Joined {realmJoinedAt}</p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Stats — followers/following open their lists */}
-            <div className="mt-3 grid grid-cols-4 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.03] py-1 text-center">
-              <div className="py-1.5">
-                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.rizzScore)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Rizz</p>
+            {/* Stats — the two counts are buttons, so they keep 44px targets. */}
+            <div className="mt-3.5 grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
+              <div className="rounded-xl py-2">
+                <p className="truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">{formatCount(d.rizzScore)}</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Rizz</p>
               </div>
-              <div className="py-1.5">
-                <p className="truncate text-sm font-bold tabular-nums text-foreground">
+              <div className="rounded-xl py-2">
+                <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
                   {d.rank != null ? `#${d.rank}` : "—"}
                   {d.rank != null && d.rank <= 10 && (
                     <Trophy aria-hidden="true" className="ml-0.5 inline h-3.5 w-3.5 -translate-y-px text-[#c8ff3d]" />
                   )}
                 </p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Rank</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Rank</p>
               </div>
               <button
                 type="button"
                 onClick={() => setListMode("followers")}
                 aria-label={`See ${d.followers} followers`}
-                className="min-h-11 py-1.5 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
               >
-                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.followers)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Followers</p>
+                <p className="truncate font-display text-base font-bold tabular-nums text-foreground">{formatCount(d.followers)}</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Followers</p>
               </button>
               <button
                 type="button"
                 onClick={() => setListMode("following")}
                 aria-label={`See ${d.following} following`}
-                className="min-h-11 py-1.5 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
               >
-                <p className="truncate text-sm font-bold tabular-nums text-foreground">{formatCount(d.following)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Following</p>
+                <p className="truncate font-display text-base font-bold tabular-nums text-foreground">{formatCount(d.following)}</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Following</p>
               </button>
             </div>
 
@@ -814,7 +845,11 @@ export function ProfileCard({
             {/* Actions */}
             <div className="mt-3 flex gap-2">
               {isSelf ? (
-                <Button asChild variant="outline" className="h-11 flex-1 border-white/15">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-11 flex-1 border-[#c8ff3d]/40 bg-[#c8ff3d]/10 text-[#c8ff3d] hover:bg-[#c8ff3d]/20 hover:text-[#c8ff3d]"
+                >
                   <Link to="/settings/profile" onClick={() => close()}>
                     <Pencil className="h-4 w-4" /> Edit profile
                   </Link>
@@ -854,9 +889,14 @@ export function ProfileCard({
                 </Button>
               )}
             </div>
-            <Button asChild variant="secondary" className="mt-2 h-11 w-full">
+            <Button
+              asChild
+              variant="outline"
+              className="mt-2 h-11 w-full justify-between border-white/10 bg-white/[0.03] text-[#f2efe6] hover:bg-white/[0.07]"
+            >
               <Link to="/u/$username" params={{ username: d.username }} onClick={() => close()}>
                 View full profile
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Link>
             </Button>
           </>

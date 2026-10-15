@@ -101,6 +101,22 @@ export function BadgesPage() {
   const ownedCount = mine.data?.length ?? 0;
   const progressPct = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
+  // Rarity breakdown for the header strip: how many of each tier you hold.
+  const rarityRows = useMemo(() => {
+    const tiers = ["mythic", "legendary", "epic", "rare", "common"] as const;
+    return tiers
+      .map((tier) => {
+        const rows = (all.data ?? []).filter((b) => b.rarity === tier);
+        return {
+          tier,
+          owned: rows.filter((b) => owned.has(b.id)).length,
+          total: rows.length,
+          color: rows[0]?.color ?? "#a1a1aa",
+        };
+      })
+      .filter((row) => row.total > 0);
+  }, [all.data, owned]);
+
   // Active badge defaulting to first in list or selected
   const active = selectedBadge ?? all.data?.[0] ?? null;
   const isActiveOwned = active ? owned.has(active.id) : false;
@@ -153,38 +169,62 @@ export function BadgesPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Page Header with Collection Metrics */}
-      <div className="glass rounded-3xl p-6 border border-white/10 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header: collection metrics, progress and a rarity strip, so the page
+          reads like a collector's shelf instead of a plain grid. */}
+      <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-white/10 p-6">
+        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-              <Award className="h-7 w-7 text-primary" /> Badge Showcase
+            <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+              <span className="grid h-11 w-11 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                <Award className="h-6 w-6" />
+              </span>
+              Badge Showcase
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
               Unlock exclusive badges by creating drops, hosting realms, and leveling up your rizz score.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+          <div className="flex shrink-0 items-center gap-3 self-start sm:self-auto">
             <div className="text-right">
-              <div className="text-sm font-bold font-mono text-foreground">
-                {ownedCount} / {totalCount}
+              <div className="font-mono text-base font-bold text-foreground">
+                {formatNumber(ownedCount)} <span className="text-muted-foreground">/ {formatNumber(totalCount)}</span>
               </div>
-              <div className="text-[11px] text-muted-foreground font-medium">Collected</div>
+              <div className="text-[11px] font-medium text-muted-foreground">Collected</div>
             </div>
-            <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 grid place-items-center text-primary font-bold text-xs">
+            <div
+              className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-sm font-bold text-primary"
+              aria-label={`${progressPct}% collected`}
+            >
               {progressPct}%
             </div>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           <Progress value={progressPct} className="h-2 bg-white/5" />
-          <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+          <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
             <span>Novice Collector</span>
             <span>{ownedCount >= 10 ? "Master Achiever" : "10 needed for Master"}</span>
           </div>
         </div>
+
+        {/* Rarity strip: one dot per badge you own, out of that tier's total. */}
+        {rarityRows.length > 0 && (
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.07] pt-4">
+            {rarityRows.map((row) => (
+              <div key={row.tier} className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color, boxShadow: `0 0 10px ${row.color}88` }} aria-hidden="true" />
+                <span className="font-mono text-xs font-bold text-foreground">
+                  {row.owned}<span className="text-muted-foreground">/{row.total}</span>
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{row.tier}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Dynamic Multi-Pane Layout */}
@@ -247,29 +287,36 @@ export function BadgesPage() {
                   key={b.id}
                   type="button"
                   onClick={() => setSelectedBadge(b)}
-                  className={`glass rounded-2xl p-4 border text-center flex flex-col items-center justify-between transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  aria-pressed={isSelected}
+                  className={`group glass relative flex flex-col items-center justify-between overflow-hidden rounded-2xl border p-4 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isSelected
-                      ? "border-primary bg-primary/[0.08] shadow-[0_0_16px_rgba(200,255,61,0.18)]"
+                      ? "border-primary bg-primary/[0.08] shadow-[0_0_20px_rgba(200,255,61,0.18)]"
                       : hasIt
-                        ? "border-white/10 hover:border-white/20 hover:bg-white/[0.04]"
-                        : "border-white/5 opacity-55 hover:opacity-80 hover:border-white/15 hover:bg-white/[0.02]"
+                        ? "border-white/10 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.04]"
+                        : "border-dashed border-white/10 opacity-70 hover:border-white/25 hover:bg-white/[0.03] hover:opacity-100"
                   }`}
                 >
-                  <div className="flex items-center justify-center pt-2">
+                  {/* Tier glow blooms on hover — the tile's only colour until you own it. */}
+                  <span
+                    className="pointer-events-none absolute inset-x-6 -top-12 h-24 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-100"
+                    style={{ background: `${b.color}33` }}
+                    aria-hidden="true"
+                  />
+                  <div className="relative flex h-20 items-center justify-center">
                     {hasIt ? (
                       <BadgeChip badge={b} size="lg" />
                     ) : (
-                      <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.04]">
                         <Lock className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
                   </div>
-                  <div className="my-2 min-w-0 w-full">
-                    <h3 className="font-display font-bold text-xs truncate text-foreground">{b.name}</h3>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{b.description}</p>
+                  <div className="relative my-2 min-w-0 w-full">
+                    <h3 className="truncate font-display text-xs font-bold text-foreground">{b.name}</h3>
+                    <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">{b.description}</p>
                   </div>
                   <span
-                    className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full"
+                    className="relative rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
                     style={{ background: `${b.color}22`, color: b.color }}
                   >
                     {b.rarity}
@@ -309,31 +356,39 @@ export function BadgesPage() {
                 </span>
               </div>
 
-              {/* Big Badge Icon Display */}
-              <div className="flex flex-col items-center text-center py-4 space-y-3">
-                <div className="scale-125 my-2">
+              {/* Art panel: the badge sits on a tier-tinted plinth with its glow. */}
+              <div
+                className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 py-7"
+                style={{ background: `radial-gradient(120% 90% at 50% 0%, ${active.color}1f, rgba(255,255,255,0.02) 70%)` }}
+              >
+                <span
+                  className="pointer-events-none absolute -bottom-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full blur-3xl"
+                  style={{ background: `${active.color}33` }}
+                  aria-hidden="true"
+                />
+                <div className="relative flex flex-col items-center gap-3 text-center">
                   {isActiveOwned ? (
-                    <span data-badge-art className="inline-flex">
+                    <span data-badge-art className="inline-flex scale-125">
                       <BadgeChip badge={active} size="lg" />
                     </span>
                   ) : (
-                    <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-lg">
+                    <div className="grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-black/30 shadow-lg">
                       <Lock className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                </div>
-                <div>
-                  <h2 className="font-display text-lg font-bold text-foreground">{active.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-xs">{active.description}</p>
+                  <div className="px-4">
+                    <h2 className="font-display text-lg font-bold text-foreground">{active.name}</h2>
+                    <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{active.description}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Unlock Status Card */}
+              {/* Unlock status / how to earn */}
               <div
-                className={`rounded-2xl p-4 border flex items-center gap-3 ${
+                className={`flex items-center gap-3 rounded-2xl border p-4 ${
                   isActiveOwned
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                    : "border-white/10 bg-white/[0.02] text-muted-foreground"
+                    ? "border-emerald-500/25 bg-emerald-500/10"
+                    : "border-white/10 bg-white/[0.02]"
                 }`}
               >
                 {isActiveOwned ? (
@@ -343,26 +398,37 @@ export function BadgesPage() {
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground">
-                    {isActiveOwned ? "Unlocked in your collection" : "Locked Achiever Badge"}
+                    {isActiveOwned ? "In your collection" : "Not collected yet"}
                   </p>
-                  <p className="text-[11px] leading-snug">
+                  <p className={`text-[11px] leading-snug ${isActiveOwned ? "text-emerald-200/90" : "text-muted-foreground"}`}>
                     {isActiveOwned
-                      ? "Proudly displayed on your profile and hover cards."
-                      : "Earn this badge by being active and engaging in the community."}
+                      ? "Featured on your profile card, hover cards and badge sheet."
+                      : "Earn it by being active and engaging in the community."}
                   </p>
                 </div>
               </div>
 
-              {/* Rarity & Stats */}
-              <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
-                <div className="flex justify-between py-1 text-muted-foreground">
-                  <span>Badge Tier</span>
-                  <span className="capitalize font-medium text-foreground">{active.rarity}</span>
+              {/* Rarity & stats */}
+              <div className="space-y-1 border-t border-white/10 pt-3 text-xs">
+                <div className="flex items-center justify-between py-1 text-muted-foreground">
+                  <span>Badge tier</span>
+                  <span className="flex items-center gap-1.5 font-medium capitalize text-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active.color }} aria-hidden="true" />
+                    {active.rarity}
+                  </span>
                 </div>
-                <div className="flex justify-between py-1 text-muted-foreground">
+                <div className="flex items-center justify-between py-1 text-muted-foreground">
                   <span>Slug</span>
                   <span className="font-mono text-[11px] text-foreground">#{active.slug}</span>
                 </div>
+                {isActiveOwned && awardedAtFor.get(active.slug) && (
+                  <div className="flex items-center justify-between py-1 text-muted-foreground">
+                    <span>Earned</span>
+                    <span className="text-foreground">
+                      {new Date(awardedAtFor.get(active.slug)!).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
@@ -417,7 +483,7 @@ export function BadgesPage() {
                 style={{ boxShadow: `0 0 24px ${glow}22` }}
               >
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
-                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} slug={entry.slug} glow={glow} size={30} />
+                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} glow={glow} size={30} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">
