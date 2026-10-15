@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 import { statusColor, statusLabel, type PublicPresence } from "@/lib/presence";
 
 /**
@@ -152,17 +154,80 @@ export function CustomStatusLine({
   className?: string;
 }) {
   if (!status || (!status.emoji && !status.text)) return null;
+  const catName = status.emoji ? catNameForShortcode(status.emoji) : null;
   return (
     <span className={`flex min-w-0 items-center gap-1.5 ${className}`}>
-      {status.emoji && <span aria-hidden className="text-sm shrink-0">{status.emoji}</span>}
+      {status.emoji &&
+        (catName ? (
+          <CatEmoji name={catName} size={16} animate={false} />
+        ) : (
+          <span aria-hidden className="text-sm shrink-0">
+            {status.emoji}
+          </span>
+        ))}
       {status.text && <span className="truncate">{status.text}</span>}
     </span>
   );
 }
 
 /**
+ * <StatusBubble>: Discord thought bubble replacing the old "Hi" bubble.
+ * Rounded pill (radius 16, surface-2, 1px border), emoji 20px, one-line 13px
+ * text with ellipsis (max-width ~200px; tap expands to 3 lines), plus two
+ * small trailing circles (8px and 5px) leading to the avatar.
+ * Cat emoji loops (at most one loop on screen via CatEmoji budget);
+ * Unicode emoji is static.
+ */
+export function StatusBubble({
+  emoji,
+  text,
+  className = "",
+}: {
+  emoji?: string | null;
+  text?: string | null;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (!emoji && !text) return null;
+  return (
+    <span className={`relative inline-flex ${className}`}>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-label={expanded ? "Collapse status" : "Expand status"}
+        aria-expanded={expanded}
+        className="status-bubble-in inline-flex max-w-[200px] items-center gap-1.5 rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f] px-2.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        style={{ borderRadius: 16 }}
+      >
+        {emoji && <StatusBubbleEmoji emoji={emoji} />}
+        {text && (
+          <span
+            className={`min-w-0 text-[13px] leading-tight text-[#f2efe6] ${expanded ? "line-clamp-3 whitespace-pre-wrap" : "truncate"}`}
+          >
+            {text}
+          </span>
+        )}
+      </button>
+      {/* two trailing circles leading to the avatar */}
+      <span aria-hidden className="absolute -bottom-1.5 left-5 h-2 w-2 rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
+      <span aria-hidden className="absolute -bottom-3 left-3.5 h-[5px] w-[5px] rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
+    </span>
+  );
+}
+
+function StatusBubbleEmoji({ emoji }: { emoji: string }) {
+  const catName = catNameForShortcode(emoji);
+  if (catName) return <CatEmoji name={catName} size={20} animate="loop" />;
+  return (
+    <span aria-hidden className="shrink-0 leading-none" style={{ fontSize: 20 }}>
+      {emoji}
+    </span>
+  );
+}
+
+/**
  * Discord-style Thought / Imagination bubble for custom status on profiles and previews.
- * Features a balloon shape with a cute speech beak pointing towards the user.
+ * Kept as an alias of StatusBubble so existing call sites keep working.
  */
 export function ThoughtBubble({
   emoji,
@@ -173,19 +238,5 @@ export function ThoughtBubble({
   text?: string | null;
   className?: string;
 }) {
-  if (!emoji && !text) return null;
-
-  return (
-    <div
-      className={`relative inline-flex max-w-[280px] items-center gap-1.5 rounded-2xl border border-white/15 bg-black/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150 ${className}`}
-    >
-      {emoji && <span className="text-sm shrink-0">{emoji}</span>}
-      {text && <span className="truncate leading-tight">{text}</span>}
-      {/* Speech bubble pointer tip */}
-      <div
-        className="absolute -bottom-1.5 left-4 h-2.5 w-2.5 rotate-45 border-b border-r border-white/15 bg-black/80"
-        aria-hidden
-      />
-    </div>
-  );
+  return <StatusBubble emoji={emoji} text={text} className={className} />;
 }

@@ -35,6 +35,7 @@ import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
+import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { LimeCatSplash } from "@/components/LimeCatSplash";
 import { PRESENCE_STATUSES, statusColor, statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
@@ -266,8 +267,8 @@ export function AppShell() {
               className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-all hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {presence.customStatus?.emoji ? (
-                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
-                  {presence.customStatus.emoji}
+                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center leading-none">
+                  <StatusEmoji emoji={presence.customStatus.emoji} size={18} />
                 </span>
               ) : (
                 <StatusDot status={presence.status} size={12} ring={false} />
@@ -581,6 +582,7 @@ function ProfileMenu({
 }) {
   const { t } = useI18n();
   const selfPresence = useSelfPresence();
+  const [open, setOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
 
@@ -589,8 +591,10 @@ function ProfileMenu({
 
   return (
     <DropdownMenu
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
           setConfirmSignOut(false);
           setStatusExpanded(false);
         }
@@ -613,8 +617,8 @@ function ProfileMenu({
               presence={currentEmoji ? undefined : currentStatus}
             />
             {currentEmoji && (
-              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-border text-[9px] leading-none">
-                {currentEmoji}
+              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center overflow-hidden rounded-full bg-background ring-1 ring-border leading-none">
+                <StatusEmoji emoji={currentEmoji} size={12} />
               </span>
             )}
           </div>
@@ -700,7 +704,10 @@ function ProfileMenu({
                   e.stopPropagation();
                   e.preventDefault();
                   setStatusExpanded(false);
-                  onStatus?.();
+                  // Close the account menu BEFORE opening Status.
+                  setOpen(false);
+                  const fn = onStatus;
+                  if (fn) window.setTimeout(() => fn(), 60);
                 }}
                 className="flex w-full items-center gap-1.5 px-2 py-1 rounded text-[11px] text-primary hover:bg-white/[0.08] transition-colors"
               >
