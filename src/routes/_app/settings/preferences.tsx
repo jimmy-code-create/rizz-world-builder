@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Bell, Link2, Shield, Sliders } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PrefRow } from "@/components/settings/PrefRow";

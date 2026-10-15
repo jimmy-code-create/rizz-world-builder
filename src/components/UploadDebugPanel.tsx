@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Bug, Copy, Trash2 } from "lucide-react";
 import { clearTraces, formatTrace, getTraces, subscribeTraces } from "@/lib/upload-trace";
 

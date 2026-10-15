@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, MonitorUp, Hand, SwitchCamera, Sparkles, WifiOff } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
 import { createVoiceProcessor, type VoiceProcessor } from "@/lib/audio-denoise";

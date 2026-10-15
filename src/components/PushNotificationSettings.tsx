@@ -14,7 +14,7 @@ import {
   sendTestPush,
   type NotificationPrefs,
 } from "@/lib/push";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function PushNotificationSettings() {
   const { user } = useAuth();

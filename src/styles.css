@@ -844,21 +844,23 @@
   .chat-media-skeleton { animation: none; }
 }
 
-/* ============ RIZZ NOTIFICATIONS ============ */
+/* ============ RIZZ NOTIFICATIONS (glass toast host) ============ */
 .rizz-toaster {
-  --width: min(384px, calc(100vw - 1.5rem));
-  z-index: 100;
+  --width: min(420px, calc(100vw - 1.5rem));
+  z-index: var(--z-toast, 200);
 }
 
+/* Top-center, clear of the status bar and of the composer/keyboard on mobile.
+   Older styles pinned this host to the bottom, so the position must win. */
 .rizz-toaster[data-sonner-toaster] {
-  top: auto !important;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem) !important;
+  top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+  bottom: auto !important;
 }
 
-@media (min-width: 768px) {
-  .rizz-toaster[data-sonner-toaster] {
-    bottom: 16px !important;
-  }
+/* Enter/exit stay under 250ms; the card, its accent rail and the countdown all
+   live in <GlassToast /> so each type stays legible on any wallpaper. */
+.rizz-toaster [data-sonner-toast] {
+  transition-duration: 200ms !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -868,120 +870,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/*
- * The toast is the app's voice, so it wears the app's shape: a dark glass card
- * with a tinted icon chip and a coloured rail down the leading edge. Every
- * variant only swaps two variables (--rizz-toast-accent for the rail, chip and
- * glow, --rizz-toast-tint for the chip fill), so the family stays consistent.
- */
-.rizz-toaster [data-sonner-toast].rizz-toast {
-  --rizz-toast-accent: var(--brand-signal);
-  --rizz-toast-tint: color-mix(in srgb, var(--brand-signal) 16%, transparent);
-  width: var(--width);
-  min-height: 0;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 11px 14px 11px 12px;
-  border: 1px solid var(--brand-line);
-  border-radius: 10px;
-  background: var(--brand-ink-2);
-  color: var(--brand-paper);
-  box-shadow: var(--shadow-2);
-  font-family: var(--font-sans);
-}
-
-.rizz-toaster [data-sonner-toast].rizz-toast:hover {
-  border-color: color-mix(in srgb, var(--brand-paper) 22%, transparent);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="error"].rizz-toast {
-  --rizz-toast-accent: oklch(0.72 0.19 20);
-  --rizz-toast-tint: oklch(0.72 0.19 20 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="success"].rizz-toast {
-  --rizz-toast-accent: oklch(0.8 0.16 155);
-  --rizz-toast-tint: oklch(0.8 0.16 155 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="info"].rizz-toast {
-  --rizz-toast-accent: oklch(0.82 0.13 205);
-  --rizz-toast-tint: oklch(0.82 0.13 205 / 0.16);
-}
-
-.rizz-toaster [data-sonner-toast][data-type="warning"].rizz-toast {
-  --rizz-toast-accent: oklch(0.84 0.16 85);
-  --rizz-toast-tint: oklch(0.84 0.16 85 / 0.16);
-}
-
-.rizz-toaster .rizz-toast-title {
-  min-width: 0;
-  white-space: normal;
-  color: var(--brand-paper);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.rizz-toaster .rizz-toast-description {
-  white-space: normal;
-  margin-top: 2px;
-  color: var(--brand-paper-dim);
-  font-size: 12.5px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-/* Icon chip: the glyph sits in a tinted circle so the type reads at a glance
-   without a full coloured border competing with the message. */
-.rizz-toaster .rizz-toast-icon {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  margin-top: 1px;
-  border-radius: 999px;
-  background: var(--rizz-toast-tint);
-  color: var(--rizz-toast-accent);
-}
-
-.rizz-toaster .rizz-toast-icon svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2.4;
-}
-
-.rizz-toaster .rizz-toast-action,
-.rizz-toaster .rizz-toast-cancel {
-  min-height: 30px;
-  border-radius: 999px;
-  padding: 0 13px;
-  font-size: 12px;
-  font-weight: 650;
-  transition: filter 150ms ease, background-color 150ms ease;
-}
-
-.rizz-toaster .rizz-toast-action {
-  background: var(--brand-signal);
-  color: var(--brand-signal-ink);
-}
-
-.rizz-toaster .rizz-toast-action:hover {
-  filter: brightness(1.1);
-}
-
-.rizz-toaster .rizz-toast-cancel {
-  background: color-mix(in srgb, var(--brand-paper) 8%, transparent);
-  color: var(--brand-paper-dim);
-}
-
-.rizz-toaster .rizz-toast-cancel:hover {
-  background: color-mix(in srgb, var(--brand-paper) 14%, transparent);
+  .rizz-toaster [data-sonner-toast] {
+    transition-duration: 1ms !important;
+  }
 }
 
 /* ============ LANDING MOTION (all of it optional) ============

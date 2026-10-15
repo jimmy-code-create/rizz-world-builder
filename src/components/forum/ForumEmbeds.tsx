@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Code2, Copy, ImageOff } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { MarkdownText } from "@/components/MarkdownText";
 import { MusicPlayer } from "@/components/music/MusicPlayer";

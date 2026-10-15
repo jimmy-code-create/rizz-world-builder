@@ -12,7 +12,7 @@ import { RizzCat } from "@/components/RizzCat";
 import { formatCount, cn } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 
 type CommentRow = {

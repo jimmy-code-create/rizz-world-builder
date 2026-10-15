@@ -29,7 +29,7 @@ export const MORE_REACTIONS = [
 export const DOUBLE_TAP_REACTION = "❤️";
 
 /** Never surface the raw database error to the user. */
-export const REACTION_FAILED_MESSAGE = "Couldn't react, try again";
+export const REACTION_FAILED_MESSAGE = "Couldn't react";
 
 function rpcName(scope: ReactionScope) {
   return scope === "dm" ? "toggle_dm_reaction" : "toggle_message_reaction";

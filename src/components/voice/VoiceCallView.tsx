@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchRealmRoomMessages, sendRealmRoomMessage } from "@/lib/realms";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   loadPeerAudio,
   usePeerAudio,

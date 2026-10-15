@@ -9,7 +9,7 @@ import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/badges")({
   head: () => ({ meta: [{ title: "Badges · RIZZ" }] }),

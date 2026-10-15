@@ -12,7 +12,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { listMyGroups, type Group } from "@/lib/groups";
 import { MAX_GROUP_PICKS, createGroupChat } from "@/lib/groups.functions";
 import { squareImageFile } from "@/lib/image-square";

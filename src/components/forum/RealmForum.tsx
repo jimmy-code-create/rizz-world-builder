@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { ForumHero, ForumSlimHeader } from "@/components/forum/ForumHero";
 import { ForumToolbar, ForumViewOptions } from "@/components/forum/ForumToolbar";

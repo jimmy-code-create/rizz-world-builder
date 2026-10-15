@@ -23,7 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";

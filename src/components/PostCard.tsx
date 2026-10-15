@@ -44,7 +44,7 @@ import { RizzVideoPlayer } from "@/components/RizzVideoPlayer";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate";

@@ -9,7 +9,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";

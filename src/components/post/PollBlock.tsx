@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { BarChart3, Check, Clock, Users } from "lucide-react";
 import { fetchPoll, fetchPollVoters, votePoll } from "@/lib/polls";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 

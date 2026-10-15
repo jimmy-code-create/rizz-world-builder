@@ -26,7 +26,7 @@ import {
   type PeerAudioState,
 } from "@/lib/peer-audio";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export interface VoiceSettingsSheetProps {
   open: boolean;

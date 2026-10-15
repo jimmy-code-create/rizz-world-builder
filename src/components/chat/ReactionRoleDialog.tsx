@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { deleteReactionRole, setReactionRole, type ReactionRole } from "@/lib/reaction-roles";
 
 type ReactionRoleDialogProps = {

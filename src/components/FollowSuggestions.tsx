@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function FollowSuggestions() {
   const { user, profile } = useAuth();

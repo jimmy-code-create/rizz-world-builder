@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
 import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/claim")({
   component: ClaimUsernamePage,

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Gift, Plus, Timer, Loader2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/drops")({
   head: () => ({ meta: [{ title: "Drops · RIZZ" }] }),

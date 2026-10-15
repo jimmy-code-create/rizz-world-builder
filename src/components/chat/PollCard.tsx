@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart3, Clock, Users } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ChoiceMark } from "@/components/ui/choice-mark";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";

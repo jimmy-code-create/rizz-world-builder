@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { listRealmMembers, type RealmMember as RealmMemberRow, type RealmRoom } from "@/lib/realms";
 import { canModerateRealm } from "@/lib/realm-roles";
 import {

@@ -7,7 +7,7 @@ import {
   Gauge, Hash, Heart, ListOrdered, Lock, MessageSquareWarning, ScrollText, Search, Shield, ShieldCheck,
   SmilePlus, Sparkles, Trash2, UserCog, UserMinus, UserX, X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";

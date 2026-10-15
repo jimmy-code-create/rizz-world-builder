@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { getPendingInvitePath } from "@/lib/onboarding";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/tutorial")({

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/realms")({
   head: () => ({ meta: [{ title: "Realms · RIZZ" }] }),
