@@ -44,7 +44,7 @@ export function emojiTextClass(
   // Pure emoji: the whole message is the emoji.
   if (emojis.length === visible.length) {
     if (scale === "chat") {
-      if (emojis.length <= 3) return "text-[2.25rem] leading-[1.2] py-1 inline-block";
+      if (emojis.length <= 3) return "text-[3rem] leading-[1.2] py-1 inline-block";
       if (emojis.length <= 9) return "text-2xl leading-snug py-0.5 inline-block";
       return "text-xl leading-snug";
     }

@@ -46,6 +46,8 @@ export interface VoiceSettingsSheetProps {
   onTogglePeerMute?: (peerId: string) => void;
 }
 
+let cachedDevices: MediaDeviceInfo[] = [];
+
 export function VoiceSettingsSheet({
   open,
   onOpenChange,
@@ -62,7 +64,7 @@ export function VoiceSettingsSheet({
   const internalPeerAudio = usePeerAudio();
   const peerAudio = propPeerAudio ?? internalPeerAudio;
 
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>(() => cachedDevices);
   const [sinkSupported, setSinkSupported] = useState(false);
 
   useEffect(() => {
@@ -74,7 +76,9 @@ export function VoiceSettingsSheet({
   const refreshDevices = useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
     try {
-      setDevices(await navigator.mediaDevices.enumerateDevices());
+      const list = await navigator.mediaDevices.enumerateDevices();
+      cachedDevices = list;
+      setDevices(list);
     } catch {
       // Permission denied or not yet requested
     }
@@ -82,10 +86,11 @@ export function VoiceSettingsSheet({
 
   useEffect(() => {
     if (!open) return;
+    if (cachedDevices.length > 0) setDevices(cachedDevices);
     // Defer device enumeration so it runs after sheet open animation completes, preventing UI lag
     const timer = setTimeout(() => {
       void refreshDevices();
-    }, 200);
+    }, 150);
     return () => clearTimeout(timer);
   }, [open, refreshDevices]);
 
@@ -323,10 +328,12 @@ function MicLiveMeter({
   sensitivity: number;
 }) {
   const [active, setActive] = useState(false);
-  const [level, setLevel] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const sensitivityRef = useRef(sensitivity);
+  sensitivityRef.current = sensitivity;
 
   const stop = useCallback(() => {
     if (animFrameRef.current) {
@@ -341,7 +348,10 @@ function MicLiveMeter({
       void audioContextRef.current.close();
       audioContextRef.current = null;
     }
-    setLevel(0);
+    if (barRef.current) {
+      barRef.current.style.width = "0%";
+      barRef.current.style.backgroundColor = "rgba(200, 255, 61, 0.5)";
+    }
     setActive(false);
   }, []);
 
@@ -379,7 +389,11 @@ function MicLiveMeter({
         }
         const avg = sum / bufferLength;
         const normalized = Math.min(100, Math.round((avg / 128) * 100));
-        setLevel(normalized);
+        if (barRef.current) {
+          barRef.current.style.width = `${normalized}%`;
+          const above = normalized >= Math.round(sensitivityRef.current * 100);
+          barRef.current.style.backgroundColor = above ? "var(--primary, #c8ff3d)" : "rgba(200, 255, 61, 0.5)";
+        }
         animFrameRef.current = requestAnimationFrame(updateMeter);
       };
       setActive(true);
@@ -389,8 +403,6 @@ function MicLiveMeter({
       stop();
     }
   };
-
-  const isAboveThreshold = level >= Math.round(sensitivity * 100);
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
@@ -411,8 +423,9 @@ function MicLiveMeter({
 
       <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-2 border border-border">
         <div
-          className={`h-full transition-all duration-75 rounded-full ${isAboveThreshold ? "bg-primary" : "bg-primary/50"}`}
-          style={{ width: `${level}%` }}
+          ref={barRef}
+          className="h-full rounded-full transition-[width] duration-75"
+          style={{ width: "0%", backgroundColor: "rgba(200, 255, 61, 0.5)" }}
         />
         <div
           className="absolute top-0 bottom-0 w-0.5 bg-white/70 shadow-sm"
