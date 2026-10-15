@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Headphones, Mic, Music2, Volume1, Volume2, Activity } from "lucide-react";
 import { toast } from "sonner";
@@ -432,7 +432,7 @@ function MicLiveMeter({
       animFrameRef.current = null;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current.getTracks().forEach((t: MediaStreamTrack) => t.stop());
       streamRef.current = null;
     }
     if (audioContextRef.current && audioContextRef.current.state !== "closed") {

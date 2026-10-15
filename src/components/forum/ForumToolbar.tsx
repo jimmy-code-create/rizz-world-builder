@@ -349,6 +349,7 @@ export function ForumToolbar({
   tags,
   activeTagIds,
   onToggleTag,
+  onClearTags,
   leading,
   trailing,
 }: {

@@ -323,7 +323,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       };
       let { error: insErr } = await supabase.from("stories").insert({
         ...base,
-        visibility,
+        visibility: visibility as any,
         hidden_from: hiddenFrom.map((person) => person.id),
       });
       // `hidden_from` and the audience value arrive with the story-likes

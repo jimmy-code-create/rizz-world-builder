@@ -40,6 +40,7 @@ import { LimeCatSplash } from "@/components/LimeCatSplash";
 import { PRESENCE_STATUSES, statusColor, statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
