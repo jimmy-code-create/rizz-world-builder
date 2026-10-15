@@ -14,6 +14,13 @@ export type GameEntry = {
   url: string;
   type: ActivityType;
   roomParam?: string;
+  /**
+   * True (default) when the game honors a launcher-generated room code:
+   * self-hosted hubs and room-link clones that auto-create `?room=CODE`.
+   * False for third-party sites (Jackbox, skribbl) where the room code
+   * lives on their side — the launcher opens the site and skips our code.
+   */
+  sharedCode?: boolean;
 };
 
 /** The live game state for one voice room. Ephemeral: broadcast to members,
@@ -144,7 +151,7 @@ export function useRoomActivity(roomId: string | null, me: { id: string; name: s
   const start = useCallback(async (entry: GameEntry): Promise<RoomActivity | null> => {
     const meNow = meRef.current;
     if (!meNow) return null;
-    const roomCode = entry.type === "embed" ? null : makeRoomCode();
+    const roomCode = entry.type === "embed" || entry.sharedCode === false ? null : makeRoomCode();
     const next: RoomActivity = {
       gameId: entry.id,
       gameName: entry.name,

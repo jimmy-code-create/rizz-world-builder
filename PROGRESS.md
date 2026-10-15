@@ -137,3 +137,10 @@
 - [x] Controller (Gamepad2) button in the voice-room header; `ActivityShelf` bottom sheet grid; `ActivityPanel` sandboxed iframe (side panel desktop, full-screen overlay mobile, minimize/close, End-for-everyone for starter/host); `JoinGameBanner` for members + toast; hub room-code helper with copy-invite + QR (graceful offline fallback) - **DONE**
 - [x] Voice keeps running (provider-owned engine, panel is a sibling); `docs/ADDING_A_GAME.md` — one JSON entry per game - **DONE**
 - [x] tsc identical to baseline, `vite build` exit 0 - **DONE**
+
+### Phase 21: Games actually load + black media stage
+- [x] Root cause: `games.example.com` / `draw.example.com` never resolved (verified http=000) and the embed slot was a `PASTE_…` placeholder — no code could load them. Registry now ships verified-working URLs (Jackbox.TV hub, skribbl.io room-link, 2048 embed — all HTTP 200, no framing headers, titles confirmed) - **DONE**
+- [x] New `sharedCode` entry flag (default true = launcher code drives same-room joins for self-hosted hubs/clones; false = third-party sites where the code lives externally, with honest helper copy instead of a fake code); one-line URL swap points any entry back at a self-hosted deploy - **DONE**
+- [x] Panel hardened: sandbox extended to forms/popups/modals (real games need logins + fullscreen; stated deviation from the original string), open-in-new-tab button so a framing-blocked host never strands you, shelf probes each URL (no-cors) and flags dead ones "Unreachable" - **DONE**
+- [x] `MediaViewer`: pure black backdrop (was 85% + blur) + body scroll/overscroll lock while open, restored on close; zoom/pan/dismiss untouched - **DONE**
+- [x] tsc identical to baseline, `vite build` exit 0 - **DONE**

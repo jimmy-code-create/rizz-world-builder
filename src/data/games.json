@@ -3,28 +3,30 @@
     "id": "gamenest",
     "name": "Party Games",
     "icon": "🎲",
-    "url": "https://games.example.com",
+    "url": "https://jackbox.tv/",
     "type": "multiplayer-hub",
-    "players": "2-16",
-    "description": "32 board, card & party games"
+    "players": "2-8",
+    "description": "Jackbox party packs — host reads the room code off their game",
+    "sharedCode": false
   },
   {
     "id": "draw-guess",
     "name": "Draw & Guess",
     "icon": "✏️",
-    "url": "https://draw.example.com",
+    "url": "https://skribbl.io/",
     "type": "room-link",
-    "players": "2-12",
-    "description": "Draw and guess together",
-    "roomParam": "room"
+    "players": "2+",
+    "description": "Draw and guess together on skribbl.io",
+    "roomParam": "room",
+    "sharedCode": false
   },
   {
     "id": "quick-play",
-    "name": "Quick Play",
-    "icon": "👾",
-    "url": "PASTE_GAMEZOP_EMBED_URL_HERE",
+    "name": "2048",
+    "icon": "🔢",
+    "url": "https://gabrielecirulli.github.io/2048/",
     "type": "embed",
-    "players": "1+",
-    "description": "Solo HTML5 arcade"
+    "players": "1",
+    "description": "Solo number puzzle while you hang out"
   }
 ]

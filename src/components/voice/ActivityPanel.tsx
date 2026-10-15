@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ChevronLeft, Copy, Gamepad2, Minimize2, PhoneOff, X } from "lucide-react";
+import { ChevronLeft, Copy, ExternalLink, Gamepad2, Minimize2, PhoneOff, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { inviteText, isValidGameUrl, type GameEntry, type RoomActivity } from "@/lib/activities";
 
-const IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-pointer-lock";
-const IFRAME_ALLOW = "autoplay; microphone; camera";
+// Real games need forms (logins, nicknames), popups and fullscreen; scripts
+// stay sandboxed and the frame gets no access to RIZZ storage or top nav.
+const IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-pointer-lock";
+const IFRAME_ALLOW = "autoplay; microphone; camera; fullscreen";
 
 /**
  * The live game panel: sandboxed iframe + room-code helper. Desktop renders
@@ -71,12 +73,22 @@ export function ActivityPanel({
   }
 
   const helper =
-    entry && activity.roomCode ? (
+    entry && entry.type !== "embed" ? (
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.06] px-3 py-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Room</span>
-        <span className="rounded-lg border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 px-2.5 py-1 font-mono text-sm font-bold tracking-widest text-[#c8ff3d]">
-          {activity.roomCode}
-        </span>
+        {activity.roomCode ? (
+          <>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Room</span>
+            <span className="rounded-lg border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 px-2.5 py-1 font-mono text-sm font-bold tracking-widest text-[#c8ff3d]">
+              {activity.roomCode}
+            </span>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 basis-full text-[11px] leading-snug text-muted-foreground sm:basis-auto">
+            {entry.type === "multiplayer-hub"
+              ? "The host reads the room code off their game screen."
+              : "Host: create a private room on the site, then paste its link in chat."}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => void copyInvite()}
@@ -130,6 +142,16 @@ export function ActivityPanel({
             <PhoneOff className="h-3.5 w-3.5" /> End
           </button>
         )}
+        <a
+          href={activity.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${activity.gameName} in a new tab`}
+          title="Open in a new tab"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </a>
         {layout === "side" ? (
           <button
             type="button"

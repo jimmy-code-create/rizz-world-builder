@@ -64,6 +64,21 @@ export function MediaViewer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Lock the screen while viewing: the page behind can't scroll, so the
+  // whole viewport stays a black photo stage.
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [open ]);
+
   const toggleZoom = useCallback(() => {
     setInteracting(false);
     setScale((current) => (current > 1.05 ? 1 : DOUBLE_TAP_SCALE));
@@ -175,7 +190,7 @@ export function MediaViewer({
         role="dialog"
         aria-modal="true"
         aria-label="Media viewer"
-        className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85 backdrop-blur-md transition-colors"
+        className="fixed inset-0 z-[95] flex items-center justify-center bg-black transition-colors"
         style={{ opacity: dragY > 0 ? Math.max(0.4, 1 - dragY / 400) : 1 }}
       >
         <div
