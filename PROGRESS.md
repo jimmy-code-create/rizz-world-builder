@@ -70,3 +70,10 @@
 - [x] Realm Settings → Bots (owners/admins): create bot, webhook URL shown once + copy + secret warning, regenerate/revoke, per-bot channel picker, embed builder with live preview + validation messages + send-test-to-channel (`src/lib/webhook-bots.ts`, `src/components/bots/WebhookBotsSection.tsx`, `src/components/bots/EmbedBuilder.tsx`, `src/components/bots/RealmBotsSheet.tsx`) - **DONE (RLS-gated; empty until migration)**
 - [x] Safety: report available on bot messages (existing non-mine path), admin delete-any via existing moderate path, glass toasts + builder validation messages - **DONE**
 - [ ] DB migration (ASKED, NOT APPLIED): `supabase/migrations/20261021000000_realm_webhook_bots.sql` (realm_bots + RLS owner/admin-manage + messages.embeds/webhook_bot_id/webhook_meta + embeds guard trigger + 30/min rate-limit table + realtime) - **WAITING FOR OK**
+
+### Phase 11: Profile Preview Fix (everywhere)
+- [x] Root cause: the shared card's fallback query asked PostgREST for `profiles.verified` — a column that does not exist — so every preview errored ("Couldn't load this profile") in feed, realms, explore, notifications and reels. Verification is now derived from earned badges (`badges.slug = verified / verified_creator`), matching `src/lib/posts.ts` (`src/components/profile/ProfileCard.tsx`) - **DONE**
+- [x] Missing RPC (`get_profile_card`, pending migration) is remembered after the first 404: no more console errors on every open, fallback is instant (`src/components/profile/ProfileCard.tsx`) - **DONE**
+- [x] Bot messages no longer open a user card with a null user id (page crash); the card also guards a falsy `userId` (`src/routes/_app/r.$slug.tsx`, `src/components/profile/ProfileCard.tsx`) - **DONE**
+- [x] `ProfilePreviewDialog` shows a proper error state with "Try again" instead of "no longer available" on transient failures (`src/components/ProfilePreview.tsx`) - **DONE**
+- [x] Migration RPC derives `verified` from user_badges too (file still NOT APPLIED) (`supabase/migrations/20261020010000_profile_card.sql`) - **DONE (file only)**

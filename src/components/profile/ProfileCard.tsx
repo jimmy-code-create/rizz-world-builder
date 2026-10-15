@@ -62,64 +62,85 @@ type CardData = {
   mutedByViewer: boolean;
 };
 
+/**
+ * The card prefers the get_profile_card() RPC but works without it (pending
+ * migration). Once the server says the function isn't there, stop asking —
+ * that keeps every preview from logging a 404 and makes opens instant.
+ */
+let profileCardRpcMissing = false;
+
 async function fetchCardData(userId: string, viewerId: string | null): Promise<CardData> {
   // 1) Prefer the server function (profile + stats + rank + mutuals in one call).
   try {
-    const { data, error } = await (supabase.rpc as never)("get_profile_card" as never, {
-      _user_id: userId,
-      _viewer: viewerId,
-    } as never);
-    if (!error && data) {
-      const d = data as {
-        deleted?: boolean;
-        profile?: Record<string, unknown>;
-        rank?: number; followers?: number; following?: number;
-        mutual_preview?: CardData["mutualPreview"]; mutual_total?: number;
-        earned_badges?: Array<Record<string, string>>;
-        viewer_follows?: boolean; blocked_by_viewer?: boolean;
-        blocked_viewer?: boolean; muted_by_viewer?: boolean;
-      };
-      if (d.deleted || !d.profile) return deletedCard(userId);
-      const p = d.profile;
-      const str = (v: unknown) => (typeof v === "string" ? v : null);
-      return {
-        deleted: false,
-        id: String(p.id ?? userId),
-        username: str(p.username) ?? "member",
-        displayName: str(p.display_name) ?? str(p.username) ?? "Member",
-        avatarUrl: str(p.avatar_url),
-        bannerUrl: str(p.banner_url),
-        bio: str(p.bio),
-        pronouns: str(p.pronouns),
-        verified: p.verified === true,
-        createdAt: str(p.created_at),
-        rizzScore: Number(p.rizz_score ?? 0),
-        rank: typeof d.rank === "number" ? d.rank : null,
-        followers: Number(d.followers ?? 0),
-        following: Number(d.following ?? 0),
-        badges: (d.earned_badges ?? []).map((b) => ({
+    if (!profileCardRpcMissing) {
+      const { data, error } = await (supabase.rpc as never)("get_profile_card" as never, {
+        _user_id: userId,
+        _viewer: viewerId,
+      } as never);
+      if (error) {
+        const rpcError = error as { code?: string; message?: string };
+        if (rpcError.code === "PGRST202" || /could not find the function/i.test(rpcError.message ?? "")) {
+          profileCardRpcMissing = true;
+        }
+      } else if (data) {
+        const d = data as {
+          deleted?: boolean;
+          profile?: Record<string, unknown>;
+          rank?: number; followers?: number; following?: number;
+          mutual_preview?: CardData["mutualPreview"]; mutual_total?: number;
+          earned_badges?: Array<Record<string, string>>;
+          viewer_follows?: boolean; blocked_by_viewer?: boolean;
+          blocked_viewer?: boolean; muted_by_viewer?: boolean;
+        };
+        if (d.deleted || !d.profile) return deletedCard(userId);
+        const p = d.profile;
+        const str = (v: unknown) => (typeof v === "string" ? v : null);
+        const earnedBadges = (d.earned_badges ?? []).map((b) => ({
           slug: b.slug ?? "badge",
           name: b.name ?? "Badge",
           icon: b.icon ?? "🏅",
           color: b.color ?? "#c8ff3d",
           description: b.description ?? "",
-        })),
-        mutualPreview: d.mutual_preview ?? [],
-        mutualTotal: Number(d.mutual_total ?? 0),
-        viewerFollows: !!d.viewer_follows,
-        blockedByViewer: !!d.blocked_by_viewer,
-        blockedViewer: !!d.blocked_viewer,
-        mutedByViewer: !!d.muted_by_viewer,
-      };
+        }));
+        // "Verified" is an earned badge (badges.slug = verified / verified_creator),
+        // never a profiles column.
+        const isVerified = earnedBadges.some((b) => b.slug === "verified" || b.slug === "verified_creator");
+        return {
+          deleted: false,
+          id: String(p.id ?? userId),
+          username: str(p.username) ?? "member",
+          displayName: str(p.display_name) ?? str(p.username) ?? "Member",
+          avatarUrl: str(p.avatar_url),
+          bannerUrl: str(p.banner_url),
+          bio: str(p.bio),
+          pronouns: str(p.pronouns),
+          verified: p.verified === true || isVerified,
+          createdAt: str(p.created_at),
+          rizzScore: Number(p.rizz_score ?? 0),
+          rank: typeof d.rank === "number" ? d.rank : null,
+          followers: Number(d.followers ?? 0),
+          following: Number(d.following ?? 0),
+          badges: earnedBadges.filter((b) => b.slug !== "verified" && b.slug !== "verified_creator"),
+          mutualPreview: d.mutual_preview ?? [],
+          mutualTotal: Number(d.mutual_total ?? 0),
+          viewerFollows: !!d.viewer_follows,
+          blockedByViewer: !!d.blocked_by_viewer,
+          blockedViewer: !!d.blocked_viewer,
+          mutedByViewer: !!d.muted_by_viewer,
+        };
+      }
     }
   } catch {
     // Function not deployed yet — fall through to direct queries.
   }
 
   // 2) Fallback: same stores the profile page reads, assembled client-side.
+  // NOTE: no `verified` column here — verification lives in user_badges/badges,
+  // and asking PostgREST for a column that doesn't exist fails the whole query
+  // (that is what broke every profile preview).
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, banner_url, bio, verified, created_at, rizz_score")
+    .select("id, username, display_name, avatar_url, banner_url, bio, created_at, rizz_score")
     .eq("id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -178,12 +199,14 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     } catch { /* mutuals are best-effort */ }
   }
 
-  // Earned badges from user_badges.
+  // Earned badges from user_badges — this is also where "verified" comes from.
   let badges: CardBadge[] = [];
   try {
     const { data: ub } = await supabase.from("user_badges").select("badge:badges(slug, name, icon, color, description)").eq("user_id", userId).limit(8);
     badges = (((ub ?? []) as Array<{ badge: CardBadge | CardBadge[] | null }>).map((r) => Array.isArray(r.badge) ? r.badge[0] : r.badge).filter(Boolean) as CardBadge[]);
   } catch { /* badges are best-effort */ }
+  const verified = badges.some((b) => b.slug === "verified" || b.slug === "verified_creator");
+  if (verified) badges = badges.filter((b) => b.slug !== "verified" && b.slug !== "verified_creator");
 
   return {
     deleted: false,
@@ -194,7 +217,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     bannerUrl: str(p.banner_url),
     bio: str(p.bio),
     pronouns,
-    verified: p.verified === true,
+    verified,
     createdAt: str(p.created_at),
     rizzScore: score,
     rank: rankRow,
@@ -327,6 +350,11 @@ export function ProfileCard({
     );
     setMenuOpen(false);
   };
+
+  // No user id (a bot message, a deleted placeholder): nothing to show. The
+  // query stays disabled in that case, so `card.data` would be undefined and
+  // rendering used to take the whole page down.
+  if (!userId) return null;
 
   if (card.isLoading) {
     return (

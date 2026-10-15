@@ -1338,6 +1338,9 @@ function RealmPage() {
             // Profile preview handler on avatar or name tap
             const handleAuthorClick = (e: React.MouseEvent) => {
               e.stopPropagation();
+              // Bots have no user profile to open; without this the card was
+              // handed a null user id and crashed.
+              if (isBot || !m.sender_id) return;
               setPreviewUser({
                 userId: m.sender_id,
                 username: authorProfile?.username ?? authorName,

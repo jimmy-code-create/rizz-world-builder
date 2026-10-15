@@ -57,6 +57,7 @@ import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
 import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
 import { Route as AppRSlugSettingsRouteImport } from './routes/_app/r.$slug_.settings'
+import { Route as ApiBotWebhookBotIdSecretRouteImport } from './routes/api.bot-webhook.$botId.$secret'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -298,6 +299,12 @@ const AppRSlugSettingsRoute = AppRSlugSettingsRouteImport.update({
   path: '/r/$slug/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiBotWebhookBotIdSecretRoute =
+  ApiBotWebhookBotIdSecretRouteImport.update({
+    id: '/api/bot-webhook/$botId/$secret',
+    path: '/api/bot-webhook/$botId/$secret',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -347,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/bots/': typeof AppBotsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -395,6 +403,7 @@ export interface FileRoutesByTo {
   '/bots': typeof AppBotsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -446,6 +455,7 @@ export interface FileRoutesById {
   '/_app/bots/': typeof AppBotsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/r/$slug_/settings': typeof AppRSlugSettingsRoute
+  '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/bots/'
     | '/settings/'
     | '/r/$slug/settings'
+    | '/api/bot-webhook/$botId/$secret'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/settings'
     | '/r/$slug/settings'
+    | '/api/bot-webhook/$botId/$secret'
   id:
     | '__root__'
     | '/'
@@ -595,6 +607,7 @@ export interface FileRouteTypes {
     | '/_app/bots/'
     | '/_app/settings/'
     | '/_app/r/$slug_/settings'
+    | '/api/bot-webhook/$botId/$secret'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -613,6 +626,7 @@ export interface RootRouteChildren {
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiBotWebhookBotIdSecretRoute: typeof ApiBotWebhookBotIdSecretRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -953,6 +967,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRSlugSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/bot-webhook/$botId/$secret': {
+      id: '/api/bot-webhook/$botId/$secret'
+      path: '/api/bot-webhook/$botId/$secret'
+      fullPath: '/api/bot-webhook/$botId/$secret'
+      preLoaderRoute: typeof ApiBotWebhookBotIdSecretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1074,6 +1095,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiBotWebhookBotIdSecretRoute: ApiBotWebhookBotIdSecretRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

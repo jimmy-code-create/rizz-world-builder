@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileCard } from "@/components/profile/ProfileCard";
@@ -82,7 +83,15 @@ export function ProfilePreviewDialog({
         <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden />
         {profile.isLoading && <p className="p-6 text-center text-sm text-muted-foreground">Loading profile…</p>}
-        {!profile.isLoading && !p && (
+        {profile.isError && (
+          <div className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">Couldn&apos;t load this profile.</p>
+            <Button type="button" variant="outline" onClick={() => void profile.refetch()} className="mt-3 h-11">
+              Try again
+            </Button>
+          </div>
+        )}
+        {!profile.isLoading && !profile.isError && !p && (
           <p className="p-6 text-center text-sm text-muted-foreground">That profile is no longer available.</p>
         )}
         {p && (

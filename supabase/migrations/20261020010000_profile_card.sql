@@ -51,7 +51,12 @@ BEGIN
       'bio', v_profile->>'bio',
       'pronouns', v_profile->>'pronouns',
       'status_text', v_profile->>'status_text',
-      'verified', coalesce((v_profile->>'verified')::boolean, false),
+      -- Verification is an earned badge, not a profiles column.
+      'verified', EXISTS (
+        SELECT 1 FROM public.user_badges ub
+        JOIN public.badges b ON b.id = ub.badge_id
+        WHERE ub.user_id = _user_id AND b.slug IN ('verified', 'verified_creator')
+      ),
       'created_at', v_profile->>'created_at',
       'rizz_score', coalesce((v_profile->>'rizz_score')::integer, 0),
       'badges', coalesce(v_profile->'badges', '[]'::jsonb)
