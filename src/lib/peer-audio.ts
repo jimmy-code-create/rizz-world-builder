@@ -21,7 +21,8 @@ export type PeerAudioState = {
 export const DEFAULT_PEER_AUDIO: PeerAudioState = { volumes: {}, muted: [] };
 
 let cachedPeerAudio: PeerAudioState | null = null;
-let savePeerStorageTimeout: any = null;
+let savePeerStorageTimeout: ReturnType<typeof setTimeout> | null = null;
+let dispatchPeerEventTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export function loadPeerAudio(): PeerAudioState {
   if (cachedPeerAudio) return cachedPeerAudio;
@@ -63,11 +64,16 @@ export function savePeerAudio(next: PeerAudioState): PeerAudioState {
       try {
         localStorage.setItem(PEER_AUDIO_KEY, JSON.stringify(clean));
       } catch {}
-    }, 150);
+    }, 200);
   }
 
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(PEER_AUDIO_EVENT, { detail: clean }));
+    if (!dispatchPeerEventTimeout) {
+      dispatchPeerEventTimeout = setTimeout(() => {
+        dispatchPeerEventTimeout = null;
+        window.dispatchEvent(new CustomEvent(PEER_AUDIO_EVENT, { detail: clean }));
+      }, 50);
+    }
   }
   return clean;
 }
@@ -88,19 +94,22 @@ export function togglePeerMute(userId: string): PeerAudioState {
   return savePeerAudio({ ...current, muted });
 }
 
-/** React hook tracking local peer volume and mute states live. */
+/** React hook tracking local peer volume and mute states live without lag. */
 export function usePeerAudio(): PeerAudioState {
   const [state, setState] = useState<PeerAudioState>(loadPeerAudio);
   useEffect(() => {
-    const refresh = () => {
+    const onInternalChange = () => {
+      setState(loadPeerAudio());
+    };
+    const onExternalStorage = () => {
       cachedPeerAudio = null;
       setState(loadPeerAudio());
     };
-    window.addEventListener(PEER_AUDIO_EVENT, refresh);
-    window.addEventListener("storage", refresh);
+    window.addEventListener(PEER_AUDIO_EVENT, onInternalChange);
+    window.addEventListener("storage", onExternalStorage);
     return () => {
-      window.removeEventListener(PEER_AUDIO_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
+      window.removeEventListener(PEER_AUDIO_EVENT, onInternalChange);
+      window.removeEventListener("storage", onExternalStorage);
     };
   }, []);
   return state;

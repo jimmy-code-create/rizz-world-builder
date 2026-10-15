@@ -337,7 +337,7 @@ export function ChannelPermissionsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="glass-strong z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        className="glass-strong z-[110] max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="font-display text-xl break-words">
