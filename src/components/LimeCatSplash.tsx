@@ -1,27 +1,30 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const COLD_START_MESSAGES = [
-  "Waking up the server cat…",
-  "Stretching whiskers…",
-  "Polishing the lime coat…",
-  "Brewing fresh rizz…",
-  "Almost ready to pounce…",
-];
+import { RefreshCw } from "lucide-react";
 
 export function LimeCatSplash({ message }: { message?: string }) {
-  const [msgIndex, setMsgIndex] = useState(0);
+  const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setMsgIndex((prev) => (prev + 1) % COLD_START_MESSAGES.length);
-    }, 2800);
-    return () => clearInterval(interval);
+    const timer = window.setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
+
+  const getStatusText = () => {
+    if (message) return message;
+    if (seconds >= 12) return "Still connecting… taking longer than usual";
+    if (seconds >= 8) return "Waking up server from cold start…";
+    if (seconds >= 4) return "Almost ready to pounce…";
+    return "Waking up the server cat…";
+  };
+
+  const statusText = getStatusText();
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-[#0b0b0c] text-center select-none"
+      className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-[#0b0b0c] text-center select-none px-4"
       role="status"
       aria-live="polite"
     >
@@ -55,7 +58,7 @@ export function LimeCatSplash({ message }: { message?: string }) {
             }
             @keyframes cat-breathe {
               0%, 100% { transform: translateY(0) scale(1); }
-              50% { transform: translateY(-2px) scale(1.01); }
+              50% { transform: translateY(-3px) scale(1.02); }
             }
             .anim-ear-left {
               transform-origin: 90px 90px;
@@ -142,19 +145,29 @@ export function LimeCatSplash({ message }: { message?: string }) {
         </svg>
       </div>
 
-      <div className="h-8 flex items-center justify-center">
+      <div className="min-h-[44px] flex flex-col items-center justify-center">
         <AnimatePresence mode="wait">
           <motion.p
-            key={message || msgIndex}
+            key={statusText}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.28 }}
             className="text-xs font-semibold text-muted-foreground tracking-wide font-sans"
           >
-            {message || COLD_START_MESSAGES[msgIndex]}
+            {statusText}
           </motion.p>
         </AnimatePresence>
+
+        {seconds >= 12 && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-3 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20 active:scale-95"
+          >
+            <RefreshCw className="h-3 w-3" /> Refresh page
+          </button>
+        )}
       </div>
     </div>
   );

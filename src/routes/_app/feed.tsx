@@ -189,7 +189,11 @@ function FeedPage() {
 
         <div className="space-y-4">
           {shown.map((p, i) => (
-            <div key={p.id}>
+            <div
+              key={p.id}
+              className="list-item-rise"
+              style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
+            >
               <PostCard post={p} liked={likes.data?.has(p.id)} />
               {i === 2 && <div className="xl:hidden"><FollowSuggestions /></div>}
             </div>

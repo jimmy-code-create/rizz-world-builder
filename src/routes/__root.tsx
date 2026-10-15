@@ -151,8 +151,79 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          #boot-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0b0b0c;
+            color: #f2efe6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: opacity 0.25s ease-out;
+            user-select: none;
+            -webkit-user-select: none;
+          }
+          @keyframes boot-cat-bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+          .boot-cat-anim {
+            animation: boot-cat-bob 2.2s ease-in-out infinite;
+          }
+        `,
+          }}
+        />
       </head>
       <body>
+        <div id="boot-splash" role="status" aria-live="polite">
+          <div className="boot-cat-anim">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="128" height="128" aria-label="RIZZ Lime Cat">
+              <path d="M40 70 L44 28 L76 60 Z" fill="#141416" />
+              <path d="M120 70 L116 28 L84 60 Z" fill="#141416" />
+              <path d="M47 66 L50 38 L69 60 Z" fill="#C8FF3D" />
+              <path d="M113 66 L110 38 L91 60 Z" fill="#C8FF3D" />
+              <ellipse cx="80" cy="88" rx="45" ry="39" fill="#141416" />
+              <circle cx="62" cy="84" r="11.5" fill="#FFFFFF" />
+              <circle cx="98" cy="84" r="11.5" fill="#FFFFFF" />
+              <circle cx="62" cy="85" r="5.2" fill="#0b0b0c" />
+              <circle cx="98" cy="85" r="5.2" fill="#0b0b0c" />
+              <path d="M73 100h14l-7 8z" fill="#C8FF3D" />
+              <path d="M36 96L20 100M36 105l-16 6M124 96l16 4M124 105l16 6" stroke="#C8FF3D" strokeWidth="3.6" strokeLinecap="round" />
+              <ellipse cx="54" cy="113" rx="15" ry="10" fill="#141416" />
+              <ellipse cx="106" cy="113" rx="15" ry="10" fill="#141416" />
+              <rect x="12" y="118" width="136" height="15" rx="7.5" fill="#2a2a2e" stroke="#C8FF3D" strokeWidth="1" />
+            </svg>
+          </div>
+          <p id="boot-status-text" style={{ marginTop: "16px", fontSize: "13px", fontWeight: "600", color: "#a1a1aa", letterSpacing: "0.02em" }}>
+            Waking up the server cat…
+          </p>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) el.textContent = "Almost ready to pounce…";
+            }, 4000);
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) el.textContent = "Waking up server from cold start…";
+            }, 8000);
+            setTimeout(function() {
+              var el = document.getElementById("boot-status-text");
+              if (el) {
+                el.innerHTML = 'Still connecting… <a href="javascript:location.reload()" style="color:#c8ff3d;text-decoration:underline;margin-left:6px;">Tap to retry</a>';
+              }
+            }, 12000);
+          `,
+            }}
+          />
+        </div>
         {children}
         <ScrollRestoration getKey={(location) => location.pathname} />
         <Scripts />
@@ -182,6 +253,14 @@ function RizzCompanionLayer() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const splash = document.getElementById("boot-splash");
+    if (splash) {
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 260);
+    }
+  }, []);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;

@@ -92,6 +92,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const burstTimer = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const [reactionsNearViewport, setReactionsNearViewport] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => () => {
@@ -582,14 +583,25 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <img
-              src={post.media_url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="w-full max-h-[min(48dvh,390px)] object-contain"
-              onError={() => setMediaFailed(true)}
-            />
+            <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
+              {!imageLoaded && (
+                <div
+                  className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px]"
+                  aria-hidden="true"
+                />
+              )}
+              <img
+                src={post.media_url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setMediaFailed(true)}
+                className={`w-full max-h-[min(48dvh,390px)] object-contain transition-all duration-300 ${
+                  imageLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
+                }`}
+              />
+            </div>
           )}
           <AnimatePresence>
             {!externalVideo?.ok && burst > 0 && (

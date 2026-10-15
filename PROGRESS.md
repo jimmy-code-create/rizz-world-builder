@@ -35,8 +35,8 @@
 - [x] Item 10: Real audio-driven speaking lime glow rings with simultaneous speaker support, labeled control bar (Mute, Deafen, Share screen, Camera, Settings, Leave with host confirmation), persistent docking mini-player with expand button, Screen WakeLock API integration, and exponential backoff auto-reconnect (1s, 2s, 4s, 8s, 16s) with 'Disconnected - tap to retry' (`src/components/voice/VoiceCallBar.tsx`, `src/components/voice/VoiceCallView.tsx`, `src/components/voice/VoiceCallProvider.tsx`, `src/lib/voice-room-audio.ts`, `src/lib/wake-lock.ts`) - **DONE**
 
 ### Phase 5: Loading & Shimmer Animations
-- [ ] Item 11: Fast boot splash with recolored lime mascot (`public/cats/peek.svg`, `src/components/LimeCatSplash.tsx`), inline CSS/SVG fallback, animated peek, and progressive timeout messages at 4s / 8s / 12s - **PARTLY**
-- [ ] Item 12: 1.4s smooth shimmer skeleton loaders, staggered list entrance rise animation, and blur-up lazy image placeholders (`src/components/ui/skeleton.tsx`, `src/index.css`, `src/components/posts/PostCard.tsx`) - **NOT DONE**
+- [x] Item 11: Fast boot splash with recolored lime mascot (`public/cats/peek.svg`, `public/cats/box.svg`, `public/cats/searching.svg`, `src/components/LimeCatSplash.tsx`), inline CSS/SVG fallback in `src/routes/__root.tsx`, animated peek mascot, and progressive timeout messages at 4s / 8s / 12s with retry - **DONE**
+- [x] Item 12: 1.4s smooth shimmer skeleton loaders (`src/components/ui/skeleton.tsx`), staggered list entrance rise animation with prefers-reduced-motion safety (`src/styles.css`, `src/routes/_app/feed.tsx`), and blur-up lazy image placeholders (`src/components/PostCard.tsx`) - **DONE**
 
 ### Phase 6: Voice Room Activities
 - [ ] Item 13: Server-authoritative architecture proposal using Supabase Realtime broadcast & presence; gamepad activity trigger button and minimizable bottom panel (`src/components/voice/VoiceActivities.tsx`) - **NOT DONE**
