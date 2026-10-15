@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n, tf, tp } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, BellOff, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { toast } from "sonner";
 
 export function PushNotificationSettings() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<"enable" | "disable" | "test" | null>(null);
   const prefsKey = ["notification-prefs", user?.id] as const;
@@ -71,7 +73,7 @@ export function PushNotificationSettings() {
       ]);
       if (action === "enable") toast.success("Push notifications enabled on this device");
       if (action === "disable") toast.success("Push notifications disabled on this device");
-      if (action === "test") toast.success("Test notification sent");
+      if (action === "test") toast.success(t("push_test_sent"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Notification action failed");
     } finally {
@@ -88,16 +90,16 @@ export function PushNotificationSettings() {
       <div className="flex items-start gap-3">
         <Bell className="mt-0.5 h-5 w-5 text-primary" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-semibold">Push notifications</h2>
+          <h2 className="font-display text-lg font-semibold">{t("push_title")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Manage message and call alerts for your devices. Quiet hours use your local time.
+            {t("push_desc")}
           </p>
         </div>
       </div>
 
       {!supported ? (
         <p className="rounded-xl border border-white/10 p-3 text-sm text-muted-foreground">
-          Web push is not supported in this browser. Try installing RIZZ or opening it in a supported browser.
+          {t("push_unsupported")}
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
@@ -110,7 +112,7 @@ export function PushNotificationSettings() {
                 onClick={() => void withBusy("disable", () => disablePushNotifications(user.id))}
               >
                 {busy === "disable" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />}
-                Disable on this device
+                                {t("push_disable")}
               </Button>
               <Button
                 variant="outline"
@@ -119,7 +121,7 @@ export function PushNotificationSettings() {
                 onClick={() => void withBusy("test", sendTestPush)}
               >
                 {busy === "test" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Send test
+                                {t("push_test")}
               </Button>
             </>
           ) : (
@@ -129,10 +131,10 @@ export function PushNotificationSettings() {
               onClick={() => void withBusy("enable", () => enablePushNotifications(user.id))}
             >
               {busy === "enable" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
-              Enable on this device
+                            {t("push_enable")}
             </Button>
           )}
-          {hasSubscription && <span className="text-xs text-emerald-400">Enabled on {subscriptionQuery.data?.length} device(s)</span>}
+          {hasSubscription && <span className="text-xs text-emerald-400">{tp("push_enabled_one", "push_enabled_other", subscriptionQuery.data?.length ?? 0)}</span>}
         </div>
       )}
 
@@ -149,7 +151,7 @@ export function PushNotificationSettings() {
           <PrefRow label="Group mentions" checked={prefs.group_mentions} onChange={(group_mentions) => void patchPrefs({ group_mentions })} />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Quiet hours start</Label>
+              <Label className="text-xs text-muted-foreground">{t("push_quiet_start")}</Label>
               <input
                 type="time"
                 value={prefs.quiet_start?.slice(0, 5) ?? ""}
@@ -158,7 +160,7 @@ export function PushNotificationSettings() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Quiet hours end</Label>
+              <Label className="text-xs text-muted-foreground">{t("push_quiet_end")}</Label>
               <input
                 type="time"
                 value={prefs.quiet_end?.slice(0, 5) ?? ""}
@@ -172,7 +174,7 @@ export function PushNotificationSettings() {
           ) : null}
           {prefs.muted_conversations.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Muted conversations</Label>
+              <Label className="text-xs text-muted-foreground">{t("push_muted_convos")}</Label>
               {prefs.muted_conversations.map((conversationId) => (
                 <div key={conversationId} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2">
                   <span className="min-w-0 flex-1 truncate text-xs">{conversationId}</span>
@@ -183,7 +185,7 @@ export function PushNotificationSettings() {
                       muted_conversations: prefs.muted_conversations.filter((id) => id !== conversationId),
                     })}
                   >
-                    Unmute
+                                        {t("push_unmute")}
                   </button>
                 </div>
               ))}

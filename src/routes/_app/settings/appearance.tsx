@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import { Check, Palette } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_app/settings/appearance")({
 
 function AppearanceSettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
+  const { t } = useI18n();
   const [preset, setPreset] = useState<ThemePreset>((profile?.theme_preset as ThemePreset) || "nightclub");
   const [mode, setMode] = useState<ThemeMode>((profile?.theme_mode as ThemeMode) || "dark");
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
@@ -71,12 +73,12 @@ function AppearanceSettingsPage() {
               role="status"
               className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--brand-signal)]"
             >
-              <Check className="h-3 w-3" aria-hidden /> Saved
+              <Check className="h-3 w-3" aria-hidden /> {t("appearance_saved")}
             </span>
           ) : null}
         </div>
         <div>
-          <Label className="mb-2 block text-xs text-muted-foreground">Theme</Label>
+          <Label className="mb-2 block text-xs text-muted-foreground">{t("appearance_theme")}</Label>
           <div className="grid grid-cols-2 gap-2">
             {THEME_PRESETS.map((t) => {
               const active = preset === t.id;
@@ -103,7 +105,7 @@ function AppearanceSettingsPage() {
         </div>
 
         <div>
-          <Label className="mb-2 block text-xs text-muted-foreground">Mode</Label>
+          <Label className="mb-2 block text-xs text-muted-foreground">{t("appearance_mode")}</Label>
           {/* Four modes, not three: AMOLED black is what OLED phones ask for, and
               it is the mode the forum, chat and feed all answer to. */}
           <div className="grid grid-cols-2 gap-2">
@@ -130,7 +132,7 @@ function AppearanceSettingsPage() {
         </div>
 
         <div>
-          <Label className="mb-2 block text-xs text-muted-foreground">Density</Label>
+          <Label className="mb-2 block text-xs text-muted-foreground">{t("appearance_density")}</Label>
           <div className="flex gap-2">
             {(["comfy", "compact"] as Density[]).map((d) => (
               <button
@@ -138,7 +140,7 @@ function AppearanceSettingsPage() {
                 onClick={() => saveAppearance({ density: d })}
                 className={`flex-1 rounded-[8px] border px-3 py-2 text-sm font-medium capitalize transition-colors ${density === d ? "border-transparent bg-primary text-primary-foreground" : "border-border hover:bg-secondary"}`}
               >
-                {d}
+                {d === "comfy" ? t("density_comfy") : t("density_compact")}
               </button>
             ))}
           </div>
@@ -146,8 +148,8 @@ function AppearanceSettingsPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium">Reduced motion</Label>
-            <p className="text-[11px] text-muted-foreground">Minimize animations and transitions</p>
+            <Label className="text-sm font-medium">{t("appearance_reduced_motion")}</Label>
+            <p className="text-[11px] text-muted-foreground">{t("appearance_reduced_motion_desc")}</p>
           </div>
           <Switch checked={reduced} onCheckedChange={(v) => saveAppearance({ reduced: v })} />
         </div>

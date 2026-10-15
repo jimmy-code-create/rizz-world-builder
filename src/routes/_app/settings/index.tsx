@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { applyPrefs, loadPrefs } from "@/lib/prefs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
@@ -38,20 +39,22 @@ type SettingsSection = {
   icon: LucideIcon;
 };
 
-const SECTIONS: SettingsSection[] = [
-  { to: "/settings/profile", label: "Profile", description: "Name, bio, avatar and banner", icon: UserRound },
-  { to: "/settings/appearance", label: "Appearance", description: "Theme, mode, density and motion", icon: Palette },
-  { to: "/settings/notifications", label: "Notifications", description: "Push alerts and delivery", icon: Bell },
-  { to: "/settings/voice", label: "Voice & Sound", description: "Bot, call and alert volume, mic and devices", icon: Volume2 },
-  { to: "/settings/preferences", label: "Preferences", description: "Feeds, media, text size and language", icon: Sliders },
-  { to: "/settings/blocked", label: "Blocked accounts", description: "People you've blocked", icon: Shield },
-  { to: "/settings/account", label: "Account", description: "Your data, sign out and delete", icon: UserCog },
-];
-
 function SettingsHubPage() {
   const { profile } = useAuth();
+  const { t } = useI18n();
   const [statusOpen, setStatusOpen] = useState(false);
   const presence = useSelfPresence();
+
+  // Built per render (not module scope) so labels follow the live language.
+  const SECTIONS: SettingsSection[] = [
+    { to: "/settings/profile", label: t("profile"), description: t("settings_profile_desc"), icon: UserRound },
+    { to: "/settings/appearance", label: t("appearance"), description: t("settings_appearance_desc"), icon: Palette },
+    { to: "/settings/notifications", label: t("notifications"), description: t("settings_notifications_desc"), icon: Bell },
+    { to: "/settings/voice", label: t("settings_voice_label"), description: t("settings_voice_desc"), icon: Volume2 },
+    { to: "/settings/preferences", label: t("preferences"), description: t("settings_preferences_desc"), icon: Sliders },
+    { to: "/settings/blocked", label: t("settings_blocked_label"), description: t("settings_blocked_desc"), icon: Shield },
+    { to: "/settings/account", label: t("settings_account_label"), description: t("settings_account_desc"), icon: UserCog },
+  ];
 
   useEffect(() => {
     applyPrefs(loadPrefs());
@@ -62,7 +65,7 @@ function SettingsHubPage() {
 
   return (
     <div className="max-w-xl space-y-4">
-      <h1 className="font-display text-xl sm:text-2xl font-bold">Settings</h1>
+      <h1 className="font-display text-xl sm:text-2xl font-bold">{t("settings")}</h1>
 
       <Link
         to="/settings/profile"
@@ -91,7 +94,7 @@ function SettingsHubPage() {
           </Avatar>
         </AvatarWithStatus>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Status</span>
+          <span className="block text-sm font-semibold">{t("status")}</span>
           <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="shrink-0">{statusLabel(presence.status)}</span>
             {presence.customStatus && <CustomStatusLine status={presence.customStatus} className="min-w-0" />}

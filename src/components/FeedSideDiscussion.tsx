@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/compon
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { fetchComments, addComment, toggleCommentLike, type FeedPost } from "@/lib/posts";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { RizzCat } from "@/components/RizzCat";
@@ -63,6 +64,7 @@ export function FeedSideDiscussion({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
@@ -147,7 +149,7 @@ export function FeedSideDiscussion({
         <div className="glass rounded-3xl p-5 border border-white/10">
           <div className="flex items-center gap-2 mb-2 text-primary">
             <MessageSquare className="h-4 w-4" />
-            <h3 className="text-sm font-display font-bold text-foreground">Side Discussions</h3>
+            <h3 className="text-sm font-display font-bold text-foreground">{t("side_discussions")}</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             On wide screens, tap the comment icon on any post to read and reply here side-by-side without losing your place in the feed.
@@ -160,7 +162,7 @@ export function FeedSideDiscussion({
         <div className="glass rounded-3xl p-5 border border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <h4 className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">Vibe Check</h4>
+            <h4 className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">{t("vibe_check")}</h4>
           </div>
           <p className="text-xs text-foreground/80 leading-relaxed">
             Drop polls and GIFs to spark more reactions. Active contributors earn exclusive profile badges and drops.
@@ -185,7 +187,7 @@ export function FeedSideDiscussion({
             username={activePost.author?.username}
           />
           <div className="min-w-0">
-            <p className="text-xs font-semibold truncate leading-tight">Discussion</p>
+            <p className="text-xs font-semibold truncate leading-tight">{t("discussion")}</p>
             <p className="text-[10px] text-muted-foreground truncate leading-tight">@{activePost.author?.username}</p>
           </div>
         </div>

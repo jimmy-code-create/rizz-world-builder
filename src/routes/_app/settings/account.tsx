@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Copy, Download, Trash2, UserCog } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { PREFS_KEY } from "@/lib/prefs";
 import { RIZZ_COMPANION_PREF_KEY } from "@/lib/rizz-companion-preference";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/_app/settings/account")({
 
 function AccountSettingsPage() {
   const { user, profile, signOut } = useAuth();
+  const { t } = useI18n();
   const nav = useNavigate();
   const deleteAccount = useServerFn(deleteMyAccount);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -36,7 +38,7 @@ function AccountSettingsPage() {
     a.download = `rizz-export-${profile?.username || "me"}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    toast.success("Export downloaded");
+    toast.success(t("export_downloaded"));
   }
 
   function clearLocalCache() {
@@ -66,7 +68,7 @@ function AccountSettingsPage() {
   return (
     <SettingsSubPage
       title="Account"
-      description="Export your data, sign out or delete your account."
+      description={t("settings_account_page_desc")}
       icon={<UserCog className="h-5 w-5" />}
     >
       <SettingsCard>
@@ -75,17 +77,17 @@ function AccountSettingsPage() {
             onClick={() => {
               if (!user) return;
               navigator.clipboard.writeText(user.id);
-              toast.success("User ID copied");
+              toast.success(t("user_id_copied"));
             }}
             className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5"
           >
-            <Copy className="h-4 w-4" /> Copy user ID
+            <Copy className="h-4 w-4" /> {t("copy_user_id")}
           </button>
           <button onClick={exportData} className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5">
-            <Download className="h-4 w-4" /> Download my data
+            <Download className="h-4 w-4" /> {t("download_data")}
           </button>
           <button onClick={clearLocalCache} className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5">
-            <Trash2 className="h-4 w-4" /> Clear local cache
+            <Trash2 className="h-4 w-4" /> {t("clear_cache")}
           </button>
         </div>
         <Button
@@ -104,7 +106,7 @@ function AccountSettingsPage() {
           className="mt-2 w-full border-destructive/20 text-destructive/80 hover:bg-destructive/10"
           onClick={() => void permanentlyDeleteAccount()}
         >
-          {deletingAccount ? "Deleting account…" : "Delete account permanently"}
+          {deletingAccount ? t("deleting_account") : t("delete_account")}
         </Button>
       </SettingsCard>
     </SettingsSubPage>

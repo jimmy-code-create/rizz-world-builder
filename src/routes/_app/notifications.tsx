@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useI18n, formatRelativeTime, formatFullDate } from "@/lib/i18n";
 import { RizzCat } from "@/components/RizzCat";
 
 export const Route = createFileRoute("/_app/notifications")({
@@ -38,6 +39,7 @@ function forumTarget(n: any): { slug: string; room: string; post: string } | nul
 
 function NotificationsPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow" | "mention">("all");
   const items = useQuery({
@@ -83,25 +85,25 @@ function NotificationsPage() {
     <div>
       <div className="flex items-end justify-between gap-3 mb-1">
         <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Bell className="h-7 w-7 text-primary" /> Notifications
+          <Bell className="h-7 w-7 text-primary" /> {t("notifications")}
           {unreadCount > 0 && <span className="text-xs font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{unreadCount}</span>}
         </h1>
         {unreadCount > 0 && (
           <Button onClick={markAll} size="sm" variant="ghost" className="text-xs gap-1.5">
-            <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+            <CheckCheck className="h-3.5 w-3.5" /> {t("mark_all_read")}
           </Button>
         )}
       </div>
-      <p className="text-sm text-muted-foreground mb-4">All the buzz, in one place.</p>
+      <p className="text-sm text-muted-foreground mb-4">{t("notif_subtitle")}</p>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
         <TabsList className="glass border border-white/5">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="unread">Unread</TabsTrigger>
-          <TabsTrigger value="like">Likes</TabsTrigger>
-          <TabsTrigger value="comment">Comments</TabsTrigger>
-          <TabsTrigger value="follow">Follows</TabsTrigger>
-          <TabsTrigger value="mention">Mentions</TabsTrigger>
+          <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
+          <TabsTrigger value="unread">{t("tab_unread")}</TabsTrigger>
+          <TabsTrigger value="like">{t("tab_likes")}</TabsTrigger>
+          <TabsTrigger value="comment">{t("tab_comments")}</TabsTrigger>
+          <TabsTrigger value="follow">{t("tab_follows")}</TabsTrigger>
+          <TabsTrigger value="mention">{t("tab_mentions")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -116,13 +118,13 @@ function NotificationsPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm flex-1 min-w-0">
                   <span className="font-bold">@{n.actor?.username}</span>{" "}
-                  {n.type === "like" ? "liked your post"
-                    : n.type === "comment" ? "commented on your post"
-                    : n.type === "follow" ? "started following you"
-                    : n.type === "mention" ? "mentioned you"
-                    : n.type === "forum_reply" ? "replied to your thread"
-                    : n.type === "forum_tag" ? "posted in a tag you follow"
-                    : "reacted to your post"}
+                  {n.type === "like" ? t("notif_liked")
+                    : n.type === "comment" ? t("notif_commented")
+                    : n.type === "follow" ? t("notif_followed")
+                    : n.type === "mention" ? t("notif_mentioned")
+                    : n.type === "forum_reply" ? t("notif_forum_reply")
+                    : n.type === "forum_tag" ? t("notif_forum_tag")
+                    : t("notif_reacted")}
                   {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") && n.body && (
                     <span className="block text-xs text-muted-foreground truncate mt-0.5">“{n.body}”</span>
                   )}
@@ -130,7 +132,7 @@ function NotificationsPage() {
                     <span className="block text-xs text-muted-foreground truncate mt-0.5">{n.title}</span>
                   )}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5" title={formatFullDate(n.created_at)}>{formatRelativeTime(n.created_at)}</p>
               </div>
             </>
           );
@@ -156,7 +158,7 @@ function NotificationsPage() {
       {filtered.length === 0 && (
         <div className="glass rounded-3xl p-8 text-center">
           <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
-          <p className="text-sm text-muted-foreground">{tab === "all" ? "Nothing yet. Go drop a vibe." : "Nothing here in this tab."}</p>
+          <p className="text-sm text-muted-foreground">{tab === "all" ? t("empty_all") : t("empty_tab")}</p>
         </div>
       )}
     </div>

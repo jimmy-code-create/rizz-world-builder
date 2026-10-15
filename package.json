@@ -12,7 +12,8 @@
     "build:dev": "vite build --mode development",
     "preview": "node render-server.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.62.5",

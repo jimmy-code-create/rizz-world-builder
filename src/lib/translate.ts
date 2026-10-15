@@ -1,4 +1,4 @@
-import { loadPrefs } from "./prefs";
+import { getActiveLanguage } from "./i18n";
 
 export const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
@@ -121,7 +121,7 @@ function fallbackTranslate(text: string, targetLang: string): string {
 }
 
 export async function translateText(text: string, targetLang?: string): Promise<string> {
-  const lang = targetLang || loadPrefs().language || "en";
+  const lang = targetLang || getActiveLanguage();
   if (!text || !text.trim()) return text;
 
   const detectedSource = detectSourceLang(text);

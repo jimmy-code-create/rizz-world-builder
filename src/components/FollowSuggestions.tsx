@@ -4,11 +4,13 @@ import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function FollowSuggestions() {
   const { user, profile } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
 
   const { data } = useQuery({
@@ -62,7 +64,7 @@ export function FollowSuggestions() {
     <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-white/5">
       <div className="flex items-center gap-2 mb-3">
         <Users className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-display font-bold tracking-tight">Suggested for you</h3>
+        <h3 className="text-sm font-display font-bold tracking-tight">{t("suggested_for_you")}</h3>
       </div>
       <div className="space-y-2">
         {data.map((p: any) => {

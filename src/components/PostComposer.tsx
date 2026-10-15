@@ -10,6 +10,7 @@ import { createPost, rollbackCreatedPost } from "@/lib/posts";
 import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { toast } from "sonner";
+import { useI18n, tf } from "@/lib/i18n";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
@@ -29,6 +30,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollHours, setPollHours] = useState(24);
+  const { t } = useI18n();
   const [visibility, setVisibility] = useState<"public" | "close_friends">("public");
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -107,7 +109,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
         <div className="flex-1 min-w-0 relative">
           <Textarea
             ref={textareaRef}
-            placeholder="Drop something hot…"
+            placeholder={t("drop_placeholder")}
             value={caption}
             onChange={(e) => {
               setCaption(e.target.value);
@@ -149,7 +151,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <input
                 value={pollQuestion}
                 onChange={(e) => setPollQuestion(e.target.value.slice(0, 200))}
-                placeholder="Ask something…"
+                placeholder={t("poll_question_ph")}
                 className="w-full rounded-lg bg-transparent px-2 py-1.5 text-sm font-semibold outline-none placeholder:text-muted-foreground/60"
               />
               {pollOptions.map((o, i) => (
@@ -157,12 +159,12 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                   <input
                     value={o}
                     onChange={(e) => setPollOptions((p) => p.map((v, j) => (j === i ? e.target.value.slice(0, 80) : v)))}
-                    placeholder={`Option ${i + 1}`}
+                    placeholder={tf("poll_option", { n: i + 1 })}
                     className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
                   />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => setPollOptions((p) => p.filter((_, j) => j !== i))}
-                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Remove option">
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label={t("remove_option")}>
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -172,7 +174,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 {pollOptions.length < 4 && (
                   <button type="button" onClick={() => setPollOptions((p) => [...p, ""])}
                     className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5">
-                    <Plus className="h-3 w-3" /> Add option
+                    <Plus className="h-3 w-3" /> {t("add_option")}
                   </button>
                 )}
                 <select
@@ -180,13 +182,13 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                   onChange={(e) => setPollHours(Number(e.target.value))}
                   className="rounded-full border border-white/10 bg-transparent px-2.5 py-1 text-xs outline-none"
                 >
-                  <option value={6}>6 hours</option>
-                  <option value={24}>1 day</option>
-                  <option value={72}>3 days</option>
-                  <option value={168}>1 week</option>
+                  <option value={6}>{t("poll_6h")}</option>
+                  <option value={24}>{t("poll_1d")}</option>
+                  <option value={72}>{t("poll_3d")}</option>
+                  <option value={168}>{t("poll_1w")}</option>
                 </select>
                 <button type="button" onClick={() => setPollOn(false)}
-                  className="ml-auto text-xs text-muted-foreground hover:text-foreground">Remove poll</button>
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground">{t("remove_poll")}</button>
               </div>
             </div>
           )}
@@ -197,7 +199,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 type="button"
                 onClick={() => setPollOn((p) => !p)}
                 className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${pollOn ? "text-primary bg-white/5" : "text-primary"}`}
-                aria-label="Add poll"
+                aria-label={t("add_poll")}
               >
                 <BarChart3 className="h-5 w-5" />
               </button>
@@ -207,10 +209,10 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 className={`flex h-9 items-center gap-1 rounded-full px-2 text-[11px] font-medium hover:bg-white/5 ${
                   visibility === "close_friends" ? "text-emerald-300" : "text-muted-foreground"
                 }`}
-                aria-label="Toggle audience"
+                aria-label={t("audience_toggle")}
               >
                 {visibility === "close_friends" ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
-                <span className="hidden sm:inline">{visibility === "close_friends" ? "Close friends" : "Everyone"}</span>
+                <span className="hidden sm:inline">{visibility === "close_friends" ? t("audience_close") : t("audience_everyone")}</span>
               </button>
             </div>
             <Button
@@ -220,7 +222,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                disabled={mut.isPending || (!caption.trim() && !quoteId && !pollOn)}
               className="bg-primary text-primary-foreground border-0 shadow-md hover:opacity-90 px-5"
             >
-              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" /> Post</>}
+              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" /> {t("post")}</>}
             </Button>
           </div>
         </div>

@@ -28,7 +28,7 @@ export const DEFAULT_PREFS: Prefs = {
   colorBlind: false,
   mentionColor: "#5865f2",
   textScale: 0.92,
-  language: "en",
+  language: "auto",
   linkPreviews: true,
 };
 
@@ -61,7 +61,21 @@ export function applyPrefs(p: Prefs) {
   document.documentElement.classList.toggle("focus-mode", p.focusMode);
   document.documentElement.classList.toggle("color-blind", p.colorBlind);
   document.documentElement.style.setProperty("--rizz-mention-color", p.mentionColor);
-  document.documentElement.lang = p.language || "en";
+  document.documentElement.lang = resolveHtmlLanguage(p.language);
+}
+
+/** "auto" (or anything unknown) resolves to the browser language, else English.
+ *  Kept here instead of importing i18n so prefs never cycles back into it. */
+export function resolveHtmlLanguage(pref?: string): string {
+  const supported = ["en", "es", "fr", "de", "ja", "hi", "pt"];
+  if (pref && pref !== "auto" && supported.includes(pref)) return pref;
+  if (typeof navigator !== "undefined") {
+    const nav = navigator.language || "";
+    if (supported.includes(nav)) return nav;
+    const base = nav.split("-")[0];
+    if (base && supported.includes(base)) return base;
+  }
+  return "en";
 }
 
 export function savePrefs(p: Prefs) {

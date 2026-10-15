@@ -52,24 +52,24 @@ const IncomingCallRinger = lazy(() => import("@/components/IncomingCallRinger").
 const PostComposer = lazy(() => import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })));
 
 const sideTabs = [
-  { to: "/feed", label: "Feed", icon: Home },
-  { to: "/reels", label: "Reels", icon: Film },
-  { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/groups", label: "Groups", icon: Users },
-  { to: "/realms", label: "Realms", icon: Hash },
-  { to: "/drops", label: "Giveaways", icon: Gift },
-  { to: "/dms", label: "Messages", icon: MessageCircle },
-  { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
-  { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/badges", label: "Badges", icon: Trophy },
-  { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
-  { to: "/bots", label: "Bots", icon: Bot },
+  { to: "/feed", label: "feed", icon: Home },
+  { to: "/reels", label: "reels", icon: Film },
+  { to: "/explore", label: "explore", icon: Compass },
+  { to: "/groups", label: "groups", icon: Users },
+  { to: "/realms", label: "realms", icon: Hash },
+  { to: "/drops", label: "giveaways", icon: Gift },
+  { to: "/dms", label: "messages", icon: MessageCircle },
+  { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
+  { to: "/bookmarks", label: "saved", icon: Bookmark },
+  { to: "/badges", label: "badges", icon: Trophy },
+  { to: "/leaderboard", label: "leaderboard", icon: Trophy },
+  { to: "/bots", label: "bots", icon: Bot },
 ] as const;
 
 const mobileTabs = [
-  { to: "/feed", label: "Feed", icon: Home },
-  { to: "/reels", label: "Reels", icon: Film },
-  { to: "/dms", label: "Messages", icon: MessageCircle },
+  { to: "/feed", label: "feed", icon: Home },
+  { to: "/reels", label: "reels", icon: Film },
+  { to: "/dms", label: "messages", icon: MessageCircle },
 ] as const;
 
 export function AppShell() {
@@ -275,17 +275,17 @@ export function AppShell() {
               <span className="font-medium text-sm flex-1 text-left">Status</span>
               <span className="text-xs">{statusShortLabel(presence.status)}</span>
             </button>
-            {sideTabs.map((t) => (
+            {sideTabs.map((tab) => (
               <Link
-                key={t.to}
-                to={t.to}
-                className={navItem(isActive(t.to))}
+                key={tab.to}
+                to={tab.to}
+                className={navItem(isActive(tab.to))}
               >
-                <t.icon className="h-5 w-5" />
-                <span className="flex-1 text-sm font-medium">{t.label}</span>
-                {t.to === "/dms" && dmUnreadCount > 0 && (
+                <tab.icon className="h-5 w-5" />
+                <span className="flex-1 text-sm font-medium">{t(tab.label)}</span>
+                {tab.to === "/dms" && dmUnreadCount > 0 && (
                   <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                    isActive(t.to) ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
+                    isActive(tab.to) ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
                   }`}>
                     {dmBadge}
                   </span>
@@ -297,7 +297,7 @@ export function AppShell() {
               className={navItem(isActive("/notifications"))}
             >
               <Bell className="h-5 w-5" />
-              <span className="font-medium text-sm flex-1">Inbox</span>
+              <span className="font-medium text-sm flex-1">{t("inbox")}</span>
               {unreadCount > 0 && (
                 <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
                   isActive("/notifications") ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
@@ -312,7 +312,7 @@ export function AppShell() {
               className={navItem(path.startsWith("/u/"))}
             >
               <UserIcon className="h-5 w-5" />
-              <span className="font-medium text-sm">Profile</span>
+              <span className="font-medium text-sm">{t("profile")}</span>
             </Link>
           </nav>
 
@@ -391,7 +391,7 @@ export function AppShell() {
         <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
           <div className="flex items-center justify-between gap-1">
             {mobileTabs.slice(0, 2).map((tab) => {
-              const label = tab.to === "/feed" ? t("feed") : tab.to === "/reels" ? t("reels") : tab.label;
+              const label = t(tab.label);
               return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
             })}
             {!isReels && (
@@ -407,7 +407,7 @@ export function AppShell() {
               </button>
             )}
             {mobileTabs.slice(2).map((tab) => {
-              const label = tab.to === "/dms" ? t("messages") : tab.label;
+              const label = t(tab.label);
               return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
             })}
             <button
@@ -426,7 +426,7 @@ export function AppShell() {
 
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
         <DialogContent className="border-border bg-card max-w-lg">
-          <DialogTitle className="font-display text-xl">Create post</DialogTitle>
+          <DialogTitle className="font-display text-xl">{t("create_post")}</DialogTitle>
           <Suspense fallback={<div className="h-24 rounded-2xl bg-surface-2 animate-pulse" />}>
             <PostComposer onPosted={() => setComposerOpen(false)} />
           </Suspense>
@@ -440,7 +440,7 @@ export function AppShell() {
           className="border-border bg-card rounded-t-3xl max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
         >
           <SheetHeader className="text-left pt-2">
-            <SheetTitle className="font-display text-xl">Everything on RIZZ</SheetTitle>
+            <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
           </SheetHeader>
 
           {/* Profile card */}
@@ -457,25 +457,25 @@ export function AppShell() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username} · View profile</p>
+              <p className="text-xs text-muted-foreground truncate">@{profile?.username} · {t("view_profile")}</p>
             </div>
           </Link>
 
           {/* Grid of destinations */}
           <div className="mt-4 grid grid-cols-4 gap-2">
-            {sideTabs.map((t) => (
+            {sideTabs.map((tab) => (
               <Link
-                key={t.to}
-                to={t.to}
-                className={navTile(isActive(t.to))}
+                key={tab.to}
+                to={tab.to}
+                className={navTile(isActive(tab.to))}
               >
-                <t.icon className="h-5 w-5" />
-                <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
+                <tab.icon className="h-5 w-5" />
+                <span className="text-[11px] font-medium text-center leading-tight">{t(tab.label)}</span>
               </Link>
             ))}
             <Link to="/notifications" className={`relative ${navTile(isActive("/notifications"))}`}>
               <Bell className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Inbox</span>
+              <span className="text-[11px] font-medium">{t("inbox")}</span>
               {unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 rounded-full">
                   {unreadBadge}
@@ -484,22 +484,22 @@ export function AppShell() {
             </Link>
             <Link to="/bookmarks" className={navTile(isActive("/bookmarks"))}>
               <Bookmark className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Saved</span>
+              <span className="text-[11px] font-medium">{t("saved")}</span>
             </Link>
             <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
               <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Effects</span>
+              <span className="text-[11px] font-medium">{t("effects")}</span>
               <span className="absolute top-1 right-1 text-[8px] font-bold border border-primary text-primary px-1 rounded-full">
-                Soon
+                {t("soon")}
               </span>
             </Link>
             <Link to="/settings" className={navTile(path === "/settings")}>
               <Settings className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Settings</span>
+              <span className="text-[11px] font-medium">{t("settings")}</span>
             </Link>
             <Link to="/settings/appearance" className={navTile(isActive("/settings/appearance"))}>
               <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Theme</span>
+              <span className="text-[11px] font-medium">{t("theme")}</span>
             </Link>
           </div>
 
@@ -507,7 +507,7 @@ export function AppShell() {
             onClick={() => { setMoreOpen(false); setMobileSignOutConfirm(true); }}
             className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-4 w-4" /> {t("sign_out")}
           </button>
         </SheetContent>
       </Sheet>
@@ -515,13 +515,13 @@ export function AppShell() {
       <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
         <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Sign out of RIZZ?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display">{t("sign_out_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              You'll need to sign back in to access your messages, feed, and saved posts.
+              {t("sign_out_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void signOut()}
               className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -705,7 +705,7 @@ function ProfileMenu({
                 className="flex w-full items-center gap-1.5 px-2 py-1 rounded text-[11px] text-primary hover:bg-white/[0.08] transition-colors"
               >
                 <Smile className="h-3 w-3" />
-                <span>Custom status</span>
+                <span>{t("custom_status")}</span>
               </button>
             </div>
           )}
@@ -730,7 +730,7 @@ function ProfileMenu({
                 <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <span>{t("effects")}</span>
               </span>
-              <span className="text-[9px] font-bold border border-primary text-primary px-1 py-0.2 rounded leading-none">Soon</span>
+              <span className="text-[9px] font-bold border border-primary text-primary px-1 py-0.2 rounded leading-none">{t("soon")}</span>
             </Link>
           </DropdownMenuItem>
 
@@ -769,14 +769,14 @@ function ProfileMenu({
         <div>
           {confirmSignOut ? (
             <div className="flex items-center justify-between px-2.5 h-8 min-h-[32px] text-xs">
-              <span className="text-[#ff5d5d] font-semibold text-xs">Sign out?</span>
+              <span className="text-[#ff5d5d] font-semibold text-xs">{t("sign_out")}?</span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => void signOut()}
                   className="px-2 py-0.5 rounded bg-[#ff5d5d]/20 text-[#ff5d5d] hover:bg-[#ff5d5d]/30 font-semibold text-[11px] transition-colors"
                 >
-                  Yes
+                  {t("yes")}
                 </button>
                 <button
                   type="button"
@@ -787,7 +787,7 @@ function ProfileMenu({
                   }}
                   className="px-2 py-0.5 rounded bg-white/5 text-muted-foreground hover:text-foreground text-[11px] transition-colors"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </div>

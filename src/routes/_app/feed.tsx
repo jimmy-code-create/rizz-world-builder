@@ -16,7 +16,7 @@ import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { FeedSideDiscussion } from "@/components/FeedSideDiscussion";
 import { RizzCat } from "@/components/RizzCat";
 import { formatNumber } from "@/lib/formatters";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, tp } from "@/lib/i18n";
 import type { FeedPost } from "@/lib/posts";
 
 export const Route = createFileRoute("/_app/feed")({
@@ -27,14 +27,6 @@ export const Route = createFileRoute("/_app/feed")({
 // The feed paginates instead of mounting every post at once; each PostCard is a
 // heavy tree, so we render a page of them and grow the window on demand.
 const FEED_PAGE_SIZE = 6;
-
-/** "Good evening" and friends, from the device clock. */
-function greetingFor(hour: number) {
-  if (hour < 5) return "Still up";
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
 
 function FeedPage() {
   const { user, profile } = useAuth();
@@ -146,7 +138,7 @@ function FeedPage() {
             {todayCount > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
                 <Flame className="h-3 w-3 text-primary" />
-                {formatNumber(todayCount)} new
+                {tp("new_count_one", "new_count_other", todayCount)}
               </span>
             )}
           </div>
