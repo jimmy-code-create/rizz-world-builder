@@ -1,0 +1,30 @@
+[
+  {
+    "id": "gamenest",
+    "name": "Party Games",
+    "icon": "🎲",
+    "url": "https://games.example.com",
+    "type": "multiplayer-hub",
+    "players": "2-16",
+    "description": "32 board, card & party games"
+  },
+  {
+    "id": "draw-guess",
+    "name": "Draw & Guess",
+    "icon": "✏️",
+    "url": "https://draw.example.com",
+    "type": "room-link",
+    "players": "2-12",
+    "description": "Draw and guess together",
+    "roomParam": "room"
+  },
+  {
+    "id": "quick-play",
+    "name": "Quick Play",
+    "icon": "👾",
+    "url": "PASTE_GAMEZOP_EMBED_URL_HERE",
+    "type": "embed",
+    "players": "1+",
+    "description": "Solo HTML5 arcade"
+  }
+]

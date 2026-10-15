@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -19,7 +19,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
+import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusDot";
+import { ActivityShelf } from "@/components/voice/ActivityShelf";
+import { ActivityPanel, JoinGameBanner } from "@/components/voice/ActivityPanel";
+import {
+  getGame,
+  isValidGameUrl,
+  useRoomActivity,
+  type GameEntry,
+  type RoomActivity,
+} from "@/lib/activities";import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -203,10 +213,15 @@ export function VoiceCallView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [shelfOpen, setShelfOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelMinimized, setPanelMinimized] = useState(false);
+  const [bannerDismissedAt, setBannerDismissedAt] = useState<number | null>(null);
   const [soundSettings, setSoundSettings] = useSoundSettings();
   const [chatBody, setChatBody] = useState("");
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
+  const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
 
   const handleLeaveClick = () => {
     if (call?.isHost && participants.length > 1) {
@@ -231,6 +246,51 @@ export function VoiceCallView() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Game Activities: ephemeral per-room state over realtime (broadcast +
+  // presence), so late joiners sync the live game with no database table.
+  const selfName =
+    participants.find((participant) => participant.user_id === user?.id)?.user?.display_name ||
+    participants.find((participant) => participant.user_id === user?.id)?.user?.username ||
+    "Someone";
+  const roomActivity = useRoomActivity(call?.roomId ?? null, user ? { id: user.id, name: selfName } : null);
+  const prevActivityRef = useRef<RoomActivity | null>(null);
+  useEffect(() => {
+    const prev = prevActivityRef.current;
+    const next = roomActivity.activity;
+    if (next && (!prev || next.startedAt !== prev.startedAt)) {
+      setBannerDismissedAt(null);
+      setPanelMinimized(false);
+      if (next.startedBy !== user?.id) {
+        toast.info(`${next.startedByName} started ${next.gameName}`, {
+          description: "Tap Join game to play along.",
+        });
+      }
+    }
+    if (prev && !next) {
+      setPanelOpen(false);
+      toast.info("Game ended");
+    }
+    prevActivityRef.current = next;
+  }, [roomActivity.activity, user?.id]);
+
+  const handlePickGame = async (entry: GameEntry) => {
+    setShelfOpen(false);
+    if (!isValidGameUrl(entry.url)) {
+      toast.error(`${entry.name} has no link yet`, {
+        description: "Paste its URL into src/data/games.json.",
+      });
+      return;
+    }
+    await roomActivity.start(entry);
+    setPanelMinimized(false);
+    setPanelOpen(true);
+  };
+
+  const handleEndGame = async () => {
+    await roomActivity.end();
+    setPanelOpen(false);
+  };
 
   if (!call || !viewOpen) return null;
 
@@ -291,6 +351,16 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
+            aria-label="Activities"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${shelfOpen || panelOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setShelfOpen(true)}
+            title="Activities"
+          >
+            <Gamepad2 className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             aria-label="Voice settings"
             className={`glass h-11 w-11 shrink-0 border-white/10 ${settingsOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
             onClick={() => setSettingsOpen(true)}
@@ -309,7 +379,22 @@ export function VoiceCallView() {
           </Button>
         </header>
 
+        {roomActivity.activity && !panelOpen && (!bannerDismissedAt || roomActivity.activity.startedAt > bannerDismissedAt) && (
+          <div className="relative shrink-0 px-3 pt-3 sm:px-4">
+            <JoinGameBanner
+              activity={roomActivity.activity}
+              onJoin={() => {
+                setPanelMinimized(false);
+                setPanelOpen(true);
+              }}
+              onDismiss={() => setBannerDismissedAt(roomActivity.activity!.startedAt)}
+            />
+          </div>
+        )}
+
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
+          <div className="mx-auto flex w-full max-w-6xl items-start gap-3">
+            <div className="min-w-0 flex-1">
           {stageStream && (
             <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-primary/40 bg-black shadow-md">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
@@ -343,6 +428,9 @@ export function VoiceCallView() {
                 : videosByPeer.get(participant.user_id) ?? null;
               const username = participant.user?.username ?? "member";
               const initial = (participant.user?.display_name || username).charAt(0).toUpperCase();
+              const tileRow = presenceMap.rows[participant.user_id] ?? null;
+              const tileStatus = publicStatusOf(tileRow, isMe);
+              const tileCustom = publicCustomStatus(tileRow, isMe);
 
               return (
                 <div
@@ -368,6 +456,15 @@ export function VoiceCallView() {
                           <AvatarImage src={participant.user?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
                         </Avatar>
+                        <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-[#0b0714] p-[2px]">
+                          <StatusDotButton
+                            userId={participant.user_id}
+                            username={username}
+                            status={tileStatus}
+                            isSelf={isMe}
+                            size={16}
+                          />
+                        </span>
                         {speaking && (
                           <span
                             aria-hidden="true"
@@ -379,14 +476,24 @@ export function VoiceCallView() {
                         @{username}
                         {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
                       </p>
+                      {tileCustom && (tileCustom.emoji || tileCustom.text) && (
+                        <span className="max-w-full">
+                          <CustomStatusLine status={tileCustom} className="-mt-1 truncate text-[11px]" />
+                        </span>
+                      )}
                     </>
                   )}
 
                   {videoStream && (
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
-                      <span className="truncate text-[11px] font-semibold text-white">
-                        @{username}
-                        {isMe && " (you)"}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[11px] font-semibold text-white">
+                          @{username}
+                          {isMe && " (you)"}
+                        </span>
+                        {tileCustom && (tileCustom.emoji || tileCustom.text) && (
+                          <CustomStatusLine status={tileCustom} className="truncate text-[10px] text-white/70" />
+                        )}
                       </span>
                       {participant.muted && <MicOff className="h-3.5 w-3.5 shrink-0 text-white/80" />}
                     </div>
@@ -447,6 +554,21 @@ export function VoiceCallView() {
                   </button>
                 )}
               </div>
+            )}
+            </div>
+            </div>
+            {panelOpen && roomActivity.activity && (
+              <ActivityPanel
+                layout="side"
+                activity={roomActivity.activity}
+                entry={getGame(roomActivity.activity.gameId)}
+                canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
+                minimized={panelMinimized}
+                onMinimize={() => setPanelMinimized(true)}
+                onReopen={() => setPanelMinimized(false)}
+                onLeave={() => setPanelOpen(false)}
+                onEnd={() => void handleEndGame()}
+              />
             )}
           </div>
         </div>
@@ -601,6 +723,23 @@ export function VoiceCallView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Game Activities shelf + live panel (voice keeps running: the call
+            engine is provider-owned, this UI is only a sibling). */}
+        <ActivityShelf open={shelfOpen} onOpenChange={setShelfOpen} onPick={(entry) => void handlePickGame(entry)} />
+        {panelOpen && roomActivity.activity && (
+          <ActivityPanel
+            layout="overlay"
+            activity={roomActivity.activity}
+            entry={getGame(roomActivity.activity.gameId)}
+            canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
+            minimized={false}
+            onMinimize={() => setPanelOpen(false)}
+            onReopen={() => setPanelOpen(true)}
+            onLeave={() => setPanelOpen(false)}
+            onEnd={() => void handleEndGame()}
+          />
+        )}
 
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>

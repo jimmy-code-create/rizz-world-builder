@@ -124,3 +124,16 @@
 - [x] Groups: [View profile, Edit profile, Saved, Badges, Leaderboard] with live Saved/Badges counts; [Switch account (≤3 `rizz-accounts` on device + Add account, Current tag) → sign out + `/login`, Copy profile link]; [Settings (Appearance stays a section inside Settings, no separate row), Help & feedback dialog]; [red Sign out with inline "Sign out of @handle?" confirm, also applied to the drawer dialog] - **DONE**
 - [x] "Effects (Soon)" removed from the menu and the mobile drawer; Effects now lives only in Settings with a Soon badge; unreleased-feature rule documented by example - **DONE**
 - [x] 48px rows, aria labels/expanded/checked, keyboard-navigable desktop items, glass toasts, best-effort stats that hide (never break) on missing data; tsc identical to baseline, `vite build` exit 0 - **DONE**
+
+### Phase 19: Status sheet rebuild + surfaces
+- [x] Rebuilt `PresenceSheet`: sticky header (handle + "Set status" + X always visible, content scrolls under it); emoji picker expands inline under the input (max-h 220px, own scroll — never clipped); lime Smile toggle instead of the yellow glyph; 80-char input; kept presets, 1h/4h/today/never expiry, Cancel/Save footer, Clear - **DONE**
+- [x] Picker shows the cat-emoji set first, then a standard emoji grid (6/row, 44px targets); picked emoji previews in the lime toggle - **DONE**
+- [x] New `StatusDotButton`: tap/long-press the online dot opens a popover with status + custom status + "Clears in Xm/Xh / Stays on until cleared"; empty state shows "No custom status set", never broken; invisible still reads as offline - **DONE**
+- [x] Surfaced everywhere listed: profile page (under @handle, already) + tappable avatar dot; mini profile cards (shared ProfileCard, already); avatar menu Online row now shows the custom text; voice tiles show status next to the display name + tappable dot - **DONE**
+- [x] tsc identical to baseline, `vite build` exit 0 - **DONE**
+
+### Phase 20: Game Activities shelf + room sync
+- [x] `src/data/games.json` registry (hub / room-link / embed) + `src/lib/activities.ts` (types, room-code gen, `?room=CODE` URLs, `useRoomActivity` over realtime broadcast + presence — no migration, late joiners sync) - **DONE**
+- [x] Controller (Gamepad2) button in the voice-room header; `ActivityShelf` bottom sheet grid; `ActivityPanel` sandboxed iframe (side panel desktop, full-screen overlay mobile, minimize/close, End-for-everyone for starter/host); `JoinGameBanner` for members + toast; hub room-code helper with copy-invite + QR (graceful offline fallback) - **DONE**
+- [x] Voice keeps running (provider-owned engine, panel is a sibling); `docs/ADDING_A_GAME.md` — one JSON entry per game - **DONE**
+- [x] tsc identical to baseline, `vite build` exit 0 - **DONE**
