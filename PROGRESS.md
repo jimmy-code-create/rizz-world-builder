@@ -77,3 +77,8 @@
 - [x] Bot messages no longer open a user card with a null user id (page crash); the card also guards a falsy `userId` (`src/routes/_app/r.$slug.tsx`, `src/components/profile/ProfileCard.tsx`) - **DONE**
 - [x] `ProfilePreviewDialog` shows a proper error state with "Try again" instead of "no longer available" on transient failures (`src/components/ProfilePreview.tsx`) - **DONE**
 - [x] Migration RPC derives `verified` from user_badges too (file still NOT APPLIED) (`supabase/migrations/20261020010000_profile_card.sql`) - **DONE (file only)**
+
+### Phase 12: Render Deploy Fix (npm ERESOLVE)
+- [x] Root cause: `^1.168.60` let fresh installs resolve `@tanstack/react-start@1.169.2` (wants vite>=8, repo has vite 7) — ERESOLVE on `npm install` plus a broken build (`index.html` entry) even with `--legacy-peer-deps`. Pinned to exact `1.168.61` (matches `pnpm-lock.yaml`; verified `build-exit:0` with lovable config `2.26.5`) (`package.json`) - **DONE**
+- [x] `.npmrc` gains `legacy-peer-deps=true` so Render's plain `npm install` survives future peer drift - **DONE**
+- [x] `render.yaml` build used `npm ci` + a lockfile-normalize script but no lockfile is committed (`package-lock.json` is gitignored) — switched to `npm install --legacy-peer-deps` + build - **DONE**
