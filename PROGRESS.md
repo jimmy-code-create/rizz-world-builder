@@ -155,3 +155,7 @@
 - [x] Banner status pill removed; avatar gets bottom-left emoji badge + bottom-right tappable dot; `StatusPill` (rounded-full, no tail) under @handle on profile + mini cards, `+ Set status` for owner, popover with expiry for others - **DONE**
 - [x] Canonical badge set lib (`rare/epic/mythic` + cat icons + tier glows), `BadgeIcon` everywhere, `BadgeRow`/ProfileCard filter to the 5, post chip renamed Main Character, `no-cap` replaces `verified_creator` for verification - **DONE**
 - [ ] `20261022000000_fix_realm_reaction_toggle.sql`, `20261022010000_bot_embed_templates.sql` and `20261023000000_badge_set_v2.sql` proven in PGlite but NOT yet applied in Supabase — old badge rows stay invisible until applied; companion removal + /badges rebuild + share image still open
+
+### Phase 24: Message long-press lag
+- [x] Root causes: two racing 320ms long-press timers per press (row + menu trigger = double vibrate + double open) and 80 mounted Sheet/Popover portal trees per channel - **DONE**
+- [x] `MessageActionMenu` takes `detectPress` (realm rows opt out; double-tap/context-menu/keyboard untouched) and mounts its overlay only for the open row (open animation intact); DMs/groups unchanged - **DONE**

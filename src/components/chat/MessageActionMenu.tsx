@@ -51,6 +51,14 @@ export type MessageActionMenuProps = {
   onDoubleTap?: () => void;
   /** Who wrote it and what it says, shown above the actions. */
   preview?: MessageActionPreview;
+  /**
+   * Whether the trigger runs its own long-press timer. Set false when the
+   * parent already detects long-press (e.g. realm rows cover media + avatar
+   * areas the trigger doesn't wrap) — two racing 320ms timers meant double
+   * vibration and double open state per press. Double-tap, context menu and
+   * keyboard still work with this off.
+   */
+  detectPress?: boolean;
 };
 
 type PressOrigin = {
@@ -74,6 +82,7 @@ export function MessageActionMenu({
   reactionBar,
   onDoubleTap,
   preview,
+  detectPress = true,
 }: MessageActionMenuProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<PressOrigin | null>(null);
@@ -110,6 +119,7 @@ export function MessageActionMenu({
     if ((event.target as HTMLElement).closest("button, a, input, textarea, [role='button']")) {
       return;
     }
+    if (!detectPress) return;
 
     clearPress();
     longPressFired.current = false;
@@ -284,6 +294,10 @@ export function MessageActionMenu({
     return (
       <>
         {trigger}
+        {/* The overlay mounts only for the open row: 80 closed portal trees
+            (focus traps, scroll locks, reaction bars) per channel was the
+            long-press jank. Open animation still plays on mount. */}
+        {open ? (
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
@@ -307,6 +321,7 @@ export function MessageActionMenu({
             {actionRows}
           </SheetContent>
         </Sheet>
+        ) : null}
       </>
     );
   }
@@ -314,6 +329,7 @@ export function MessageActionMenu({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      {open ? (
       <PopoverContent
         align={align === "left" ? "start" : "end"}
         side="top"
@@ -348,6 +364,7 @@ export function MessageActionMenu({
         )}
         {actionRows}
       </PopoverContent>
+      ) : null}
     </Popover>
   );
 }

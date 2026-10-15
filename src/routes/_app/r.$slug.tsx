@@ -1500,6 +1500,10 @@ function RealmPage() {
                   open={openMessageId === m.id}
                   onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                   align={mine ? "right" : "left"}
+                  // The row already detects long-press (it covers media and
+                  // avatar areas the trigger doesn't wrap); the menu keeps
+                  // double-tap, context menu and keyboard.
+                  detectPress={false}
                   // The quick bar mirrors the channel's reaction policy; the RPC
                   // and its trigger enforce it again server-side.
                   // A message that has not been saved yet has no id to react to.
