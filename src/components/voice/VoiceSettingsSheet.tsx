@@ -81,9 +81,12 @@ export function VoiceSettingsSheet({
   }, []);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    // Defer device enumeration so it runs after sheet open animation completes, preventing UI lag
+    const timer = setTimeout(() => {
       void refreshDevices();
-    }
+    }, 200);
+    return () => clearTimeout(timer);
   }, [open, refreshDevices]);
 
   const inputs = devices.filter((device) => device.kind === "audioinput");
@@ -284,13 +287,13 @@ export function VoiceSettingsSheet({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="glass-strong z-[140] rounded-t-3xl border-white/10 p-5 max-h-[85vh] overflow-y-auto">
-          <SheetHeader className="pb-3 border-b border-white/10 text-left">
+        <SheetContent side="bottom" className="glass-strong z-[140] rounded-t-3xl border-white/10 p-0 max-h-[85vh] flex flex-col overflow-hidden">
+          <SheetHeader className="p-4 pr-12 border-b border-white/10 text-left shrink-0">
             <SheetTitle className="font-display flex items-center gap-2 text-base">
               <Sliders className="h-4 w-4 text-primary" /> Voice & Audio Settings
             </SheetTitle>
           </SheetHeader>
-          <div className="pt-3">{content}</div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
         </SheetContent>
       </Sheet>
     );
@@ -298,13 +301,13 @@ export function VoiceSettingsSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 max-w-md w-full max-h-[85vh] overflow-y-auto space-y-4">
-        <DialogHeader>
+      <DialogContent className="glass-strong border-white/10 max-w-md w-full p-0 max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="p-4 pr-12 border-b border-white/10 shrink-0">
           <DialogTitle className="font-display flex items-center gap-2">
             <Sliders className="h-5 w-5 text-primary" /> Voice & Audio Settings
           </DialogTitle>
         </DialogHeader>
-        {content}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">{content}</div>
       </DialogContent>
     </Dialog>
   );

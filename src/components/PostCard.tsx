@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
@@ -641,9 +641,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               setInitialReactionTab("all");
               setReactionsSheetOpen(true);
             }}
-            className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors"
+            aria-label="View all reactions"
+            title="View all reactions"
+            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors shrink-0"
           >
-            Reactions
+            <Users className="h-3 w-3" />
           </button>
         </div>
       )}

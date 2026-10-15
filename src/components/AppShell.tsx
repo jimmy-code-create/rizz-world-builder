@@ -629,20 +629,20 @@ function ProfileMenu({
       <DropdownMenuContent
         align="end"
         collisionPadding={8}
-        className="w-[248px] bg-[#141416] border border-[#2a2a2e] rounded-[14px] p-1.5 shadow-2xl space-y-0.5"
+        className="w-[215px] bg-[#141416] border border-[#2a2a2e] rounded-xl p-1 shadow-2xl space-y-0.5 text-xs"
       >
         {/* Header = one line "@handle" muted (tap opens profile) */}
         <DropdownMenuItem asChild className="p-0 focus:bg-transparent">
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className="block px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground truncate transition-colors"
+            className="block px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground truncate transition-colors"
           >
             @{profile?.username}
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e] h-px -mx-1" />
+        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
 
         {/* Group 1: [Status, Profile, Saved, Effects, Badges] */}
         <div>
@@ -653,23 +653,23 @@ function ProfileMenu({
               e.preventDefault();
               setStatusExpanded((prev) => !prev);
             }}
-            className="flex w-full items-center justify-between px-3 h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] rounded-[8px] text-[15px] hover:bg-white/[0.06] transition-colors"
+            className="flex w-full items-center justify-between px-2.5 h-8 min-h-[32px] rounded-md text-xs hover:bg-white/[0.06] transition-colors"
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <span
-                className="h-2.5 w-2.5 rounded-full shrink-0"
+                className="h-2 w-2 rounded-full shrink-0"
                 style={{ backgroundColor: statusColor(selfPresence.status) }}
               />
-              <span className="text-[15px] text-foreground">{t("status")}</span>
+              <span className="text-xs text-foreground font-medium">{t("status")}</span>
             </div>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
               {statusShortLabel(selfPresence.status)}
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform text-muted-foreground", statusExpanded && "rotate-180")} />
+              <ChevronDown className={cn("h-3 w-3 transition-transform text-muted-foreground", statusExpanded && "rotate-180")} />
             </span>
           </button>
 
           {statusExpanded && (
-            <div className="my-1 py-1 px-1 rounded-lg bg-black/40 border border-[#2a2a2e] space-y-0.5">
+            <div className="my-0.5 py-0.5 px-0.5 rounded-md bg-black/40 border border-[#2a2a2e] space-y-0.5">
               {PRESENCE_STATUSES.map((entry) => {
                 const isSelected = selfPresence.status === entry.value;
                 return (
@@ -682,15 +682,15 @@ function ProfileMenu({
                       await selfPresence.chooseStatus(entry.value);
                       setStatusExpanded(false);
                     }}
-                    className="flex w-full items-center justify-between px-2.5 py-1.5 rounded-md text-xs hover:bg-white/[0.08] transition-colors"
+                    className="flex w-full items-center justify-between px-2 py-1 rounded text-[11px] hover:bg-white/[0.08] transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                      <span className={cn("text-xs", isSelected ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                      <span className={cn("text-[11px]", isSelected ? "font-semibold text-foreground" : "text-muted-foreground")}>
                         {entry.label}
                       </span>
                     </div>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                    {isSelected && <Check className="h-3 w-3 text-primary" />}
                   </button>
                 );
               })}
@@ -702,79 +702,79 @@ function ProfileMenu({
                   setStatusExpanded(false);
                   onStatus?.();
                 }}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-white/[0.08] transition-colors"
+                className="flex w-full items-center gap-1.5 px-2 py-1 rounded text-[11px] text-primary hover:bg-white/[0.08] transition-colors"
               >
-                <Smile className="h-3.5 w-3.5" />
-                <span>Set a custom status</span>
+                <Smile className="h-3 w-3" />
+                <span>Custom status</span>
               </button>
             </div>
           )}
 
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-3 w-full">
-              <UserIcon className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+            <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-2.5 w-full">
+              <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>{t("profile")}</span>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/bookmarks" className="flex items-center gap-3 w-full">
-              <Bookmark className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+            <Link to="/bookmarks" className="flex items-center gap-2.5 w-full">
+              <Bookmark className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>{t("saved")}</span>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
             <Link to="/effects" className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-3">
-                <Palette className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+              <span className="flex items-center gap-2.5">
+                <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <span>{t("effects")}</span>
               </span>
-              <span className="text-[10px] font-bold border border-primary text-primary px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+              <span className="text-[9px] font-bold border border-primary text-primary px-1 py-0.2 rounded leading-none">Soon</span>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/badges" className="flex items-center gap-3 w-full">
-              <Trophy className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+            <Link to="/badges" className="flex items-center gap-2.5 w-full">
+              <Trophy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>{t("badges")}</span>
             </Link>
           </DropdownMenuItem>
         </div>
 
         {/* Group 2 divider */}
-        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e] h-px -mx-1" />
+        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
 
         {/* Group 2: [Settings, Appearance] */}
         <div>
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings" className="flex items-center gap-3 w-full">
-              <Settings className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+            <Link to="/settings" className="flex items-center gap-2.5 w-full">
+              <Settings className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>{t("settings")}</span>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem asChild className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings/appearance" className="flex items-center gap-3 w-full">
-              <Palette className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
+            <Link to="/settings/appearance" className="flex items-center gap-2.5 w-full">
+              <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>{t("appearance")}</span>
             </Link>
           </DropdownMenuItem>
         </div>
 
         {/* Group 3 divider */}
-        <DropdownMenuSeparator className="my-1 bg-[#2a2a2e] h-px -mx-1" />
+        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
 
         {/* Group 3: [Sign out in #ff5d5d, inline "Sign out?" Yes/Cancel] */}
         <div>
           {confirmSignOut ? (
-            <div className="flex items-center justify-between px-3 h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] text-xs">
-              <span className="text-[#ff5d5d] font-semibold text-[13px]">Sign out?</span>
+            <div className="flex items-center justify-between px-2.5 h-8 min-h-[32px] text-xs">
+              <span className="text-[#ff5d5d] font-semibold text-xs">Sign out?</span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="px-2.5 py-1 rounded bg-[#ff5d5d]/20 text-[#ff5d5d] hover:bg-[#ff5d5d]/30 font-semibold text-xs transition-colors"
+                  className="px-2 py-0.5 rounded bg-[#ff5d5d]/20 text-[#ff5d5d] hover:bg-[#ff5d5d]/30 font-semibold text-[11px] transition-colors"
                 >
                   Yes
                 </button>
@@ -785,7 +785,7 @@ function ProfileMenu({
                     e.preventDefault();
                     setConfirmSignOut(false);
                   }}
-                  className="px-2 py-1 rounded bg-white/5 text-muted-foreground hover:text-foreground text-xs transition-colors"
+                  className="px-2 py-0.5 rounded bg-white/5 text-muted-foreground hover:text-foreground text-[11px] transition-colors"
                 >
                   Cancel
                 </button>
@@ -797,9 +797,9 @@ function ProfileMenu({
                 e.preventDefault();
                 setConfirmSignOut(true);
               }}
-              className="h-10 max-sm:h-11 min-h-[40px] max-sm:min-h-[44px] px-3 rounded-[8px] cursor-pointer text-[15px] gap-3 text-[#ff5d5d] hover:text-[#ff5d5d] hover:bg-white/[0.06] focus:bg-white/[0.06] focus:text-[#ff5d5d] flex items-center"
+              className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 text-[#ff5d5d] hover:text-[#ff5d5d] hover:bg-white/[0.06] focus:bg-white/[0.06] focus:text-[#ff5d5d] flex items-center"
             >
-              <LogOut className="h-[18px] w-[18px] shrink-0 text-[#ff5d5d]" />
+              <LogOut className="h-3.5 w-3.5 shrink-0 text-[#ff5d5d]" />
               <span>{t("sign_out")}</span>
             </DropdownMenuItem>
           )}
