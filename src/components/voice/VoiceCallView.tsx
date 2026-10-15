@@ -40,7 +40,11 @@ import {
 function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
   const peerAudio = usePeerAudio();
   const muted = peerAudio.muted.includes(userId);
-  const volume = peerVolumeOf(peerAudio, userId);
+  const committed = peerVolumeOf(peerAudio, userId);
+  // Local draft while dragging; the global store (and every subscriber)
+  // updates once on release instead of per tick.
+  const [draft, setDraft] = useState<number | null>(null);
+  const volume = draft ?? committed;
 
   return (
     <Popover>
@@ -65,7 +69,12 @@ function PeerVolumeControl({ userId, username }: { userId: string; username: str
             min={0}
             max={100}
             step={5}
-            onValueChange={([next]) => setPeerVolume(userId, next)}
+            onValueChange={([next]) => setDraft(next ?? 100)}
+            onValueCommit={([next]) => {
+              const v = next ?? draft ?? committed;
+              setDraft(null);
+              setPeerVolume(userId, v);
+            }}
             aria-label={`Volume for @${username}`}
           />
         </div>

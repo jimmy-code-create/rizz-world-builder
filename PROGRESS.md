@@ -45,6 +45,11 @@
 ### Phase 7: Final Regression Checklist
 - [ ] Item 15: Cross-surface verification: no console errors, mobile touch targets >= 44px, accessibility tags, prefers-reduced-motion compliance, zero purple gradients - **NOT STARTED**
 
+### Phase 8: Voice, Leaderboard & Onboarding Polish
+- [x] Voice settings lag fix: sliders write to a local draft while dragging and commit on release (`onValueCommit`), mic meter fftSize 256→128 + ~12fps throttle + releases mic on sheet close, `devicechange` listener, memoized device lists (`src/components/voice/VoiceSettingsSheet.tsx`, `src/components/voice/VoiceCallView.tsx`, `src/routes/_app/settings/voice.tsx`) - **DONE**
+- [x] Leaderboard upgrade: skeleton loaders, error retry, empty state, refresh button, self-rank banner + YOU badge, top-3 medals, tie-break ordering, tap-any-row profile card (`src/routes/_app/leaderboard.tsx`) - **DONE**
+- [x] Onboarding: live username availability, display-name field, reserved-name blocklist, late-profile avatar sync, invite-link honored after tutorial, skip keeps picked cat (`src/routes/claim.tsx`, `src/routes/tutorial.tsx`) - **DONE**
+
 ---
 
 ## Discord-Style Polish (5 Tasks)
