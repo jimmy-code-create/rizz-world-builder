@@ -1701,14 +1701,17 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 @keyframes cat-drop { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(7px); } }
 @keyframes cat-wave { 0%,100% { transform: rotate(0); } 50% { transform: rotate(22deg); } }
 @keyframes cat-blink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
-/* status bubble pop-in (scale .9 to 1, 160ms) */
+/* status bubble pop-in (scale .9 to 1, 160ms) + a subtle idle float */
 @keyframes status-bubble-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 .status-bubble-in { animation: status-bubble-in 160ms ease-out; }
+@keyframes status-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.status-bubble-float { animation: status-bubble-float 5s ease-in-out 200ms infinite; }
 @media (prefers-reduced-motion: reduce) {
   .cat-emoji .fx, .cat-emoji .fx-heart, .cat-emoji .fx-glint, .cat-emoji .fx-z, .cat-emoji .fx-z2,
   .cat-emoji .fx-pupil, .cat-emoji .fx-slide, .cat-emoji .fx-flick, .cat-emoji .fx-crown,
   .cat-emoji .fx-tear, .cat-emoji .fx-paw, .cat-emoji .fx-dot1, .cat-emoji .fx-dot2, .cat-emoji .fx-dot3,
-  .status-bubble-in { animation: none !important; }
+  .status-bubble-in, .status-bubble-float { animation: none !important; }
 }
 [data-reduced-motion="true"] .cat-emoji .fx,
-[data-reduced-motion="true"] .status-bubble-in { animation: none !important; }
+[data-reduced-motion="true"] .status-bubble-in,
+[data-reduced-motion="true"] .status-bubble-float { animation: none !important; }

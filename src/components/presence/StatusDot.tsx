@@ -1,7 +1,9 @@
 import { type ReactNode, useState } from "react";
+import { Plus } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
-import { statusColor, statusLabel, type PublicPresence } from "@/lib/presence";
+import { statusLabel, type PublicPresence } from "@/lib/presence";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
  * Discord-style status icons:
@@ -31,7 +33,7 @@ export function StatusIcon({
           className={`shrink-0 ${className}`}
           aria-label="Online"
         >
-          <circle cx="8" cy="8" r="8" fill="#23a55a" />
+          <circle cx="8" cy="8" r="8" fill="#22c55e" />
         </svg>
       );
     case "idle":
@@ -48,7 +50,7 @@ export function StatusIcon({
           {/* Discord crescent moon cutout */}
           <path
             d="M13.8 10.1A6 6 0 0 1 5.9 2.2a6.5 6.5 0 1 0 7.9 7.9Z"
-            fill="#f0b232"
+            fill="#facc15"
           />
         </svg>
       );
@@ -64,7 +66,7 @@ export function StatusIcon({
           aria-label="Do Not Disturb"
         >
           {/* Discord DND: red circle with centered white minus bar */}
-          <circle cx="8" cy="8" r="8" fill="#f23f43" />
+          <circle cx="8" cy="8" r="8" fill="#ef4444" />
           <rect x="2.75" y="6.75" width="10.5" height="2.5" rx="1.25" fill="#ffffff" />
         </svg>
       );
@@ -81,7 +83,7 @@ export function StatusIcon({
           className={`shrink-0 ${className}`}
           aria-label="Offline"
         >
-          <circle cx="8" cy="8" r="6" stroke="#80848e" strokeWidth="2.75" fill="none" />
+          <circle cx="8" cy="8" r="6" stroke="#64748b" strokeWidth="2.75" fill="none" />
         </svg>
       );
   }
@@ -171,10 +173,14 @@ export function CustomStatusLine({
 }
 
 /**
- * <StatusBubble>: Discord thought bubble replacing the old "Hi" bubble.
+ * <StatusBubble>: Discord thought bubble for a mood/custom status.
  * Rounded pill (radius 16, surface-2, 1px border), emoji 20px, one-line 13px
- * text with ellipsis (max-width ~200px; tap expands to 3 lines), plus two
- * small trailing circles (8px and 5px) leading to the avatar.
+ * text with ellipsis (max ~60% of the screen, capped for wide layouts), plus
+ * two small trailing circles at the bottom-left leading toward the avatar.
+ * Pops in under 250ms with a subtle idle float (both honor reduced-motion).
+ * Tap behavior: the owner passes onActivate to open the status sheet (or
+ * sees a dashed "Set status" placeholder when empty); everyone else gets a
+ * read-only bubble that opens a small popover with the full text.
  * Cat emoji loops (at most one loop on screen via CatEmoji budget);
  * Unicode emoji is static.
  */
@@ -182,35 +188,90 @@ export function StatusBubble({
   emoji,
   text,
   className = "",
+  onActivate,
+  emptyLabel,
 }: {
   emoji?: string | null;
   text?: string | null;
   className?: string;
+  onActivate?: () => void;
+  emptyLabel?: string | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  if (!emoji && !text) return null;
+  const [open, setOpen] = useState(false);
+  if (!emoji && !text) {
+    if (emptyLabel == null || !onActivate) return null;
+    return (
+      <span className={`relative inline-flex ${className}`}>
+        <button
+          type="button"
+          onClick={onActivate}
+          aria-label={emptyLabel}
+          className="status-bubble-in inline-flex max-w-[min(60vw,20rem)] items-center gap-1.5 rounded-2xl border border-dashed border-white/25 bg-transparent px-2.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:border-[#c8ff3d]/60 hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+          style={{ borderRadius: 16 }}
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{emptyLabel}</span>
+        </button>
+      </span>
+    );
+  }
+  const pill = (
+    <span className="status-bubble-float inline-flex max-w-[min(60vw,20rem)] items-center gap-1.5 rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f] px-2.5 py-1.5 text-left">
+      {emoji && <StatusBubbleEmoji emoji={emoji} />}
+      {text && <span className="min-w-0 truncate text-[13px] leading-tight text-[#f2efe6]">{text}</span>}
+    </span>
+  );
+  const dots = (
+    <>
+      {/* two trailing circles leading to the avatar */}
+      <span aria-hidden className="absolute -bottom-1.5 left-4 h-2 w-2 rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
+      <span aria-hidden className="absolute -bottom-3 left-2.5 h-[5px] w-[5px] rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
+    </>
+  );
+  if (onActivate) {
+    const label = text ? `Edit status: ${text}` : "Edit status";
+    return (
+      <span className={`relative inline-flex ${className}`}>
+        <button
+          type="button"
+          onClick={onActivate}
+          aria-label={label}
+          title={text ?? undefined}
+          className="status-bubble-in rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+          style={{ borderRadius: 16 }}
+        >
+          {pill}
+        </button>
+        {dots}
+      </span>
+    );
+  }
   return (
     <span className={`relative inline-flex ${className}`}>
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-label={expanded ? "Collapse status" : "Expand status"}
-        aria-expanded={expanded}
-        className="status-bubble-in inline-flex max-w-[200px] items-center gap-1.5 rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f] px-2.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-        style={{ borderRadius: 16 }}
-      >
-        {emoji && <StatusBubbleEmoji emoji={emoji} />}
-        {text && (
-          <span
-            className={`min-w-0 text-[13px] leading-tight text-[#f2efe6] ${expanded ? "line-clamp-3 whitespace-pre-wrap" : "truncate"}`}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={text ? `Show full status: ${text}` : "Show full status"}
+            aria-expanded={open}
+            className="status-bubble-in rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+            style={{ borderRadius: 16 }}
           >
-            {text}
+            {pill}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="start"
+          className="w-64 rounded-2xl border-[#2a2a2e] bg-[#1c1c1f] p-3 text-[#f2efe6]"
+        >
+          <span className="flex items-start gap-2 text-sm">
+            {emoji && <StatusBubbleEmoji emoji={emoji} />}
+            {text && <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-snug">{text}</span>}
           </span>
-        )}
-      </button>
-      {/* two trailing circles leading to the avatar */}
-      <span aria-hidden className="absolute -bottom-1.5 left-5 h-2 w-2 rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
-      <span aria-hidden className="absolute -bottom-3 left-3.5 h-[5px] w-[5px] rounded-full border border-[#2a2a2e] bg-[#1c1c1f]" />
+        </PopoverContent>
+      </Popover>
+      {dots}
     </span>
   );
 }
@@ -233,10 +294,14 @@ export function ThoughtBubble({
   emoji,
   text,
   className = "",
+  onActivate,
+  emptyLabel,
 }: {
   emoji?: string | null;
   text?: string | null;
   className?: string;
+  onActivate?: () => void;
+  emptyLabel?: string | null;
 }) {
-  return <StatusBubble emoji={emoji} text={text} className={className} />;
+  return <StatusBubble emoji={emoji} text={text} className={className} onActivate={onActivate} emptyLabel={emptyLabel} />;
 }

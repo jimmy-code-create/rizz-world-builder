@@ -110,3 +110,10 @@
 - [x] "In this realm" shows the role chip in its role color plus "Joined realm <Month Year>" when the card knows the realm; realm chat and mention previews now pass realmId (4 call sites) - **DONE**
 - [x] Others: Message primary, Follow/Following secondary, icon call button, mutuals (3 avatars + "and N more"), Block/Report/Mute in the "..." menu; own profile: outlined Edit profile + full-width View full profile (real secondary button, not faint text) - **DONE**
 - [x] Skeleton refreshed, swipe-down close kept, 44px targets, `env(safe-area-inset-bottom)` padding, glass toast errors, graceful missing/blocked/deleted data; build green, tsc at the exact 47-error baseline - **DONE**
+
+### Phase 17: Profile status bubble move (/u/:handle)
+- [x] Mood bubble moved to top-right of the avatar, overlapping the banner (`left-[122px] top-2`, click-through wrapper, 380px-safe); two-dot tail points down-left to the avatar; presence dot stays bottom-right - **DONE**
+- [x] Bubble truncates at ~60% width with ellipsis; others tap for a small popover with the full text; owner taps open the existing PresenceSheet (presence + mood picks + text + 1h/today/never expiry + Clear); dashed "Set status" placeholder for the owner when empty; nothing rendered for others without a status - **DONE**
+- [x] Under @handle: muted custom-status line only when set; presence label for others; "You" label removed; invisible still reads as offline with status hidden - **DONE**
+- [x] 160ms pop-in + subtle 5s float, both off under `prefers-reduced-motion`/`data-reduced-motion`; realtime updates via shared presence channel plus an expiry timer that clears the bubble without refresh; StatusIcon colors unified with presence tokens - **DONE**
+- [x] tsc adds zero errors (47 pre-existing before/after), `vite build` exit 0 - **DONE**

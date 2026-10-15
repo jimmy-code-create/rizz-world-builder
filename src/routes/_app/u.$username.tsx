@@ -16,7 +16,8 @@ import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { AvatarWithStatus, CustomStatusLine, ThoughtBubble } from "@/components/presence/StatusDot";
+import { AvatarWithStatus, CustomStatusLine, StatusBubble } from "@/components/presence/StatusDot";
+import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
@@ -41,6 +42,7 @@ function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -91,6 +93,24 @@ function ProfilePage() {
       }
     })();
   }, [profile, user, isMe]);
+
+  // Re-render the moment a custom status expires: realtime only fires on row
+  // changes, and an expiry passing is silent.
+  const statusExpiresAt =
+    (presenceRow as { custom_status_expires_at?: string | null } | null)?.custom_status_expires_at ?? null;
+  useEffect(() => {
+    if (!statusExpiresAt || !profile) return;
+    const ms = new Date(statusExpiresAt).getTime() - Date.now();
+    if (ms <= 0) {
+      void qc.invalidateQueries({ queryKey: ["presence-user", profile.id] });
+      return;
+    }
+    const t = window.setTimeout(
+      () => void qc.invalidateQueries({ queryKey: ["presence-user", profile.id] }),
+      Math.min(ms + 500, 2_147_483_647),
+    );
+    return () => window.clearTimeout(t);
+  }, [statusExpiresAt, profile, qc]);
 
   const posts = useQuery({
     queryKey: ["user-posts", profile?.id],
@@ -267,7 +287,7 @@ function ProfilePage() {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
-        <div className="absolute -bottom-12 left-4 md:left-6 flex items-end gap-3">
+        <div className="absolute -bottom-12 left-4 md:left-6">
           <AvatarWithStatus status={presenceStatus} dotSize={18}>
             <AvatarDecoration
               src={profile.avatar_url}
@@ -278,14 +298,22 @@ function ProfilePage() {
               className="ring-4 ring-background rounded-full"
             />
           </AvatarWithStatus>
-          {customStatus && (customStatus.emoji || customStatus.text) && (
-            <div className="mb-2 hidden sm:block">
-              <ThoughtBubble
+        </div>
+        {/* Mood bubble: top-right of the avatar, overlapping the banner. The
+            wrapper is click-through so the banner keeps its taps; the bubble
+            itself stays tappable. At 380px: left edge 122 + max 228 < 368. */}
+        <div className="pointer-events-none absolute left-[122px] md:left-[132px] right-3 top-2 z-10 flex justify-start">
+          <div className="pointer-events-auto min-w-0">
+            {customStatus && (customStatus.emoji || customStatus.text) ? (
+              <StatusBubble
                 emoji={customStatus.emoji}
                 text={customStatus.text}
+                onActivate={isMe ? () => setStatusOpen(true) : undefined}
               />
-            </div>
-          )}
+            ) : isMe ? (
+              <StatusBubble emptyLabel="Set status" onActivate={() => setStatusOpen(true)} />
+            ) : null}
+          </div>
         </div>
       </motion.div>
 
@@ -303,17 +331,8 @@ function ProfilePage() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {isMe ? "You" : statusLabel(presenceStatus)}
-          </p>
-          {customStatus && (customStatus.emoji || customStatus.text) && (
-            <div className="mt-2 sm:hidden">
-              <ThoughtBubble
-                emoji={customStatus.emoji}
-                text={customStatus.text}
-              />
-            </div>
-          )}
+          {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
+          <CustomStatusLine status={customStatus} className="mt-1 text-xs text-muted-foreground" />
         </div>
         {isMe ? (
           <div className="flex gap-2">
@@ -533,6 +552,7 @@ function ProfilePage() {
           mode={listOpen}
         />
       )}
+      {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
     </div>
   );
 }
