@@ -610,7 +610,7 @@ export function VoiceCallView() {
                 <p className="py-12 text-center text-xs text-muted-foreground">No messages in VC chat yet. Say hello!</p>
               )}
               {roomMessages.data?.map((msg) => {
-                const author = (msg.author ?? msg.sender ?? {}) as any;
+                const author = ((msg as any).author ?? (msg as any).sender ?? {}) as any;
                 const aName = author.display_name || author.username || "user";
                 return (
                   <div key={msg.id} className="flex items-start gap-2 text-xs">

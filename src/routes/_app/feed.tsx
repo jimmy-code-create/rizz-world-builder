@@ -133,8 +133,8 @@ function FeedPage() {
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
             <UserAvatar
-              src={profile?.avatar_url}
-              fallback={profile?.display_name || profile?.username}
+              src={profile?.avatar_url ?? undefined}
+              fallback={profile?.display_name || profile?.username || "?"}
               size="sm"
             />
             <p className="text-sm text-muted-foreground truncate leading-tight">
