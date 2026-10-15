@@ -149,9 +149,9 @@ export function PinnedListSheet({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="mt-4 flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-2xl glass border border-white/10 text-sm font-medium"
+          className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl glass border border-white/10 text-sm font-medium hover:bg-white/5 active:scale-[0.99] transition-all"
         >
-          <X className="h-4 w-4" /> Close
+          Close
         </button>
       </SheetContent>
     </Sheet>

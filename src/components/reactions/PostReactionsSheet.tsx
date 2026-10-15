@@ -191,15 +191,15 @@ export function PostReactionsSheet({
 
   const content = (
     <div className="flex flex-col h-full max-h-[80vh] overflow-hidden">
-      {/* Tabs bar with lime outline */}
+      {/* Tabs bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-white/10 px-4 py-2.5 shrink-0">
         <button
           type="button"
           onClick={() => setSelectedTab("all")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
             selectedTab === "all"
-              ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary"
-              : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:border-primary/40"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5"
           }`}
         >
           <span>{t("all_reactions")}</span>
@@ -213,8 +213,8 @@ export function PostReactionsSheet({
             onClick={() => setSelectedTab(emoji)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
               selectedTab === emoji
-                ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary"
-                : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5"
             }`}
           >
             <span>{emoji}</span>
@@ -271,7 +271,7 @@ export function PostReactionsSheet({
                       }}
                       title="Tap to remove your reaction"
                       aria-label="Remove your reaction"
-                      className="absolute -bottom-1 -right-1 text-base leading-none drop-shadow-sm select-none transition-transform hover:scale-125 active:scale-95 cursor-pointer ring-1 ring-primary/40 rounded-full"
+                      className="absolute -bottom-1 -right-1 text-base leading-none drop-shadow-sm select-none transition-transform hover:scale-125 active:scale-95 cursor-pointer rounded-full"
                     >
                       {item.emoji}
                     </button>

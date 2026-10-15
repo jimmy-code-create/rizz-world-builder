@@ -394,12 +394,13 @@ export function AppShell() {
             })}
             {!isReels && (
               <button
+                type="button"
                 onClick={() => setComposerOpen(true)}
-                className="flex-1 flex flex-col items-center gap-0.5 py-1 -mt-4 focus-visible:outline-none"
+                className="flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
                 aria-label="New post"
               >
-                <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
-                  <Plus className="h-5 w-5" />
+                <div className="h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-[#c8ff3d] text-[#0a0a0b] flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring">
+                  <Plus className="h-6 w-6 stroke-[2.5]" />
                 </div>
               </button>
             )}

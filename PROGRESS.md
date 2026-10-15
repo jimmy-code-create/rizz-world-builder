@@ -17,11 +17,11 @@
 - [x] Create root `PROGRESS.md` tracking all phases and acceptance criteria - **DONE**
 
 ### Phase 1: Quick Bug Fixes
-- [ ] Item 1: Eliminate double "X" close buttons across dialogs, sheets, and drawers (`src/components/ui/dialog.tsx`, `src/components/ui/sheet.tsx`, `src/components/reactions/PostReactionsSheet.tsx`) - **PARTLY**
-- [ ] Item 2: Remove unwanted lime outline borders from reaction popups and post cards; preserve subtle `#2a2a2e` border (`src/components/reactions/PostReactionsSheet.tsx`, `src/components/posts/PostCard.tsx`) - **PARTLY**
-- [ ] Item 3: 8-color deterministic avatar palette for users without profile photos based on username hash (`src/components/ui/avatar.tsx`) - **NOT DONE**
-- [ ] Item 4: Markdown formatting (bold `**`, italic `*`, inline links `[text](url)`) in user bio and post bodies (`src/lib/markdown.tsx`, `src/components/posts/PostCard.tsx`, `src/components/profile/ProfileView.tsx`) - **NOT DONE**
-- [ ] Item 5: Center "+" action button styled with `#c8ff3d` lime circle, black icon, 44px tap target, active scale (`src/components/AppShell.tsx`, `src/components/navigation/MobileNav.tsx`) - **PARTLY**
+- [x] Item 1: Eliminate double "X" close buttons across dialogs, sheets, and drawers (`src/components/ui/dialog.tsx`, `src/components/ui/sheet.tsx`, `src/components/chat/PinnedMessages.tsx`) - **DONE**
+- [x] Item 2: Remove unwanted lime outline borders from reaction popups and post cards; preserve subtle `#2a2a2e` border (`src/components/reactions/PostReactionsSheet.tsx`, `src/components/posts/PostCard.tsx`, `src/styles.css`) - **DONE**
+- [x] Item 3: 8-color deterministic avatar palette for users without profile photos based on username hash (`src/components/ui/avatar.tsx`) - **DONE**
+- [x] Item 4: Markdown formatting (bold `**`, italic `*`, inline links `[text](url)`) in user bio and post bodies (`src/components/MarkdownText.tsx`, `src/components/posts/PostCard.tsx`, `src/routes/_app/u.$username.tsx`, `src/components/ProfilePreview.tsx`) - **DONE**
+- [x] Item 5: Center "+" action button styled with `#c8ff3d` lime circle, black icon, 44px tap target, active scale (`src/components/AppShell.tsx`) - **DONE**
 
 ### Phase 2: Compact Spacing & Account Menu
 - [ ] Item 6: Compact spacing tokens, gutters (12px mobile, 16px desktop), 12px card padding, 44px action hit area, conditional translate button, slim trending pill, drops header polish (`src/index.css`, `src/components/posts/PostCard.tsx`, `src/components/trending/TrendingBar.tsx`) - **NOT DONE**

@@ -661,7 +661,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 glass-strong border-white/10">
+          <PopoverContent className="w-auto p-2 bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,#2a2a2e)] rounded-xl shadow-xl">
             <div className="flex gap-1">
               {QUICK_EMOJIS.map((e) => (
                 <button
@@ -669,7 +669,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   type="button"
                   onClick={() => toggleReaction(e)}
                   aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-white/10"
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 hover:bg-white/10 active:scale-95"
                 >
                   {e}
                 </button>

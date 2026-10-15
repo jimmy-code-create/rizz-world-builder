@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { formatCount } from "@/lib/utils";
+import { MarkdownText } from "@/components/MarkdownText";
 
 type PreviewProfile = {
   id: string;
@@ -210,7 +211,13 @@ export function ProfilePreviewDialog({
 
                 <div className="mt-4">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">About</p>
-                  <p className="mt-1 text-sm leading-snug text-foreground/90">{p.bio || "No bio yet — say something."}</p>
+                  {p.bio ? (
+                    <div className="mt-1 text-sm leading-snug text-foreground/90">
+                      <MarkdownText text={p.bio} />
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm leading-snug text-foreground/90">No bio yet — say something.</p>
+                  )}
                 </div>
 
                 <div className="mt-4 flex gap-2">

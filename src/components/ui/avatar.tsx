@@ -10,6 +10,25 @@ import { MediaViewer } from "@/components/media/MediaViewer";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
+export const AVATAR_FALLBACK_PALETTE = [
+  { bg: "#2c2d35", text: "#f2efe6" }, // Slate
+  { bg: "#363024", text: "#f2efe6" }, // Warm bronze/amber
+  { bg: "#223328", text: "#f2efe6" }, // Pine
+  { bg: "#362629", text: "#f2efe6" }, // Rust umber
+  { bg: "#2d2636", text: "#f2efe6" }, // Heather
+  { bg: "#203036", text: "#f2efe6" }, // Spruce
+  { bg: "#362c20", text: "#f2efe6" }, // Espresso
+  { bg: "#27272b", text: "#f2efe6" }, // Asphalt
+];
+
+export function getAvatarPalette(seed: string = "") {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_FALLBACK_PALETTE[hash % AVATAR_FALLBACK_PALETTE.length];
+}
+
 const AVATAR_SIZES: Record<AvatarSize, { box: number; font: string; dot: number }> = {
   xs: { box: 24, font: "text-[10px]", dot: 7 },
   sm: { box: 32, font: "text-xs", dot: 8 },
@@ -56,6 +75,10 @@ export function UserAvatar({
   const dotSize = config ? config.dot : Math.max(7, Math.round(pixelBox * 0.22));
 
   const storiesStore = useStoriesStore();
+  const palette = React.useMemo(
+    () => getAvatarPalette(fallback || alt || userId || ""),
+    [fallback, alt, userId]
+  );
   const storyStatus = hasStory !== undefined
     ? (hasStory === true ? "unseen" : hasStory === false ? "none" : hasStory)
     : userId
@@ -94,8 +117,9 @@ export function UserAvatar({
             className="aspect-square h-full w-full object-cover"
           />
           <AvatarPrimitive.Fallback
+            style={{ backgroundColor: palette.bg, color: palette.text }}
             className={cn(
-              "flex h-full w-full items-center justify-center font-semibold bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] border-0 shadow-none ring-0",
+              "flex h-full w-full items-center justify-center font-semibold border-0 shadow-none ring-0",
               fontClass,
             )}
           >
@@ -165,9 +189,11 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => {
-  // Strip legacy lime/gradient classes to guarantee dark surface-2 for initials everywhere
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> & { seed?: string }
+>(({ className, style, seed, children, ...props }, ref) => {
+  const seedString = seed || (typeof children === "string" ? children : "");
+  const palette = getAvatarPalette(seedString);
+  // Strip legacy lime/gradient classes to guarantee tasteful palette for initials everywhere
   const cleanedClass = className
     ?.replace(/bg-surface-2/g, "")
     ?.replace(/text-primary-foreground/g, "")
@@ -176,12 +202,15 @@ const AvatarFallback = React.forwardRef<
   return (
     <AvatarPrimitive.Fallback
       ref={ref}
+      style={{ backgroundColor: palette.bg, color: palette.text, ...style }}
       className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-[var(--brand-ink-3,#1c1c1f)] text-[var(--brand-paper,#f4f1e7)] font-semibold border-0 shadow-none ring-0",
+        "flex h-full w-full items-center justify-center rounded-full font-semibold border-0 shadow-none ring-0",
         cleanedClass,
       )}
       {...props}
-    />
+    >
+      {children}
+    </AvatarPrimitive.Fallback>
   );
 });
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
