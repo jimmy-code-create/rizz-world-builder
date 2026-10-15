@@ -43,6 +43,8 @@ import { DmThreadRail } from "@/components/chat/DmThreadRail";
 import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { EmojiAutocomplete, replaceEmojiToken } from "@/components/EmojiAutocomplete";
+import { renderTextWithCatEmojis } from "@/components/CatEmoji";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -1014,7 +1016,7 @@ function DMPage() {
                                             ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                             : p.url
                                               ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                              : <span key={`${si}-${pi}`}>{renderTextWithCatEmojis(p.text)}</span>
                                     )
                                   }
                                 />
@@ -1194,6 +1196,17 @@ function DMPage() {
               emptyHint="Only the two of you are in this chat."
               onPick={(username) => {
                 const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+            <EmojiAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(token) => {
+                const next = replaceEmojiToken(body, caret, token);
                 setBody(next.value);
                 setCaret(next.caret);
                 const el = composerRef.current;

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { isCatEmoji } from "@/lib/cat-emojis";
+import { CatEmoji } from "@/components/CatEmoji";
 import { statusColor, statusLabel, type PublicPresence } from "@/lib/presence";
 
 /**
@@ -154,7 +156,13 @@ export function CustomStatusLine({
   if (!status || (!status.emoji && !status.text)) return null;
   return (
     <span className={`flex min-w-0 items-center gap-1.5 ${className}`}>
-      {status.emoji && <span aria-hidden className="text-sm shrink-0">{status.emoji}</span>}
+      {status.emoji && (
+        isCatEmoji(status.emoji) ? (
+          <CatEmoji name={status.emoji} size={16} className="shrink-0" />
+        ) : (
+          <span aria-hidden className="text-sm shrink-0">{status.emoji}</span>
+        )
+      )}
       {status.text && <span className="truncate">{status.text}</span>}
     </span>
   );
@@ -179,7 +187,13 @@ export function ThoughtBubble({
     <div
       className={`relative inline-flex max-w-[280px] items-center gap-1.5 rounded-2xl border border-white/15 bg-black/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150 ${className}`}
     >
-      {emoji && <span className="text-sm shrink-0">{emoji}</span>}
+      {emoji && (
+        isCatEmoji(emoji) ? (
+          <CatEmoji name={emoji} size={18} className="shrink-0" />
+        ) : (
+          <span className="text-sm shrink-0">{emoji}</span>
+        )
+      )}
       {text && <span className="truncate leading-tight">{text}</span>}
       {/* Speech bubble pointer tip */}
       <div

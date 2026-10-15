@@ -15,6 +15,7 @@ import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { RizzCat } from "@/components/RizzCat";
+import { EmojiAutocomplete, replaceEmojiToken } from "@/components/EmojiAutocomplete";
 
 /** The page size fetchComments uses. When a thread fills it, say "100+" instead
  *  of pretending that is the whole thread. */
@@ -185,6 +186,7 @@ export function PostCommentsSheet({
   const qc = useQueryClient();
   const [sort, setSort] = useState<"top" | "new">("top");
   const [body, setBody] = useState("");
+  const [caret, setCaret] = useState(0);
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -382,22 +384,47 @@ export function PostCommentsSheet({
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={bodyRef}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  if (body.trim() && user) sendMut.mutate();
-                }
-              }}
-              rows={2}
-              maxLength={2000}
-              placeholder={replyTo ? `Reply to @${replyTo.username}…` : "Add a comment…"}
-              className="min-h-11 resize-none border-white/10 bg-black/20"
-            />
+          <div className="relative flex items-end gap-2">
+            <div className="relative flex-1">
+              <Textarea
+                ref={bodyRef}
+                value={body}
+                onChange={(event) => {
+                  setBody(event.target.value);
+                  setCaret(event.target.selectionStart ?? event.target.value.length);
+                }}
+                onSelect={(event) => {
+                  const target = event.target as HTMLTextAreaElement;
+                  setCaret(target.selectionStart ?? 0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (body.trim() && user) sendMut.mutate();
+                  }
+                }}
+                rows={2}
+                maxLength={2000}
+                placeholder={replyTo ? `Reply to @${replyTo.username}…` : "Add a comment… (:cat_ for emojis)"}
+                className="min-h-11 resize-none border-white/10 bg-black/20"
+              />
+              <EmojiAutocomplete
+                value={body}
+                caret={caret}
+                onPick={(token) => {
+                  const next = replaceEmojiToken(body, caret, token);
+                  setBody(next.value);
+                  setCaret(next.caret);
+                  requestAnimationFrame(() => {
+                    const el = bodyRef.current;
+                    if (el) {
+                      el.focus();
+                      el.setSelectionRange(next.caret, next.caret);
+                    }
+                  });
+                }}
+              />
+            </div>
             <Button
               type="button"
               size="icon"

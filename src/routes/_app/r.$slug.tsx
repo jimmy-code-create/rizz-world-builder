@@ -42,6 +42,9 @@ import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { EmojiAutocomplete, replaceEmojiToken } from "@/components/EmojiAutocomplete";
+import { CAT_EMOJI_NAMES, isCatEmoji } from "@/lib/cat-emojis";
+import { CatEmoji } from "@/components/CatEmoji";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
@@ -288,7 +291,7 @@ function RealmPage() {
     queryFn: () => fetchRealmEmoji(realm.data!.id),
   });
   const emojiByName = new Map((emojiList.data ?? []).map((entry) => [entry.name, entry.url]));
-  const emojiNames = new Set(emojiByName.keys());
+  const emojiNames = new Set([...emojiByName.keys(), ...CAT_EMOJI_NAMES]);
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
   // Who may type where, shared by the moderation sheet and the composer.
   const channelPermissions = useChannelPermissions(realm.data?.id);
@@ -1509,13 +1512,21 @@ function RealmPage() {
 
                       return parts.map((part, xi) =>
                         part.name ? (
-                          <img
-                            key={`${si}-${xi}`}
-                            src={emojiByName.get(part.name)}
-                            alt={part.name}
-                            title={`:${part.name}:`}
-                            className={emojiClass}
-                          />
+                          isCatEmoji(part.name) ? (
+                            <CatEmoji
+                              key={`${si}-${xi}`}
+                              name={part.name}
+                              className={emojiClass}
+                            />
+                          ) : (
+                            <img
+                              key={`${si}-${xi}`}
+                              src={emojiByName.get(part.name)}
+                              alt={part.name}
+                              title={`:${part.name}:`}
+                              className={emojiClass}
+                            />
+                          )
                         ) : (
                           <MarkdownText
                             key={`${si}-${xi}`}
@@ -1794,6 +1805,17 @@ function RealmPage() {
             emptyHint="No realm member matches that name."
             onPick={(username) => {
               const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = inputRef.current;
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+            }}
+          />
+          <EmojiAutocomplete
+            value={body}
+            caret={caret}
+            onPick={(token) => {
+              const next = replaceEmojiToken(body, caret, token);
               setBody(next.value);
               setCaret(next.caret);
               const el = inputRef.current;

@@ -30,6 +30,8 @@ import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
 import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
 import { compressChatImage } from "@/lib/chat-media";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { EmojiAutocomplete, replaceEmojiToken } from "@/components/EmojiAutocomplete";
+import { renderTextWithCatEmojis } from "@/components/CatEmoji";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -531,7 +533,7 @@ function GroupRoom() {
                                             ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                             : p.url
                                               ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                              : <span key={`${si}-${pi}`}>{renderTextWithCatEmojis(p.text)}</span>
                                     )
                                   }
                                 />
@@ -647,6 +649,17 @@ function GroupRoom() {
               emptyHint="No group member matches that name."
               onPick={(username) => {
                 const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              }}
+            />
+            <EmojiAutocomplete
+              value={body}
+              caret={caret}
+              onPick={(token) => {
+                const next = replaceEmojiToken(body, caret, token);
                 setBody(next.value);
                 setCaret(next.caret);
                 const el = composerRef.current;

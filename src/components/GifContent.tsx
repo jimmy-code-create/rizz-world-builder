@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { renderGifSegments } from "@/lib/gif-content";
+import { renderTextWithCatEmojis } from "@/components/CatEmoji";
 
 export function GifContent({ children, className }: { children: string; className?: string }) {
   const parts = renderGifSegments(children);
@@ -36,7 +37,7 @@ export function GifContent({ children, className }: { children: string; classNam
             />
           );
         }
-        return part.value ? <Fragment key={`text-${index}`}>{part.value}</Fragment> : null;
+        return part.value ? <Fragment key={`text-${index}`}>{renderTextWithCatEmojis(part.value)}</Fragment> : null;
       })}
     </span>
   );

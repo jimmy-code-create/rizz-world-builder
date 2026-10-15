@@ -49,7 +49,7 @@
 
 ## Discord-Style Polish (5 Tasks)
 - [x] Task 1: One Close (X) Button (Investigate cause of double X, unify with shared `<CloseButton />` 44x44px target, single 20px SVG stroke 2 cream #f2efe6 at 70%/100%, lime :focus-visible ring, flex header vertical alignment, replace ad-hoc close buttons across sheets/dialogs/stories/viewers) - **DONE**
-- [ ] Task 2: Small set of 12 custom animated cat emojis - **NOT STARTED**
+- [x] Task 2: Small set of 12 custom animated cat emojis (Hard cap 12, `<CatEmoji />`, SVG <=2KB each, inline CSS keyframes, prefers-reduced-motion safe, manifest, `<EmojiAutocomplete />` with keyboard navigation, status picker strip + chat/DMs/groups/comments rendering with jumboji support) - **DONE**
 - [ ] Task 3: Status, fast and Discord-style - **NOT STARTED**
 - [ ] Task 4: Discord-style unified profile card - **NOT STARTED**
 - [ ] Task 5: Discord-style mention highlight + chat polish - **NOT STARTED**

@@ -11,6 +11,7 @@ import { createPoll } from "@/lib/polls";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { toast } from "sonner";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
+import { EmojiAutocomplete, replaceEmojiToken } from "@/components/EmojiAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -122,6 +123,19 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
             caret={caret}
             onPick={(username) => {
               const { value, caret: nc } = replaceMention(caption, caret, username);
+              setCaption(value);
+              setCaret(nc);
+              requestAnimationFrame(() => {
+                const ta = textareaRef.current;
+                if (ta) { ta.focus(); ta.setSelectionRange(nc, nc); }
+              });
+            }}
+          />
+          <EmojiAutocomplete
+            value={caption}
+            caret={caret}
+            onPick={(token) => {
+              const { value, caret: nc } = replaceEmojiToken(caption, caret, token);
               setCaption(value);
               setCaret(nc);
               requestAnimationFrame(() => {

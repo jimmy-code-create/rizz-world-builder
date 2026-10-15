@@ -8,6 +8,8 @@ import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { CAT_EMOJIS, isCatEmoji } from "@/lib/cat-emojis";
+import { CatEmoji } from "@/components/CatEmoji";
 import { CustomStatusLine, StatusDot, StatusIcon, ThoughtBubble } from "@/components/presence/StatusDot";
 import {
   PRESENCE_STATUSES,
@@ -288,7 +290,11 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                     : "border-white/10 glass hover:border-white/20"
                 }`}
               >
-                {emoji || "🔥"}
+                {isCatEmoji(emoji) ? (
+                  <CatEmoji name={emoji} size={28} />
+                ) : (
+                  emoji || "🔥"
+                )}
               </button>
               <Input
                 value={text}
@@ -298,6 +304,34 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 aria-label="Status text"
                 className="h-12 flex-1"
               />
+            </div>
+
+            {/* Cat Emojis Strip */}
+            <div className="space-y-1 pt-1">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
+                <span>Cat Emojis</span>
+                <span className="text-[10px] lowercase text-primary">animated</span>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {CAT_EMOJIS.map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => {
+                      setEmoji(item.token);
+                    }}
+                    title={item.label}
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-all ${
+                      emoji === item.token || emoji === item.name
+                        ? "border-primary bg-primary/25 scale-105"
+                        : "border-white/5 hover:bg-white/10"
+                    }`}
+                    aria-label={item.label}
+                  >
+                    <CatEmoji name={item.name} size={22} />
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Quick Emojis strip */}
