@@ -117,3 +117,10 @@
 - [x] Under @handle: muted custom-status line only when set; presence label for others; "You" label removed; invisible still reads as offline with status hidden - **DONE**
 - [x] 160ms pop-in + subtle 5s float, both off under `prefers-reduced-motion`/`data-reduced-motion`; realtime updates via shared presence channel plus an expiry timer that clears the bubble without refresh; StatusIcon colors unified with presence tokens - **DONE**
 - [x] tsc adds zero errors (47 pre-existing before/after), `vite build` exit 0 - **DONE**
+
+### Phase 18: Account menu redesign (bottom sheet on phones, dropdown on desktop)
+- [x] New `src/components/account/AccountMenu.tsx` replaces the old `ProfileMenu`: mobile bottom sheet (drag handle, dimmed backdrop, swipe-down/tap-outside close, safe-area) vs desktop dropdown anchored to the avatar, picked by the 768px breakpoint - **DONE**
+- [x] Header card (banner thumb, avatar + presence dot, name, @handle, custom status, Rizz/Followers stats with skeletons) opens the profile card; Status submenu has Online/Idle/DND/Invisible with dots + hint descriptions, custom-status row opening the existing PresenceSheet, and Clear when set - **DONE**
+- [x] Groups: [View profile, Edit profile, Saved, Badges, Leaderboard] with live Saved/Badges counts; [Switch account (≤3 `rizz-accounts` on device + Add account, Current tag) → sign out + `/login`, Copy profile link]; [Settings (Appearance stays a section inside Settings, no separate row), Help & feedback dialog]; [red Sign out with inline "Sign out of @handle?" confirm, also applied to the drawer dialog] - **DONE**
+- [x] "Effects (Soon)" removed from the menu and the mobile drawer; Effects now lives only in Settings with a Soon badge; unreleased-feature rule documented by example - **DONE**
+- [x] 48px rows, aria labels/expanded/checked, keyboard-navigable desktop items, glass toasts, best-effort stats that hide (never break) on missing data; tsc identical to baseline, `vite build` exit 0 - **DONE**

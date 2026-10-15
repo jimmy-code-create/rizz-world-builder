@@ -3,21 +3,13 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift,
   MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
-  Check, ChevronDown, Smile,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccountMenu } from "@/components/account/AccountMenu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,10 +30,9 @@ import { StatusDot } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { LimeCatSplash } from "@/components/LimeCatSplash";
-import { PRESENCE_STATUSES, statusColor, statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
+import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
@@ -317,7 +308,7 @@ export function AppShell() {
             </Link>
           </nav>
 
-          <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
+          <AccountMenu profile={profile} initial={initial} signOut={signOut} />
         </aside>
       )}
 
@@ -357,13 +348,11 @@ export function AppShell() {
                 </span>
               )}
             </Link>
-            <ProfileMenu
+            <AccountMenu
               profile={profile}
               initial={initial}
               signOut={signOut}
               compact
-              status={presence.status}
-              emoji={presence.customStatus?.emoji}
               onStatus={() => setStatusOpen(true)}
             />
           </div>
@@ -487,13 +476,6 @@ export function AppShell() {
               <Bookmark className="h-5 w-5" />
               <span className="text-[11px] font-medium">Saved</span>
             </Link>
-            <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
-              <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">Effects</span>
-              <span className="absolute top-1 right-1 text-[8px] font-bold border border-primary text-primary px-1 rounded-full">
-                Soon
-              </span>
-            </Link>
             <Link to="/settings" className={navTile(path === "/settings")}>
               <Settings className="h-5 w-5" />
               <span className="text-[11px] font-medium">Settings</span>
@@ -516,7 +498,7 @@ export function AppShell() {
       <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
         <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Sign out of RIZZ?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display">Sign out of @{profile?.username}?</AlertDialogTitle>
             <AlertDialogDescription>
               You'll need to sign back in to access your messages, feed, and saved posts.
             </AlertDialogDescription>
@@ -563,255 +545,3 @@ function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: 
   );
 }
 
-function ProfileMenu({
-  profile,
-  initial,
-  signOut,
-  compact,
-  status: statusProp,
-  emoji: emojiProp,
-  onStatus,
-}: {
-  profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
-  initial: string;
-  signOut: () => Promise<void>;
-  compact?: boolean;
-  status?: PublicPresence;
-  emoji?: string | null;
-  onStatus?: () => void;
-}) {
-  const { t } = useI18n();
-  const selfPresence = useSelfPresence();
-  const [open, setOpen] = useState(false);
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [statusExpanded, setStatusExpanded] = useState(false);
-
-  const currentStatus = statusProp ?? selfPresence.status;
-  const currentEmoji = emojiProp ?? selfPresence.customStatus?.emoji;
-
-  return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          setConfirmSignOut(false);
-          setStatusExpanded(false);
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label={currentStatus ? `Your profile. Status: ${statusLabel(currentStatus)}` : "Your profile"}
-          className={`relative flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            compact
-              ? "h-11 w-11 justify-center rounded-full hover:bg-surface-2 active:bg-surface-3"
-              : "p-2 rounded-xl hover:bg-surface-2 w-full min-h-[44px]"
-          }`}
-        >
-          <div className="relative inline-flex items-center justify-center">
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={initial}
-              size={compact ? "sm" : "md"}
-              presence={currentEmoji ? undefined : currentStatus}
-            />
-            {currentEmoji && (
-              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center overflow-hidden rounded-full bg-background ring-1 ring-border leading-none">
-                <StatusEmoji emoji={currentEmoji} size={12} />
-              </span>
-            )}
-          </div>
-          {!compact && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
-            </div>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        collisionPadding={8}
-        className="w-[215px] bg-[#141416] border border-[#2a2a2e] rounded-xl p-1 shadow-2xl space-y-0.5 text-xs"
-      >
-        {/* Header = one line "@handle" muted (tap opens profile) */}
-        <DropdownMenuItem asChild className="p-0 focus:bg-transparent">
-          <Link
-            to="/u/$username"
-            params={{ username: profile?.username ?? "" }}
-            className="block px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground truncate transition-colors"
-          >
-            @{profile?.username}
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 1: [Status, Profile, Saved, Effects, Badges] */}
-        <div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setStatusExpanded((prev) => !prev);
-            }}
-            className="flex w-full items-center justify-between px-2.5 h-8 min-h-[32px] rounded-md text-xs hover:bg-white/[0.06] transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ backgroundColor: statusColor(selfPresence.status) }}
-              />
-              <span className="text-xs text-foreground font-medium">{t("status")}</span>
-            </div>
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              {statusShortLabel(selfPresence.status)}
-              <ChevronDown className={cn("h-3 w-3 transition-transform text-muted-foreground", statusExpanded && "rotate-180")} />
-            </span>
-          </button>
-
-          {statusExpanded && (
-            <div className="my-0.5 py-0.5 px-0.5 rounded-md bg-black/40 border border-[#2a2a2e] space-y-0.5">
-              {PRESENCE_STATUSES.map((entry) => {
-                const isSelected = selfPresence.status === entry.value;
-                return (
-                  <button
-                    key={entry.value}
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      await selfPresence.chooseStatus(entry.value);
-                      setStatusExpanded(false);
-                    }}
-                    className="flex w-full items-center justify-between px-2 py-1 rounded text-[11px] hover:bg-white/[0.08] transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                      <span className={cn("text-[11px]", isSelected ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {entry.label}
-                      </span>
-                    </div>
-                    {isSelected && <Check className="h-3 w-3 text-primary" />}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setStatusExpanded(false);
-                  // Close the account menu BEFORE opening Status.
-                  setOpen(false);
-                  const fn = onStatus;
-                  if (fn) window.setTimeout(() => fn(), 60);
-                }}
-                className="flex w-full items-center gap-1.5 px-2 py-1 rounded text-[11px] text-primary hover:bg-white/[0.08] transition-colors"
-              >
-                <Smile className="h-3 w-3" />
-                <span>Custom status</span>
-              </button>
-            </div>
-          )}
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-2.5 w-full">
-              <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("profile")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/bookmarks" className="flex items-center gap-2.5 w-full">
-              <Bookmark className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("saved")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/effects" className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2.5">
-                <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span>{t("effects")}</span>
-              </span>
-              <span className="text-[9px] font-bold border border-primary text-primary px-1 py-0.2 rounded leading-none">Soon</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/badges" className="flex items-center gap-2.5 w-full">
-              <Trophy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("badges")}</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        {/* Group 2 divider */}
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 2: [Settings, Appearance] */}
-        <div>
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings" className="flex items-center gap-2.5 w-full">
-              <Settings className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("settings")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings/appearance" className="flex items-center gap-2.5 w-full">
-              <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("appearance")}</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        {/* Group 3 divider */}
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 3: [Sign out in #ff5d5d, inline "Sign out?" Yes/Cancel] */}
-        <div>
-          {confirmSignOut ? (
-            <div className="flex items-center justify-between px-2.5 h-8 min-h-[32px] text-xs">
-              <span className="text-[#ff5d5d] font-semibold text-xs">Sign out?</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="px-2 py-0.5 rounded bg-[#ff5d5d]/20 text-[#ff5d5d] hover:bg-[#ff5d5d]/30 font-semibold text-[11px] transition-colors"
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setConfirmSignOut(false);
-                  }}
-                  className="px-2 py-0.5 rounded bg-white/5 text-muted-foreground hover:text-foreground text-[11px] transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setConfirmSignOut(true);
-              }}
-              className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 text-[#ff5d5d] hover:text-[#ff5d5d] hover:bg-white/[0.06] focus:bg-white/[0.06] focus:text-[#ff5d5d] flex items-center"
-            >
-              <LogOut className="h-3.5 w-3.5 shrink-0 text-[#ff5d5d]" />
-              <span>{t("sign_out")}</span>
-            </DropdownMenuItem>
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}

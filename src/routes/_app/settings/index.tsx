@@ -32,10 +32,12 @@ type SettingsSection = {
     | "/settings/preferences"
     | "/settings/voice"
     | "/settings/blocked"
-    | "/settings/account";
+    | "/settings/account"
+    | "/effects";
   label: string;
   description: string;
   icon: LucideIcon;
+  soon?: boolean;
 };
 
 const SECTIONS: SettingsSection[] = [
@@ -46,6 +48,7 @@ const SECTIONS: SettingsSection[] = [
   { to: "/settings/preferences", label: "Preferences", description: "Feeds, media, text size and language", icon: Sliders },
   { to: "/settings/blocked", label: "Blocked accounts", description: "People you've blocked", icon: Shield },
   { to: "/settings/account", label: "Account", description: "Your data, sign out and delete", icon: UserCog },
+  { to: "/effects", label: "Effects", description: "Animated profile effects", icon: Palette, soon: true },
 ];
 
 function SettingsHubPage() {
@@ -113,7 +116,14 @@ function SettingsHubPage() {
               <section.icon className="h-4.5 w-4.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold leading-tight">{section.label}</span>
+              <span className="flex items-center gap-2 text-sm font-semibold leading-tight">
+                {section.label}
+                {section.soon && (
+                  <span className="rounded-full border border-primary px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary">
+                    Soon
+                  </span>
+                )}
+              </span>
               <span className="block truncate text-xs text-muted-foreground mt-0.5">{section.description}</span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
