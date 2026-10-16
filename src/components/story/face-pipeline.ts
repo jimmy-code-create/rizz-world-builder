@@ -246,6 +246,7 @@ export class FaceWarpRenderer {
   private texture: WebGLTexture | null = null;
   private vao: WebGLVertexArrayObject | null = null;
   private indexCount = 0;
+  private hasVerifiedFrame = false;
   /** The current frame source: a live `<video>` or a picked `<img>`. */
   private video: TexImageSource | null = null;
 
@@ -350,6 +351,7 @@ export class FaceWarpRenderer {
 
   /** Rebinds to the given element (a `<video>`, an `<img>` or a canvas). */
   setVideo(video: TexImageSource | null) {
+    if (this.video !== video) this.hasVerifiedFrame = false;
     this.video = video;
   }
 
@@ -358,6 +360,7 @@ export class FaceWarpRenderer {
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
+      this.hasVerifiedFrame = false;
     }
   }
 
@@ -365,7 +368,7 @@ export class FaceWarpRenderer {
     const gl = this.gl;
     const program = this.program;
     const video = this.video;
-    if (!gl || !program || !video || gl.isContextLost()) return false;
+    if (!gl || !program || !video || !this.vao || !this.texture || !this.indexCount || gl.isContextLost()) return false;
     if (video instanceof HTMLVideoElement && video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return false;
     if (video instanceof HTMLImageElement && !video.complete) return false;
     const width = this.canvas.width || 1;
@@ -438,7 +441,37 @@ export class FaceWarpRenderer {
       this.set("uScale", (location) => gl.uniform1f(location, 1 / scale));
       gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
     }
-    return !gl.isContextLost();
+    if (gl.isContextLost() || gl.getError() !== gl.NO_ERROR) {
+      this.hasVerifiedFrame = false;
+      return false;
+    }
+    if (!this.hasVerifiedFrame && !this.verifyVisibleFrame(width, height)) return false;
+    return true;
+  }
+
+  /** Only promote WebGL over the raw camera after it has produced visible pixels. */
+  private verifyVisibleFrame(width: number, height: number): boolean {
+    const gl = this.gl;
+    if (!gl || gl.isContextLost()) return false;
+    const points = [
+      [Math.floor(width * 0.25), Math.floor(height * 0.25)],
+      [Math.floor(width * 0.75), Math.floor(height * 0.25)],
+      [Math.floor(width * 0.25), Math.floor(height * 0.75)],
+      [Math.floor(width * 0.75), Math.floor(height * 0.75)],
+    ];
+    const pixel = new Uint8Array(4);
+    try {
+      for (const [x, y] of points) {
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        if (Math.max(pixel[0], pixel[1], pixel[2]) > 8) {
+          this.hasVerifiedFrame = true;
+          return true;
+        }
+      }
+    } catch {
+      return false;
+    }
+    return false;
   }
 
   private setGrade(grade: GradeSpec, intensity: number) {
