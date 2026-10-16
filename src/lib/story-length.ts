@@ -109,11 +109,13 @@ export function appendStoryChunk(
 /**
  * Builds the finale: the last main line becomes the choice point and each
  * branch is appended in its own index lane with goto links. Pure so the
- * client can assemble 1k-line sagas without another model call.
+ * client can assemble 1k-line sagas without another model call. `laneBase`
+ * keeps ending lanes above every existing index when completing long stories.
  */
 export function assembleSagaFinale(
   main: GeneratedStoryLine[],
   branches: SagaBranch[],
+  laneBase = 100_000,
 ): { lines: GeneratedStoryLine[]; choices: GeneratedStoryChoice[] } {
   if (main.length === 0 || branches.length === 0) return { lines: main, choices: [] };
   const lines = main.map((line) => ({ ...line }));
@@ -121,7 +123,7 @@ export function assembleSagaFinale(
   const choicePoint = lines[lines.length - 1].idx;
   const choices: GeneratedStoryChoice[] = [];
   branches.forEach((branch, position) => {
-    const lane = (position + 1) * 100_000;
+    const lane = (position + 1) * laneBase;
     const start = choicePoint + lane;
     branch.lines.forEach((line, i) => {
       lines.push({
@@ -151,4 +153,54 @@ export function buildChapterContext(lines: GeneratedStoryLine[], maxTail = 12): 
     .map((line) => `${line.speaker}: ${(line.body_en || line.body).slice(0, 140)}`)
     .join("\n");
   return `Chapters so far: ${chapters.join(" | ")}.\nLast lines:\n${recap}`;
+}
+
+/**
+ * Completes an existing story: inserts new chapter lines into the main spine
+ * just before its finale and moves the choice point to the new tail.
+ *
+ * - With existing choices, the old choice point becomes a regular beat: the
+ *   old tail links into the new chapters, the new tail becomes the choice
+ *   point (`at_idx` moves), and every `goto_idx` lane is untouched.
+ * - Without choices, the terminal line links into the new chapters; the
+ *   caller adds a finale afterwards.
+ * - New indexes land above every existing index, so branches never collide.
+ * Pure: the offline continuer script and tests share it.
+ */
+export function insertChaptersBeforeFinale(
+  lines: GeneratedStoryLine[],
+  choices: GeneratedStoryChoice[],
+  newLines: GeneratedStoryLine[],
+  chapter: string,
+): { lines: GeneratedStoryLine[]; choices: GeneratedStoryChoice[] } {
+  if (lines.length === 0 || newLines.length === 0) return { lines, choices };
+  const maxIdx = Math.max(...lines.map((line) => line.idx));
+  const base = maxIdx + 1000;
+  const shifted = newLines.map((line, i) => ({
+    ...line,
+    idx: base + i,
+    chapter: line.chapter?.trim() || chapter,
+    next_idx: i + 1 < newLines.length ? base + i + 1 : null,
+  }));
+  const merged = lines.map((line) => ({ ...line }));
+  const byIdx = new Map(merged.map((line) => [line.idx, line]));
+
+  if (choices.length > 0) {
+    const choicePoint = Math.min(...choices.map((choice) => choice.at_idx));
+    const tail = byIdx.get(choicePoint);
+    if (!tail) return { lines, choices };
+    tail.next_idx = shifted[0].idx;
+    const newTailIdx = shifted[shifted.length - 1].idx;
+    return {
+      lines: [...merged, ...shifted],
+      choices: choices.map((choice) =>
+        choice.at_idx === choicePoint ? { ...choice, at_idx: newTailIdx } : choice,
+      ),
+    };
+  }
+
+  const terminals = merged.filter((line) => line.next_idx == null);
+  const tail = terminals.length > 0 ? terminals[terminals.length - 1] : merged[merged.length - 1];
+  tail.next_idx = shifted[0].idx;
+  return { lines: [...merged, ...shifted], choices };
 }
