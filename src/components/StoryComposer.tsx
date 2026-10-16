@@ -18,6 +18,9 @@ import {
   Globe,
   UserCheck,
   Users,
+  Braces,
+  LayoutGrid,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
@@ -29,6 +32,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { FaceEffectsStudio } from "@/components/story/FaceEffectsStudio";
+import {
+  EMOJI_PACK,
+  FONTS,
+  ICONS,
+  PHRASE_PACK,
+  TEMPLATES,
+  TEXT_STYLES,
+  fontStack,
+  type FontId,
+  type StickerTab,
+  type TextStyleId,
+} from "@/lib/story-creator/content";
 
 /**
  * Who a story is for. Stored as `stories.visibility` (public / followers /
@@ -54,7 +69,7 @@ type Person = { id: string; username: string; display_name: string | null; avata
 
 type Overlay = {
   id: string;
-  kind: "text" | "sticker";
+  kind: "text" | "sticker" | "image";
   value: string;
   x: number; // 0..1 of canvas width
   y: number; // 0..1 of canvas height
@@ -62,9 +77,19 @@ type Overlay = {
   rotate: number;
   color?: string;
   font?: string;
+  /** Text style id from the creator content pack (classic default). */
+  style?: TextStyleId;
+  locked?: boolean;
+  /** Image overlays (template slots, uploaded stickers): object URL + box. */
+  src?: string;
+  w?: number; // 0..1 of canvas width
+  h?: number; // 0..1 of canvas height
+  /** Code-drawn icon sticker. */
+  icon?: string;
+  iconColor?: string;
 };
 
-const STICKERS = ["🔥","💖","✨","💀","👑","😎","🥹","🫶","🎉","💯","👀","🌈","⚡️","🍕","🌙","☀️","🦋","🐉","🍀","🪩"];
+const STICKER_TABS: StickerTab[] = ["Emoji", "Icons", "Mood", "Gen Z", "Hinglish", "Desi pop"];
 const FILTERS: { name: string; css: string }[] = [
   { name: "None",       css: "none" },
   { name: "Bloom",      css: "saturate(1.3) contrast(1.05) brightness(1.05)" },
@@ -74,9 +99,17 @@ const FILTERS: { name: string; css: string }[] = [
   { name: "Vivid",      css: "saturate(1.6) contrast(1.1)" },
   { name: "Fade",       css: "contrast(0.9) brightness(1.1) saturate(0.85)" },
 ];
-const TEXT_COLORS = ["#ffffff","#000000","#c9ff3d","#8a8a92","#22d3ee","#fde047","#f97316","#10b981"];
-const FONTS = ["display","sans","serif","mono"];
-const fontFor = (k?: string) => k === "serif" ? "Georgia, serif" : k === "mono" ? "ui-monospace, monospace" : k === "display" ? "var(--font-display, 'Space Grotesk'), system-ui" : "system-ui, sans-serif";
+const TEXT_COLORS = ["#ffffff","#000000","#c8ff3d","#8a8a92","#22d3ee","#fde047","#f97316","#10b981"];
+/** Canvas + editor font stacks, matched to RIZZ (Bricolage display). */
+const fontFor = (k?: string) => {
+  if (k === "serif-quote") return fontStack("serif-quote");
+  if (k === "mono" || k === "rizz-mono") return fontStack("rizz-mono");
+  if (k === "display" || k === "rizz-display") return fontStack("rizz-display");
+  if (k === "sans" || k === "rizz-sans") return fontStack("rizz-sans");
+  const known = (FONTS as Array<{ id: string }>).some((f) => f.id === k);
+  if (known) return fontStack(k as FontId);
+  return fontStack("rizz-sans");
+};
 
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
@@ -84,6 +117,9 @@ const CANVAS_H = 1920;
 export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onClose: () => void; onPosted?: () => void }) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  // Set when the file picker was opened from the sticker tab: the upload
+  // becomes a free-floating sticker instead of the backdrop.
+  const stickerUploadArmed = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -93,7 +129,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [filter, setFilter] = useState<string>("none");
   const [bg, setBg] = useState<string>("#131315");
   const [busy, setBusy] = useState(false);
-  const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | null>(null);
+  const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | "templates" | "layers" | null>(null);
   const [history, setHistory] = useState<Overlay[][]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
@@ -108,6 +144,9 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleHits, setPeopleHits] = useState<Person[]>([]);
   const [lensOpen, setLensOpen] = useState(false);
+  const [templateId, setTemplateId] = useState("blank");
+  const [frame, setFrame] = useState<"none" | "polaroid" | "film" | "neon">("none");
+  const [stickerTab, setStickerTab] = useState<(typeof STICKER_TABS)[number]>("Emoji");
 
   const pushHistory = (prev: Overlay[]) => setHistory((h) => [...h.slice(-19), prev]);
   const undo = () => setHistory((h) => {
@@ -125,6 +164,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       setHistory([]); setEditingId(null);
       setAudience("everyone"); setHiddenFrom([]); setCaption("");
       setEditorText(""); setPeopleQuery(""); setPeopleHits([]);
+      setTemplateId("blank"); setFrame("none"); setStickerTab("Emoji");
     }
   }, [open]);
 
@@ -146,24 +186,91 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     return () => window.clearTimeout(timer);
   }, [panel, peopleQuery]);
 
-  const pickFile = (f: File | null) => {
+  const applyTemplate = (templateId: string) => {
+    const def = TEMPLATES.find((t) => t.id === templateId);
+    if (!def) return;
+    pushHistory(overlays);
+    setTemplateId(templateId);
+    setFrame(def.frame);
+    if (!def.bg.startsWith("#131315")) setBg(def.bg);
+    setOverlays((o) => {
+      const kept = o.filter((it) => it.kind === "image" && it.src);
+      const fresh: Overlay[] = [];
+      for (const slot of def.slots) {
+        fresh.push({
+          id: crypto.randomUUID(), kind: "image", value: "",
+          x: slot.x + slot.w / 2, y: slot.y + slot.h / 2,
+          scale: 1, rotate: 0, w: slot.w, h: slot.h,
+        });
+      }
+      for (const preset of def.texts) {
+        fresh.push({
+          id: crypto.randomUUID(), kind: "text", value: preset.text,
+          x: preset.x, y: preset.y, scale: 1, rotate: 0,
+          color: preset.color, font: preset.font, style: preset.style,
+        });
+      }
+      return [...kept, ...fresh];
+    });
+    setSelected(null);
+    setPanel(null);
+    toast.success(`Template: ${def.label}`);
+  };
+
+  const pickFile = (f: File | null, asSticker = false) => {
     if (!f) return;
     if (f.size > 50 * 1024 * 1024) { toast.error("Max 50MB"); return; }
+    const url = URL.createObjectURL(f);
+    if (asSticker || stickerUploadArmed.current) {
+      stickerUploadArmed.current = false;
+      addImageOverlay(url);
+      return;
+    }
+    // A selected empty photo slot eats the upload; otherwise it becomes the backdrop.
+    const slot = selected ? overlays.find((o) => o.id === selected) : undefined;
+    if (slot?.kind === "image" && !slot.src) {
+      setOverlays((o) => o.map((it) => it.id === slot.id ? { ...it, src: url } : it));
+      return;
+    }
     setFile(f);
     setIsVideo(f.type.startsWith("video/"));
-    setMediaUrl(URL.createObjectURL(f));
+    setMediaUrl(url);
   };
 
   const addText = () => {
     const id = crypto.randomUUID();
     pushHistory(overlays);
-    setOverlays((o) => [...o, { id, kind:"text", value:"Tap to edit", x:0.5, y:0.5, scale:1, rotate:0, color:"#ffffff", font:"display" }]);
+    setOverlays((o) => [...o, { id, kind:"text", value:"Tap to edit", x:0.5, y:0.5, scale:1, rotate:0, color:"#ffffff", font:"rizz-display", style:"classic" }]);
     setSelected(id); setPanel(null); setEditingId(id);
   };
   const addSticker = (s: string) => {
     const id = crypto.randomUUID();
     pushHistory(overlays);
     setOverlays((o) => [...o, { id, kind:"sticker", value:s, x:0.5, y:0.5, scale:1.5, rotate:0 }]);
+    setSelected(id);
+  };
+  const addIconSticker = (name: string) => {
+    if (!ICONS[name]) return;
+    const id = crypto.randomUUID();
+    pushHistory(overlays);
+    setOverlays((o) => [...o, { id, kind:"sticker", value:"", x:0.5, y:0.5, scale:1.5, rotate:0, icon:name, iconColor:"#c8ff3d" }]);
+    setSelected(id);
+  };
+  const addPhraseSticker = (text: string) => {
+    const id = crypto.randomUUID();
+    pushHistory(overlays);
+    setOverlays((o) => [...o, { id, kind:"text", value:text, x:0.5, y:0.62, scale:1.1, rotate:-4, color:"#c8ff3d", font:"rizz-display", style:"poster" }]);
+    setSelected(id);
+  };
+  const addImageOverlay = (src: string, box?: { x: number; y: number; w: number; h: number }) => {
+    const id = crypto.randomUUID();
+    pushHistory(overlays);
+    setOverlays((o) => [...o, {
+      id, kind:"image", value:"", src,
+      x: box ? box.x + box.w / 2 : 0.5,
+      y: box ? box.y + box.h / 2 : 0.5,
+      scale:1, rotate:0, w: box?.w ?? 0.5, h: box?.h ?? 0.3,
+    }]);
     setSelected(id);
   };
   const updateSelected = (patch: Partial<Overlay>) => {
@@ -175,6 +282,24 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     pushHistory(overlays);
     setOverlays((o) => o.filter((it) => it.id !== selected));
     setSelected(null);
+  };
+  const toggleLockSelected = () => {
+    if (!selected) return;
+    pushHistory(overlays);
+    setOverlays((o) => o.map((it) => it.id === selected ? { ...it, locked: !it.locked } : it));
+  };
+  const reorderSelected = (dir: 1 | -1) => {
+    if (!selected) return;
+    pushHistory(overlays);
+    setOverlays((o) => {
+      const i = o.findIndex((it) => it.id === selected);
+      const j = Math.min(o.length - 1, Math.max(0, i + dir));
+      if (i < 0 || i === j) return o;
+      const next = [...o];
+      const [layer] = next.splice(i, 1);
+      next.splice(j, 0, layer);
+      return next;
+    });
   };
   const duplicateSelected = () => {
     if (!selected) return;
@@ -193,7 +318,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     setSelected(id);
     const rect = stage.getBoundingClientRect();
     const start = overlays.find((o) => o.id === id);
-    if (!start) return;
+    // Locked layers stay put (toggle in the Layers panel).
+    if (!start || start.locked) return;
     pushHistory(overlays);
 
     const pts = new Map<number, { x: number; y: number }>();
@@ -262,6 +388,18 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   const sel = overlays.find((o) => o.id === selected) || null;
 
+  /** Clean JSON of the story for backend storage / re-render. Image `src`
+      object URLs are session-local — re-attach uploads when re-rendering. */
+  const storyJson = () => ({
+    version: 1,
+    app: "rizz-story-composer",
+    templateId,
+    frame,
+    bg,
+    filter,
+    overlays: overlays.map((ov) => ({ ...ov })),
+  });
+
   // Render final image (image bg only). For video, upload raw video + caption from first text overlay.
   async function compose(): Promise<{ blob: Blob; type: "image"|"video" }> {
     if (isVideo && file) return { blob: file, type: "video" };
@@ -283,20 +421,43 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       ctx.save();
       ctx.translate(ov.x * CANVAS_W, ov.y * CANVAS_H);
       ctx.rotate((ov.rotate * Math.PI) / 180);
+      if (ov.kind === "image" && ov.src && ov.w && ov.h) {
+        const w = ov.w * CANVAS_W * ov.scale;
+        const h = ov.h * CANVAS_H * ov.scale;
+        try {
+          const img = await loadImage(ov.src);
+          const ir = img.width / img.height;
+          const cr = w / h;
+          let dw = w, dh = h;
+          if (ir > cr) { dw = h * ir; } else { dh = w / ir; }
+          ctx.beginPath();
+          ctx.rect(-w / 2, -h / 2, w, h);
+          ctx.clip();
+          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+        } catch {
+          ctx.fillStyle = "rgba(255,255,255,0.07)";
+          ctx.fillRect(-w / 2, -h / 2, w, h);
+        }
+        ctx.restore();
+        continue;
+      }
       const baseSize = ov.kind === "text" ? 72 : 140;
       const size = baseSize * ov.scale;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       if (ov.kind === "text") {
-        ctx.font = `700 ${size}px ${fontFor(ov.font)}`;
-        ctx.fillStyle = ov.color || "#fff";
-        ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 4;
-        ctx.fillText(ov.value, 0, 0);
+        paintStyledText(ctx, ov.value, 0, 0, size, ov);
+      } else if (ov.icon && ICONS[ov.icon]) {
+        ctx.save();
+        ctx.scale(size / 100, size / 100);
+        ICONS[ov.icon].draw(ctx, ov.iconColor || "#c8ff3d");
+        ctx.restore();
       } else {
         ctx.font = `${size}px system-ui, "Apple Color Emoji","Segoe UI Emoji"`;
         ctx.fillText(ov.value, 0, 0);
       }
       ctx.restore();
     }
+    paintFrame(ctx, frame, CANVAS_W, CANVAS_H);
     const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.92));
     return { blob, type: "image" };
   }
@@ -402,9 +563,26 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 color: ov.color, fontFamily: fontFor(ov.font), fontWeight: 700,
                 textShadow: ov.kind === "text" ? "0 2px 8px rgba(0,0,0,.5)" : undefined,
                 whiteSpace: "nowrap",
+                width: ov.kind === "image" && ov.w ? `${ov.w * 100}%` : undefined,
+                aspectRatio: ov.kind === "image" && ov.w && ov.h ? `${ov.w} / ${ov.h}` : undefined,
               }}
             >
-              {ov.kind === "text" && editingId === ov.id ? (
+              {ov.kind === "image" ? (
+                ov.src ? (
+                  <img src={ov.src} alt="" className="h-full w-full rounded-lg object-cover" draggable={false} />
+                ) : (
+                  <button
+                    type="button"
+                    aria-label="Fill photo slot"
+                    onClick={(e) => { e.stopPropagation(); setSelected(ov.id); fileRef.current?.click(); }}
+                    className="grid h-full w-full place-items-center rounded-lg border-2 border-dashed border-primary/60 bg-white/5 text-xs font-bold text-primary"
+                  >
+                    + photo
+                  </button>
+                )
+              ) : ov.kind === "sticker" && ov.icon ? (
+                <IconThumb name={ov.icon} color={ov.iconColor || "#c8ff3d"} size={56} />
+              ) : ov.kind === "text" && editingId === ov.id ? (
                 <span
                   ref={(el) => { if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r); } }}
                   contentEditable
@@ -428,6 +606,20 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
               ) : ov.value}
             </div>
           ))}
+
+          {/* Template frame preview (export paints the matching chrome) */}
+          {frame === "neon" && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl" style={{ boxShadow: "inset 0 0 0 4px #c8ff3d, 0 0 28px rgba(200,255,61,.45)" }} />
+          )}
+          {frame === "polaroid" && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl" style={{ boxShadow: "inset 0 0 0 18px #f5f1e6, inset 0 -72px 0 18px #f5f1e6" }} />
+          )}
+          {frame === "film" && (
+            <>
+              <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[5%] bg-black" />
+              <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[5%] bg-black" />
+            </>
+          )}
 
           {/* Trash drop zone (visible while dragging) */}
           <div id="story-trash" className={`absolute left-1/2 bottom-4 -translate-x-1/2 h-14 w-14 rounded-full grid place-items-center transition-all ${selected ? "opacity-100" : "opacity-0 pointer-events-none"} ${dragOverTrash ? "bg-destructive scale-125" : "bg-black/50 border border-white/20"}`}>
@@ -453,7 +645,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       {sel && (
         <div className="px-2 pb-1 shrink-0">
           <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-xs px-2 text-muted-foreground shrink-0">{sel.kind === "text" ? "Text" : "Sticker"}</span>
+            <span className="text-xs px-2 text-muted-foreground shrink-0">{sel.kind === "text" ? "Text" : sel.kind === "image" ? "Photo" : "Sticker"}{sel.locked ? " 🔒" : ""}</span>
             <div className="flex items-center gap-1 shrink-0">
               <span className="text-[10px] text-muted-foreground">size</span>
               <Slider value={[sel.scale * 50]} min={20} max={200} step={1} onValueChange={([v]) => updateSelected({ scale: v/50 })} className="w-24" />
@@ -472,16 +664,37 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
               </div>
             )}
             {sel.kind === "text" && (
+              <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Text style">
+                {TEXT_STYLES.map((s) => (
+                  <button key={s.id} onClick={() => updateSelected({ style: s.id })}
+                    aria-pressed={sel.style === s.id || (!sel.style && s.id === "classic")}
+                    className={`text-[10px] px-2 py-1 rounded-md border ${sel.style===s.id || (!sel.style && s.id==="classic") ? "bg-white/15 border-white/30" : "border-white/10"}`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {sel.kind === "text" && (
               <div className="flex items-center gap-1 shrink-0">
                 {FONTS.map((f) => (
-                  <button key={f} onClick={() => updateSelected({ font: f })}
-                    className={`text-[10px] px-2 py-1 rounded-md border ${sel.font===f ? "bg-white/15 border-white/30" : "border-white/10"}`}>
-                    {f}
+                  <button key={f.id} onClick={() => updateSelected({ font: f.id })}
+                    style={{ fontFamily: f.stack }}
+                    className={`text-[10px] px-2 py-1 rounded-md border ${sel.font===f.id ? "bg-white/15 border-white/30" : "border-white/10"}`}>
+                    {f.label}
                   </button>
                 ))}
               </div>
             )}
             <div className="ml-auto flex items-center gap-1 shrink-0">
+              <button onClick={() => reorderSelected(1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 text-xs font-bold" aria-label="Bring forward">
+                ▲
+              </button>
+              <button onClick={() => reorderSelected(-1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 text-xs font-bold" aria-label="Send back">
+                ▼
+              </button>
+              <button onClick={toggleLockSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10" aria-label={sel.locked ? "Unlock layer" : "Lock layer"} aria-pressed={!!sel.locked}>
+                <Lock className="h-4 w-4" />
+              </button>
               <button onClick={duplicateSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10" aria-label="Duplicate">
                 <Copy className="h-4 w-4" />
               </button>
@@ -619,10 +832,127 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       )}
       {panel === "sticker" && (
         <div className="px-2 pb-1 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 grid grid-cols-7 sm:grid-cols-10 gap-1.5 max-h-[26vh] overflow-y-auto">
-            {STICKERS.map((s) => (
-              <button key={s} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl h-10 grid place-items-center hover:scale-110 transition">{s}</button>
-            ))}
+          <div className="glass-strong rounded-2xl p-2">
+            <div className="mb-2 flex gap-1.5 overflow-x-auto no-scrollbar" role="tablist" aria-label="Sticker packs">
+              {STICKER_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={stickerTab === tab}
+                  onClick={() => setStickerTab(tab)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold ${stickerTab === tab ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground"}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {stickerTab === "Icons" ? (
+              <div className="grid max-h-[24vh] grid-cols-6 gap-1.5 overflow-y-auto">
+                {Object.keys(ICONS).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-label={`Icon ${ICONS[name]?.label ?? name}`}
+                    onClick={() => { addIconSticker(name); setPanel(null); }}
+                    className="grid h-11 place-items-center rounded-xl bg-white/5 hover:bg-white/10"
+                  >
+                    <IconThumb name={name} color="#c8ff3d" size={30} />
+                  </button>
+                ))}
+              </div>
+            ) : stickerTab === "Gen Z" || stickerTab === "Hinglish" ? (
+              <div className="flex max-h-[24vh] flex-wrap gap-1.5 overflow-y-auto">
+                {(PHRASE_PACK[stickerTab] ?? []).map((phrase) => (
+                  <button
+                    key={phrase}
+                    type="button"
+                    onClick={() => { addPhraseSticker(phrase); setPanel(null); }}
+                    className="rounded-full border border-primary/40 bg-primary/10 px-3 py-2 font-display text-sm font-bold text-primary"
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid max-h-[24vh] grid-cols-7 gap-1.5 overflow-y-auto sm:grid-cols-10">
+                {(EMOJI_PACK[stickerTab] ?? []).map((s) => (
+                  <button key={s} aria-label={`Sticker ${s}`} onClick={() => { addSticker(s); setPanel(null); }} className="text-2xl h-10 grid place-items-center hover:scale-110 transition">{s}</button>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setPanel(null);
+                stickerUploadArmed.current = true;
+                fileRef.current?.click();
+              }}
+              className="mt-2 min-h-[44px] w-full rounded-xl border border-white/10 bg-white/5 text-xs font-bold"
+            >
+              Upload your own sticker
+            </button>
+          </div>
+        </div>
+      )}
+      {panel === "templates" && (
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2">
+            <p className="mb-2 px-1 text-xs font-semibold">Template sets — tap to apply, tap a dashed slot to fill it</p>
+            <div className="grid max-h-[26vh] grid-cols-3 gap-1.5 overflow-y-auto">
+              {TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={templateId === t.id}
+                  onClick={() => applyTemplate(t.id)}
+                  className={`rounded-xl border px-2 py-3 text-xs font-bold capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${templateId === t.id ? "border-primary/60 bg-primary/15" : "border-white/10 bg-white/5"}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {panel === "layers" && (
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-2">
+            <p className="mb-2 px-1 text-xs font-semibold">Layers (top first)</p>
+            <div className="max-h-[26vh] space-y-1.5 overflow-y-auto">
+              {overlays.length === 0 && <p className="px-1 text-xs text-muted-foreground">No layers yet.</p>}
+              {[...overlays].reverse().map((ov) => (
+                <div
+                  key={ov.id}
+                  className={`flex items-center gap-2 rounded-xl px-2 py-1.5 ${selected === ov.id ? "bg-primary/15" : "bg-white/5"}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelected(ov.id)}
+                    className="min-w-0 flex-1 truncate text-left text-xs font-semibold"
+                  >
+                    {ov.kind === "text" ? `Text: ${String(ov.value).slice(0, 24)}` : ov.kind === "image" ? `Photo${ov.src ? "" : " (empty slot)"}` : `Sticker${ov.icon ? ` (${ov.icon})` : ""}`}{ov.locked ? " 🔒" : ""}
+                  </button>
+                  <button type="button" aria-label="Bring forward" onClick={() => { setSelected(ov.id); reorderSelected(1); }} className="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold hover:bg-white/10">▲</button>
+                  <button type="button" aria-label="Send back" onClick={() => { setSelected(ov.id); reorderSelected(-1); }} className="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold hover:bg-white/10">▼</button>
+                  <button type="button" aria-label={ov.locked ? "Unlock" : "Lock"} aria-pressed={!!ov.locked} onClick={() => { setSelected(ov.id); toggleLockSelected(); }} className="grid h-8 w-8 place-items-center rounded-lg text-xs hover:bg-white/10">{ov.locked ? "🔒" : "🔓"}</button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(JSON.stringify(storyJson(), null, 2));
+                  toast.success("Story JSON copied for your backend.");
+                } catch {
+                  toast.error("Copy failed.");
+                }
+              }}
+              className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold"
+            >
+              <Braces className="h-4 w-4" /> Copy story JSON
+            </button>
           </div>
         </div>
       )}
@@ -660,9 +990,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide">
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
           <ToolBtn icon={<ScanFace className="h-4 w-4" />} label="Lens" onClick={() => setLensOpen(true)} />
+          <ToolBtn icon={<LayoutGrid className="h-4 w-4" />} label="Sets" onClick={() => setPanel(panel === "templates" ? null : "templates")} />
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
           <ToolBtn icon={<AtSign className="h-4 w-4" />} label="Mention" onClick={() => setPanel(panel === "caption" ? null : "caption")} />
           <ToolBtn icon={<Smile className="h-4 w-4" />} label="Sticker" onClick={() => setPanel(panel === "sticker" ? null : "sticker")} />
+          <ToolBtn icon={<Layers className="h-4 w-4" />} label="Layers" onClick={() => setPanel(panel === "layers" ? null : "layers")} />
           <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel === "filter" ? null : "filter")} disabled={!mediaUrl} />
           <ToolBtn icon={<Palette className="h-4 w-4" />} label="BG" onClick={() => setPanel(panel === "bg" ? null : "bg")} disabled={!!mediaUrl} />
           <ToolBtn
@@ -689,6 +1021,23 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     </motion.div>
     </FullScreenLayer>
   );
+}
+
+function IconThumb({ name, color, size }: { name: string; color: string; size: number }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const entry = ICONS[name];
+    if (!canvas || !entry) return;
+    const c = canvas.getContext("2d");
+    if (!c) return;
+    c.clearRect(0, 0, 96, 96);
+    c.save();
+    c.scale(0.96, 0.96);
+    entry.draw(c, color);
+    c.restore();
+  }, [name, color]);
+  return <canvas ref={ref} width={96} height={96} style={{ width: size, height: size }} aria-hidden />;
 }
 
 function ToolBtn({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
@@ -724,7 +1073,6 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: numb
 }
 
 function paintCssBg(ctx: CanvasRenderingContext2D, css: string, w: number, h: number) {
-  // Parse a 2-stop linear-gradient(...) fallback; otherwise solid color.
   const m = css.match(/linear-gradient\([^,]+,\s*([^,]+),\s*([^)]+)\)/);
   if (m) {
     const g = ctx.createLinearGradient(0, 0, w, h);
@@ -734,4 +1082,102 @@ function paintCssBg(ctx: CanvasRenderingContext2D, css: string, w: number, h: nu
     ctx.fillStyle = css;
   }
   ctx.fillRect(0, 0, w, h);
+}
+
+/** Export painter for the 7 text styles (mirrors the editor toolbar). */
+function paintStyledText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  ov: { color?: string; font?: string; style?: string },
+) {
+  const color = ov.color || "#fff";
+  const weight = ov.style === "poster" ? "900 " : "700 ";
+  ctx.font = `${weight}${size}px ${fontFor(ov.font)}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  switch (ov.style) {
+    case "neon":
+      ctx.shadowColor = color;
+      ctx.shadowBlur = size * 0.55;
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, x, y);
+      break;
+    case "outline":
+      ctx.lineWidth = Math.max(2, size / 14);
+      ctx.strokeStyle = color;
+      ctx.strokeText(text, x, y);
+      break;
+    case "highlight": {
+      const w = ctx.measureText(text).width;
+      ctx.fillStyle = "#c8ff3d";
+      ctx.fillRect(x - w / 2 - 12, y - size * 0.62, w + 24, size * 1.24);
+      ctx.fillStyle = "#141416";
+      ctx.fillText(text, x, y);
+      break;
+    }
+    case "poster":
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillText(text, x + 4, y + 5);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+      break;
+    default:
+      ctx.fillStyle = color;
+      ctx.shadowColor = "rgba(0,0,0,0.45)";
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 4;
+      ctx.fillText(text, x, y);
+      break;
+  }
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+}
+
+/** Template frame chrome, painted over the finished export. */
+function paintFrame(
+  ctx: CanvasRenderingContext2D,
+  frame: "none" | "polaroid" | "film" | "neon",
+  w: number,
+  h: number,
+) {
+  if (frame === "none") return;
+  if (frame === "neon") {
+    ctx.save();
+    ctx.strokeStyle = "#c8ff3d";
+    ctx.lineWidth = 10;
+    ctx.shadowColor = "#c8ff3d";
+    ctx.shadowBlur = 45;
+    ctx.strokeRect(14, 14, w - 28, h - 28);
+    ctx.restore();
+    return;
+  }
+  if (frame === "polaroid") {
+    ctx.save();
+    ctx.fillStyle = "#f5f1e6";
+    ctx.fillRect(0, 0, w, h * 0.035);
+    ctx.fillRect(0, 0, w * 0.045, h);
+    ctx.fillRect(w * 0.955, 0, w * 0.045, h);
+    ctx.fillRect(0, h * 0.9, w, h * 0.1);
+    ctx.restore();
+    return;
+  }
+  // film: sprocket bars top + bottom.
+  ctx.save();
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, w, h * 0.05);
+  ctx.fillRect(0, h * 0.95, w, h * 0.05);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  const holes = 12;
+  for (let i = 0; i < holes; i += 1) {
+    const x = (w / holes) * i + w / holes / 2;
+    ctx.fillRect(x - 9, h * 0.015, 18, h * 0.02);
+    ctx.fillRect(x - 9, h * 0.965, 18, h * 0.02);
+  }
+  ctx.restore();
 }

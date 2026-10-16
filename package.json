@@ -12,7 +12,7 @@
     "build:dev": "vite build --mode development",
     "preview": "node render-server.mjs",
     "lint": "eslint .",
-    "test": "node tests/chatstory-tts.test.mjs && node tests/voice-cast.test.mjs && node tests/scene-video.test.mjs && node tests/complete-saga.test.mjs && node tests/story-feedback.test.mjs && node tests/bounties.test.mjs && node tests/device-voices.test.mjs",
+    "test": "node tests/chatstory-tts.test.mjs && node tests/voice-cast.test.mjs && node tests/scene-video.test.mjs && node tests/complete-saga.test.mjs && node tests/story-feedback.test.mjs && node tests/bounties.test.mjs && node tests/device-voices.test.mjs && node tests/story-creator.test.mjs",
     "saga:complete": "node scripts/complete-saga.mjs",
     "scenes:briefs": "node scripts/scene-briefs.mjs",
     "format": "prettier --write .",
