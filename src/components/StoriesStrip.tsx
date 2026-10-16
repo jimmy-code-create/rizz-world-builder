@@ -17,6 +17,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { useI18n } from "@/lib/i18n";
+import { hapticButton, hapticReaction, hapticSend, hapticStoryTransition } from "@/lib/haptics";
 
 /**
  * The stories row at the top of the feed, and the full-screen viewer.
@@ -174,6 +175,8 @@ export function StoriesStrip() {
       const delta = wasLiked ? -1 : 1;
       const snapshot = stories;
 
+      hapticButton(); // Haptic feedback on like
+
       setLiked((current) => {
         const next = new Set(current);
         if (wasLiked) next.delete(storyId);
@@ -258,6 +261,7 @@ export function StoriesStrip() {
               <button
                 type="button"
                 onClick={() => {
+                  hapticButton();
                   if (myStories.length > 0 && myGroupIdx >= 0) {
                     setViewing(myGroupIdx);
                     markSeen(user!.id, myStories[0].created_at);
@@ -316,6 +320,7 @@ export function StoriesStrip() {
                 type="button"
                 key={story.author_id}
                 onClick={() => {
+                  hapticButton();
                   setViewing(actualIdx);
                   markSeen(story.author_id, story.created_at);
                 }}
@@ -452,6 +457,7 @@ function StoryViewer({
       toast.info("Sign in to react to stories");
       return;
     }
+    hapticReaction();
     const selected = myReactions.includes(emoji);
     const prev = myReactions;
     const next = selected ? prev.filter((e) => e !== emoji) : [...prev, emoji];
@@ -469,6 +475,29 @@ function StoryViewer({
       return;
     }
   };
+
+  // Realtime: another device reacting to this story updates our chips live.
+  useEffect(() => {
+    if (!storyId) return;
+    const channel = supabase
+      .channel(`story-reactions:${storyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "story_reactions",
+          filter: `story_id=eq.${storyId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: reactionsKey });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc, reactionsKey, storyId]);
 
   const viewers = useQuery({
     queryKey: ["story-viewers", storyId],
@@ -516,6 +545,7 @@ function StoryViewer({
         story_id: story.id,
       });
       if (error) throw error;
+      hapticSend(); // Haptic feedback on successful send
       setReplyBody("");
       toast.success("Reply sent to their inbox");
     } catch (error) {
@@ -601,7 +631,10 @@ function StoryViewer({
             </div>
 
             <CloseButton
-              onClick={onClose}
+              onClick={() => {
+                hapticButton();
+                onClose();
+              }}
               aria-label="Close story"
               className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 bg-black/55 backdrop-blur-md"
             />
@@ -638,7 +671,10 @@ function StoryViewer({
             {isMine && (
               <button
                 type="button"
-                onClick={() => setViewersOpen(true)}
+                onClick={() => {
+                  hapticButton();
+                  setViewersOpen(true);
+                }}
                 aria-label="See story viewers and likes"
                 className="absolute right-16 top-[calc(env(safe-area-inset-top,0px)+1.75rem)] z-30 inline-flex h-11 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-3 text-xs text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
@@ -707,7 +743,10 @@ function StoryViewer({
                 onClick={(event) => {
                   event.stopPropagation();
                   if (idx > 0) setIdx(idx - 1);
-                  else onPrev();
+                  else {
+                    hapticStoryTransition();
+                    onPrev();
+                  }
                 }}
               />
               <button
@@ -717,7 +756,10 @@ function StoryViewer({
                 onClick={(event) => {
                   event.stopPropagation();
                   if (idx + 1 < group.length) setIdx(idx + 1);
-                  else onNext();
+                  else {
+                    hapticStoryTransition();
+                    onNext();
+                  }
                 }}
               />
 

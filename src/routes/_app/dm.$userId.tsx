@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag, Music2, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
@@ -46,8 +46,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
-import { MusicPlayer } from "@/components/MusicPlayer";
-import { GameLauncher } from "@/components/GameLauncher";
+
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
 // and group chat stay in sync.
@@ -125,8 +124,6 @@ function DMPage() {
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
-  const [musicPlayerOpen, setMusicPlayerOpen] = useState(false);
-  const [gameLauncherOpen, setGameLauncherOpen] = useState(false);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -796,12 +793,7 @@ function DMPage() {
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
         </Button>
-        <Button onClick={() => setMusicPlayerOpen(true)} variant="ghost" size="icon" aria-label="Music player" className="text-muted-foreground hover:text-foreground">
-          <Music2 className="h-5 w-5" />
-        </Button>
-        <Button onClick={() => setGameLauncherOpen(true)} variant="ghost" size="icon" aria-label="Play games" className="text-muted-foreground hover:text-foreground">
-          <Gamepad2 className="h-5 w-5" />
-        </Button>
+
         <Button onClick={() => setSearchOpen((o) => !o)} variant="ghost" size="icon" aria-label="Search messages" className="text-muted-foreground hover:text-foreground">
           <Search className="h-5 w-5" />
         </Button>
@@ -1281,8 +1273,6 @@ function DMPage() {
         onChange={setWallpaper}
       />
       
-      <MusicPlayer open={musicPlayerOpen} onOpenChange={setMusicPlayerOpen} />
-      <GameLauncher open={gameLauncherOpen} onOpenChange={setGameLauncherOpen} />
       </div>
     </div>
   );

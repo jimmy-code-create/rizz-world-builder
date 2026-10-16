@@ -11,6 +11,16 @@
     "sharedCode": true
   },
   {
+    "id": "chess",
+    "name": "Chess",
+    "icon": "♟️",
+    "url": "https://lichess.org/",
+    "type": "room-link",
+    "players": "2",
+    "description": "Play chess online — create a game and share the link",
+    "sharedCode": false
+  },
+  {
     "id": "gamenest",
     "name": "Party Games",
     "icon": ":cat_hype:",
@@ -39,5 +49,34 @@
     "type": "embed",
     "players": "1",
     "description": "Solo number puzzle while you hang out"
+  },
+  {
+    "id": "checkers",
+    "name": "Checkers",
+    "icon": "🎯",
+    "url": "https://www.247checkers.com/",
+    "type": "embed",
+    "players": "2",
+    "description": "Classic checkers game"
+  },
+  {
+    "id": "codenames",
+    "name": "Codenames",
+    "icon": ":cat_think:",
+    "url": "https://codenames.game/",
+    "type": "room-link",
+    "players": "4-8",
+    "description": "Word-based party game — create a room and share",
+    "sharedCode": false
+  },
+  {
+    "id": "gartic-phone",
+    "name": "Gartic Phone",
+    "icon": "📱",
+    "url": "https://garticphone.com/",
+    "type": "room-link",
+    "players": "4-30",
+    "description": "Telephone game with drawing — create a room to play",
+    "sharedCode": false
   }
 ]

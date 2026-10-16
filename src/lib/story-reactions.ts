@@ -1,49 +1,46 @@
 /**
  * Story Reactions System
- * 
- * Handles real-time reactions to stories (Instagram-style)
+ *
+ * Handles real-time reactions to stories (Instagram-style).
  * Supports: ❤️ 😂 😮 😢 🔥 👏
+ *
+ * DB shape (see 20260810023549 migration): `public.story_reactions` has NO
+ * `id` column — its primary key is (story_id, user_id, emoji), so one user
+ * can leave several different emoji on the same story. The viewer keeps
+ * that multi-emoji model (`myReactions: string[]`).
  */
 
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const STORY_REACTIONS = ["❤️", "😂", "😮", "😢", "🔥", "👏"] as const;
-export type StoryReactionEmoji = typeof STORY_REACTIONS[number];
+export type StoryReactionEmoji = (typeof STORY_REACTIONS)[number];
 
 export type StoryReaction = {
-  id: string;
   story_id: string;
   user_id: string;
-  emoji: StoryReactionEmoji;
+  emoji: string;
   created_at: string;
-  user?: {
-    username: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-  };
 };
 
 export type StoryReactionCount = {
-  emoji: StoryReactionEmoji;
+  emoji: string;
   count: number;
   users: string[]; // user IDs
 };
 
 /**
- * Get reactions for a story
+ * Get reactions for a story.
+ *
+ * Deliberately selects no profile join: the RLS policy lets a viewer read
+ * only their own rows plus (for the author) the story's rows, and the UI
+ * only needs counts. A join would fail closed for non-authors.
  */
 export async function fetchStoryReactions(storyId: string): Promise<StoryReaction[]> {
   const { data, error } = await supabase
     .from("story_reactions")
-    .select(`
-      id,
-      story_id,
-      user_id,
-      emoji,
-      created_at,
-      user:profiles(username, display_name, avatar_url)
-    `)
+    .select("story_id, user_id, emoji, created_at")
     .eq("story_id", storyId)
     .order("created_at", { ascending: false });
 
@@ -52,88 +49,111 @@ export async function fetchStoryReactions(storyId: string): Promise<StoryReactio
 }
 
 /**
- * Add a reaction to a story
+ * Add a reaction to a story.
+ *
+ * A (story_id, user_id, emoji) duplicate just means "already reacted" —
+ * treat it as success so optimistic UI never rolls back on a double tap.
  */
-export async function addStoryReaction(storyId: string, userId: string, emoji: StoryReactionEmoji): Promise<void> {
+export async function addStoryReaction(
+  storyId: string,
+  userId: string,
+  emoji: StoryReactionEmoji,
+): Promise<void> {
   const { error } = await supabase
     .from("story_reactions")
     .insert({ story_id: storyId, user_id: userId, emoji });
 
   if (error) {
-    // If duplicate, update to new emoji
-    if (error.code === "23505") {
-      const { error: updateError } = await supabase
-        .from("story_reactions")
-        .update({ emoji, created_at: new Date().toISOString() })
-        .eq("story_id", storyId)
-        .eq("user_id", userId);
-      
-      if (updateError) throw updateError;
-      return;
-    }
+    if (error.code === "23505") return;
     throw error;
   }
 
-  // Notify story creator (in production, this would trigger a notification)
+  // Notify story creator (best-effort; never blocks the reaction).
   await notifyStoryCreator(storyId, userId, emoji);
 }
 
 /**
- * Remove a reaction from a story
+ * Remove reaction(s) from a story. With an emoji, only that row goes;
+ * without one, all of the user's rows go (back-compat for single-reaction UI).
  */
-export async function removeStoryReaction(storyId: string, userId: string): Promise<void> {
-  const { error } = await supabase
+export async function removeStoryReaction(
+  storyId: string,
+  userId: string,
+  emoji?: StoryReactionEmoji | string,
+): Promise<void> {
+  let query = supabase
     .from("story_reactions")
     .delete()
     .eq("story_id", storyId)
     .eq("user_id", userId);
+  if (emoji) query = query.eq("emoji", emoji);
 
+  const { error } = await query;
   if (error) throw error;
 }
 
 /**
- * Get reaction counts grouped by emoji
+ * Get reaction counts grouped by emoji.
  */
 export function aggregateReactions(reactions: StoryReaction[]): StoryReactionCount[] {
-  const grouped = reactions.reduce((acc, reaction) => {
-    const emoji = reaction.emoji;
-    if (!acc[emoji]) {
-      acc[emoji] = { emoji, count: 0, users: [] };
-    }
-    acc[emoji].count++;
-    acc[emoji].users.push(reaction.user_id);
-    return acc;
-  }, {} as Record<string, StoryReactionCount>);
+  const grouped = reactions.reduce(
+    (acc, reaction) => {
+      const emoji = reaction.emoji;
+      if (!acc[emoji]) {
+        acc[emoji] = { emoji, count: 0, users: [] };
+      }
+      acc[emoji].count++;
+      acc[emoji].users.push(reaction.user_id);
+      return acc;
+    },
+    {} as Record<string, StoryReactionCount>,
+  );
 
   return Object.values(grouped).sort((a, b) => b.count - a.count);
 }
 
 /**
- * Check if user has reacted to a story
+ * All emoji the user left on a story (multi-emoji model).
  */
-export function getUserReaction(reactions: StoryReaction[], userId: string): StoryReactionEmoji | null {
-  const userReaction = reactions.find(r => r.user_id === userId);
-  return userReaction?.emoji ?? null;
+export function getUserReactions(reactions: StoryReaction[], userId: string): string[] {
+  return reactions.filter((r) => r.user_id === userId).map((r) => r.emoji);
 }
 
 /**
- * Notify story creator of new reaction
+ * Check if user has reacted to a story (single-reaction back-compat).
  */
-async function notifyStoryCreator(storyId: string, reactorId: string, emoji: string): Promise<void> {
-  // Get story creator
+export function getUserReaction(
+  reactions: StoryReaction[],
+  userId: string,
+): StoryReactionEmoji | null {
+  const userReaction = reactions.find((r) => r.user_id === userId);
+  return (userReaction?.emoji as StoryReactionEmoji | undefined) ?? null;
+}
+
+/**
+ * Notify story creator of new reaction (best-effort).
+ */
+async function notifyStoryCreator(
+  storyId: string,
+  reactorId: string,
+  emoji: string,
+): Promise<void> {
+  // Stories carry `author_id` (not `user_id`).
   const { data: story } = await supabase
     .from("stories")
-    .select("user_id")
+    .select("author_id")
     .eq("id", storyId)
     .single();
 
-  if (!story || story.user_id === reactorId) return; // Don't notify self
+  if (!story || story.author_id === reactorId) return; // Don't notify self
 
-  // In production, create notification record
   try {
     await supabase.from("notifications").insert({
-      user_id: story.user_id,
+      user_id: story.author_id,
+      actor_id: reactorId,
       type: "story_reaction",
+      title: "New story reaction",
+      body: `${emoji}`,
       data: { story_id: storyId, reactor_id: reactorId, emoji },
     });
   } catch {
@@ -142,55 +162,80 @@ async function notifyStoryCreator(storyId: string, reactorId: string, emoji: str
 }
 
 /**
- * React hook for story reactions
+ * React hook for story reactions, with realtime live-updates.
  */
 export function useStoryReactions(storyId: string, userId?: string) {
   const qc = useQueryClient();
+  const queryKey = ["story-reactions", storyId];
 
   const query = useQuery({
-    queryKey: ["story-reactions", storyId],
+    queryKey,
     queryFn: () => fetchStoryReactions(storyId),
     enabled: !!storyId,
   });
 
+  useEffect(() => {
+    if (!storyId) return;
+    const channel = supabase
+      .channel(`story-reactions:${storyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "story_reactions",
+          filter: `story_id=eq.${storyId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // queryKey is stable per storyId; qc is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyId]);
+
   const addMutation = useMutation({
     mutationFn: (emoji: StoryReactionEmoji) => addStoryReaction(storyId, userId!, emoji),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["story-reactions", storyId] });
+      qc.invalidateQueries({ queryKey });
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: () => removeStoryReaction(storyId, userId!),
+    mutationFn: (emoji?: StoryReactionEmoji | string) =>
+      removeStoryReaction(storyId, userId!, emoji),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["story-reactions", storyId] });
+      qc.invalidateQueries({ queryKey });
     },
   });
 
   const reactions = query.data ?? [];
   const counts = aggregateReactions(reactions);
+  const myReactions = userId ? getUserReactions(reactions, userId) : [];
   const myReaction = userId ? getUserReaction(reactions, userId) : null;
   const totalCount = reactions.length;
 
   return {
     reactions,
     counts,
+    myReactions,
     myReaction,
     totalCount,
     isLoading: query.isLoading,
     addReaction: addMutation.mutate,
     removeReaction: removeMutation.mutate,
-    isAdding: addMutation.isPending,
+    isAdding: addMutation.isPending || removeMutation.isPending,
   };
 }
 
 /**
- * Subscribe to real-time reaction updates
+ * Subscribe to real-time reaction updates.
  */
-export function subscribeToStoryReactions(
-  storyId: string,
-  onUpdate: () => void
-) {
+export function subscribeToStoryReactions(storyId: string, onUpdate: () => void) {
   const channel = supabase
     .channel(`story-reactions:${storyId}`)
     .on(
@@ -201,7 +246,7 @@ export function subscribeToStoryReactions(
         table: "story_reactions",
         filter: `story_id=eq.${storyId}`,
       },
-      onUpdate
+      onUpdate,
     )
     .subscribe();
 
