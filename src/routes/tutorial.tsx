@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { AuthCard } from "@/components/AuthCard";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
+import { AvatarPicker } from "@/components/onboarding/AvatarPicker";
+import { DEFAULT_AVATARS } from "@/lib/default-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { getPendingInvitePath } from "@/lib/onboarding";
@@ -112,9 +113,9 @@ function TutorialPage() {
 
   return (
     <AuthCard
-      title={step === 1 ? "Pick your profile cat" : "Find your people"}
+      title={step === 1 ? "Pick your picture" : "Find your people"}
       subtitle={step === 1
-        ? "Choose one of our six cats, or keep the photo you already use."
+        ? "Choose one of our six cats, or upload a photo of your own."
         : "Choose up to six interests. They’ll appear on your profile and help RIZZ find your people."}
     >
       <div className="mb-6">
