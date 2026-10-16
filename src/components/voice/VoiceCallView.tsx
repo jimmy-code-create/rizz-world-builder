@@ -570,6 +570,32 @@ export function VoiceCallView() {
                 </span>
               </button>
             )}
+
+            {/* GAME BOT: the hub's face inside the call. One tap opens /games,
+                where launching a game makes it live for the whole room. */}
+            <button
+              type="button"
+              onClick={openGamesHub}
+              aria-label="Open the Games hub"
+              className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+            >
+              <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                {roomActivity.activity ? "Live" : "In call"}
+              </span>
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-primary/25 text-primary">
+                  <Gamepad2 className="h-6 w-6" aria-hidden="true" />
+                </AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 px-1">
+                <span className="block truncate text-xs font-semibold">GAME BOT</span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {roomActivity.activity
+                    ? `${roomActivity.activity.gameName} — tap to join`
+                    : "Tap to open the Games hub"}
+                </span>
+              </span>
+            </button>
             </div>
             </div>
             {playing && !isMobileView && !immersive && roomActivity.activity && (

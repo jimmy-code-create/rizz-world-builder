@@ -188,3 +188,11 @@
 - [x] `scripts/arcade-check.ts` (`bun run arcade:check`) found and fixed two real bugs: an unbeatable CPU in Pixel Rally and the duo-mode key mismatch - **DONE**
 - [x] 12 more games (15 built-in total): Chess (depth-3 engine + perft-verified rules), Checkers (forced longest captures), Connect Four, Tic-Tac-Toe (perfect), Reversi, 2048, Minesweeper, Sudoku (unique-solution generator), Memory Match, Breakout, Neon Void (shooter), Reaction Rush — rules in `src/lib/games/*`, boards via `board-frame.tsx` - **DONE**
 - [x] hub filters for Action / Board games / Puzzles; `bun run games:render` renders every registered game; `arcade-check` grew to 60+ assertions (chess perft 8902, mate-in-one, etc.) and caught a double-merge bug in the 2048 engine - **DONE**
+
+### Phase 31: Story Reactions & Haptic Feedback (components created, integration pending)
+- [x] Instagram-style StoryReactions component with 6 emoji bar (❤️ 😂 😮 😢 🔥 👏), animated slide-up, author reaction counts, quick reaction button (`src/components/story/StoryReactions.tsx`) - **DONE**
+- [x] Comprehensive haptics utility with 6 patterns (light/medium/heavy/success/error/selection) and specialized functions for all interactions (`src/lib/haptics.ts`) - **DONE**
+- [x] Story reactions library with React Query hooks, optimistic updates, real-time subscriptions, and aggregation functions (`src/lib/story-reactions.ts`) - **DONE**
+- [x] 6-week feature roadmap with 17 major features across engagement, monetization, growth, creator tools, and advanced features (`FEATURE_ROADMAP.md`) - **DONE**
+- [ ] Integration: Replace inline StoryViewer reactions with new StoryReactions component - **PENDING**
+- [ ] Integration: Add haptic feedback throughout app (buttons, sends, reactions, voice, story transitions) - **PENDING**

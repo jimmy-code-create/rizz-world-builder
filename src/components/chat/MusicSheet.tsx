@@ -165,22 +165,27 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
             <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <Slider
-              value={[Math.round((soundSettings.music ?? 0.8) * 100)]}
-              min={0}
-              max={100}
-              step={5}
-              onValueCommit={([val]) =>
-                setSoundSettings({ ...soundSettings, music: (val ?? 80) / 100 })
-              }
-              aria-label="Music volume"
-              className="flex-1"
-            />
-            <span className="w-10 shrink-0 text-right font-mono text-[11px] text-muted-foreground">
-              {Math.round((soundSettings.music ?? 0.8) * 100)}%
-            </span>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Music Volume</span>
+                <span className="font-mono text-foreground">{Math.round((soundSettings.music ?? 0.8) * 100)}%</span>
+              </div>
+              <Slider
+                value={[Math.round((soundSettings.music ?? 0.8) * 100)]}
+                min={0}
+                max={100}
+                step={5}
+                onValueCommit={([val]) => {
+                  const newVolume = (val ?? 80) / 100;
+                  setSoundSettings({ ...soundSettings, music: newVolume });
+                  toast.success(`Music volume: ${Math.round(newVolume * 100)}%`, { duration: 1000 });
+                }}
+                aria-label="Music volume"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-2">

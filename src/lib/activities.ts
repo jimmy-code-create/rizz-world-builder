@@ -177,9 +177,15 @@ export function launchUrl(entry: GameEntry, roomCode: string | null): string {
 /** Copy-paste invite text for the room. */
 export function inviteText(entry: GameEntry, roomCode: string | null): string {
   if (entry.source === "builtin") return `${entry.name} — launched in your RIZZ voice channel.`;
-  if (entry.type === "embed" || !roomCode) return entry.url;
-  if (entry.type === "room-link")
-    return `Join my ${entry.name} game: ${launchUrl(entry, roomCode)}`;
+  const target = launchUrl(entry, roomCode);
+  // A site served from our own origin (e.g. /draw-party.html) is useless as a
+  // pasted invite unless the link is absolute.
+  const absolute =
+    typeof window !== "undefined" && target.startsWith("/")
+      ? `${window.location.origin}${target}`
+      : target;
+  if (entry.type === "embed" || !roomCode) return absolute;
+  if (entry.type === "room-link") return `Join my ${entry.name} game: ${absolute}`;
   return `Join my ${entry.name} game at ${entry.url} with room code ${roomCode}`;
 }
 

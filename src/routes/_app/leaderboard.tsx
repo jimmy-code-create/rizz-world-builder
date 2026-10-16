@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Info, RefreshCw, Trophy } from "lucide-react";
@@ -20,6 +20,9 @@ import {
 } from "@/lib/leaderboard";
 
 export const Route = createFileRoute("/_app/leaderboard")({
+  validateSearch: (search: Record<string, unknown>): { earn?: boolean } => ({
+    ...(search.earn === "1" || search.earn === 1 || search.earn === true ? { earn: true } : {}),
+  }),
   head: () => ({ meta: [{ title: "Leaderboard · RIZZ" }] }),
   component: LeaderboardPage,
 });
@@ -58,16 +61,25 @@ function RankDelta({ rank, prevRank }: { rank: number; prevRank: number | null }
 
 function LeaderboardPage() {
   const { user } = useAuth();
+  const search = Route.useSearch();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [period, setPeriod] = useState<BoardPeriod>("all");
   const [followingOnly, setFollowingOnly] = useState(false);
   const [cardUserId, setCardUserId] = useState<string | null>(null);
-  const [earnOpen, setEarnOpen] = useState(false);
+  // Deep link (e.g. from Bounties): /leaderboard?earn=1 opens the earn guide.
+  const [earnOpen, setEarnOpen] = useState(search.earn ?? false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const pullStartY = useRef<number | null>(null);
   const [pulling, setPulling] = useState(false);
+
+  useEffect(() => {
+    if (!search.earn) return;
+    setEarnOpen(true);
+    void navigate({ to: "/leaderboard", search: {}, replace: true });
+  }, [navigate, search.earn]);
 
   const board = useInfiniteQuery({
     queryKey: ["board", period, followingOnly, user?.id ?? "anon"],

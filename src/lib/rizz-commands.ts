@@ -49,7 +49,7 @@ export const VOICE_COMMANDS: VoiceCommand[] = [
   { id: "open:explore", path: "/explore", keywords: ["explore", "discover", "dhundo", "explore section"], speak: "Explore khol raha hu" },
   { id: "open:groups", path: "/groups", keywords: ["group", "groups", "group section", "groups section"], speak: "Groups khol raha hu" },
   { id: "open:realms", path: "/realms", keywords: ["realm", "realms", "community", "channels", "voice", "voice channel", "voice channels", "awaz"], speak: "Realms khol raha hu" },
-  { id: "open:drops", path: "/drops", keywords: ["drop", "drops", "giveaway", "giveaways"], speak: "Drops khol raha hu" },
+  { id: "open:drops", path: "/drops", keywords: ["drop", "drops", "giveaway", "giveaways", "bounty", "bounties"], speak: "Bounties khol raha hu" },
   { id: "open:dms", path: "/dms", keywords: ["dm", "dms", "chat", "chats", "message", "messages", "inbox"], speak: "Chat khol raha hu" },
   { id: "open:stories", path: "/chat-stories", keywords: ["story", "stories", "chat story", "chat stories", "story section"], speak: "Stories khol raha hu" },
   { id: "open:bookmarks", path: "/bookmarks", keywords: ["bookmark", "bookmarks", "saved", "save kia hua"], speak: "Saved posts khol raha hu" },

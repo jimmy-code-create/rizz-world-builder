@@ -16,7 +16,7 @@ import { toast } from "@/lib/toast";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { ReactionQuickBar } from "@/components/chat/ReactionQuickBar";
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
@@ -28,7 +28,6 @@ import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
-import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
@@ -47,6 +46,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
+
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
 // and group chat stay in sync.
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/_app/dm/$userId")({
 
 function DMPage() {
   const { userId } = Route.useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
@@ -187,18 +187,19 @@ function DMPage() {
   const startPress = (id: string, point?: { x: number; y: number }) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
     pressStart.current = point ?? null;
+    longPressFired.current = false; // Reset flag at the start
     pressTimer.current = window.setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(15);
       longPressFired.current = true;
       setOpenMsg(id);
       pressTimer.current = null;
-    }, 480);
+    }, 500); // Increased from 480ms to 500ms for more reliable detection
   };
   /** Only cancel on a real drag (scroll), not on tiny finger jitter. */
   const movePress = (point: { x: number; y: number }) => {
     const s = pressStart.current;
     if (!s || !pressTimer.current) return;
-    if (Math.hypot(point.x - s.x, point.y - s.y) > 12) cancelPress();
+    if (Math.hypot(point.x - s.x, point.y - s.y) > 15) cancelPress(); // Increased threshold from 12 to 15
   };
   /**
    * Ends a press. A press that never became a long press is a tap; the second
@@ -206,7 +207,6 @@ function DMPage() {
    */
   const cancelPress = (id?: string) => {
     const wasLongPress = longPressFired.current;
-    longPressFired.current = false;
     if (pressTimer.current) {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
@@ -214,7 +214,16 @@ function DMPage() {
     // Keep the second tap's position so the heart bursts under the finger.
     const tapPoint = pressStart.current;
     pressStart.current = null;
-    if (wasLongPress || !id || !user || openMsg) return;
+    
+    // If it was a long press, don't process as tap
+    if (wasLongPress) {
+      longPressFired.current = false;
+      return;
+    }
+    
+    longPressFired.current = false;
+    if (!id || !user || openMsg) return;
+    
     const previous = lastTap.current;
     const now = Date.now();
     if (previous && previous.id === id && now - previous.at < 300) {
@@ -784,6 +793,7 @@ function DMPage() {
         <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
           <Phone className="h-5 w-5" />
         </Button>
+
         <Button onClick={() => setSearchOpen((o) => !o)} variant="ghost" size="icon" aria-label="Search messages" className="text-muted-foreground hover:text-foreground">
           <Search className="h-5 w-5" />
         </Button>
@@ -950,111 +960,129 @@ function DMPage() {
                 {inviteCode && !deletedAt ? (
                   <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
                 ) : (
-                <Popover open={openMsg === m.id} onOpenChange={(o) => setOpenMsg(o ? m.id : null)}>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-haspopup="dialog"
-                      aria-expanded={openMsg === m.id}
-                      className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        deliveryStatus ? "opacity-60" : ""
-                      } ${
-                        deletedAt
-                          ? "message-bubble--unsent"
-                          : hasText
-                            ? mine
-                              ? "message-bubble--outgoing"
-                              : "message-bubble--incoming"
-                            : "message-bubble--media"
-                      }`}
-                      style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
-                      onContextMenu={(e) => { e.preventDefault(); setOpenMsg(m.id); }}
-                      onTouchStart={(e) => startPress(m.id, { x: e.touches[0].clientX, y: e.touches[0].clientY })}
-                      onTouchEnd={() => cancelPress(m.id)}
-                      onTouchCancel={() => cancelPress()}
-                      onTouchMove={(e) => movePress({ x: e.touches[0].clientX, y: e.touches[0].clientY })}
-                      onMouseDown={(e) => startPress(m.id, { x: e.clientX, y: e.clientY })}
-                      onMouseUp={() => cancelPress(m.id)}
-                      onMouseLeave={() => cancelPress()}
-                    >
-                      {quote && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
-                          className="mb-1 flex items-center gap-1 text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
-                        >
-                          <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
-                        </span>
-                      )}
-                      {m.attachment_url && !deletedAt && (
-                        <ChatMessageMedia
-                          src={m.attachment_url}
-                          alt="Image shared in chat"
-                          className={hasText ? "mb-2" : ""}
-                        />
-                      )}
-                      {deletedAt ? "This message was unsent" : !hasText ? null : (
-                        <>
-                          {renderGifSegments(rest).map((seg, si) =>
-                            seg.isGif || seg.isSticker
-                              ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                              : (
-                                <MarkdownText
-                                  key={si}
-                                  text={seg.value}
-                                  renderPlainText={(plain) =>
-                                    renderCaptionWithTags(plain).map((p, pi) =>
-                                      p.mentionToken
-                                        ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                        : p.mention
-                                          // The bubble itself is a button, so a tap on a link must not
-                                          // also toggle the message actions popover.
-                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                          : p.tag
-                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
-                                            : p.url
-                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
-                                              : <span key={`${si}-${pi}`}>{p.text}</span>
-                                    )
-                                  }
-                                />
-                              )
-                          )}
-                        </>
-                      )}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    aria-label="Message actions"
-                    className="z-[60] max-h-[min(70dvh,28rem)] w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-white/15 bg-[#100b18] p-2 text-white shadow-[0_22px_70px_-20px_rgba(0,0,0,0.95)] backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
-                    side="top"
-                    sideOffset={12}
-                    collisionPadding={12}
+                <MessageActionMenu
+                  open={openMsg === m.id}
+                  onOpenChange={(o) => setOpenMsg(o ? m.id : null)}
+                  align={mine ? "right" : "left"}
+                  detectPress={true}
+                  reactionBar={{
+                    onPick: (emoji) => {
+                      void react(m.id, emoji);
+                      setOpenMsg(null);
+                    },
+                  }}
+                  onDoubleTap={() => {
+                    burstOverMessage(m.id, DOUBLE_TAP_REACTION);
+                    reactionHaptic();
+                    void react(m.id, DOUBLE_TAP_REACTION);
+                  }}
+                  preview={{
+                    author: mine ? "You" : (other.data?.display_name || other.data?.username || "User"),
+                    time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+                    body: m.body,
+                    avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
+                  }}
+                  actions={[
+                    {
+                      label: "Copy text",
+                      icon: Copy,
+                      onSelect: () => {
+                        navigator.clipboard.writeText(m.body);
+                        toast.success("Copied");
+                      },
+                    },
+                    {
+                      label: "Reply",
+                      icon: CornerUpLeft,
+                      onSelect: () => {
+                        setReplyTo({ id: m.id, body: rest || m.body, mine });
+                      },
+                    },
+                    {
+                      label: "Report",
+                      icon: Flag,
+                      onSelect: () => {
+                        toast("Reported");
+                      },
+                    },
+                    ...(!deletedAt ? [{
+                      label: "Delete for me",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => {
+                        void deleteMsgForMe(m.id);
+                      },
+                    }] : []),
+                    ...(mine && !deletedAt ? [{
+                      label: "Delete for everyone",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => {
+                        void deleteMsg(m.id);
+                      },
+                    }] : []),
+                  ]}
+                >
+                  <div
+                    className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation ${
+                      deliveryStatus ? "opacity-60" : ""
+                    } ${
+                      deletedAt
+                        ? "message-bubble--unsent"
+                        : hasText
+                          ? mine
+                            ? "message-bubble--outgoing"
+                            : "message-bubble--incoming"
+                          : "message-bubble--media"
+                    }`}
+                    style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                   >
-                    {/* One shared reaction picker, identical to groups and realms. */}
-                    <ReactionQuickBar
-                      className="mb-2"
-                      onPick={(emoji) => { void react(m.id, emoji); setOpenMsg(null); }}
-                    />
-                    <div className="flex flex-col gap-0.5 text-xs">
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(m.body); toast.success("Copied"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Copy className="h-4 w-4 text-white/60" />Copy text</button>
-                      <button type="button" onClick={() => { setReplyTo({ id: m.id, body: rest || m.body, mine }); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><CornerUpLeft className="h-4 w-4 text-white/60" />Reply</button>
-                      <button type="button" onClick={() => { toast("Reported"); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Flag className="h-4 w-4 text-white/60" />Report</button>
-                      {!deletedAt && (
-                        <button
-                          type="button"
-                          onClick={() => { void deleteMsgForMe(m.id); setOpenMsg(null); }}
-                          className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        >
-                          <Trash2 className="h-4 w-4" />Delete for me
-                        </button>
-                      )}
-                      {mine && !deletedAt && (
-                        <button type="button" onClick={() => { void deleteMsg(m.id); setOpenMsg(null); }} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Trash2 className="h-4 w-4" />Delete for everyone</button>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                    {quote && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
+                        className="mb-1 flex items-center gap-1 text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
+                      >
+                        <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
+                      </span>
+                    )}
+                    {m.attachment_url && !deletedAt && (
+                      <ChatMessageMedia
+                        src={m.attachment_url}
+                        alt="Image shared in chat"
+                        className={hasText ? "mb-2" : ""}
+                      />
+                    )}
+                    {deletedAt ? "This message was unsent" : !hasText ? null : (
+                      <>
+                        {renderGifSegments(rest).map((seg, si) =>
+                          seg.isGif || seg.isSticker
+                            ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
+                            : (
+                              <MarkdownText
+                                key={si}
+                                text={seg.value}
+                                renderPlainText={(plain) =>
+                                  renderCaptionWithTags(plain).map((p, pi) =>
+                                    p.mentionToken
+                                      ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
+                                      : p.mention
+                                        ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                        : p.tag
+                                          ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                          : p.url
+                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                            : <span key={`${si}-${pi}`}>{p.text}</span>
+                                  )
+                                }
+                              />
+                            )
+                        )}
+                      </>
+                    )}
+                  </div>
+                </MessageActionMenu>
                 )}
                 {deliveryStatus === "failed" ? (
                   <button
@@ -1244,6 +1272,7 @@ function DMPage() {
         value={wallpaper}
         onChange={setWallpaper}
       />
+      
       </div>
     </div>
   );

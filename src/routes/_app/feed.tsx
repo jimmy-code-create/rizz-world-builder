@@ -34,7 +34,13 @@ function FeedPage() {
   const qc = useQueryClient();
   const [visible, setVisible] = useState(FEED_PAGE_SIZE);
   const [activeSidePost, setActiveSidePost] = useState<FeedPost | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Hydration-safe: only compute time-sensitive values on the client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const greeting = (hour: number) => {
     if (hour < 5) return t("good_evening");
@@ -103,11 +109,12 @@ function FeedPage() {
 
   // Count how many posts have dropped so far today
   const todayCount = useMemo(() => {
+    if (!isClient) return 0; // Skip on server to avoid hydration mismatch
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const cut = startOfDay.getTime();
     return posts.filter((p) => new Date(p.created_at).getTime() >= cut).length;
-  }, [posts]);
+  }, [posts, isClient]);
 
   const name = profile?.display_name || profile?.username || "there";
 
@@ -130,7 +137,7 @@ function FeedPage() {
               size="sm"
             />
             <p className="text-sm text-muted-foreground truncate leading-tight">
-              {greeting(new Date().getHours())},{" "}
+              {isClient ? greeting(new Date().getHours()) : "Hey"},{" "}
               <span className="font-semibold text-foreground">{name}</span>
             </p>
           </div>

@@ -89,6 +89,7 @@ function GamesHub() {
   const live = roomActivity.activity;
   const livePlayers = Object.keys(roomActivity.players).length;
   const inCall = !!call?.roomId && !!user;
+  const builtinCount = games.filter((entry) => entry.source === "builtin").length;
 
   const play = async (entry: GameEntry) => {
     if (inCall) {
@@ -136,9 +137,9 @@ function GamesHub() {
               Game Hub
             </h1>
             <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-              {games.length} games that run inside the call — chess and checkers, arena action,
-              puzzles. No sign-up, no lobby, no download: tap one and it starts, full screen, with
-              your voice on top.
+              {builtinCount} games ship inside RIZZ — chess and checkers, arena action, puzzles —
+              plus web classics like skribbl. No sign-up, no lobby, no download: tap one and it
+              starts, full screen, with your voice on top.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">

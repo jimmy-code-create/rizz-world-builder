@@ -1,5 +1,26 @@
 [
   {
+    "id": "rizz-draw-party",
+    "name": "Draw Party",
+    "icon": ":cat_think:",
+    "url": "/embed/draw-party",
+    "type": "room-link",
+    "players": "2-8",
+    "description": "Native draw & guess — Classic, Speed & Sandbox modes with live reactions",
+    "roomParam": "room",
+    "sharedCode": true
+  },
+  {
+    "id": "chess",
+    "name": "Online Chess",
+    "icon": "♟️",
+    "url": "https://lichess.org/",
+    "type": "room-link",
+    "players": "2",
+    "description": "Play real people on lichess — create a game and share the link",
+    "sharedCode": false
+  },
+  {
     "id": "gamenest",
     "name": "Party Games",
     "icon": ":cat_hype:",
@@ -22,11 +43,40 @@
   },
   {
     "id": "quick-play",
-    "name": "2048",
+    "name": "2048 (web)",
     "icon": ":cat_cool:",
     "url": "https://gabrielecirulli.github.io/2048/",
     "type": "embed",
     "players": "1",
     "description": "Solo number puzzle while you hang out"
+  },
+  {
+    "id": "checkers",
+    "name": "Online Checkers",
+    "icon": "🎯",
+    "url": "https://www.247checkers.com/",
+    "type": "embed",
+    "players": "2",
+    "description": "Play humans on 247Checkers, right inside the app"
+  },
+  {
+    "id": "codenames",
+    "name": "Codenames",
+    "icon": ":cat_think:",
+    "url": "https://codenames.game/",
+    "type": "room-link",
+    "players": "4-8",
+    "description": "Word-based party game — create a room and share",
+    "sharedCode": false
+  },
+  {
+    "id": "gartic-phone",
+    "name": "Gartic Phone",
+    "icon": "📱",
+    "url": "https://garticphone.com/",
+    "type": "room-link",
+    "players": "4-30",
+    "description": "Telephone game with drawing — create a room to play",
+    "sharedCode": false
   }
 ]

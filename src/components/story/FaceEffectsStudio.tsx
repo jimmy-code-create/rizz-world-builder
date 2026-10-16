@@ -75,6 +75,7 @@ export function FaceEffectsStudio({
   const [stillSource, setStillSource] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [hasStreamedFrame, setHasStreamedFrame] = useState(false);
+  const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
 
   const video = videoRef.current;
   const trackingEnabled = open && !!video && !stillSource;
@@ -98,6 +99,8 @@ export function FaceEffectsStudio({
 
   const startStream = useCallback(
     async (nextFacing: "user" | "environment") => {
+      setHasRenderedFrame(false);
+      setHasStreamedFrame(false);
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraError("This browser can't open a camera. Pick a photo instead.");
         setStarting(false);
@@ -151,6 +154,8 @@ export function FaceEffectsStudio({
       setStillSource(null);
       setStillFaces([]);
       setEffect(null);
+      setHasStreamedFrame(false);
+      setHasRenderedFrame(false);
     }
   }, [open]);
 
@@ -179,7 +184,8 @@ export function FaceEffectsStudio({
     // The still path is drawn once; the live path runs every animation frame.
     const draw = (time: number) => {
       renderer.setVideo(source as TexImageSource | null);
-      renderer.render({ effect, intensity, faces, time });
+      const rendered = renderer.render({ effect, intensity, faces, time });
+      setHasRenderedFrame((current) => (current === rendered ? current : rendered));
       if (overlay) {
         drawOverlays({
           ctx: overlay,
@@ -226,6 +232,7 @@ export function FaceEffectsStudio({
     const url = URL.createObjectURL(file);
     setStillSource(url);
     setHasStreamedFrame(false);
+    setHasRenderedFrame(false);
     const image = new Image();
     image.src = url;
     await image.decode().catch(() => {});
@@ -243,11 +250,17 @@ export function FaceEffectsStudio({
     setCapturing(true);
     try {
       const output = document.createElement("canvas");
-      output.width = glCanvas.width;
-      output.height = glCanvas.height;
+      output.width = glCanvas.width || 720;
+      output.height = glCanvas.height || 1280;
       const ctx = output.getContext("2d");
       if (!ctx) throw new Error("Couldn't prepare the frame");
-      ctx.drawImage(glCanvas, 0, 0);
+      if (hasRenderedFrame) {
+        ctx.drawImage(glCanvas, 0, 0);
+      } else {
+        const source = stillSource ? imageRef.current : videoRef.current;
+        if (!source) throw new Error("The camera preview isn't ready yet.");
+        ctx.drawImage(source, 0, 0, output.width, output.height);
+      }
       ctx.drawImage(overlayCanvas, 0, 0);
       const blob = await new Promise<Blob | null>((resolve) =>
         output.toBlob((result) => resolve(result), "image/jpeg", 0.92),
@@ -259,7 +272,7 @@ export function FaceEffectsStudio({
     } finally {
       setCapturing(false);
     }
-  }, [onCapture]);
+  }, [hasRenderedFrame, onCapture, stillSource]);
 
   const applyEffect = (next: FaceEffect) => {
     setEffect((current) => (current?.id === next.id ? null : next));
@@ -323,19 +336,21 @@ export function FaceEffectsStudio({
                 playsInline
                 muted
                 autoPlay
-                className={`absolute inset-0 h-full w-full object-cover ${stillSource ? "opacity-0" : ""}`}
+                className={`absolute inset-0 h-full w-full object-cover ${stillSource || hasRenderedFrame ? "opacity-0" : ""}`}
               />
-              <canvas ref={glCanvasRef} className="absolute inset-0 h-full w-full object-cover" />
+              <canvas
+                ref={glCanvasRef}
+                className={`absolute inset-0 h-full w-full object-cover ${hasRenderedFrame ? "opacity-100" : "opacity-0"}`}
+              />
               <canvas ref={overlayCanvasRef} className="absolute inset-0 h-full w-full object-cover" />
 
               {stillSource && (
-                // A picked photo is decoded off-screen and read by the renderer;
-                // the visible pixels always come from the canvases above.
+                // Keep the photo visible until the WebGL canvas produces its first frame.
                 <img
                   ref={imageRef}
                   src={stillSource}
                   alt=""
-                  className="pointer-events-none absolute h-px w-px opacity-0"
+                  className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${hasRenderedFrame ? "opacity-0" : "opacity-100"}`}
                   onLoad={() => {
                     const source = imageRef.current;
                     if (source) rendererRef.current?.setVideo(source);

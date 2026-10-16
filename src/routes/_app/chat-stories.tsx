@@ -4,12 +4,27 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
-import { Heart, Loader2, MessageSquareText, Play, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
+import {
+  Heart,
+  Loader2,
+  MessageSquareText,
+  Play,
+  Sparkles,
+  Trash2,
+  Upload,
+  Wand2,
+} from "lucide-react";
 import { toast } from "@/lib/toast";
-import { ChatStoryPlayer, type ChatStory, type StoryLine, type StoryChoice } from "@/components/chatstory/ChatStoryPlayer";
+import {
+  ChatStoryPlayer,
+  type ChatStory,
+  type StoryLine,
+  type StoryChoice,
+} from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 import { generateChatStory, saveGeneratedStoryToSupabase } from "@/lib/story-generation";
-import { parseAuthorStoryFile } from "@/lib/chat-story-import";
+import { STORY_LENGTH_PLANS, type StoryLength } from "@/lib/story-length";
+import { parseStoryUpload, TEMPLATE_NOTICES, describeUploadError } from "@/lib/chat-story-import";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -32,9 +47,17 @@ export const Route = createFileRoute("/_app/chat-stories")({
   head: () => ({
     meta: [
       { title: "Chat Stories · RIZZ" },
-      { name: "description", content: "Bite-size funny, chaotic and spooky stories told as text conversations. Tap through them like you're reading someone's chat." },
+      {
+        name: "description",
+        content:
+          "Bite-size funny, chaotic and spooky stories told as text conversations. Tap through them like you're reading someone's chat.",
+      },
       { property: "og:title", content: "Chat Stories · RIZZ" },
-      { property: "og:description", content: "Tap-to-read chat stories: wrong numbers, haunted fridges and gym crush disasters." },
+      {
+        property: "og:description",
+        content:
+          "Tap-to-read chat stories: wrong numbers, haunted fridges and gym crush disasters.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Chat Stories · RIZZ" },
@@ -64,14 +87,20 @@ function ChatStoriesPage() {
   const [genPrompt, setGenPrompt] = useState("");
   const [genCategory, setGenCategory] = useState<StoryCategory>("horror");
   const [genLang, setGenLang] = useState<"hi" | "en">("en");
+  const [genLength, setGenLength] = useState<StoryLength>("short");
+  const [genProgress, setGenProgress] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStoryId, setGeneratedStoryId] = useState<string | null>(null);
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
   const [storyToDelete, setStoryToDelete] = useState<ListedChatStory | null>(null);
   const [isDeletingStory, setIsDeletingStory] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Rizz voice command "ek story bana do" opens the generator dialog.
@@ -93,7 +122,10 @@ function ChatStoriesPage() {
   const likes = useQuery({
     queryKey: ["chat-story-likes", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("chat_story_likes").select("story_id").eq("user_id", user!.id);
+      const { data } = await supabase
+        .from("chat_story_likes")
+        .select("story_id")
+        .eq("user_id", user!.id);
       return new Set((data ?? []).map((r: { story_id: string }) => r.story_id));
     },
     enabled: !!user,
@@ -102,13 +134,23 @@ function ChatStoriesPage() {
   const lines = useQuery({
     queryKey: ["chat-story-lines", openId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("chat_story_lines")
-        .select("idx,speaker,body,body_en,next_idx,chapter")
-        .eq("story_id", openId!)
-        .order("idx");
-      if (error) throw error;
-      return (data ?? []) as unknown as StoryLine[];
+      // Supabase caps a single response (1,000 rows by default), so long
+      // stories are fetched page by page until every message is loaded.
+      const PAGE_SIZE = 1000;
+      const rows: StoryLine[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("chat_story_lines")
+          .select("idx,speaker,body,body_en,next_idx,chapter")
+          .eq("story_id", openId!)
+          .order("idx")
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as unknown as StoryLine[];
+        rows.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
+      return rows;
     },
     enabled: !!openId,
   });
@@ -130,7 +172,12 @@ function ChatStoriesPage() {
   const toggleLike = async (storyId: string) => {
     if (!user) return toast.info("Sign in to like stories");
     const isLiked = likes.data?.has(storyId);
-    if (isLiked) await supabase.from("chat_story_likes").delete().eq("story_id", storyId).eq("user_id", user.id);
+    if (isLiked)
+      await supabase
+        .from("chat_story_likes")
+        .delete()
+        .eq("story_id", storyId)
+        .eq("user_id", user.id);
     else await supabase.from("chat_story_likes").insert({ story_id: storyId, user_id: user.id });
     qc.invalidateQueries({ queryKey: ["chat-story-likes", user.id] });
   };
@@ -138,7 +185,6 @@ function ChatStoriesPage() {
   const deleteStory = async () => {
     const story = storyToDelete;
     if (!story || !user || isDeletingStory) return;
-
     setIsDeletingStory(true);
     try {
       const { data, error } = await supabase
@@ -158,9 +204,50 @@ function ChatStoriesPage() {
       toast.success("Story deleted.");
     } catch (error) {
       console.error("Delete story failed:", error);
-      toast.error(error instanceof Error ? error.message : "Couldn't delete this story. Please try again.");
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't delete this story. Please try again.",
+      );
     } finally {
       setIsDeletingStory(false);
+    }
+  };
+
+  /**
+   * Deletes every story this user created (other authors' stories are never
+   * touched; the database policies enforce that too). Used when starting
+   * fresh with newly generated sagas.
+   */
+  const deleteAllMyStories = async () => {
+    if (!user || isDeletingAll) return;
+    const mine = (stories.data ?? []).filter((s) => s.created_by === user.id);
+    if (mine.length === 0) {
+      setIsDeleteAllOpen(false);
+      return;
+    }
+    setIsDeletingAll(true);
+    try {
+      let deleted = 0;
+      for (const story of mine) {
+        const { error } = await supabase
+          .from("chat_stories")
+          .delete()
+          .eq("id", story.id)
+          .eq("created_by", user.id);
+        if (error) throw error;
+        deleted += 1;
+      }
+      await qc.invalidateQueries({ queryKey: ["chat-stories"] });
+      setOpenId(null);
+      setGeneratedStoryId(null);
+      setIsDeleteAllOpen(false);
+      toast.success(`Deleted ${deleted} ${deleted === 1 ? "story" : "stories"}.`);
+    } catch (error) {
+      console.error("Delete all stories failed:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't delete those stories. Please try again.",
+      );
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -177,12 +264,20 @@ function ChatStoriesPage() {
     }
 
     setIsGenerating(true);
+    setGenProgress(null);
     try {
-      const generatedStory = await generateChatStory({
-        prompt,
-        category: genCategory,
-        language: genLang,
-      });
+      const result = await generateChatStory(
+        {
+          prompt,
+          category: genCategory,
+          language: genLang,
+          length: genLength,
+        },
+        (progress) => {
+          setGenProgress(`Writing chapter ${progress.chapter} of ${progress.totalChapters}…`);
+        },
+      );
+      const generatedStory = result.story;
       const storyId = await saveGeneratedStoryToSupabase(generatedStory);
       await qc.invalidateQueries({ queryKey: ["chat-stories"] });
       setGeneratedStoryId(storyId);
@@ -190,49 +285,86 @@ function ChatStoriesPage() {
       setGenPrompt("");
       setGenCategory("horror");
       setGenLang("en");
+      setGenLength("short");
       setIsGenOpen(false);
-      toast.success("Your story is ready.");
+      if (result.source === "template") {
+        toast.warning("Built-in story used", {
+          description: TEMPLATE_NOTICES[result.reason === "ok" ? "request_failed" : result.reason],
+          duration: 8000,
+        });
+      } else {
+        toast.success("Your story is ready.");
+      }
       setOpenId(storyId);
     } catch (error: unknown) {
       console.error("Create story failed:", error);
       const msg = error instanceof Error ? error.message : "";
       let friendly = "Couldn't create your story right now. Please try again in a moment.";
       if (/sign in/i.test(msg)) friendly = msg;
-      else if (/STORY_EMPTY/.test(msg)) friendly = "The story writer didn't answer. Please try again.";
-      else if (/row-level security|permission denied|created_by/i.test(msg)) friendly = "Couldn't save your story. Please try again later.";
+      else if (/STORY_EMPTY/.test(msg))
+        friendly = "The story writer didn't answer. Please try again.";
+      else if (/row-level security|permission denied|created_by/i.test(msg))
+        friendly = "Couldn't save your story. Please try again later.";
       toast.error(friendly);
     } finally {
       setIsGenerating(false);
+      setGenProgress(null);
     }
   };
 
   /**
-   * Author-only import: reads a story JSON file, converts the documented
-   * chapters/scenes schema into the stored shape and inserts it through this
-   * user's own session, so the existing RLS policies decide what is allowed.
+   * Story upload: JSON author files and flat exports use the documented
+   * schema (with `emotion`/`delay_ms` mapped to voice effects), and plain
+   * `.txt` / `.md` scripts are read as chats. Long scripts are saved in
+   * batches, so books of 1,000+ messages import fine. The story is inserted
+   * through this user's own session, so the existing RLS policies decide what
+   * is allowed.
    */
   const importStoryFile = async (file: File) => {
-    if (!user || isImporting) return;
+    if (isImporting) return;
+    if (!user) {
+      toast.info("Sign in to upload stories");
+      return;
+    }
+    // 5 MB keeps huge sagas saveable while rejecting accidental binaries early.
+    if (file.size > 5_000_000) {
+      setImportError("That file is too large (over ~5 MB). Split it and upload each part.");
+      return;
+    }
     setIsImporting(true);
     setImportError(null);
+    setImportStatus("Reading the story…");
     try {
       const contents = await file.text();
-      const story = parseAuthorStoryFile(contents);
+      if (!contents.trim()) {
+        throw new Error("That file is empty.");
+      }
+      const story = parseStoryUpload(contents);
+      if (story.lines.length === 0) {
+        throw new Error("No story messages found in that file.");
+      }
+      setImportStatus(`Saving ${story.lines.length} messages…`);
       const storyId = await saveGeneratedStoryToSupabase(story);
       await qc.invalidateQueries({ queryKey: ["chat-stories"] });
       setIsImportOpen(false);
       setOpenId(storyId);
       toast.success(`Imported “${story.title}” with ${story.lines.length} messages.`);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Couldn't import that story.");
+      const friendly = describeUploadError(error);
+      setImportError(friendly);
+      if (/couldn't save|network problem/i.test(friendly)) {
+        toast.error("Upload didn't save", { description: friendly });
+      }
     } finally {
       setIsImporting(false);
+      setImportStatus(null);
       if (importInputRef.current) importInputRef.current.value = "";
     }
   };
 
   const list = (stories.data ?? []).filter((s) => cat === "all" || s.category === cat);
-  const open = list.find((s) => s.id === openId) ?? (stories.data ?? []).find((s) => s.id === openId);
+  const open =
+    list.find((s) => s.id === openId) ?? (stories.data ?? []).find((s) => s.id === openId);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -248,11 +380,14 @@ function ChatStoriesPage() {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => { setImportError(null); setIsImportOpen(true); }}
+            onClick={() => {
+              setImportError(null);
+              setIsImportOpen(true);
+            }}
             className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border/70 bg-card/50 px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Import JSON</span>
+            <span className="hidden sm:inline">Upload story</span>
           </button>
           <button
             type="button"
@@ -266,38 +401,89 @@ function ChatStoriesPage() {
         </div>
       </header>
 
-      <Dialog open={isImportOpen} onOpenChange={(nextOpen) => { if (!isImporting) setIsImportOpen(nextOpen); }}>
+      <Dialog
+        open={isImportOpen}
+        onOpenChange={(nextOpen) => {
+          if (!isImporting) setIsImportOpen(nextOpen);
+        }}
+      >
         <DialogContent className="max-h-[92dvh] overflow-y-auto border border-border/70 bg-background/95 backdrop-blur-2xl sm:rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-left">
-              <Upload className="h-5 w-5 text-primary" /> Import a story JSON
+              <Upload className="h-5 w-5 text-primary" /> Upload a story
             </DialogTitle>
             <DialogDescription className="text-left">
-              Author-only. The file is inserted under your account, so only stories
-              your account is allowed to create are saved.
+              Upload story JSON or a plain-text script. Long scripts are welcome — books of 1,000+
+              messages import fine. The story is saved under your account.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json,.json"
-              disabled={isImporting}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void importStoryFile(file);
+            <label
+              htmlFor="story-upload-input"
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (!isImporting) setIsDragActive(true);
               }}
-              className="w-full cursor-pointer rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-primary/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
-            />
-            <p className="rounded-xl border border-border/60 bg-card/40 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
-              {'{ "title": "Room 4B", "hook": "…", "language": "hi", "genre": "horror",'}
-              {' "characters": [{ "id", "name", "role", "voice_profile" }],'}
-              {' "chapters": [{ "title", "scenes": [{ "id", "narration", "messages":'}
-              {' [{ "character_id", "text" }], "choice": { "options": [{ "label", "reply", "goto" }] } }] }] }'}
-            </p>
+              onDragLeave={() => setIsDragActive(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragActive(false);
+                const file = event.dataTransfer.files?.[0];
+                if (file && !isImporting) void importStoryFile(file);
+              }}
+              className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition ${isDragActive ? "border-primary bg-primary/10" : "border-border/70 bg-card/50 hover:border-primary/50"} ${isImporting ? "pointer-events-none opacity-80" : ""}`}
+            >
+              <input
+                id="story-upload-input"
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json,text/plain,.txt,text/markdown,.md"
+                disabled={isImporting}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importStoryFile(file);
+                }}
+                className="sr-only"
+              />
+              {isImporting ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : (
+                <Upload className="h-5 w-5 text-primary" />
+              )}
+              <span className="text-xs font-semibold">
+                {isImporting
+                  ? (importStatus ?? "Importing…")
+                  : "Choose a story file or drop it here"}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                JSON, .txt or .md — chapters via <span className="font-mono">## headings</span> or{" "}
+                <span className="font-mono">---</span>
+              </span>
+            </label>
+            <div className="rounded-xl border border-border/60 bg-card/40 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+              <p>{'{ "title": "Room 4B", "hook": "…", "language": "hi", "genre": "horror",'}</p>
+              <p>{' "characters": [{ "id", "name", "role", "voice_profile" }],'}</p>
+              <p>{' "chapters": [{ "title", "scenes": [{ "id", "narration", "messages":'}</p>
+              <p>
+                {
+                  ' [{ "character_id", "text", "emotion": "whisper", "delay_ms": 900 }], "choice": { "options":'
+                }
+              </p>
+              <p>{' [{ "label", "reply", "goto" }] } }] } }'}</p>
+              <p className="mt-2 text-foreground/70">— or a text script —</p>
+              <p>{"# The Wrong Number"}</p>
+              <p>{"*The phone buzzes at 2:13 AM.*"}</p>
+              <p>{"Asha: Hmm... who is this?"}</p>
+              <p>{"Kabir: [sigh] You again?"}</p>
+            </div>
             <p className="text-[11px] text-muted-foreground">
-              A starting point lives at <span className="font-mono">src/data/room4b.json</span>. Already-flat
-              files (title + lines + choices) import as-is.
+              Text scripts support <span className="font-mono">Name: message</span> lines,{" "}
+              <span className="font-mono">*narration*</span>,{" "}
+              <span className="font-mono"># titles</span>, <span className="font-mono">---</span>{" "}
+              between chapters, and voice effects like{" "}
+              <span className="font-mono">[pause] [sigh] [laughs] [gasp] [whisper]…[/whisper]</span>
+              . A JSON starting point lives at{" "}
+              <span className="font-mono">src/data/room4b.json</span>.
             </p>
             {importError && <p className="text-xs font-semibold text-[#ff5c7a]">{importError}</p>}
           </div>
@@ -322,9 +508,15 @@ function ChatStoriesPage() {
       >
         <DialogContent
           className="max-h-[92dvh] overflow-y-auto border border-primary/25 bg-background/95 shadow-[0_24px_90px_rgba(20,8,24,.45)] backdrop-blur-2xl sm:rounded-2xl"
-          onEscapeKeyDown={(event) => { if (isGenerating) event.preventDefault(); }}
-          onPointerDownOutside={(event) => { if (isGenerating) event.preventDefault(); }}
-          onInteractOutside={(event) => { if (isGenerating) event.preventDefault(); }}
+          onEscapeKeyDown={(event) => {
+            if (isGenerating) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (isGenerating) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (isGenerating) event.preventDefault();
+          }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-left">
@@ -336,7 +528,9 @@ function ChatStoriesPage() {
           </DialogHeader>
           <div className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="story-prompt" className="text-xs font-semibold">Your premise</label>
+              <label htmlFor="story-prompt" className="text-xs font-semibold">
+                Your premise
+              </label>
               <textarea
                 id="story-prompt"
                 value={genPrompt}
@@ -400,6 +594,37 @@ function ChatStoriesPage() {
                 </div>
               </fieldset>
             </div>
+            <fieldset disabled={isGenerating} className="space-y-2">
+              <legend className="mb-2 text-xs font-semibold">Story length</legend>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(STORY_LENGTH_PLANS) as StoryLength[]).map((length) => {
+                  const plan = STORY_LENGTH_PLANS[length];
+                  const label =
+                    length === "short"
+                      ? "Short (~25)"
+                      : length === "long"
+                        ? "Long (~300)"
+                        : "Epic (1000+)";
+                  return (
+                    <button
+                      key={length}
+                      type="button"
+                      aria-pressed={genLength === length}
+                      title={`${plan.targetLines[0]}–${plan.targetLines[1]} messages, takes ${plan.eta}`}
+                      onClick={() => setGenLength(length)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${genLength === length ? "border-primary/70 bg-primary/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Long and epic sagas are written chapter by chapter with a full cast — narrator,
+                child, elders, and a young married couple — each with its own voice. Epic takes{" "}
+                {STORY_LENGTH_PLANS.epic.eta}.
+              </p>
+            </fieldset>
           </div>
           <DialogFooter>
             <button
@@ -416,8 +641,12 @@ function ChatStoriesPage() {
               disabled={isGenerating || genPrompt.trim().length < 4}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-5 text-sm font-bold text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {isGenerating ? "Creating story…" : "Create story"}
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              {isGenerating ? (genProgress ?? "Creating story…") : "Create story"}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -435,13 +664,31 @@ function ChatStoriesPage() {
             {c}
           </button>
         ))}
+        {user && (stories.data ?? []).some((s) => s.created_by === user.id) && (
+          <button
+            type="button"
+            onClick={() => setIsDeleteAllOpen(true)}
+            className="shrink-0 px-4 h-9 rounded-full text-sm font-semibold text-destructive-foreground/80 glass"
+          >
+            Delete mine
+          </button>
+        )}
       </div>
 
       {stories.isLoading && <p className="text-sm text-muted-foreground">Loading stories…</p>}
       {stories.isError && (
-        <div role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4"
+        >
           <p className="text-sm font-semibold">Stories couldn’t be loaded.</p>
-          <button type="button" onClick={() => stories.refetch()} className="mt-2 text-xs font-semibold underline underline-offset-4">Try again</button>
+          <button
+            type="button"
+            onClick={() => stories.refetch()}
+            className="mt-2 text-xs font-semibold underline underline-offset-4"
+          >
+            Try again
+          </button>
         </div>
       )}
 
@@ -517,7 +764,8 @@ function ChatStoriesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this story?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{storyToDelete?.title}” and its story lines, choices, and likes will be permanently removed. This cannot be undone.
+              “{storyToDelete?.title}” and its story lines, choices, and likes will be permanently
+              removed. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -535,15 +783,75 @@ function ChatStoriesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={isDeleteAllOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isDeletingAll) setIsDeleteAllOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all your stories?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every story you created — and all their lines, choices, and likes — will be
+              permanently removed. Stories by other authors stay. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={deleteAllMyStories}
+              disabled={isDeletingAll}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeletingAll && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeletingAll ? "Deleting…" : "Delete all mine"}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {openId && (lines.isLoading || choices.isLoading) && !lines.isError && !choices.isError && (
+        <div
+          role="status"
+          className="fixed inset-x-4 bottom-5 z-[140] mx-auto flex max-w-md items-center justify-center gap-2 rounded-xl border border-border/70 bg-background/95 p-4 shadow-xl backdrop-blur"
+        >
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-xs font-semibold">Opening story…</p>
+        </div>
+      )}
       {openId && (lines.isError || choices.isError) && (
-        <div role="alert" className="fixed inset-x-4 bottom-5 z-[140] mx-auto max-w-md rounded-xl border border-destructive/35 bg-background/95 p-4 shadow-xl backdrop-blur">
+        <div
+          role="alert"
+          className="fixed inset-x-4 bottom-5 z-[140] mx-auto max-w-md rounded-xl border border-destructive/35 bg-background/95 p-4 shadow-xl backdrop-blur"
+        >
           <p className="text-sm font-semibold">This story couldn’t be opened.</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {lines.error instanceof Error ? lines.error.message : choices.error instanceof Error ? choices.error.message : "Please try again."}
+            {lines.error instanceof Error
+              ? lines.error.message
+              : choices.error instanceof Error
+                ? choices.error.message
+                : "Please try again."}
           </p>
           <div className="mt-3 flex gap-3">
-            <button type="button" onClick={() => { void lines.refetch(); void choices.refetch(); }} className="text-xs font-semibold underline underline-offset-4">Try again</button>
-            <button type="button" onClick={() => setOpenId(null)} className="text-xs font-semibold text-muted-foreground">Close</button>
+            <button
+              type="button"
+              onClick={() => {
+                void lines.refetch();
+                void choices.refetch();
+              }}
+              className="text-xs font-semibold underline underline-offset-4"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenId(null)}
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
