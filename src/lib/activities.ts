@@ -53,9 +53,10 @@ export function getGame(id: string): GameEntry | null {
   return getGames().find((entry) => entry.id === id) ?? null;
 }
 
-/** Only real https URLs launch. Placeholders stay a friendly error card. */
+/** Internal paths (native RIZZ games) and real https URLs launch. Placeholders stay a friendly error card. */
 export function isValidGameUrl(url: string): boolean {
-  return /^https:\/\/[^/]+/.test(url.trim());
+  const trimmed = url.trim();
+  return /^https:\/\/[^/]+/.test(trimmed) || trimmed.startsWith("/");
 }
 
 /** Short unambiguous room code (no 0/O, 1/I) shared with the whole room. */
@@ -82,11 +83,16 @@ export function launchUrl(entry: GameEntry, roomCode: string | null): string {
   return entry.url;
 }
 
-/** Copy-paste invite text for the room. */
+/** Copy-paste invite text for the room. Internal native games resolve to an absolute link when possible. */
 export function inviteText(entry: GameEntry, roomCode: string | null): string {
-  if (entry.type === "embed" || !roomCode) return entry.url;
-  if (entry.type === "room-link") return `Join my ${entry.name} game: ${launchUrl(entry, roomCode)}`;
-  return `Join my ${entry.name} game at ${entry.url} with room code ${roomCode}`;
+  const target = launchUrl(entry, roomCode);
+  const absolute =
+    typeof window !== "undefined" && target.startsWith("/")
+      ? `${window.location.origin}${target}`
+      : target;
+  if (entry.type === "embed" || !roomCode) return absolute;
+  if (entry.type === "room-link") return `Join my ${entry.name} game: ${absolute}`;
+  return `Join my ${entry.name} game at ${absolute} with room code ${roomCode}`;
 }
 
 /** Who has the game open right now, by user id (Discord-style "N playing"). */

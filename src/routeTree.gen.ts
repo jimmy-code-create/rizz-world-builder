@@ -22,6 +22,7 @@ import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppBotsRouteImport } from './routes/_app/bots'
 import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
+import { Route as AppDrawPartyRouteImport } from './routes/_app/draw-party'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
 import { Route as AppEffectsRouteImport } from './routes/_app/effects'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
@@ -38,6 +39,7 @@ import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api.turn-credentials'
+import { Route as EmbedDrawPartyRouteImport } from './routes/embed.draw-party'
 import { Route as JoinRealmCodeRouteImport } from './routes/join-realm.$code'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppBotsIndexRouteImport } from './routes/_app/bots.index'
@@ -125,6 +127,11 @@ const AppDmsRoute = AppDmsRouteImport.update({
   path: '/dms',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDrawPartyRoute = AppDrawPartyRouteImport.update({
+  id: '/draw-party',
+  path: '/draw-party',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDropsRoute = AppDropsRouteImport.update({
   id: '/drops',
   path: '/drops',
@@ -203,6 +210,11 @@ const ApiRizzCoachRoute = ApiRizzCoachRouteImport.update({
 const ApiTurnCredentialsRoute = ApiTurnCredentialsRouteImport.update({
   id: '/api/turn-credentials',
   path: '/api/turn-credentials',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmbedDrawPartyRoute = EmbedDrawPartyRouteImport.update({
+  id: '/embed/draw-party',
+  path: '/embed/draw-party',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRealmCodeRoute = JoinRealmCodeRouteImport.update({
@@ -331,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/bots': typeof AppBotsRouteWithChildren
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
+  '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
@@ -347,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/embed/draw-party': typeof EmbedDrawPartyRoute
   '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/bots/developer': typeof AppBotsDeveloperRoute
@@ -382,6 +396,7 @@ export interface FileRoutesByTo {
   '/bookmarks': typeof AppBookmarksRoute
   '/chat-stories': typeof AppChatStoriesRoute
   '/dms': typeof AppDmsRoute
+  '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
   '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
@@ -398,6 +413,7 @@ export interface FileRoutesByTo {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/embed/draw-party': typeof EmbedDrawPartyRoute
   '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/bots/developer': typeof AppBotsDeveloperRoute
@@ -436,6 +452,7 @@ export interface FileRoutesById {
   '/_app/bots': typeof AppBotsRouteWithChildren
   '/_app/chat-stories': typeof AppChatStoriesRoute
   '/_app/dms': typeof AppDmsRoute
+  '/_app/draw-party': typeof AppDrawPartyRoute
   '/_app/drops': typeof AppDropsRoute
   '/_app/effects': typeof AppEffectsRoute
   '/_app/explore': typeof AppExploreRoute
@@ -452,6 +469,7 @@ export interface FileRoutesById {
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
   '/api/turn-credentials': typeof ApiTurnCredentialsRoute
+  '/embed/draw-party': typeof EmbedDrawPartyRoute
   '/join-realm/$code': typeof JoinRealmCodeRoute
   '/join/$code': typeof JoinCodeRoute
   '/_app/bots/developer': typeof AppBotsDeveloperRoute
@@ -490,6 +508,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/chat-stories'
     | '/dms'
+    | '/draw-party'
     | '/drops'
     | '/effects'
     | '/explore'
@@ -506,6 +525,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/embed/draw-party'
     | '/join-realm/$code'
     | '/join/$code'
     | '/bots/developer'
@@ -541,6 +561,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/chat-stories'
     | '/dms'
+    | '/draw-party'
     | '/drops'
     | '/effects'
     | '/explore'
@@ -557,6 +578,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/embed/draw-party'
     | '/join-realm/$code'
     | '/join/$code'
     | '/bots/developer'
@@ -594,6 +616,7 @@ export interface FileRouteTypes {
     | '/_app/bots'
     | '/_app/chat-stories'
     | '/_app/dms'
+    | '/_app/draw-party'
     | '/_app/drops'
     | '/_app/effects'
     | '/_app/explore'
@@ -610,6 +633,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/rizz-coach'
     | '/api/turn-credentials'
+    | '/embed/draw-party'
     | '/join-realm/$code'
     | '/join/$code'
     | '/_app/bots/developer'
@@ -649,6 +673,7 @@ export interface RootRouteChildren {
   ApiMeRoute: typeof ApiMeRoute
   ApiRizzCoachRoute: typeof ApiRizzCoachRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
+  EmbedDrawPartyRoute: typeof EmbedDrawPartyRoute
   JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
   ApiBotWebhookBotIdSecretRoute: typeof ApiBotWebhookBotIdSecretRoute
@@ -745,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/dms'
       fullPath: '/dms'
       preLoaderRoute: typeof AppDmsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/draw-party': {
+      id: '/_app/draw-party'
+      path: '/draw-party'
+      fullPath: '/draw-party'
+      preLoaderRoute: typeof AppDrawPartyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/drops': {
@@ -857,6 +889,13 @@ declare module '@tanstack/react-router' {
       path: '/api/turn-credentials'
       fullPath: '/api/turn-credentials'
       preLoaderRoute: typeof ApiTurnCredentialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embed/draw-party': {
+      id: '/embed/draw-party'
+      path: '/embed/draw-party'
+      fullPath: '/embed/draw-party'
+      preLoaderRoute: typeof EmbedDrawPartyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join-realm/$code': {
@@ -1035,6 +1074,7 @@ interface AppRouteChildren {
   AppBotsRoute: typeof AppBotsRouteWithChildren
   AppChatStoriesRoute: typeof AppChatStoriesRoute
   AppDmsRoute: typeof AppDmsRoute
+  AppDrawPartyRoute: typeof AppDrawPartyRoute
   AppDropsRoute: typeof AppDropsRoute
   AppEffectsRoute: typeof AppEffectsRoute
   AppExploreRoute: typeof AppExploreRoute
@@ -1068,6 +1108,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBotsRoute: AppBotsRouteWithChildren,
   AppChatStoriesRoute: AppChatStoriesRoute,
   AppDmsRoute: AppDmsRoute,
+  AppDrawPartyRoute: AppDrawPartyRoute,
   AppDropsRoute: AppDropsRoute,
   AppEffectsRoute: AppEffectsRoute,
   AppExploreRoute: AppExploreRoute,
@@ -1135,6 +1176,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMeRoute: ApiMeRoute,
   ApiRizzCoachRoute: ApiRizzCoachRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
+  EmbedDrawPartyRoute: EmbedDrawPartyRoute,
   JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
   ApiBotWebhookBotIdSecretRoute: ApiBotWebhookBotIdSecretRoute,

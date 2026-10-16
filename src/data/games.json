@@ -1,5 +1,16 @@
 [
   {
+    "id": "rizz-draw-party",
+    "name": "Draw Party",
+    "icon": ":cat_think:",
+    "url": "/embed/draw-party",
+    "type": "room-link",
+    "players": "2-8",
+    "description": "Native draw & guess — Classic, Speed & Sandbox modes with live reactions",
+    "roomParam": "room",
+    "sharedCode": true
+  },
+  {
     "id": "gamenest",
     "name": "Party Games",
     "icon": ":cat_hype:",
