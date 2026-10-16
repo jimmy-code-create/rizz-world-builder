@@ -3,6 +3,7 @@ import { Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useI18n } from "@/lib/i18n";
 
 type GifResult = {
   id: string;
@@ -192,6 +193,7 @@ const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
 const TOP_EMOJIS = EMOJIS.slice(0, 12);
 
 export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PickerTab>("emoji");
   const [query, setQuery] = useState("");
@@ -296,8 +298,8 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Open emoji, GIFs, and stickers"
-          title="Emoji, GIFs, and stickers"
+          aria-label={t("emoji_picker")}
+          title={t("emoji_picker")}
           className="shrink-0 text-primary"
         >
           <Smile className="h-5 w-5" />

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { Shield } from "lucide-react";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_app/settings/blocked")({
 
 function BlockedSettingsPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const blockedUsers = useQuery({
@@ -44,16 +46,16 @@ function BlockedSettingsPage() {
   return (
     <SettingsSubPage
       title="Blocked accounts"
-      description="Unblock someone to allow their messages and profile activity again."
+      description={t("settings_blocked_page_desc")}
       icon={<Shield className="h-5 w-5" />}
     >
       <SettingsCard>
         {blockedUsers.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading blocked accounts…</p>
+          <p className="text-sm text-muted-foreground">{t("loading_blocked")}</p>
         ) : blockedUsers.isError ? (
-          <p className="text-sm text-destructive">Couldn't load blocked accounts: {blockedUsers.error.message}</p>
+          <p className="text-sm text-destructive">{t("blocked_load_error")}: {blockedUsers.error.message}</p>
         ) : (blockedUsers.data ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">You haven't blocked anyone.</p>
+          <p className="text-sm text-muted-foreground">{t("empty_blocked")}</p>
         ) : (
           <div className="space-y-2">
             {(blockedUsers.data ?? []).map((entry) => {
@@ -76,7 +78,7 @@ function BlockedSettingsPage() {
                     onClick={() => void unblock(entry.blocked_id, username)}
                     className="border-white/10 glass"
                   >
-                    {unblockingId === entry.blocked_id ? "Unblocking…" : "Unblock"}
+                    {unblockingId === entry.blocked_id ? t("unblocking") : t("unblock")}
                   </Button>
                 </div>
               );

@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Tr
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
+import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
@@ -66,11 +67,7 @@ const writeSet = (k: string, s: Set<string>) => {
 };
 
 function timeAgo(iso: string) {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
+  return formatRelativeTime(iso);
 }
 
 function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post: FeedPost; liked?: boolean; saved?: boolean }) {
@@ -80,6 +77,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       ? parseExternalReelLink(post.media_url)
       : null;
   const { user } = useAuth();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
   const [likeCount, setLikeCount] = useState(post.like_count);
@@ -275,10 +273,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
 
   const handleTranslate = async () => {
     if (!post.caption?.trim()) {
-      toast.info("No caption to translate");
+      toast.info(t("no_caption"));
       return;
     }
-    const currentLang = loadPrefs().language || "en";
+    const currentLang = getActiveLanguage();
     const langLabel = LANGUAGE_NAMES[currentLang] ?? currentLang;
 
     if (showTranslated) {
@@ -288,7 +286,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
 
     if (translatedCaption && translatedLang === currentLang) {
       setShowTranslated(true);
-      toast.success(`Translated to ${langLabel}`);
+      toast.success(`${t("translated_to")} ${langLabel}`);
       return;
     }
 
@@ -298,15 +296,15 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       setTranslatedCaption(translated);
       setTranslatedLang(currentLang);
       setShowTranslated(true);
-      toast.success(`Translated to ${langLabel}`);
+      toast.success(`${t("translated_to")} ${langLabel}`);
     } catch {
-      toast.error(`Could not translate to ${langLabel}`);
+      toast.error(tf("translate_failed", { lang: langLabel }));
     } finally {
       setIsTranslating(false);
     }
   };
 
-  const viewerLang = loadPrefs().language || "en";
+  const viewerLang = getActiveLanguage();
   const detectedSource = post.caption ? detectSourceLang(post.caption) : null;
   const canTranslate = Boolean(post.caption?.trim() && (!detectedSource || detectedSource !== viewerLang));
 
@@ -542,7 +540,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           {showTranslated && (
             <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Languages className="h-3 w-3 text-primary" />
-              <span>Translated to {LANGUAGE_NAMES[translatedLang] ?? translatedLang}</span>
+              <span>{t("translated_to")} {LANGUAGE_NAMES[translatedLang] ?? translatedLang}</span>
               <span>·</span>
               <button
                 type="button"
@@ -561,13 +559,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 onClick={() => setShowTranslated(true)}
                 className="font-medium text-primary hover:underline focus-visible:outline-none"
               >
-                See translation ({LANGUAGE_NAMES[translatedLang] ?? translatedLang})
+                {tf("see_translation_as", { lang: LANGUAGE_NAMES[translatedLang] ?? translatedLang })}
+                <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-bold uppercase text-primary">
+                  {t("beta")}
+                </span>
               </button>
             </div>
           )}
           {(() => {
             const detectedSource = detectSourceLang(post.caption);
-            const userLang = loadPrefs().language || "en";
+            const userLang = getActiveLanguage();
             const isDifferentLang = detectedSource !== userLang;
             if (!isDifferentLang || translatedCaption || post.caption.trim().length <= 3) return null;
             return (
@@ -579,7 +580,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   disabled={isTranslating}
                   className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
                 >
-                  {isTranslating ? "Translating…" : `Translate post (${LANGUAGE_NAMES[userLang] || "Preferred"})`}
+                  {isTranslating ? t("translating") : tf("translate_post_as", { lang: LANGUAGE_NAMES[userLang] || "Preferred" })}
+                  <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-bold uppercase text-primary">
+                    {t("beta")}
+                  </span>
                 </button>
               </div>
             );
@@ -588,7 +592,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       )}
 
       {post.quote_post_id && <QuoteEmbed postId={post.quote_post_id} />}
-      <PollBlock postId={post.id} />
+      <PollBlock
+        postId={post.id}
+        translation={
+          showTranslated && translatedLang ? { active: true, targetLang: translatedLang } : null
+        }
+      />
 
       {post.media_url && !mediaFailed && (
         <div

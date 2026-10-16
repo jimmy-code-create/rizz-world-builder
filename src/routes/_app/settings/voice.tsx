@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n, tf, tp } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Headphones, Mic, Music2, Volume1, Volume2, Activity } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/_app/settings/voice")({
  */
 function VoiceAndSoundPage() {
   const [settings, update] = useSoundSettings();
+  const { t } = useI18n();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [sinkSupported, setSinkSupported] = useState(false);
 
@@ -91,12 +93,12 @@ function VoiceAndSoundPage() {
 
   const testSound = () => {
     if (settings.muted) {
-      toast.info("You're muted — unmute to hear the test sound.");
+      toast.info(t("voice_muted_test"));
       return;
     }
     // The ping is synthesised, so it honours the full 0–200% range.
     playNotificationPing(notificationsEffective);
-    toast.success(`Test sound at ${formatVolume(notificationsEffective)}`);
+    toast.success(tf("voice_test_at", { volume: formatVolume(notificationsEffective) }));
   };
 
   const overriddenRealms = useMemo(
@@ -106,8 +108,8 @@ function VoiceAndSoundPage() {
 
   return (
     <SettingsSubPage
-      title="Voice & Sound"
-      description="Volume for the bot, calls and notifications, plus your mic and devices."
+      title={t("settings_voice_label")}
+      description={t("settings_voice_desc")}
       icon={<Volume2 className="h-5 w-5" />}
     >
       <SettingsCard>
@@ -117,7 +119,7 @@ function VoiceAndSoundPage() {
               <Volume2 className="h-4 w-4 text-primary" /> Master volume
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Multiplies music, voice and notification levels.
+              {t("voice_master_desc")}
             </p>
           </div>
           <span className="shrink-0 font-display text-lg font-bold tabular-nums">
@@ -125,16 +127,16 @@ function VoiceAndSoundPage() {
           </span>
         </div>
         <VolumeSlider
-          label="Master"
+          label={t("voice_master")}
           value={settings.master}
           onChange={(value) => update({ master: value })}
         />
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/5 pt-4">
           <label htmlFor="sound-muted" className="min-w-0">
-            <span className="block text-sm font-semibold">Mute everything</span>
+            <span className="block text-sm font-semibold">{t("voice_mute_all")}</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Silences the bot, calls and alerts until you turn it back on.
+              {t("voice_mute_all_desc")}
             </span>
           </label>
           <Switch
@@ -150,7 +152,7 @@ function VoiceAndSoundPage() {
           onClick={testSound}
           className="mt-4 min-h-11 w-full gap-2 border-white/10 bg-white/5"
         >
-          <Volume1 className="h-4 w-4" /> Test sound
+          <Volume1 className="h-4 w-4" /> {t("voice_test_sound")}
         </Button>
       </SettingsCard>
 
@@ -159,24 +161,24 @@ function VoiceAndSoundPage() {
           <Music2 className="h-4 w-4 text-primary" /> Separate levels
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Each channel is multiplied by the master volume.
+          {t("voice_channels_desc")}
         </p>
         <div className="mt-4 space-y-5">
           <VolumeSlider
-            label="Music / bot"
+            label={t("voice_music_bot")}
             value={settings.music}
             effective={musicEffective}
             onChange={(value) => update({ music: value })}
             hint="Streamed media (Apple previews, YouTube) is capped at 100% by the browser."
           />
           <VolumeSlider
-            label="Voice & TTS"
+            label={t("voice_tts")}
             value={settings.voice}
             effective={voiceEffective}
             onChange={(value) => update({ voice: value })}
           />
           <VolumeSlider
-            label="Notification sounds"
+            label={t("voice_notif_sounds")}
             value={settings.notifications}
             effective={notificationsEffective}
             onChange={(value) => update({ notifications: value })}
@@ -191,7 +193,7 @@ function VoiceAndSoundPage() {
         </h2>
         <div className="mt-3 space-y-4">
           <DevicePicker
-            label="Input device"
+            label={t("voice_input_device")}
             value={settings.inputDeviceId}
             fallback="System default"
             devices={inputs}
@@ -199,7 +201,7 @@ function VoiceAndSoundPage() {
           />
           <div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold">Mic sensitivity</span>
+              <span className="text-sm font-semibold">{t("voice_mic_sensitivity")}</span>
               <span className="text-sm font-bold tabular-nums">{Math.round(settings.micSensitivity * 100)}%</span>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -208,11 +210,12 @@ function VoiceAndSoundPage() {
             <MicSensitivitySlider
               value={settings.micSensitivity}
               onCommit={(v) => update({ micSensitivity: v })}
+              ariaLabel={t("voice_mic_sensitivity")}
             />
           </div>
           <div className="flex items-center justify-between gap-3">
             <label htmlFor="sound-denoise" className="min-w-0">
-              <span className="block text-sm font-semibold">Noise suppression</span>
+              <span className="block text-sm font-semibold">{t("voice_noise")}</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">
                 Removes background hiss on the next call you join.
               </span>
@@ -238,7 +241,7 @@ function VoiceAndSoundPage() {
         </h2>
         <div className="mt-3 space-y-3">
           <DevicePicker
-            label="Output device"
+            label={t("voice_output_device")}
             value={settings.outputDeviceId}
             fallback="System default"
             devices={outputs}
@@ -287,6 +290,7 @@ function VoiceAndSoundPage() {
                   realmName={realm.name}
                   value={override ?? 1}
                   onCommit={(v) => setRealmVolume(realm.id, Math.round(v * 100))}
+                  ariaLabel={tf("voice_bot_volume_for", { name: realm.name })}
                 />
                 {override !== undefined && (
                   <button
@@ -324,10 +328,12 @@ function RealmVolumeSlider({
   realmName,
   value,
   onCommit,
+  ariaLabel,
 }: {
   realmName: string;
   value: number;
   onCommit: (v: number) => void;
+  ariaLabel?: string;
 }) {
   const [draft, setDraft] = useState<number | null>(null);
   return (
@@ -342,13 +348,21 @@ function RealmVolumeSlider({
         setDraft(null);
         onCommit((v ?? 100) / 100);
       }}
-      aria-label={`${realmName} bot volume`}
+      aria-label={ariaLabel ?? `${realmName} bot volume`}
     />
   );
 }
 
 /** 0–100% mic threshold: local draft while dragging, commit on release. */
-function MicSensitivitySlider({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+function MicSensitivitySlider({
+  value,
+  onCommit,
+  ariaLabel,
+}: {
+  value: number;
+  onCommit: (v: number) => void;
+  ariaLabel?: string;
+}) {
   const [draft, setDraft] = useState<number | null>(null);
   return (
     <Slider
@@ -362,7 +376,7 @@ function MicSensitivitySlider({ value, onCommit }: { value: number; onCommit: (v
         setDraft(null);
         onCommit((v ?? 50) / 100);
       }}
-      aria-label="Mic sensitivity"
+      aria-label={ariaLabel ?? "Mic sensitivity"}
     />
   );
 }

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
 import { BADGE_SET, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
+import { useI18n, tf } from "@/lib/i18n";
 import { BadgeChip } from "@/components/BadgeChip";
 import { BadgeIcon } from "@/components/BadgeIcon";
 import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
@@ -25,6 +26,7 @@ type FilterTab = "all" | "unlocked" | "locked" | "legendary" | "epic" | "rare" |
 export function BadgesPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
+  const { t } = useI18n();
   const all = useQuery({ queryKey: ["badges-all"], queryFn: fetchAllBadges });
   const mine = useQuery({
     queryKey: ["badges-mine", user?.id],
@@ -180,10 +182,10 @@ export function BadgesPage() {
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
                 <Award className="h-6 w-6" />
               </span>
-              Badge Showcase
+              {t("badge_showcase")}
             </h1>
             <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
-              Unlock exclusive badges by creating drops, hosting realms, and leveling up your rizz score.
+              {t("badge_showcase_desc")}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 self-start sm:self-auto">
@@ -191,7 +193,7 @@ export function BadgesPage() {
               <div className="font-mono text-base font-bold text-foreground">
                 {formatNumber(ownedCount)} <span className="text-muted-foreground">/ {formatNumber(totalCount)}</span>
               </div>
-              <div className="text-[11px] font-medium text-muted-foreground">Collected</div>
+              <div className="text-[11px] font-medium text-muted-foreground">{t("collected")}</div>
             </div>
             <div
               className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-sm font-bold text-primary"
@@ -206,8 +208,8 @@ export function BadgesPage() {
         <div className="relative space-y-1.5">
           <Progress value={progressPct} className="h-2 bg-white/5" />
           <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
-            <span>Novice Collector</span>
-            <span>{ownedCount >= 10 ? "Master Achiever" : "10 needed for Master"}</span>
+            <span>{t("novice_collector")}</span>
+            <span>{ownedCount >= 10 ? t("master_achiever") : tf("needed_for_master", { count: 10 })}</span>
           </div>
         </div>
 
@@ -238,7 +240,7 @@ export function BadgesPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search badges by title or criteria…"
+                placeholder={t("search_badges")}
                 className="pl-9 h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
               />
             </div>
@@ -246,12 +248,12 @@ export function BadgesPage() {
             <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none" role="tablist">
               {(
                 [
-                  ["all", "All"],
-                  ["unlocked", "Unlocked"],
-                  ["locked", "Locked"],
-                  ["legendary", "Legendary"],
-                  ["epic", "Epic"],
-                  ["rare", "Rare"],
+                  ["all", t("filter_all")],
+                  ["unlocked", t("filter_unlocked")],
+                  ["locked", t("filter_locked")],
+                  ["legendary", t("filter_legendary")],
+                  ["epic", t("filter_epic")],
+                  ["rare", t("filter_rare")],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -319,7 +321,7 @@ export function BadgesPage() {
                     className="relative rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
                     style={{ background: `${b.color}22`, color: b.color }}
                   >
-                    {b.rarity}
+                    {t(`rarity_${b.rarity}`)}
                   </span>
                 </button>
               );
@@ -328,7 +330,7 @@ export function BadgesPage() {
 
           {!all.isLoading && filteredBadges.length === 0 && (
             <div className="glass rounded-2xl p-8 border border-white/5 text-center text-xs text-muted-foreground">
-              No badges match your filter or search query.
+              {t("no_badges_match")}
             </div>
           )}
         </div>
@@ -398,12 +400,12 @@ export function BadgesPage() {
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground">
-                    {isActiveOwned ? "In your collection" : "Not collected yet"}
+                    {isActiveOwned ? t("unlocked_owned") : t("locked_achiever")}
                   </p>
                   <p className={`text-[11px] leading-snug ${isActiveOwned ? "text-emerald-200/90" : "text-muted-foreground"}`}>
                     {isActiveOwned
-                      ? "Featured on your profile card, hover cards and badge sheet."
-                      : "Earn it by being active and engaging in the community."}
+                      ? t("unlocked_owned_desc")
+                      : t("locked_desc")}
                   </p>
                 </div>
               </div>
@@ -411,19 +413,19 @@ export function BadgesPage() {
               {/* Rarity & stats */}
               <div className="space-y-1 border-t border-white/10 pt-3 text-xs">
                 <div className="flex items-center justify-between py-1 text-muted-foreground">
-                  <span>Badge tier</span>
+                  <span>{t("badge_tier")}</span>
                   <span className="flex items-center gap-1.5 font-medium capitalize text-foreground">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active.color }} aria-hidden="true" />
                     {active.rarity}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1 text-muted-foreground">
-                  <span>Slug</span>
+                  <span>{t("slug_key")}</span>
                   <span className="font-mono text-[11px] text-foreground">#{active.slug}</span>
                 </div>
                 {isActiveOwned && awardedAtFor.get(active.slug) && (
                   <div className="flex items-center justify-between py-1 text-muted-foreground">
-                    <span>Earned</span>
+                    <span>{t("earned")}</span>
                     <span className="text-foreground">
                       {new Date(awardedAtFor.get(active.slug)!).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
                     </span>
@@ -441,7 +443,7 @@ export function BadgesPage() {
                   className="w-full gap-2 border-white/10 bg-white/[0.04] text-xs h-10 hover:bg-white/[0.08] disabled:opacity-60"
                 >
                   <Share2 className="h-3.5 w-3.5" />
-                  {sharing ? "Making image…" : "Share"}
+                  {sharing ? t("making_image") : t("share")}
                 </Button>
                 {isActiveOwned && (
                   <Button
@@ -450,14 +452,14 @@ export function BadgesPage() {
                     className="w-full gap-2 bg-primary text-primary-foreground text-xs h-10 font-semibold"
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Feature
+                    {t("feature_badge")}
                   </Button>
                 )}
               </div>
             </div>
           ) : (
             <div className="glass rounded-3xl p-6 border border-white/10 text-center text-xs text-muted-foreground">
-              Select a badge to inspect its details and rarity.
+              {t("select_badge")}
             </div>
           )}
         </aside>
