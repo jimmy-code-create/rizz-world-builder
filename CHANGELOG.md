@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-10-16 — Fifteen games in the hub: chess, checkers, arcade action, puzzles
+
+### 12 new games, all instant and account-free
+- **Board:** **Chess** (you vs a depth-3 search — castling, en passant, promotion, checkmate, promotion picker, hint, engine difficulty), **Checkers** (American draughts: captures mandatory, longest chain enforced, crowning), **Connect Four** (depth-5 engine that takes a win and blocks a line), **Tic-Tac-Toe** (perfect play, so a draw is the real goal), **Reversi** (legal-move dots, flip counts, corner-aware AI, automatic passing).
+- **Puzzle:** **2048** (arrows/WASD or swipe, correct single-merge rule, best tile remembered), **Minesweeper** (three sizes, first click always safe, flood reveal, flag mode for touch, right-click on desktop), **Sudoku** (generated with a unique solution, conflict highlighting, hint, difficulty, timer), **Memory Match** (6/8/12 pairs of the app's own cat emojis, moves + time).
+- **Arcade action:** **Breakout** (edge hits angle the ball, three balls, levels speed up), **Neon Void** (vertical shooter: drag to fly, hold to fire, waves every 120 points, two-hit enemies), **Reaction Rush** (30 seconds, lit tiles, streaks multiply, misses break them).
+- Every rule lives in a plain module under `src/lib/games/` (chess, checkers, connect4, tictactoe, reversi, g2048, minesweeper, sudoku, breakout, shooter), so the games are simulations with a board drawn over them — which is what makes them testable and what keeps them working over a voice call.
+
+### Why not just embed free games
+- Third-party .io sites refuse framing, want an account, and put an ad wall in front of the thing the user asked for. First-party games start on tap, work in the in-call overlay, and cannot be taken down by someone else's X-Frame-Options header.
+
+### Checks
+- `bun run arcade:check` now drives every engine headlessly (60+ assertions): **chess perft** (1, 20, 400, **8902** — the published node counts, which prove castling, en passant and promotion rather than "it did not throw"), mate-in-one, checkers forced captures and crowning, Connect Four win/block, perfect tic-tac-toe, Reversi flips, 2048 merge rules, Minesweeper first-click safety and flood, Sudoku uniqueness + solver round-trip, Breakout clear-out over 5,000 frames, shooter waves, plus the original arena/snake/rally checks.
+- That script earned its keep again: it caught the 2048 engine merging a row twice (`[2,2,2,2]` became `[8]`, not `[4,4]`) because the line helper was passed a cell index where it wanted a row/column number.
+- `bun run games:render` renders all 15 built-in games through `GameStage` and fails if any of them stops rendering.
+
+### Hub polish for a longer shelf
+- Filter row grew "Action / Board games / Puzzles" alongside Everything, Instant play, Party and Web games; cards lay out three-up on desktop, and the hero says how many games there are.
+
+## 2026-10-16 — Games hub: three games you can actually play, over the call
+
+### Why the old activities felt empty
+- The controller button opened a bottom sheet whose three entries were *other sites* — Jackbox, skribbl and a 2048 page — so "Play" meant leaving RIZZ, making an account somewhere, and reading a room code off someone else's screen. Nothing was playable in-app, and the phone got a plain full-screen iframe with no voice controls on it.
+
+### Three built-in games, instant and account-free
+- **Pixel Arena** — an `.io`-style pixel arena (steer with pointer, WASD or touch drag; eat pixels to grow, bigger blobs eat smaller ones, six rival bots, live size/best/rank chips, instant respawn).
+- **Neon Snake** — grid snake against three rival snakes that score their turns by reachable space and food distance, so they cut you off instead of wandering. Food speeds the tick up from 118ms to 68ms.
+- **Pixel Rally** — paddles, a ball that accelerates every hit, first to seven, solo vs a CPU that sharpens as the rally grows, or two players on one screen (drag/arrows at the bottom, A/D at the top).
+- All three run as React components on a canvas — no iframe, no signup, no lobby — which is exactly why they can be drawn *behind* the voice controls.
+- `useArcade` owns the canvas, DPR, resize, input and the throttled stats bridge, so a game never re-renders per frame and never competes with the call for CPU.
+
+### The Games hub (`/games`)
+- The in-call gamepad button now opens a dedicated hub: hero with the promise (instant, fullscreen, voice on top), a "Live in voice" strip with "Jump back in"/"End", filters (Everything / Instant play / Arcade / Party / Web games), search, and cards carrying their badges, controls and a Play button that says what it will really do.
+- Outside a call, **Play now** starts a built-in game full screen right there (`GamePlayOverlay`, with a real browser-fullscreen toggle). A web game opens in a new tab and copies its invite link.
+- In a call, **Play in call** starts the activity for the room and drops *you* straight into the game — no tapping "Join game" on your own launch.
+
+### Games over voice (the Discord-activities part)
+- `VoiceActivityOverlay` makes the game the background and turns the voice UI into a translucent dock floating over it: speaking rings, muted badges, camera tiles for anyone on video, mute/deafen/leave, who is in the call, the room code for web games, and a chevron that collapses the dock to a single pill.
+- The overlay's grid button swaps to the voice-first layout on desktop (game in the side panel via `ActivityPanel`, which now renders built-ins too), and the panel's expand button comes back.
+- The join banner says what will actually happen ("Plays here · no sign-up" vs "Voice keeps running"), and once anyone opens a game the participant tiles show "Playing …".
+
+### Fixes that came out of testing the games
+- A games' realtime channel is now **one shared store per voice room** (`src/lib/activities.ts`): the hub, the call view and the room all attach to the same channel instead of racing three `channel()` calls on one topic, and the "N playing" flag is per consumer so a watcher can no longer clear the flag of the window that is playing.
+- The Pixel Rally CPU literally could not miss (0.06 error against a 0.10 hit window, re-aiming every frame), so a match never ended. It now has a paddle speed slower than the ball's lateral travel plus a reaction delay: beatable, and it still punishes lazy paddles. Caught by `scripts/arcade-check.ts`.
+- Two-player mode's second paddle used W/S in the help text but was wired to A/D in the physics. Now A/D everywhere, including the game metadata.
+- App-wide shortcuts (g-then-x, `?`, `.`) stay out of the way while a game is on screen, so pressing G and D mid-round no longer navigates to DMs.
+- `scripts/arcade-check.ts` (`bun run arcade:check`) drives all three simulations headlessly: growth, deaths and respawns, grid integrity, scoring up to a win, CPU beatability, duo input and NaN checks.
+
 ## 2026-10-13 — Realm forums: themed forum surface, per-forum settings, forum notifications
 
 ### The forum surface

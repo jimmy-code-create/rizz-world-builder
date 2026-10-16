@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,15 +24,11 @@ import { MusicSheet } from "@/components/chat/MusicSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
 import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusDot";
-import { ActivityShelf } from "@/components/voice/ActivityShelf";
 import { ActivityPanel, JoinGameBanner } from "@/components/voice/ActivityPanel";
-import {
-  getGame,
-  isValidGameUrl,
-  useRoomActivity,
-  type GameEntry,
-  type RoomActivity,
-} from "@/lib/activities";import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { VoiceActivityOverlay } from "@/components/voice/VoiceActivityOverlay";
+import { VideoTile } from "@/components/voice/VideoTile";
+import { getGame, useRoomActivity, type RoomActivity } from "@/lib/activities";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -148,19 +145,6 @@ function RemoteAudio({ stream, onBlocked, peerId, deafened = false }: { stream: 
   return <audio ref={audioRef} autoPlay playsInline className="hidden" />;
 }
 
-function VideoTile({ stream }: { stream: MediaStream }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const element = videoRef.current;
-    if (!element) return;
-    element.srcObject = stream;
-    void element.play().catch(() => {});
-  }, [stream]);
-
-  return <video ref={videoRef} autoPlay muted playsInline className="h-full w-full rounded-2xl object-cover" />;
-}
-
 /**
  * Keeps remote audio playing even when the call view is minimized — this is
  * rendered by the provider, not by the view.
@@ -212,13 +196,16 @@ export function VoiceCallView() {
   // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
   const musicBot = useMusicBotInCall();
 
+  const nav = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [shelfOpen, setShelfOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
+  // Immersive = game as the background with the voice dock floating over it.
+  // Toggling it off keeps the game open as a side panel (desktop only).
+  const [immersive, setImmersive] = useState(true);
   const [bannerDismissedAt, setBannerDismissedAt] = useState<number | null>(null);
   // One panel layout at a time: mounting both side + overlay iframes loaded
   // the game twice (double audio, double CPU) on every screen size.
@@ -268,35 +255,35 @@ export function VoiceCallView() {
     if (next && (!prev || next.startedAt !== prev.startedAt)) {
       setBannerDismissedAt(null);
       setPanelMinimized(false);
-      if (next.startedBy !== user?.id) {
+      setImmersive(true);
+      // Whoever launched it walks straight into the game — they chose it in the
+      // hub, so making them tap "Join game" on their own activity is noise.
+      if (next.startedBy === user?.id) setPanelOpen(true);
+      else
         toast.info(`${next.startedByName} started ${next.gameName}`, {
           description: "Tap Join game to play along.",
         });
-      }
     }
     if (prev && !next) {
       setPanelOpen(false);
+      setImmersive(true);
       toast.info("Game ended");
     }
     prevActivityRef.current = next;
   }, [roomActivity.activity, user?.id]);
 
-  const handlePickGame = async (entry: GameEntry) => {
-    setShelfOpen(false);
-    if (!isValidGameUrl(entry.url)) {
-      toast.error(`${entry.name} has no link yet`, {
-        description: "Paste its URL into src/data/games.json.",
-      });
-      return;
-    }
-    await roomActivity.start(entry);
-    setPanelMinimized(false);
-    setPanelOpen(true);
-  };
-
   const handleEndGame = async () => {
     await roomActivity.end();
     setPanelOpen(false);
+  };
+
+  const playing = panelOpen && !!roomActivity.activity;
+  const gameEntry = roomActivity.activity ? getGame(roomActivity.activity.gameId) : null;
+  const openGamesHub = () => {
+    // The hub is a page, so the call view has to step aside first — the call
+    // itself keeps running (it is owned by the provider, not by this view).
+    closeView();
+    void nav({ to: "/games" });
   };
 
   if (!call || !viewOpen) return null;
@@ -358,10 +345,10 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Activities"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${shelfOpen || panelOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setShelfOpen(true)}
-            title="Activities"
+            aria-label="Games hub"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${panelOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={openGamesHub}
+            title="Games hub"
           >
             <Gamepad2 className="h-5 w-5" />
           </Button>
@@ -403,6 +390,7 @@ export function VoiceCallView() {
               playingCount={playingCount}
               onJoin={() => {
                 setPanelMinimized(false);
+                setImmersive(true);
                 setPanelOpen(true);
               }}
               onDismiss={() => setBannerDismissedAt(roomActivity.activity!.startedAt)}
@@ -584,18 +572,19 @@ export function VoiceCallView() {
             )}
             </div>
             </div>
-            {panelOpen && roomActivity.activity && !isMobileView && (
+            {playing && !isMobileView && !immersive && roomActivity.activity && (
               <ActivityPanel
-                layout="side"
                 activity={roomActivity.activity}
-                entry={getGame(roomActivity.activity.gameId)}
+                entry={gameEntry}
                 canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
                 playingCount={playingCount}
+                players={Math.max(1, participants.length)}
                 minimized={panelMinimized}
                 onMinimize={() => setPanelMinimized(true)}
                 onReopen={() => setPanelMinimized(false)}
                 onLeave={() => setPanelOpen(false)}
                 onEnd={() => void handleEndGame()}
+                onExpand={() => setImmersive(true)}
               />
             )}
           </div>
@@ -764,20 +753,26 @@ export function VoiceCallView() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Game Activities shelf + live panel (voice keeps running: the call
-            engine is provider-owned, this UI is only a sibling). */}
-        <ActivityShelf open={shelfOpen} onOpenChange={setShelfOpen} onPick={(entry) => void handlePickGame(entry)} liveActivity={roomActivity.activity} liveCount={playingCount} />
-        {panelOpen && roomActivity.activity && isMobileView && (
-          <ActivityPanel
-            layout="overlay"
+        {/* THE OVERLAY: the game is the background, the voice dock floats on
+            top of it. Voice keeps running because the call engine belongs to
+            the provider — this is only a sibling layer. */}
+        {playing && immersive && roomActivity.activity && (
+          <VoiceActivityOverlay
             activity={roomActivity.activity}
-            entry={getGame(roomActivity.activity.gameId)}
+            entry={gameEntry}
             canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
             playingCount={playingCount}
-            minimized={false}
-            onMinimize={() => setPanelOpen(false)}
-            onReopen={() => setPanelOpen(true)}
-            onLeave={() => setPanelOpen(false)}
+            players={Math.max(1, participants.length)}
+            onExit={() => {
+              // Phones have no side panel to fall back to, so "back to voice"
+              // there means leaving the game view (the activity stays live).
+              if (isMobileView) setPanelOpen(false);
+              else setImmersive(false);
+            }}
+            onLeaveGame={() => {
+              setPanelOpen(false);
+              setImmersive(true);
+            }}
             onEnd={() => void handleEndGame()}
           />
         )}

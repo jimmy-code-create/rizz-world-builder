@@ -1,5 +1,35 @@
 # RIZZ Test Checklist
 
+## Games hub and activities in the call (this pass)
+
+- [ ] The gamepad button in the voice call opens `/games` (the call keeps running; the mini bar stays at the bottom of the page with a way back in).
+- [ ] `/games` lists Pixel Arena, Neon Snake and Pixel Rally with "No sign-up" / "Fullscreen" / "Runs in RIZZ" chips, plus the web games from `src/data/games.json`.
+- [ ] Outside a call, "Play now" opens the game full screen immediately — no account prompt, no new tab, and the fullscreen button works (hidden on iPhone Safari, which has no element fullscreen).
+- [ ] Pixel Arena: blob follows the pointer, WASD and touch drag; eating pixels grows the size chip; a bigger rival eats you and the respawn card appears; "New arena" restarts.
+- [ ] Neon Snake: arrows/WASD and swipes turn the snake; food grows it and speeds the tick up (score chip climbs); hitting a wall or a body shows the respawn card and the rival snakes keep playing.
+- [ ] Pixel Rally: drag or arrows move the bottom paddle, rallies speed the ball up, the CPU does sometimes miss, first to 7 shows the win card, and the toggle switches to two players (top paddle uses A and D).
+- [ ] While any game is on screen, the app-wide shortcuts stay quiet (pressing G then D does not navigate to DMs mid-round, and Space does not scroll the page).
+- [ ] In a voice channel, "Play in call" starts the activity: the launcher lands straight in the game, everyone else sees the "X started Y" banner, and the header count/participant tiles show "Playing …" for those with it open.
+- [ ] The overlay draws the game as the background with the voice dock floating over it: speaking rings light up, mute/deafen/leave work, video participants appear as tiles in the dock, and H is not needed to keep talking.
+- [ ] The dock hides with the chevron and comes back from the "Voice · N in call" pill.
+- [ ] On desktop, the grid button on the overlay swaps to the voice-first side panel, and its expand button goes back to full screen with voice on top.
+- [ ] Ending the game (starter or voice host) closes it for everyone and toasts "Game ended"; leaving only closes your own copy.
+- [ ] The hub lists 15 built-in games plus the web ones; the Action / Board games / Puzzles filters each show the right set and search narrows it.
+- [ ] Chess: tap a white piece to see its squares, move, and the engine replies; castling works once f1/g1 are empty, a pawn on the 7th offers the promotion picker, and Hint highlights a real move. Checkmate/stalemate text matches the board.
+- [ ] Checkers: when a capture exists only the captures are offered, a multi-jump lands in one tap, a man reaching the far rank shows a crown, and losing all pieces ends the game.
+- [ ] Connect Four: the engine drops into a winning column when it has one and blocks your three, and four in a row highlights.
+- [ ] Tic-Tac-Toe: the engine never loses and "Play as O" lets it move first.
+- [ ] Reversi: legal squares are dotted, placing flips every sandwiched disc, and having no move auto-passes.
+- [ ] 2048: swiping merges like tiles once per slide, a merged tile does not merge again, and the board locks with a score card when there are no moves.
+- [ ] Minesweeper: the first tap is never a mine, an empty cell opens its neighbourhood, flag mode marks a cell, and the timer runs.
+- [ ] Sudoku: cells clash in red, Hint fills a correct cell, a full correct grid reports solved.
+- [ ] Memory Match: 6/8/12 pairs deal a different set each time and matched pairs stay face up.
+- [ ] Breakout: the ball angles off the paddle edge, lives tick down on a miss, and clearing the wall advances the level.
+- [ ] Neon Void: holding fires, waves get denser, pink enemies survive one hit, and game over shows score + best.
+- [ ] Reaction Rush: a tile lights up, fast taps score more, ignoring a tile breaks the streak, and the round ends at 30s.
+- [ ] In all of them the in-call overlay still floats the voice dock over the board and the app shortcuts stay quiet.
+- [ ] `bun run arcade:check` and `bun run games:render` both pass (headless rules checks and a render of every built-in game).
+
 ## Story likes, any-source music, Voice & Sound, chat rhythm, face lenses (this pass)
 
 ### Stories

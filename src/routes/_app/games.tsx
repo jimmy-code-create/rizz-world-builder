@@ -1,176 +1,399 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Copy, ExternalLink, Gamepad2, Play } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  Gamepad2,
+  Headphones,
+  Maximize2,
+  Play,
+  Plus,
+  Search,
+  Sparkles,
+  Users,
+  Zap,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { GameIcon } from "@/components/GameIcon";
+import { GamePlayOverlay } from "@/components/games/GamePlayOverlay";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import {
   getGames,
   inviteText,
-  isValidGameUrl,
+  launchUrl,
+  makeRoomCode,
   useRoomActivity,
   type GameEntry,
 } from "@/lib/activities";
 
 export const Route = createFileRoute("/_app/games")({
   head: () => ({ meta: [{ title: "Games · RIZZ" }] }),
-  component: GamesPage,
+  component: GamesHub,
 });
 
-const TYPE_LABEL: Record<GameEntry["type"], string> = {
-  "multiplayer-hub": "Party hub",
-  "room-link": "Same room",
-  embed: "Solo",
-};
+type Filter = "all" | "instant" | "arcade" | "board" | "puzzle" | "party" | "web";
 
-function GamesPage() {
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "Everything" },
+  { id: "instant", label: "Instant play" },
+  { id: "arcade", label: "Action" },
+  { id: "board", label: "Board games" },
+  { id: "puzzle", label: "Puzzles" },
+  { id: "party", label: "Party" },
+  { id: "web", label: "Web games" },
+];
+
+function matchesFilter(entry: GameEntry, filter: Filter): boolean {
+  if (filter === "all") return true;
+  if (filter === "instant") return entry.instant;
+  if (filter === "web") return entry.source === "web";
+  return entry.category === filter;
+}
+
+/**
+ * THE GAMES HUB — Discord-style activities, one tap from the call.
+ *
+ * Two promises are made on every card and both are true: instant play (built-in
+ * games really do start on tap with no account) and fullscreen (the surface can
+ * fill the screen, and inside a call it becomes the background with voice
+ * floating on top). Launching from here while in a voice channel starts the
+ * activity for the whole room, which is what makes it a group thing.
+ */
+function GamesHub() {
   const { user, profile } = useAuth();
-  const { call, openView } = useVoiceCallContext();
-  const me = user ? { id: user.id, name: profile?.display_name || profile?.username || "Someone" } : null;
+  const { call, openView, participants } = useVoiceCallContext();
+  const me = user
+    ? { id: user.id, name: profile?.display_name || profile?.username || "Someone" }
+    : null;
+  // A watcher, not a player: no `playing` argument, so this screen never claims
+  // that someone is in a game they merely started.
   const roomActivity = useRoomActivity(call?.roomId ?? null, me);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const games = getGames();
-  const live = roomActivity.activity;
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const [playing, setPlaying] = useState<GameEntry | null>(null);
 
-  const copyInvite = async (entry: GameEntry) => {
-    try {
-      // No live room code on this page — share the game link itself.
-      await navigator.clipboard.writeText(inviteText(entry, null));
-      setCopiedId(entry.id);
-      window.setTimeout(() => setCopiedId((current) => (current === entry.id ? null : current)), 1500);
-    } catch {
-      toast.error("Couldn't copy the invite");
-    }
-  };
+  const games = useMemo(() => getGames(), []);
+  const visible = useMemo(
+    () =>
+      games.filter(
+        (entry) =>
+          matchesFilter(entry, filter) &&
+          (!query.trim() ||
+            `${entry.name} ${entry.description} ${entry.hook ?? ""}`
+              .toLowerCase()
+              .includes(query.trim().toLowerCase())),
+      ),
+    [games, filter, query],
+  );
+
+  const live = roomActivity.activity;
+  const livePlayers = Object.keys(roomActivity.players).length;
+  const inCall = !!call?.roomId && !!user;
 
   const play = async (entry: GameEntry) => {
-    if (!isValidGameUrl(entry.url)) {
-      toast.error(`${entry.name} has no link yet`, {
-        description: "Paste its URL into src/data/games.json.",
-      });
-      return;
-    }
-    if (call?.roomId && user) {
-      await roomActivity.start(entry);
-      toast.success(`${entry.name} started in ${call.channelName}`, {
-        description: "Opening the call — tap Join game to play.",
+    if (inCall) {
+      const started = await roomActivity.start(entry);
+      if (!started) {
+        toast.error("That game could not start — try again in the voice channel.");
+        return;
+      }
+      toast.success(`${entry.name} is live in ${call?.channelName}`, {
+        description: "Voice stays on top of the game — everyone gets a Join banner.",
       });
       openView();
       return;
     }
-    if (entry.type === "embed") {
-      window.open(entry.url, "_blank", "noopener,noreferrer");
+
+    if (entry.instant) {
+      setPlaying(entry);
       return;
     }
-    await copyInvite(entry);
-    toast.info("Invite copied", {
-      description: "Join a voice room first, then launch it there to play together.",
+
+    const code = entry.type === "embed" || entry.sharedCode === false ? null : makeRoomCode();
+    const url = launchUrl(entry, code);
+    try {
+      if (entry.type !== "embed") await navigator.clipboard.writeText(inviteText(entry, code));
+    } catch {
+      /* the clipboard is a nicety on top of the window that opens */
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.info(`${entry.name} opened in a new tab`, {
+      description:
+        entry.type === "embed" ? undefined : "The invite link was copied — paste it in chat.",
     });
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4 md:py-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8A8A8E]">Activities</p>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-[#f2efe6]">Games</h1>
-        {call ? (
-          <span className="shrink-0 rounded-full border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 px-3 py-1 text-xs font-bold text-[#c8ff3d]">
-            In call · {call.channelName}
-          </span>
-        ) : (
-          <span className="shrink-0 rounded-full border border-[#2E2E32] px-3 py-1 text-xs font-semibold text-muted-foreground">
-            No call
-          </span>
-        )}
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {call
-          ? "Pick a game to launch it into your voice room — everyone gets a Join banner."
-          : "Join a voice room to play together, or open a solo game right here."}
-      </p>
+    <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4 md:py-5">
+      {/* ---- hero ---------------------------------------------------------- */}
+      <section className="overflow-hidden rounded-3xl border border-border bg-card">
+        <div className="flex flex-wrap items-start gap-3 p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              Activities
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Game Hub
+            </h1>
+            <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+              {games.length} games that run inside the call — chess and checkers, arena action,
+              puzzles. No sign-up, no lobby, no download: tap one and it starts, full screen, with
+              your voice on top.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                <Zap className="h-3.5 w-3.5 text-primary" /> Instant play
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                <Maximize2 className="h-3.5 w-3.5 text-primary" /> Fullscreen
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                <Headphones className="h-3.5 w-3.5 text-primary" /> Voice stays on top
+              </span>
+            </div>
+          </div>
+          <div className="w-full shrink-0 sm:w-auto">
+            {inCall ? (
+              <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                  In call
+                </p>
+                <p className="mt-0.5 truncate text-sm font-bold">{call?.channelName}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {Math.max(0, participants.length)} connected · launching drops everyone into the
+                  game
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border p-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  No call
+                </p>
+                <p className="mt-0.5 text-sm font-semibold">Play solo right now</p>
+                <Link
+                  to="/realms"
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                >
+                  Join a voice channel to play together <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
+      {/* ---- live strip ---------------------------------------------------- */}
       {live && (
-        <button
-          type="button"
-          onClick={openView}
-          className="mt-3 flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 p-3 text-left"
-        >
-          <GameIcon icon={live.gameIcon} size={26} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-[#f2efe6]">Live now: {live.gameName}</span>
-            <span className="block truncate text-xs text-muted-foreground">
-              Started by {live.startedByName} · tap to jump back in
+        <section className="mt-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-primary/40 bg-primary/[0.08] p-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/15">
+              <GameIcon icon={live.gameIcon} size={26} />
             </span>
-          </span>
-        </button>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> Live in voice
+              </p>
+              <p className="truncate text-sm font-bold">
+                {live.gameName}
+                {live.roomCode ? (
+                  <span className="ml-2 font-mono text-primary">{live.roomCode}</span>
+                ) : null}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                Started by {live.startedByName} · {livePlayers} playing
+                {live.source === "builtin" ? " · runs in-app" : " · external room"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openView}
+              className="h-11 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-105 active:scale-95"
+            >
+              Jump back in
+            </button>
+            {live.startedBy === user?.id && (
+              <button
+                type="button"
+                onClick={() => void roomActivity.end()}
+                className="h-11 rounded-full border border-border px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+              >
+                End
+              </button>
+            )}
+          </div>
+        </section>
       )}
 
-      <ul className="mt-3 space-y-2">
-        {games.map((game) => (
-          <li
-            key={game.id}
-            className="rounded-2xl border border-[#262629] bg-[#141416] p-3"
-            style={{ borderRadius: 18 }}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden
-                className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-[#2a2a2e] bg-[#1c1c1f]"
-              >
-                <GameIcon icon={game.icon} size={34} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-base font-bold text-[#f2efe6]">{game.name}</h2>
-                  <span className="shrink-0 rounded-full border border-[#2E2E32] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                    {game.players}
-                  </span>
-                  <span className="shrink-0 rounded-full border border-[#2E2E32] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {TYPE_LABEL[game.type]}
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{game.description}</p>
-              </div>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => void play(game)}
-                className="flex h-11 min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-[#c8ff3d] text-sm font-bold text-[#0b0b0c] transition-transform hover:bg-[#c8ff3d]/90 active:scale-95"
-              >
-                {call?.roomId ? <Play className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
-                {call?.roomId ? "Play in call" : game.type === "embed" ? "Play now" : "Copy invite"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void copyInvite(game)}
-                aria-label={`Copy invite for ${game.name}`}
-                className="grid h-11 w-11 min-h-[44px] shrink-0 place-items-center rounded-full border border-[#2E2E32] text-muted-foreground transition-colors hover:text-[#f2efe6]"
-              >
-                {copiedId === game.id ? (
-                  <span className="text-xs font-bold text-[#c8ff3d]">✓</span>
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* ---- filters ------------------------------------------------------- */}
+      <section className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setFilter(option.id)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                filter === option.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <label className="ml-auto flex min-w-[180px] flex-1 items-center gap-2 rounded-full border border-border px-3 py-1.5 sm:max-w-xs">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search games"
+            aria-label="Search games"
+            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+      </section>
 
-      {games.length === 0 && (
-        <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
-          No games yet. Add one entry to <span className="font-mono text-xs">src/data/games.json</span>.
+      {/* ---- game cards ---------------------------------------------------- */}
+      <section className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map((game) => (
+          <GameCard key={game.id} game={game} inCall={inCall} onPlay={() => void play(game)} />
+        ))}
+      </section>
+
+      {visible.length === 0 && (
+        <p className="mt-3 rounded-2xl border border-border bg-card p-5 text-center text-sm text-muted-foreground">
+          No games match that. Try another filter.
         </p>
       )}
 
-      <Link
-        to="/bots/developer"
-        className="mt-3 flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/10 text-sm font-semibold text-muted-foreground hover:text-foreground"
-      >
-        <Gamepad2 className="h-4 w-4" /> Build your own? See developer tools
-      </Link>
+      {/* ---- how it works -------------------------------------------------- */}
+      <section className="mt-5">
+        <h2 className="font-display text-lg font-bold">How activities work</h2>
+        <div className="mt-2 grid gap-2.5 sm:grid-cols-3">
+          <Step
+            icon={<Headphones className="h-4 w-4 text-primary" />}
+            title="1 · Hop in voice"
+            body="Open a realm's voice channel. The call keeps running behind everything from here on."
+          />
+          <Step
+            icon={<Play className="h-4 w-4 text-primary" />}
+            title="2 · Launch a game"
+            body="Tap Play in call. The game becomes the background and everyone gets a Join banner."
+          />
+          <Step
+            icon={<Users className="h-4 w-4 text-primary" />}
+            title="3 · Talk over it"
+            body="Mute, deafen, see who is talking and leave — all from the dock floating over the game."
+          />
+        </div>
+      </section>
+
+      <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          Want a game from somewhere else? Add it to{" "}
+          <span className="font-mono text-foreground">src/data/games.json</span> — it shows up here
+          and in the call immediately, with its own room code handling.
+        </p>
+        <Link
+          to="/bots/developer"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-bold text-muted-foreground transition hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" /> Developer tools
+        </Link>
+      </section>
+
+      {playing && <GamePlayOverlay entry={playing} onClose={() => setPlaying(null)} />}
+    </div>
+  );
+}
+
+function GameCard({
+  game,
+  inCall,
+  onPlay,
+}: {
+  game: GameEntry;
+  inCall: boolean;
+  onPlay: () => void;
+}) {
+  const accent = game.accent ?? "var(--primary)";
+  const cta = inCall ? "Play in call" : game.instant ? "Play now" : "Play on the web";
+  return (
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/40">
+      <div className="flex items-start gap-3 p-3">
+        <span
+          aria-hidden
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border"
+          style={{ borderColor: `${accent}44`, background: `${accent}14` }}
+        >
+          <GameIcon icon={game.icon} size={30} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="truncate text-base font-bold">{game.name}</h3>
+            {game.instant && (
+              <span
+                className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ background: `${accent}1f`, color: accent }}
+              >
+                <Zap className="h-2.5 w-2.5" /> No sign-up
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{game.description}</p>
+          {game.hook && (
+            <p className="mt-1 truncate text-[11px] font-semibold text-foreground/80">
+              {game.hook}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold text-muted-foreground">
+        <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+          <Users className="h-3 w-3" /> {game.players}
+        </span>
+        <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+          <Maximize2 className="h-3 w-3" /> Fullscreen
+        </span>
+        <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+          {game.source === "builtin" ? (
+            <>
+              <Sparkles className="h-3 w-3" /> Runs in RIZZ
+            </>
+          ) : (
+            <>
+              <Gamepad2 className="h-3 w-3" /> Web game
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-auto flex items-center gap-2 border-t border-border p-3">
+        {game.controls && (
+          <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+            {game.controls}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={onPlay}
+          className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:brightness-105 active:scale-95"
+        >
+          <Play className="h-4 w-4 fill-current" /> {cta}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function Step({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15">{icon}</span>
+      <p className="mt-2 text-sm font-bold">{title}</p>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{body}</p>
     </div>
   );
 }

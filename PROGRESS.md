@@ -179,3 +179,12 @@
 
 ### Phase 30: Boot splash de-catted
 - [x] Cold-start splash drops the lime-cat SVG + "server cat" copy for the brand loader (logo + lime bar, neutral status copy, retry kept) - **DONE**
+
+### Phase 31: Games hub — built-in games, overlay over voice
+- [x] Three in-app games (Pixel Arena `.io` arena, Neon Snake vs 3 rival AIs, Pixel Rally solo/Duo) on a shared `useArcade` canvas/input/stats loop — no iframe, no sign-up, fullscreen - **DONE**
+- [x] `/games` rebuilt as the hub (live-in-voice strip, filters, search, badges, real "Play in call"/"Play now" behaviour); the in-call gamepad button opens it - **DONE**
+- [x] `VoiceActivityOverlay`: game as the background, translucent voice dock on top (speaking rings, camera tiles, mute/deafen/leave, room code, collapsible); desktop keeps `ActivityPanel` as the voice-first side panel; `ActivityShelf` removed - **DONE**
+- [x] `src/lib/activities.ts` merges built-ins + JSON web games and shares ONE realtime channel per room (store + per-consumer playing flags) — fixes the multi-subscribe/removal race; `source: "builtin"` activities skip iframes and room codes - **DONE**
+- [x] `scripts/arcade-check.ts` (`bun run arcade:check`) found and fixed two real bugs: an unbeatable CPU in Pixel Rally and the duo-mode key mismatch - **DONE**
+- [x] 12 more games (15 built-in total): Chess (depth-3 engine + perft-verified rules), Checkers (forced longest captures), Connect Four, Tic-Tac-Toe (perfect), Reversi, 2048, Minesweeper, Sudoku (unique-solution generator), Memory Match, Breakout, Neon Void (shooter), Reaction Rush — rules in `src/lib/games/*`, boards via `board-frame.tsx` - **DONE**
+- [x] hub filters for Action / Board games / Puzzles; `bun run games:render` renders every registered game; `arcade-check` grew to 60+ assertions (chess perft 8902, mate-in-one, etc.) and caught a double-merge bug in the 2048 engine - **DONE**

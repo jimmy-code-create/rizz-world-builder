@@ -62,6 +62,9 @@ export function AppOverlays() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // An arcade game on screen owns the single-letter keys it uses (WASD/space),
+      // so "g then s" must not steal the movement key mid-round.
+      if (typeof document !== "undefined" && document.body.dataset.gameActive === "1") return;
       if (isTypingTarget(e.target)) return;
       const k = e.key.toLowerCase();
       if (waitingG && ROUTES[k]) {

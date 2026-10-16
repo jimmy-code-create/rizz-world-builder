@@ -13,7 +13,9 @@
     "preview": "node render-server.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "i18n:check": "node scripts/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "arcade:check": "bun scripts/arcade-check.ts",
+    "games:render": "bun scripts/games-render-check.tsx"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.62.5",
