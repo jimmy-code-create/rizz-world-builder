@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Gamepad2, Trophy, X, Play, RotateCcw } from "lucide-react";
+import { Gamepad2, Trophy, X, Play, RotateCcw, Users, Bot as BotIcon, Crown, Zap } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ type GameState = {
   board?: any;
   scores: Record<string, number>;
   winner: string | null;
+  history: Array<{ game: string; winner: string; timestamp: number }>;
 };
 
 const GAMES = [
@@ -24,29 +25,41 @@ const GAMES = [
     id: "tictactoe" as GameType,
     name: "Tic-Tac-Toe",
     icon: "⭕",
+    emoji: "❌",
     minPlayers: 2,
     description: "Classic X's and O's",
+    color: "from-blue-500/20 to-cyan-500/20",
+    borderColor: "border-blue-400/30",
   },
   {
     id: "rps" as GameType,
     name: "Rock Paper Scissors",
     icon: "✊",
+    emoji: "✋",
     minPlayers: 2,
     description: "Best of 3 rounds",
+    color: "from-purple-500/20 to-pink-500/20",
+    borderColor: "border-purple-400/30",
   },
   {
     id: "wouldyourather" as GameType,
     name: "Would You Rather",
     icon: "🤔",
+    emoji: "💭",
     minPlayers: 2,
     description: "Tough choices ahead",
+    color: "from-orange-500/20 to-yellow-500/20",
+    borderColor: "border-orange-400/30",
   },
   {
     id: "trivia" as GameType,
     name: "Quick Trivia",
     icon: "🧠",
+    emoji: "❓",
     minPlayers: 2,
     description: "Test your knowledge",
+    color: "from-green-500/20 to-emerald-500/20",
+    borderColor: "border-green-400/30",
   },
 ];
 
@@ -70,6 +83,7 @@ export function VCGamesSheet({
     turn: null,
     scores: {},
     winner: null,
+    history: [],
   });
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [tttBoard, setTttBoard] = useState<(string | null)[]>(Array(9).fill(null));
@@ -86,7 +100,8 @@ export function VCGamesSheet({
   const isHost = gameState.hostId === user?.id;
   const isPlaying = gameState.players.includes(user?.id || "");
   const myTurn = gameState.turn === user?.id;
-  const canStart = participants.length >= 2 || participants.length === 1;
+  const canStart = participants.length >= 1;
+  const otherPlayers = participants.filter((p) => p.user_id !== user?.id);
 
   // Sync game state via realtime
   useEffect(() => {
@@ -124,7 +139,6 @@ export function VCGamesSheet({
   const startGame = () => {
     if (!selectedGame || !user) return;
 
-    const otherPlayers = participants.filter((p) => p.user_id !== user.id);
     const players =
       otherPlayers.length === 0
         ? [user.id, "bot"]
@@ -138,6 +152,7 @@ export function VCGamesSheet({
       turn: players[0],
       scores: players.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}),
       winner: null,
+      history: gameState.history,
     };
 
     setGameState(newState);
@@ -159,6 +174,8 @@ export function VCGamesSheet({
       setRpsRound(1);
       broadcastState(newState, { rpsRound: 1 });
     }
+
+    toast.success(`Starting ${GAMES.find(g => g.id === selectedGame)?.name}!`);
   };
 
   const handleTTTMove = (index: number) => {
@@ -184,9 +201,12 @@ export function VCGamesSheet({
     setGameState(newState);
     broadcastState(newState, { tttBoard: newBoard });
 
-    if (winner) {
-      toast.success("You won!");
+    if (winner === user!.id) {
+      toast.success("You won! 🎉");
       setTimeout(() => awardGameBadge(user!.id), 1000);
+      recordWin(user!.id, "Tic-Tac-Toe");
+    } else if (!newBoard.includes(null)) {
+      toast.info("It's a draw!");
     }
   };
 
@@ -239,6 +259,7 @@ export function VCGamesSheet({
         setGameState({ ...gameState, winner });
         if (winner === user!.id) {
           setTimeout(() => awardGameBadge(user!.id), 1000);
+          recordWin(user!.id, "Rock Paper Scissors");
         }
       } else {
         setRpsRound(rpsRound + 1);
@@ -266,6 +287,9 @@ export function VCGamesSheet({
       { a: "Live in the past", b: "Live in the future" },
       { a: "Never eat pizza again", b: "Never eat burgers again" },
       { a: "Be able to talk to animals", b: "Be able to speak all languages" },
+      { a: "Read minds", b: "See the future" },
+      { a: "Always have to sing instead of speak", b: "Always have to dance instead of walk" },
+      { a: "Have unlimited money", b: "Have unlimited time" },
     ];
     return questions[Math.floor(Math.random() * questions.length)];
   };
@@ -292,6 +316,16 @@ export function VCGamesSheet({
         options: ["Van Gogh", "Picasso", "Da Vinci", "Monet"],
         correct: 2,
       },
+      {
+        question: "What year did World War 2 end?",
+        options: ["1943", "1944", "1945", "1946"],
+        correct: 2,
+      },
+      {
+        question: "How many continents are there?",
+        options: ["5", "6", "7", "8"],
+        correct: 2,
+      },
     ];
     return questions[Math.floor(Math.random() * questions.length)];
   };
@@ -301,13 +335,14 @@ export function VCGamesSheet({
 
     const correct = index === triviaQuestion.correct;
     if (correct) {
-      toast.success("Correct!");
+      toast.success("Correct! 🎉");
       const newScores = {
         ...gameState.scores,
         [user!.id]: (gameState.scores[user!.id] || 0) + 1,
       };
       setGameState({ ...gameState, scores: newScores, winner: user!.id });
       setTimeout(() => awardGameBadge(user!.id), 1000);
+      recordWin(user!.id, "Quick Trivia");
     } else {
       toast.error("Wrong answer!");
       setGameState({ ...gameState, winner: "opponent" });
@@ -337,6 +372,14 @@ export function VCGamesSheet({
     }
   };
 
+  const recordWin = (userId: string, gameName: string) => {
+    const newHistory = [
+      ...gameState.history,
+      { game: gameName, winner: userId, timestamp: Date.now() },
+    ];
+    setGameState({ ...gameState, history: newHistory });
+  };
+
   const resetGame = () => {
     setGameState({
       type: null,
@@ -346,6 +389,7 @@ export function VCGamesSheet({
       turn: null,
       scores: {},
       winner: null,
+      history: gameState.history,
     });
     setSelectedGame(null);
     setTttBoard(Array(9).fill(null));
@@ -355,101 +399,147 @@ export function VCGamesSheet({
     setTriviaQuestion(null);
   };
 
+  const totalGamesPlayed = gameState.history.length;
+  const myWins = gameState.history.filter((h) => h.winner === user?.id).length;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         className="border-white/10 bg-[#0b0714] rounded-t-3xl max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
-        <SheetHeader className="text-left pt-2">
-          <SheetTitle className="font-display text-xl flex items-center gap-2">
-            <Gamepad2 className="h-5 w-5 text-primary" />
+        <SheetHeader className="text-left pt-2 pb-4">
+          <SheetTitle className="font-display text-2xl flex items-center gap-2">
+            <Gamepad2 className="h-6 w-6 text-primary" />
             Games
           </SheetTitle>
         </SheetHeader>
 
         {!gameState.active ? (
           <>
+            {/* Stats Bar */}
+            {totalGamesPlayed > 0 && (
+              <div className="mb-4 flex gap-2">
+                <div className="flex-1 rounded-xl border border-primary/30 bg-primary/5 p-3 text-center">
+                  <p className="text-2xl font-bold text-primary">{myWins}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Wins</p>
+                </div>
+                <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center">
+                  <p className="text-2xl font-bold">{totalGamesPlayed}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Played</p>
+                </div>
+                <div className="flex-1 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center">
+                  <p className="text-2xl font-bold">
+                    {totalGamesPlayed > 0 ? Math.round((myWins / totalGamesPlayed) * 100) : 0}%
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Win Rate</p>
+                </div>
+              </div>
+            )}
+
+            {/* Player Info */}
+            <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">
+                  {otherPlayers.length === 0 ? (
+                    <>
+                      <BotIcon className="inline h-3.5 w-3.5 mr-1" />
+                      You'll play against a bot
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="inline h-3.5 w-3.5 mr-1 text-primary" />
+                      {participants.length} players in channel
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
             {/* Game Selection */}
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+              Choose a Game
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-4">
               {GAMES.map((game) => (
                 <button
                   key={game.id}
                   onClick={() => setSelectedGame(game.id)}
-                  className={`relative flex flex-col items-center gap-2 rounded-2xl border p-4 transition-all ${
+                  className={`relative flex flex-col items-center gap-3 rounded-2xl border p-5 transition-all ${
                     selectedGame === game.id
-                      ? "border-primary bg-primary/10"
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                      ? `${game.borderColor} bg-gradient-to-br ${game.color} ring-2 ring-primary/20`
+                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
                   }`}
                 >
-                  <span className="text-3xl">{game.icon}</span>
-                  <p className="text-sm font-semibold text-center">{game.name}</p>
-                  <p className="text-xs text-muted-foreground text-center">{game.description}</p>
+                  {selectedGame === game.id && (
+                    <div className="absolute top-2 right-2">
+                      <Zap className="h-4 w-4 text-primary fill-primary" />
+                    </div>
+                  )}
+                  <span className="text-4xl">{game.icon}</span>
+                  <div className="text-center">
+                    <p className="text-sm font-bold">{game.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{game.description}</p>
+                  </div>
                 </button>
               ))}
             </div>
 
             {selectedGame && (
-              <div className="mt-4 space-y-3">
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                  <p className="text-xs text-muted-foreground">
-                    {participants.length === 1
-                      ? "You'll play against a bot"
-                      : `${participants.length} players in channel`}
-                  </p>
-                </div>
-                <Button
-                  onClick={startGame}
-                  disabled={!canStart}
-                  className="w-full h-12 bg-primary text-primary-foreground gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Start Game
-                </Button>
-              </div>
+              <Button
+                onClick={startGame}
+                disabled={!canStart}
+                className="w-full h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground gap-2 text-base font-bold shadow-lg shadow-primary/20"
+              >
+                <Play className="h-5 w-5" />
+                Start {GAMES.find((g) => g.id === selectedGame)?.name}
+              </Button>
             )}
           </>
         ) : (
           <>
             {/* Active Game */}
-            <div className="mt-4">
-              {/* Scoreboard */}
-              <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 mb-4">
-                {gameState.players.map((playerId) => (
-                  <div key={playerId} className="text-center">
-                    <p className="text-xs text-muted-foreground">
-                      {playerId === user?.id
-                        ? "You"
-                        : playerId === "bot"
-                          ? "Bot"
-                          : "Opponent"}
+            <div className="mb-4">
+              {/* Game Header */}
+              <div className="flex items-center justify-between mb-4 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl">
+                    {GAMES.find((g) => g.id === gameState.type)?.icon}
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold">
+                      {GAMES.find((g) => g.id === gameState.type)?.name}
                     </p>
-                    <p className="text-2xl font-bold text-primary">{gameState.scores[playerId] || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {gameState.winner
+                        ? gameState.winner === "draw"
+                          ? "It's a draw!"
+                          : gameState.winner === user?.id
+                            ? "You won! 🎉"
+                            : "You lost!"
+                        : myTurn
+                          ? "Your turn"
+                          : "Opponent's turn"}
+                    </p>
                   </div>
-                ))}
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">{gameState.scores[user!.id] || 0}</p>
+                  <p className="text-xs text-muted-foreground">Your Score</p>
+                </div>
               </div>
 
               {/* Game Board */}
               {gameState.type === "tictactoe" && (
                 <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground">
-                    {gameState.winner
-                      ? gameState.winner === "draw"
-                        ? "It's a draw!"
-                        : gameState.winner === user?.id
-                          ? "You won! 🎉"
-                          : "You lost!"
-                      : myTurn
-                        ? "Your turn"
-                        : "Opponent's turn"}
-                  </p>
-                  <div className="grid grid-cols-3 gap-2 mx-auto max-w-xs">
+                  <div className="grid grid-cols-3 gap-3 mx-auto max-w-xs">
                     {tttBoard.map((cell, index) => (
                       <button
                         key={index}
                         onClick={() => handleTTTMove(index)}
                         disabled={!myTurn || !!cell || !!gameState.winner}
-                        className="aspect-square rounded-xl border-2 border-white/10 bg-white/[0.02] text-3xl font-bold transition-all hover:border-primary/50 disabled:opacity-50"
+                        className="aspect-square rounded-2xl border-2 border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] text-4xl font-bold transition-all hover:border-primary/50 hover:from-primary/10 hover:to-primary/5 disabled:opacity-50 disabled:hover:border-white/10 active:scale-95"
                       >
                         {cell}
                       </button>
@@ -460,33 +550,53 @@ export function VCGamesSheet({
 
               {gameState.type === "rps" && (
                 <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground">Round {rpsRound} of 3</p>
-                  <div className="flex justify-center gap-4">
-                    {["rock", "paper", "scissors"].map((choice) => (
+                  <div className="text-center mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                    <p className="text-sm font-semibold">Round {rpsRound} of 3</p>
+                  </div>
+                  <div className="flex justify-center gap-3">
+                    {[
+                      { choice: "rock", icon: "✊" },
+                      { choice: "paper", icon: "✋" },
+                      { choice: "scissors", icon: "✌️" },
+                    ].map(({ choice, icon }) => (
                       <button
                         key={choice}
                         onClick={() => handleRPSChoice(choice)}
                         disabled={!!rpsChoice}
-                        className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all ${
+                        className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                           rpsChoice === choice
-                            ? "border-primary bg-primary/10"
-                            : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                        }`}
+                            ? "border-primary bg-gradient-to-br from-primary/20 to-primary/10 ring-2 ring-primary/30"
+                            : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
+                        } disabled:opacity-50 active:scale-95`}
                       >
-                        <span className="text-4xl">
-                          {choice === "rock" ? "✊" : choice === "paper" ? "✋" : "✌️"}
-                        </span>
-                        <span className="text-sm font-semibold capitalize">{choice}</span>
+                        <span className="text-5xl">{icon}</span>
+                        <span className="text-sm font-bold capitalize">{choice}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {gameState.type === "wouldyourather" && wyrQuestion && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
+                    <p className="text-sm font-semibold mb-3">Would you rather...</p>
+                  </div>
+                  <button className="w-full rounded-2xl border-2 border-blue-400/30 bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-5 text-left transition-all hover:border-blue-400/50 hover:from-blue-500/15 hover:to-blue-500/10 active:scale-[0.98]">
+                    <span className="text-3xl mr-3">🅰️</span>
+                    <span className="text-base font-semibold">{wyrQuestion.a}</span>
+                  </button>
+                  <button className="w-full rounded-2xl border-2 border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-purple-500/5 p-5 text-left transition-all hover:border-purple-400/50 hover:from-purple-500/15 hover:to-purple-500/10 active:scale-[0.98]">
+                    <span className="text-3xl mr-3">🅱️</span>
+                    <span className="text-base font-semibold">{wyrQuestion.b}</span>
+                  </button>
+                </div>
+              )}
+
               {gameState.type === "trivia" && triviaQuestion && (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                    <p className="text-sm font-semibold text-center">{triviaQuestion.question}</p>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-5">
+                    <p className="text-base font-bold text-center">{triviaQuestion.question}</p>
                   </div>
                   <div className="space-y-2">
                     {triviaQuestion.options.map((option, index) => (
@@ -494,8 +604,11 @@ export function VCGamesSheet({
                         key={index}
                         onClick={() => handleTriviaAnswer(index)}
                         disabled={!!gameState.winner}
-                        className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left text-sm hover:border-primary/50 transition-all disabled:opacity-50"
+                        className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-4 text-left text-sm font-medium hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50 active:scale-[0.98]"
                       >
+                        <span className="font-bold text-primary mr-3">
+                          {["A", "B", "C", "D"][index]}
+                        </span>
                         {option}
                       </button>
                     ))}
@@ -505,17 +618,15 @@ export function VCGamesSheet({
 
               {gameState.winner && (
                 <div className="mt-4 flex gap-2">
-                  {isHost && (
-                    <Button
-                      onClick={resetGame}
-                      variant="outline"
-                      className="flex-1 h-11 gap-2 border-white/10"
-                    >
-                      <X className="h-4 w-4" />
-                      End Game
-                    </Button>
-                  )}
-                  <Button onClick={startGame} className="flex-1 h-11 gap-2 bg-primary">
+                  <Button
+                    onClick={resetGame}
+                    variant="outline"
+                    className="flex-1 h-12 gap-2 border-white/10"
+                  >
+                    <X className="h-4 w-4" />
+                    End Game
+                  </Button>
+                  <Button onClick={startGame} className="flex-1 h-12 gap-2 bg-primary">
                     <RotateCcw className="h-4 w-4" />
                     Rematch
                   </Button>
