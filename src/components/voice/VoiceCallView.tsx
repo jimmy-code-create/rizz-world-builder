@@ -50,6 +50,7 @@ import {
 } from "@/lib/peer-audio";
 import { VCMusicSheet } from "@/components/voice/VCMusicSheet";
 import { VCGamesSheet } from "@/components/voice/VCGamesSheet";
+import { GameLauncherSheet } from "@/components/voice/GameLauncherSheet";
 
 function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
   const peerAudio = usePeerAudio();
@@ -221,6 +222,7 @@ export function VoiceCallView() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
+  const [gameLauncherOpen, setGameLauncherOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [bannerDismissedAt, setBannerDismissedAt] = useState<number | null>(null);
   // One panel layout at a time: mounting both side + overlay iframes loaded
@@ -361,10 +363,10 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Games"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${gamesOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setGamesOpen(true)}
-            title="Games"
+            aria-label="Game Launcher"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${gameLauncherOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setGameLauncherOpen(true)}
+            title="Game Launcher"
           >
             <Gamepad2 className="h-5 w-5" />
           </Button>
@@ -585,6 +587,29 @@ export function VoiceCallView() {
                 </span>
               </button>
             )}
+
+            {/* GAME BOT */}
+            <button
+              type="button"
+              onClick={() => setGameLauncherOpen(true)}
+              aria-label="Open game launcher"
+              className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+            >
+              <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                In call
+              </span>
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-primary/25 text-primary">
+                  <Gamepad2 className="h-6 w-6" aria-hidden="true" />
+                </AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 px-1">
+                <span className="block truncate text-xs font-semibold">GAME BOT</span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  Tap to launch games
+                </span>
+              </span>
+            </button>
             </div>
             </div>
             {panelOpen && roomActivity.activity && !isMobileView && (
@@ -870,6 +895,14 @@ export function VoiceCallView() {
           onOpenChange={setGamesOpen}
           channelId={call.channelId}
           participants={participants}
+        />
+
+        {/* Game Launcher Sheet */}
+        <GameLauncherSheet
+          open={gameLauncherOpen}
+          onOpenChange={setGameLauncherOpen}
+          channelId={call.channelId}
+          realmId={call.realmId}
         />
       </div>
     </FullScreenLayer>
