@@ -89,6 +89,9 @@ const sideTabs = [
   { to: "/bots", label: "bots", icon: Bot },
 ] as const;
 
+// Keep Games in the desktop sidebar; omit it from the mobile More drawer.
+const moreSheetTabs = sideTabs.filter((tab) => tab.to !== "/games");
+
 const mobileTabs = [
   { to: "/feed", label: "feed", icon: Home },
   { to: "/reels", label: "reels", icon: Film },
@@ -539,7 +542,7 @@ export function AppShell() {
 
           {/* Grid of destinations */}
           <div className="mt-4 grid grid-cols-4 gap-2">
-            {sideTabs.map((tab) => (
+            {moreSheetTabs.map((tab) => (
               <Link key={tab.to} to={tab.to} className={navTile(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
                 <span className="text-[11px] font-medium text-center leading-tight">
