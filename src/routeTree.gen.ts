@@ -33,6 +33,7 @@ import { Route as AppNotificationsRouteImport } from './routes/_app/notification
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as ApiBotRouteImport } from './routes/api.bot'
+import { Route as ApiChatstorySpeechRouteImport } from './routes/api.chatstory-speech'
 import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
 import { Route as ApiMeRouteImport } from './routes/api.me'
 import { Route as ApiRizzCoachRouteImport } from './routes/api.rizz-coach'
@@ -177,6 +178,11 @@ const AppReelsRoute = AppReelsRouteImport.update({
 const ApiBotRoute = ApiBotRouteImport.update({
   id: '/api/bot',
   path: '/api/bot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatstorySpeechRoute = ApiChatstorySpeechRouteImport.update({
+  id: '/api/chatstory-speech',
+  path: '/api/chatstory-speech',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLinkPreviewRoute = ApiLinkPreviewRouteImport.update({
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
+  '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
+  '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
+  '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
   '/api/me': typeof ApiMeRoute
   '/api/rizz-coach': typeof ApiRizzCoachRoute
@@ -492,6 +501,7 @@ export interface FileRouteTypes {
     | '/realms'
     | '/reels'
     | '/api/bot'
+    | '/api/chatstory-speech'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
@@ -542,6 +552,7 @@ export interface FileRouteTypes {
     | '/realms'
     | '/reels'
     | '/api/bot'
+    | '/api/chatstory-speech'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
@@ -594,6 +605,7 @@ export interface FileRouteTypes {
     | '/_app/realms'
     | '/_app/reels'
     | '/api/bot'
+    | '/api/chatstory-speech'
     | '/api/link-preview'
     | '/api/me'
     | '/api/rizz-coach'
@@ -632,6 +644,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TutorialRoute: typeof TutorialRoute
   ApiBotRoute: typeof ApiBotRouteWithChildren
+  ApiChatstorySpeechRoute: typeof ApiChatstorySpeechRoute
   ApiLinkPreviewRoute: typeof ApiLinkPreviewRouteWithChildren
   ApiMeRoute: typeof ApiMeRoute
   ApiRizzCoachRoute: typeof ApiRizzCoachRoute
@@ -809,6 +822,13 @@ declare module '@tanstack/react-router' {
       path: '/api/bot'
       fullPath: '/api/bot'
       preLoaderRoute: typeof ApiBotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chatstory-speech': {
+      id: '/api/chatstory-speech'
+      path: '/api/chatstory-speech'
+      fullPath: '/api/chatstory-speech'
+      preLoaderRoute: typeof ApiChatstorySpeechRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/link-preview': {
@@ -1110,6 +1130,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TutorialRoute: TutorialRoute,
   ApiBotRoute: ApiBotRouteWithChildren,
+  ApiChatstorySpeechRoute: ApiChatstorySpeechRoute,
   ApiLinkPreviewRoute: ApiLinkPreviewRouteWithChildren,
   ApiMeRoute: ApiMeRoute,
   ApiRizzCoachRoute: ApiRizzCoachRoute,
