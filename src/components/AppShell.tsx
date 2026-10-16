@@ -1,23 +1,32 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
-  Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift,
-  MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
-  Check, ChevronDown, Smile,
+  Bot,
+  Home,
+  Compass,
+  Plus,
+  Bell,
+  User as UserIcon,
+  LogOut,
+  Settings,
+  Trophy,
+  Hash,
+  Coins,
+  MessageCircle,
+  Bookmark,
+  Users,
+  Search,
+  Palette,
+  Film,
+  MoreHorizontal,
+  MessageSquareText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccountMenu } from "@/components/account/AccountMenu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,21 +44,33 @@ import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
+import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
-import { LimeCatSplash } from "@/components/LimeCatSplash";
-import { PRESENCE_STATUSES, statusColor, statusLabel, statusShortLabel, useSelfPresence, type PublicPresence } from "@/lib/presence";
+import { AppLoader } from "@/components/AppLoader";
+import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
-const NightclubCanvas = lazy(() => import("@/components/NightclubCanvas").then((m) => ({ default: m.NightclubCanvas })));
-const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
-const AppOverlays = lazy(() => import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })));
-const KeyboardShortcuts = lazy(() => import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })));
-const IncomingCallRinger = lazy(() => import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })));
-const PostComposer = lazy(() => import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })));
+const NightclubCanvas = lazy(() =>
+  import("@/components/NightclubCanvas").then((m) => ({ default: m.NightclubCanvas })),
+);
+const CommandPalette = lazy(() =>
+  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
+const AppOverlays = lazy(() =>
+  import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })),
+);
+const KeyboardShortcuts = lazy(() =>
+  import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })),
+);
+const IncomingCallRinger = lazy(() =>
+  import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })),
+);
+const PostComposer = lazy(() =>
+  import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })),
+);
 
 const sideTabs = [
   { to: "/feed", label: "feed", icon: Home },
@@ -57,7 +78,7 @@ const sideTabs = [
   { to: "/explore", label: "explore", icon: Compass },
   { to: "/groups", label: "groups", icon: Users },
   { to: "/realms", label: "realms", icon: Hash },
-  { to: "/drops", label: "giveaways", icon: Gift },
+  { to: "/drops", label: "bounties", icon: Coins },
   { to: "/dms", label: "messages", icon: MessageCircle },
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },
@@ -84,9 +105,11 @@ export function AppShell() {
   const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
   const presence = useSelfPresence();
 
-  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
+  const isConversation =
+    /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
-  const isWidePage = path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+  const isWidePage =
+    path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -126,7 +149,9 @@ export function AppShell() {
   }, [path]);
 
   // Close the More sheet whenever the route changes
-  useEffect(() => { setMoreOpen(false); }, [path]);
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [path]);
 
   useEffect(() => {
     if (loading || profileError) return;
@@ -196,23 +221,29 @@ export function AppShell() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => { qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] }); },
+        () => {
+          qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] });
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, qc]);
 
   if (profileError) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted-foreground">{profileError}</p>
-        <Button variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
+        <Button variant="outline" onClick={() => void refreshProfile()}>
+          Retry
+        </Button>
       </div>
     );
   }
 
   if (loading || !user || !profile?.username || !profile.tutorial_seen) {
-    return <LimeCatSplash />;
+    return <AppLoader />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
@@ -222,7 +253,9 @@ export function AppShell() {
   const dmBadge = dmUnreadCount > 9 ? "9+" : String(dmUnreadCount);
 
   const isActive = (to: string) =>
-    path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/realms" && path.startsWith("/r/"));
+    path === to ||
+    (to !== "/feed" && path.startsWith(to + "/")) ||
+    (to === "/realms" && path.startsWith("/r/"));
 
   const navItem = (active: boolean) =>
     `flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
@@ -239,17 +272,33 @@ export function AppShell() {
     }`;
 
   return (
-    <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
-      {!isConversation && <Suspense fallback={null}><NightclubCanvas /></Suspense>}
+    <div
+      className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
+    >
+      {!isConversation && (
+        <Suspense fallback={null}>
+          <NightclubCanvas />
+        </Suspense>
+      )}
 
       {/* Desktop sidebar */}
       {!isConversation && (
         <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
-          <Link to="/feed" className="flex items-center gap-2.5 mb-6 px-2 group" aria-label="RIZZ home">
+          <Link
+            to="/feed"
+            className="flex items-center gap-2.5 mb-6 px-2 group"
+            aria-label="RIZZ home"
+          >
             <div className="h-10 w-10 rounded-2xl bg-surface-2 border border-border flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
-              <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
+              <img
+                src="/brand/rizz-cat-logo.svg"
+                alt="RIZZ"
+                className="h-full w-full object-contain"
+              />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-foreground">RIZZ</span>
+            <span className="font-display text-xl font-bold tracking-tight text-foreground">
+              RIZZ
+            </span>
           </Link>
 
           <Button
@@ -266,8 +315,8 @@ export function AppShell() {
               className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-all hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {presence.customStatus?.emoji ? (
-                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
-                  {presence.customStatus.emoji}
+                <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center leading-none">
+                  <StatusEmoji emoji={presence.customStatus.emoji} size={18} />
                 </span>
               ) : (
                 <StatusDot status={presence.status} size={12} ring={false} />
@@ -276,32 +325,33 @@ export function AppShell() {
               <span className="text-xs">{statusShortLabel(presence.status)}</span>
             </button>
             {sideTabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={navItem(isActive(tab.to))}
-              >
+              <Link key={tab.to} to={tab.to} className={navItem(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
                 <span className="flex-1 text-sm font-medium">{t(tab.label)}</span>
                 {tab.to === "/dms" && dmUnreadCount > 0 && (
-                  <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                    isActive(tab.to) ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
-                  }`}>
+                  <span
+                    className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                      isActive(tab.to)
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
                     {dmBadge}
                   </span>
                 )}
               </Link>
             ))}
-            <Link
-              to="/notifications"
-              className={navItem(isActive("/notifications"))}
-            >
+            <Link to="/notifications" className={navItem(isActive("/notifications"))}>
               <Bell className="h-5 w-5" />
               <span className="font-medium text-sm flex-1">{t("inbox")}</span>
               {unreadCount > 0 && (
-                <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                  isActive("/notifications") ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
-                }`}>
+                <span
+                  className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                    isActive("/notifications")
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
                   {unreadBadge}
                 </span>
               )}
@@ -316,7 +366,7 @@ export function AppShell() {
             </Link>
           </nav>
 
-          <ProfileMenu profile={profile} initial={initial} signOut={signOut} />
+          <AccountMenu profile={profile} initial={initial} signOut={signOut} />
         </aside>
       )}
 
@@ -331,7 +381,11 @@ export function AppShell() {
             aria-label="RIZZ home"
             className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-surface-3"
           >
-            <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
+            <img
+              src="/brand/rizz-cat-logo.svg"
+              alt="RIZZ"
+              className="h-full w-full object-contain"
+            />
           </Link>
 
           <Link
@@ -346,7 +400,9 @@ export function AppShell() {
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <Link
               to="/notifications"
-              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+              aria-label={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
               className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Bell className="h-5 w-5" />
@@ -356,13 +412,11 @@ export function AppShell() {
                 </span>
               )}
             </Link>
-            <ProfileMenu
+            <AccountMenu
               profile={profile}
               initial={initial}
               signOut={signOut}
               compact
-              status={presence.status}
-              emoji={presence.customStatus?.emoji}
               onStatus={() => setStatusOpen(true)}
             />
           </div>
@@ -392,7 +446,15 @@ export function AppShell() {
           <div className="flex items-center justify-between gap-1">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
-              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+              return (
+                <NavBtn
+                  key={tab.to}
+                  to={tab.to}
+                  label={label}
+                  Icon={tab.icon}
+                  active={isActive(tab.to)}
+                />
+              );
             })}
             {!isReels && (
               <button
@@ -408,7 +470,15 @@ export function AppShell() {
             )}
             {mobileTabs.slice(2).map((tab) => {
               const label = t(tab.label);
-              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+              return (
+                <NavBtn
+                  key={tab.to}
+                  to={tab.to}
+                  label={label}
+                  Icon={tab.icon}
+                  active={isActive(tab.to)}
+                />
+              );
             })}
             <button
               onClick={() => setMoreOpen(true)}
@@ -456,21 +526,23 @@ export function AppShell() {
               presence={presence.status}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username} · {t("view_profile")}</p>
+              <p className="text-sm font-bold truncate text-foreground">
+                {profile?.display_name || profile?.username}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                @{profile?.username} · {t("view_profile")}
+              </p>
             </div>
           </Link>
 
           {/* Grid of destinations */}
           <div className="mt-4 grid grid-cols-4 gap-2">
             {sideTabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={navTile(isActive(tab.to))}
-              >
+              <Link key={tab.to} to={tab.to} className={navTile(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
-                <span className="text-[11px] font-medium text-center leading-tight">{t(tab.label)}</span>
+                <span className="text-[11px] font-medium text-center leading-tight">
+                  {t(tab.label)}
+                </span>
               </Link>
             ))}
             <Link to="/notifications" className={`relative ${navTile(isActive("/notifications"))}`}>
@@ -481,10 +553,6 @@ export function AppShell() {
                   {unreadBadge}
                 </span>
               )}
-            </Link>
-            <Link to="/bookmarks" className={navTile(isActive("/bookmarks"))}>
-              <Bookmark className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("saved")}</span>
             </Link>
             <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
               <Palette className="h-5 w-5" />
@@ -504,7 +572,10 @@ export function AppShell() {
           </div>
 
           <button
-            onClick={() => { setMoreOpen(false); setMobileSignOutConfirm(true); }}
+            onClick={() => {
+              setMoreOpen(false);
+              setMobileSignOutConfirm(true);
+            }}
             className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
           >
             <LogOut className="h-4 w-4" /> {t("sign_out")}
@@ -516,12 +587,12 @@ export function AppShell() {
         <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">{t("sign_out_title")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("sign_out_desc")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("sign_out_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void signOut()}
               className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -546,265 +617,32 @@ export function AppShell() {
   );
 }
 
-function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
+function NavBtn({
+  to,
+  label,
+  Icon,
+  active,
+}: {
+  to: string;
+  label: string;
+  Icon: any;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}
       className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
     >
-      <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}>
+      <div
+        className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}
+      >
         <Icon className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
       </div>
-      <span className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+      <span
+        className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}
+      >
         {label}
       </span>
     </Link>
-  );
-}
-
-function ProfileMenu({
-  profile,
-  initial,
-  signOut,
-  compact,
-  status: statusProp,
-  emoji: emojiProp,
-  onStatus,
-}: {
-  profile: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
-  initial: string;
-  signOut: () => Promise<void>;
-  compact?: boolean;
-  status?: PublicPresence;
-  emoji?: string | null;
-  onStatus?: () => void;
-}) {
-  const { t } = useI18n();
-  const selfPresence = useSelfPresence();
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [statusExpanded, setStatusExpanded] = useState(false);
-
-  const currentStatus = statusProp ?? selfPresence.status;
-  const currentEmoji = emojiProp ?? selfPresence.customStatus?.emoji;
-
-  return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (!open) {
-          setConfirmSignOut(false);
-          setStatusExpanded(false);
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label={currentStatus ? `Your profile. Status: ${statusLabel(currentStatus)}` : "Your profile"}
-          className={`relative flex items-center gap-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            compact
-              ? "h-11 w-11 justify-center rounded-full hover:bg-surface-2 active:bg-surface-3"
-              : "p-2 rounded-xl hover:bg-surface-2 w-full min-h-[44px]"
-          }`}
-        >
-          <div className="relative inline-flex items-center justify-center">
-            <UserAvatar
-              src={profile?.avatar_url}
-              fallback={initial}
-              size={compact ? "sm" : "md"}
-              presence={currentEmoji ? undefined : currentStatus}
-            />
-            {currentEmoji && (
-              <span className="pointer-events-none absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-background ring-1 ring-border text-[9px] leading-none">
-                {currentEmoji}
-              </span>
-            )}
-          </div>
-          {!compact && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
-            </div>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        collisionPadding={8}
-        className="w-[215px] bg-[#141416] border border-[#2a2a2e] rounded-xl p-1 shadow-2xl space-y-0.5 text-xs"
-      >
-        {/* Header = one line "@handle" muted (tap opens profile) */}
-        <DropdownMenuItem asChild className="p-0 focus:bg-transparent">
-          <Link
-            to="/u/$username"
-            params={{ username: profile?.username ?? "" }}
-            className="block px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground truncate transition-colors"
-          >
-            @{profile?.username}
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 1: [Status, Profile, Saved, Effects, Badges] */}
-        <div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setStatusExpanded((prev) => !prev);
-            }}
-            className="flex w-full items-center justify-between px-2.5 h-8 min-h-[32px] rounded-md text-xs hover:bg-white/[0.06] transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ backgroundColor: statusColor(selfPresence.status) }}
-              />
-              <span className="text-xs text-foreground font-medium">{t("status")}</span>
-            </div>
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              {statusShortLabel(selfPresence.status)}
-              <ChevronDown className={cn("h-3 w-3 transition-transform text-muted-foreground", statusExpanded && "rotate-180")} />
-            </span>
-          </button>
-
-          {statusExpanded && (
-            <div className="my-0.5 py-0.5 px-0.5 rounded-md bg-black/40 border border-[#2a2a2e] space-y-0.5">
-              {PRESENCE_STATUSES.map((entry) => {
-                const isSelected = selfPresence.status === entry.value;
-                return (
-                  <button
-                    key={entry.value}
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      await selfPresence.chooseStatus(entry.value);
-                      setStatusExpanded(false);
-                    }}
-                    className="flex w-full items-center justify-between px-2 py-1 rounded text-[11px] hover:bg-white/[0.08] transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                      <span className={cn("text-[11px]", isSelected ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {entry.label}
-                      </span>
-                    </div>
-                    {isSelected && <Check className="h-3 w-3 text-primary" />}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setStatusExpanded(false);
-                  onStatus?.();
-                }}
-                className="flex w-full items-center gap-1.5 px-2 py-1 rounded text-[11px] text-primary hover:bg-white/[0.08] transition-colors"
-              >
-                <Smile className="h-3 w-3" />
-                <span>{t("custom_status")}</span>
-              </button>
-            </div>
-          )}
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/u/$username" params={{ username: profile?.username ?? "" }} className="flex items-center gap-2.5 w-full">
-              <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("profile")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/bookmarks" className="flex items-center gap-2.5 w-full">
-              <Bookmark className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("saved")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/effects" className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2.5">
-                <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span>{t("effects")}</span>
-              </span>
-              <span className="text-[9px] font-bold border border-primary text-primary px-1 py-0.2 rounded leading-none">{t("soon")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/badges" className="flex items-center gap-2.5 w-full">
-              <Trophy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("badges")}</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        {/* Group 2 divider */}
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 2: [Settings, Appearance] */}
-        <div>
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings" className="flex items-center gap-2.5 w-full">
-              <Settings className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("settings")}</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 hover:bg-white/[0.06] focus:bg-white/[0.06]">
-            <Link to="/settings/appearance" className="flex items-center gap-2.5 w-full">
-              <Palette className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span>{t("appearance")}</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        {/* Group 3 divider */}
-        <DropdownMenuSeparator className="my-0.5 bg-[#2a2a2e] h-px -mx-1" />
-
-        {/* Group 3: [Sign out in #ff5d5d, inline "Sign out?" Yes/Cancel] */}
-        <div>
-          {confirmSignOut ? (
-            <div className="flex items-center justify-between px-2.5 h-8 min-h-[32px] text-xs">
-              <span className="text-[#ff5d5d] font-semibold text-xs">{t("sign_out")}?</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="px-2 py-0.5 rounded bg-[#ff5d5d]/20 text-[#ff5d5d] hover:bg-[#ff5d5d]/30 font-semibold text-[11px] transition-colors"
-                >
-                  {t("yes")}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setConfirmSignOut(false);
-                  }}
-                  className="px-2 py-0.5 rounded bg-white/5 text-muted-foreground hover:text-foreground text-[11px] transition-colors"
-                >
-                  {t("cancel")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setConfirmSignOut(true);
-              }}
-              className="h-8 min-h-[32px] px-2.5 rounded-md cursor-pointer text-xs gap-2.5 text-[#ff5d5d] hover:text-[#ff5d5d] hover:bg-white/[0.06] focus:bg-white/[0.06] focus:text-[#ff5d5d] flex items-center"
-            >
-              <LogOut className="h-3.5 w-3.5 shrink-0 text-[#ff5d5d]" />
-              <span>{t("sign_out")}</span>
-            </DropdownMenuItem>
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
