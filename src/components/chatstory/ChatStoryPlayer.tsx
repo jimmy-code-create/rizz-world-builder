@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, MotionConfig } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "framer-motion";
 import {
   AudioLines,
   ChevronsRight,
@@ -15,8 +15,21 @@ import {
 } from "lucide-react";
 import { CloseButton } from "@/components/ui/close-button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
+import { useChatStoryTTS } from "@/hooks/useChatStoryTTS";
 import { useKokoroTTS } from "@/hooks/useKokoroTTS";
-import { pickDeviceVoice } from "@/lib/voice-selection";
+import { pickDeviceVoice, speechPitchForVoice } from "@/lib/voice-selection";
+import {
+  ARCHETYPE_DEVICE_PREFS,
+  ARCHETYPE_KOKORO_VOICE,
+  ARCHETYPE_PROFILES,
+  detectVoiceArchetype,
+} from "@/lib/voice-cast";
+import {
+  buildChatStorySpeechPayload,
+  resolveChatStoryServerVoice,
+  resolveChatStoryTTSLanguage,
+} from "@/lib/chatstory-tts";
+import { resolveSceneClip } from "@/lib/scene-video";
 import {
   SPEECH_EFFECT_PRESETS,
   displayText,
@@ -94,7 +107,8 @@ type VoiceProfile = {
 };
 
 const VOICE_PROFILES: Record<string, VoiceProfile> = {
-  narrator: { voiceSlot: 0, pitch: 0.78, rateMultiplier: 0.92, volume: 0.9, gender: "neutral" },
+  // The narrator always speaks with a MAN's voice.
+  narrator: { ...ARCHETYPE_PROFILES.narrator },
   me: { voiceSlot: 1, pitch: 1.06, rateMultiplier: 1.02, volume: 1, gender: "neutral" },
   them: { voiceSlot: 2, pitch: 1.38, rateMultiplier: 1.08, volume: 1, gender: "female" },
   Asha: { voiceSlot: 2, pitch: 1.44, rateMultiplier: 1.08, volume: 1, gender: "female" },
@@ -102,17 +116,27 @@ const VOICE_PROFILES: Record<string, VoiceProfile> = {
   Echo: { voiceSlot: 4, pitch: 0.52, rateMultiplier: 0.82, volume: 0.86, gender: "neutral" },
 };
 
+/** Reader-seat device voices; the cast (child, elders, couple, adults) lives in voice-cast. */
+const READER_VOICE_PREFS: Record<NarrationLanguage, Record<string, string[]>> = {
+  en: {
+    me: ["Microsoft Andrew", "Microsoft Brian", "Daniel", "Alex", "Samantha"],
+  },
+  hi: {
+    me: ["Microsoft Madhur", "Microsoft Hemant", "Madhur"],
+  },
+};
+
 const VOICE_NAME_PREFERENCES: Record<NarrationLanguage, Record<string, string[]>> = {
   en: {
-    narrator: ["Microsoft Guy", "Microsoft Ryan", "Microsoft Andrew", "Daniel", "Alex"],
-    me: ["Microsoft Andrew", "Microsoft Brian", "Daniel", "Alex", "Samantha"],
+    ...ARCHETYPE_DEVICE_PREFS.en,
+    ...READER_VOICE_PREFS.en,
     Asha: ["Microsoft Aria", "Microsoft Jenny", "Samantha", "Ava"],
     Kabir: ["Microsoft Guy", "Microsoft Ryan", "Daniel", "Alex"],
     Echo: ["Microsoft Michelle", "Microsoft Sonia", "Samantha", "Ava"],
   },
   hi: {
-    narrator: ["Microsoft Madhur", "Microsoft Hemant", "Lekha"],
-    me: ["Microsoft Madhur", "Microsoft Hemant", "Madhur"],
+    ...ARCHETYPE_DEVICE_PREFS.hi,
+    ...READER_VOICE_PREFS.hi,
     Asha: ["Microsoft Swara", "Microsoft Neerja", "Lekha"],
     Kabir: ["Microsoft Madhur", "Microsoft Prabhat", "Hemant"],
     Echo: ["Microsoft Kalpana", "Microsoft Swara", "Lekha"],
@@ -150,9 +174,16 @@ function resolveVoiceProfile(speaker: string, story: ChatStory): VoiceProfile {
   const known = VOICE_PROFILES[key];
   if (known) return known;
 
+  // Story cast (child, old man/woman, young couple, adults) gets its own
+  // voice so every character in a story sounds distinct.
+  const archetype = detectVoiceArchetype(speaker);
+  if (archetype) return { ...ARCHETYPE_PROFILES[archetype] };
+
   const hash = characterHash(speaker);
-  const female = /\b(asha|she|her|girl|woman|female|mom|mother|sister)\b/i.test(speaker);
-  const male = /\b(kabir|he|him|boy|man|male|dad|father|brother)\b/i.test(speaker);
+  const female = /\b(asha|she|her|girl|woman|female|mom|mother|mummy|sister|daughter)\b/i.test(
+    speaker,
+  );
+  const male = /\b(kabir|he|him|boy|man|male|dad|papa|father|brother|uncle|son)\b/i.test(speaker);
   return {
     voiceSlot: hash,
     pitch: 0.82 + (hash % 7) * 0.09,
@@ -170,6 +201,8 @@ function resolveKokoroVoice(speaker: string, story: ChatStory, profile: VoicePro
     return KOKORO_STARRING_VOICES.me;
   if (normalized === "them" || normalized === story.them_name.trim().toLowerCase())
     return KOKORO_STARRING_VOICES.them;
+  const archetype = detectVoiceArchetype(speaker);
+  if (archetype) return ARCHETYPE_KOKORO_VOICE[archetype];
   const pool = KOKORO_VOICES[profile.gender];
   return pool[characterHash(speaker) % pool.length];
 }
@@ -180,11 +213,13 @@ function selectNarrationVoice(
   speaker: string,
   profile: VoiceProfile,
 ) {
+  const table = VOICE_NAME_PREFERENCES[language];
+  const archetype = detectVoiceArchetype(speaker);
   return pickDeviceVoice(voices, {
     language,
     gender: profile.gender,
     seed: profile.voiceSlot,
-    preferNames: VOICE_NAME_PREFERENCES[language][speaker],
+    preferNames: table[speaker] ?? (archetype ? table[archetype] : undefined),
   });
 }
 
@@ -289,6 +324,13 @@ export function ChatStoryPlayer({
     loadingProgress: hdVoiceProgress,
   } = useKokoroTTS();
 
+  const {
+    speakViaServer,
+    stop: serverStop,
+    unlockAudio: serverUnlock,
+    isLoading: serverLoading,
+  } = useChatStoryTTS();
+
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synthesis = window.speechSynthesis;
@@ -329,8 +371,9 @@ export function ChatStoryPlayer({
     }
     speechRef.current = null;
     kokoroStop();
+    serverStop();
     setIsSpeaking(false);
-  }, [kokoroStop]);
+  }, [kokoroStop, serverStop]);
 
   const unlockVoice = useCallback(() => {
     try {
@@ -338,7 +381,12 @@ export function ChatStoryPlayer({
     } catch {
       // Device voices need no unlock; ignore failures here.
     }
-  }, [kokoroUnlock]);
+    try {
+      serverUnlock();
+    } catch {
+      // Server audio unlock is best-effort only.
+    }
+  }, [kokoroUnlock, serverUnlock]);
 
   /** One segment through the device voices, with the character's profile. */
   const speakBrowserSegment = useCallback(
@@ -359,7 +407,6 @@ export function ChatStoryPlayer({
         utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
         // Speech rates above 3 sound garbled, so 3x is the ceiling here too.
         utterance.rate = Math.min(3, Math.max(0.5, speed * profile.rateMultiplier * preset.rate));
-        utterance.pitch = Math.min(2, Math.max(0, profile.pitch + preset.pitch));
         utterance.volume = Math.min(1, Math.max(0.05, profile.volume * preset.volume));
         const voices =
           availableVoicesRef.current.length > 0
@@ -367,6 +414,14 @@ export function ChatStoryPlayer({
             : synthesis.getVoices();
         const voice = selectNarrationVoice(voices, language, speaker, profile);
         if (voice) utterance.voice = voice;
+        // Masculinize / feminize when the device ships no voice of the
+        // character's gender, so men still sound like men.
+        utterance.pitch = speechPitchForVoice({
+          profilePitch: profile.pitch,
+          effectPitch: preset.pitch,
+          gender: profile.gender,
+          voiceName: voice?.name,
+        });
         const finish = () => resolve();
         utterance.onend = finish;
         utterance.onerror = finish;
@@ -384,8 +439,12 @@ export function ChatStoryPlayer({
 
   /**
    * Speaks a full story line: plain text, whisper runs, interjections and
-   * silence beats, in order. HD voices handle English scenes; anything else
-   * (and any HD failure) falls back to the device narration.
+   * silence beats, in order. English segments keep the local Kokoro HD voice;
+   * Hindi / Hinglish segments try the optional self-hosted server voice
+   * (Chatterbox-Multilingual-hi) and fall back to the device narration when
+   * it is unavailable. Chatterbox and Indic-Parler accept no inline emotion
+   * tags, so only the spoken segment text is sent — pauses and whisper
+   * volume stay client-side.
    */
   const speakLine = useCallback(
     async (rawText: string, speaker = "narrator") => {
@@ -397,9 +456,10 @@ export function ChatStoryPlayer({
       const run = speechRunRef.current;
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       kokoroStop();
+      serverStop();
       setIsSpeaking(true);
 
-      const useKokoro = hdVoice && language === "en" && hdVoiceReady;
+      const useKokoro = hdVoice && hdVoiceReady;
       const profile = resolveVoiceProfile(speaker, story);
 
       for (const segment of segments) {
@@ -408,15 +468,43 @@ export function ChatStoryPlayer({
           await waitForSpeech(segment.ms);
           continue;
         }
-        if (useKokoro) {
-          const preset = SPEECH_EFFECT_PRESETS[segment.effect];
+        const segmentLanguage = resolveChatStoryTTSLanguage(segment.text, language);
+        const preset = SPEECH_EFFECT_PRESETS[segment.effect];
+        const segmentSpeed = Math.min(
+          1.5,
+          Math.max(0.6, speed * profile.rateMultiplier * preset.rate),
+        );
+
+        if (segmentLanguage === "hi" && hdVoice) {
+          let played = false;
+          try {
+            played = await speakViaServer(
+              buildChatStorySpeechPayload({
+                text: segment.text,
+                language: "hi",
+                speaker,
+                voiceId: resolveChatStoryServerVoice(
+                  speaker,
+                  { me_name: story.me_name, them_name: story.them_name },
+                  profile.gender,
+                ),
+                speed: segmentSpeed,
+                storyNames: { me_name: story.me_name, them_name: story.them_name },
+                gender: profile.gender,
+              }),
+              { volume: preset.volume },
+            );
+          } catch {
+            played = false;
+          }
+          if (!played && speechRunRef.current === run) {
+            await speakBrowserSegment(segment.text, speaker, segment.effect);
+          }
+        } else if (segmentLanguage === "en" && useKokoro) {
           const played = await kokoroSpeak(
             segment.text,
             resolveKokoroVoice(speaker, story, profile),
-            {
-              speed: Math.min(1.5, Math.max(0.6, speed * profile.rateMultiplier * preset.rate)),
-              volume: preset.volume,
-            },
+            { speed: segmentSpeed, volume: preset.volume },
           );
           if (!played && speechRunRef.current === run) {
             await speakBrowserSegment(segment.text, speaker, segment.effect);
@@ -438,6 +526,8 @@ export function ChatStoryPlayer({
       kokoroStop,
       language,
       narration,
+      serverStop,
+      speakViaServer,
       speed,
       speakBrowserSegment,
       story.me_name,
@@ -508,6 +598,64 @@ export function ChatStoryPlayer({
   const sceneIndex = Math.max(
     0,
     scenes.findIndex((scene) => scene.id === activeScene?.id),
+  );
+
+  // Per-scene clips are offline-authored files (`public/videos/<slug>/<scene>.mp4`).
+  // Missing clips fall back to posters; failed ids are cached so a 404 is
+  // fetched once per session, never once per line.
+  const reduceMotion = useReducedMotion();
+  const [failedClips, setFailedClips] = useState<ReadonlySet<string>>(new Set());
+  const clipVideoRef = useRef<HTMLVideoElement | null>(null);
+  const sceneClip = useMemo(
+    () =>
+      activeScene
+        ? resolveSceneClip({
+            storySlug: story.slug,
+            sceneId: activeScene.id,
+            failedIds: failedClips,
+          })
+        : null,
+    [activeScene, failedClips, story.slug],
+  );
+  const showClip = Boolean(sceneClip) && !reduceMotion;
+  const nextScene = scenes[sceneIndex + 1];
+  const nextClip = useMemo(
+    () =>
+      !reduceMotion && nextScene
+        ? resolveSceneClip({ storySlug: story.slug, sceneId: nextScene.id, failedIds: failedClips })
+        : null,
+    [failedClips, nextScene, reduceMotion, story.slug],
+  );
+
+  const handleClipError = useCallback(() => {
+    const id = activeScene?.id;
+    if (!id) return;
+    setFailedClips((current) => (current.has(id) ? current : new Set(current).add(id)));
+  }, [activeScene?.id]);
+
+  // Pause the scene clip when the page hides; resume when it returns.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisibility = () => {
+      const video = clipVideoRef.current;
+      if (!video) return;
+      if (document.hidden) {
+        video.pause();
+      } else if (showClip) {
+        void video.play().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [showClip]);
+
+  // Stop playback when the scene changes or the player closes.
+  useEffect(
+    () => () => {
+      clipVideoRef.current?.pause();
+      clipVideoRef.current = null;
+    },
+    [activeScene?.id],
   );
   // Progress through the whole story, so long uploads always show how far in you are.
   const lineIndex =
@@ -600,7 +748,10 @@ export function ChatStoryPlayer({
     const next = !hdVoice;
     setHdVoice(next);
     if (next) unlockVoice();
-    else kokoroStop();
+    else {
+      kokoroStop();
+      serverStop();
+    }
     try {
       window.localStorage.setItem(HD_VOICE_KEY, next ? "1" : "0");
     } catch {
@@ -628,7 +779,29 @@ export function ChatStoryPlayer({
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
           >
             <AnimatePresence mode="wait">
-              {story.video_url ? (
+              {showClip && activeScene && sceneClip ? (
+                <motion.div
+                  key={`clip-${activeScene.id}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.85 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0"
+                >
+                  <video
+                    ref={clipVideoRef}
+                    src={sceneClip}
+                    poster={activeScene.image}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="auto"
+                    onError={handleClipError}
+                    className="h-full w-full object-cover"
+                  />
+                </motion.div>
+              ) : story.video_url ? (
                 <motion.div
                   key="story-video"
                   initial={{ opacity: 0 }}
@@ -668,6 +841,19 @@ export function ChatStoryPlayer({
                 />
               )}
             </AnimatePresence>
+            {/* Warm the next scene's clip (metadata only) so cuts feel instant. */}
+            {nextClip && nextClip !== sceneClip && (
+              <video
+                key={`prefetch-${nextScene?.id}`}
+                src={nextClip}
+                muted
+                playsInline
+                preload="metadata"
+                aria-hidden="true"
+                tabIndex={-1}
+                className="absolute h-0 w-0 overflow-hidden opacity-0"
+              />
+            )}
             {/* Cinematic vignette to ensure chat bubbles remain crisp and readable */}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,7,16,.72)_0%,rgba(9,7,16,.65)_40%,rgba(9,7,16,.94)_100%)]" />
             <div className="absolute inset-0 bg-aurora opacity-15" />
@@ -761,10 +947,12 @@ export function ChatStoryPlayer({
                     <button
                       onClick={toggleHdVoice}
                       aria-pressed={hdVoice}
-                      title="HD character voices (Kokoro) run locally in your browser. English scenes download once; Hindi scenes use your device's most realistic voices."
+                      title="HD character voices: English runs locally in your browser (Kokoro). Hindi tries the optional self-hosted Chatterbox voice when configured, otherwise your device's most realistic Hindi voice."
                       className={`glass flex h-8 items-center gap-1 rounded-full px-2.5 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${hdVoice ? "text-primary" : "text-muted-foreground"}`}
                     >
-                      {hdVoice && !hdVoiceReady && (hdVoiceLoading || hdVoiceProgress > 0) ? (
+                      {hdVoice &&
+                      ((!hdVoiceReady && (hdVoiceLoading || hdVoiceProgress > 0)) ||
+                        serverLoading) ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Sparkles className="h-3.5 w-3.5" />
@@ -772,7 +960,7 @@ export function ChatStoryPlayer({
                       {hdVoice
                         ? hdVoiceReady
                           ? "HD on"
-                          : hdVoiceLoading || hdVoiceProgress > 0
+                          : hdVoiceLoading || hdVoiceProgress > 0 || serverLoading
                             ? `HD ${Math.round(hdVoiceProgress)}%`
                             : "HD on"
                         : "HD"}

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Draw Party · RIZZ preview</title>
+<style>
+  :root { --ink:#0a0a0b; --card:#141416; --line:#262629; --paper:#f4f1e7; --dim:#a9a69c; --lime:#c9ff3d; --red:#ff5d5d; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ink); color:var(--paper); font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif; font-size:15px; line-height:1.5; }
+  .wrap { max-width:1024px; margin:0 auto; padding:12px 12px 32px; }
+  .kicker { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#8a8a8e; }
+  h1 { margin:2px 0 0; font-size:26px; letter-spacing:-.02em; }
+  h1 small { font-size:13px; color:var(--dim); margin-left:8px; vertical-align:middle; }
+  .modebadge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:2px 8px; margin-left:8px; vertical-align:middle; }
+  .modebadge b { color:var(--lime); }
+  .sub { color:var(--dim); font-size:13px; margin:4px 0 0; }
+  .topbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-top:4px; }
+  .room { border:1px solid rgba(201,255,61,.4); background:rgba(201,255,61,.1); color:var(--lime); border-radius:999px; padding:4px 12px; font-family:monospace; font-size:12px; font-weight:800; letter-spacing:.15em; }
+  .btn { min-height:44px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--paper); font-weight:700; font-size:13px; padding:0 16px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center; }
+  .btn:hover { border-color:rgba(201,255,61,.5); }
+  .btn.primary { background:var(--lime); color:#0b0b0c; border:none; }
+  .btn:disabled { opacity:.5; }
+  .btn.on { border-color:var(--lime); color:var(--lime); }
+  .grid { display:grid; gap:12px; margin-top:12px; grid-template-columns:1fr; }
+  @media(min-width:900px){ .grid { grid-template-columns:1fr 300px; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px; min-width:0; }
+  .hud { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
+  .pill { background:rgba(255,255,255,.06); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; }
+  .pill.word { font-family:monospace; font-size:15px; letter-spacing:.2em; }
+  .pill.urgent { background:rgba(255,93,93,.2); color:#ff8a7a; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.55; } }
+  .bar { height:6px; width:96px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; }
+  .bar > span { display:block; height:100%; background:var(--lime); border-radius:999px; transition:width .5s; }
+  #stage { position:relative; height:46vh; min-height:320px; border:1px solid rgba(255,255,255,.1); border-radius:12px; overflow:hidden; background:#101012; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  #notice { position:absolute; left:50%; top:8px; transform:translateX(-50%); background:rgba(0,0,0,.7); border-radius:999px; padding:6px 16px; font-size:12px; font-weight:600; white-space:nowrap; display:none; }
+  #fx { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #fx .react { position:absolute; bottom:24px; font-size:26px; animation:floatUp 2.2s ease-out forwards; }
+  #fx .cf { position:absolute; top:0; width:6px; height:10px; border-radius:1px; animation:cfFall 1.8s ease-in forwards; }
+  @keyframes floatUp { 0%{opacity:0;transform:translateY(12px) scale(.7);} 15%{opacity:1;} 100%{opacity:0;transform:translateY(-90px) scale(1.25);} }
+  @keyframes cfFall { 0%{opacity:1;transform:translateY(-8px) rotate(0);} 100%{opacity:0;transform:translateY(230px) rotate(540deg);} }
+  #winner { position:absolute; inset:0; display:none; place-items:center; background:rgba(0,0,0,.7); text-align:center; }
+  #winner .box { background:var(--card); border:1px solid rgba(201,255,61,.4); border-radius:16px; padding:20px 28px; max-width:90%; }
+  .toolbar { margin-top:8px; border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.02); border-radius:12px; padding:8px; }
+  .trow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .trow + .trow { margin-top:8px; }
+  .tlabel { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); padding:0 4px; }
+  .swatch { width:36px; height:36px; border-radius:50%; border:2px solid rgba(255,255,255,.15); cursor:pointer; padding:0; }
+  .swatch.sel { border-color:var(--lime); }
+  .szbtn { width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,.15); background:transparent; color:var(--paper); cursor:pointer; display:grid; place-items:center; }
+  .szbtn.sel { border-color:var(--lime); }
+  .szbtn i { display:block; border-radius:50%; background:currentColor; }
+  .startrow, .picker, .sandboxbar { margin-top:12px; border-radius:12px; padding:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .startrow { border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); flex-direction:column; align-items:stretch; }
+  .picker { border:1px solid rgba(201,255,61,.3); background:rgba(201,255,61,.04); flex-direction:column; align-items:stretch; }
+  .picker p { margin:0; font-weight:700; font-size:14px; }
+  .picker .opts, .picker .custom, .hrow { display:flex; gap:8px; flex-wrap:wrap; }
+  .modes { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .modecard { border:1px solid rgba(255,255,255,.1); border-radius:12px; background:transparent; color:var(--paper); padding:8px; cursor:pointer; text-align:left; }
+  .modecard.sel { border-color:var(--lime); background:rgba(201,255,61,.06); }
+  .modecard b { display:block; font-size:12px; }
+  .modecard span { font-size:11px; color:var(--dim); }
+  input[type=text] { min-height:44px; flex:1; min-width:140px; border-radius:999px; border:1px solid rgba(255,255,255,.15); background:rgba(0,0,0,.4); color:var(--paper); padding:0 16px; font-size:14px; font-weight:600; }
+  input[type=text]::placeholder { color:var(--dim); }
+  .dur { display:flex; gap:6px; }
+  .plabel { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#8a8a8e; }
+  .player { display:flex; justify-content:space-between; gap:8px; background:rgba(255,255,255,.04); border-radius:12px; padding:8px 12px; font-size:14px; margin-top:6px; }
+  .player b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .score { font-family:monospace; color:var(--lime); font-weight:800; }
+  #feed { max-height:260px; overflow-y:auto; margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+  .guess { background:rgba(255,255,255,.04); border-radius:12px; padding:6px 12px; font-size:14px; }
+  .guess.ok { background:rgba(201,255,61,.15); color:var(--lime); }
+  .sys { text-align:center; font-size:12px; font-weight:800; color:var(--lime); }
+  .reactrow { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .reactrow button { width:44px; height:44px; border-radius:50%; border:1px solid rgba(255,255,255,.1); background:transparent; font-size:18px; cursor:pointer; }
+  .guessrow { display:flex; gap:8px; margin-top:8px; }
+  .note { margin-top:12px; font-size:12px; color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Party game · preview build</div>
+  <div class="topbar">
+    <h1>Draw Party <small id="roundLbl"></small><span class="modebadge" id="modeBadge"></span></h1>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="room" id="roomBadge" style="display:none"></span>
+      <button class="btn" id="roomBtn">Create room</button>
+    </div>
+  </div>
+  <p class="sub" id="subTxt">Pick Classic, Speed or Sandbox — whoever starts draws.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="hud" id="hud" style="display:none">
+        <span class="pill" id="timer">75s</span>
+        <span class="pill word" id="wordHint">_ _ _</span>
+        <span class="pill" id="roundInfo" style="color:var(--dim)"></span>
+        <span class="bar"><span id="timebar" style="width:100%"></span></span>
+      </div>
+      <div id="stage">
+        <canvas id="cv"></canvas>
+        <div id="notice"></div>
+        <div id="fx"></div>
+        <div id="winner"><div class="box"><div style="font-size:32px">🏆</div><p id="winnerTxt" style="font-size:18px;font-weight:800;margin:8px 0 4px"></p><p id="winnerSub" class="sub"></p><p id="votesTxt" style="font-size:12px;color:var(--lime);font-weight:800"></p><div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="againBtn">Play again</button><button class="btn" id="rematchBtn">Rematch</button></div></div></div>
+      </div>
+      <div class="toolbar">
+        <div class="trow"><span class="tlabel">Color</span><span id="swatches" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
+        <div class="trow"><span class="tlabel">Brush</span><span id="sizes" style="display:flex;gap:6px"></span>
+          <button class="btn" id="eraserBtn">Eraser</button>
+          <button class="btn" id="undoBtn">Undo</button>
+          <button class="btn" id="clearBtn">Clear</button>
+          <button class="btn" id="pngBtn">PNG</button>
+          <button class="btn" id="replayBtn" style="display:none">Replay</button>
+        </div>
+      </div>
+      <div class="picker" id="picker" style="display:none">
+        <p id="pickerTitle">Pick a word</p>
+        <div class="opts" id="opts"></div>
+        <div class="custom">
+          <input type="text" id="customWord" placeholder="…or your own word (letters only)" maxlength="24" />
+          <span class="dur" id="durRow"></span>
+          <button class="btn" id="customBtn">Draw it</button>
+        </div>
+      </div>
+      <div class="startrow" id="startrow">
+        <div class="modes" id="modes"></div>
+        <div class="hrow">
+          <input type="text" id="nameInput" placeholder="Your nickname" maxlength="24" />
+          <span class="dur" id="durRow2"></span>
+          <button class="btn primary" id="startBtn">Start drawing</button>
+        </div>
+      </div>
+      <div class="sandboxbar" id="sandboxbar" style="display:none;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)">
+        <p class="sub" style="flex:1">Sandbox open — <b style="color:var(--paper)">everyone</b> can draw.</p>
+        <button class="btn" id="endSandboxBtn">End sandbox</button>
+      </div>
+      <div class="sandboxbar" id="nextrow" style="display:none;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)">
+        <p class="sub" id="revealTxt" style="flex:1"></p>
+        <button class="btn primary" id="nextBtn">Next round</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="card">
+        <div class="plabel">Players</div>
+        <div id="players"></div>
+      </div>
+      <div class="card">
+        <div class="plabel">Guesses</div>
+        <div id="feed"></div>
+        <div class="reactrow" id="reactRow"></div>
+        <div class="guessrow">
+          <input type="text" id="guessInput" placeholder="Type a guess…" maxlength="40" />
+          <button class="btn primary" id="guessBtn">Guess</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note">Preview note: this static build syncs across tabs on this same link (pass-and-play works too). The full RIZZ version syncs across devices over the voice room.</p>
+</div>
+
+<script>
+const WORDS = ["cat","pizza","rocket","dragon","beach","guitar","ghost","castle","bicycle","penguin","taco","volcano","robot","mermaid","campfire","astronaut","donut","pirate","unicorn","basketball","waterfall","vampire","saxophone","snowman","submarine","cupcake","dinosaur","treehouse","fireworks","jellyfish","skateboard","haunted house","popcorn","kangaroo","lighthouse","sandcastle","helicopter","cactus","ice cream","superhero","carousel","octopus","hot dog","mountain","wizard","trampoline","pancakes","parrot","race car","tent","zombie","balloon","bridge","cloud","crown","disco","ferris wheel","hamburger","igloo","jungle","kite","lemon","moon","ninja","ocean","piano","queen","rainbow","sushi","tiger","umbrella","violin","watermelon","yoga","zebra","bakery","circus","farm"];
+const COLORS = ["#f4f1e7","#c9ff3d","#ff6a55","#ff9ecb","#6aa6ff","#4ade80","#facc15","#22d3ee","#a855f7","#0a0a0b"];
+const SIZES = [4,8,14], DURS=[30,60,90], EMOJIS=["❤️","😂","😮","👏","🔥","😭"];
+const MODES = { classic:{label:"Classic",blurb:"4 rounds · your timer",total:4,mult:1}, speed:{label:"Speed",blurb:"6 × 30s · 2× points",total:6,mult:2}, sandbox:{label:"Sandbox",blurb:"Free draw · no scoring",total:1,mult:1} };
+const HINT_MS=25000;
+const $ = id => document.getElementById(id);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const mask = w => w.split("").map(c=>c===" "?" ":"_").join(" ");
+const hintMask=(w,ms)=>{const n=Math.floor(ms/HINT_MS);let s=0;return w.split("").map(c=>{if(c===" ")return " ";if(s<n){s++;return c;}return "_";}).join(" ");};
+
+let myId=localStorage.getItem("dp-id"); if(!myId){myId=uid();localStorage.setItem("dp-id",myId);}
+let myName=localStorage.getItem("dp-name")||""; $("nameInput").value=myName;
+const params=new URLSearchParams(location.search);
+let room=(params.get("room")||"").toUpperCase()||null, bc=null;
+if(room){bc=new BroadcastChannel("dp-"+room);bc.onmessage=ev=>onRemote(ev.data);$("roomBadge").style.display="";$("roomBadge").textContent="ROOM "+room;$("roomBtn").textContent="Copy invite";}
+const send=ev=>{if(bc){try{bc.postMessage(ev);}catch(e){}}};
+
+let strokes=[],color=COLORS[0],size=SIZES[1],eraser=false;
+let word=null,drawerId=null,drawerName=null,round=0,mode="classic",mult=1,total=4,dur=75,startedAt=null,endsAt=null,revealed=null;
+let feed=[],players={},gameOver=false,votes={},replaying=false;
+const me=()=>(myName||"").trim()||"Someone";
+const isDrawer=()=>drawerId?drawerId===myId:true;
+const inRound=()=>word&&endsAt&&Date.now()<endsAt;
+const sandboxOn=()=>mode==="sandbox"&&round>0;
+const upsert=(id,nm,d=0)=>{players[id]={id,name:nm||"Someone",score:(players[id]?players[id].score:0)+d};renderPlayers();};
+const sys=t=>{feed.push({t:"s",id:uid(),text:t});if(feed.length>60)feed=feed.slice(-60);renderFeed();};
+function react(emoji){const fx=$("fx");const s=document.createElement("span");s.className="react";s.textContent=emoji;s.style.left=(8+Math.random()*84)+"%";fx.appendChild(s);setTimeout(()=>s.remove(),2300);}
+function confetti(){const fx=$("fx");for(let i=0;i<36;i++){const s=document.createElement("span");s.className="cf";s.style.left=(Math.random()*100)+"%";s.style.background=COLORS[Math.floor(Math.random()*COLORS.length)];s.style.animationDelay=(Math.random()*.35)+"s";fx.appendChild(s);setTimeout(()=>s.remove(),2300);}}
+
+const cv=$("cv"),stage=$("stage"),ctx=cv.getContext("2d");
+function paint(){const r=stage.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);
+  const w=Math.max(1,Math.floor(r.width*dpr)),h=Math.max(1,Math.floor(r.height*dpr));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  ctx.clearRect(0,0,w,h);ctx.fillStyle="#101012";ctx.fillRect(0,0,w,h);ctx.lineCap="round";ctx.lineJoin="round";
+  const all=cur?strokes.concat([cur]):strokes;
+  for(const s of all){if(!s.points.length)continue;
+    ctx.globalCompositeOperation=s.eraser?"destination-out":"source-over";
+    ctx.strokeStyle=s.color;ctx.lineWidth=s.size*dpr;ctx.beginPath();
+    s.points.forEach((p,i)=>{const x=p.x*w,y=p.y*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    if(s.points.length===1){ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.points[0].x*w,s.points[0].y*h,s.size*dpr/2,0,7);ctx.fill();}else ctx.stroke();}
+  ctx.globalCompositeOperation="source-over";}
+let cur=null;
+const pos=e=>{const r=cv.getBoundingClientRect();return{x:Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y:Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))};};
+const canDraw=()=>!word||!endsAt||(inRound()&&isDrawer());
+cv.addEventListener("pointerdown",e=>{if(!canDraw())return;cv.setPointerCapture(e.pointerId);cur={id:uid(),color:eraser?"#000":color,size:eraser?size*2.2:size,eraser,points:[pos(e)]};paint();});
+cv.addEventListener("pointermove",e=>{if(!cur)return;cur.points.push(pos(e));paint();});
+const finish=()=>{if(!cur)return;const s=cur;cur=null;strokes.push(s);send({kind:"stroke",stroke:s});paint();};
+cv.addEventListener("pointerup",finish);cv.addEventListener("pointercancel",finish);
+addEventListener("resize",paint);
+
+const sw=$("swatches");
+function drawSwatches(){sw.innerHTML="";
+  COLORS.forEach(c=>{const b=document.createElement("button");b.className="swatch"+(c===color&&!eraser?" sel":"");b.style.background=c;b.title=c;
+    b.onclick=()=>{color=c;eraser=false;$("eraserBtn").classList.remove("on");drawSwatches();};sw.appendChild(b);});
+  const lab=document.createElement("label");lab.className="swatch"+(!COLORS.includes(color)?" sel":"");lab.title="Custom color";lab.style.position="relative";
+  lab.style.background=COLORS.includes(color)?"conic-gradient(#f44,#fc3,#4f4,#48f,#a4f,#f44)":color;
+  lab.innerHTML=`<input type="color" value="${color}" style="opacity:0;width:0;height:0;position:absolute" />`;
+  lab.querySelector("input").oninput=e=>{color=e.target.value;eraser=false;$("eraserBtn").classList.remove("on");drawSwatches();};
+  sw.appendChild(lab);}
+drawSwatches();
+const sz=$("sizes");
+SIZES.forEach(s=>{const b=document.createElement("button");b.className="szbtn"+(s===size?" sel":"");b.title=s+"px";b.innerHTML=`<i style="width:${s}px;height:${s}px"></i>`;
+  b.onclick=()=>{size=s;[...sz.children].forEach(x=>x.classList.remove("sel"));b.classList.add("sel");};sz.appendChild(b);});
+$("eraserBtn").onclick=e=>{eraser=!eraser;e.currentTarget.classList.toggle("on",eraser);if(eraser)drawSwatches();};
+$("undoBtn").onclick=()=>{const s=strokes.pop();if(s){send({kind:"undo",strokeId:s.id});paint();}};
+$("clearBtn").onclick=()=>{strokes=[];send({kind:"clear"});paint();};
+$("pngBtn").onclick=()=>{cv.toBlob(b=>{if(!b)return;const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`draw-party-round-${Math.max(1,round)}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);});};
+$("replayBtn").onclick=()=>{const snap=[...strokes];if(!snap.length||replaying)return;replaying=true;strokes=[];let i=0;
+  const step=()=>{i++;strokes=snap.slice(0,i);paint();if(i<snap.length)setTimeout(step,120);else setTimeout(()=>{replaying=false;},400);};setTimeout(step,150);};
+
+$("roomBtn").onclick=async()=>{
+  if(room){const link=`${location.origin}${location.pathname}?room=${room}`;
+    try{await navigator.clipboard.writeText(`Join my Draw Party room ${room}: ${link}`);$("roomBtn").textContent="Copied!";setTimeout(()=>$("roomBtn").textContent="Copy invite",1500);}catch(e){prompt("Copy invite:",link);}return;}
+  const abc="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let c="";const b=new Uint32Array(6);crypto.getRandomValues(b);for(const x of b)c+=abc[x%abc.length];
+  const u=new URL(location.href);u.searchParams.set("room",c);location.href=u.toString();};
+
+function durRow(el){el.innerHTML="";DURS.forEach(d=>{const b=document.createElement("button");b.className="btn"+(dur===d?" on":"");b.textContent=d+"s";b.onclick=()=>{dur=d;durRow($("durRow"));durRow($("durRow2"));};el.appendChild(b);});}
+function modeRow(){const el=$("modes");el.innerHTML="";Object.keys(MODES).forEach(m=>{const b=document.createElement("button");b.className="modecard"+(mode===m?" sel":"");
+  b.innerHTML=`<b></b><span></span>`;b.querySelector("b").textContent=MODES[m].label;b.querySelector("span").textContent=MODES[m].blurb;
+  b.onclick=()=>{mode=m;if(m==="speed")dur=30;modeRow();renderLobby();};el.appendChild(b);});}
+modeRow();durRow($("durRow"));durRow($("durRow2"));
+function pick3(){const out=[];let g=0;while(out.length<3&&g<200){g++;const w=WORDS[Math.floor(Math.random()*WORDS.length)];if(!w||out.includes(w))continue;if(word&&w===word)continue;out.push(w);}return out;}
+function openPicker(){myName=$("nameInput").value.trim();if(!myName){alert("Pick a nickname first");return;}
+  localStorage.setItem("dp-name",myName);upsert(myId,me());
+  if(mode==="speed")dur=30;
+  if(mode==="sandbox"){beginSandbox();return;}
+  $("pickerTitle").textContent=`Round ${round+1}/${MODES[mode].total} — pick a word to draw`+(mode==="speed"?" · 30s · 2× points":"");
+  const o=$("opts");o.innerHTML="";pick3().forEach(w=>{const b=document.createElement("button");b.className="btn primary";b.textContent=w;b.onclick=()=>begin(w);o.appendChild(b);});
+  $("durRow").style.display=mode==="classic"?"":"none";
+  $("customWord").value="";$("picker").style.display="flex";renderLobby();}
+function begin(w){w=(w||"").trim().toLowerCase().slice(0,24);if(!w)return;
+  total=MODES[mode].total;mult=MODES[mode].mult;
+  word=w;drawerId=myId;drawerName=me();round++;startedAt=Date.now();endsAt=startedAt+dur*1000;revealed=null;gameOver=false;votes={};feed=[];strokes=[];
+  upsert(myId,me());send({kind:"round",word,drawerId,drawerName,round,endsAt,totalRounds:total,durationS:dur,mode,mult});
+  $("picker").style.display="none";renderAll();paint();}
+function beginSandbox(){total=1;mult=1;mode="sandbox";word=null;drawerId=myId;drawerName=me();round=1;endsAt=null;startedAt=null;revealed=null;gameOver=false;votes={};feed=[];strokes=[];
+  upsert(myId,me());sys(`${me()} opened the sandbox — free draw!`);
+  send({kind:"round",word:"",drawerId,drawerName,round:1,endsAt:Date.now(),totalRounds:1,durationS:0,mode:"sandbox",mult:1});
+  $("picker").style.display="none";renderAll();paint();}
+$("startBtn").onclick=openPicker;$("nextBtn").onclick=openPicker;
+$("customBtn").onclick=()=>{const w=$("customWord").value.trim();if(!/^[a-zA-Z ]{2,24}$/.test(w)){alert("Custom word: 2–24 letters");return;}begin(w);};
+function reset(remote){word=null;drawerId=null;drawerName=null;round=0;endsAt=null;startedAt=null;revealed=null;feed=[];strokes=[];if(remote)players={};gameOver=false;votes={};mode="classic";mult=1;total=4;if(!remote)send({kind:"clear"});$("picker").style.display="none";renderAll();paint();}
+$("againBtn").onclick=()=>reset(false);
+$("endSandboxBtn").onclick=()=>reset(false);
+$("rematchBtn").onclick=()=>{votes[myId]=me();send({kind:"rematch",userId:myId,name:me()});checkVotes();};
+function checkVotes(){const n=Object.keys(votes).length,need=Math.max(2,Object.keys(players).length);
+  $("votesTxt").textContent=n?`Rematch votes: ${Object.values(votes).join(", ")} (${n}/${need})`:"";
+  if(n>=need)reset(true);}
+function endRound(){if(!word)return;revealed=word;endsAt=null;send({kind:"reveal",word});if(round>=total){gameOver=true;confetti();}renderAll();}
+
+function submit(){const t=$("guessInput").value.trim();if(!t)return;
+  myName=$("nameInput").value.trim()||myName;localStorage.setItem("dp-name",myName);
+  const g={t:"g",id:uid(),name:me(),text:t,correct:false};
+  if(word&&inRound()&&!isDrawer()&&t.toLowerCase()===word.toLowerCase()){g.correct=true;
+    const left=Math.max(0,Math.ceil((endsAt-Date.now())/1000)),pts=(100+left*2)*mult;
+    upsert(myId,me(),pts);if(drawerId)upsert(drawerId,drawerName,50*mult);
+    feed.push({t:"s",id:uid(),text:`🎉 You guessed it! +${pts}`});confetti();
+    send({kind:"correct",userId:myId,name:me(),points:pts});}
+  feed.push(g);if(feed.length>60)feed=feed.slice(-60);
+  send({kind:"guess",id:g.id,name:g.name,text:g.text,at:Date.now()});
+  $("guessInput").value="";renderFeed();renderPlayers();}
+$("guessBtn").onclick=submit;$("guessInput").addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+$("nameInput").addEventListener("change",e=>{myName=e.target.value;localStorage.setItem("dp-name",myName);});
+EMOJIS.forEach(e=>{const b=document.createElement("button");b.textContent=e;b.title="React "+e;b.onclick=()=>{react(e);send({kind:"react",id:uid(),name:me(),emoji:e});};$("reactRow").appendChild(b);});
+
+function onRemote(ev){if(!ev||!ev.kind)return;
+  if(ev.kind==="stroke"){if(!strokes.some(s=>s.id===ev.stroke.id)){strokes.push(ev.stroke);paint();}}
+  else if(ev.kind==="clear"){strokes=[];paint();}
+  else if(ev.kind==="undo"){strokes=strokes.filter(s=>s.id!==ev.strokeId);paint();}
+  else if(ev.kind==="guess"){if(!feed.some(f=>f.id===ev.id)){const ok=word&&endsAt&&Date.now()<endsAt&&ev.text.trim().toLowerCase()===word.toLowerCase();feed.push({t:"g",id:ev.id,name:ev.name,text:ev.text,correct:ok});renderFeed();}upsert(ev.id,ev.name);}
+  else if(ev.kind==="round"){mode=(ev.mode==="speed"||ev.mode==="sandbox")?ev.mode:"classic";mult=ev.mult||(mode==="speed"?2:1);total=ev.totalRounds||MODES[mode].total;dur=ev.durationS||(mode==="speed"?30:75);
+    word=mode==="sandbox"?null:ev.word;drawerId=ev.drawerId;drawerName=ev.drawerName;round=ev.round;endsAt=mode==="sandbox"?null:ev.endsAt;startedAt=endsAt?endsAt-dur*1000:null;
+    revealed=null;gameOver=false;votes={};feed=[];strokes=[];$("picker").style.display="none";upsert(ev.drawerId,ev.drawerName);
+    if(mode==="sandbox")sys(`${ev.drawerName} opened the sandbox — free draw!`);
+    modeRow();paint();renderAll();}
+  else if(ev.kind==="correct"){upsert(ev.userId,ev.name,ev.points);feed.forEach(f=>{if(f.t==="g"&&f.name===ev.name)f.correct=true;});feed.push({t:"s",id:uid(),text:`🎉 ${ev.name} guessed it! +${ev.points}`});renderFeed();renderPlayers();}
+  else if(ev.kind==="reveal"){revealed=ev.word;endsAt=null;if(round>=total){gameOver=true;confetti();}renderAll();}
+  else if(ev.kind==="react"){react(ev.emoji);}
+  else if(ev.kind==="rematch"){votes[ev.userId]=ev.name;checkVotes();}
+  else if(ev.kind==="hello"){upsert(ev.userId,ev.name);}}
+if(room&&myName)send({kind:"hello",userId:myId,name:me()});
+
+function renderPlayers(){const el=$("players");const arr=Object.values(players).sort((a,b)=>b.score-a.score);
+  if(!arr.length){el.innerHTML=`<p class="sub"><b style="color:var(--paper)">How to play:</b> pick Classic, Speed (2×) or Sandbox, then start — whoever starts draws. Correct: (100 + 2/sec) × mode. Drawer +50 per guesser. 💡 hint every 25s.</p>`;return;}
+  el.innerHTML="";arr.forEach((p,i)=>{const d=document.createElement("div");d.className="player";
+    d.innerHTML=`<b></b><span class="score">${p.score}</span>`;
+    d.querySelector("b").textContent=`${i===0?"👑 ":""}${p.name}${p.id===myId?" (you)":""}${p.id===drawerId&&word?" ✏️":""}`;el.appendChild(d);});}
+function renderFeed(){const el=$("feed");el.innerHTML=feed.length?"":`<p class="sub">No guesses yet.</p>`;
+  feed.slice(-12).forEach(f=>{const d=document.createElement("div");
+    if(f.t==="s"){d.className="sys";d.textContent=f.text;}
+    else{d.className="guess"+(f.correct?" ok":"");const b=document.createElement("b");b.textContent=f.name+": ";d.appendChild(b);d.appendChild(document.createTextNode(f.text+(f.correct?" ✓":"")));}
+    el.appendChild(d);});el.scrollTop=el.scrollHeight;}
+function renderLobby(){const r=inRound(),over=word&&!endsAt,sb=sandboxOn();
+  $("startrow").style.display=(!r&&!over&&!gameOver&&!sb&&$("picker").style.display!=="flex")?"":"none";
+  $("sandboxbar").style.display=sb?"flex":"none";
+  $("nextrow").style.display=(over&&!gameOver)?"flex":"none";
+  $("startBtn").textContent=mode==="sandbox"?"Open sandbox":(round===0?"Start drawing":`Round ${round+1}`);
+  $("durRow2").style.display=mode==="classic"?"":"none";}
+function renderAll(){const r=inRound(),over=word&&!endsAt,sb=sandboxOn();
+  $("hud").style.display=word?"flex":"none";
+  $("roundLbl").textContent=(round>0&&!sb)?`Round ${Math.min(round,total)}/${total}`:"";
+  $("modeBadge").innerHTML=`${MODES[mode].label}${mult>1?` · <b>${mult}×</b>`:""}`;
+  $("subTxt").textContent=sb?"Sandbox is open — everyone draws together. No words, no timer, no scores.":"Pick Classic, Speed or Sandbox — whoever starts draws.";
+  renderLobby();
+  if(over&&revealed)$("revealTxt").textContent=`The word was “${revealed}”. Whoever starts next draws.`;
+  const n=$("notice");
+  if(word&&r&&!isDrawer()){n.style.display="";n.textContent=`${drawerName||"Someone"} is drawing — guess below`;}else n.style.display="none";
+  if(word){$("wordHint").textContent=(isDrawer()||revealed)?word:(r?hintMask(word,Date.now()-(startedAt||Date.now())):mask(word));
+    $("roundInfo").textContent=r?(isDrawer()?"you draw":`${drawerName} draws`):"";
+    const dis=isDrawer()&&r;$("guessInput").disabled=dis;$("guessBtn").disabled=dis;
+    $("guessInput").placeholder=dis?"Drawer can't guess":"Type a guess…";}
+  $("replayBtn").style.display=(over&&strokes.length)?"":"none";
+  const w=$("winner");
+  if(gameOver){const arr=Object.values(players).sort((a,b)=>b.score-a.score);const top=arr[0];
+    if(top){$("winnerTxt").textContent=`${top.name} wins!`;$("winnerSub").textContent=`${top.score} points after ${total} rounds`;w.style.display="grid";}else w.style.display="none";}
+  else w.style.display="none";
+  checkVotesQuiet();
+  renderPlayers();renderFeed();paint();}
+function checkVotesQuiet(){const n=Object.keys(votes).length;if(!gameOver){$("votesTxt").textContent="";return;}
+  const need=Math.max(2,Object.keys(players).length);
+  $("votesTxt").textContent=n?`Rematch votes: ${Object.values(votes).join(", ")} (${n}/${need})`:"";}
+setInterval(()=>{if(word&&endsAt){const left=Math.max(0,Math.ceil((endsAt-Date.now())/1000));
+  const tp=$("timer");tp.textContent=left>0?left+"s":"Time!";tp.classList.toggle("urgent",left>0&&left<=10);
+  $("timebar").style.width=(left/dur*100)+"%";
+  if(Date.now()>=endsAt)endRound();
+  else if(!isDrawer())$("wordHint").textContent=hintMask(word,Date.now()-(startedAt||Date.now()));}},500);
+renderAll();paint();
+</script>
+</body>
+</html>

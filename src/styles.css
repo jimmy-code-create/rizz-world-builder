@@ -641,10 +641,9 @@
   font-size: 0.9375rem;
   line-height: 1.4;
   letter-spacing: normal;
-  white-space: pre-wrap;
-  /* `break-word` only — never `anywhere` or `break-all`. `anywhere` shrinks the
-     bubble's min-content width to a single glyph, which is what collapsed
-     short messages into a ~110px box that wrapped "Hey" as "He / y". */
+  /* Normal wrapping for regular messages - only preserve user line breaks */
+  white-space: normal;
+  /* Long URLs and unbroken strings can wrap */
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;

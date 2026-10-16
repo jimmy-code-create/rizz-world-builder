@@ -1,8 +1,25 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
-  Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Target,
-  MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
+  Bot,
+  Home,
+  Compass,
+  Plus,
+  Bell,
+  User as UserIcon,
+  LogOut,
+  Settings,
+  Trophy,
+  Hash,
+  Coins,
+  MessageCircle,
+  Bookmark,
+  Users,
+  Search,
+  Palette,
+  Film,
+  MoreHorizontal,
+  MessageSquareText,
   Gamepad2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -37,12 +54,24 @@ import { useI18n } from "@/lib/i18n";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
-const NightclubCanvas = lazy(() => import("@/components/NightclubCanvas").then((m) => ({ default: m.NightclubCanvas })));
-const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
-const AppOverlays = lazy(() => import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })));
-const KeyboardShortcuts = lazy(() => import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })));
-const IncomingCallRinger = lazy(() => import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })));
-const PostComposer = lazy(() => import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })));
+const NightclubCanvas = lazy(() =>
+  import("@/components/NightclubCanvas").then((m) => ({ default: m.NightclubCanvas })),
+);
+const CommandPalette = lazy(() =>
+  import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
+const AppOverlays = lazy(() =>
+  import("@/components/AppOverlays").then((m) => ({ default: m.AppOverlays })),
+);
+const KeyboardShortcuts = lazy(() =>
+  import("@/components/KeyboardShortcuts").then((m) => ({ default: m.KeyboardShortcuts })),
+);
+const IncomingCallRinger = lazy(() =>
+  import("@/components/IncomingCallRinger").then((m) => ({ default: m.IncomingCallRinger })),
+);
+const PostComposer = lazy(() =>
+  import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })),
+);
 
 const sideTabs = [
   { to: "/feed", label: "feed", icon: Home },
@@ -50,7 +79,7 @@ const sideTabs = [
   { to: "/explore", label: "explore", icon: Compass },
   { to: "/groups", label: "groups", icon: Users },
   { to: "/realms", label: "realms", icon: Hash },
-  { to: "/drops", label: "bounties", icon: Target },
+  { to: "/drops", label: "bounties", icon: Coins },
   { to: "/dms", label: "messages", icon: MessageCircle },
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },
@@ -78,9 +107,11 @@ export function AppShell() {
   const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
   const presence = useSelfPresence();
 
-  const isConversation = /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
+  const isConversation =
+    /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
   const isReels = path === "/reels" || path === "/_app/reels";
-  const isWidePage = path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+  const isWidePage =
+    path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -120,7 +151,9 @@ export function AppShell() {
   }, [path]);
 
   // Close the More sheet whenever the route changes
-  useEffect(() => { setMoreOpen(false); }, [path]);
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [path]);
 
   useEffect(() => {
     if (loading || profileError) return;
@@ -190,17 +223,23 @@ export function AppShell() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => { qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] }); },
+        () => {
+          qc.invalidateQueries({ queryKey: ["unread-notifs", user.id] });
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, qc]);
 
   if (profileError) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted-foreground">{profileError}</p>
-        <Button variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
+        <Button variant="outline" onClick={() => void refreshProfile()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -216,7 +255,9 @@ export function AppShell() {
   const dmBadge = dmUnreadCount > 9 ? "9+" : String(dmUnreadCount);
 
   const isActive = (to: string) =>
-    path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/realms" && path.startsWith("/r/"));
+    path === to ||
+    (to !== "/feed" && path.startsWith(to + "/")) ||
+    (to === "/realms" && path.startsWith("/r/"));
 
   const navItem = (active: boolean) =>
     `flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
@@ -233,17 +274,33 @@ export function AppShell() {
     }`;
 
   return (
-    <div className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}>
-      {!isConversation && <Suspense fallback={null}><NightclubCanvas /></Suspense>}
+    <div
+      className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
+    >
+      {!isConversation && (
+        <Suspense fallback={null}>
+          <NightclubCanvas />
+        </Suspense>
+      )}
 
       {/* Desktop sidebar */}
       {!isConversation && (
         <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-card/60 backdrop-blur-md border-r border-border px-4 py-6 z-30">
-          <Link to="/feed" className="flex items-center gap-2.5 mb-6 px-2 group" aria-label="RIZZ home">
+          <Link
+            to="/feed"
+            className="flex items-center gap-2.5 mb-6 px-2 group"
+            aria-label="RIZZ home"
+          >
             <div className="h-10 w-10 rounded-2xl bg-surface-2 border border-border flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
-              <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
+              <img
+                src="/brand/rizz-cat-logo.svg"
+                alt="RIZZ"
+                className="h-full w-full object-contain"
+              />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-foreground">RIZZ</span>
+            <span className="font-display text-xl font-bold tracking-tight text-foreground">
+              RIZZ
+            </span>
           </Link>
 
           <Button
@@ -270,32 +327,33 @@ export function AppShell() {
               <span className="text-xs">{statusShortLabel(presence.status)}</span>
             </button>
             {sideTabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={navItem(isActive(tab.to))}
-              >
+              <Link key={tab.to} to={tab.to} className={navItem(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
                 <span className="flex-1 text-sm font-medium">{t(tab.label)}</span>
                 {tab.to === "/dms" && dmUnreadCount > 0 && (
-                  <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                    isActive(tab.to) ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
-                  }`}>
+                  <span
+                    className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                      isActive(tab.to)
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
                     {dmBadge}
                   </span>
                 )}
               </Link>
             ))}
-            <Link
-              to="/notifications"
-              className={navItem(isActive("/notifications"))}
-            >
+            <Link to="/notifications" className={navItem(isActive("/notifications"))}>
               <Bell className="h-5 w-5" />
               <span className="font-medium text-sm flex-1">{t("inbox")}</span>
               {unreadCount > 0 && (
-                <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                  isActive("/notifications") ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
-                }`}>
+                <span
+                  className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                    isActive("/notifications")
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
                   {unreadBadge}
                 </span>
               )}
@@ -325,7 +383,11 @@ export function AppShell() {
             aria-label="RIZZ home"
             className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border p-1.5 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-surface-3"
           >
-            <img src="/brand/rizz-cat-logo.svg" alt="RIZZ" className="h-full w-full object-contain" />
+            <img
+              src="/brand/rizz-cat-logo.svg"
+              alt="RIZZ"
+              className="h-full w-full object-contain"
+            />
           </Link>
 
           <Link
@@ -340,7 +402,9 @@ export function AppShell() {
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <Link
               to="/notifications"
-              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+              aria-label={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
               className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Bell className="h-5 w-5" />
@@ -384,7 +448,15 @@ export function AppShell() {
           <div className="flex items-center justify-between gap-1">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
-              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+              return (
+                <NavBtn
+                  key={tab.to}
+                  to={tab.to}
+                  label={label}
+                  Icon={tab.icon}
+                  active={isActive(tab.to)}
+                />
+              );
             })}
             {!isReels && (
               <button
@@ -400,7 +472,15 @@ export function AppShell() {
             )}
             {mobileTabs.slice(2).map((tab) => {
               const label = t(tab.label);
-              return <NavBtn key={tab.to} to={tab.to} label={label} Icon={tab.icon} active={isActive(tab.to)} />;
+              return (
+                <NavBtn
+                  key={tab.to}
+                  to={tab.to}
+                  label={label}
+                  Icon={tab.icon}
+                  active={isActive(tab.to)}
+                />
+              );
             })}
             <button
               onClick={() => setMoreOpen(true)}
@@ -448,21 +528,23 @@ export function AppShell() {
               presence={presence.status}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-foreground">{profile?.display_name || profile?.username}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username} · {t("view_profile")}</p>
+              <p className="text-sm font-bold truncate text-foreground">
+                {profile?.display_name || profile?.username}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                @{profile?.username} · {t("view_profile")}
+              </p>
             </div>
           </Link>
 
           {/* Grid of destinations */}
           <div className="mt-4 grid grid-cols-4 gap-2">
             {sideTabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={navTile(isActive(tab.to))}
-              >
+              <Link key={tab.to} to={tab.to} className={navTile(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
-                <span className="text-[11px] font-medium text-center leading-tight">{t(tab.label)}</span>
+                <span className="text-[11px] font-medium text-center leading-tight">
+                  {t(tab.label)}
+                </span>
               </Link>
             ))}
             <Link to="/notifications" className={`relative ${navTile(isActive("/notifications"))}`}>
@@ -496,7 +578,10 @@ export function AppShell() {
           </div>
 
           <button
-            onClick={() => { setMoreOpen(false); setMobileSignOutConfirm(true); }}
+            onClick={() => {
+              setMoreOpen(false);
+              setMobileSignOutConfirm(true);
+            }}
             className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 p-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive font-medium text-sm transition-colors hover:bg-destructive/20"
           >
             <LogOut className="h-4 w-4" /> {t("sign_out")}
@@ -508,12 +593,12 @@ export function AppShell() {
         <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">{t("sign_out_title")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("sign_out_desc")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("sign_out_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void signOut()}
               className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -538,19 +623,32 @@ export function AppShell() {
   );
 }
 
-function NavBtn({ to, label, Icon, active }: { to: string; label: string; Icon: any; active: boolean }) {
+function NavBtn({
+  to,
+  label,
+  Icon,
+  active,
+}: {
+  to: string;
+  label: string;
+  Icon: any;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}
       className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
     >
-      <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}>
+      <div
+        className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}
+      >
         <Icon className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
       </div>
-      <span className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+      <span
+        className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}
+      >
         {label}
       </span>
     </Link>
   );
 }
-

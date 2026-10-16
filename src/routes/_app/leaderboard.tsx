@@ -21,7 +21,7 @@ import {
 
 export const Route = createFileRoute("/_app/leaderboard")({
   validateSearch: (search: Record<string, unknown>): { earn?: boolean } => ({
-    earn: search.earn === true || search.earn === "1" ? true : undefined,
+    ...(search.earn === "1" || search.earn === 1 || search.earn === true ? { earn: true } : {}),
   }),
   head: () => ({ meta: [{ title: "Leaderboard · RIZZ" }] }),
   component: LeaderboardPage,
@@ -67,7 +67,8 @@ function LeaderboardPage() {
   const [period, setPeriod] = useState<BoardPeriod>("all");
   const [followingOnly, setFollowingOnly] = useState(false);
   const [cardUserId, setCardUserId] = useState<string | null>(null);
-  const [earnOpen, setEarnOpen] = useState(false);
+  // Deep link (e.g. from Bounties): /leaderboard?earn=1 opens the earn guide.
+  const [earnOpen, setEarnOpen] = useState(search.earn ?? false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -77,7 +78,7 @@ function LeaderboardPage() {
   useEffect(() => {
     if (!search.earn) return;
     setEarnOpen(true);
-    void navigate({ to: "/leaderboard", search: { earn: undefined }, replace: true });
+    void navigate({ to: "/leaderboard", search: {}, replace: true });
   }, [navigate, search.earn]);
 
   const board = useInfiniteQuery({

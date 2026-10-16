@@ -26,3 +26,9 @@ services:
         sync: false
       - key: XAI_API_KEY
         sync: false
+      - key: CHATSTORY_TTS_URL
+        sync: false
+      - key: CHATSTORY_TTS_MODEL
+        sync: false
+      - key: HF_TOKEN
+        sync: false

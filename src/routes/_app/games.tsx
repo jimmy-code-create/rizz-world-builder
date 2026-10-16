@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Copy, ExternalLink, Gamepad2, Play } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -27,6 +27,7 @@ const TYPE_LABEL: Record<GameEntry["type"], string> = {
 function GamesPage() {
   const { user, profile } = useAuth();
   const { call, openView } = useVoiceCallContext();
+  const navigate = useNavigate();
   const me = user ? { id: user.id, name: profile?.display_name || profile?.username || "Someone" } : null;
   const roomActivity = useRoomActivity(call?.roomId ?? null, me);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -57,6 +58,11 @@ function GamesPage() {
         description: "Opening the call — tap Join game to play.",
       });
       openView();
+      return;
+    }
+    if (entry.url.startsWith("/")) {
+      // Native RIZZ game: play embedded in-app, no copy-paste, no external site.
+      navigate({ to: entry.url as "/embed/draw-party" });
       return;
     }
     if (entry.type === "embed") {
@@ -139,8 +145,8 @@ function GamesPage() {
                 onClick={() => void play(game)}
                 className="flex h-11 min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-[#c8ff3d] text-sm font-bold text-[#0b0b0c] transition-transform hover:bg-[#c8ff3d]/90 active:scale-95"
               >
-                {call?.roomId ? <Play className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
-                {call?.roomId ? "Play in call" : game.type === "embed" ? "Play now" : "Copy invite"}
+                {call?.roomId || game.url.startsWith("/") ? <Play className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+                {call?.roomId ? "Play in call" : game.type === "embed" || game.url.startsWith("/") ? "Play now" : "Copy invite"}
               </button>
               <button
                 type="button"

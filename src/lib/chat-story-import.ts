@@ -21,7 +21,45 @@ import type {
   StoryCategory,
   StoryVideoType,
 } from "./story-generation";
-import { effectsForMessage, wrapWithEffects } from "./chat-story-effects";
+import { effectsForMessage, wrapWithEffects } from "./chat-story-effects.ts";
+import { sanitizeSpeakerName } from "./voice-cast.ts";
+
+export type TemplateReason = "ok" | "missing_key" | "request_failed";
+
+/**
+ * What the reader sees when a built-in template stands in for the AI.
+ * `missing_key` points at the one place the key actually works (Render
+ * environment, server-side) because that is the cause in nearly every case:
+ * keys added anywhere else (VITE_ vars, local .env, other dashboards) never
+ * reach the story server.
+ */
+export const TEMPLATE_NOTICES: Record<Exclude<TemplateReason, "ok">, string> = {
+  missing_key:
+    "The AI key isn't on the story server. Add GROQ_API_KEY in Render → Environment and redeploy, then generate again.",
+  request_failed:
+    "The AI service didn't answer. Check the key and model, wait a moment, then generate again.",
+};
+
+/**
+ * Turns raw save/parse failures into actionable upload errors. Pure so the
+ * dialog and tests share it.
+ */
+export function describeUploadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/row-level security|policy|permission|not allowed|unauthorized|JWT|expired/i.test(message)) {
+    return "Couldn't save: your login can't write stories right now. Sign out and back in, then retry.";
+  }
+  if (/Failed to fetch|NetworkError|network|timeout|abort/i.test(message)) {
+    return "Network problem while saving. Check your connection and retry — your file is fine.";
+  }
+  if (/duplicate|already exists|unique/i.test(message)) {
+    return "That story looks like a duplicate. Change the title and upload again.";
+  }
+  if (/too (large|big)|payload|413|exceeded/i.test(message)) {
+    return "That file is too large to save. Split it into smaller stories and upload each part.";
+  }
+  return message || "Couldn't import that story.";
+}
 
 export type AuthorStoryMessage = {
   character_id?: string;
@@ -134,7 +172,8 @@ export function storyJsonToGeneratedStory(raw: AuthorStoryJson): GeneratedStory 
   if (Array.isArray(raw.lines) && raw.lines.length > 0 && !Array.isArray(raw.chapters)) {
     const lines = (raw.lines as GeneratedStoryLine[]).map((line): GeneratedStoryLine => ({
       idx: Number(line.idx) || 0,
-      speaker: line.speaker === "me" || line.speaker === "them" ? line.speaker : "narrator",
+      // Named cast members keep their names so each holds its own voice.
+      speaker: sanitizeSpeakerName(line.speaker),
       body: text((line as { body?: string }).body),
       body_en:
         text((line as { body_en?: string }).body_en) || text((line as { body?: string }).body),
@@ -165,14 +204,22 @@ export function storyJsonToGeneratedStory(raw: AuthorStoryJson): GeneratedStory 
   }
 
   // Speaker resolution comes from the character roles: narrator-role characters
-  // narrate, the player speaks as "me", everyone else is the other side ("them").
-  // Unknown ids are assigned in encounter order (first voice = them, second =
-  // me), which is how a two-person chat story reads when the file names nobody.
+  // narrate, the player speaks as "me", and every other named character keeps
+  // its own display name so each holds a distinct voice. Unknown ids are
+  // assigned in encounter order (first voice = them, second = me), which is
+  // how a two-person chat story reads when the file names nobody.
   const encountered: string[] = [];
+  const displayNameFor = (characterId: string): string => {
+    const character = characters.find((entry) => text(entry.id) === characterId);
+    const name = character ? text(character.name) : "";
+    return name ? sanitizeSpeakerName(name) : "";
+  };
   const speakerFor = (characterId: string | undefined): GeneratedStoryLine["speaker"] => {
     if (!characterId) return "narrator";
     const known = speakers.get(characterId);
-    if (known) return known;
+    if (known && known !== "them") return known;
+    const name = displayNameFor(characterId);
+    if (name) return name;
     if (!encountered.includes(characterId)) encountered.push(characterId);
     return encountered.indexOf(characterId) === 1 ? "me" : "them";
   };
@@ -344,7 +391,9 @@ export function parseAuthorStoryFile(contents: string): GeneratedStory {
     throw new StoryImportError("That file is not valid JSON. Export it again and retry.");
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new StoryImportError("That file does not contain a story object.");
+    throw new StoryImportError(
+      "That JSON isn't a story object. Upload the story itself ({title, lines, ...}) or a Name: message script — not a bare list.",
+    );
   }
   const candidate = parsed as AuthorStoryJson & { story?: AuthorStoryJson };
   return storyJsonToGeneratedStory(candidate.story ?? candidate);
