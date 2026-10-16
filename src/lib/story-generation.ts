@@ -561,15 +561,19 @@ const generateStoryServer = createServerFn({ method: "POST" })
     if (model.includes("gpt-oss")) payload.reasoning_effort = "low";
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(45_000),
-      });
+      const response = await withRetries(
+        () =>
+          fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(45_000),
+          }),
+        2,
+      );
 
       if (!response.ok) {
         console.error("Story generation failed with status", response.status);
@@ -607,6 +611,7 @@ async function callGroqJson(
   system: string,
   user: string,
   tokens: number,
+  attempts = 2,
 ): Promise<unknown> {
   const payload: Record<string, unknown> = {
     model,
@@ -620,12 +625,16 @@ async function callGroqJson(
   };
   // The default brain is gpt-oss; skipping its reasoning pass keeps generation fast.
   if (model.includes("gpt-oss")) payload.reasoning_effort = "low";
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(60_000),
-  });
+  const response = await withRetries(
+    () =>
+      fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(60_000),
+      }),
+    attempts,
+  );
   if (!response.ok) throw new Error(`Groq saga pass failed with status ${response.status}`);
   const completion = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
@@ -637,6 +646,27 @@ async function callGroqJson(
 
 function groqModel(): string {
   return process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Transient Groq hiccups (cold model, 429/5xx, 60 s timeouts on slow tiers)
+ * must not silently turn an epic saga into a template. Retries the pass a
+ * few times with backoff; the caller still falls back gracefully when all
+ * attempts fail.
+ */
+async function withRetries<T>(fn: () => Promise<T>, attempts: number): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await sleep(1000 * attempt);
+    }
+  }
+  throw lastError;
 }
 
 /** First saga pass: chapter 1 plus the full chapter outline and story meta. */
@@ -651,7 +681,7 @@ const startSagaChunkServer = createServerFn({ method: "POST" })
       plan.chapters,
       plan.chapterLines,
     );
-    const raw = await callGroqJson(apiKey, groqModel(), system, user, plan.tokens);
+    const raw = await callGroqJson(apiKey, groqModel(), system, user, plan.tokens, 3);
     const record = (raw ?? {}) as Record<string, unknown>;
     const chapter = `chapter-1`;
     return {

@@ -51,3 +51,7 @@ Floor"), the app now tells you why with a warning toast:
 Uploads that won't save show the mapped reason in the dialog: sign-in
 problems ask for sign out/in, network problems say to retry, oversized files
 are rejected before parsing.
+
+Long/epic sagas retry transient AI failures (short: 2 attempts, opening: 3,
+later passes: 2) before falling back, so a single slow pass no longer
+silently turns an epic into a template.

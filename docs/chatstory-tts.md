@@ -11,6 +11,15 @@ untouched; only chat-story narration changes.
 | Hindi / Hinglish (Devanagari or Latin Hinglish in a Hindi story) | Optional self-hosted **Chatterbox Multilingual** (MIT, 0.5B, Hindi finetune `ResembleAI/Chatterbox-Multilingual-hi`) behind `/api/chatstory-speech` | Your own server / Space; browser falls back to device Hindi voice when unset | Weights free; compute is **not** free on this deployment (see below) |
 | Anything, when HD is off or backends fail | `speechSynthesis` device voices via `src/lib/voice-selection.ts` | Browser | Free |
 
+### Only female voices on this device?
+
+The app always asks for the character's gender first (verified by tests in
+`tests/device-voices.test.mjs`), so men get a male voice whenever the device
+ships one. Many phones only ship a female Hindi voice (Android's Google
+हिन्दी, iOS's Lekha) — in that case the player deepens male characters'
+pitch so the cast still sounds distinct. For a guaranteed real man voice in
+Hindi, set up the Hindi HD backend above (narrator = Rohit).
+
 Routing lives in `src/lib/chatstory-tts.ts` (`resolveChatStoryTTSLanguage`):
 any Devanagari → `hi`, Latin Hinglish inside a Hindi story → `hi`, else the
 story's selected language. Character voices stay consistent: Kokoro seats

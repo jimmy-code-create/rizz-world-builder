@@ -23,12 +23,12 @@ const MASCULINE_NAMES = [
   "hemant", "madhur", "prabhat", "ravi", "george", "james", "oliver", "thomas",
 ]; // prettier-ignore
 
-function looksFemale(name: string): boolean {
+export function looksFemale(name: string): boolean {
   const lower = name.toLowerCase();
   return /female|woman/.test(lower) || FEMININE_NAMES.some((hint) => lower.includes(hint));
 }
 
-function looksMale(name: string): boolean {
+export function looksMale(name: string): boolean {
   const lower = name.toLowerCase();
   return (
     (/male|man\b/.test(lower) && !/female|woman/.test(lower)) ||
@@ -61,6 +61,30 @@ function genderScore(name: string, gender: VoiceGender): number {
   const male = looksMale(name);
   if (gender === "female") return female ? 30 : male ? -30 : 0;
   return male ? 30 : female ? -30 : 0;
+}
+
+/**
+ * Final speech pitch for a device voice. When the device ships no voice of
+ * the character's gender (common: Hindi packs with only a female voice), the
+ * pitch shifts down for men / up for women so the cast still sounds distinct.
+ * Always clamped to the 0–2 speechSynthesis range.
+ */
+export function speechPitchForVoice(input: {
+  profilePitch: number;
+  effectPitch?: number;
+  gender: VoiceGender;
+  voiceName?: string;
+}): number {
+  const base = input.profilePitch + (input.effectPitch ?? 0);
+  const voiceName = (input.voiceName ?? "").trim();
+  if (!voiceName || input.gender === "neutral") return Math.min(2, Math.max(0, base));
+  if (input.gender === "male" && looksFemale(voiceName) && !looksMale(voiceName)) {
+    return Math.min(2, Math.max(0, base - 0.25));
+  }
+  if (input.gender === "female" && looksMale(voiceName) && !looksFemale(voiceName)) {
+    return Math.min(2, Math.max(0, base + 0.25));
+  }
+  return Math.min(2, Math.max(0, base));
 }
 
 /**

@@ -17,7 +17,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { useChatStoryTTS } from "@/hooks/useChatStoryTTS";
 import { useKokoroTTS } from "@/hooks/useKokoroTTS";
-import { pickDeviceVoice } from "@/lib/voice-selection";
+import { pickDeviceVoice, speechPitchForVoice } from "@/lib/voice-selection";
 import {
   ARCHETYPE_DEVICE_PREFS,
   ARCHETYPE_KOKORO_VOICE,
@@ -407,7 +407,6 @@ export function ChatStoryPlayer({
         utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
         // Speech rates above 3 sound garbled, so 3x is the ceiling here too.
         utterance.rate = Math.min(3, Math.max(0.5, speed * profile.rateMultiplier * preset.rate));
-        utterance.pitch = Math.min(2, Math.max(0, profile.pitch + preset.pitch));
         utterance.volume = Math.min(1, Math.max(0.05, profile.volume * preset.volume));
         const voices =
           availableVoicesRef.current.length > 0
@@ -415,6 +414,14 @@ export function ChatStoryPlayer({
             : synthesis.getVoices();
         const voice = selectNarrationVoice(voices, language, speaker, profile);
         if (voice) utterance.voice = voice;
+        // Masculinize / feminize when the device ships no voice of the
+        // character's gender, so men still sound like men.
+        utterance.pitch = speechPitchForVoice({
+          profilePitch: profile.pitch,
+          effectPitch: preset.pitch,
+          gender: profile.gender,
+          voiceName: voice?.name,
+        });
         const finish = () => resolve();
         utterance.onend = finish;
         utterance.onerror = finish;
