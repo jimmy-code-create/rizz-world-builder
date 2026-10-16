@@ -1,25 +1,17 @@
-import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { BadgeIcon } from "@/components/BadgeIcon";
+import { badgeArtForSlug } from "@/lib/badge-set";
 
-/**
- * The Main Character tag shown next to an author's name.
- *
- * One component so the feed and Reels can never drift apart. Badge set v2
- * retired the old "Creator" label: this slot is Main Character now (epic
- * purple, cat_hype icon — never a prompt-emoji copy). The
- * `verified_creator` flag it keys off now means "holds the no-cap badge".
- */
+/** The identity-verified pill shown beside verified member names. */
 export function VerifiedCreatorTag() {
   return (
     <span
       role="img"
-      title="Main Character"
-      aria-label="Main character"
-      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-purple-400/30 bg-gradient-to-r from-purple-500/15 via-fuchsia-500/10 to-violet-500/15 px-1.5 py-1 text-[10px] font-bold leading-none text-purple-100 shadow-[0_0_12px_rgba(168,85,247,0.16)] backdrop-blur-sm"
+      title="Verified"
+      aria-label="Verified"
+      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-lime-300/30 bg-gradient-to-r from-lime-300/15 via-emerald-300/10 to-lime-300/15 px-1.5 py-1 text-[10px] font-bold leading-none text-lime-100 shadow-[0_0_12px_rgba(200,255,61,0.16)] backdrop-blur-sm"
     >
-      <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-purple-400/15 ring-1 ring-purple-300/20">
-        <CatEmoji name="cat_hype" size={12} animate={false} />
-      </span>
-      Main Character
+      <BadgeIcon icon=":cat_love:" image={badgeArtForSlug("no-cap")} glow="#c8ff3d" size={14} />
+      Verified
     </span>
   );
 }
