@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, MotionConfig } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "framer-motion";
 import {
   AudioLines,
   ChevronsRight,
@@ -29,6 +29,7 @@ import {
   resolveChatStoryServerVoice,
   resolveChatStoryTTSLanguage,
 } from "@/lib/chatstory-tts";
+import { resolveSceneClip } from "@/lib/scene-video";
 import {
   SPEECH_EFFECT_PRESETS,
   displayText,
@@ -591,6 +592,64 @@ export function ChatStoryPlayer({
     0,
     scenes.findIndex((scene) => scene.id === activeScene?.id),
   );
+
+  // Per-scene clips are offline-authored files (`public/videos/<slug>/<scene>.mp4`).
+  // Missing clips fall back to posters; failed ids are cached so a 404 is
+  // fetched once per session, never once per line.
+  const reduceMotion = useReducedMotion();
+  const [failedClips, setFailedClips] = useState<ReadonlySet<string>>(new Set());
+  const clipVideoRef = useRef<HTMLVideoElement | null>(null);
+  const sceneClip = useMemo(
+    () =>
+      activeScene
+        ? resolveSceneClip({
+            storySlug: story.slug,
+            sceneId: activeScene.id,
+            failedIds: failedClips,
+          })
+        : null,
+    [activeScene, failedClips, story.slug],
+  );
+  const showClip = Boolean(sceneClip) && !reduceMotion;
+  const nextScene = scenes[sceneIndex + 1];
+  const nextClip = useMemo(
+    () =>
+      !reduceMotion && nextScene
+        ? resolveSceneClip({ storySlug: story.slug, sceneId: nextScene.id, failedIds: failedClips })
+        : null,
+    [failedClips, nextScene, reduceMotion, story.slug],
+  );
+
+  const handleClipError = useCallback(() => {
+    const id = activeScene?.id;
+    if (!id) return;
+    setFailedClips((current) => (current.has(id) ? current : new Set(current).add(id)));
+  }, [activeScene?.id]);
+
+  // Pause the scene clip when the page hides; resume when it returns.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisibility = () => {
+      const video = clipVideoRef.current;
+      if (!video) return;
+      if (document.hidden) {
+        video.pause();
+      } else if (showClip) {
+        void video.play().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [showClip]);
+
+  // Stop playback when the scene changes or the player closes.
+  useEffect(
+    () => () => {
+      clipVideoRef.current?.pause();
+      clipVideoRef.current = null;
+    },
+    [activeScene?.id],
+  );
   // Progress through the whole story, so long uploads always show how far in you are.
   const lineIndex =
     cursor == null
@@ -713,7 +772,29 @@ export function ChatStoryPlayer({
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
           >
             <AnimatePresence mode="wait">
-              {story.video_url ? (
+              {showClip && activeScene && sceneClip ? (
+                <motion.div
+                  key={`clip-${activeScene.id}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.85 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0"
+                >
+                  <video
+                    ref={clipVideoRef}
+                    src={sceneClip}
+                    poster={activeScene.image}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="auto"
+                    onError={handleClipError}
+                    className="h-full w-full object-cover"
+                  />
+                </motion.div>
+              ) : story.video_url ? (
                 <motion.div
                   key="story-video"
                   initial={{ opacity: 0 }}
@@ -753,6 +834,19 @@ export function ChatStoryPlayer({
                 />
               )}
             </AnimatePresence>
+            {/* Warm the next scene's clip (metadata only) so cuts feel instant. */}
+            {nextClip && nextClip !== sceneClip && (
+              <video
+                key={`prefetch-${nextScene?.id}`}
+                src={nextClip}
+                muted
+                playsInline
+                preload="metadata"
+                aria-hidden="true"
+                tabIndex={-1}
+                className="absolute h-0 w-0 overflow-hidden opacity-0"
+              />
+            )}
             {/* Cinematic vignette to ensure chat bubbles remain crisp and readable */}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,7,16,.72)_0%,rgba(9,7,16,.65)_40%,rgba(9,7,16,.94)_100%)]" />
             <div className="absolute inset-0 bg-aurora opacity-15" />
