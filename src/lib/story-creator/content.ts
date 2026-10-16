@@ -937,4 +937,16 @@ icon("mic", "Mic", (c, color) => {
   c.stroke();
 });
 
+export type BrushId = "pen" | "marker" | "highlighter" | "neon" | "spray" | "rainbow" | "eraser";
+
+export const BRUSHES: Array<{ id: BrushId; label: string }> = [
+  { id: "pen", label: "Pen" },
+  { id: "marker", label: "Marker" },
+  { id: "highlighter", label: "Highlighter" },
+  { id: "neon", label: "Neon glow" },
+  { id: "spray", label: "Spray" },
+  { id: "rainbow", label: "Rainbow" },
+  { id: "eraser", label: "Eraser" },
+];
+
 export const ICON_NAMES = Object.keys(ICONS);

@@ -66,19 +66,46 @@ function DMsPage() {
     }
   });
   const longPressTimer = useRef<number | null>(null);
-  const suppressRowTap = useRef(false);
+  const longPressFired = useRef(false);
+  const pressStart = useRef<{ x: number; y: number } | null>(null);
 
-  const startLongPress = (other: { id: string; username: string | null; display_name: string | null }) => {
+  const startLongPress = (other: { id: string; username: string | null; display_name: string | null }, point: { x: number; y: number }) => {
     if (selecting) return;
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressFired.current = false;
+    pressStart.current = point;
     longPressTimer.current = window.setTimeout(() => {
-      suppressRowTap.current = true;
+      longPressFired.current = true;
       setRowMenu(other);
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
-    }, 520);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
+    }, 500);
   };
-  const cancelLongPress = () => {
-    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+  
+  const cancelLongPress = (point?: { x: number; y: number }) => {
+    if (longPressTimer.current) {
+      // Cancel on movement (scrolling)
+      if (point && pressStart.current) {
+        const dist = Math.hypot(point.x - pressStart.current.x, point.y - pressStart.current.y);
+        if (dist > 15) {
+          window.clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+          longPressFired.current = false;
+          pressStart.current = null;
+        }
+      } else {
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    }
+  };
+  
+  const endLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    pressStart.current = null;
+    return longPressFired.current;
   };
 
   const deleteThread = async (other: { id: string; username: string | null }) => {
@@ -531,16 +558,17 @@ function DMsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (suppressRowTap.current) {
-                    suppressRowTap.current = false;
+                  const wasLongPress = endLongPress();
+                  if (wasLongPress) {
+                    longPressFired.current = false;
                     return;
                   }
                   handleRowTap(other);
                 }}
-                onPointerDown={() => startLongPress(other)}
-                onPointerUp={cancelLongPress}
-                onPointerMove={cancelLongPress}
-                onPointerLeave={cancelLongPress}
+                onPointerDown={(e) => startLongPress(other, { x: e.clientX, y: e.clientY })}
+                onPointerUp={() => { const wasLongPress = endLongPress(); longPressFired.current = false; }}
+                onPointerMove={(e) => cancelLongPress({ x: e.clientX, y: e.clientY })}
+                onPointerLeave={() => { endLongPress(); longPressFired.current = false; }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setRowMenu(other);

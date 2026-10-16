@@ -187,18 +187,19 @@ function DMPage() {
   const startPress = (id: string, point?: { x: number; y: number }) => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
     pressStart.current = point ?? null;
+    longPressFired.current = false; // Reset flag at the start
     pressTimer.current = window.setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(15);
       longPressFired.current = true;
       setOpenMsg(id);
       pressTimer.current = null;
-    }, 480);
+    }, 500); // Increased from 480ms to 500ms for more reliable detection
   };
   /** Only cancel on a real drag (scroll), not on tiny finger jitter. */
   const movePress = (point: { x: number; y: number }) => {
     const s = pressStart.current;
     if (!s || !pressTimer.current) return;
-    if (Math.hypot(point.x - s.x, point.y - s.y) > 12) cancelPress();
+    if (Math.hypot(point.x - s.x, point.y - s.y) > 15) cancelPress(); // Increased threshold from 12 to 15
   };
   /**
    * Ends a press. A press that never became a long press is a tap; the second
@@ -206,7 +207,6 @@ function DMPage() {
    */
   const cancelPress = (id?: string) => {
     const wasLongPress = longPressFired.current;
-    longPressFired.current = false;
     if (pressTimer.current) {
       window.clearTimeout(pressTimer.current);
       pressTimer.current = null;
@@ -214,7 +214,16 @@ function DMPage() {
     // Keep the second tap's position so the heart bursts under the finger.
     const tapPoint = pressStart.current;
     pressStart.current = null;
-    if (wasLongPress || !id || !user || openMsg) return;
+    
+    // If it was a long press, don't process as tap
+    if (wasLongPress) {
+      longPressFired.current = false;
+      return;
+    }
+    
+    longPressFired.current = false;
+    if (!id || !user || openMsg) return;
+    
     const previous = lastTap.current;
     const now = Date.now();
     if (previous && previous.id === id && now - previous.at < 300) {

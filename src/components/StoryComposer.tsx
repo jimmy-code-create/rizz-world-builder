@@ -21,6 +21,11 @@ import {
   Braces,
   LayoutGrid,
   Layers,
+  Brush,
+  Eraser,
+  Pipette,
+  Redo2,
+  Sparkle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
@@ -33,6 +38,7 @@ import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { FaceEffectsStudio } from "@/components/story/FaceEffectsStudio";
 import {
+  BRUSHES,
   EMOJI_PACK,
   FONTS,
   ICONS,
@@ -40,10 +46,26 @@ import {
   TEMPLATES,
   TEXT_STYLES,
   fontStack,
+  type BrushId,
   type FontId,
   type StickerTab,
   type TextStyleId,
 } from "@/lib/story-creator/content";
+import {
+  BAKE_FILTERS,
+  MOTIONS,
+  NEUTRAL_ADJUST,
+  applyAdjustments,
+  bakeFilter,
+  createParticles,
+  smoothStroke,
+  stepParticles,
+  type AdjustOpts,
+  type BakeFilterId,
+  type Particle,
+  type ParticleKind,
+  type StrokePoint,
+} from "@/lib/story-creator/fx";
 
 /**
  * Who a story is for. Stored as `stories.visibility` (public / followers /
@@ -69,7 +91,7 @@ type Person = { id: string; username: string; display_name: string | null; avata
 
 type Overlay = {
   id: string;
-  kind: "text" | "sticker" | "image";
+  kind: "text" | "sticker" | "image" | "drawing";
   value: string;
   x: number; // 0..1 of canvas width
   y: number; // 0..1 of canvas height
@@ -87,18 +109,14 @@ type Overlay = {
   /** Code-drawn icon sticker. */
   icon?: string;
   iconColor?: string;
+  /** Brush stroke (normalized 0..1 points, smoothed on export). */
+  brush?: BrushId;
+  brushColor?: string;
+  brushSize?: number;
+  points?: StrokePoint[];
 };
 
 const STICKER_TABS: StickerTab[] = ["Emoji", "Icons", "Mood", "Gen Z", "Hinglish", "Desi pop"];
-const FILTERS: { name: string; css: string }[] = [
-  { name: "None",       css: "none" },
-  { name: "Bloom",      css: "saturate(1.3) contrast(1.05) brightness(1.05)" },
-  { name: "Noir",       css: "grayscale(1) contrast(1.15)" },
-  { name: "Sepia",      css: "sepia(0.7) saturate(1.2)" },
-  { name: "Cool",       css: "hue-rotate(200deg) saturate(1.1)" },
-  { name: "Vivid",      css: "saturate(1.6) contrast(1.1)" },
-  { name: "Fade",       css: "contrast(0.9) brightness(1.1) saturate(0.85)" },
-];
 const TEXT_COLORS = ["#ffffff","#000000","#c8ff3d","#8a8a92","#22d3ee","#fde047","#f97316","#10b981"];
 /** Canvas + editor font stacks, matched to RIZZ (Bricolage display). */
 const fontFor = (k?: string) => {
@@ -129,7 +147,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [filter, setFilter] = useState<string>("none");
   const [bg, setBg] = useState<string>("#131315");
   const [busy, setBusy] = useState(false);
-  const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | "templates" | "layers" | null>(null);
+  const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | "templates" | "layers" | "brush" | "tune" | "motion" | null>(null);
   const [history, setHistory] = useState<Overlay[][]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
@@ -147,14 +165,31 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [templateId, setTemplateId] = useState("blank");
   const [frame, setFrame] = useState<"none" | "polaroid" | "film" | "neon">("none");
   const [stickerTab, setStickerTab] = useState<(typeof STICKER_TABS)[number]>("Emoji");
-
-  const pushHistory = (prev: Overlay[]) => setHistory((h) => [...h.slice(-19), prev]);
-  const undo = () => setHistory((h) => {
-    if (h.length === 0) return h;
-    const last = h[h.length - 1];
-    setOverlays(last);
-    return h.slice(0, -1);
-  });
+  const [bakeId, setBakeId] = useState<BakeFilterId>("none");
+  const [adjust, setAdjust] = useState<AdjustOpts>(NEUTRAL_ADJUST);
+  const [motionKind, setMotionKind] = useState<ParticleKind | "none">("none");
+  const [brush, setBrush] = useState<BrushId>("pen");
+  const [brushColor, setBrushColor] = useState("#c8ff3d");
+  const [brushSize, setBrushSize] = useState(10);
+  const [redoStack, setRedoStack] = useState<Overlay[][]>([]);
+  const drawingRef = useRef<{ id: string; points: StrokePoint[] } | null>(null);
+  
+  const pushHistory = (prev: Overlay[]) => {
+    setRedoStack([]);
+    setHistory((h) => [...h.slice(-19), prev]);
+  };
+  const undo = () => {
+    if (history.length === 0) return;
+    setRedoStack((r) => [...r.slice(-19), overlays]);
+    setOverlays(history[history.length - 1]);
+    setHistory(history.slice(0, -1));
+  };
+  const redo = () => {
+    if (redoStack.length === 0) return;
+    setHistory((h) => [...h.slice(-19), overlays]);
+    setOverlays(redoStack[redoStack.length - 1]);
+    setRedoStack(redoStack.slice(0, -1));
+  };
 
   useEffect(() => {
     if (!open) {
@@ -165,6 +200,9 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       setAudience("everyone"); setHiddenFrom([]); setCaption("");
       setEditorText(""); setPeopleQuery(""); setPeopleHits([]);
       setTemplateId("blank"); setFrame("none"); setStickerTab("Emoji");
+      setBakeId("none"); setAdjust(NEUTRAL_ADJUST); setMotionKind("none");
+      setBrush("pen"); setBrushColor("#c8ff3d"); setBrushSize(10);
+      setRedoStack([]); drawingRef.current = null;
     }
   }, [open]);
 
@@ -312,6 +350,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   // Multi-touch drag / pinch / rotate
   const onDragOverlay = (id: string) => (e: React.PointerEvent) => {
+    // Brush mode owns all stage touches so strokes paint over overlays.
+    if (panel === "brush") return;
     if (editingId === id) return;
     const stage = stageRef.current; if (!stage) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -388,6 +428,64 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   const sel = overlays.find((o) => o.id === selected) || null;
 
+  /** Live preview filter = tune sliders layered over the baked-filter CSS. */
+  const previewFilter =
+    `${filter} brightness(${adjust.brightness}) contrast(${adjust.contrast}) saturate(${adjust.saturation})` +
+    (adjust.warmth >= 0 ? ` sepia(${(adjust.warmth * 0.5).toFixed(2)})` : ` hue-rotate(${(adjust.warmth * 20).toFixed(0)}deg)`);
+  const [liveStroke, setLiveStroke] = useState<StrokePoint[] | null>(null);
+
+  /** Brush drawing: while the Brush panel is open, stage touches paint. */
+  const stagePoint = (clientX: number, clientY: number): StrokePoint | null => {
+    const stage = stageRef.current;
+    if (!stage) return null;
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    };
+  };
+
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    if (panel === "brush") {
+      if (e.target !== stageRef.current && (e.target as HTMLElement).closest("[data-stroke-ui]")) return;
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      const p = stagePoint(e.clientX, e.clientY);
+      if (!p) return;
+      pushHistory(overlays);
+      const id = crypto.randomUUID();
+      drawingRef.current = { id, points: [{ ...p, p: (e as React.PointerEvent & { pressure?: number }).pressure || 0.7 }] };
+      setLiveStroke(drawingRef.current.points);
+      return;
+    }
+    if (e.target === stageRef.current) setSelected(null);
+  };
+
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const active = drawingRef.current;
+    if (!active) return;
+    const p = stagePoint(e.clientX, e.clientY);
+    if (!p) return;
+    active.points.push({ ...p, p: (e as React.PointerEvent & { pressure?: number }).pressure || 0.7 });
+    setLiveStroke([...active.points]);
+  };
+
+  const onStagePointerUp = () => {
+    const active = drawingRef.current;
+    drawingRef.current = null;
+    setLiveStroke(null);
+    if (!active || active.points.length === 0) return;
+    setOverlays((o) => [
+      ...o,
+      {
+        id: active.id, kind: "drawing", value: "",
+        x: 0.5, y: 0.5, scale: 1, rotate: 0,
+        brush, brushColor, brushSize, points: active.points,
+      },
+    ]);
+    setSelected(active.id);
+  };
+
   /** Clean JSON of the story for backend storage / re-render. Image `src`
       object URLs are session-local — re-attach uploads when re-rendering. */
   const storyJson = () => ({
@@ -400,75 +498,132 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     overlays: overlays.map((ov) => ({ ...ov })),
   });
 
-  // Render final image (image bg only). For video, upload raw video + caption from first text overlay.
-  async function compose(): Promise<{ blob: Blob; type: "image"|"video" }> {
-    if (isVideo && file) return { blob: file, type: "video" };
-    const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_W; canvas.height = CANVAS_H;
-    const ctx = canvas.getContext("2d")!;
+  // Render the export base into any 2d context (image export, video frames).
+  async function renderExportBase(c: CanvasRenderingContext2D, W: number, H: number) {
     // background
     if (mediaUrl) {
       const img = await loadImage(mediaUrl);
-      ctx.filter = filter;
-      drawCover(ctx, img, CANVAS_W, CANVAS_H);
-      ctx.filter = "none";
+      drawCover(c, img, W, H);
     } else {
       // gradient bg
-      paintCssBg(ctx, bg, CANVAS_W, CANVAS_H);
+      paintCssBg(c, bg, W, H);
     }
     // overlays
     for (const ov of overlays) {
-      ctx.save();
-      ctx.translate(ov.x * CANVAS_W, ov.y * CANVAS_H);
-      ctx.rotate((ov.rotate * Math.PI) / 180);
+      c.save();
+      c.translate(ov.x * W, ov.y * H);
+      c.rotate((ov.rotate * Math.PI) / 180);
       if (ov.kind === "image" && ov.src && ov.w && ov.h) {
-        const w = ov.w * CANVAS_W * ov.scale;
-        const h = ov.h * CANVAS_H * ov.scale;
+        const w = ov.w * W * ov.scale;
+        const h = ov.h * H * ov.scale;
         try {
           const img = await loadImage(ov.src);
           const ir = img.width / img.height;
           const cr = w / h;
           let dw = w, dh = h;
           if (ir > cr) { dw = h * ir; } else { dh = w / ir; }
-          ctx.beginPath();
-          ctx.rect(-w / 2, -h / 2, w, h);
-          ctx.clip();
-          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+          c.beginPath();
+          c.rect(-w / 2, -h / 2, w, h);
+          c.clip();
+          c.drawImage(img, -dw / 2, -dh / 2, dw, dh);
         } catch {
-          ctx.fillStyle = "rgba(255,255,255,0.07)";
-          ctx.fillRect(-w / 2, -h / 2, w, h);
+          c.fillStyle = "rgba(255,255,255,0.07)";
+          c.fillRect(-w / 2, -h / 2, w, h);
         }
-        ctx.restore();
+        c.restore();
+        continue;
+      }
+      if (ov.kind === "drawing") {
+        // Drawings composite on their own layer so the eraser only ever
+        // removes paint — identical to the editor's SVG mask.
         continue;
       }
       const baseSize = ov.kind === "text" ? 72 : 140;
-      const size = baseSize * ov.scale;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const size = (baseSize * ov.scale * W) / CANVAS_W;
+      c.textAlign = "center"; c.textBaseline = "middle";
       if (ov.kind === "text") {
-        paintStyledText(ctx, ov.value, 0, 0, size, ov);
+        paintStyledText(c, ov.value, 0, 0, size, ov);
       } else if (ov.icon && ICONS[ov.icon]) {
-        ctx.save();
-        ctx.scale(size / 100, size / 100);
-        ICONS[ov.icon].draw(ctx, ov.iconColor || "#c8ff3d");
-        ctx.restore();
+        c.save();
+        c.scale(size / 100, size / 100);
+        ICONS[ov.icon].draw(c, ov.iconColor || "#c8ff3d");
+        c.restore();
       } else {
-        ctx.font = `${size}px system-ui, "Apple Color Emoji","Segoe UI Emoji"`;
-        ctx.fillText(ov.value, 0, 0);
+        c.font = `${size}px system-ui, "Apple Color Emoji","Segoe UI Emoji"`;
+        c.fillText(ov.value, 0, 0);
       }
-      ctx.restore();
+      c.restore();
     }
-    paintFrame(ctx, frame, CANVAS_W, CANVAS_H);
+    // Whole-frame bake (matches the live CSS preview), then frame chrome.
+    paintDrawingsLayer(c, overlays, W);
+    const pixels = c.getImageData(0, 0, W, H);
+    applyAdjustments(pixels.data, W, H, adjust);
+    bakeFilter(pixels.data, W, H, bakeId);
+    c.putImageData(pixels, 0, 0);
+    paintFrame(c, frame, W, H);
+  }
+
+  // Render final image (image bg only). For video, upload raw video + caption from first text overlay.
+  async function compose(): Promise<{ blob: Blob; type: "image"|"video" }> {
+    if (isVideo && file) return { blob: file, type: "video" };
+    const canvas = document.createElement("canvas");
+    canvas.width = CANVAS_W; canvas.height = CANVAS_H;
+    const ctx = canvas.getContext("2d")!;
+    await renderExportBase(ctx, CANVAS_W, CANVAS_H);
     const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.92));
     return { blob, type: "image" };
   }
 
-  async function post() {
+  const [recording, setRecording] = useState(false);
+
+  /** Records a 3 s motion story (animated overlay baked per frame) via MediaRecorder. */
+  async function exportMotionVideo(): Promise<Blob> {
+    if (motionKind === "none") throw new Error("Pick a motion overlay first.");
+    if (typeof MediaRecorder === "undefined") throw new Error("Video export isn't supported in this browser.");
+    const W = 540;
+    const H = 960;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Export canvas unavailable.");
+    const stream = canvas.captureStream(30);
+    const rec = new MediaRecorder(stream, { mimeType: "video/webm" });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    const stopped = new Promise<void>((resolve) => {
+      rec.onstop = () => resolve();
+    });
+    // Base is rendered once; particles animate per frame on top.
+    await renderExportBase(ctx, W, H);
+    const base = document.createElement("canvas");
+    base.width = W;
+    base.height = H;
+    base.getContext("2d")?.drawImage(canvas, 0, 0);
+    const ps = createParticles(motionKind, (Date.now() % 100000) + 3);
+    rec.start();
+    const frames = 90;
+    for (let i = 0; i < frames; i += 1) {
+      ctx.drawImage(base, 0, 0);
+      drawParticles(ctx, ps, motionKind, W, H);
+      stepParticles(ps, motionKind, 1 / 30);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    rec.stop();
+    await stopped;
+    if (chunks.length === 0) throw new Error("Recording produced no data.");
+    return new Blob(chunks, { type: "video/webm" });
+  }
+
+  async function post(recorded?: Blob) {
     if (!user) { toast.error("Sign in first"); return; }
     if (!mediaUrl && overlays.length === 0) { toast.error("Add media or a sticker/text"); return; }
     setBusy(true);
     try {
-      const { blob, type } = await compose();
-      const ext = type === "video" ? (file?.name.split(".").pop() ?? "mp4") : "jpg";
+      const { blob, type } = recorded ? { blob: recorded, type: "video" as const } : await compose();
+      const ext = type === "video" ? (recorded ? "webm" : (file?.name.split(".").pop() ?? "mp4")) : "jpg";
       const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("stories").upload(path, blob, { contentType: blob.type || (type==="video"?"video/mp4":"image/jpeg") });
       if (upErr) throw upErr;
@@ -524,9 +679,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           <button onClick={undo} disabled={history.length === 0} className="h-9 w-9 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Undo">
             <Undo2 className="h-5 w-5" />
           </button>
+          <button onClick={redo} disabled={redoStack.length === 0} className="h-9 w-9 rounded-full glass-strong grid place-items-center disabled:opacity-40" aria-label="Redo">
+            <Redo2 className="h-5 w-5" />
+          </button>
           <div className="text-sm font-semibold hidden xs:block sm:block">New story</div>
         </div>
-        <Button onClick={post} disabled={busy} size="sm" className="bg-primary text-primary-foreground shadow-md rounded-full px-4 h-9">
+        <Button onClick={() => void post()} disabled={busy} size="sm" className="bg-primary text-primary-foreground shadow-md rounded-full px-4 h-9">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" /> Share</>}
         </Button>
       </div>
@@ -535,7 +693,10 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       <div className="flex-1 flex items-center justify-center px-2 pb-1 min-h-0">
         <div
           ref={stageRef}
-          onPointerDown={(e) => { if (e.target === stageRef.current) setSelected(null); }}
+          onPointerDown={onStagePointerDown}
+          onPointerMove={onStagePointerMove}
+          onPointerUp={onStagePointerUp}
+          onPointerCancel={onStagePointerUp}
           className="relative rounded-2xl overflow-hidden shadow-md border border-white/10 select-none touch-none h-full w-auto max-h-full max-w-full"
           style={{
             aspectRatio: "9 / 16",
@@ -544,13 +705,14 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         >
           {mediaUrl && (
             isVideo ? (
-              <video src={mediaUrl} autoPlay muted loop playsInline className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
+              <video src={mediaUrl} autoPlay muted loop playsInline className="absolute inset-0 h-full w-full object-cover" style={{ filter: previewFilter }} />
             ) : (
-              <img src={mediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ filter }} />
+              <img src={mediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ filter: previewFilter }} />
             )
           )}
 
-          {overlays.map((ov) => (
+          {overlays.map((ov) =>
+            ov.kind === "drawing" ? null : (
             <div
               key={ov.id}
               onPointerDown={onDragOverlay(ov.id)}
@@ -605,7 +767,42 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 >{ov.value}</span>
               ) : ov.value}
             </div>
-          ))}
+              )
+          )}
+          {/* All drawing strokes share one SVG so the eraser mask cuts every
+              stroke underneath — exactly what the export does on canvas. */}
+          <DrawingsSvg
+            overlays={overlays}
+            liveStroke={liveStroke}
+            liveBrush={brush}
+            liveColor={brushColor}
+            liveSize={brushSize}
+            selectedId={selected}
+            onSelect={(id) => {
+              const ov = overlays.find((o) => o.id === id);
+              if (ov && !ov.locked) setSelected(id);
+            }}
+          />
+
+          {/* Tune preview: vignette + grain sit over the media, under UI. */}
+          {adjust.vignette > 0.01 && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{ background: `radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,${(adjust.vignette * 0.85).toFixed(2)}) 100%)` }}
+            />
+          )}
+          {adjust.grain > 0.01 && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-40"
+              style={{
+                opacity: (adjust.grain * 0.5).toFixed(2),
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`,
+              }}
+            />
+          )}
+          {motionKind !== "none" && <MotionPreview kind={motionKind} />}
 
           {/* Template frame preview (export paints the matching chrome) */}
           {frame === "neon" && (
@@ -956,15 +1153,174 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           </div>
         </div>
       )}
-      {panel === "filter" && mediaUrl && (
+      {panel === "brush" && (
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-3 space-y-3">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Brush type">
+              {BRUSHES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  aria-pressed={brush === b.id}
+                  onClick={() => setBrush(b.id)}
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${brush === b.id ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground"}`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold">Color</span>
+              {["#c8ff3d", "#ffffff", "#141416", "#ff2e88", "#22d3ee", "#fde047"].map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={`Brush ${c}`}
+                  onClick={() => setBrushColor(c)}
+                  className={`h-8 w-8 rounded-full border ${brushColor === c ? "border-white" : "border-white/20"}`}
+                  style={{ background: c }}
+                />
+              ))}
+              <Input
+                type="color"
+                aria-label="Custom brush color"
+                value={brushColor}
+                onChange={(e) => setBrushColor(e.target.value)}
+                className="h-8 w-10 cursor-pointer bg-transparent"
+              />
+              <button
+                type="button"
+                aria-label="Pick color from story"
+                title="Eyedropper"
+                onClick={async () => {
+                  try {
+                    const ED = (window as unknown as { EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper;
+                    if (!ED) {
+                      toast.info("Eyedropper isn't supported here — use the palette.");
+                      return;
+                    }
+                    const { sRGBHex } = await new ED().open();
+                    setBrushColor(sRGBHex);
+                  } catch {
+                    // Dismissed; keep the current color.
+                  }
+                }}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10"
+              >
+                <Pipette className="h-4 w-4" />
+              </button>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold">Size</p>
+              <Slider aria-label="Brush size" min={2} max={48} step={1} value={[brushSize]} onValueChange={([v]) => setBrushSize(v)} />
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  pushHistory(overlays);
+                  setOverlays((o) => o.filter((it) => it.kind !== "drawing"));
+                  setSelected(null);
+                }}
+              >
+                Clear drawings
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setBrush("eraser")}>
+                <Eraser className="mr-1 h-4 w-4" /> Eraser
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Drag on the canvas to paint. Strokes smooth automatically; undo keeps 20 steps.</p>
+          </div>
+        </div>
+      )}
+      {panel === "tune" && (
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-3 space-y-2.5">
+            {(
+              [
+                ["brightness", "Brightness", 0.5, 1.5, 0.05],
+                ["contrast", "Contrast", 0.5, 1.5, 0.05],
+                ["saturation", "Saturation", 0, 2, 0.05],
+                ["warmth", "Warmth", -1, 1, 0.05],
+                ["vignette", "Vignette", 0, 1, 0.05],
+                ["grain", "Grain", 0, 1, 0.05],
+              ] as const
+            ).map(([key, label, min, max, step]) => (
+              <div key={key}>
+                <div className="mb-0.5 flex items-center justify-between">
+                  <p className="text-xs font-semibold">{label}</p>
+                  <span className="text-[11px tabular-nums] text-muted-foreground">{adjust[key].toFixed(2)}</span>
+                </div>
+                <Slider
+                  aria-label={label}
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={[adjust[key]]}
+                  onValueChange={([v]) => setAdjust((a) => ({ ...a, [key]: v }))}
+                />
+              </div>
+            ))}
+            <Button variant="outline" className="w-full" onClick={() => setAdjust(NEUTRAL_ADJUST)}>
+              Reset adjustments
+            </Button>
+          </div>
+        </div>
+      )}
+      {panel === "motion" && (
+        <div className="px-2 pb-1 shrink-0">
+          <div className="glass-strong rounded-2xl p-3 space-y-2.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Animated overlay">
+              {MOTIONS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={motionKind === m.id}
+                  onClick={() => setMotionKind(m.id)}
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${motionKind === m.id ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground"}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Animated overlays play on the canvas and bake into a 3&nbsp;s looping clip on export.
+            </p>
+            <Button
+              className="w-full bg-primary text-primary-foreground font-bold"
+              disabled={busy || recording || motionKind === "none"}
+              onClick={async () => {
+                if (!user) {
+                  toast.error("Sign in first");
+                  return;
+                }
+                setRecording(true);
+                try {
+                  const blob = await exportMotionVideo();
+                  await post(blob);
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Video export failed.");
+                } finally {
+                  setRecording(false);
+                }
+              }}
+            >
+              {recording ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post motion story (3s)"}
+            </Button>
+          </div>
+        </div>
+      )}
+      {panel === "filter" && (
         <div className="px-2 pb-1 shrink-0">
           <div className="glass-strong rounded-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar">
-            {FILTERS.map((f) => (
-              <button key={f.name} onClick={() => setFilter(f.css)} className={`shrink-0 text-xs px-3 py-2 rounded-xl border ${filter===f.css ? "bg-white/15 border-white/30" : "border-white/10"}`}>
-                {f.name}
+            {BAKE_FILTERS.map((f) => (
+              <button key={f.id} onClick={() => { setFilter(f.css); setBakeId(f.id); }} className={`shrink-0 text-xs px-3 py-2 rounded-xl border ${bakeId===f.id ? "bg-white/15 border-white/30" : "border-white/10"}`}>
+                {f.label}
               </button>
             ))}
           </div>
+          <p className="mt-1 px-1 text-[10px] text-muted-foreground">Preview is live; the export bakes the same look.</p>
         </div>
       )}
       {panel === "bg" && !mediaUrl && (
@@ -994,8 +1350,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
           <ToolBtn icon={<AtSign className="h-4 w-4" />} label="Mention" onClick={() => setPanel(panel === "caption" ? null : "caption")} />
           <ToolBtn icon={<Smile className="h-4 w-4" />} label="Sticker" onClick={() => setPanel(panel === "sticker" ? null : "sticker")} />
+          <ToolBtn icon={<Brush className="h-4 w-4" />} label="Brush" onClick={() => setPanel(panel === "brush" ? null : "brush")} />
+          <ToolBtn icon={<Sparkle className="h-4 w-4" />} label="Motion" onClick={() => setPanel(panel === "motion" ? null : "motion")} />
           <ToolBtn icon={<Layers className="h-4 w-4" />} label="Layers" onClick={() => setPanel(panel === "layers" ? null : "layers")} />
-          <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel === "filter" ? null : "filter")} disabled={!mediaUrl} />
+          <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel === "filter" ? null : "filter")} />
+          <ToolBtn icon={<Palette className="h-4 w-4" />} label="Tune" onClick={() => setPanel(panel === "tune" ? null : "tune")} />
           <ToolBtn icon={<Palette className="h-4 w-4" />} label="BG" onClick={() => setPanel(panel === "bg" ? null : "bg")} disabled={!!mediaUrl} />
           <ToolBtn
             icon={<Lock className="h-4 w-4" />}
@@ -1020,6 +1379,220 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       <input ref={fileRef} hidden type="file" accept="image/*,video/*" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
     </motion.div>
     </FullScreenLayer>
+  );
+}
+
+function DrawingsSvg({
+  overlays,
+  liveStroke,
+  liveBrush,
+  liveColor,
+  liveSize,
+  selectedId,
+  onSelect,
+}: {
+  overlays: Overlay[];
+  liveStroke: StrokePoint[] | null;
+  liveBrush: BrushId;
+  liveColor: string;
+  liveSize: number;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const strokes = overlays.filter((o) => o.kind === "drawing");
+  const erasers = strokes.filter((o) => o.brush === "eraser");
+  const paint = strokes.filter((o) => o.brush !== "eraser");
+  const strokeWidth = (size: number) => ((size ?? 10) / 1080) * 100;
+  const render = (o: Overlay, extraProps: Record<string, unknown> = {}) => (
+    <polyline
+      key={o.id}
+      points={(o.points ?? []).map((p) => `${p.x * 100},${p.y * 100}`).join(" ")}
+      fill="none"
+      stroke={
+        o.brush === "rainbow"
+          ? "url(#drawings-rainbow)"
+          : o.brush === "highlighter"
+            ? (o.brushColor ?? "#c8ff3d")
+            : (o.brushColor ?? "#c8ff3d")
+      }
+      strokeWidth={strokeWidth(o.brushSize ?? 10) * (o.brush === "highlighter" ? 2.2 : 1)}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      opacity={o.brush === "highlighter" ? 0.45 : 1}
+      {...extraProps}
+    />
+  );
+  return (
+    <svg
+      aria-hidden={!strokes.some((o) => o.id === selectedId)}
+      className="absolute inset-0 h-full w-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <mask id="drawings-erase-mask">
+          <rect x="0" y="0" width="100" height="100" fill="white" />
+          {erasers.map((o) => (
+            <polyline
+              key={o.id}
+              points={(o.points ?? []).map((p) => `${p.x * 100},${p.y * 100}`).join(" ")}
+              fill="none"
+              stroke="black"
+              strokeWidth={strokeWidth(o.brushSize ?? 10) * 1.6 + 1}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </mask>
+        <linearGradient id="drawings-rainbow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#f00" />
+          <stop offset="0.2" stopColor="#ff0" />
+          <stop offset="0.4" stopColor="#0f0" />
+          <stop offset="0.6" stopColor="#0ff" />
+          <stop offset="0.8" stopColor="#00f" />
+          <stop offset="1" stopColor="#f0f" />
+        </linearGradient>
+      </defs>
+      <g mask="url(#drawings-erase-mask)">
+        {paint.map((o) => render(o))}
+      </g>
+      {/* Fat invisible hit strokes so committed drawings stay selectable. */}
+      {strokes.map((o) => (
+        <polyline
+          key={`hit-${o.id}`}
+          points={(o.points ?? []).map((p) => `${p.x * 100},${p.y * 100}`).join(" ")}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={strokeWidth(o.brushSize ?? 10) + 4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ pointerEvents: "stroke", cursor: "grab" }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onSelect(o.id);
+          }}
+        />
+      ))}
+      {liveStroke && liveStroke.length > 0 && (
+        <polyline
+          points={liveStroke.map((p) => `${p.x * 100},${p.y * 100}`).join(" ")}
+          fill="none"
+          stroke={liveBrush === "rainbow" ? "url(#drawings-rainbow)" : liveColor}
+          strokeWidth={strokeWidth(liveSize) * (liveBrush === "highlighter" ? 2.2 : 1)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={liveBrush === "highlighter" ? 0.45 : 0.9}
+          strokeDasharray={liveBrush === "eraser" ? "3 2" : undefined}
+        />
+      )}
+    </svg>
+  );
+}
+
+function drawParticles(
+  c: CanvasRenderingContext2D,
+  ps: Particle[],
+  kind: ParticleKind,
+  W: number,
+  H: number,
+) {
+  c.save();
+  for (const p of ps) {
+    const x = p.x * W;
+    const y = p.y * H;
+    if (kind === "hearts") {
+      const s = p.size * (W / 720);
+      c.save();
+      c.translate(x, y);
+      c.rotate(Math.sin(p.wobble) * 0.3);
+      c.scale(s / 50, s / 50);
+      c.globalAlpha = p.alpha;
+      c.fillStyle = "#ff5c8a";
+      c.beginPath();
+      c.moveTo(0, 32);
+      c.bezierCurveTo(-42, 5, -38, -30, -18, -30);
+      c.bezierCurveTo(-7, -30, -2, -20, 0, -14);
+      c.bezierCurveTo(2, -20, 7, -30, 18, -30);
+      c.bezierCurveTo(38, -30, 42, 5, 0, 32);
+      c.fill();
+      c.restore();
+    } else if (kind === "confetti") {
+      c.save();
+      c.translate(x, y);
+      c.rotate(p.rot);
+      c.globalAlpha = p.alpha;
+      c.fillStyle = `hsl(${Math.round(p.hue)}, 95%, 60%)`;
+      const s = p.size * (W / 720);
+      c.fillRect(-s / 2, -s / 4, s, s / 2);
+      c.restore();
+    } else if (kind === "snow") {
+      c.globalAlpha = p.alpha * 0.9;
+      c.fillStyle = "#ffffff";
+      c.beginPath();
+      c.arc(x, y, p.size * (W / 720) * 0.5, 0, Math.PI * 2);
+      c.fill();
+    } else if (kind === "fireflies") {
+      const flicker = 0.45 + 0.55 * Math.abs(Math.sin(p.wobble * 1.7));
+      c.globalAlpha = p.alpha * flicker;
+      c.shadowColor = "#d8ff6a";
+      c.shadowBlur = 18;
+      c.fillStyle = "#eaff9a";
+      c.beginPath();
+      c.arc(x, y, p.size * (W / 720) * 0.35, 0, Math.PI * 2);
+      c.fill();
+    } else if (kind === "rain") {
+      c.globalAlpha = p.alpha * 0.7;
+      c.strokeStyle = "#9adcff";
+      c.lineWidth = Math.max(1.5, p.size * 0.12);
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x - p.size * 0.5, y + p.size * 1.6);
+      c.stroke();
+    } else {
+      c.globalAlpha = 0.16;
+      const s = p.size * (W / 720);
+      const g = c.createRadialGradient(x, y, 0, x, y, s);
+      g.addColorStop(0, `hsla(${Math.round(p.hue)}, 100%, 65%, 0.8)`);
+      g.addColorStop(1, "hsla(300, 100%, 60%, 0)");
+      c.fillStyle = g;
+      c.beginPath();
+      c.arc(x, y, s, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+  c.restore();
+}
+
+function MotionPreview({ kind }: { kind: ParticleKind }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const c = canvas.getContext("2d");
+    if (!c) return;
+    const W = 360;
+    const H = 640;
+    canvas.width = W;
+    canvas.height = H;
+    const ps = createParticles(kind, 11);
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      stepParticles(ps, kind, Math.min(0.05, (now - last) / 1000));
+      last = now;
+      c.clearRect(0, 0, W, H);
+      drawParticles(c, ps, kind, W, H);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [kind]);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full"
+    />
   );
 }
 
@@ -1082,6 +1655,116 @@ function paintCssBg(ctx: CanvasRenderingContext2D, css: string, w: number, h: nu
     ctx.fillStyle = css;
   }
   ctx.fillRect(0, 0, w, h);
+}
+
+/** Export painter for brush strokes (points are 0..1 fractions of W). */
+function paintStroke(
+  ctx: CanvasRenderingContext2D,
+  points: StrokePoint[],
+  brush: BrushId,
+  color: string,
+  size: number,
+) {
+  if (points.length === 0) return;
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+  const px = smoothStroke(
+    points.map((p) => ({ x: p.x * W, y: p.y * H, p: p.p ?? 0.7 })),
+    5,
+  );
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const pressure = (i: number) => px[Math.min(px.length - 1, Math.max(0, i))].p ?? 0.7;
+  if (brush === "eraser") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = size * 1.6;
+    strokePath(ctx, px);
+  } else if (brush === "spray") {
+    ctx.fillStyle = color;
+    for (let i = 0; i < px.length; i += 1) {
+      const spread = size * 1.4;
+      for (let k = 0; k < 5; k += 1) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * spread;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(px[i].x + Math.cos(a) * r, px[i].y + Math.sin(a) * r, Math.max(1, size * 0.12), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  } else if (brush === "rainbow") {
+    for (let i = 1; i < px.length; i += 1) {
+      ctx.strokeStyle = `hsl(${(i / px.length) * 360}, 95%, 60%)`;
+      ctx.lineWidth = size * (0.5 + pressure(i) * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(px[i - 1].x, px[i - 1].y);
+      ctx.lineTo(px[i].x, px[i].y);
+      ctx.stroke();
+    }
+  } else {
+    if (brush === "highlighter") {
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = size * 2.2;
+    } else if (brush === "marker") {
+      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = size * 1.3;
+    } else {
+      ctx.lineWidth = size * (brush === "pen" ? 0.8 : 1);
+    }
+    ctx.strokeStyle = color;
+    if (brush === "neon") {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = size * 1.6;
+    }
+    strokePath(ctx, px);
+    if (brush === "neon") {
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = Math.max(1.5, size * 0.3);
+      strokePath(ctx, px);
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function strokePath(ctx: CanvasRenderingContext2D, px: Array<{ x: number; y: number }>) {
+  ctx.beginPath();
+  px.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  if (px.length === 1) ctx.lineTo(px[0].x + 0.5, px[0].y + 0.5);
+  ctx.stroke();
+}
+
+/**
+ * Composites every drawing stroke onto its own layer first, so the eraser
+ * only ever removes paint — never the photo or text beneath. Mirrors the
+ * editor's SVG mask exactly.
+ */
+function paintDrawingsLayer(
+  ctx: CanvasRenderingContext2D,
+  overlays: Overlay[],
+  W: number,
+) {
+  const drawings = overlays.filter((o) => o.kind === "drawing" && (o.points ?? []).length > 0);
+  if (drawings.length === 0) return;
+  const H = ctx.canvas.height;
+  const layer = document.createElement("canvas");
+  layer.width = W;
+  layer.height = H;
+  const c = layer.getContext("2d");
+  if (!c) return;
+  for (const o of drawings) {
+    if (o.brush === "eraser") continue;
+    paintStroke(c, o.points ?? [], o.brush ?? "pen", o.brushColor ?? "#c8ff3d", (o.brushSize ?? 10) * (W / CANVAS_W));
+  }
+  for (const o of drawings) {
+    if (o.brush !== "eraser") continue;
+    paintStroke(c, o.points ?? [], "eraser", "#000", (o.brushSize ?? 10) * (W / CANVAS_W));
+  }
+  ctx.drawImage(layer, 0, 0);
 }
 
 /** Export painter for the 7 text styles (mirrors the editor toolbar). */
