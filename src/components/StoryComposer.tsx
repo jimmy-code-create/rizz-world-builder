@@ -690,21 +690,21 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       </div>
 
       {/* Canvas stage — 9:16 */}
-      <div className="flex-1 flex items-center justify-center px-2 pb-1 min-h-0 w-full">
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 pb-1">
         <div
           ref={stageRef}
           onPointerDown={onStagePointerDown}
           onPointerMove={onStagePointerMove}
           onPointerUp={onStagePointerUp}
           onPointerCancel={onStagePointerUp}
-          className="relative rounded-2xl overflow-hidden shadow-md border border-white/10 select-none touch-none"
+          className="relative max-h-full max-w-full flex-none rounded-2xl border border-white/10 shadow-md overflow-hidden select-none touch-none"
           style={{
             aspectRatio: "9 / 16",
             background: mediaUrl ? "#000" : bg,
-            maxWidth: "min(calc(100vw - 1rem), 640px)",
-            maxHeight: "calc(100dvh - 8rem)",
-            width: "100%",
-            height: "auto",
+            height: "100%",
+            width: "auto",
+            maxWidth: "min(100%, 640px)",
+            maxHeight: "100%",
           }}
         >
           {mediaUrl && (
