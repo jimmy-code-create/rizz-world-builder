@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
-import { BADGE_SET, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
+import { BADGE_SET, badgeArtForSlug, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
 import { useI18n, tf } from "@/lib/i18n";
 import { BadgeChip } from "@/components/BadgeChip";
 import { BadgeIcon } from "@/components/BadgeIcon";
@@ -485,7 +485,13 @@ export function BadgesPage() {
                 style={{ boxShadow: `0 0 24px ${glow}22` }}
               >
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
-                  <BadgeIcon icon={dbRow?.icon ?? entry.icon} glow={glow} size={30} />
+                  <BadgeIcon
+                    icon={dbRow?.icon ?? entry.icon}
+                    image={badgeArtForSlug(entry.slug)}
+                    glow={glow}
+                    size={34}
+                    animate
+                  />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">

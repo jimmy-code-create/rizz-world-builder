@@ -1,7 +1,7 @@
 /**
  * The one canonical badge set. Exactly these 5 exist in the UI — profile
  * rows, hover cards, post name chips and /badges all filter to these slugs
- * and render the app's own cat emojis (never prompt-emoji copies).
+ * and use the same transparent artwork everywhere.
  */
 export type BadgeTier = "rare" | "epic" | "mythic";
 
@@ -9,8 +9,10 @@ export type CanonicalBadge = {
   slug: string;
   name: string;
   flavor: string;
-  /** Cat-emoji shortcode rendered with <CatEmoji/>. */
+  /** Legacy emoji fallback for badges without custom artwork. */
   icon: string;
+  /** Transparent artwork used across badge cards, profile chips and the showcase. */
+  art: string;
   tier: BadgeTier;
   /** Tier glow color (mythic pink-red, epic purple, rare blue). */
   glow: string;
@@ -19,25 +21,28 @@ export type CanonicalBadge = {
 export const BADGE_SET: CanonicalBadge[] = [
   {
     slug: "founder",
-    name: "Founder",
-    flavor: "The originals.",
+    name: "RIZZ Team",
+    flavor: "Built by the people behind RIZZ.",
     icon: ":cat_gg:",
+    art: "/badges/rizz-team.png",
     tier: "mythic",
-    glow: "#ff4d6d",
+    glow: "#c8ff3d",
   },
   {
     slug: "main-character",
     name: "Main Character",
     flavor: "Content that moves the room.",
     icon: ":cat_hype:",
+    art: "/badges/main-character.png",
     tier: "epic",
     glow: "#a855f7",
   },
   {
     slug: "voice-of-realm",
-    name: "Voice of the Realm",
+    name: "Voice of the Realms",
     flavor: "When they talk, rooms fill.",
     icon: ":cat_music:",
+    art: "/badges/voice-of-the-realms.png",
     tier: "epic",
     glow: "#a855f7",
   },
@@ -46,18 +51,24 @@ export const BADGE_SET: CanonicalBadge[] = [
     name: "The Rizz",
     flavor: "Not just rizz. The Rizz.",
     icon: ":cat_cool:",
+    art: "/badges/the-rizz.png",
     tier: "mythic",
     glow: "#ff4d6d",
   },
   {
     slug: "no-cap",
-    name: "No Cap",
-    flavor: "Real one. No cap.",
+    name: "Verified",
+    flavor: "Identity verified. A real one, no cap.",
     icon: ":cat_love:",
+    art: "/badges/verified.png",
     tier: "rare",
     glow: "#3b82f6",
   },
 ];
+
+export function badgeArtForSlug(slug: string | null | undefined): string | undefined {
+  return BADGE_SET.find((badge) => badge.slug === slug)?.art;
+}
 
 const SET_ORDER: Record<string, number> = Object.fromEntries(BADGE_SET.map((b, i) => [b.slug, i]));
 

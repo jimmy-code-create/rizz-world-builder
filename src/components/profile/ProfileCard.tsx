@@ -13,7 +13,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence/StatusDot";
 import { BadgeIcon } from "@/components/BadgeIcon";
-import { canonBadges, canonicalFor } from "@/lib/badge-set";
+import { badgeArtForSlug, canonBadges, canonicalFor } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -722,7 +722,7 @@ export function ProfileCard({
             </div>
             {statusPill}
 
-            {/* Badges: the 5 canonical cat-emoji pills, the sheet tells the full story */}
+            {/* Canonical transparent badge art; the sheet shows the full award details. */}
             {computedBadges.length > 0 && (
               <div className="mt-2.5 flex items-center gap-1.5" aria-label={`${computedBadges.length} badges`}>
                 {badgePreview.map((badge) => (
@@ -730,12 +730,17 @@ export function ProfileCard({
                     key={badge.slug}
                     type="button"
                     onClick={() => setBadgesOpen(true)}
-                    title={badge.name}
-                    aria-label={badge.name}
+                    title={canonicalFor(badge.slug)?.name ?? badge.name}
+                    aria-label={canonicalFor(badge.slug)?.name ?? badge.name}
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                    style={{ color: badge.color }}
+                    style={{ color: canonicalFor(badge.slug)?.glow ?? badge.color }}
                   >
-                    <BadgeIcon icon={badge.icon} glow={badge.color} size={20} />
+                    <BadgeIcon
+                      icon={badge.icon}
+                      image={badgeArtForSlug(badge.slug)}
+                      glow={canonicalFor(badge.slug)?.glow ?? badge.color}
+                      size={24}
+                    />
                   </button>
                 ))}
                 {badgeOverflow > 0 && (
@@ -923,13 +928,18 @@ export function ProfileCard({
                 <li key={badge.slug} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <span
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]"
-                    style={{ color: badge.color }}
+                    style={{ color: canonicalFor(badge.slug)?.glow ?? badge.color }}
                   >
-                    <BadgeIcon icon={badge.icon} glow={badge.color} size={20} />
+                    <BadgeIcon
+                      icon={badge.icon}
+                      image={badgeArtForSlug(badge.slug)}
+                      glow={canonicalFor(badge.slug)?.glow ?? badge.color}
+                      size={24}
+                    />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">
-                      {badge.name}
+                      {canon?.name ?? badge.name}
                       {canon && (
                         <span
                           className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
