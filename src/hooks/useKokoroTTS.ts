@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pickDeviceVoice } from "@/lib/voice-selection";
 
 type WorkerReply =
   | { status: "progress"; progress: number }
@@ -36,6 +37,11 @@ export function useKokoroTTS({ browserFirst = false }: { browserFirst?: boolean 
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  /**
+   * Bumped by every new request and by stopSpeaking(), so audio that finished
+   * generating after the caller moved on never starts playing.
+   */
+  const playTokenRef = useRef(0);
 
   const clearPending = useCallback(() => {
     if (pendingRef.current) {
@@ -44,41 +50,56 @@ export function useKokoroTTS({ browserFirst = false }: { browserFirst?: boolean 
     }
   }, []);
 
-  const handleWorkerMessage = useCallback((event: MessageEvent<WorkerReply>) => {
-    const message = event.data;
-    if (message.status === "progress") {
-      setIsLoading(true);
-      setLoadingProgress(message.progress);
-      return;
-    }
-    if (message.status === "loading") {
-      setIsLoading(true);
-      setLoadingProgress(0);
-      return;
-    }
-    if (message.status === "ready") {
-      setIsReady(true);
-      setIsLoading(false);
-      setLoadingProgress(100);
-      return;
-    }
+  const handleWorkerMessage = useCallback(
+    (event: MessageEvent<WorkerReply>) => {
+      const message = event.data;
+      if (message.status === "progress") {
+        setIsLoading(true);
+        setLoadingProgress(message.progress);
+        return;
+      }
+      if (message.status === "loading") {
+        setIsLoading(true);
+        setLoadingProgress(0);
+        return;
+      }
+      if (message.status === "ready") {
+        setIsReady(true);
+        setIsLoading(false);
+        setLoadingProgress(100);
+        return;
+      }
 
-    const pending = pendingRef.current;
-    if (message.status === "audio" && pending?.requestId === message.requestId) {
-      clearPending();
-      pending.resolve({ audio: message.audio, samplingRate: message.samplingRate });
-      return;
-    }
-    if (message.status === "error" && pending && (!message.requestId || pending.requestId === message.requestId)) {
-      clearPending();
-      setIsLoading(false);
-      pending.reject(new Error(message.message));
-    }
-  }, [clearPending]);
+      const pending = pendingRef.current;
+      if (message.status === "audio" && pending?.requestId === message.requestId) {
+        clearPending();
+        pending.resolve({ audio: message.audio, samplingRate: message.samplingRate });
+        return;
+      }
+      if (
+        message.status === "error" &&
+        pending &&
+        (!message.requestId || pending.requestId === message.requestId)
+      ) {
+        clearPending();
+        setIsLoading(false);
+        pending.reject(new Error(message.message));
+        return;
+      }
+      // A preload that fails has no pending request; stop the spinner anyway.
+      if (message.status === "error") {
+        setIsLoading(false);
+        setLoadingProgress(0);
+      }
+    },
+    [clearPending],
+  );
 
   const ensureWorker = useCallback(() => {
     if (workerRef.current) return workerRef.current;
-    const worker = new Worker(new URL("../workers/tts.worker.ts", import.meta.url), { type: "module" });
+    const worker = new Worker(new URL("../workers/tts.worker.ts", import.meta.url), {
+      type: "module",
+    });
     worker.onmessage = handleWorkerMessage;
     worker.onerror = (event) => {
       setIsLoading(false);
@@ -128,133 +149,181 @@ export function useKokoroTTS({ browserFirst = false }: { browserFirst?: boolean 
     sample();
   }, []);
 
-  const playGeneratedAudio = useCallback(async (audio: Float32Array, samplingRate: number) => {
-    const context = getAudioContext();
-    if (context.state === "suspended") await context.resume();
-    const buffer = context.createBuffer(1, audio.length, samplingRate);
-    buffer.copyToChannel(new Float32Array(audio), 0);
+  const playGeneratedAudio = useCallback(
+    async (audio: Float32Array, samplingRate: number, volume = 1) => {
+      const context = getAudioContext();
+      if (context.state === "suspended") await context.resume();
+      const buffer = context.createBuffer(1, audio.length, samplingRate);
+      buffer.copyToChannel(new Float32Array(audio), 0);
 
-    const source = context.createBufferSource();
-    const analyser = context.createAnalyser();
-    analyser.fftSize = 256;
-    source.buffer = buffer;
-    source.connect(analyser);
-    analyser.connect(context.destination);
-    sourceRef.current = source;
-    updateAudioLevel(analyser);
+      const source = context.createBufferSource();
+      const analyser = context.createAnalyser();
+      const gain = context.createGain();
+      gain.gain.value = Math.min(1, Math.max(0.05, volume));
+      analyser.fftSize = 256;
+      source.buffer = buffer;
+      source.connect(gain);
+      gain.connect(analyser);
+      analyser.connect(context.destination);
+      sourceRef.current = source;
+      updateAudioLevel(analyser);
 
-    await new Promise<void>((resolve, reject) => {
-      source.onended = () => {
-        if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-        sourceRef.current = null;
-        setAudioLevel(0);
-        resolve();
-      };
-      try {
-        source.start();
-      } catch (playError) {
-        sourceRef.current = null;
-        if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-        setAudioLevel(0);
-        reject(playError);
-      }
-    });
-  }, [getAudioContext, updateAudioLevel]);
+      await new Promise<void>((resolve, reject) => {
+        source.onended = () => {
+          if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+          sourceRef.current = null;
+          setAudioLevel(0);
+          resolve();
+        };
+        try {
+          source.start();
+        } catch (playError) {
+          sourceRef.current = null;
+          if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+          setAudioLevel(0);
+          reject(playError);
+        }
+      });
+    },
+    [getAudioContext, updateAudioLevel],
+  );
 
-  const playBrowserVoice = useCallback((text: string) => new Promise<void>((resolve, reject) => {
-    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
-      reject(new Error("Neither Kokoro nor browser speech synthesis is available."));
-      return;
+  const playBrowserVoice = useCallback(
+    (text: string) =>
+      new Promise<void>((resolve, reject) => {
+        if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+          reject(new Error("Neither Kokoro nor browser speech synthesis is available."));
+          return;
+        }
+
+        const synthesis = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voice = pickDeviceVoice(synthesis.getVoices(), { language: "en" });
+        if (voice) utterance.voice = voice;
+        utterance.rate = 0.96;
+        utterance.pitch = 1.04;
+        utterance.onend = () => resolve();
+        utterance.onerror = (event) =>
+          reject(new Error(`Browser speech could not play (${event.error}).`));
+        synthesis.cancel();
+        synthesis.speak(utterance);
+      }),
+    [],
+  );
+
+  /** Warms the HD model without speaking, so later lines start instantly. */
+  const preload = useCallback(() => {
+    try {
+      ensureWorker().postMessage({ action: "load" });
+    } catch {
+      // Speech stays lazy; the next speak() will try again.
     }
+  }, [ensureWorker]);
 
-    const synthesis = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    const selectVoice = () => {
-      const voices = synthesis.getVoices();
-      const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
-      return englishVoices.find((voice) => /natural|enhanced|premium/i.test(voice.name))
-        ?? englishVoices.find((voice) => /female|woman/i.test(voice.name))
-        ?? englishVoices[0]
-        ?? voices[0];
-    };
-    const voice = selectVoice();
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.96;
-    utterance.pitch = 1.04;
-    utterance.onend = () => resolve();
-    utterance.onerror = (event) => reject(new Error(`Browser speech could not play (${event.error}).`));
-    synthesis.cancel();
-    synthesis.speak(utterance);
-  }), []);
+  const speak = useCallback(
+    async (
+      text: string,
+      voice: string = "af_bella",
+      options: { speed?: number; volume?: number } = {},
+    ) => {
+      const trimmedText = text.trim();
+      if (!trimmedText) return false;
+      const token = ++playTokenRef.current;
+      setError(null);
+      setIsSpeaking(true);
+      setIsLoading(false);
+      setLoadingProgress(0);
 
-  const speak = useCallback(async (text: string, voice: "af_bella" = "af_bella") => {
-    const trimmedText = text.trim();
-    if (!trimmedText) return false;
-    setError(null);
-    setIsSpeaking(true);
-    setIsLoading(false);
-    setLoadingProgress(0);
+      if (browserFirst) {
+        try {
+          await playBrowserVoice(trimmedText);
+          setIsReady(true);
+          return true;
+        } catch (browserError) {
+          setError(
+            browserError instanceof Error
+              ? browserError.message
+              : "Browser speech playback failed.",
+          );
+          return false;
+        } finally {
+          if (mountedRef.current) {
+            setIsSpeaking(false);
+            setAudioLevel(0);
+          }
+        }
+      }
 
-    if (browserFirst) {
       try {
-        await playBrowserVoice(trimmedText);
+        const worker = ensureWorker();
+        const requestId = ++requestIdRef.current;
+        const generated = await new Promise<{ audio: Float32Array; samplingRate: number }>(
+          (resolve, reject) => {
+            const timeout = setTimeout(() => {
+              if (pendingRef.current?.requestId !== requestId) return;
+              clearPending();
+              worker.terminate();
+              workerRef.current = null;
+              reject(new Error("Kokoro took too long to respond."));
+            }, WORKER_TIMEOUT_MS);
+            // Only one request can be in flight; settle any older one so its
+            // caller stops waiting instead of hanging forever.
+            if (pendingRef.current) {
+              const stale = pendingRef.current;
+              clearPending();
+              stale.reject(new Error("Superseded by a newer speech request."));
+            }
+            pendingRef.current = { requestId, resolve, reject, timeout };
+            setIsLoading(true);
+            worker.postMessage({
+              action: "speak",
+              requestId,
+              text: trimmedText,
+              voice,
+              speed: options.speed ?? 1,
+            });
+          },
+        );
+        if (token !== playTokenRef.current) {
+          setIsLoading(false);
+          return false;
+        }
+        setCurrentAudioData(generated.audio);
+        setIsLoading(false);
         setIsReady(true);
-        return true;
-      } catch (browserError) {
-        setError(browserError instanceof Error ? browserError.message : "Browser speech playback failed.");
-        return false;
+        await playGeneratedAudio(generated.audio, generated.samplingRate, options.volume ?? 1);
+      } catch (kokoroError) {
+        setIsLoading(false);
+        if (!mountedRef.current) return false;
+        if (token !== playTokenRef.current) return false;
+        try {
+          await playBrowserVoice(trimmedText);
+          setIsReady(true);
+        } catch (fallbackError) {
+          const message =
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : kokoroError instanceof Error
+                ? kokoroError.message
+                : "Speech playback failed.";
+          setError(message);
+          return false;
+        }
       } finally {
         if (mountedRef.current) {
           setIsSpeaking(false);
           setAudioLevel(0);
         }
       }
-    }
-
-    try {
-      const worker = ensureWorker();
-      const requestId = ++requestIdRef.current;
-      const generated = await new Promise<{ audio: Float32Array; samplingRate: number }>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          if (pendingRef.current?.requestId !== requestId) return;
-          clearPending();
-          worker.terminate();
-          workerRef.current = null;
-          reject(new Error("Kokoro took too long to respond."));
-        }, WORKER_TIMEOUT_MS);
-        pendingRef.current = { requestId, resolve, reject, timeout };
-        setIsLoading(true);
-        worker.postMessage({ action: "speak", requestId, text: trimmedText, voice });
-      });
-      setCurrentAudioData(generated.audio);
-      setIsLoading(false);
-      setIsReady(true);
-      await playGeneratedAudio(generated.audio, generated.samplingRate);
-    } catch (kokoroError) {
-      setIsLoading(false);
-      if (!mountedRef.current) return false;
-      try {
-        await playBrowserVoice(trimmedText);
-        setIsReady(true);
-      } catch (fallbackError) {
-        const message = fallbackError instanceof Error
-          ? fallbackError.message
-          : kokoroError instanceof Error ? kokoroError.message : "Speech playback failed.";
-        setError(message);
-        return false;
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsSpeaking(false);
-        setAudioLevel(0);
-      }
-    }
-    return true;
-  }, [browserFirst, clearPending, ensureWorker, playBrowserVoice, playGeneratedAudio]);
+      return true;
+    },
+    [browserFirst, clearPending, ensureWorker, playBrowserVoice, playGeneratedAudio],
+  );
 
   const stopSpeaking = useCallback(() => {
+    playTokenRef.current += 1;
     sourceRef.current?.stop();
     sourceRef.current = null;
     if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
@@ -289,5 +358,6 @@ export function useKokoroTTS({ browserFirst = false }: { browserFirst?: boolean 
     speak,
     stopSpeaking,
     unlockAudio,
+    preload,
   };
 }
