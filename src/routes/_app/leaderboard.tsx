@@ -21,6 +21,7 @@ import {
 
 export const Route = createFileRoute("/_app/leaderboard")({
   head: () => ({ meta: [{ title: "Leaderboard · RIZZ" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({ earn: search.earn === "1" || search.earn === 1 || search.earn === true }),
   component: LeaderboardPage,
 });
 
@@ -59,10 +60,12 @@ function RankDelta({ rank, prevRank }: { rank: number; prevRank: number | null }
 function LeaderboardPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const search = Route.useSearch();
   const [period, setPeriod] = useState<BoardPeriod>("all");
   const [followingOnly, setFollowingOnly] = useState(false);
   const [cardUserId, setCardUserId] = useState<string | null>(null);
-  const [earnOpen, setEarnOpen] = useState(false);
+  // Deep link (e.g. from Bounties): /leaderboard?earn=1 opens the earn guide.
+  const [earnOpen, setEarnOpen] = useState(search.earn);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
