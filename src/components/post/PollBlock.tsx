@@ -69,35 +69,8 @@ export function PollBlock({ postId, translation }: { postId: string; translation
     },
   });
 
-  if (poll.isLoading) {
-    return (
-      <div aria-label="Loading poll" className="mx-4 mb-3 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="skeleton-shimmer h-4 w-2/3 rounded-md" />
-        <div className="skeleton-shimmer h-9 rounded-xl" />
-        <div className="skeleton-shimmer h-9 rounded-xl" />
-      </div>
-    );
-  }
-  if (poll.isError) {
-    return (
-      <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-        <p className="text-xs text-muted-foreground">{t("poll_load_error")}</p>
-        <button type="button" onClick={() => void poll.refetch()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t("retry")}</button>
-      </div>
-    );
-  }
-  if (!poll.data) return null;
-  const p = poll.data;
-  const expired = !!p.closes_at && new Date(p.closes_at).getTime() <= Date.now();
-  const revealed = !!p.my_option_id || expired;
-  const total = Math.max(1, p.total_votes);
-  const timeLabel = closesIn(p.closes_at, t);
-
-  // Translated question + option labels share the post body's translation
-  // cache (same translateText function). Votes always use option ids, so
-  // translation never touches vote data. Toggled together with "See
-  // original" via the `translation` prop; when the question is already in
-  // the target language nothing is translated.
+  // Keep hooks unconditional: poll.data is initially absent while the query
+  // loads, and the component must still call these hooks on that render.
   const [translatedPoll, setTranslatedPoll] = useState<{
     question: string;
     labels: Record<string, string>;
@@ -137,6 +110,35 @@ export function PollBlock({ postId, translation }: { postId: string; translation
     };
   }, [translation, poll.data]);
 
+  if (poll.isLoading) {
+    return (
+      <div aria-label="Loading poll" className="mx-4 mb-3 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="skeleton-shimmer h-4 w-2/3 rounded-md" />
+        <div className="skeleton-shimmer h-9 rounded-xl" />
+        <div className="skeleton-shimmer h-9 rounded-xl" />
+      </div>
+    );
+  }
+  if (poll.isError) {
+    return (
+      <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        <p className="text-xs text-muted-foreground">{t("poll_load_error")}</p>
+        <button type="button" onClick={() => void poll.refetch()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{t("retry")}</button>
+      </div>
+    );
+  }
+  if (!poll.data) return null;
+  const p = poll.data;
+  const expired = !!p.closes_at && new Date(p.closes_at).getTime() <= Date.now();
+  const revealed = !!p.my_option_id || expired;
+  const total = Math.max(1, p.total_votes);
+  const timeLabel = closesIn(p.closes_at, t);
+
+  // Translated question + option labels share the post body's translation
+  // cache (same translateText function). Votes always use option ids, so
+  // translation never touches vote data. Toggled together with "See
+  // original" via the `translation` prop; when the question is already in
+  // the target language nothing is translated.
   const shownQuestion = translation?.active && translatedPoll ? translatedPoll.question : p.question;
   const shownLabel = (o: { id: string; label: string }) =>
     translation?.active && translatedPoll?.labels[o.id] ? translatedPoll.labels[o.id] : o.label;
