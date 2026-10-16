@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, Pause, PhoneOff, Play, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -48,6 +48,8 @@ import {
   togglePeerMute,
   type PeerAudioState,
 } from "@/lib/peer-audio";
+import { VCMusicSheet } from "@/components/voice/VCMusicSheet";
+import { VCGamesSheet } from "@/components/voice/VCGamesSheet";
 
 function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
   const peerAudio = usePeerAudio();
@@ -218,6 +220,7 @@ export function VoiceCallView() {
   const [shelfOpen, setShelfOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [bannerDismissedAt, setBannerDismissedAt] = useState<number | null>(null);
   // One panel layout at a time: mounting both side + overlay iframes loaded
@@ -358,10 +361,10 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Activities"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${shelfOpen || panelOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setShelfOpen(true)}
-            title="Activities"
+            aria-label="Games"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${gamesOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setGamesOpen(true)}
+            title="Games"
           >
             <Gamepad2 className="h-5 w-5" />
           </Button>
@@ -852,6 +855,22 @@ export function VoiceCallView() {
             </div>
           </SheetContent>
         </Sheet>
+
+        {/* Music Sheet */}
+        <VCMusicSheet
+          open={musicOpen}
+          onOpenChange={setMusicOpen}
+          channelId={call.channelId}
+          realmId={call.realmId}
+        />
+
+        {/* Games Sheet */}
+        <VCGamesSheet
+          open={gamesOpen}
+          onOpenChange={setGamesOpen}
+          channelId={call.channelId}
+          participants={participants}
+        />
       </div>
     </FullScreenLayer>
   );
