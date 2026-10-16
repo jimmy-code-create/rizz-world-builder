@@ -690,17 +690,21 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       </div>
 
       {/* Canvas stage — 9:16 */}
-      <div className="flex-1 flex items-center justify-center px-2 pb-1 min-h-0">
+      <div className="flex-1 flex items-center justify-center px-2 pb-1 min-h-0 w-full">
         <div
           ref={stageRef}
           onPointerDown={onStagePointerDown}
           onPointerMove={onStagePointerMove}
           onPointerUp={onStagePointerUp}
           onPointerCancel={onStagePointerUp}
-          className="relative rounded-2xl overflow-hidden shadow-md border border-white/10 select-none touch-none h-full w-auto max-h-full max-w-full"
+          className="relative rounded-2xl overflow-hidden shadow-md border border-white/10 select-none touch-none"
           style={{
             aspectRatio: "9 / 16",
             background: mediaUrl ? "#000" : bg,
+            maxWidth: "min(calc(100vw - 1rem), 640px)",
+            maxHeight: "calc(100dvh - 8rem)",
+            width: "100%",
+            height: "auto",
           }}
         >
           {mediaUrl && (
@@ -731,13 +735,14 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
             >
               {ov.kind === "image" ? (
                 ov.src ? (
-                  <img src={ov.src} alt="" className="h-full w-full rounded-lg object-cover" draggable={false} />
+                  <img src={ov.src} alt="" className="h-full w-full rounded-lg object-cover" draggable={false} style={{ maxWidth: "100%", maxHeight: "100%" }} />
                 ) : (
                   <button
                     type="button"
                     aria-label="Fill photo slot"
                     onClick={(e) => { e.stopPropagation(); setSelected(ov.id); fileRef.current?.click(); }}
                     className="grid h-full w-full place-items-center rounded-lg border-2 border-dashed border-primary/60 bg-white/5 text-xs font-bold text-primary"
+                    style={{ maxWidth: "100%", maxHeight: "100%" }}
                   >
                     + photo
                   </button>
@@ -1343,7 +1348,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       {/* Bottom action bar */}
       <div className="px-2 pt-1 shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
         {/* Horizontally scrollable so every tool keeps a 44px target at 375px. */}
-        <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide">
+        <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
           <ToolBtn icon={<ScanFace className="h-4 w-4" />} label="Lens" onClick={() => setLensOpen(true)} />
           <ToolBtn icon={<LayoutGrid className="h-4 w-4" />} label="Sets" onClick={() => setPanel(panel === "templates" ? null : "templates")} />

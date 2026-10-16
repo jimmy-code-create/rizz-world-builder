@@ -88,6 +88,8 @@ import {
   Copy,
   Plus,
   Volume2,
+  Music2,
+  Gamepad2,
 } from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
@@ -156,6 +158,8 @@ import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
 import { emojiTextClass } from "@/lib/text-size";
 import { RealmForum } from "@/components/forum/RealmForum";
+import { MusicPlayer } from "@/components/MusicPlayer";
+import { GameLauncher } from "@/components/GameLauncher";
 
 const TYPE_ICON = {
   text: Hash,
@@ -268,6 +272,8 @@ function RealmPage() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  const [musicPlayerOpen, setMusicPlayerOpen] = useState(false);
+  const [gameLauncherOpen, setGameLauncherOpen] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -896,6 +902,24 @@ function RealmPage() {
             <Users className="h-3 w-3" /> {c.member_count}
           </p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Music player"
+          onClick={() => setMusicPlayerOpen(true)}
+        >
+          <Music2 className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="glass shrink-0 border-white/10"
+          aria-label="Game launcher"
+          onClick={() => setGameLauncherOpen(true)}
+        >
+          <Gamepad2 className="h-4 w-4" />
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -2458,6 +2482,20 @@ function RealmPage() {
           </div>
         </div>
       )}
+
+      {/* Music Player - shared in realm */}
+      <MusicPlayer 
+        open={musicPlayerOpen} 
+        onOpenChange={setMusicPlayerOpen}
+        channelId={realm.data?.id}
+      />
+
+      {/* Game Launcher - shared in realm */}
+      <GameLauncher 
+        open={gameLauncherOpen} 
+        onOpenChange={setGameLauncherOpen}
+        channelId={realm.data?.id}
+      />
     </div>
   );
 }
