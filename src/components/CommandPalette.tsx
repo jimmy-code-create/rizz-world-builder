@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Bot, Home, Compass, Bell, MessageCircle, Hash, Gift, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText,
+  Bot, Home, Compass, Bell, MessageCircle, Hash, Coins, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -21,7 +21,7 @@ const PAGES = [
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/realms", label: "Realms", icon: Hash },
-  { to: "/drops", label: "Bounties", icon: Gift },
+  { to: "/drops", label: "Bounties", icon: Coins },
   { to: "/dms", label: "Messages", icon: MessageCircle },
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },

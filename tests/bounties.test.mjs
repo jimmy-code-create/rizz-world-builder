@@ -54,6 +54,23 @@ await check("route, tables, and claim mechanics untouched", async () => {
   assert.ok(drops.includes("claim_limit") && drops.includes("Claim now"));
 });
 
+await check("quests drive promotion with existing flows only", async () => {
+  assert.ok(drops.includes('aria-label="Bounty quests"'));
+  assert.ok(drops.includes('role="progressbar"'));
+  for (const title of [
+    "Claim your first bounty",
+    "Post a bounty for the crew",
+    "Bring 3 friends to your group",
+    "Share RIZZ outside the app",
+    "Hype a win on the feed",
+  ]) {
+    assert.ok(drops.includes(title), `missing quest ${title}`);
+  }
+  assert.ok(drops.includes('to: "/groups"') && drops.includes('to: "/feed"'));
+  assert.ok(drops.includes('"share" in navigator') && drops.includes("rizz.quests.shared"));
+  assert.ok(!drops.includes("quest_completions") && !drops.includes("awardQuest"));
+});
+
 await check("earn prompt links to the leaderboard guide", async () => {
   assert.ok(drops.includes("Want to earn more Rizz?"));
   assert.ok(drops.includes("How to earn rizz"));

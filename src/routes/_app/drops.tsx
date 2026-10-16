@@ -6,8 +6,18 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Gift, Plus, Timer, Loader2, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Coins,
+  Plus,
+  Timer,
+  Loader2,
+  Sparkles,
+  Users,
+  Share2,
+  Megaphone,
+  Check,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
@@ -17,9 +27,86 @@ export const Route = createFileRoute("/_app/drops")({
   component: DropsPage,
 });
 
+const SHARE_QUEST_KEY = "rizz.quests.shared";
+
+type QuestAction =
+  { kind: "link"; to: "/drops" | "/groups" | "/feed" } | { kind: "create" } | { kind: "share" };
+
+type Quest = {
+  id: string;
+  icon: typeof Coins;
+  title: string;
+  desc: string;
+  pays: string;
+  action: QuestAction;
+  done: (ctx: { claims: number; posted: boolean; shared: boolean }) => boolean;
+};
+
+/**
+ * Discord-quest-style promo challenges. Completion derives from data the app
+ * already loads (claims, posted bounties) or a device-local share flag —
+ * there is no new currency and no backend tracking. Rewards land through the
+ * existing rizz scoring (posts, likes) and bounty claims.
+ */
+const QUESTS: Quest[] = [
+  {
+    id: "quest:claim",
+    icon: Coins,
+    title: "Claim your first bounty",
+    desc: "Grab any active bounty below before it sells out.",
+    pays: "Bounty loot",
+    action: { kind: "link", to: "/drops" },
+    done: ({ claims }) => claims > 0,
+  },
+  {
+    id: "quest:post",
+    icon: Plus,
+    title: "Post a bounty for the crew",
+    desc: "Put up loot and watch the rush come to you.",
+    pays: "Community heat",
+    action: { kind: "create" },
+    done: ({ posted }) => posted,
+  },
+  {
+    id: "quest:invite",
+    icon: Users,
+    title: "Bring 3 friends to your group",
+    desc: "Groups grow through invite links — be the connector.",
+    pays: "Their likes earn +2 rizz each",
+    action: { kind: "link", to: "/groups" },
+    done: () => false,
+  },
+  {
+    id: "quest:share",
+    icon: Share2,
+    title: "Share RIZZ outside the app",
+    desc: "Send your invite link anywhere friends hang out.",
+    pays: "New members boost your posts",
+    action: { kind: "share" },
+    done: ({ shared }) => shared,
+  },
+  {
+    id: "quest:hype",
+    icon: Megaphone,
+    title: "Hype a win on the feed",
+    desc: "Post your bounty haul so others join the hunt.",
+    pays: "+5 rizz per post",
+    action: { kind: "link", to: "/feed" },
+    done: () => false,
+  },
+];
+
 function DropsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [dropOpen, setDropOpen] = useState(false);
+  const [shared, setShared] = useState<boolean>(() => {
+    try {
+      return typeof localStorage !== "undefined" && localStorage.getItem(SHARE_QUEST_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const drops = useQuery({
     queryKey: ["drops"],
     queryFn: async () => {
@@ -41,33 +128,86 @@ function DropsPage() {
   });
 
   useEffect(() => {
-    const ch = supabase.channel("drops-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "drops" }, () => qc.invalidateQueries({ queryKey: ["drops"] }))
+    const ch = supabase
+      .channel("drops-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "drops" }, () =>
+        qc.invalidateQueries({ queryKey: ["drops"] }),
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "drop_claims" }, () => {
         qc.invalidateQueries({ queryKey: ["drops"] });
         qc.invalidateQueries({ queryKey: ["my-claims"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [qc]);
 
   const claim = async (dropId: string) => {
     if (!user) return;
-    const { error } = await supabase.from("drop_claims").insert({ drop_id: dropId, user_id: user.id });
+    const { error } = await supabase
+      .from("drop_claims")
+      .insert({ drop_id: dropId, user_id: user.id });
     if (error) toast.error(error.message);
-    else toast.success("Claimed! 🎁");
+    else toast.success("Claimed! 🪙");
   };
+
+  const shareApp = async () => {
+    const url = typeof window !== "undefined" ? window.location.origin : "https://rizz.app";
+    const data = { title: "RIZZ", text: "Join me on RIZZ — claim bounties and stack rizz.", url };
+    try {
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        await (navigator as Navigator & { share: (data: unknown) => Promise<void> }).share(data);
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${data.text} ${url}`);
+        toast.success("Invite link copied — paste it anywhere.");
+      } else {
+        toast.info("Copy this link", { description: url });
+        return;
+      }
+      try {
+        localStorage.setItem(SHARE_QUEST_KEY, "1");
+      } catch {
+        // Private mode: the quest simply won't persist on this device.
+      }
+      setShared(true);
+    } catch {
+      // Share sheet dismissed — not a failure, leave the quest open.
+    }
+  };
+
+  const questCtx = {
+    claims: myClaims.data?.size ?? 0,
+    posted: (drops.data ?? []).some(
+      (d: { creator_id?: string }) => user && d.creator_id === user.id,
+    ),
+    shared,
+  };
+  const questsDone = QUESTS.filter((q) => q.done(questCtx)).length;
 
   return (
     <div>
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center justify-between gap-3">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 flex items-center justify-between gap-3"
+      >
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2 text-foreground">
-            <Gift className="h-6 w-6 text-primary" /> Bounties
+            <Coins className="h-6 w-6 text-primary" /> Bounties
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Limited bounties. Fast claims. Don&apos;t sleep.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Limited bounties. Fast claims. Don&apos;t sleep.
+          </p>
         </div>
-        <CreateDropDialog />
+        <Button
+          onClick={() => setDropOpen(true)}
+          className="bg-primary text-primary-foreground border-0 shadow-md"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Bounty
+        </Button>
+        <CreateDropDialog open={dropOpen} onOpenChange={setDropOpen} />
       </motion.div>
 
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
@@ -78,28 +218,51 @@ function DropsPage() {
           const soldOut = d.claim_count >= d.claim_limit;
           const pct = Math.min(100, (d.claim_count / d.claim_limit) * 100);
           return (
-            <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-3xl overflow-hidden border border-white/5">
+            <motion.div
+              key={d.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl overflow-hidden border border-white/5"
+            >
               {d.media_url && (
                 <div className="aspect-video bg-black overflow-hidden">
-                  <img src={d.media_url} alt={d.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img
+                    src={d.media_url}
+                    alt={d.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
               <div className="p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold text-xl">{d.title}</h3>
-                    {d.description && <p className="text-sm text-muted-foreground mt-1">{d.description}</p>}
+                    {d.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{d.description}</p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">by @{d.creator?.username}</p>
                   </div>
                   <Countdown to={d.expires_at} />
                 </div>
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-muted-foreground">{formatNumber(d.claim_count)} / {formatNumber(d.claim_limit)} claimed</span>
-                    <span className="font-bold" style={{ color: pct > 90 ? "var(--brand-signal)" : undefined }}>{Math.round(pct)}%</span>
+                    <span className="text-muted-foreground">
+                      {formatNumber(d.claim_count)} / {formatNumber(d.claim_limit)} claimed
+                    </span>
+                    <span
+                      className="font-bold"
+                      style={{ color: pct > 90 ? "var(--brand-signal)" : undefined }}
+                    >
+                      {Math.round(pct)}%
+                    </span>
                   </div>
                   <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
                 <Button
@@ -108,7 +271,15 @@ function DropsPage() {
                   className={`w-full mt-4 ${claimed || soldOut ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
                   variant={claimed || soldOut ? "outline" : "default"}
                 >
-                  {claimed ? "✓ Claimed" : soldOut ? "Sold out" : <><Sparkles className="h-4 w-4 mr-1" /> Claim now</>}
+                  {claimed ? (
+                    "✓ Claimed"
+                  ) : soldOut ? (
+                    "Sold out"
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1" /> Claim now
+                    </>
+                  )}
                 </Button>
               </div>
             </motion.div>
@@ -118,7 +289,7 @@ function DropsPage() {
 
       {drops.data?.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
-          <div className="text-5xl mb-3">🎁</div>
+          <div className="text-5xl mb-3">🪙</div>
           <h2 className="font-display text-xl font-bold">No active bounties</h2>
           <p className="text-sm text-muted-foreground mt-1">Post one and watch the rush.</p>
         </div>
@@ -137,6 +308,83 @@ function DropsPage() {
           <Sparkles className="h-4 w-4" /> How to earn rizz
         </Link>
       </div>
+
+      <section aria-label="Bounty quests" className="mt-3">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <h2 className="font-display text-lg font-bold">Quests</h2>
+          <span className="text-xs font-semibold text-muted-foreground" aria-live="polite">
+            {questsDone} of {QUESTS.length} done
+          </span>
+        </div>
+        <div
+          className="h-2 overflow-hidden rounded-full bg-white/5"
+          role="progressbar"
+          aria-label="Quests completed"
+          aria-valuenow={questsDone}
+          aria-valuemin={0}
+          aria-valuemax={QUESTS.length}
+        >
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${Math.round((questsDone / QUESTS.length) * 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 space-y-2">
+          {QUESTS.map((quest) => {
+            const done = quest.done(questCtx);
+            const Icon = quest.icon;
+            return (
+              <div
+                key={quest.id}
+                className={`glass flex items-center gap-3 rounded-2xl border border-white/5 p-4 ${done ? "opacity-80" : ""}`}
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${done ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground"}`}
+                >
+                  {done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{quest.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{quest.desc}</p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-primary">
+                    Pays: {quest.pays}
+                  </p>
+                </div>
+                {!done &&
+                  (quest.action.kind === "link" ? (
+                    <Link
+                      to={quest.action.to}
+                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      Go
+                    </Link>
+                  ) : quest.action.kind === "create" ? (
+                    <button
+                      type="button"
+                      onClick={() => setDropOpen(true)}
+                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      Go
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={shareApp}
+                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      Share
+                    </button>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+          Quest rewards land through existing rizz scoring and bounty claims — progress here is
+          tracked on this device.
+        </p>
+      </section>
     </div>
   );
 }
@@ -159,10 +407,15 @@ function Countdown({ to }: { to: string }) {
   );
 }
 
-function CreateDropDialog() {
+function CreateDropDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [limit, setLimit] = useState(100);
@@ -183,39 +436,92 @@ function CreateDropDialog() {
         media_url = supabase.storage.from("drops").getPublicUrl(path).data.publicUrl;
       }
       const expires_at = new Date(Date.now() + hours * 3.6e6).toISOString();
-      const { error } = await supabase.from("drops").insert({ creator_id: user.id, title: title.trim(), description: desc.trim() || null, claim_limit: limit, expires_at, media_url });
+      const { error } = await supabase.from("drops").insert({
+        creator_id: user.id,
+        title: title.trim(),
+        description: desc.trim() || null,
+        claim_limit: limit,
+        expires_at,
+        media_url,
+      });
       if (error) throw error;
       toast.success("Bounty is live 🚀");
       qc.invalidateQueries({ queryKey: ["drops"] });
-      setOpen(false); setTitle(""); setDesc(""); setFile(null);
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+      onOpenChange(false);
+      setTitle("");
+      setDesc("");
+      setFile(null);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1" />Bounty</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-strong border-white/10">
-        <DialogHeader><DialogTitle className="font-display">New bounty</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="font-display">New bounty</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} className="glass border-white/10" />
-          <Textarea placeholder="Hype it up" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={280} className="glass border-white/10" />
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full glass border-white/10">
+          <Input
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={60}
+            className="glass border-white/10"
+          />
+          <Textarea
+            placeholder="Hype it up"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            maxLength={280}
+            className="glass border-white/10"
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            className="w-full glass border-white/10"
+          >
             {file ? `📎 ${file.name}` : "Add image (optional)"}
           </Button>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground">Claim limit</label>
-              <Input type="number" value={limit} onChange={(e) => setLimit(+e.target.value)} min={1} max={10000} className="glass border-white/10" />
+              <Input
+                type="number"
+                value={limit}
+                onChange={(e) => setLimit(+e.target.value)}
+                min={1}
+                max={10000}
+                className="glass border-white/10"
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Duration (hrs)</label>
-              <Input type="number" value={hours} onChange={(e) => setHours(+e.target.value)} min={1} max={168} className="glass border-white/10" />
+              <Input
+                type="number"
+                value={hours}
+                onChange={(e) => setHours(+e.target.value)}
+                min={1}
+                max={168}
+                className="glass border-white/10"
+              />
             </div>
           </div>
-          <Button onClick={create} disabled={busy || !title.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
+          <Button
+            onClick={create}
+            disabled={busy || !title.trim()}
+            className="w-full bg-primary text-primary-foreground border-0 shadow-md"
+          >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Launch bounty"}
           </Button>
         </div>

@@ -2,20 +2,93 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Shield, UserMinus, UserX, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { listRealmMembers, kickRealmMember, banRealmMember, setRealmMemberRole, type RealmMember as RealmMemberRow, type RealmRoom, type RealmRoomKind } from "@/lib/realms";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  listRealmMembers,
+  kickRealmMember,
+  banRealmMember,
+  setRealmMemberRole,
+  type RealmMember as RealmMemberRow,
+  type RealmRoom,
+  type RealmRoomKind,
+} from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedFrom } from "@/lib/untyped-db";
 import { useAuth } from "@/lib/auth";
-import { fetchRealmBySlug, fetchRealmMessages, sendRealmMessage, joinRealm, leaveRealm, isRealmMember, fetchRealmRooms, fetchRealmRoomMessages, sendRealmRoomMessage, createRealmRoom, createRealmInvite, deleteRealm, setRealmRoomLock } from "@/lib/realms";
+import {
+  fetchRealmBySlug,
+  fetchRealmMessages,
+  sendRealmMessage,
+  joinRealm,
+  leaveRealm,
+  isRealmMember,
+  fetchRealmRooms,
+  fetchRealmRoomMessages,
+  sendRealmRoomMessage,
+  createRealmRoom,
+  createRealmInvite,
+  deleteRealm,
+  setRealmRoomLock,
+} from "@/lib/realms";
 import { Switch } from "@/components/ui/switch";
-import { useRealmVoiceChannels, useVoiceCallContext, type CallParticipantRow } from "@/components/voice/VoiceCallProvider";
+import {
+  useRealmVoiceChannels,
+  useVoiceCallContext,
+  type CallParticipantRow,
+} from "@/components/voice/VoiceCallProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart3, Bot as BotIcon, CalendarClock, Flag, Hash, Lock, Maximize2, Megaphone, Gift, LogOut, MessageSquare, MessagesSquare, Mic, MicOff, Pencil, Search, Send, Settings, ShieldCheck, SmilePlus, Sparkles, Trophy, Trash2, UserCog, UserPlus, Users, Copy, Plus, Volume2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  Bot as BotIcon,
+  CalendarClock,
+  Flag,
+  Hash,
+  Lock,
+  Maximize2,
+  Megaphone,
+  Coins,
+  LogOut,
+  MessageSquare,
+  MessagesSquare,
+  Mic,
+  MicOff,
+  Pencil,
+  Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  SmilePlus,
+  Sparkles,
+  Trophy,
+  Trash2,
+  UserCog,
+  UserPlus,
+  Users,
+  Copy,
+  Plus,
+  Volume2,
+} from "lucide-react";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
@@ -55,7 +128,12 @@ import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/li
 import { runBotCommand, useRealmSlashCommands } from "@/lib/bots";
 import { moderateDeleteMessage, reportRealmMessage } from "@/lib/realm-settings";
 import { useMentionLabels } from "@/lib/mention-tokens";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PollCard } from "@/components/chat/PollCard";
 import { TrackCard } from "@/components/chat/TrackCard";
 import { ThreadSheet } from "@/components/chat/ThreadSheet";
@@ -66,7 +144,10 @@ import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
-import { RealmProfilePreviewDialog, type RealmProfilePreviewUser } from "@/components/realms/RealmProfilePreviewDialog";
+import {
+  RealmProfilePreviewDialog,
+  type RealmProfilePreviewUser,
+} from "@/components/realms/RealmProfilePreviewDialog";
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { threadLabel } from "@/lib/realm-threads";
 import { flushDueScheduledMessages } from "@/lib/realm-schedule";
@@ -76,7 +157,13 @@ import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-
 import { emojiTextClass } from "@/lib/text-size";
 import { RealmForum } from "@/components/forum/RealmForum";
 
-const TYPE_ICON = { text: Hash, announcement: Megaphone, voice: Mic, drops: Gift, forum: MessagesSquare };
+const TYPE_ICON = {
+  text: Hash,
+  announcement: Megaphone,
+  voice: Mic,
+  drops: Coins,
+  forum: MessagesSquare,
+};
 
 /** Room kinds a moderator can create from here, forum included. */
 const CREATABLE_ROOM_KINDS: RealmRoomKind[] = ["text", "announcement", "voice", "forum"];
@@ -171,7 +258,11 @@ function RealmPage() {
   // Phase 5: search, levels, threads, scheduling, polls, emoji, reaction roles.
   const [searchOpen, setSearchOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
-  const [threadRoot, setThreadRoot] = useState<{ id: string; body: string; author: string | null } | null>(null);
+  const [threadRoot, setThreadRoot] = useState<{
+    id: string;
+    body: string;
+    author: string | null;
+  } | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -204,9 +295,13 @@ function RealmPage() {
   } = useVoiceCallContext();
   const channelCalls = useRealmVoiceChannels(realm.data?.id);
   const channelCallsByRoom = new Map<string, RealmChannelCall>(
-    ((channelCalls.data ?? []) as RealmChannelCall[]).map((entry) => [entry.room.realm_room_id ?? "", entry]),
+    ((channelCalls.data ?? []) as RealmChannelCall[]).map((entry) => [
+      entry.room.realm_room_id ?? "",
+      entry,
+    ]),
   );
-  const activeChannelPeople = activeRoom?.kind === "voice" ? channelCallsByRoom.get(activeRoom.id)?.participants ?? [] : [];
+  const activeChannelPeople =
+    activeRoom?.kind === "voice" ? (channelCallsByRoom.get(activeRoom.id)?.participants ?? []) : [];
 
   const roomMessages = useQuery({
     queryKey: ["realm-room-messages", activeRoomId],
@@ -219,7 +314,8 @@ function RealmPage() {
   // owner and make the permissions page look like a dead tap. Ownership is also
   // readable straight off the realm row.
   const roleQuery = useMyRealmRole(realm.data?.id);
-  const myRole = roleQuery.role ??
+  const myRole =
+    roleQuery.role ??
     (members.data ?? []).find((m) => m.user_id === user?.id)?.role ??
     (realm.data?.owner_id && realm.data.owner_id === user?.id ? "owner" : null);
   const canModerate = canModerateRealm(myRole, realm.data?.owner_id, user?.id);
@@ -235,16 +331,28 @@ function RealmPage() {
     if (!realm.data) return;
     const ch = supabase
       .channel(`realm-messages-${realm.data.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `realm_id=eq.${realm.data.id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
-        if (activeRoomId) qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `realm_id=eq.${realm.data.id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
+          if (activeRoomId)
+            qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
+        },
+      )
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, () => {
         qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
         if (activeRoomId) qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [realm.data, activeRoomId, qc]);
 
   // Default to the room the link named, then the realm's default room.
@@ -273,17 +381,24 @@ function RealmPage() {
   // Every hook must run before the guards below. Calling them after an early
   // return makes React throw "Rendered more hooks than during the previous
   // render" as soon as the realm query resolves, which blanked this page.
-  const messageRows = activeRoomId && activeRoom?.kind !== "voice" ? (roomMessages.data ?? []) : (messages.data ?? []);
+  const messageRows =
+    activeRoomId && activeRoom?.kind !== "voice"
+      ? (roomMessages.data ?? [])
+      : (messages.data ?? []);
   // Newest window only; the room resets the window when switching channels.
   useEffect(() => {
     setMessageLimit(MESSAGE_PAGE_SIZE);
   }, [activeRoomId]);
   const visibleRows =
-    messageRows.length > messageLimit ? messageRows.slice(messageRows.length - messageLimit) : messageRows;
+    messageRows.length > messageLimit
+      ? messageRows.slice(messageRows.length - messageLimit)
+      : messageRows;
   const hiddenCount = messageRows.length - visibleRows.length;
   const messageIds = messageRows.map((message: { id: string }) => message.id);
   const reactions = useChatReactions("realm", messageIds, {
-    myMessageIds: messageRows.filter((message: { sender_id: string | null }) => message.sender_id === user?.id).map((message: { id: string }) => message.id),
+    myMessageIds: messageRows
+      .filter((message: { sender_id: string | null }) => message.sender_id === user?.id)
+      .map((message: { id: string }) => message.id),
   });
   // The welcome card's "Say hi" button opens the new member's profile. All we
   // get is the id, so fetch just enough for the card header; the card loads
@@ -344,12 +459,21 @@ function RealmPage() {
   const slashRoomId = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : null;
   const realmCommands = useRealmSlashCommands(realm.data?.id, slashRoomId);
   // `<@userId>` tokens in any visible message resolve to a username once.
-  const mentionLabels = useMentionLabels((messageRows as { body?: string }[]).map((row) => row.body));
+  const mentionLabels = useMentionLabels(
+    (messageRows as { body?: string }[]).map((row) => row.body),
+  );
   // Webhook-bot identity rows for messages carrying webhook_bot_id (one query
   // for the visible list; missing table before the migration => empty map).
   const webhookBotIds = useMemo(
-    () => [...new Set((messageRows as { webhook_bot_id?: string }[]).map((row) => row.webhook_bot_id).filter(Boolean))] as string[],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () =>
+      [
+        ...new Set(
+          (messageRows as { webhook_bot_id?: string }[])
+            .map((row) => row.webhook_bot_id)
+            .filter(Boolean),
+        ),
+      ] as string[],
+
     [messageRows],
   );
   const webhookBots = useQuery({
@@ -363,7 +487,9 @@ function RealmPage() {
           .in("id", webhookBotIds);
         if (error) throw error;
         return Object.fromEntries(
-          ((data ?? []) as Array<{ id: string; name: string; avatar_url: string | null }>).map((b) => [b.id, b]),
+          ((data ?? []) as Array<{ id: string; name: string; avatar_url: string | null }>).map(
+            (b) => [b.id, b],
+          ),
         );
       } catch {
         return {};
@@ -372,7 +498,9 @@ function RealmPage() {
   });
   const webhookBotMap = webhookBots.data ?? {};
   const slashQuery = parseSlashCommand(body);
-  const slashMatches = slashQuery ? filterSlashCommands(realmCommands.commands, slashQuery.name) : [];
+  const slashMatches = slashQuery
+    ? filterSlashCommands(realmCommands.commands, slashQuery.name)
+    : [];
   // The menu only shows while the command word itself is being typed, so the
   // arguments after the first space never sit under a popup. It also opens when
   // nothing matches, with a one-line explanation instead of a silent no-op.
@@ -380,11 +508,12 @@ function RealmPage() {
     !slashHidden && !sending && !realmCommands.isLoading && !!slashQuery && slashQuery.typingName;
   const slashMatchCount = slashMatches.length;
   const slashActive = Math.min(slashIndex, Math.max(slashMatchCount - 1, 0));
-  const slashHint = !slashMenuOpen || slashMatchCount > 0
-    ? undefined
-    : realmCommands.commands.length === 0
-      ? "No bot commands in this channel yet."
-      : `No command matches "/${slashQuery?.name ?? ""}".`;
+  const slashHint =
+    !slashMenuOpen || slashMatchCount > 0
+      ? undefined
+      : realmCommands.commands.length === 0
+        ? "No bot commands in this channel yet."
+        : `No command matches "/${slashQuery?.name ?? ""}".`;
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -395,10 +524,14 @@ function RealmPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "realm_rooms", filter: `realm_id=eq.${realmId}` },
-        () => { void qc.invalidateQueries({ queryKey: ["realm-rooms", realmId] }); },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["realm-rooms", realmId] });
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [realm.data, qc]);
 
   // Scheduled messages have no cron: flush whatever is due whenever this realm
@@ -419,7 +552,12 @@ function RealmPage() {
   }, [realm.data?.id, qc]);
 
   if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
-  if (!realm.data) return <div className="text-center py-20"><h1 className="font-display text-2xl font-bold">Realm not found</h1></div>;
+  if (!realm.data)
+    return (
+      <div className="text-center py-20">
+        <h1 className="font-display text-2xl font-bold">Realm not found</h1>
+      </div>
+    );
 
   const c: any = realm.data;
   const Icon = TYPE_ICON[c.type as keyof typeof TYPE_ICON] ?? Hash;
@@ -431,11 +569,14 @@ function RealmPage() {
   const sendChannelKey = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : c.id;
   // The channel's "who can add reactions" setting, enforced again inside
   // toggle_message_reaction so the browser can't grant itself the permission.
-  const reactionsMode = ((activeRoomId && activeRoom?.kind !== "voice"
-    ? (activeRoom as { reactions_mode?: "everyone" | "mods" }).reactions_mode
-    : (c.reactions_mode as "everyone" | "mods" | undefined)) ?? "everyone");
+  const reactionsMode =
+    (activeRoomId && activeRoom?.kind !== "voice"
+      ? (activeRoom as { reactions_mode?: "everyone" | "mods" }).reactions_mode
+      : (c.reactions_mode as "everyone" | "mods" | undefined)) ?? "everyone";
   const canAddReactions = reactionsMode !== "mods" || canModerate;
-  const myWriteBlocked = !canModerate && deniedChannelsOf(channelPermissions.permissions, c.id, user?.id).has(sendChannelKey);
+  const myWriteBlocked =
+    !canModerate &&
+    deniedChannelsOf(channelPermissions.permissions, c.id, user?.id).has(sendChannelKey);
   // Why the composer is closed, in the order the rules apply.
   const composerBlock = !joined
     ? "Join to chat"
@@ -466,14 +607,27 @@ function RealmPage() {
     setSlashIndex(0);
     setSlashHidden(false);
     const el = inputRef.current;
-    if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.length, next.length); });
+    if (el)
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(next.length, next.length);
+      });
   };
 
   const handleSend = async () => {
     if (!user || !body.trim()) return;
-    if (!joined) { toast.error("Join the realm to send messages"); return; }
-    if (roomLockedForMe) { toast.error("Only mods can send messages here"); return; }
-    if (myWriteBlocked) { toast.error("A moderator turned off writing here for you"); return; }
+    if (!joined) {
+      toast.error("Join the realm to send messages");
+      return;
+    }
+    if (roomLockedForMe) {
+      toast.error("Only mods can send messages here");
+      return;
+    }
+    if (myWriteBlocked) {
+      toast.error("A moderator turned off writing here for you");
+      return;
+    }
 
     // "/name args" that matches an installed command runs the bot. Any other
     // text that happens to start with "/" is still just a message.
@@ -499,7 +653,8 @@ function RealmPage() {
         }
         // The bot's answer arrives over realtime too; this just makes it instant.
         await qc.invalidateQueries({ queryKey: ["realm-messages", c.id] });
-        if (slashRoomId) await qc.invalidateQueries({ queryKey: ["realm-room-messages", slashRoomId] });
+        if (slashRoomId)
+          await qc.invalidateQueries({ queryKey: ["realm-room-messages", slashRoomId] });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "That command didn't work");
       } finally {
@@ -525,25 +680,39 @@ function RealmPage() {
         await sendRealmMessage(c.id, user.id, body.trim());
       }
       setBody("");
-    } catch (e: any) { toast.error(e.message); } finally { setSending(false); }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   /** Jumps to a pinned message and flashes it briefly. */
   const jumpToPin = (pin: PinnedMessageDetails) => {
     setPinsOpen(false);
     window.setTimeout(() => {
-      document.getElementById(`msg-${pin.message_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`msg-${pin.message_id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightId(pin.message_id);
-      window.setTimeout(() => setHighlightId((current) => (current === pin.message_id ? null : current)), 1600);
+      window.setTimeout(
+        () => setHighlightId((current) => (current === pin.message_id ? null : current)),
+        1600,
+      );
     }, 0);
   };
 
   /** Flashes a message on screen, whichever list it belongs to. */
   const jumpToMessage = (messageId: string) => {
     window.setTimeout(() => {
-      document.getElementById(`msg-${messageId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`msg-${messageId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightId(messageId);
-      window.setTimeout(() => setHighlightId((current) => (current === messageId ? null : current)), 1600);
+      window.setTimeout(
+        () => setHighlightId((current) => (current === messageId ? null : current)),
+        1600,
+      );
     }, 50);
   };
 
@@ -627,13 +796,21 @@ function RealmPage() {
     if (!user || !newRoomName.trim()) return;
     setCreatingRoom(true);
     try {
-      const room = await createRealmRoom({ realmId: c.id, name: newRoomName.trim(), kind: newRoomKind });
+      const room = await createRealmRoom({
+        realmId: c.id,
+        name: newRoomName.trim(),
+        kind: newRoomKind,
+      });
       await qc.invalidateQueries({ queryKey: ["realm-rooms", c.id] });
       selectRoom(room.id);
       setRoomsOpen(false);
       setNewRoomName("");
       toast.success(
-        newRoomKind === "voice" ? "Voice room created" : newRoomKind === "forum" ? "Forum created" : "Text room created",
+        newRoomKind === "voice"
+          ? "Voice room created"
+          : newRoomKind === "forum"
+            ? "Forum created"
+            : "Text room created",
       );
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't create the room");
@@ -685,15 +862,39 @@ function RealmPage() {
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
         className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)", boxShadow: `0 0 18px ${c.accent_color}14` }}
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
+          boxShadow: `0 0 18px ${c.accent_color}14`,
+        }}
       >
-        <Link to="/realms" aria-label="Back to realms" className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"><ArrowLeft className="h-5 w-5" /></Link>
-        <div className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15" style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}>
-          {c.icon_url ? <img src={c.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-white" />}
+        <Link
+          to="/realms"
+          aria-label="Back to realms"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div
+          className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15"
+          style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}
+        >
+          {c.icon_url ? (
+            <img
+              src={c.icon_url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Icon className="h-5 w-5 text-white" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
-          <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><Users className="h-3 w-3" /> {c.member_count}</p>
+          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+            <Users className="h-3 w-3" /> {c.member_count}
+          </p>
         </div>
         <Button
           size="sm"
@@ -735,17 +936,24 @@ function RealmPage() {
                 </p>
               )}
               {(members.data ?? []).slice(0, visibleMembers).map((m: RealmMemberRow) => (
-                <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-white/10 glass p-3">
+                <div
+                  key={m.user_id}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 glass p-3"
+                >
                   <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={m.profile?.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                        {(m.profile?.display_name || m.profile?.username || "?").charAt(0).toUpperCase()}
+                        {(m.profile?.display_name || m.profile?.username || "?")
+                          .charAt(0)
+                          .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </AvatarWithStatus>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">{m.profile?.display_name || m.profile?.username || "Member"}</p>
+                    <p className="truncate text-sm font-bold">
+                      {m.profile?.display_name || m.profile?.username || "Member"}
+                    </p>
                     {publicCustomStatus(presence.rows[m.user_id], false) ? (
                       <CustomStatusLine
                         status={publicCustomStatus(presence.rows[m.user_id], false)}
@@ -764,7 +972,11 @@ function RealmPage() {
                           className="h-8 px-2 text-[11px]"
                           onClick={async () => {
                             try {
-                              await setRealmMemberRole(c.id, m.user_id, m.role === "mod" ? "member" : "mod");
+                              await setRealmMemberRole(
+                                c.id,
+                                m.user_id,
+                                m.role === "mod" ? "member" : "mod",
+                              );
                               await members.refetch();
                             } catch (e: any) {
                               toast.error(e?.message ?? "Couldn't change the role");
@@ -843,47 +1055,87 @@ function RealmPage() {
                 <Copy className="h-4 w-4" /> Copy invite link
               </SheetRowButton>
             )}
-            <SheetRowButton onClick={() => { setOptionsOpen(false); setMembersOpen(true); }}>
+            <SheetRowButton
+              onClick={() => {
+                setOptionsOpen(false);
+                setMembersOpen(true);
+              }}
+            >
               <Shield className="h-4 w-4" /> Moderation
             </SheetRowButton>
             {/* The channel permission page opens from here, as its own sheet:
                 opening it from inside the members dialog left it mounted behind
                 that dialog, where every switch was inert. */}
             <SheetRowButton
-              onClick={() => { setOptionsOpen(false); setPermissionsOpen(true); }}
+              onClick={() => {
+                setOptionsOpen(false);
+                setPermissionsOpen(true);
+              }}
             >
               <ShieldCheck className="h-4 w-4" /> Channels &amp; permissions
             </SheetRowButton>
             {/* Bots are a realm-only feature, so this lives on the realm, not in
                 the global app settings. */}
-            <SheetRowButton onClick={() => { setOptionsOpen(false); setBotsOpen(true); }}>
+            <SheetRowButton
+              onClick={() => {
+                setOptionsOpen(false);
+                setBotsOpen(true);
+              }}
+            >
               <BotIcon className="h-4 w-4" /> Bots
             </SheetRowButton>
             {joined && (
               <SheetRowButton
-                onClick={() => { setOptionsOpen(false); nav({ to: "/r/$slug/settings", params: { slug } }); }}
+                onClick={() => {
+                  setOptionsOpen(false);
+                  nav({ to: "/r/$slug/settings", params: { slug } });
+                }}
               >
                 <Settings className="h-4 w-4" /> Realm settings
               </SheetRowButton>
             )}
             {canModerate && (
-              <SheetRowButton onClick={() => { setOptionsOpen(false); setEditOpen(true); }}>
+              <SheetRowButton
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setEditOpen(true);
+                }}
+              >
                 <Pencil className="h-4 w-4" /> Edit realm
               </SheetRowButton>
             )}
             {joined ? (
-              <SheetRowButton destructive onClick={() => { setOptionsOpen(false); setLeaveOpen(true); }}>
+              <SheetRowButton
+                destructive
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setLeaveOpen(true);
+                }}
+              >
                 <LogOut className="h-4 w-4" />
                 <span className="flex-1">Leave realm</span>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Joined</span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  Joined
+                </span>
               </SheetRowButton>
             ) : (
-              <SheetRowButton onClick={() => { setOptionsOpen(false); void handleJoin(); }}>
+              <SheetRowButton
+                onClick={() => {
+                  setOptionsOpen(false);
+                  void handleJoin();
+                }}
+              >
                 <UserPlus className="h-4 w-4" /> Join realm
               </SheetRowButton>
             )}
             {(myRole === "owner" || c.owner_id === user?.id) && (
-              <SheetRowButton destructive onClick={() => { setOptionsOpen(false); setDeleteOpen(true); }}>
+              <SheetRowButton
+                destructive
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setDeleteOpen(true);
+                }}
+              >
                 <Trash2 className="h-4 w-4" /> Delete realm
               </SheetRowButton>
             )}
@@ -895,7 +1147,13 @@ function RealmPage() {
         <EditRealmSheet
           open={editOpen}
           onOpenChange={setEditOpen}
-          realm={{ id: c.id, slug: c.slug ?? slug, name: c.name, topic: c.topic ?? null, icon_url: c.icon_url ?? null }}
+          realm={{
+            id: c.id,
+            slug: c.slug ?? slug,
+            name: c.name,
+            topic: c.topic ?? null,
+            icon_url: c.icon_url ?? null,
+          }}
         />
       )}
 
@@ -907,7 +1165,9 @@ function RealmPage() {
         realmName={c.name}
         ownerId={c.owner_id}
         rooms={rooms.data ?? []}
-        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
+        canModerate={
+          canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id
+        }
         realmReactionsMode={(c.reactions_mode ?? "everyone") as "everyone" | "mods"}
       />
 
@@ -918,14 +1178,18 @@ function RealmPage() {
         realmName={c.name}
         rooms={(rooms.data ?? []) as RealmRoom[]}
         isOwner={myRole === "owner" || c.owner_id === user?.id}
-        canModerate={canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id}
+        canModerate={
+          canModerate || myRole === "owner" || myRole === "mod" || c.owner_id === user?.id
+        }
       />
 
       {/* One message, full size: opened from "View message" in the long-press
           menu, for text that the chat row has to wrap tightly. */}
       <Dialog
         open={!!viewingMessage}
-        onOpenChange={(open) => { if (!open) setViewingMessage(null); }}
+        onOpenChange={(open) => {
+          if (!open) setViewingMessage(null);
+        }}
       >
         <DialogContent className="glass-strong max-h-[85dvh] overflow-y-auto border-white/10">
           <DialogHeader>
@@ -938,7 +1202,9 @@ function RealmPage() {
               </Avatar>
               <span className="flex min-w-0 flex-col">
                 <span className="truncate">{viewingMessage?.author}</span>
-                <span className="text-[11px] font-normal text-muted-foreground">{viewingMessage?.time}</span>
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {viewingMessage?.time}
+                </span>
               </span>
             </DialogTitle>
             <DialogDescription className="sr-only">The full message</DialogDescription>
@@ -953,21 +1219,59 @@ function RealmPage() {
               renderPlainText={(plain) =>
                 renderCaptionWithTags(plain).map((part, index) => {
                   if (part.text && /^@(everyone|here)$/i.test(part.text)) {
-                    return <span key={index} className="mention-highlight">{part.text}</span>;
+                    return (
+                      <span key={index} className="mention-highlight">
+                        {part.text}
+                      </span>
+                    );
                   }
                   if (part.mentionToken) {
-                    return <span key={index} className="mention-highlight">{mentionLabels(part.mentionToken)}</span>;
+                    return (
+                      <span key={index} className="mention-highlight">
+                        {mentionLabels(part.mentionToken)}
+                      </span>
+                    );
                   }
                   if (part.mention) {
-                    return <Link key={index} to="/u/$username" params={{ username: part.mention }} className="mention-highlight">{part.text}</Link>;
+                    return (
+                      <Link
+                        key={index}
+                        to="/u/$username"
+                        params={{ username: part.mention }}
+                        className="mention-highlight"
+                      >
+                        {part.text}
+                      </Link>
+                    );
                   }
                   if (part.tag) {
-                    return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} className="text-primary hover:underline font-medium">{part.text}</Link>;
+                    return (
+                      <Link
+                        key={index}
+                        to="/tag/$tag"
+                        params={{ tag: part.tag }}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        {part.text}
+                      </Link>
+                    );
                   }
                   if (part.url) {
-                    return <a key={index} href={part.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-400 hover:underline">{part.text}</a>;
+                    return (
+                      <a
+                        key={index}
+                        href={part.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-sky-400 hover:underline"
+                      >
+                        {part.text}
+                      </a>
+                    );
                   }
-                  return <span key={index}>{renderTextWithCatEmoji(part.text, `modal-${index}`)}</span>;
+                  return (
+                    <span key={index}>{renderTextWithCatEmoji(part.text, `modal-${index}`)}</span>
+                  );
                 })
               }
             />
@@ -1002,7 +1306,11 @@ function RealmPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); setLeaveOpen(false); void handleJoin(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                setLeaveOpen(false);
+                void handleJoin();
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Leave realm
@@ -1024,7 +1332,10 @@ function RealmPage() {
           style={{ paddingTop: "calc(0.5rem + 0px)" }}
         >
           {(rooms.data as RealmRoom[]).map((room) => {
-            const RoomIcon = room.kind === "voice" ? Volume2 : TYPE_ICON[room.kind as keyof typeof TYPE_ICON] ?? Hash;
+            const RoomIcon =
+              room.kind === "voice"
+                ? Volume2
+                : (TYPE_ICON[room.kind as keyof typeof TYPE_ICON] ?? Hash);
             const isActive = room.id === activeRoomId;
             const channelCall = room.kind === "voice" ? channelCallsByRoom.get(room.id) : undefined;
             const people: CallParticipantRow[] = channelCall?.participants ?? [];
@@ -1057,7 +1368,9 @@ function RealmPage() {
                   <RoomIcon className="h-3.5 w-3.5" />
                 )}
                 {room.name}
-                {room.mods_only && <Lock className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-label="Mods only" />}
+                {room.mods_only && (
+                  <Lock className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-label="Mods only" />
+                )}
                 {room.kind === "voice" && people.length > 0 && (
                   <span className="text-[10px] font-bold text-emerald-300">{people.length}</span>
                 )}
@@ -1084,9 +1397,16 @@ function RealmPage() {
               {canModerate && (rooms.data ?? []).length > 0 && (
                 <div className="space-y-2">
                   {(rooms.data as RealmRoom[]).map((room) => (
-                    <div key={room.id} className="flex min-h-14 items-center gap-3 rounded-xl border border-white/10 glass px-3 py-2">
+                    <div
+                      key={room.id}
+                      className="flex min-h-14 items-center gap-3 rounded-xl border border-white/10 glass px-3 py-2"
+                    >
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5">
-                        {room.kind === "voice" ? <Volume2 className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
+                        {room.kind === "voice" ? (
+                          <Volume2 className="h-4 w-4" />
+                        ) : (
+                          <Hash className="h-4 w-4" />
+                        )}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{room.name}</p>
@@ -1098,7 +1418,7 @@ function RealmPage() {
                         checked={room.mods_only}
                         disabled={lockingRoomId === room.id}
                         aria-label={`Mods only for ${room.name}`}
-                        onCheckedChange={(checked) => void toggleRoomLock(room, checked)} 
+                        onCheckedChange={(checked) => void toggleRoomLock(room, checked)}
                       />
                     </div>
                   ))}
@@ -1106,7 +1426,13 @@ function RealmPage() {
               )}
 
               <div className="space-y-3">
-                <Input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Room name" maxLength={40} className="glass border-white/10" />
+                <Input
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  placeholder="Room name"
+                  maxLength={40}
+                  className="glass border-white/10"
+                />
                 <div className="flex gap-2">
                   {CREATABLE_ROOM_KINDS.map((k) => (
                     <button
@@ -1123,7 +1449,11 @@ function RealmPage() {
                     </button>
                   ))}
                 </div>
-                <Button onClick={handleCreateRoom} disabled={!newRoomName.trim() || creatingRoom} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
+                <Button
+                  onClick={handleCreateRoom}
+                  disabled={!newRoomName.trim() || creatingRoom}
+                  className="w-full bg-primary text-primary-foreground border-0 shadow-md"
+                >
                   {creatingRoom ? "Creating…" : "Create room"}
                 </Button>
               </div>
@@ -1152,12 +1482,18 @@ function RealmPage() {
           <div className="flex items-center gap-3">
             <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Mic className="h-5 w-5" />
-              {activeChannelPeople.length > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />}
+              {activeChannelPeople.length > 0 && (
+                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-sm font-bold">{activeRoom.name || "Voice channel"}</p>
+              <p className="truncate font-display text-sm font-bold">
+                {activeRoom.name || "Voice channel"}
+              </p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {activeChannelPeople.length > 0 ? `${activeChannelPeople.length} in call` : "No one is here yet"}
+                {activeChannelPeople.length > 0
+                  ? `${activeChannelPeople.length} in call`
+                  : "No one is here yet"}
               </p>
             </div>
             {activeChannelPeople.length > 0 && (
@@ -1166,14 +1502,20 @@ function RealmPage() {
                   <Avatar key={person.user_id} className="h-7 w-7 ring-2 ring-background">
                     <AvatarImage src={person.user?.avatar_url ?? undefined} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-                      {(person.user?.display_name || person.user?.username || "?").charAt(0).toUpperCase()}
+                      {(person.user?.display_name || person.user?.username || "?")
+                        .charAt(0)
+                        .toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 ))}
               </span>
             )}
             {activeRoom.mods_only && !canModerate ? (
-              <Button type="button" disabled className="min-h-11 shrink-0 gap-2 glass border-white/10">
+              <Button
+                type="button"
+                disabled
+                className="min-h-11 shrink-0 gap-2 glass border-white/10"
+              >
                 <Lock className="h-4 w-4" /> Mods only
               </Button>
             ) : activeCall?.channelId === activeRoom.id ? (
@@ -1188,7 +1530,9 @@ function RealmPage() {
               <Button
                 type="button"
                 disabled={joiningVoice}
-                onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
+                onClick={() =>
+                  joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
+                }
                 className="min-h-11 shrink-0 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
               >
                 <Mic className="h-4 w-4" /> {joiningVoice ? "Joining…" : "Join voice"}
@@ -1234,7 +1578,9 @@ function RealmPage() {
               <Mic className="h-9 w-9" />
             </div>
           </div>
-          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">{activeRoom.name}</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            {activeRoom.name}
+          </h2>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm">
             {activeChannelPeople.length > 0
               ? `${activeChannelPeople.length} connected in voice`
@@ -1254,7 +1600,9 @@ function RealmPage() {
               <Button
                 size="lg"
                 disabled={joiningVoice}
-                onClick={() => joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })}
+                onClick={() =>
+                  joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
+                }
                 className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
               >
                 <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join Voice Channel"}
@@ -1273,513 +1621,591 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
-      <div
-        onClick={media.onMediaClick}
-        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
-      >
-        {media.viewer}
-        {activeRoom?.kind === "voice" && showVoiceChat && (
-          <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
-            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat · {activeRoom.name}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowVoiceChat(false)}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Back to Stage
-            </Button>
-          </div>
-        )}
-        {activeRoom?.kind !== "voice" && activeRoom && (
-          <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Hash className="h-3 w-3" />{activeRoom.name}
-          </div>
-        )}
-        <AnimatePresence initial={false}>
-          {hiddenCount > 0 && (
-            <div className="flex justify-center pb-2">
-              <button
-                type="button"
-                onClick={() => setMessageLimit((limit) => limit + MESSAGE_PAGE_SIZE)}
-                className="min-h-[44px] rounded-full border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        <div
+          onClick={media.onMediaClick}
+          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
+        >
+          {media.viewer}
+          {activeRoom?.kind === "voice" && showVoiceChat && (
+            <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat · {activeRoom.name}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowVoiceChat(false)}
+                className="h-7 text-xs text-muted-foreground hover:text-foreground"
               >
-                Show earlier messages ({hiddenCount} hidden)
-              </button>
+                Back to Stage
+              </Button>
             </div>
           )}
-          {visibleRows.map((m: any, index: number) => {
-            const mine = m.sender_id === user?.id;
-            // A bot message has no sender at all: it carries bot_id and the joined
-            // bot row instead. Human authors may arrive as `author` or `sender`
-            // depending on which query loaded them, so both are accepted.
-            const botRow = (m.bot ?? null) as { name: string; avatar_url: string | null } | null;
-            // Webhook bots: identity from the per-message override, else the bot row.
-            const webhookMeta = (m.webhook_meta ?? null) as { name?: string; avatar_url?: string } | null;
-            const webhookRow = (m.webhook_bot_id ? webhookBotMap[m.webhook_bot_id] : null) as
-              | { name: string; avatar_url: string | null }
-              | null;
-            const isBot = !!m.bot_id || !!m.webhook_bot_id;
-            const authorProfile = (m.author ?? m.sender ?? null) as {
-              username: string | null;
-              display_name: string | null;
-              avatar_url: string | null;
-              accent_color?: string | null;
-            } | null;
-            const authorName = isBot
-              ? webhookMeta?.name || webhookRow?.name || botRow?.name || "Bot"
-              : authorProfile?.display_name || authorProfile?.username || "Member";
-            const authorAvatar = isBot
-              ? webhookMeta?.avatar_url || webhookRow?.avatar_url || botRow?.avatar_url || null
-              : authorProfile?.avatar_url ?? null;
-            const authorAccent = isBot ? null : authorProfile?.accent_color ?? null;
-            const authorInitial = (isBot ? authorName : authorProfile?.username ?? "?")
-              .charAt(0)
-              .toUpperCase();
-            // Realm names use the shared palette (or the author's own accent),
-            // never the default link-blue on the dark surface.
-            const authorColor = nameColorFor(isBot ? m.bot_id : m.sender_id, authorAccent);
-            // "View message": the long-press menu shows what was pressed, and this
-            // opens it full size when the text is longer than the row.
-            const messageTime = new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-            const openFullMessage = () =>
-              setViewingMessage({
-                author: authorName,
-                avatarUrl: authorAvatar,
-                time: new Date(m.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
-                body: m.body ?? "",
-                attachmentUrl: m.attachment_url ?? null,
-                embeds: (m.embeds ?? null) as EmbedData[] | null,
-              });
-            const previous = visibleRows[index - 1];
-            const startsGroup = !previous ||
-              previous.sender_id !== m.sender_id ||
-              new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
-            // A new calendar day always starts a new group and gets its divider,
-            // however recently the previous message was sent.
-            const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
-            const messageClock = new Date(m.created_at).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            });
-            // "@user pinned a message" reads as a system line, not a bubble.
-            if ((m as { system?: boolean }).system) {
-              return <SystemLine key={m.id} text={m.body} />;
-            }
-
-            // Check if this message mentions the current user (Discord-style mention highlight)
-            const mentionsMe = Boolean(
-              user &&
-              m.sender_id !== user.id &&
-              (
-                (myUsername && (
-                  new RegExp(`@${myUsername}\\b`, "i").test(m.body) ||
-                  m.body.toLowerCase().includes(`@${myUsername}`)
-                )) ||
-                (myUserId && m.body.includes(`<@${myUserId}>`)) ||
-                /@(everyone|here)\b/i.test(m.body)
-              )
-            );
-            const mentionClasses = mentionsMe
-              ? "realm-message--mentions-me"
-              : "";
-
-            // Profile preview handler on avatar or name tap
-            const handleAuthorClick = (e: React.MouseEvent) => {
-              e.stopPropagation();
-              // Bots have no user profile to open; without this the card was
-              // handed a null user id and crashed.
-              if (isBot || !m.sender_id) return;
-              setPreviewUser({
-                userId: m.sender_id,
-                username: authorProfile?.username ?? authorName,
-                displayName: authorName,
-                avatarUrl: authorAvatar,
-                accentColor: authorAccent,
-                realmId: realm.data?.id ?? null,
-                isBot,
-                botName: botRow?.name ?? null,
-                realmRole: (members.data as RealmMemberRow[] | undefined)?.find((mem) => mem.user_id === m.sender_id)?.role ?? null,
-              });
-            };
-
-            // Long press handler for the entire message row (touch / mouse)
-            const handleRowPointerDown = (e: React.PointerEvent) => {
-              if (e.pointerType === "mouse" && e.button !== 0) return;
-              if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]")) return;
-              clearRowTimer();
-              rowPressOrigin.current = { x: e.clientX, y: e.clientY };
-              rowPressTimer.current = setTimeout(() => {
-                rowPressTimer.current = null;
-                if (typeof navigator !== "undefined" && navigator.vibrate) {
-                  try { navigator.vibrate(35); } catch {}
-                }
-                setOpenMessageId(m.id);
-              }, 320);
-            };
-
-            const handleRowPointerMove = (e: React.PointerEvent) => {
-              if (!rowPressOrigin.current) return;
-              const dx = e.clientX - rowPressOrigin.current.x;
-              const dy = e.clientY - rowPressOrigin.current.y;
-              if (dx * dx + dy * dy > 20 * 20) {
-                clearRowTimer();
-              }
-            };
-
-            return (
-              <Fragment key={m.id}>
-              {newDay && <DateSeparator date={m.created_at} />}
-              {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
-              <motion.div
-                id={`msg-${m.id}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                onPointerDown={handleRowPointerDown}
-                onPointerMove={handleRowPointerMove}
-                onPointerUp={clearRowTimer}
-                onPointerCancel={clearRowTimer}
-                onContextMenu={(e) => {
-                  if ((e.target as HTMLElement).closest("a, input, textarea, button")) return;
-                  e.preventDefault();
-                  setOpenMessageId(m.id);
-                }}
-                className={`realm-message select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${mentionClasses}`}
-              >
-              {(startsGroup ? (
+          {activeRoom?.kind !== "voice" && activeRoom && (
+            <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Hash className="h-3 w-3" />
+              {activeRoom.name}
+            </div>
+          )}
+          <AnimatePresence initial={false}>
+            {hiddenCount > 0 && (
+              <div className="flex justify-center pb-2">
                 <button
                   type="button"
-                  data-interactive="true"
-                  onClick={handleAuthorClick}
-                  className="rounded-full shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
-                  aria-label={`View ${authorName}'s profile`}
+                  onClick={() => setMessageLimit((limit) => limit + MESSAGE_PAGE_SIZE)}
+                  className="min-h-[44px] rounded-full border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
                 >
-                  <Avatar className="h-9 w-9 shrink-0 cursor-pointer hover:opacity-90">
-                    <AvatarImage src={authorAvatar ?? undefined} />
-                    <AvatarFallback
-                      className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
-                    >
-                      {authorInitial}
-                    </AvatarFallback>
-                  </Avatar>
+                  Show earlier messages ({hiddenCount} hidden)
                 </button>
-              ) : (
-                // Same author, same day: the avatar gutter carries the time
-                // instead, revealed on hover (and never shown on touch, where
-                // the long-press preview has it).
-                <span aria-hidden="true" className="realm-message__time">{messageClock}</span>
-              ))}
-              <div className="flex-1 min-w-0">
-                {startsGroup && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <button
-                    type="button"
-                    data-interactive="true"
-                    onClick={handleAuthorClick}
-                    className="font-bold text-sm cursor-pointer hover:underline text-left"
-                    style={{ color: authorColor }}
-                  >
-                    {authorName}
-                  </button>
-                  {isBot && <BotBadge />}
-                  {pinnedIds.has(m.id) && <PinBadge />}
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                </div>}
-                {/* Media renders as its own block — never inside a bubble. */}
-                {m.attachment_url && !String(m.id).startsWith("pending-") && (
-                  <ChatMessageMedia
-                    src={m.attachment_url}
-                    alt="Image shared in chat"
-                    className="my-1"
-                  />
-                )}
-                <MessageActionMenu
-                  open={openMessageId === m.id}
-                  onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
-                  align={mine ? "right" : "left"}
-                  // The row already detects long-press (it covers media and
-                  // avatar areas the trigger doesn't wrap); the menu keeps
-                  // double-tap, context menu and keyboard.
-                  detectPress={false}
-                  // The quick bar mirrors the channel's reaction policy; the RPC
-                  // and its trigger enforce it again server-side.
-                  // A message that has not been saved yet has no id to react to.
-                  reactionBar={canAddReactions && !String(m.id).startsWith("pending-") ? { onPick: (emoji) => { void reactions.toggle(m.id, emoji); } } : undefined}
-                  onDoubleTap={() => {
-                    if (String(m.id).startsWith("pending-")) return;
-                    burstOverMessage(m.id, DOUBLE_TAP_REACTION);
-                    reactionHaptic();
-                    void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
-                  }}
-                  preview={{
-                    author: authorName,
-                    time: messageTime,
-                    body: m.body,
-                    avatarUrl: authorAvatar,
-                    onView: openFullMessage,
-                  }}
-                  actions={[
-                    {
-                      label: "View message",
-                      icon: Maximize2,
-                      onSelect: openFullMessage,
-                    },
-                    {
-                      label: "Copy message",
-                      icon: Copy,
-                      onSelect: () => {
-                        void navigator.clipboard.writeText(m.body).then(
-                          () => toast.success("Copied"),
-                          () => toast.error("Couldn't copy this message"),
-                        );
-                      },
-                    },
-                    {
-                      label: "Reply in thread",
-                      icon: MessagesSquare,
-                      onSelect: () =>
-                        setThreadRoot({
-                          id: m.id,
-                          body: m.body ?? "",
-                          author: isBot ? botRow?.name ?? "Bot" : authorName,
-                        }),
-                    },
-                    ...(canModerate
-                      ? [{
-                          label: "Reaction roles",
-                          icon: UserCog,
-                          onSelect: () => setReactionRoleMessageId(m.id),
-                        }]
-                      : []),
-                    ...(canModerate
-                      ? [{
-                          label: pinnedIds.has(m.id) ? "Unpin message" : "Pin message",
-                          icon: pinnedIds.has(m.id) ? PinOff : Pin,
-                          onSelect: () => { void handlePinToggle(m.id, pinnedIds.has(m.id)); },
-                        }]
-                      : []),
-                    ...(mine
-                      ? [{
-                          label: "Delete message",
-                          icon: Trash2,
-                          destructive: true,
-                          onSelect: () => { void handleDeleteMessage(m.id); },
-                        }]
-                      : [
-                          ...(canModerate
-                            ? [{
-                                label: "Delete for everyone",
-                                icon: Trash2,
-                                destructive: true,
-                                onSelect: () => { void handleDeleteMessage(m.id, { moderate: true }); },
-                              }]
-                            : []),
-                          {
-                          label: "Report message",
-                          icon: Flag,
-                          onSelect: () => {
-                            void reportRealmMessage(m.id, "Reported from chat").then(
-                              () => toast.success("Thanks — a moderator will take a look"),
-                              (error: unknown) => {
-                                const message = error instanceof Error ? error.message : "";
-                                // A second report is a "nothing to do" state, not a failure:
-                                // say it plainly instead of flashing a red alarm.
-                                if (/already|duplicate|unique/i.test(message)) {
-                                  toast.info("You already reported this message", {
-                                    description: "A moderator can still see your first report.",
-                                  });
-                                  return;
-                                }
-                                toast.error(message || "Couldn't send that report");
-                              },
-                            );
-                          },
-                        },
-                        ]),
-                  ]}
-                >
-                  <div className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}>
-                    {renderGifSegments(m.body).map((seg, si) => {
-                      if (seg.isGif || seg.isSticker) {
-                        return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
-                      }
-                      const parts = splitEmojiSegments(seg.value, emojiNames);
-                      const hasText = parts.some((p) => !p.name && p.text && p.text.trim().length > 0);
-                      const emojiCount = parts.filter((p) => p.name).length;
-                      const isJumboji = !hasText && emojiCount > 0;
-                      const emojiClass = isJumboji
-                        ? (emojiCount <= 3
-                            ? "inline-block h-12 w-12 align-middle mx-1 my-0.5 object-contain"
-                            : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain")
-                        : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
+              </div>
+            )}
+            {visibleRows.map((m: any, index: number) => {
+              const mine = m.sender_id === user?.id;
+              // A bot message has no sender at all: it carries bot_id and the joined
+              // bot row instead. Human authors may arrive as `author` or `sender`
+              // depending on which query loaded them, so both are accepted.
+              const botRow = (m.bot ?? null) as { name: string; avatar_url: string | null } | null;
+              // Webhook bots: identity from the per-message override, else the bot row.
+              const webhookMeta = (m.webhook_meta ?? null) as {
+                name?: string;
+                avatar_url?: string;
+              } | null;
+              const webhookRow = (m.webhook_bot_id ? webhookBotMap[m.webhook_bot_id] : null) as {
+                name: string;
+                avatar_url: string | null;
+              } | null;
+              const isBot = !!m.bot_id || !!m.webhook_bot_id;
+              const authorProfile = (m.author ?? m.sender ?? null) as {
+                username: string | null;
+                display_name: string | null;
+                avatar_url: string | null;
+                accent_color?: string | null;
+              } | null;
+              const authorName = isBot
+                ? webhookMeta?.name || webhookRow?.name || botRow?.name || "Bot"
+                : authorProfile?.display_name || authorProfile?.username || "Member";
+              const authorAvatar = isBot
+                ? webhookMeta?.avatar_url || webhookRow?.avatar_url || botRow?.avatar_url || null
+                : (authorProfile?.avatar_url ?? null);
+              const authorAccent = isBot ? null : (authorProfile?.accent_color ?? null);
+              const authorInitial = (isBot ? authorName : (authorProfile?.username ?? "?"))
+                .charAt(0)
+                .toUpperCase();
+              // Realm names use the shared palette (or the author's own accent),
+              // never the default link-blue on the dark surface.
+              const authorColor = nameColorFor(isBot ? m.bot_id : m.sender_id, authorAccent);
+              // "View message": the long-press menu shows what was pressed, and this
+              // opens it full size when the text is longer than the row.
+              const messageTime = new Date(m.created_at).toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              });
+              const openFullMessage = () =>
+                setViewingMessage({
+                  author: authorName,
+                  avatarUrl: authorAvatar,
+                  time: new Date(m.created_at).toLocaleString([], {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }),
+                  body: m.body ?? "",
+                  attachmentUrl: m.attachment_url ?? null,
+                  embeds: (m.embeds ?? null) as EmbedData[] | null,
+                });
+              const previous = visibleRows[index - 1];
+              const startsGroup =
+                !previous ||
+                previous.sender_id !== m.sender_id ||
+                new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() >
+                  5 * 60 * 1000;
+              // A new calendar day always starts a new group and gets its divider,
+              // however recently the previous message was sent.
+              const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
+              const messageClock = new Date(m.created_at).toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              });
+              // "@user pinned a message" reads as a system line, not a bubble.
+              if ((m as { system?: boolean }).system) {
+                return <SystemLine key={m.id} text={m.body} />;
+              }
 
-                      return parts.map((part, xi) =>
-                        part.name ? (
-                          <img
-                            key={`${si}-${xi}`}
-                            src={emojiByName.get(part.name)}
-                            alt={part.name}
-                            title={`:${part.name}:`}
-                            className={emojiClass}
-                          />
-                        ) : (
-                          <MarkdownText
-                            key={`${si}-${xi}`}
-                            text={part.text}
-                            renderPlainText={(plain) =>
-                              renderCaptionWithTags(plain).map((p, pi) => {
-                                // @everyone / @here use the same pill.
-                                if (p.text && /^@(everyone|here)$/i.test(p.text)) {
-                                  return (
-                                    <span key={`${si}-${xi}-${pi}`} className="mention-highlight">
-                                      {p.text}
-                                    </span>
-                                  );
-                                }
-                                if (p.mentionToken) {
-                                  return (
-                                    <button
-                                      key={`${si}-${xi}-${pi}`}
-                                      type="button"
-                                      data-interactive="true"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewUser({
-                                          userId: p.mentionToken!,
-                                          username: mentionLabels(p.mentionToken!).replace(/^@/, ""),
-                                          displayName: mentionLabels(p.mentionToken!),
-                                          realmId: realm.data?.id ?? null,
-                                        });
-                                      }}
-                                      className="mention-highlight cursor-pointer"
-                                    >
-                                      {mentionLabels(p.mentionToken!)}
-                                    </button>
-                                  );
-                                }
-                                if (p.mention) {
-                                  // Unknown @names stay plain text.
-                                  const hit = (members.data ?? []).find(
-                                    (mm) =>
-                                      (mm.profile as { username?: string } | null)?.username?.toLowerCase() ===
-                                      p.mention!.toLowerCase(),
-                                  );
-                                  if (!hit) return <span key={`${si}-${xi}-${pi}`}>{p.text}</span>;
-                                  return (
-                                    <button
-                                      key={`${si}-${xi}-${pi}`}
-                                      type="button"
-                                      data-interactive="true"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const prof = hit.profile as {
-                                          username?: string;
-                                          display_name?: string | null;
-                                          avatar_url?: string | null;
-                                        } | null;
-                                        setPreviewUser({
-                                          userId: hit.user_id,
-                                          username: prof?.username ?? p.mention!,
-                                          displayName: prof?.display_name ?? p.mention!,
-                                          avatarUrl: prof?.avatar_url ?? null,
-                                          realmRole: hit.role ?? null,
-                                          realmId: realm.data?.id ?? null,
-                                        });
-                                      }}
-                                      className="mention-highlight cursor-pointer"
-                                    >
-                                      {p.text}
-                                    </button>
-                                  );
-                                }
-                                if (p.tag) {
-                                  return (
-                                    <Link key={`${si}-${xi}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">{p.text}</Link>
-                                  );
-                                }
-                                if (p.url) {
-                                  return (
-                                    <a key={`${si}-${xi}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-words">{p.text}</a>
-                                  );
-                                }
-                                // Inline cat shortcodes (:cat_love: -> 22px, only-emoji -> 40px).
-                                return (
-                                  <span key={`${si}-${xi}-${pi}`}>
-                                    {renderTextWithCatEmoji(p.text, `${si}-${xi}-${pi}`)}
-                                  </span>
-                                );
-                              })
+              // Check if this message mentions the current user (Discord-style mention highlight)
+              const mentionsMe = Boolean(
+                user &&
+                m.sender_id !== user.id &&
+                ((myUsername &&
+                  (new RegExp(`@${myUsername}\\b`, "i").test(m.body) ||
+                    m.body.toLowerCase().includes(`@${myUsername}`))) ||
+                  (myUserId && m.body.includes(`<@${myUserId}>`)) ||
+                  /@(everyone|here)\b/i.test(m.body)),
+              );
+              const mentionClasses = mentionsMe ? "realm-message--mentions-me" : "";
+
+              // Profile preview handler on avatar or name tap
+              const handleAuthorClick = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                // Bots have no user profile to open; without this the card was
+                // handed a null user id and crashed.
+                if (isBot || !m.sender_id) return;
+                setPreviewUser({
+                  userId: m.sender_id,
+                  username: authorProfile?.username ?? authorName,
+                  displayName: authorName,
+                  avatarUrl: authorAvatar,
+                  accentColor: authorAccent,
+                  realmId: realm.data?.id ?? null,
+                  isBot,
+                  botName: botRow?.name ?? null,
+                  realmRole:
+                    (members.data as RealmMemberRow[] | undefined)?.find(
+                      (mem) => mem.user_id === m.sender_id,
+                    )?.role ?? null,
+                });
+              };
+
+              // Long press handler for the entire message row (touch / mouse)
+              const handleRowPointerDown = (e: React.PointerEvent) => {
+                if (e.pointerType === "mouse" && e.button !== 0) return;
+                if (
+                  (e.target as HTMLElement).closest(
+                    "button, a, input, textarea, [data-interactive]",
+                  )
+                )
+                  return;
+                clearRowTimer();
+                rowPressOrigin.current = { x: e.clientX, y: e.clientY };
+                rowPressTimer.current = setTimeout(() => {
+                  rowPressTimer.current = null;
+                  if (typeof navigator !== "undefined" && navigator.vibrate) {
+                    try {
+                      navigator.vibrate(35);
+                    } catch {}
+                  }
+                  setOpenMessageId(m.id);
+                }, 320);
+              };
+
+              const handleRowPointerMove = (e: React.PointerEvent) => {
+                if (!rowPressOrigin.current) return;
+                const dx = e.clientX - rowPressOrigin.current.x;
+                const dy = e.clientY - rowPressOrigin.current.y;
+                if (dx * dx + dy * dy > 20 * 20) {
+                  clearRowTimer();
+                }
+              };
+
+              return (
+                <Fragment key={m.id}>
+                  {newDay && <DateSeparator date={m.created_at} />}
+                  {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
+                  <motion.div
+                    id={`msg-${m.id}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onPointerDown={handleRowPointerDown}
+                    onPointerMove={handleRowPointerMove}
+                    onPointerUp={clearRowTimer}
+                    onPointerCancel={clearRowTimer}
+                    onContextMenu={(e) => {
+                      if ((e.target as HTMLElement).closest("a, input, textarea, button")) return;
+                      e.preventDefault();
+                      setOpenMessageId(m.id);
+                    }}
+                    className={`realm-message select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${mentionClasses}`}
+                  >
+                    {startsGroup ? (
+                      <button
+                        type="button"
+                        data-interactive="true"
+                        onClick={handleAuthorClick}
+                        className="rounded-full shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-transform active:scale-95"
+                        aria-label={`View ${authorName}'s profile`}
+                      >
+                        <Avatar className="h-9 w-9 shrink-0 cursor-pointer hover:opacity-90">
+                          <AvatarImage src={authorAvatar ?? undefined} />
+                          <AvatarFallback
+                            className={`text-xs font-bold ${isBot ? "bg-muted-foreground text-white" : "bg-primary text-primary-foreground"}`}
+                          >
+                            {authorInitial}
+                          </AvatarFallback>
+                        </Avatar>
+                      </button>
+                    ) : (
+                      // Same author, same day: the avatar gutter carries the time
+                      // instead, revealed on hover (and never shown on touch, where
+                      // the long-press preview has it).
+                      <span aria-hidden="true" className="realm-message__time">
+                        {messageClock}
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {startsGroup && (
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <button
+                            type="button"
+                            data-interactive="true"
+                            onClick={handleAuthorClick}
+                            className="font-bold text-sm cursor-pointer hover:underline text-left"
+                            style={{ color: authorColor }}
+                          >
+                            {authorName}
+                          </button>
+                          {isBot && <BotBadge />}
+                          {pinnedIds.has(m.id) && <PinBadge />}
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(m.created_at).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      {/* Media renders as its own block — never inside a bubble. */}
+                      {m.attachment_url && !String(m.id).startsWith("pending-") && (
+                        <ChatMessageMedia
+                          src={m.attachment_url}
+                          alt="Image shared in chat"
+                          className="my-1"
+                        />
+                      )}
+                      <MessageActionMenu
+                        open={openMessageId === m.id}
+                        onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
+                        align={mine ? "right" : "left"}
+                        // The row already detects long-press (it covers media and
+                        // avatar areas the trigger doesn't wrap); the menu keeps
+                        // double-tap, context menu and keyboard.
+                        detectPress={false}
+                        // The quick bar mirrors the channel's reaction policy; the RPC
+                        // and its trigger enforce it again server-side.
+                        // A message that has not been saved yet has no id to react to.
+                        reactionBar={
+                          canAddReactions && !String(m.id).startsWith("pending-")
+                            ? {
+                                onPick: (emoji) => {
+                                  void reactions.toggle(m.id, emoji);
+                                },
+                              }
+                            : undefined
+                        }
+                        onDoubleTap={() => {
+                          if (String(m.id).startsWith("pending-")) return;
+                          burstOverMessage(m.id, DOUBLE_TAP_REACTION);
+                          reactionHaptic();
+                          void reactions.toggle(m.id, DOUBLE_TAP_REACTION);
+                        }}
+                        preview={{
+                          author: authorName,
+                          time: messageTime,
+                          body: m.body,
+                          avatarUrl: authorAvatar,
+                          onView: openFullMessage,
+                        }}
+                        actions={[
+                          {
+                            label: "View message",
+                            icon: Maximize2,
+                            onSelect: openFullMessage,
+                          },
+                          {
+                            label: "Copy message",
+                            icon: Copy,
+                            onSelect: () => {
+                              void navigator.clipboard.writeText(m.body).then(
+                                () => toast.success("Copied"),
+                                () => toast.error("Couldn't copy this message"),
+                              );
+                            },
+                          },
+                          {
+                            label: "Reply in thread",
+                            icon: MessagesSquare,
+                            onSelect: () =>
+                              setThreadRoot({
+                                id: m.id,
+                                body: m.body ?? "",
+                                author: isBot ? (botRow?.name ?? "Bot") : authorName,
+                              }),
+                          },
+                          ...(canModerate
+                            ? [
+                                {
+                                  label: "Reaction roles",
+                                  icon: UserCog,
+                                  onSelect: () => setReactionRoleMessageId(m.id),
+                                },
+                              ]
+                            : []),
+                          ...(canModerate
+                            ? [
+                                {
+                                  label: pinnedIds.has(m.id) ? "Unpin message" : "Pin message",
+                                  icon: pinnedIds.has(m.id) ? PinOff : Pin,
+                                  onSelect: () => {
+                                    void handlePinToggle(m.id, pinnedIds.has(m.id));
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(mine
+                            ? [
+                                {
+                                  label: "Delete message",
+                                  icon: Trash2,
+                                  destructive: true,
+                                  onSelect: () => {
+                                    void handleDeleteMessage(m.id);
+                                  },
+                                },
+                              ]
+                            : [
+                                ...(canModerate
+                                  ? [
+                                      {
+                                        label: "Delete for everyone",
+                                        icon: Trash2,
+                                        destructive: true,
+                                        onSelect: () => {
+                                          void handleDeleteMessage(m.id, { moderate: true });
+                                        },
+                                      },
+                                    ]
+                                  : []),
+                                {
+                                  label: "Report message",
+                                  icon: Flag,
+                                  onSelect: () => {
+                                    void reportRealmMessage(m.id, "Reported from chat").then(
+                                      () => toast.success("Thanks — a moderator will take a look"),
+                                      (error: unknown) => {
+                                        const message = error instanceof Error ? error.message : "";
+                                        // A second report is a "nothing to do" state, not a failure:
+                                        // say it plainly instead of flashing a red alarm.
+                                        if (/already|duplicate|unique/i.test(message)) {
+                                          toast.info("You already reported this message", {
+                                            description:
+                                              "A moderator can still see your first report.",
+                                          });
+                                          return;
+                                        }
+                                        toast.error(message || "Couldn't send that report");
+                                      },
+                                    );
+                                  },
+                                },
+                              ]),
+                        ]}
+                      >
+                        <div
+                          className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}
+                        >
+                          {renderGifSegments(m.body).map((seg, si) => {
+                            if (seg.isGif || seg.isSticker) {
+                              return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
                             }
-                          />
-                        )
-                      );
-                    })}
-                    {/* Bot embed cards sit under any text content. A card
+                            const parts = splitEmojiSegments(seg.value, emojiNames);
+                            const hasText = parts.some(
+                              (p) => !p.name && p.text && p.text.trim().length > 0,
+                            );
+                            const emojiCount = parts.filter((p) => p.name).length;
+                            const isJumboji = !hasText && emojiCount > 0;
+                            const emojiClass = isJumboji
+                              ? emojiCount <= 3
+                                ? "inline-block h-12 w-12 align-middle mx-1 my-0.5 object-contain"
+                                : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain"
+                              : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
+
+                            return parts.map((part, xi) =>
+                              part.name ? (
+                                <img
+                                  key={`${si}-${xi}`}
+                                  src={emojiByName.get(part.name)}
+                                  alt={part.name}
+                                  title={`:${part.name}:`}
+                                  className={emojiClass}
+                                />
+                              ) : (
+                                <MarkdownText
+                                  key={`${si}-${xi}`}
+                                  text={part.text}
+                                  renderPlainText={(plain) =>
+                                    renderCaptionWithTags(plain).map((p, pi) => {
+                                      // @everyone / @here use the same pill.
+                                      if (p.text && /^@(everyone|here)$/i.test(p.text)) {
+                                        return (
+                                          <span
+                                            key={`${si}-${xi}-${pi}`}
+                                            className="mention-highlight"
+                                          >
+                                            {p.text}
+                                          </span>
+                                        );
+                                      }
+                                      if (p.mentionToken) {
+                                        return (
+                                          <button
+                                            key={`${si}-${xi}-${pi}`}
+                                            type="button"
+                                            data-interactive="true"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setPreviewUser({
+                                                userId: p.mentionToken!,
+                                                username: mentionLabels(p.mentionToken!).replace(
+                                                  /^@/,
+                                                  "",
+                                                ),
+                                                displayName: mentionLabels(p.mentionToken!),
+                                                realmId: realm.data?.id ?? null,
+                                              });
+                                            }}
+                                            className="mention-highlight cursor-pointer"
+                                          >
+                                            {mentionLabels(p.mentionToken!)}
+                                          </button>
+                                        );
+                                      }
+                                      if (p.mention) {
+                                        // Unknown @names stay plain text.
+                                        const hit = (members.data ?? []).find(
+                                          (mm) =>
+                                            (
+                                              mm.profile as { username?: string } | null
+                                            )?.username?.toLowerCase() === p.mention!.toLowerCase(),
+                                        );
+                                        if (!hit)
+                                          return <span key={`${si}-${xi}-${pi}`}>{p.text}</span>;
+                                        return (
+                                          <button
+                                            key={`${si}-${xi}-${pi}`}
+                                            type="button"
+                                            data-interactive="true"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const prof = hit.profile as {
+                                                username?: string;
+                                                display_name?: string | null;
+                                                avatar_url?: string | null;
+                                              } | null;
+                                              setPreviewUser({
+                                                userId: hit.user_id,
+                                                username: prof?.username ?? p.mention!,
+                                                displayName: prof?.display_name ?? p.mention!,
+                                                avatarUrl: prof?.avatar_url ?? null,
+                                                realmRole: hit.role ?? null,
+                                                realmId: realm.data?.id ?? null,
+                                              });
+                                            }}
+                                            className="mention-highlight cursor-pointer"
+                                          >
+                                            {p.text}
+                                          </button>
+                                        );
+                                      }
+                                      if (p.tag) {
+                                        return (
+                                          <Link
+                                            key={`${si}-${xi}-${pi}`}
+                                            to="/tag/$tag"
+                                            params={{ tag: p.tag }}
+                                            className="text-primary hover:underline font-medium"
+                                          >
+                                            {p.text}
+                                          </Link>
+                                        );
+                                      }
+                                      if (p.url) {
+                                        return (
+                                          <a
+                                            key={`${si}-${xi}-${pi}`}
+                                            href={p.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sky-400 hover:underline break-words"
+                                          >
+                                            {p.text}
+                                          </a>
+                                        );
+                                      }
+                                      // Inline cat shortcodes (:cat_love: -> 22px, only-emoji -> 40px).
+                                      return (
+                                        <span key={`${si}-${xi}-${pi}`}>
+                                          {renderTextWithCatEmoji(p.text, `${si}-${xi}-${pi}`)}
+                                        </span>
+                                      );
+                                    })
+                                  }
+                                />
+                              ),
+                            );
+                          })}
+                          {/* Bot embed cards sit under any text content. A card
                         button ("👋 Say hi") waves at the message and opens
                         the member's profile card. */}
-                    <EmbedList
-                      embeds={(m.embeds ?? null) as EmbedData[] | null}
-                      onAction={(button) => {
-                        if (button.action !== "wave" || !m.id) return;
-                        void reactions.toggle(m.id, "👋");
-                        if (button.user_id) void openMemberCard(button.user_id);
-                      }}
-                    />
-                  </div>
-                </MessageActionMenu>
-                {/* Rich payloads: polls and queued tracks carry their own card. */}
-                {m.card?.type === "poll" && (
-                  <PollCard card={m.card as PollCardPayload} canVote={joined} />
-                )}
-                {m.card?.type === "track" && <TrackCard card={m.card} />}
-                {!!m.reply_count && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setThreadRoot({
-                        id: m.id,
-                        body: m.body ?? "",
-                        author: isBot ? botRow?.name ?? "Bot" : authorName,
-                      })
-                    }
-                    className="mt-1 flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-                  >
-                    <MessagesSquare className="h-3 w-3" /> {threadLabel(m.reply_count)}
-                  </button>
-                )}
-                <ReactionChips
-                  scope="realm"
-                  messageId={m.id}
-                  groups={reactions.groupsFor(m.id)}
-                  reactorsFor={reactions.reactorsFor}
-                  // Realm messages all sit on the left of an avatar-padded column,
-                  // so the chips follow the bubble's own left edge.
-                  align="left"
-                  canReact={canAddReactions}
-                  hidden={String(m.id).startsWith("pending-")}
-                  pulse={reactions.lastPulse}
-                  onToggle={(emoji) => reactions.toggle(m.id, emoji)}
-                />
-                <MessageLinkPreviews
-                  text={m.body}
-                  messageId={m.id}
-                  scope="realm"
-                  canHide={mine || canModerate}
-                  removed={removedPreviews.hidden.has(m.id)}
-                />
-              </div>
-            </motion.div>
-            </Fragment>
-          )})}
-        </AnimatePresence>
-        {messages.data?.length === 0 && (
-          <div className="text-center text-muted-foreground text-sm py-20">No messages yet. Start the convo 🔥</div>
-        )}
-        <div ref={endRef} />
-      </div>
+                          <EmbedList
+                            embeds={(m.embeds ?? null) as EmbedData[] | null}
+                            onAction={(button) => {
+                              if (button.action !== "wave" || !m.id) return;
+                              void reactions.toggle(m.id, "👋");
+                              if (button.user_id) void openMemberCard(button.user_id);
+                            }}
+                          />
+                        </div>
+                      </MessageActionMenu>
+                      {/* Rich payloads: polls and queued tracks carry their own card. */}
+                      {m.card?.type === "poll" && (
+                        <PollCard card={m.card as PollCardPayload} canVote={joined} />
+                      )}
+                      {m.card?.type === "track" && <TrackCard card={m.card} />}
+                      {!!m.reply_count && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setThreadRoot({
+                              id: m.id,
+                              body: m.body ?? "",
+                              author: isBot ? (botRow?.name ?? "Bot") : authorName,
+                            })
+                          }
+                          className="mt-1 flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                        >
+                          <MessagesSquare className="h-3 w-3" /> {threadLabel(m.reply_count)}
+                        </button>
+                      )}
+                      <ReactionChips
+                        scope="realm"
+                        messageId={m.id}
+                        groups={reactions.groupsFor(m.id)}
+                        reactorsFor={reactions.reactorsFor}
+                        // Realm messages all sit on the left of an avatar-padded column,
+                        // so the chips follow the bubble's own left edge.
+                        align="left"
+                        canReact={canAddReactions}
+                        hidden={String(m.id).startsWith("pending-")}
+                        pulse={reactions.lastPulse}
+                        onToggle={(emoji) => reactions.toggle(m.id, emoji)}
+                      />
+                      <MessageLinkPreviews
+                        text={m.body}
+                        messageId={m.id}
+                        scope="realm"
+                        canHide={mine || canModerate}
+                        removed={removedPreviews.hidden.has(m.id)}
+                      />
+                    </div>
+                  </motion.div>
+                </Fragment>
+              );
+            })}
+          </AnimatePresence>
+          {messages.data?.length === 0 && (
+            <div className="text-center text-muted-foreground text-sm py-20">
+              No messages yet. Start the convo 🔥
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
       )}
 
       <PinnedListSheet
@@ -1802,7 +2228,9 @@ function RealmPage() {
       <LevelsSheet open={levelsOpen} onOpenChange={setLevelsOpen} realmId={c.id} />
       <ThreadSheet
         open={!!threadRoot}
-        onOpenChange={(open) => { if (!open) setThreadRoot(null); }}
+        onOpenChange={(open) => {
+          if (!open) setThreadRoot(null);
+        }}
         root={threadRoot}
         realmId={c.id}
         roomId={slashRoomId}
@@ -1813,7 +2241,10 @@ function RealmPage() {
         realmId={c.id}
         roomId={slashRoomId}
         body={body}
-        onScheduled={() => { setBody(""); setCaret(0); }}
+        onScheduled={() => {
+          setBody("");
+          setCaret(0);
+        }}
       />
       <PollDialog open={pollOpen} onOpenChange={setPollOpen} realmId={c.id} roomId={slashRoomId} />
       <RealmEmojiPicker
@@ -1821,11 +2252,15 @@ function RealmPage() {
         onOpenChange={setEmojiOpen}
         realmId={c.id}
         canManage={canModerate}
-        onPick={(token) => setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `)}
+        onPick={(token) =>
+          setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `)
+        }
       />
       <ReactionRoleDialog
         open={!!reactionRoleMessageId}
-        onOpenChange={(open) => { if (!open) setReactionRoleMessageId(null); }}
+        onOpenChange={(open) => {
+          if (!open) setReactionRoleMessageId(null);
+        }}
         messageId={reactionRoleMessageId ?? ""}
         roles={rolesForMessage(reactionRoles.data ?? [], reactionRoleMessageId ?? "")}
         onChanged={() => void reactionRoles.refetch()}
@@ -1838,15 +2273,18 @@ function RealmPage() {
               <Trash2 className="h-5 w-5 text-destructive" /> Delete “{c.name}”?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the realm for everyone — including all rooms,
-              messages, invites and voice rooms. This cannot be undone.
+              This permanently deletes the realm for everyone — including all rooms, messages,
+              invites and voice rooms. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
-              onClick={(e) => { e.preventDefault(); void handleDeleteRealm(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeleteRealm();
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1869,124 +2307,156 @@ function RealmPage() {
       />
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
-      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
-        {myWriteBlocked && (
-          <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
-            Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A moderator can switch it back on.
-          </p>
-        )}
-        <div className="mx-auto flex w-full max-w-3xl gap-2">
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
-          <button
-            type="button"
-            aria-label="Custom emoji"
-            onClick={() => setEmojiOpen(true)}
-            disabled={!joined}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
-          >
-            <SmilePlus className="h-4 w-4" />
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Add a poll or schedule this message"
-                disabled={!!composerBlock}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="glass-strong border-white/10">
-              <DropdownMenuItem onSelect={() => setPollOpen(true)}>
-                <BarChart3 className="mr-2 h-4 w-4" /> New poll
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setScheduleOpen(true)} disabled={!body.trim()}>
-                <CalendarClock className="mr-2 h-4 w-4" /> Schedule message
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* The slider and the mention popup both anchor to the input wrapper, so
+        <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+          {myWriteBlocked && (
+            <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
+              Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A
+              moderator can switch it back on.
+            </p>
+          )}
+          <div className="mx-auto flex w-full max-w-3xl gap-2">
+            <GifPicker
+              onSelect={(marker) =>
+                setBody((current) => `${current}${current ? " " : ""}${marker}`)
+              }
+            />
+            <button
+              type="button"
+              aria-label="Custom emoji"
+              onClick={() => setEmojiOpen(true)}
+              disabled={!joined}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
+            >
+              <SmilePlus className="h-4 w-4" />
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Add a poll or schedule this message"
+                  disabled={!!composerBlock}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="glass-strong border-white/10">
+                <DropdownMenuItem onSelect={() => setPollOpen(true)}>
+                  <BarChart3 className="mr-2 h-4 w-4" /> New poll
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setScheduleOpen(true)} disabled={!body.trim()}>
+                  <CalendarClock className="mr-2 h-4 w-4" /> Schedule message
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {/* The slider and the mention popup both anchor to the input wrapper, so
               they can never end up on opposite sides of the composer. */}
-          <div className="relative min-w-0 flex-1">
-            <AnimatePresence>
-              {slashMenuOpen && (
-                <div className="absolute inset-x-0 bottom-full z-40 mb-2">
-                  <SlashCommandMenu
-                    commands={slashMatches}
-                    activeIndex={slashActive}
-                    emptyHint={slashHint}
-                    onHover={setSlashIndex}
-                    onSelect={pickSlashCommand}
-                  />
-                </div>
-              )}
-            </AnimatePresence>
-          <Input
-            ref={inputRef}
-            value={body}
-            onChange={(e) => {
-              setBody(e.target.value);
-              setSlashHidden(false);
-              setSlashIndex(0);
-              setCaret(e.target.selectionStart ?? e.target.value.length);
-            }}
-            onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-            onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-            onKeyDown={(e) => {
-              // Arrow keys and Enter belong to the slash menu while it has rows;
-              // the no-match hint does not steal Enter, so the message still sends.
-              if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-                e.preventDefault();
-                setSlashIndex((current) =>
-                  wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
-                );
-                return;
-              }
-              if (slashMatchCount > 0 && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))) {
-                e.preventDefault();
-                const chosen = slashMatches[slashActive] ?? slashMatches[0];
-                if (chosen) pickSlashCommand(chosen);
-                return;
-              }
-              if (slashMenuOpen && e.key === "Escape") { e.preventDefault(); setSlashHidden(true); return; }
-              if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); void handleSend(); }
-            }}
-            placeholder={composerBlock ?? "Message"}
-            disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
-            maxLength={500}
-            className="composer-input glass border-white/10"
-          />
-          <MentionAutocomplete
-            value={body}
-            caret={caret}
-            memberIds={(members.data ?? []).map((member) => member.user_id)}
-            emptyHint="No realm member matches that name."
-            onPick={(username) => {
-              const next = replaceMention(body, caret, username);
-              setBody(next.value);
-              setCaret(next.caret);
-              const el = inputRef.current;
-              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
-            }}
-          />
-          <CatAutocomplete
-            value={body}
-            caret={caret}
-            onPick={(shortcode) => {
-              const next = replaceCatShortcode(body, caret, shortcode);
-              setBody(next.value);
-              setCaret(next.caret);
-              const el = inputRef.current;
-              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
-            }}
-          />
+            <div className="relative min-w-0 flex-1">
+              <AnimatePresence>
+                {slashMenuOpen && (
+                  <div className="absolute inset-x-0 bottom-full z-40 mb-2">
+                    <SlashCommandMenu
+                      commands={slashMatches}
+                      activeIndex={slashActive}
+                      emptyHint={slashHint}
+                      onHover={setSlashIndex}
+                      onSelect={pickSlashCommand}
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
+              <Input
+                ref={inputRef}
+                value={body}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  setSlashHidden(false);
+                  setSlashIndex(0);
+                  setCaret(e.target.selectionStart ?? e.target.value.length);
+                }}
+                onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+                onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+                onKeyDown={(e) => {
+                  // Arrow keys and Enter belong to the slash menu while it has rows;
+                  // the no-match hint does not steal Enter, so the message still sends.
+                  if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                    e.preventDefault();
+                    setSlashIndex((current) =>
+                      wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
+                    );
+                    return;
+                  }
+                  if (
+                    slashMatchCount > 0 &&
+                    (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
+                  ) {
+                    e.preventDefault();
+                    const chosen = slashMatches[slashActive] ?? slashMatches[0];
+                    if (chosen) pickSlashCommand(chosen);
+                    return;
+                  }
+                  if (slashMenuOpen && e.key === "Escape") {
+                    e.preventDefault();
+                    setSlashHidden(true);
+                    return;
+                  }
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    window.matchMedia("(pointer: fine)").matches
+                  ) {
+                    e.preventDefault();
+                    void handleSend();
+                  }
+                }}
+                placeholder={composerBlock ?? "Message"}
+                disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
+                maxLength={500}
+                className="composer-input glass border-white/10"
+              />
+              <MentionAutocomplete
+                value={body}
+                caret={caret}
+                memberIds={(members.data ?? []).map((member) => member.user_id)}
+                emptyHint="No realm member matches that name."
+                onPick={(username) => {
+                  const next = replaceMention(body, caret, username);
+                  setBody(next.value);
+                  setCaret(next.caret);
+                  const el = inputRef.current;
+                  if (el)
+                    requestAnimationFrame(() => {
+                      el.focus();
+                      el.setSelectionRange(next.caret, next.caret);
+                    });
+                }}
+              />
+              <CatAutocomplete
+                value={body}
+                caret={caret}
+                onPick={(shortcode) => {
+                  const next = replaceCatShortcode(body, caret, shortcode);
+                  setBody(next.value);
+                  setCaret(next.caret);
+                  const el = inputRef.current;
+                  if (el)
+                    requestAnimationFrame(() => {
+                      el.focus();
+                      el.setSelectionRange(next.caret, next.caret);
+                    });
+                }}
+              />
+            </div>
+            <Button
+              onClick={handleSend}
+              disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked}
+              size="icon"
+              className="bg-primary text-primary-foreground border-0 shadow-md shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-          <Button onClick={handleSend} disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
-            <Send className="h-4 w-4" />
-          </Button>
         </div>
-      </div>
       )}
     </div>
   );
