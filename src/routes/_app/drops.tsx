@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,17 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Gift, Plus, Timer, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Plus, Timer, Loader2, Sparkles, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/drops")({
-  head: () => ({ meta: [{ title: "Drops · RIZZ" }] }),
-  component: DropsPage,
+  head: () => ({ meta: [{ title: "Bounties · RIZZ" }] }),
+  component: BountiesPage,
 });
 
-function DropsPage() {
+function BountiesPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const drops = useQuery({
@@ -63,14 +63,29 @@ function DropsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2 text-foreground">
-            <Gift className="h-6 w-6 text-primary" /> Drops
+            <Target className="h-6 w-6 text-primary" /> Bounties
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Limited. Fast. Don't sleep.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Limited community rewards. Claim one before time runs out.</p>
         </div>
-        <CreateDropDialog />
+        <CreateBountyDialog />
       </motion.div>
 
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
+
+      <section className="mb-4 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4" aria-labelledby="earn-rizz-title">
+        <div className="min-w-0">
+          <h2 id="earn-rizz-title" className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+            <Sparkles className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            Want to earn more Rizz?
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Create posts, get reactions, and earn badges to grow your score.</p>
+        </div>
+        <Button asChild variant="outline" className="mt-3 min-h-11 w-full shrink-0 sm:mt-0 sm:w-auto">
+          <Link to="/leaderboard" search={{ earn: true }}>
+            How to earn Rizz <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
+      </section>
 
       <div className="space-y-3">
         {drops.data?.map((d: any) => {
@@ -108,7 +123,7 @@ function DropsPage() {
                   className={`w-full mt-4 ${claimed || soldOut ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
                   variant={claimed || soldOut ? "outline" : "default"}
                 >
-                  {claimed ? "✓ Claimed" : soldOut ? "Sold out" : <><Sparkles className="h-4 w-4 mr-1" /> Claim now</>}
+                  {claimed ? "✓ Claimed" : soldOut ? "Sold out" : <><Sparkles className="h-4 w-4 mr-1" /> Claim reward</>}
                 </Button>
               </div>
             </motion.div>
@@ -119,8 +134,8 @@ function DropsPage() {
       {drops.data?.length === 0 && (
         <div className="glass rounded-3xl p-10 text-center">
           <div className="text-5xl mb-3">🎁</div>
-          <h2 className="font-display text-xl font-bold">No active drops</h2>
-          <p className="text-sm text-muted-foreground mt-1">Create one and watch the rush.</p>
+          <h2 className="font-display text-xl font-bold">No active bounties</h2>
+          <p className="text-sm text-muted-foreground mt-1">Post a bounty and give the community a reason to jump in.</p>
         </div>
       )}
     </div>
@@ -145,7 +160,7 @@ function Countdown({ to }: { to: string }) {
   );
 }
 
-function CreateDropDialog() {
+function CreateBountyDialog() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -171,7 +186,7 @@ function CreateDropDialog() {
       const expires_at = new Date(Date.now() + hours * 3.6e6).toISOString();
       const { error } = await supabase.from("drops").insert({ creator_id: user.id, title: title.trim(), description: desc.trim() || null, claim_limit: limit, expires_at, media_url });
       if (error) throw error;
-      toast.success("Drop is live 🚀");
+      toast.success("Bounty is live 🚀");
       qc.invalidateQueries({ queryKey: ["drops"] });
       setOpen(false); setTitle(""); setDesc(""); setFile(null);
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
@@ -180,10 +195,10 @@ function CreateDropDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1" />Drop</Button>
+        <Button className="bg-primary text-primary-foreground border-0 shadow-md"><Plus className="h-4 w-4 mr-1" />New bounty</Button>
       </DialogTrigger>
       <DialogContent className="glass-strong border-white/10">
-        <DialogHeader><DialogTitle className="font-display">New drop</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-display">New bounty</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} className="glass border-white/10" />
           <Textarea placeholder="Hype it up" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={280} className="glass border-white/10" />
@@ -202,7 +217,7 @@ function CreateDropDialog() {
             </div>
           </div>
           <Button onClick={create} disabled={busy || !title.trim()} className="w-full bg-primary text-primary-foreground border-0 shadow-md">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Launch drop"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Launch bounty"}
           </Button>
         </div>
       </DialogContent>

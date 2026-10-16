@@ -434,8 +434,9 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
             <Trash2 className="h-5 w-5" />
           </div>
 
-          {!mediaUrl && (
+          {!mediaUrl && overlays.length === 0 && (
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               className="absolute inset-0 grid place-items-center text-white/90"
             >

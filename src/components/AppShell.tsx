@@ -1,7 +1,7 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
-  Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Gift,
+  Bot, Home, Compass, Plus, Bell, User as UserIcon, LogOut, Settings, Trophy, Hash, Target,
   MessageCircle, Bookmark, Users, Search, Palette, Film, MoreHorizontal, MessageSquareText,
   Gamepad2,
 } from "lucide-react";
@@ -50,7 +50,7 @@ const sideTabs = [
   { to: "/explore", label: "explore", icon: Compass },
   { to: "/groups", label: "groups", icon: Users },
   { to: "/realms", label: "realms", icon: Hash },
-  { to: "/drops", label: "giveaways", icon: Gift },
+  { to: "/drops", label: "bounties", icon: Target },
   { to: "/dms", label: "messages", icon: MessageCircle },
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },
