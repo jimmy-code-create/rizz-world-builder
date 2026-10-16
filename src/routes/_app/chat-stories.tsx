@@ -24,7 +24,7 @@ import {
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 import { generateChatStory, saveGeneratedStoryToSupabase } from "@/lib/story-generation";
 import { STORY_LENGTH_PLANS, type StoryLength } from "@/lib/story-length";
-import { parseStoryUpload } from "@/lib/chat-story-import";
+import { parseStoryUpload, TEMPLATE_NOTICES, describeUploadError } from "@/lib/chat-story-import";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -94,6 +94,8 @@ function ChatStoriesPage() {
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
   const [storyToDelete, setStoryToDelete] = useState<ListedChatStory | null>(null);
   const [isDeletingStory, setIsDeletingStory] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -183,7 +185,6 @@ function ChatStoriesPage() {
   const deleteStory = async () => {
     const story = storyToDelete;
     if (!story || !user || isDeletingStory) return;
-
     setIsDeletingStory(true);
     try {
       const { data, error } = await supabase
@@ -211,6 +212,45 @@ function ChatStoriesPage() {
     }
   };
 
+  /**
+   * Deletes every story this user created (other authors' stories are never
+   * touched; the database policies enforce that too). Used when starting
+   * fresh with newly generated sagas.
+   */
+  const deleteAllMyStories = async () => {
+    if (!user || isDeletingAll) return;
+    const mine = (stories.data ?? []).filter((s) => s.created_by === user.id);
+    if (mine.length === 0) {
+      setIsDeleteAllOpen(false);
+      return;
+    }
+    setIsDeletingAll(true);
+    try {
+      let deleted = 0;
+      for (const story of mine) {
+        const { error } = await supabase
+          .from("chat_stories")
+          .delete()
+          .eq("id", story.id)
+          .eq("created_by", user.id);
+        if (error) throw error;
+        deleted += 1;
+      }
+      await qc.invalidateQueries({ queryKey: ["chat-stories"] });
+      setOpenId(null);
+      setGeneratedStoryId(null);
+      setIsDeleteAllOpen(false);
+      toast.success(`Deleted ${deleted} ${deleted === 1 ? "story" : "stories"}.`);
+    } catch (error) {
+      console.error("Delete all stories failed:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't delete those stories. Please try again.",
+      );
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const generateStory = async () => {
     if (isGenerating) return;
     if (!user) {
@@ -226,7 +266,7 @@ function ChatStoriesPage() {
     setIsGenerating(true);
     setGenProgress(null);
     try {
-      const generatedStory = await generateChatStory(
+      const result = await generateChatStory(
         {
           prompt,
           category: genCategory,
@@ -237,6 +277,7 @@ function ChatStoriesPage() {
           setGenProgress(`Writing chapter ${progress.chapter} of ${progress.totalChapters}…`);
         },
       );
+      const generatedStory = result.story;
       const storyId = await saveGeneratedStoryToSupabase(generatedStory);
       await qc.invalidateQueries({ queryKey: ["chat-stories"] });
       setGeneratedStoryId(storyId);
@@ -246,7 +287,14 @@ function ChatStoriesPage() {
       setGenLang("en");
       setGenLength("short");
       setIsGenOpen(false);
-      toast.success("Your story is ready.");
+      if (result.source === "template") {
+        toast.warning("Built-in story used", {
+          description: TEMPLATE_NOTICES[result.reason === "ok" ? "request_failed" : result.reason],
+          duration: 8000,
+        });
+      } else {
+        toast.success("Your story is ready.");
+      }
       setOpenId(storyId);
     } catch (error: unknown) {
       console.error("Create story failed:", error);
@@ -273,13 +321,28 @@ function ChatStoriesPage() {
    * is allowed.
    */
   const importStoryFile = async (file: File) => {
-    if (!user || isImporting) return;
+    if (isImporting) return;
+    if (!user) {
+      toast.info("Sign in to upload stories");
+      return;
+    }
+    // 5 MB keeps huge sagas saveable while rejecting accidental binaries early.
+    if (file.size > 5_000_000) {
+      setImportError("That file is too large (over ~5 MB). Split it and upload each part.");
+      return;
+    }
     setIsImporting(true);
     setImportError(null);
     setImportStatus("Reading the story…");
     try {
       const contents = await file.text();
+      if (!contents.trim()) {
+        throw new Error("That file is empty.");
+      }
       const story = parseStoryUpload(contents);
+      if (story.lines.length === 0) {
+        throw new Error("No story messages found in that file.");
+      }
       setImportStatus(`Saving ${story.lines.length} messages…`);
       const storyId = await saveGeneratedStoryToSupabase(story);
       await qc.invalidateQueries({ queryKey: ["chat-stories"] });
@@ -287,7 +350,11 @@ function ChatStoriesPage() {
       setOpenId(storyId);
       toast.success(`Imported “${story.title}” with ${story.lines.length} messages.`);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Couldn't import that story.");
+      const friendly = describeUploadError(error);
+      setImportError(friendly);
+      if (/couldn't save|network problem/i.test(friendly)) {
+        toast.error("Upload didn't save", { description: friendly });
+      }
     } finally {
       setIsImporting(false);
       setImportStatus(null);
@@ -597,6 +664,15 @@ function ChatStoriesPage() {
             {c}
           </button>
         ))}
+        {user && (stories.data ?? []).some((s) => s.created_by === user.id) && (
+          <button
+            type="button"
+            onClick={() => setIsDeleteAllOpen(true)}
+            className="shrink-0 px-4 h-9 rounded-full text-sm font-semibold text-destructive-foreground/80 glass"
+          >
+            Delete mine
+          </button>
+        )}
       </div>
 
       {stories.isLoading && <p className="text-sm text-muted-foreground">Loading stories…</p>}
@@ -702,6 +778,35 @@ function ChatStoriesPage() {
             >
               {isDeletingStory && <Loader2 className="h-4 w-4 animate-spin" />}
               {isDeletingStory ? "Deleting…" : "Delete story"}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isDeleteAllOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isDeletingAll) setIsDeleteAllOpen(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all your stories?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every story you created — and all their lines, choices, and likes — will be
+              permanently removed. Stories by other authors stay. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={deleteAllMyStories}
+              disabled={isDeletingAll}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeletingAll && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isDeletingAll ? "Deleting…" : "Delete all mine"}
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>

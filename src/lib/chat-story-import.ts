@@ -21,8 +21,45 @@ import type {
   StoryCategory,
   StoryVideoType,
 } from "./story-generation";
-import { effectsForMessage, wrapWithEffects } from "./chat-story-effects";
-import { sanitizeSpeakerName } from "./voice-cast";
+import { effectsForMessage, wrapWithEffects } from "./chat-story-effects.ts";
+import { sanitizeSpeakerName } from "./voice-cast.ts";
+
+export type TemplateReason = "ok" | "missing_key" | "request_failed";
+
+/**
+ * What the reader sees when a built-in template stands in for the AI.
+ * `missing_key` points at the one place the key actually works (Render
+ * environment, server-side) because that is the cause in nearly every case:
+ * keys added anywhere else (VITE_ vars, local .env, other dashboards) never
+ * reach the story server.
+ */
+export const TEMPLATE_NOTICES: Record<Exclude<TemplateReason, "ok">, string> = {
+  missing_key:
+    "The AI key isn't on the story server. Add GROQ_API_KEY in Render → Environment and redeploy, then generate again.",
+  request_failed:
+    "The AI service didn't answer. Check the key and model, wait a moment, then generate again.",
+};
+
+/**
+ * Turns raw save/parse failures into actionable upload errors. Pure so the
+ * dialog and tests share it.
+ */
+export function describeUploadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/row-level security|policy|permission|not allowed|unauthorized|JWT|expired/i.test(message)) {
+    return "Couldn't save: your login can't write stories right now. Sign out and back in, then retry.";
+  }
+  if (/Failed to fetch|NetworkError|network|timeout|abort/i.test(message)) {
+    return "Network problem while saving. Check your connection and retry — your file is fine.";
+  }
+  if (/duplicate|already exists|unique/i.test(message)) {
+    return "That story looks like a duplicate. Change the title and upload again.";
+  }
+  if (/too (large|big)|payload|413|exceeded/i.test(message)) {
+    return "That file is too large to save. Split it into smaller stories and upload each part.";
+  }
+  return message || "Couldn't import that story.";
+}
 
 export type AuthorStoryMessage = {
   character_id?: string;
@@ -354,7 +391,9 @@ export function parseAuthorStoryFile(contents: string): GeneratedStory {
     throw new StoryImportError("That file is not valid JSON. Export it again and retry.");
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new StoryImportError("That file does not contain a story object.");
+    throw new StoryImportError(
+      "That JSON isn't a story object. Upload the story itself ({title, lines, ...}) or a Name: message script — not a bare list.",
+    );
   }
   const candidate = parsed as AuthorStoryJson & { story?: AuthorStoryJson };
   return storyJsonToGeneratedStory(candidate.story ?? candidate);

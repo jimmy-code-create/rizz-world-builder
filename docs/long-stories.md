@@ -35,3 +35,19 @@ in the environment and is never written to output files.
 Limits: `--target` is capped at 2000, `--chapter-lines` at 200, passes at 20.
 Supabase saves in 300-row batches and the reader pages 1000 rows at a time,
 so completed sagas store and read fine.
+
+## Troubleshooting: always the Thirteenth Floor?
+
+If every generation returns the same built-in template ("The Thirteenth
+Floor"), the app now tells you why with a warning toast:
+
+- **AI key isn't on the story server** — `GROQ_API_KEY` must be set in
+  **Render → Environment** (server-side), then redeploy. Keys placed anywhere
+  else (`VITE_` variables, a local `.env`, other dashboards) never reach the
+  story server, so generation silently falls back to templates.
+- **AI service didn't answer** — the key or model is wrong, or Groq hiccuped.
+  Verify the key, keep `GROQ_MODEL=openai/gpt-oss-120b`, wait, retry.
+
+Uploads that won't save show the mapped reason in the dialog: sign-in
+problems ask for sign out/in, network problems say to retry, oversized files
+are rejected before parsing.

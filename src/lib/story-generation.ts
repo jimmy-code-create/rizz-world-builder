@@ -79,6 +79,8 @@ export type StoryGenerationInput = {
 export type GeneratedStoryResult = {
   story: GeneratedStory;
   source: "ai" | "template";
+  /** Why a built-in template was used instead of the AI. Surfaced in the UI. */
+  reason: "ok" | "missing_key" | "request_failed";
 };
 
 const inputSchema = z.object({
@@ -532,7 +534,11 @@ const generateStoryServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return { story: makeFallbackStory(data), source: "template" as const };
+      return {
+        story: makeFallbackStory(data),
+        source: "template" as const,
+        reason: "missing_key" as const,
+      };
     }
 
     const systemPrompt = buildShortSystemPrompt(data);
@@ -567,7 +573,11 @@ const generateStoryServer = createServerFn({ method: "POST" })
 
       if (!response.ok) {
         console.error("Story generation failed with status", response.status);
-        return { story: makeFallbackStory(data), source: "template" as const };
+        return {
+          story: makeFallbackStory(data),
+          source: "template" as const,
+          reason: "request_failed" as const,
+        };
       }
 
       const completion = (await response.json()) as {
@@ -578,10 +588,14 @@ const generateStoryServer = createServerFn({ method: "POST" })
 
       const story = normalizeStory(JSON.parse(stripCodeFences(text)) as unknown, data);
 
-      return { story, source: "ai" as const };
+      return { story, source: "ai" as const, reason: "ok" as const };
     } catch (error) {
       console.error("Story generation failed; using a built-in template.", error);
-      return { story: makeFallbackStory(data), source: "template" as const };
+      return {
+        story: makeFallbackStory(data),
+        source: "template" as const,
+        reason: "request_failed" as const,
+      };
     }
   });
 
@@ -630,7 +644,7 @@ const startSagaChunkServer = createServerFn({ method: "POST" })
   .inputValidator((input: SagaChunkInput) => sagaChunkSchema.parse(input))
   .handler(async ({ data }) => {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return { source: "template" as const };
+    if (!apiKey) return { source: "template" as const, reason: "missing_key" as const };
     const plan = STORY_LENGTH_PLANS[data.length];
     const { system, user } = buildOpeningPrompt(
       { prompt: data.prompt, category: data.category, language: data.language },
@@ -642,6 +656,7 @@ const startSagaChunkServer = createServerFn({ method: "POST" })
     const chapter = `chapter-1`;
     return {
       source: "ai" as const,
+      reason: "ok" as const,
       title: typeof record.title === "string" ? record.title : data.prompt.slice(0, 30),
       hook: typeof record.hook === "string" ? record.hook : data.prompt,
       emoji: typeof record.emoji === "string" ? record.emoji : "✨",
@@ -662,7 +677,7 @@ const continueSagaChunkServer = createServerFn({ method: "POST" })
   .inputValidator((input: SagaChunkInput) => sagaChunkSchema.parse(input))
   .handler(async ({ data }) => {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return { lines: [] as GeneratedStoryLine[] };
+    if (!apiKey) return { lines: [] as GeneratedStoryLine[], reason: "missing_key" as const };
     const plan = STORY_LENGTH_PLANS[data.length];
     const outline =
       data.outline.length > 0
@@ -684,6 +699,7 @@ const continueSagaChunkServer = createServerFn({ method: "POST" })
         `chapter-${data.chapterIndex}`,
         plan.chapterLines[1] + 20,
       ),
+      reason: "ok" as const,
     };
   });
 
@@ -692,14 +708,14 @@ const finaleSagaChunkServer = createServerFn({ method: "POST" })
   .inputValidator((input: SagaChunkInput) => sagaChunkSchema.parse(input))
   .handler(async ({ data }) => {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return { branches: [] as SagaBranch[] };
+    if (!apiKey) return { branches: [] as SagaBranch[], reason: "missing_key" as const };
     const plan = STORY_LENGTH_PLANS[data.length];
     const { system, user } = buildFinalePrompt(
       { prompt: data.prompt, category: data.category, language: data.language },
       data.context,
     );
     const raw = await callGroqJson(apiKey, groqModel(), system, user, plan.tokens);
-    return { branches: parseFinaleBranches(raw) };
+    return { branches: parseFinaleBranches(raw), reason: "ok" as const };
   });
 
 function templateEndingBranches(category: StoryCategory): SagaBranch[] {
@@ -746,18 +762,28 @@ export type SagaProgress = { chapter: number; totalChapters: number; lines: numb
 export async function generateChatStory(
   input: StoryGenerationInput,
   onProgress?: (progress: SagaProgress) => void,
-): Promise<GeneratedStory> {
+): Promise<GeneratedStoryResult> {
   if (input.length !== "long" && input.length !== "epic") {
     return generateChatStoryShort(input);
   }
   const plan = STORY_LENGTH_PLANS[input.length];
+  // First non-ok reason seen across passes; reported when the saga degrades.
+  let reason: GeneratedStoryResult["reason"] = "ok";
+  const note = (value: GeneratedStoryResult["reason"]) => {
+    if (reason === "ok") reason = value;
+  };
   try {
     const base = { prompt: input.prompt, category: input.category, language: input.language };
     onProgress?.({ chapter: 1, totalChapters: plan.chapters, lines: 0 });
     const opening = await startSagaChunkServer({
       data: { ...base, length: input.length, chapterIndex: 1 },
     });
-    if (opening.source !== "ai" || opening.lines.length === 0) return generateChatStoryShort(input);
+    if (opening.source !== "ai" || opening.lines.length === 0) {
+      if (opening.source !== "ai") note(opening.reason);
+      else note("request_failed");
+      const fallback = await generateChatStoryShort(input);
+      return { ...fallback, reason };
+    }
     const outline =
       opening.outline.length > 0
         ? opening.outline
@@ -776,6 +802,7 @@ export async function generateChatStory(
           context: buildChapterContext(lines),
         },
       });
+      note(chunk.reason);
       if (chunk.lines.length === 0) break;
       lines = appendStoryChunk(lines, { lines: chunk.lines, chapter: `chapter-${chapterIndex}` });
     }
@@ -790,6 +817,7 @@ export async function generateChatStory(
         context: buildChapterContext(lines),
       },
     });
+    note(finale.reason);
     const branches =
       finale.branches.length > 0 ? finale.branches : templateEndingBranches(input.category);
     const { lines: fullLines, choices } = assembleSagaFinale(lines, branches);
@@ -802,32 +830,49 @@ export async function generateChatStory(
         ? "horror_hallway"
         : "rain_window";
     return {
-      title: opening.title,
-      hook: opening.hook,
-      emoji: opening.emoji,
-      category: input.category,
-      them_name: opening.them_name,
-      me_name: opening.me_name,
-      video_type,
-      lines: fullLines,
-      choices,
+      story: {
+        title: opening.title,
+        hook: opening.hook,
+        emoji: opening.emoji,
+        category: input.category,
+        them_name: opening.them_name,
+        me_name: opening.me_name,
+        video_type,
+        lines: fullLines,
+        choices,
+      },
+      source: "ai",
+      reason,
     };
   } catch (err) {
     console.warn("Using built-in story generator:", err);
   }
-  return makeFallbackStory(input);
+  const fallback = makeFallbackStory(input);
+  return {
+    story: fallback,
+    source: "template",
+    reason: reason === "ok" ? "request_failed" : reason,
+  };
 }
 
-async function generateChatStoryShort(input: StoryGenerationInput): Promise<GeneratedStory> {
+async function generateChatStoryShort(input: StoryGenerationInput): Promise<GeneratedStoryResult> {
   try {
     const raw: unknown = await generateStory(input);
-    const r = raw as { story?: GeneratedStory; title?: string; lines?: unknown } | null | undefined;
+    const r = raw as
+      (Partial<GeneratedStoryResult> & { title?: string; lines?: unknown }) | null | undefined;
     const story = r?.story ?? (r?.title && r?.lines ? (raw as GeneratedStory) : undefined);
-    if (story) return story;
+    if (story) {
+      return {
+        story,
+        source: r?.source ?? "ai",
+        reason: r?.reason ?? (r?.source === "template" ? "request_failed" : "ok"),
+      };
+    }
   } catch (err) {
     console.warn("Using built-in story generator:", err);
   }
-  return makeFallbackStory(input);
+  const fallback = makeFallbackStory(input);
+  return { story: fallback, source: "template", reason: "request_failed" };
 }
 
 const STORY_GRADIENTS: Record<StoryCategory, string> = {
