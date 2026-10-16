@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Gamepad2, Trophy, X, Play, RotateCcw, Users, Bot as BotIcon, Crown, Zap } from "lucide-react";
+import { Gamepad2, Trophy, X, Play, RotateCcw, Users, Bot as BotIcon, Crown, Zap, ExternalLink, ChevronLeft } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -20,7 +20,18 @@ type GameState = {
   history: Array<{ game: string; winner: string; timestamp: number }>;
 };
 
-const GAMES = [
+type ExternalGame = {
+  id: string;
+  name: string;
+  icon: string;
+  url: string;
+  players: string;
+  description: string;
+  color: string;
+  borderColor: string;
+};
+
+const MINI_GAMES = [
   {
     id: "tictactoe" as GameType,
     name: "Tic-Tac-Toe",
@@ -63,6 +74,89 @@ const GAMES = [
   },
 ];
 
+const EXTERNAL_GAMES: ExternalGame[] = [
+  {
+    id: "chess",
+    name: "Chess",
+    icon: "♟️",
+    url: "https://lichess.org/",
+    players: "2",
+    description: "Play chess online — create a game and share the link",
+    color: "from-slate-500/20 to-gray-500/20",
+    borderColor: "border-slate-400/30",
+  },
+  {
+    id: "checkers",
+    name: "Checkers",
+    icon: "🎯",
+    url: "https://www.247checkers.com/",
+    players: "2",
+    description: "Classic checkers game",
+    color: "from-red-500/20 to-orange-500/20",
+    borderColor: "border-red-400/30",
+  },
+  {
+    id: "codenames",
+    name: "Codenames",
+    icon: "🔤",
+    url: "https://codenames.game/",
+    players: "4-8",
+    description: "Word-based party game — create a room and share",
+    color: "from-indigo-500/20 to-blue-500/20",
+    borderColor: "border-indigo-400/30",
+  },
+  {
+    id: "gartic-phone",
+    name: "Gartic Phone",
+    icon: "📱",
+    url: "https://garticphone.com/",
+    players: "4-30",
+    description: "Telephone game with drawing — create a room to play",
+    color: "from-pink-500/20 to-rose-500/20",
+    borderColor: "border-pink-400/30",
+  },
+  {
+    id: "skribbl",
+    name: "Draw & Guess",
+    icon: "🎨",
+    url: "https://skribbl.io/",
+    players: "2+",
+    description: "Draw and guess together on skribbl.io",
+    color: "from-yellow-500/20 to-amber-500/20",
+    borderColor: "border-yellow-400/30",
+  },
+  {
+    id: "2048",
+    name: "2048",
+    icon: "🔢",
+    url: "https://gabrielecirulli.github.io/2048/",
+    players: "1",
+    description: "Solo number puzzle while you hang out",
+    color: "from-cyan-500/20 to-teal-500/20",
+    borderColor: "border-cyan-400/30",
+  },
+  {
+    id: "jackbox",
+    name: "Party Games",
+    icon: "🎉",
+    url: "https://jackbox.tv/",
+    players: "2-8",
+    description: "Jackbox party packs — host reads the room code off their game",
+    color: "from-violet-500/20 to-purple-500/20",
+    borderColor: "border-violet-400/30",
+  },
+  {
+    id: "draw-party",
+    name: "Draw Party",
+    icon: "🖌️",
+    url: "/embed/draw-party",
+    players: "2-8",
+    description: "Native draw & guess — Classic, Speed & Sandbox modes with live reactions",
+    color: "from-lime-500/20 to-green-500/20",
+    borderColor: "border-lime-400/30",
+  },
+];
+
 export function VCGamesSheet({
   open,
   onOpenChange,
@@ -75,6 +169,7 @@ export function VCGamesSheet({
   participants: Array<{ user_id: string; user?: { username?: string; display_name?: string } }>;
 }) {
   const { user } = useAuth();
+  const [view, setView] = useState<"menu" | "mini-game">("menu");
   const [gameState, setGameState] = useState<GameState>({
     type: null,
     active: false,
@@ -156,6 +251,7 @@ export function VCGamesSheet({
     };
 
     setGameState(newState);
+    setView("mini-game");
 
     // Initialize game-specific state
     if (selectedGame === "tictactoe") {
@@ -175,7 +271,7 @@ export function VCGamesSheet({
       broadcastState(newState, { rpsRound: 1 });
     }
 
-    toast.success(`Starting ${GAMES.find(g => g.id === selectedGame)?.name}!`);
+    toast.success(`Starting ${MINI_GAMES.find(g => g.id === selectedGame)?.name}!`);
   };
 
   const handleTTTMove = (index: number) => {
@@ -397,6 +493,12 @@ export function VCGamesSheet({
     setRpsRound(0);
     setWyrQuestion(null);
     setTriviaQuestion(null);
+    setView("menu");
+  };
+
+  const openExternalGame = (game: ExternalGame) => {
+    window.open(game.url, "_blank", "noopener,noreferrer");
+    toast.success(`Opening ${game.name}...`);
   };
 
   const totalGamesPlayed = gameState.history.length;
@@ -410,12 +512,22 @@ export function VCGamesSheet({
       >
         <SheetHeader className="text-left pt-2 pb-4">
           <SheetTitle className="font-display text-2xl flex items-center gap-2">
+            {view === "mini-game" && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={resetGame}
+                className="h-8 w-8 -ml-2"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
             <Gamepad2 className="h-6 w-6 text-primary" />
             Games
           </SheetTitle>
         </SheetHeader>
 
-        {!gameState.active ? (
+        {view === "menu" ? (
           <>
             {/* Stats Bar */}
             {totalGamesPlayed > 0 && (
@@ -457,59 +569,87 @@ export function VCGamesSheet({
               </div>
             </div>
 
-            {/* Game Selection */}
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-              Choose a Game
-            </p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {GAMES.map((game) => (
-                <button
-                  key={game.id}
-                  onClick={() => setSelectedGame(game.id)}
-                  className={`relative flex flex-col items-center gap-3 rounded-2xl border p-5 transition-all ${
-                    selectedGame === game.id
-                      ? `${game.borderColor} bg-gradient-to-br ${game.color} ring-2 ring-primary/20`
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
-                  }`}
-                >
-                  {selectedGame === game.id && (
-                    <div className="absolute top-2 right-2">
-                      <Zap className="h-4 w-4 text-primary fill-primary" />
+            {/* Quick Mini Games */}
+            <div className="mb-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                Quick Games
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {MINI_GAMES.map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => setSelectedGame(game.id)}
+                    className={`relative flex flex-col items-center gap-3 rounded-2xl border p-5 transition-all ${
+                      selectedGame === game.id
+                        ? `${game.borderColor} bg-gradient-to-br ${game.color} ring-2 ring-primary/20`
+                        : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {selectedGame === game.id && (
+                      <div className="absolute top-2 right-2">
+                        <Zap className="h-4 w-4 text-primary fill-primary" />
+                      </div>
+                    )}
+                    <span className="text-4xl">{game.icon}</span>
+                    <div className="text-center">
+                      <p className="text-sm font-bold">{game.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{game.description}</p>
                     </div>
-                  )}
-                  <span className="text-4xl">{game.icon}</span>
-                  <div className="text-center">
-                    <p className="text-sm font-bold">{game.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{game.description}</p>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
+
+              {selectedGame && (
+                <Button
+                  onClick={startGame}
+                  disabled={!canStart}
+                  className="w-full h-14 mt-3 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground gap-2 text-base font-bold shadow-lg shadow-primary/20"
+                >
+                  <Play className="h-5 w-5" />
+                  Start {MINI_GAMES.find((g) => g.id === selectedGame)?.name}
+                </Button>
+              )}
             </div>
 
-            {selectedGame && (
-              <Button
-                onClick={startGame}
-                disabled={!canStart}
-                className="w-full h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground gap-2 text-base font-bold shadow-lg shadow-primary/20"
-              >
-                <Play className="h-5 w-5" />
-                Start {GAMES.find((g) => g.id === selectedGame)?.name}
-              </Button>
-            )}
+            {/* External Games */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                More Games
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {EXTERNAL_GAMES.map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => openExternalGame(game)}
+                    className={`relative flex flex-col items-center gap-3 rounded-2xl border ${game.borderColor} bg-gradient-to-br ${game.color} p-5 transition-all hover:ring-2 hover:ring-primary/20 active:scale-[0.98]`}
+                  >
+                    <div className="absolute top-2 right-2">
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <span className="text-4xl">{game.icon}</span>
+                    <div className="text-center">
+                      <p className="text-sm font-bold">{game.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{game.players} players</p>
+                      <p className="text-xs text-muted-foreground mt-1">{game.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </>
         ) : (
           <>
-            {/* Active Game */}
+            {/* Active Mini Game */}
             <div className="mb-4">
               {/* Game Header */}
               <div className="flex items-center justify-between mb-4 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 p-4">
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">
-                    {GAMES.find((g) => g.id === gameState.type)?.icon}
+                    {MINI_GAMES.find((g) => g.id === gameState.type)?.icon}
                   </span>
                   <div>
                     <p className="text-sm font-bold">
-                      {GAMES.find((g) => g.id === gameState.type)?.name}
+                      {MINI_GAMES.find((g) => g.id === gameState.type)?.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {gameState.winner
