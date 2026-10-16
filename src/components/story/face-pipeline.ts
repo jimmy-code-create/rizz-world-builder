@@ -361,11 +361,13 @@ export class FaceWarpRenderer {
     }
   }
 
-  render({ effect, intensity, faces, time }: WarpRenderInput) {
+  render({ effect, intensity, faces, time }: WarpRenderInput): boolean {
     const gl = this.gl;
     const program = this.program;
     const video = this.video;
-    if (!gl || !program || !video) return;
+    if (!gl || !program || !video || gl.isContextLost()) return false;
+    if (video instanceof HTMLVideoElement && video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return false;
+    if (video instanceof HTMLImageElement && !video.complete) return false;
     const width = this.canvas.width || 1;
     const height = this.canvas.height || 1;
 
@@ -379,7 +381,8 @@ export class FaceWarpRenderer {
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
     } catch {
-      // The video may not have a frame yet; keep the last texture.
+      // Keep the underlying video/photo visible until a frame uploads cleanly.
+      return false;
     }
     this.set("uTexture", (location) => gl.uniform1i(location, 0));
     this.set("uTexel", (location) => gl.uniform2f(location, 1 / width, 1 / height));
@@ -435,6 +438,7 @@ export class FaceWarpRenderer {
       this.set("uScale", (location) => gl.uniform1f(location, 1 / scale));
       gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
     }
+    return !gl.isContextLost();
   }
 
   private setGrade(grade: GradeSpec, intensity: number) {

@@ -4,7 +4,7 @@ import { AuthCard } from "@/components/AuthCard";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { Button } from "@/components/ui/button";
 import { AvatarPicker } from "@/components/onboarding/AvatarPicker";
-import { DEFAULT_AVATARS } from "@/lib/default-avatars";
+import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { getPendingInvitePath } from "@/lib/onboarding";

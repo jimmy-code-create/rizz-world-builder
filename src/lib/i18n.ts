@@ -106,7 +106,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     retry: "Retry",
     // Navigation & menus
     groups: "Groups",
-    giveaways: "Bounties",
+    bounties: "Bounties",
     chat_stories: "Chat Stories",
     bots: "Bots",
     leaderboard: "Leaderboard",
@@ -459,7 +459,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     retry: "Réessayer",
     // Navigation & menus
     groups: "Groupes",
-    giveaways: "Primes",
+    bounties: "Missions",
     chat_stories: "Stories de chat",
     bots: "Bots",
     leaderboard: "Classement",

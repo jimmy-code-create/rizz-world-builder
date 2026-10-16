@@ -533,10 +533,6 @@ export function DrawPartyGame({ compact = false }: { compact?: boolean } = {}) {
     if (word && endsAt && now >= endsAt) endRound();
   }, [word, endsAt, now, endRound]);
 
-  useEffect(() => {
-    if (gameOver) fireConfetti();
-  }, [gameOver, fireConfetti]);
-
   const submitGuess = (e?: React.FormEvent) => {
     e?.preventDefault();
     const text = guessInput.trim();
@@ -608,9 +604,13 @@ export function DrawPartyGame({ compact = false }: { compact?: boolean } = {}) {
     }));
     setConfetti((prev) => [...prev.slice(-36), ...pieces]);
     window.setTimeout(() => {
-      setConfetti((prev) => prev.filter((p) => !pieces.some((q) => q.id === p.id)));
+      setConfetti((prev) => prev.filter((p) => !pieces.some((q) => p.id === q.id)));
     }, 2200);
   }, []);
+
+  useEffect(() => {
+    if (gameOver) fireConfetti();
+  }, [gameOver, fireConfetti]);
 
   const replayDrawing = () => {
     const snapshot = [...strokes];

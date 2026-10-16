@@ -79,7 +79,7 @@ const sideTabs = [
   { to: "/explore", label: "explore", icon: Compass },
   { to: "/groups", label: "groups", icon: Users },
   { to: "/realms", label: "realms", icon: Hash },
-  { to: "/drops", label: "giveaways", icon: Coins },
+  { to: "/drops", label: "bounties", icon: Coins },
   { to: "/dms", label: "messages", icon: MessageCircle },
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },

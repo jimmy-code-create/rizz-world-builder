@@ -249,7 +249,7 @@ export function GameLauncher({
   onOpenChange: (open: boolean) => void;
   channelId?: string;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -310,7 +310,7 @@ export function GameLauncher({
       event: "game-update",
       payload: {
         userId: user.id,
-        userName: user.display_name || user.username,
+        userName: profile?.display_name || profile?.username || user.email || "Player",
         gameId: game?.id || null,
         gameName: game?.name || null,
         timestamp: Date.now(),

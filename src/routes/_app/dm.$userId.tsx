@@ -77,7 +77,7 @@ export const Route = createFileRoute("/_app/dm/$userId")({
 
 function DMPage() {
   const { userId } = Route.useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
   const [body, setBody] = useState("");
@@ -988,7 +988,7 @@ function DMPage() {
                     author: mine ? "You" : (other.data?.display_name || other.data?.username || "User"),
                     time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
                     body: m.body,
-                    avatarUrl: mine ? user?.avatar_url : other.data?.avatar_url,
+                    avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
                   }}
                   actions={[
                     {

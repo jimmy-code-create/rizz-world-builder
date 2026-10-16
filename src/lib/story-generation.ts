@@ -806,7 +806,7 @@ export async function generateChatStory(
     const base = { prompt: input.prompt, category: input.category, language: input.language };
     onProgress?.({ chapter: 1, totalChapters: plan.chapters, lines: 0 });
     const opening = await startSagaChunkServer({
-      data: { ...base, length: input.length, chapterIndex: 1 },
+      data: { ...base, length: input.length, chapterIndex: 1, outline: [], context: "" },
     });
     if (opening.source !== "ai" || opening.lines.length === 0) {
       if (opening.source !== "ai") note(opening.reason);

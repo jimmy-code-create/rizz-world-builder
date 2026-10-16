@@ -156,10 +156,17 @@ function DropsPage() {
     const url = typeof window !== "undefined" ? window.location.origin : "https://rizz.app";
     const data = { title: "RIZZ", text: "Join me on RIZZ — claim bounties and stack rizz.", url };
     try {
-      if (typeof navigator !== "undefined" && "share" in navigator) {
-        await (navigator as Navigator & { share: (data: unknown) => Promise<void> }).share(data);
-      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(`${data.text} ${url}`);
+      const nav =
+        typeof navigator === "undefined"
+          ? null
+          : (navigator as Navigator & {
+              share?: (data: unknown) => Promise<void>;
+              clipboard?: Clipboard;
+            });
+      if (nav?.share) {
+        await nav.share(data);
+      } else if (nav?.clipboard) {
+        await nav.clipboard.writeText(`${data.text} ${url}`);
         toast.success("Invite link copied — paste it anywhere.");
       } else {
         toast.info("Copy this link", { description: url });
@@ -302,7 +309,7 @@ function DropsPage() {
         </div>
         <Link
           to="/leaderboard"
-          search={{ earn: 1 }}
+          search={{ earn: true }}
           className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Sparkles className="h-4 w-4" /> How to earn rizz
