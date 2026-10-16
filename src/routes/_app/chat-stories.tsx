@@ -23,6 +23,7 @@ import {
 } from "@/components/chatstory/ChatStoryPlayer";
 import { ROOM_4B_HOOK, ROOM_4B_TITLE } from "@/components/chatstory/room4b-story";
 import { generateChatStory, saveGeneratedStoryToSupabase } from "@/lib/story-generation";
+import { STORY_LENGTH_PLANS, type StoryLength } from "@/lib/story-length";
 import { parseStoryUpload } from "@/lib/chat-story-import";
 import {
   AlertDialog,
@@ -86,6 +87,8 @@ function ChatStoriesPage() {
   const [genPrompt, setGenPrompt] = useState("");
   const [genCategory, setGenCategory] = useState<StoryCategory>("horror");
   const [genLang, setGenLang] = useState<"hi" | "en">("en");
+  const [genLength, setGenLength] = useState<StoryLength>("short");
+  const [genProgress, setGenProgress] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStoryId, setGeneratedStoryId] = useState<string | null>(null);
   const [generatedLanguage, setGeneratedLanguage] = useState<"hi" | "en">("en");
@@ -221,12 +224,19 @@ function ChatStoriesPage() {
     }
 
     setIsGenerating(true);
+    setGenProgress(null);
     try {
-      const generatedStory = await generateChatStory({
-        prompt,
-        category: genCategory,
-        language: genLang,
-      });
+      const generatedStory = await generateChatStory(
+        {
+          prompt,
+          category: genCategory,
+          language: genLang,
+          length: genLength,
+        },
+        (progress) => {
+          setGenProgress(`Writing chapter ${progress.chapter} of ${progress.totalChapters}…`);
+        },
+      );
       const storyId = await saveGeneratedStoryToSupabase(generatedStory);
       await qc.invalidateQueries({ queryKey: ["chat-stories"] });
       setGeneratedStoryId(storyId);
@@ -234,6 +244,7 @@ function ChatStoriesPage() {
       setGenPrompt("");
       setGenCategory("horror");
       setGenLang("en");
+      setGenLength("short");
       setIsGenOpen(false);
       toast.success("Your story is ready.");
       setOpenId(storyId);
@@ -249,6 +260,7 @@ function ChatStoriesPage() {
       toast.error(friendly);
     } finally {
       setIsGenerating(false);
+      setGenProgress(null);
     }
   };
 
@@ -515,6 +527,37 @@ function ChatStoriesPage() {
                 </div>
               </fieldset>
             </div>
+            <fieldset disabled={isGenerating} className="space-y-2">
+              <legend className="mb-2 text-xs font-semibold">Story length</legend>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(STORY_LENGTH_PLANS) as StoryLength[]).map((length) => {
+                  const plan = STORY_LENGTH_PLANS[length];
+                  const label =
+                    length === "short"
+                      ? "Short (~25)"
+                      : length === "long"
+                        ? "Long (~300)"
+                        : "Epic (1000+)";
+                  return (
+                    <button
+                      key={length}
+                      type="button"
+                      aria-pressed={genLength === length}
+                      title={`${plan.targetLines[0]}–${plan.targetLines[1]} messages, takes ${plan.eta}`}
+                      onClick={() => setGenLength(length)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${genLength === length ? "border-primary/70 bg-primary/15 text-foreground" : "border-border/70 bg-card/50 text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Long and epic sagas are written chapter by chapter with a full cast — narrator,
+                child, elders, and a young married couple — each with its own voice. Epic takes{" "}
+                {STORY_LENGTH_PLANS.epic.eta}.
+              </p>
+            </fieldset>
           </div>
           <DialogFooter>
             <button
@@ -536,7 +579,7 @@ function ChatStoriesPage() {
               ) : (
                 <Wand2 className="h-4 w-4" />
               )}
-              {isGenerating ? "Creating story…" : "Create story"}
+              {isGenerating ? (genProgress ?? "Creating story…") : "Create story"}
             </button>
           </DialogFooter>
         </DialogContent>

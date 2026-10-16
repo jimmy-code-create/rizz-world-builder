@@ -22,6 +22,7 @@ import type {
   StoryVideoType,
 } from "./story-generation";
 import { effectsForMessage, wrapWithEffects } from "./chat-story-effects";
+import { sanitizeSpeakerName } from "./voice-cast";
 
 export type AuthorStoryMessage = {
   character_id?: string;
@@ -134,7 +135,8 @@ export function storyJsonToGeneratedStory(raw: AuthorStoryJson): GeneratedStory 
   if (Array.isArray(raw.lines) && raw.lines.length > 0 && !Array.isArray(raw.chapters)) {
     const lines = (raw.lines as GeneratedStoryLine[]).map((line): GeneratedStoryLine => ({
       idx: Number(line.idx) || 0,
-      speaker: line.speaker === "me" || line.speaker === "them" ? line.speaker : "narrator",
+      // Named cast members keep their names so each holds its own voice.
+      speaker: sanitizeSpeakerName(line.speaker),
       body: text((line as { body?: string }).body),
       body_en:
         text((line as { body_en?: string }).body_en) || text((line as { body?: string }).body),
@@ -165,14 +167,22 @@ export function storyJsonToGeneratedStory(raw: AuthorStoryJson): GeneratedStory 
   }
 
   // Speaker resolution comes from the character roles: narrator-role characters
-  // narrate, the player speaks as "me", everyone else is the other side ("them").
-  // Unknown ids are assigned in encounter order (first voice = them, second =
-  // me), which is how a two-person chat story reads when the file names nobody.
+  // narrate, the player speaks as "me", and every other named character keeps
+  // its own display name so each holds a distinct voice. Unknown ids are
+  // assigned in encounter order (first voice = them, second = me), which is
+  // how a two-person chat story reads when the file names nobody.
   const encountered: string[] = [];
+  const displayNameFor = (characterId: string): string => {
+    const character = characters.find((entry) => text(entry.id) === characterId);
+    const name = character ? text(character.name) : "";
+    return name ? sanitizeSpeakerName(name) : "";
+  };
   const speakerFor = (characterId: string | undefined): GeneratedStoryLine["speaker"] => {
     if (!characterId) return "narrator";
     const known = speakers.get(characterId);
-    if (known) return known;
+    if (known && known !== "them") return known;
+    const name = displayNameFor(characterId);
+    if (name) return name;
     if (!encountered.includes(characterId)) encountered.push(characterId);
     return encountered.indexOf(characterId) === 1 ? "me" : "them";
   };

@@ -18,6 +18,41 @@ story's selected language. Character voices stay consistent: Kokoro seats
 `Divya` (+ gendered pools) for the Hindi server voice, device-voice seeds for
 fallback. Story language selection and all story controls are unchanged.
 
+## Voice cast (narrator is a man)
+
+`src/lib/voice-cast.ts` is the single definition of the speaking cast, shared
+by the player, the Hindi server router, the AI story prompts, and tests:
+
+| Cast | Device voice | Kokoro HD | Hindi server id |
+| --- | --- | --- | --- |
+| Narrator (man) | low pitch 0.72, male-first prefs | `bm_george` | `Rohit` |
+| Child | bright pitch 1.55, faster | `am_puck` | `Rani` |
+| Old man | deep pitch 0.58, slow 0.82x | `am_onyx` | `Rohit` |
+| Old woman | warm pitch 1.12, slow 0.84x | `af_sky` | `Divya` |
+| Young husband | pitch 0.88 | `am_adam` | `Aman` |
+| Young wife | pitch 1.30 | `af_nicole` | `Rani` |
+| Adult man | pitch 0.80 | `bm_daniel` | `Rohit` |
+| Adult woman | pitch 1.22 | `bf_emma` | `Divya` |
+
+Detection is keyword-based in English + Hindi (`Dada`, `दादी`, `छोटू`,
+`दूल्हा`, `दुल्हन`…), so generated, uploaded, and Room-4B-style stories all
+get distinct voices per character. Every AI story is prompted to speak with at
+least narrator, me, them, one child, one elder, and the young married couple.
+Only four Hindi server voices exist, so elders share the family voice id;
+operators can bind distinct reference audio per id for fully distinct
+Chatterbox cloning (see the `tts_server.py` sketch below).
+
+## Long stories (200–2000 messages)
+
+Short stories generate in one Groq pass (~15–30 messages). Long (~200–350)
+and epic (1000–2000) sagas are written chapter by chapter — one 8192-token
+pass per chapter (~50–200 messages each) plus a finale pass — and stitched in
+`src/lib/story-length.ts` with global index offsets. A failed pass stops the
+loop early and the saga still ends with template branches, so long stories
+are always readable. The generator dialog shows per-chapter progress; epics
+take several minutes. Supabase saves in 300-row batches and the reader pages
+1000 rows at a time, so 1k+ sagas store and read fine.
+
 ## Why Chatterbox Multilingual (and not hosted HF inference)
 
 Evaluated 2026-10-16 from live model cards / pricing:

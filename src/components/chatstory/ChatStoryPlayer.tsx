@@ -19,6 +19,12 @@ import { useChatStoryTTS } from "@/hooks/useChatStoryTTS";
 import { useKokoroTTS } from "@/hooks/useKokoroTTS";
 import { pickDeviceVoice } from "@/lib/voice-selection";
 import {
+  ARCHETYPE_DEVICE_PREFS,
+  ARCHETYPE_KOKORO_VOICE,
+  ARCHETYPE_PROFILES,
+  detectVoiceArchetype,
+} from "@/lib/voice-cast";
+import {
   buildChatStorySpeechPayload,
   resolveChatStoryServerVoice,
   resolveChatStoryTTSLanguage,
@@ -100,7 +106,8 @@ type VoiceProfile = {
 };
 
 const VOICE_PROFILES: Record<string, VoiceProfile> = {
-  narrator: { voiceSlot: 0, pitch: 0.78, rateMultiplier: 0.92, volume: 0.9, gender: "neutral" },
+  // The narrator always speaks with a MAN's voice.
+  narrator: { ...ARCHETYPE_PROFILES.narrator },
   me: { voiceSlot: 1, pitch: 1.06, rateMultiplier: 1.02, volume: 1, gender: "neutral" },
   them: { voiceSlot: 2, pitch: 1.38, rateMultiplier: 1.08, volume: 1, gender: "female" },
   Asha: { voiceSlot: 2, pitch: 1.44, rateMultiplier: 1.08, volume: 1, gender: "female" },
@@ -108,17 +115,27 @@ const VOICE_PROFILES: Record<string, VoiceProfile> = {
   Echo: { voiceSlot: 4, pitch: 0.52, rateMultiplier: 0.82, volume: 0.86, gender: "neutral" },
 };
 
+/** Reader-seat device voices; the cast (child, elders, couple, adults) lives in voice-cast. */
+const READER_VOICE_PREFS: Record<NarrationLanguage, Record<string, string[]>> = {
+  en: {
+    me: ["Microsoft Andrew", "Microsoft Brian", "Daniel", "Alex", "Samantha"],
+  },
+  hi: {
+    me: ["Microsoft Madhur", "Microsoft Hemant", "Madhur"],
+  },
+};
+
 const VOICE_NAME_PREFERENCES: Record<NarrationLanguage, Record<string, string[]>> = {
   en: {
-    narrator: ["Microsoft Guy", "Microsoft Ryan", "Microsoft Andrew", "Daniel", "Alex"],
-    me: ["Microsoft Andrew", "Microsoft Brian", "Daniel", "Alex", "Samantha"],
+    ...ARCHETYPE_DEVICE_PREFS.en,
+    ...READER_VOICE_PREFS.en,
     Asha: ["Microsoft Aria", "Microsoft Jenny", "Samantha", "Ava"],
     Kabir: ["Microsoft Guy", "Microsoft Ryan", "Daniel", "Alex"],
     Echo: ["Microsoft Michelle", "Microsoft Sonia", "Samantha", "Ava"],
   },
   hi: {
-    narrator: ["Microsoft Madhur", "Microsoft Hemant", "Lekha"],
-    me: ["Microsoft Madhur", "Microsoft Hemant", "Madhur"],
+    ...ARCHETYPE_DEVICE_PREFS.hi,
+    ...READER_VOICE_PREFS.hi,
     Asha: ["Microsoft Swara", "Microsoft Neerja", "Lekha"],
     Kabir: ["Microsoft Madhur", "Microsoft Prabhat", "Hemant"],
     Echo: ["Microsoft Kalpana", "Microsoft Swara", "Lekha"],
@@ -156,9 +173,16 @@ function resolveVoiceProfile(speaker: string, story: ChatStory): VoiceProfile {
   const known = VOICE_PROFILES[key];
   if (known) return known;
 
+  // Story cast (child, old man/woman, young couple, adults) gets its own
+  // voice so every character in a story sounds distinct.
+  const archetype = detectVoiceArchetype(speaker);
+  if (archetype) return { ...ARCHETYPE_PROFILES[archetype] };
+
   const hash = characterHash(speaker);
-  const female = /\b(asha|she|her|girl|woman|female|mom|mother|sister)\b/i.test(speaker);
-  const male = /\b(kabir|he|him|boy|man|male|dad|father|brother)\b/i.test(speaker);
+  const female = /\b(asha|she|her|girl|woman|female|mom|mother|mummy|sister|daughter)\b/i.test(
+    speaker,
+  );
+  const male = /\b(kabir|he|him|boy|man|male|dad|papa|father|brother|uncle|son)\b/i.test(speaker);
   return {
     voiceSlot: hash,
     pitch: 0.82 + (hash % 7) * 0.09,
@@ -176,6 +200,8 @@ function resolveKokoroVoice(speaker: string, story: ChatStory, profile: VoicePro
     return KOKORO_STARRING_VOICES.me;
   if (normalized === "them" || normalized === story.them_name.trim().toLowerCase())
     return KOKORO_STARRING_VOICES.them;
+  const archetype = detectVoiceArchetype(speaker);
+  if (archetype) return ARCHETYPE_KOKORO_VOICE[archetype];
   const pool = KOKORO_VOICES[profile.gender];
   return pool[characterHash(speaker) % pool.length];
 }
@@ -186,11 +212,13 @@ function selectNarrationVoice(
   speaker: string,
   profile: VoiceProfile,
 ) {
+  const table = VOICE_NAME_PREFERENCES[language];
+  const archetype = detectVoiceArchetype(speaker);
   return pickDeviceVoice(voices, {
     language,
     gender: profile.gender,
     seed: profile.voiceSlot,
-    preferNames: VOICE_NAME_PREFERENCES[language][speaker],
+    preferNames: table[speaker] ?? (archetype ? table[archetype] : undefined),
   });
 }
 

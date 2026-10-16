@@ -16,6 +16,12 @@
  * pauses / whisper volume client-side (see `sanitizeTextForServerTTS` below).
  */
 
+import {
+  ARCHETYPE_SERVER_VOICE,
+  READER_SERVER_VOICES,
+  detectVoiceArchetype,
+} from "./voice-cast.ts";
+
 export type ChatStoryTTSLanguage = "hi" | "en";
 
 export const CHATSTORY_TTS_ENDPOINT = "/api/chatstory-speech";
@@ -63,12 +69,14 @@ export type ChatStoryVoiceGender = "female" | "male" | "neutral";
 
 /**
  * Stable server voice per character. Backends map these ids to real voices:
- * - Indic-Parler-TTS Hindi: Rohit (male) / Divya (female) / Aman (neutral)
+ * - Indic-Parler-TTS Hindi: Rohit (man) / Divya (woman) / Aman / Rani
  * - Chatterbox-Multilingual-hi: language_id="hi" + this id selects the
  *   reference / cloned voice slot operator-side.
  *
- * Starring seats stay fixed so narration is consistent across lines; unknown
- * speakers hash into a gendered pool so two characters rarely collide.
+ * Narrator is always the man voice (Rohit). Reader seats stay fixed; the
+ * story cast (child, elders, young couple, adults) maps to its own id so
+ * each character keeps one voice across lines. Unknown speakers hash into a
+ * gendered pool so two characters rarely collide.
  */
 const CHATSTORY_STARRING_VOICES = {
   narrator: "Rohit",
@@ -90,11 +98,13 @@ export function resolveChatStoryServerVoice(
   const normalized = speaker.trim().toLowerCase();
   if (normalized === "narrator") return CHATSTORY_STARRING_VOICES.narrator;
   if (normalized === "me" || normalized === storyNames.me_name.trim().toLowerCase()) {
-    return CHATSTORY_STARRING_VOICES.me;
+    return READER_SERVER_VOICES.me;
   }
   if (normalized === "them" || normalized === storyNames.them_name.trim().toLowerCase()) {
-    return CHATSTORY_STARRING_VOICES.them;
+    return READER_SERVER_VOICES.them;
   }
+  const archetype = detectVoiceArchetype(speaker);
+  if (archetype) return ARCHETYPE_SERVER_VOICE[archetype];
   const pool = CHATSTORY_HINDI_POOLS[gender] ?? CHATSTORY_HINDI_POOLS.neutral;
   return pool[characterHash(speaker) % pool.length];
 }
