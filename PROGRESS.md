@@ -179,3 +179,11 @@
 
 ### Phase 30: Boot splash de-catted
 - [x] Cold-start splash drops the lime-cat SVG + "server cat" copy for the brand loader (logo + lime bar, neutral status copy, retry kept) - **DONE**
+
+### Phase 31: Story Reactions & Haptic Feedback (components created, integration pending)
+- [x] Instagram-style StoryReactions component with 6 emoji bar (❤️ 😂 😮 😢 🔥 👏), animated slide-up, author reaction counts, quick reaction button (`src/components/story/StoryReactions.tsx`) - **DONE**
+- [x] Comprehensive haptics utility with 6 patterns (light/medium/heavy/success/error/selection) and specialized functions for all interactions (`src/lib/haptics.ts`) - **DONE**
+- [x] Story reactions library with React Query hooks, optimistic updates, real-time subscriptions, and aggregation functions (`src/lib/story-reactions.ts`) - **DONE**
+- [x] 6-week feature roadmap with 17 major features across engagement, monetization, growth, creator tools, and advanced features (`FEATURE_ROADMAP.md`) - **DONE**
+- [ ] Integration: Replace inline StoryViewer reactions with new StoryReactions component - **PENDING**
+- [ ] Integration: Add haptic feedback throughout app (buttons, sends, reactions, voice, story transitions) - **PENDING**
