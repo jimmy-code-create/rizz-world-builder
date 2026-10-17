@@ -1744,3 +1744,18 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 }
 [data-reduced-motion="true"] .badge-art-image,
 [data-reduced-motion="true"] .badge-art-image--float { animation: none !important; transition: none !important; }
+
+/* Game cards: covers drift slowly so the shelf feels alive (real gameplay
+   shows in the GAME BOT overlay; this is just the still). */
+@keyframes game-cover-drift {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.07) translateY(-2%); }
+}
+.game-cover-drift {
+  animation: game-cover-drift 7s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-cover-drift { animation: none !important; }
+}
+[data-reduced-motion="true"] .game-cover-drift { animation: none !important; }

@@ -20,6 +20,7 @@ import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
+import { GameOverlayHost } from "@/components/voice/GameOverlay";
 import { useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 
 function NotFoundComponent() {
@@ -266,6 +267,8 @@ function RootComponent() {
               <Outlet />
               <RizzCompanionLayer />
             </ReactorPeekProvider>
+            {/* GAME BOT overlay: games play over the app while you're in a call */}
+            <GameOverlayHost />
           </VoiceCallProvider>
           <Toaster />
         </ThemeProvider>

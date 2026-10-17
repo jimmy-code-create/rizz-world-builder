@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-17 — GAME BOT overlays: action & open-world games, rotate, real art
+
+### More games, fixed embeds
+- Fixed the two that refused to run: **Poxel.io** now points at its own site (the CrazyGames embed was dead) and **Slither.io** is gone — replaced by hosts that actually frame: **Diep.io**, **Zombs Royale**, **Venge.io**, **Ev.io** and **Kirka.io**.
+- New **Open World** shelf: **Minecraft Classic**, **Miniblox** (direct site), **Bloxd.io** and **Voxiom.io** — 22 games total across Action / Open World / 2 Player / Party / Creative / Puzzle.
+- **Smash Karts**, **Basketball Stars** and **Miniblox** moved off CrazyGames embeds to their standalone sites.
+
+### Games play as an overlay in GAME BOT, in the call
+- `GameOverlayHost` (mounted at the app root) shows a live game as a Discord-style overlay over the app whenever you're in a voice call and GAME BOT has a session — for **everyone in the channel**, no matter who launched.
+- Each person can minimize it to a floating pill, take it fullscreen, or rotate it; pause / resume / stop are shared. Late joiners sync via a `game-bot-request` broadcast.
+- Like music, games are call-only now — launching outside a call points you at a voice channel first (Games page links straight to Realms).
+- The VC gamepad button and GAME BOT tile open the Games menu instead of navigating away; the tile shows the live game's icon and state, and the MUSIC BOT tile opens the shared music sheet.
+
+### Rotate + chrome
+- The RIZZ browser grew a **rotate** button (a container-query 90° turn for portrait phones) with an orientation-lock attempt when fullscreen; fullscreen, pause, blocked-embed fallback and reload all stay.
+
+### Real art + lime theme
+- Cards carry the games' own cover art and icons (og:image / touch icon / favicon) with an emoji fallback and a slow drift animation; the shelf, the overlay and the Games page wear the lime + Bricolage RIZZ theme.
+
 ## 2026-10-17 — The games section plays ready-made games
 
 ### What the hub shows now

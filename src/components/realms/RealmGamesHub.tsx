@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
-import { ExternalLink, Gamepad2, Maximize2, Minimize2, Pause, Play, RotateCw, Search, X } from "lucide-react";
+import { Gamepad2, Play, Search, X, Pause } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
-import { useGameBot } from "@/lib/game-bot";
+import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
 import { GAME_CATEGORIES, GAME_LIBRARY, type GameEntry } from "@/lib/game-library";
-import { RizzBrowserView } from "@/components/voice/RizzBrowserView";
 
 type RealmGamesHubProps = {
   open: boolean;
@@ -17,55 +16,55 @@ type RealmGamesHubProps = {
   roomName?: string;
 };
 
+/** Real game logo (URL) with an emoji fallback. */
+function Logo({ icon, emoji, size = "h-7 w-7", text = "text-base" }: { icon?: string; emoji?: string; size?: string; text?: string }) {
+  const [broken, setBroken] = useState(false);
+  const isUrl = !!icon && /^https?:\/\//i.test(icon);
+  return (
+    <span className={`grid ${size} shrink-0 place-items-center overflow-hidden rounded-lg border border-primary/25 bg-primary/15`}>
+      {isUrl && !broken ? (
+        <img src={icon} alt="" loading="lazy" className="h-full w-full object-cover" onError={() => setBroken(true)} />
+      ) : (
+        <span className={`${text} leading-none`}>{emoji ?? "🎮"}</span>
+      )}
+    </span>
+  );
+}
+
 /**
- * Dedicated Games menu — one entry point for the realm voice bar, the VC
- * header and the Games page.
+ * The Games menu — one catalog shared by the realm voice bar, the VC view and
+ * (via the same GAME BOT store) the Games page.
  *
- * Every game is a ready-made third-party title that allows embedding, so it
- * launches in the RIZZ browser (cat mark + lime loader). Pause / resume / stop
- * go through the shared GAME BOT on `vc-game-bot:<roomId>`, so everyone in the
- * channel stays in sync.
+ * Games play as an overlay while you are in the voice call: tapping one
+ * launches it into GAME BOT for the whole channel, it appears over the app for
+ * everyone (minimizable, fullscreen, rotatable), and pause / resume / stop stay
+ * in sync — exactly like the music bot.
  */
 export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }: RealmGamesHubProps) {
   const voice = useVoiceCallContext();
   const gameBot = useGameBot(roomId, open);
-  const { state: bot } = gameBot;
+  const overlay = useGameOverlayUI();
+  const bot = gameBot.state;
 
   const [category, setCategory] = useState<"all" | GameEntry["category"]>("all");
   const [query, setQuery] = useState("");
-  const [fullscreen, setFullscreen] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
   const inThisCall = voice?.call?.channelId === roomId;
   const joining = voice?.busy ?? false;
 
-  const launch = (game: GameEntry) => {
+  const play = (game: GameEntry) => {
+    if (!inThisCall) {
+      toast.error("Join the voice channel first", {
+        description: "GAME BOT plays games with everyone in the call — like music.",
+      });
+      return;
+    }
     gameBot.launch(game);
-    setFullscreen(false);
-    setReloadKey((k) => k + 1);
-    toast.success(`Launched ${game.name} in GAME BOT`);
-  };
-
-  const pause = () => {
-    gameBot.pause();
-    toast.success("Game paused for everyone");
-  };
-
-  const resume = () => {
-    gameBot.resume();
-    setReloadKey((k) => k + 1);
-    toast.success("Game resumed");
-  };
-
-  const stop = () => {
-    gameBot.stop();
-    setFullscreen(false);
-    toast.success("GAME BOT stopped");
-  };
-
-  const reload = () => {
-    setReloadKey((k) => k + 1);
-    toast.success("Reloading game…");
+    overlay.expand();
+    onOpenChange(false);
+    toast.success(`${game.name} launched in GAME BOT`, {
+      description: `An overlay just popped for everyone in ${roomName ?? "the call"}.`,
+    });
   };
 
   const filtered = useMemo(
@@ -84,72 +83,84 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
   );
 
   return (
-    <>
-      <Sheet open={open && !fullscreen} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#0b0714] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
-        >
-          <SheetHeader className="pb-3 pt-2 text-left">
-            <SheetTitle className="flex items-center gap-2 font-display text-2xl">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Gamepad2 className="h-5 w-5" />
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="max-h-[88dvh] overflow-y-auto rounded-t-3xl border-primary/20 bg-[#0b0714] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+      >
+        <SheetHeader className="pb-3 pt-2 text-left">
+          <SheetTitle className="flex items-center gap-2 font-display text-2xl tracking-tight text-[#f2efe6]">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Gamepad2 className="h-5 w-5" />
+            </span>
+            Games
+            {roomName && (
+              <span className="ml-1 truncate text-xs font-normal text-muted-foreground">
+                · {roomName}
               </span>
-              Games
-              {roomName && (
-                <span className="ml-1 truncate text-xs font-normal text-muted-foreground">
-                  · {roomName}
-                </span>
-              )}
-            </SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              Ready-made games — pick one and it launches in GAME BOT for everyone in this voice
-              channel, with pause / resume in sync and Discord-style fullscreen.
-            </p>
-          </SheetHeader>
+            )}
+          </SheetTitle>
+          <p className="text-xs text-muted-foreground">
+            Ready-made games that play <span className="font-semibold text-primary">as an overlay</span>{" "}
+            in the call — everyone in the channel joins the same GAME BOT session, with pause,
+            resume, fullscreen and rotate.
+          </p>
+        </SheetHeader>
 
-          {/* Join prompt when browsing from the realm without being in the call */}
-          {!inThisCall && (
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/[0.07] p-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold">Play together in voice</p>
-                <p className="text-xs text-muted-foreground">
-                  Join the channel so pause, resume and the game state stay in sync for everyone.
-                </p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                disabled={joining || !voice}
-                onClick={() =>
-                  voice?.joinChannel({ id: roomId, realmId, name: roomName ?? "Voice channel" })
-                }
-                className="h-10 shrink-0 gap-2 bg-primary px-4 text-primary-foreground"
-              >
-                <Play className="h-4 w-4" /> {joining ? "Joining…" : "Join VC"}
-              </Button>
+        {/* Join prompt when browsing from the realm without being in the call */}
+        {!inThisCall && (
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/[0.07] p-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-bold">Join voice to play</p>
+              <p className="text-xs text-muted-foreground">
+                GAME BOT runs inside the call so everyone plays the same session — just like MUSIC BOT.
+              </p>
             </div>
-          )}
+            <Button
+              type="button"
+              size="sm"
+              disabled={joining || !voice}
+              onClick={() =>
+                voice?.joinChannel({ id: roomId, realmId, name: roomName ?? "Voice channel" })
+              }
+              className="h-10 shrink-0 gap-2 bg-primary px-4 font-bold text-primary-foreground"
+            >
+              <Play className="h-4 w-4" /> {joining ? "Joining…" : "Join voice"}
+            </Button>
+          </div>
+        )}
 
-          {/* Active GAME BOT */}
-          {bot.activeGame && (
-            <div className="mb-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.12] to-primary/[0.05] p-4">
+        {/* Active GAME BOT */}
+        {bot.activeGame && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.12] to-primary/[0.04]">
+            {bot.activeGame.cover && (
+              <div className="relative h-24 w-full overflow-hidden">
+                <img
+                  src={bot.activeGame.cover}
+                  alt=""
+                  className="game-cover-drift h-full w-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0714] via-[#0b0714]/30 to-transparent" />
+              </div>
+            )}
+            <div className="p-4 pt-3">
               <div className="mb-3 flex items-center gap-3">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/10 bg-black/40 text-2xl">
-                  {bot.activeGame.icon}
-                </span>
+                <Logo icon={bot.activeGame.icon} emoji={bot.activeGame.emoji} size="h-11 w-11" text="text-xl" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">{bot.activeGame.name}</p>
+                  <p className="truncate font-display text-sm font-bold">{bot.activeGame.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {bot.isPaused ? "⏸ Paused" : bot.isPlaying ? "▶ Playing now" : "Ready"} ·{" "}
-                    {bot.activeGame.players} players
+                    <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle ${bot.isPaused ? "bg-amber-300" : "bg-primary"}`} />
+                    {bot.isPaused ? "Paused" : "Playing"} · GAME BOT · {bot.activeGame.players} players
                   </p>
                 </div>
                 {bot.isPaused ? (
                   <Button
                     type="button"
                     size="icon"
-                    onClick={resume}
+                    onClick={() => gameBot.resume()}
                     aria-label="Resume game"
                     className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
                   >
@@ -159,7 +170,7 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
                   <Button
                     type="button"
                     size="icon"
-                    onClick={pause}
+                    onClick={() => gameBot.pause()}
                     aria-label="Pause game"
                     className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
                   >
@@ -167,216 +178,125 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
                   </Button>
                 )}
               </div>
-
-              <div className="mb-3 flex gap-2">
+              <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  onClick={() => setFullscreen(true)}
-                  className="h-9 flex-1 gap-1.5 border-white/10 bg-white/5 text-xs"
+                  onClick={() => {
+                    overlay.expand();
+                    onOpenChange(false);
+                  }}
+                  className="h-9 flex-1 gap-1.5 bg-primary/15 font-semibold text-primary hover:bg-primary/25"
                 >
-                  <Maximize2 className="h-3.5 w-3.5" /> Stage
+                  Show game
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={reload}
-                  className="h-9 flex-1 gap-1.5 border-white/10 bg-white/5 text-xs"
-                >
-                  <RotateCw className="h-3.5 w-3.5" /> Reload
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    bot.activeGame &&
-                    window.open(bot.activeGame.url, "_blank", "noopener,noreferrer")
-                  }
-                  className="h-9 flex-1 gap-1.5 border-white/10 bg-white/5 text-xs"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" /> New tab
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={stop}
-                  className="h-9 gap-1.5 border-destructive/30 bg-destructive/10 text-xs text-destructive hover:bg-destructive/20"
+                  onClick={() => {
+                    gameBot.stop();
+                    toast.success("GAME BOT stopped");
+                  }}
+                  className="h-9 flex-1 gap-1.5 border-destructive/30 bg-destructive/10 text-xs text-destructive hover:bg-destructive/20"
                 >
                   <X className="h-3.5 w-3.5" /> Stop
                 </Button>
               </div>
-
-              <div key={reloadKey}>
-                <RizzBrowserView
-                  title={bot.activeGame.name}
-                  icon={bot.activeGame.icon}
-                  url={bot.activeGame.url}
-                  paused={bot.isPaused}
-                  onReload={reload}
-                  compact
-                />
-              </div>
             </div>
-          )}
-
-          {/* Search */}
-          <div className="relative mb-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search games…"
-              aria-label="Search games"
-              className="glass h-11 border-white/10 pl-9"
-            />
           </div>
+        )}
 
-          {/* Categories */}
-          <div className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1">
-            {GAME_CATEGORIES.map((c) => (
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search games…"
+            aria-label="Search games"
+            className="glass h-11 border-primary/15 pl-9 focus-visible:ring-primary/40"
+          />
+        </div>
+
+        {/* Categories */}
+        <div className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1">
+          {GAME_CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategory(c.id)}
+              className={`shrink-0 rounded-full px-4 py-2 font-display text-sm font-semibold tracking-tight transition-colors ${
+                category === c.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-white/5 text-muted-foreground hover:bg-white/10"
+              }`}
+            >
+              <span className="mr-1.5">{c.icon}</span>
+              {c.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Grid */}
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-primary/80">
+          {filtered.length} games · tap to launch in GAME BOT
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {filtered.map((g) => {
+            const active = bot.activeGame?.id === g.id;
+            return (
               <button
-                key={c.id}
+                key={g.id}
                 type="button"
-                onClick={() => setCategory(c.id)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  category === c.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                onClick={() => play(g)}
+                className={`group relative overflow-hidden rounded-2xl border bg-[#121216] text-left transition-all active:scale-[0.98] ${
+                  active ? "border-primary/70 ring-2 ring-primary/40" : "border-white/10 hover:border-primary/50"
                 }`}
               >
-                <span className="mr-1.5">{c.icon}</span>
-                {c.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Grid */}
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            {filtered.length} games · tap to launch in GAME BOT
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {filtered.map((g) => {
-              const active = bot.activeGame?.id === g.id;
-              return (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => launch(g)}
-                  className={`relative rounded-2xl border bg-gradient-to-br p-4 text-left transition-all active:scale-[0.98] ${g.borderColor} ${g.color} ${
-                    active ? "ring-2 ring-primary/50" : "hover:ring-2 hover:ring-primary/20"
-                  }`}
-                >
+                <div className="relative h-24 w-full overflow-hidden">
+                  {g.cover ? (
+                    <img
+                      src={g.cover}
+                      alt=""
+                      loading="lazy"
+                      className="game-cover-drift h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="game-cover-drift grid h-full w-full place-items-center bg-gradient-to-br from-primary/20 via-[#121216] to-primary/5">
+                      <Logo icon={g.icon} emoji={g.emoji} size="h-12 w-12" text="text-2xl" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#121216] via-[#121216]/25 to-transparent" />
+                  <span className="absolute bottom-1.5 left-2 grid h-7 w-7 place-items-center overflow-hidden rounded-lg border border-primary/30 bg-[#0b0714]/85">
+                    <Logo icon={g.icon} emoji={g.emoji} size="h-7 w-7" />
+                  </span>
                   {active && (
-                    <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary-foreground">
+                    <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-wider text-primary-foreground">
                       {bot.isPaused ? "Paused" : "Live"}
                     </span>
                   )}
-                  <span className="text-4xl">{g.icon}</span>
-                  <p className="mt-2 text-sm font-bold">{g.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{g.players} players</p>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground/80">
+                </div>
+                <div className="p-3 pt-2">
+                  <p className="truncate font-display text-sm font-bold tracking-tight">{g.name}</p>
+                  <p className="text-[10px] font-semibold text-primary/80">{g.players} players</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground/80">
                     {g.description}
                   </p>
-                </button>
-              );
-            })}
-          </div>
-          {filtered.length === 0 && (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No games match “{query}”.
-            </p>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Fullscreen GAME BOT stage (Discord-style takeover) */}
-      {fullscreen && bot.activeGame && (
-        <div className="fixed inset-0 z-[140] flex flex-col bg-[#0b0714]">
-          <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-xl">
-              {bot.activeGame.icon}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-base font-bold">{bot.activeGame.name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                GAME BOT · {bot.isPaused ? "Paused" : "Playing"} · {roomName ?? "Voice channel"}
-              </p>
-            </div>
-            {bot.isPaused ? (
-              <Button type="button" size="sm" onClick={resume} className="h-10 gap-2 bg-primary">
-                <Play className="h-4 w-4" /> Resume
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={pause}
-                className="h-10 gap-2 border-white/10"
-              >
-                <Pause className="h-4 w-4" /> Pause
-              </Button>
-            )}
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => setFullscreen(false)}
-              aria-label="Exit fullscreen stage"
-              className="h-10 w-10 shrink-0 border-white/10"
-            >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <div key={`fs-${reloadKey}`}>
-              <RizzBrowserView
-                title={bot.activeGame.name}
-                icon={bot.activeGame.icon}
-                url={bot.activeGame.url}
-                paused={bot.isPaused}
-                onReload={reload}
-              />
-            </div>
-            <div className="mx-auto mt-3 flex max-w-lg gap-2 pb-[max(env(safe-area-inset-bottom),1rem)]">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={reload}
-                className="h-10 flex-1 gap-2 border-white/10"
-              >
-                <RotateCw className="h-4 w-4" /> Reload
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  bot.activeGame &&
-                  window.open(bot.activeGame.url, "_blank", "noopener,noreferrer")
-                }
-                className="h-10 flex-1 gap-2 border-white/10"
-              >
-                <ExternalLink className="h-4 w-4" /> New tab
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={stop}
-                className="h-10 flex-1 gap-2 border-destructive/30 text-destructive"
-              >
-                <X className="h-4 w-4" /> Stop
-              </Button>
-            </div>
-          </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
-    </>
+        {filtered.length === 0 && (
+          <p className="py-10 text-center font-display text-sm text-muted-foreground">
+            No games match “{query}”.
+          </p>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }

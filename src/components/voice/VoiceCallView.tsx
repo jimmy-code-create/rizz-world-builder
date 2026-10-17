@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
-import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
+import { useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -20,7 +19,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MusicSheet } from "@/components/chat/MusicSheet";
+import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
+import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
+import { useGameBot } from "@/lib/game-bot";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
 import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusDot";
@@ -195,13 +196,16 @@ export function VoiceCallView() {
 
   // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
   const musicBot = useMusicBotInCall();
+  // Shared GAME BOT: the VC tile reflects the live session and launches happen
+  // through the Games menu (overlay plays over the call).
+  const gameBot = useGameBot(call?.channelId);
 
-  const nav = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   // Immersive = game as the background with the voice dock floating over it.
   // Toggling it off keeps the game open as a side panel (desktop only).
@@ -279,12 +283,7 @@ export function VoiceCallView() {
 
   const playing = panelOpen && !!roomActivity.activity;
   const gameEntry = roomActivity.activity ? getGame(roomActivity.activity.gameId) : null;
-  const openGamesHub = () => {
-    // The hub is a page, so the call view has to step aside first — the call
-    // itself keeps running (it is owned by the provider, not by this view).
-    closeView();
-    void nav({ to: "/games" });
-  };
+  const liveGame = gameBot.state.activeGame;
 
   if (!call || !viewOpen) return null;
 
@@ -345,10 +344,10 @@ export function VoiceCallView() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Games hub"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${panelOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={openGamesHub}
-            title="Games hub"
+            aria-label="Games menu"
+            className={`glass h-11 w-11 shrink-0 border-white/10 ${gamesOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
+            onClick={() => setGamesOpen(true)}
+            title="Games"
           >
             <Gamepad2 className="h-5 w-5" />
           </Button>
@@ -571,28 +570,46 @@ export function VoiceCallView() {
               </button>
             )}
 
-            {/* GAME BOT: the hub's face inside the call. One tap opens /games,
-                where launching a game makes it live for the whole room. */}
+            {/* GAME BOT: ready-made games that play as an overlay over the call. */}
             <button
               type="button"
-              onClick={openGamesHub}
-              aria-label="Open the Games hub"
+              onClick={() => setGamesOpen(true)}
+              aria-label="Open the Games menu"
               className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
             >
               <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                {roomActivity.activity ? "Live" : "In call"}
+                {liveGame
+                  ? gameBot.state.isPaused
+                    ? "Paused"
+                    : "Live"
+                  : roomActivity.activity
+                    ? "Live"
+                    : "In call"}
               </span>
               <Avatar className="h-16 w-16">
                 <AvatarFallback className="bg-primary/25 text-primary">
-                  <Gamepad2 className="h-6 w-6" aria-hidden="true" />
+                  {liveGame ? (
+                    <img
+                      src={liveGame.icon}
+                      alt=""
+                      className="h-16 w-16 rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <Gamepad2 className="h-6 w-6" aria-hidden="true" />
+                  )}
                 </AvatarFallback>
               </Avatar>
               <span className="min-w-0 px-1">
                 <span className="block truncate text-xs font-semibold">GAME BOT</span>
                 <span className="block truncate text-[11px] text-muted-foreground">
-                  {roomActivity.activity
-                    ? `${roomActivity.activity.gameName} — tap to join`
-                    : "Tap to open the Games hub"}
+                  {liveGame
+                    ? `${liveGame.name} — tap to join`
+                    : roomActivity.activity
+                      ? `${roomActivity.activity.gameName} — tap to join`
+                      : "Tap to pick a game"}
                 </span>
               </span>
             </button>
@@ -734,26 +751,22 @@ export function VoiceCallView() {
           peerAudio={peerAudio}
         />
 
-        <MusicSheet
+        {/* Music menu — the shared MUSIC BOT sheet, same one the realm voice bar opens */}
+        <RealmMusicHub
           open={musicOpen}
           onOpenChange={setMusicOpen}
           realmId={call.realmId}
           roomId={call.channelId}
-          nowPlaying={
-            musicBot.enabled
-              ? {
-                  title: musicBot.track?.title ?? null,
-                  artist: musicBot.track?.artist ?? null,
-                  artworkUrl: musicBot.track?.artwork_url ?? null,
-                  singing: musicBot.singing,
-                  blocked: musicBot.blocked,
-                  canToggle: !!musicBot.track?.preview_url,
-                  note: musicBot.note ?? null,
-                }
-              : null
-          }
-          onToggleNowPlaying={() => musicBotControls.toggle()}
-          onRetryNowPlaying={() => musicBotControls.retry()}
+          roomName={call.channelName}
+        />
+
+        {/* Games menu — ready-made games launch into the GAME BOT overlay */}
+        <RealmGamesHub
+          open={gamesOpen}
+          onOpenChange={setGamesOpen}
+          realmId={call.realmId}
+          roomId={call.channelId}
+          roomName={call.channelName}
         />
 
         {/* Host Leave Confirmation Dialog */}        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
