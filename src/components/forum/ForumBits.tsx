@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Lock, Pin, Archive } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BadgeChip } from "@/components/BadgeChip";
+import { BadgeRow } from "@/components/BadgeChip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { forumRoleColor, readableInk, withAlpha } from "@/lib/forum-content";
@@ -158,10 +158,8 @@ export function AuthorLine({
         ) : null}
       </div>
       {badges.length > 0 ? (
-        <div className="ml-1 flex shrink-0 items-center gap-1">
-          {badges.slice(0, 3).map((badge) => (
-            <BadgeChip key={badge.id} badge={badge} size="sm" />
-          ))}
+        <div className="ml-1 shrink-0">
+          <BadgeRow badges={badges} max={3} size="sm" />
         </div>
       ) : null}
       {trailing ? <div className="ml-auto shrink-0">{trailing}</div> : null}

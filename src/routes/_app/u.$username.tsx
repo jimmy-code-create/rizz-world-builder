@@ -433,7 +433,7 @@ function ProfilePage() {
 
       {badges.data && badges.data.length > 0 && (
         <div className="px-1 md:px-2 mt-4">
-          <BadgeRow badges={badges.data} max={8} />
+          <BadgeRow badges={badges.data} max={5} />
         </div>
       )}
 

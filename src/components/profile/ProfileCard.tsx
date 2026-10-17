@@ -129,9 +129,9 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           description: b.description ?? "",
           earnedAt: typeof b.awarded_at === "string" ? b.awarded_at : null,
         }));
-        // Badge set v2: identity-verified = the "no-cap" badge,
-        // never a profiles column.
-        const isVerified = earnedBadges.some((b) => b.slug === "no-cap");
+        // Keep verification sourced from earned badge rows, including the
+        // legacy slug while accounts migrate to the 12-badge set.
+        const isVerified = earnedBadges.some((b) => b.slug === "verified" || b.slug === "no-cap");
         return {
           deleted: false,
           id: String(p.id ?? userId),
@@ -257,8 +257,8 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
       })
       .filter(Boolean) as CardBadge[]);
   } catch { /* badges are best-effort */ }
-  // Badge set v2: identity-verified = the "no-cap" badge.
-  const verified = badges.some((b) => b.slug === "no-cap");
+  // Preserve legacy verification while supporting the new admin-granted slug.
+  const verified = badges.some((b) => b.slug === "verified" || b.slug === "no-cap");
 
   return {
     deleted: false,
@@ -299,7 +299,7 @@ function deletedCard(userId: string): CardData {
 /**
  * ONE shared <ProfileCard userId>. Tall banner with a fade into the card,
  * accent-ringed avatar + realtime presence dot, handle/pronouns/custom status,
- * proof-of-life badges (4 icon pills + a sheet with the full story), bio with
+ * proof-of-life badges (up to 5 icon pills + a sheet with the full story), bio with
  * tappable mentions and links, member-since, the realm section when a realm is
  * known, formatted stats — with tappable follower lists — mutuals, Message /
  * Follow / Call, Block-Report-Mute in the menu and a real View-full-profile
@@ -530,11 +530,10 @@ export function ProfileCard({
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  // Badge set v2: exactly the 5 canonical badges, in set order. Synthetic
-  // entries (verified/top-10/early) are gone — rank and verification show
-  // next to the name instead.
+  // Show earned badges in the new 12-badge order, followed by preserved
+  // legacy awards while the backend catalog migrates.
   const computedBadges: CardBadge[] = canonBadges(d.badges).slice(0, 24);
-  const badgePreview = computedBadges.slice(0, 4);
+  const badgePreview = computedBadges.slice(0, 5);
   const badgeOverflow = computedBadges.length - badgePreview.length;
 
   const realmRoleValue = realmRow.data?.role ?? realmRole ?? null;

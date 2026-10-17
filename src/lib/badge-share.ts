@@ -1,27 +1,27 @@
 /**
- * Branded badge share images: a 1080x1350 PNG drawn on canvas in the app's
- * own style (near-black, lime accents, tier glow, app fonts, avatar + name).
- * Mobile uses the Web Share API with the file attached; otherwise it downloads.
+ * Premium, locally-rendered badge share cards. Canvas keeps this private,
+ * instant, and free of image-generation API calls; it produces a portrait PNG
+ * sized for Instagram stories and direct-message sharing.
  */
-
 export type ShareBadgeInput = {
   badgeName: string;
   flavor: string;
   slug: string;
   tier: string;
-  /** Tier glow color, e.g. "#ff4d6d". */
   glow: string;
   unlockedAt: string | null;
+  earned?: boolean;
   displayName: string;
   username: string;
   avatarUrl: string | null;
+  artUrl?: string;
 };
 
 const W = 1080;
 const H = 1350;
-const CREAM = "#f2efe6";
-const MUTED = "#8A8A8E";
-const INK = "#0B0B0C";
+const CREAM = "#f4f3ee";
+const MUTED = "#a0a1a8";
+const INK = "#080a0e";
 const LIME = "#c8ff3d";
 const DISPLAY = '"Bricolage Grotesque", sans-serif';
 const SANS = '"Instrument Sans", sans-serif';
@@ -43,7 +43,14 @@ function loadImage(src: string, crossOrigin?: string): Promise<HTMLImageElement>
   });
 }
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -62,24 +69,47 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
     if (ctx.measureText(trial).width > maxWidth && line) {
       lines.push(line);
       line = word;
-    } else {
-      line = trial;
-    }
+    } else line = trial;
   }
   if (line) lines.push(line);
-  return lines.slice(0, 3);
+  return lines.slice(0, 2);
 }
 
-function fitFont(ctx: CanvasRenderingContext2D, text: string, base: number, family: string, weight: number, maxWidth: number) {
+function fitFont(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  base: number,
+  family: string,
+  weight: number,
+  maxWidth: number,
+) {
   let size = base;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  while (size > 28) {
+  while (size > 24) {
     ctx.font = `${weight} ${size}px ${family}`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 4;
   }
   return size;
+}
+
+function drawPill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+) {
+  ctx.save();
+  ctx.fillStyle = `${color}18`;
+  ctx.strokeStyle = `${color}88`;
+  ctx.lineWidth = 2;
+  roundRectPath(ctx, x, y, width, height, height / 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> {
@@ -90,7 +120,7 @@ export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> 
       document.fonts.load(`700 48px ${SANS}`),
     ]);
   } catch {
-    /* system fonts are an acceptable fallback */
+    // System fonts are a good fallback if the app font has not loaded yet.
   }
 
   const canvas = document.createElement("canvas");
@@ -99,96 +129,167 @@ export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas isn't available here.");
 
-  // Backdrop + lime aura + card frame.
-  ctx.fillStyle = INK;
+  // Deep ink backdrop with a slow, polished tier-colored light bloom.
+  const backdrop = ctx.createLinearGradient(0, 0, W, H);
+  backdrop.addColorStop(0, "#080a0e");
+  backdrop.addColorStop(0.54, "#11141b");
+  backdrop.addColorStop(1, "#08090c");
+  ctx.fillStyle = backdrop;
   ctx.fillRect(0, 0, W, H);
-  const aura = ctx.createRadialGradient(W / 2, 200, 40, W / 2, 200, 560);
-  aura.addColorStop(0, "rgba(200,255,61,0.14)");
-  aura.addColorStop(1, "rgba(200,255,61,0)");
-  ctx.fillStyle = aura;
+  const bloom = ctx.createRadialGradient(W / 2, 405, 20, W / 2, 405, 540);
+  bloom.addColorStop(0, `${input.glow}3b`);
+  bloom.addColorStop(0.45, `${input.glow}16`);
+  bloom.addColorStop(1, `${input.glow}00`);
+  ctx.fillStyle = bloom;
   ctx.fillRect(0, 0, W, H);
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#262629";
-  roundRectPath(ctx, 48, 48, W - 96, H - 96, 48);
+
+  // Subtle technical grid and floating specks add depth without fighting text.
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.025)";
+  ctx.lineWidth = 1;
+  for (let x = 104; x < W; x += 72) {
+    ctx.beginPath();
+    ctx.moveTo(x, 80);
+    ctx.lineTo(x, H - 80);
+    ctx.stroke();
+  }
+  for (let y = 104; y < H; y += 72) {
+    ctx.beginPath();
+    ctx.moveTo(80, y);
+    ctx.lineTo(W - 80, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+  for (const [x, y, r] of [
+    [153, 313, 3],
+    [899, 267, 2],
+    [923, 574, 3],
+    [171, 634, 2],
+    [861, 1007, 2],
+  ] as const) {
+    ctx.fillStyle = `${input.glow}b0`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Fine double frame.
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.13)";
+  roundRectPath(ctx, 42, 42, W - 84, H - 84, 44);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  roundRectPath(ctx, 55, 55, W - 110, H - 110, 36);
   ctx.stroke();
 
-  // Wordmark.
-  ctx.fillStyle = CREAM;
-  fitFont(ctx, "RIZZ", 64, DISPLAY, 700, 400);
-  ctx.fillText("RIZZ", W / 2, 168);
+  // Header lockup.
+  ctx.textAlign = "left";
+  ctx.fillStyle = LIME;
+  ctx.font = `700 42px ${DISPLAY}`;
+  ctx.fillText("RIZZ", 102, 138);
+  ctx.fillStyle = MUTED;
+  ctx.font = `700 20px ${SANS}`;
+  ctx.fillText("THE BADGE DROP", 106, 171);
+  drawPill(ctx, 726, 102, 252, 54, input.glow);
+  ctx.textAlign = "center";
+  ctx.fillStyle = input.glow;
+  ctx.font = `700 19px ${SANS}`;
+  ctx.fillText("OFFICIAL COLLECTION", 852, 137);
 
-  // Badge art: rasterize the live on-screen SVG so the PNG shows the exact
-  // app artwork (with its tier glow), never a generic icon.
-  const artBox = 340;
-  const artX = W / 2 - artBox / 2;
-  const artY = 300;
+  // Layered medallion mount.
+  const cx = W / 2;
+  const cy = 430;
+  ctx.save();
+  ctx.shadowColor = `${input.glow}66`;
+  ctx.shadowBlur = 64;
+  ctx.fillStyle = "#0b0d12";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 212, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = `${input.glow}88`;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 212, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.24)";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 195, 0, Math.PI * 2);
+  ctx.stroke();
+  const mount = ctx.createRadialGradient(cx - 45, cy - 65, 10, cx, cy, 187);
+  mount.addColorStop(0, `${input.glow}20`);
+  mount.addColorStop(1, "#0b0d12");
+  ctx.fillStyle = mount;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 184, 0, Math.PI * 2);
+  ctx.fill();
+
   let drewArt = false;
+  const artUrl = input.artUrl ?? `/badges/${input.slug}.png`;
   try {
-    const node = document.querySelector("[data-badge-art] svg") as SVGSVGElement | null;
-    if (node) {
-      const xml = new XMLSerializer().serializeToString(node);
-      const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-      try {
-        const img = await loadImage(url);
-        ctx.save();
-        ctx.shadowColor = input.glow;
-        ctx.shadowBlur = 90;
-        ctx.drawImage(img, artX, artY, artBox, artBox);
-        ctx.restore();
-        drewArt = true;
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    }
+    const art = await loadImage(artUrl);
+    ctx.save();
+    ctx.shadowColor = `${input.glow}a0`;
+    ctx.shadowBlur = 40;
+    ctx.drawImage(art, cx - 174, cy - 174, 348, 348);
+    ctx.restore();
+    drewArt = true;
   } catch {
-    /* fall through to the glow initial */
+    // A missing art file never prevents sharing; draw a clean monogram medallion.
   }
   if (!drewArt) {
-    ctx.save();
-    ctx.shadowColor = input.glow;
-    ctx.shadowBlur = 80;
     ctx.fillStyle = input.glow;
     ctx.beginPath();
-    ctx.arc(W / 2, artY + artBox / 2, 110, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 112, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
     ctx.fillStyle = INK;
-    fitFont(ctx, input.badgeName.charAt(0).toUpperCase(), 120, DISPLAY, 700, 200);
-    ctx.fillText(input.badgeName.charAt(0).toUpperCase(), W / 2, artY + artBox / 2 + 42);
+    fitFont(ctx, input.badgeName.charAt(0).toUpperCase(), 120, DISPLAY, 700, 180);
+    ctx.fillText(input.badgeName.charAt(0).toUpperCase(), cx, cy + 42);
   }
 
-  // Name, tier chip, flavor.
+  // Badge title and tier treatment.
   ctx.fillStyle = CREAM;
-  const nameSize = fitFont(ctx, input.badgeName, 96, DISPLAY, 700, 880);
-  ctx.fillText(input.badgeName, W / 2, 780);
+  fitFont(ctx, input.badgeName, 86, DISPLAY, 700, 880);
+  ctx.fillText(input.badgeName, cx, 720);
   const tierText = input.tier.toUpperCase();
-  ctx.font = `700 36px ${SANS}`;
-  const tierW = ctx.measureText(tierText).width + 64;
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = input.glow;
-  ctx.fillStyle = `${input.glow}22`;
-  roundRectPath(ctx, W / 2 - tierW / 2, 812, tierW, 64, 32);
-  ctx.fill();
-  ctx.stroke();
+  ctx.font = `700 22px ${SANS}`;
+  const tierWidth = Math.max(162, ctx.measureText(tierText).width + 58);
+  drawPill(ctx, cx - tierWidth / 2, 755, tierWidth, 52, input.glow);
   ctx.fillStyle = input.glow;
-  ctx.fillText(tierText, W / 2, 857);
+  ctx.textAlign = "center";
+  ctx.font = `700 20px ${SANS}`;
+  ctx.fillText(tierText, cx, 788);
 
   ctx.fillStyle = MUTED;
-  ctx.font = `400 44px ${SANS}`;
-  const flavorLines = wrapLines(ctx, input.flavor, 860);
-  flavorLines.forEach((line, i) => ctx.fillText(line, W / 2, 940 + i * 56));
+  ctx.font = `400 32px ${SANS}`;
+  wrapLines(ctx, input.flavor, 790).forEach((line, index) => {
+    ctx.fillText(line, cx, 865 + index * 43);
+  });
 
-  ctx.fillStyle = input.unlockedAt ? LIME : MUTED;
-  ctx.font = `400 38px ${SANS}`;
-  const unlockedText = input.unlockedAt
-    ? `Unlocked ${new Date(input.unlockedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}`
-    : "Locked — keep vibing";
-  ctx.fillText(unlockedText, W / 2, 1080);
+  // Earned / locked status is explicit, so the card never implies a locked badge is owned.
+  const isEarned = input.earned ?? Boolean(input.unlockedAt);
+  const statusText = isEarned
+    ? `UNLOCKED  ·  ${new Date(input.unlockedAt!).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}`
+    : "LOCKED  ·  KEEP SHOWING UP";
+  const statusColor = isEarned ? LIME : "#b0b2bb";
+  const statusWidth = 445;
+  drawPill(ctx, cx - statusWidth / 2, 954, statusWidth, 58, statusColor);
+  ctx.fillStyle = statusColor;
+  ctx.font = `700 20px ${SANS}`;
+  ctx.fillText(statusText, cx, 991);
 
-  // Owner row: avatar + name + handle.
-  const avatarCX = W / 2;
-  const avatarCY = 1160;
-  const avatarR = 44;
+  // Owner card.
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1.5;
+  roundRectPath(ctx, 106, 1062, 868, 148, 30);
+  ctx.fill();
+  ctx.stroke();
+  const avatarCX = 184;
+  const avatarCY = 1136;
+  const avatarR = 43;
   let drewAvatar = false;
   if (input.avatarUrl) {
     try {
@@ -212,37 +313,49 @@ export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> 
       ctx.restore();
       drewAvatar = true;
     } catch {
-      /* initial-letter fallback below */
+      /* Initial fallback below handles cross-origin avatars. */
     }
   }
   if (!drewAvatar) {
-    ctx.fillStyle = "#1c1c1f";
+    ctx.fillStyle = "#20242d";
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = CREAM;
-    fitFont(ctx, input.displayName.charAt(0).toUpperCase(), 52, DISPLAY, 700, 60);
-    ctx.fillText(input.displayName.charAt(0).toUpperCase(), avatarCX, avatarCY + 18);
+    fitFont(ctx, input.displayName.charAt(0).toUpperCase(), 48, DISPLAY, 700, 58);
+    ctx.fillText(input.displayName.charAt(0).toUpperCase(), avatarCX, avatarCY + 17);
   }
-  ctx.strokeStyle = "#2a2a2e";
+  ctx.strokeStyle = `${input.glow}99`;
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
+  ctx.arc(avatarCX, avatarCY, avatarR + 2, 0, Math.PI * 2);
   ctx.stroke();
-
+  ctx.textAlign = "left";
   ctx.fillStyle = CREAM;
-  fitFont(ctx, input.displayName, 48, SANS, 700, 700);
-  ctx.fillText(input.displayName, W / 2, 1245);
+  fitFont(ctx, input.displayName, 37, SANS, 700, 650);
+  ctx.fillText(input.displayName, 254, 1128);
   ctx.fillStyle = MUTED;
-  ctx.font = `400 38px ${SANS}`;
-  ctx.fillText(`@${input.username}`, W / 2, 1290);
+  ctx.font = `400 25px ${SANS}`;
+  ctx.fillText(`@${input.username}`, 254, 1172);
+  ctx.textAlign = "right";
+  ctx.fillStyle = input.glow;
+  ctx.font = `700 16px ${SANS}`;
+  ctx.fillText("RIZZ MEMBER", 936, 1170);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(244,243,238,0.48)";
+  ctx.font = `700 17px ${SANS}`;
+  ctx.fillText("SHOW UP. STAND OUT.", cx, 1270);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("Couldn't render the image.");
   return blob;
 }
 
-export async function shareBadgePng(blob: Blob, filename: string): Promise<"shared" | "downloaded"> {
+export async function shareBadgePng(
+  blob: Blob,
+  filename: string,
+): Promise<"shared" | "downloaded"> {
   const file = new File([blob], filename, { type: "image/png" });
   const nav = navigator as Navigator & {
     canShare?: (data: { files: File[] }) => boolean;

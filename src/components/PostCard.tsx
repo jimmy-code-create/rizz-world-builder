@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
-import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
+import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
@@ -1107,7 +1107,7 @@ function AuthorNameLink({ post }: { post: any }) {
       >
         <Nameplate name={name} slug={np?.slug} />
       </ProfilePreviewTrigger>
-      {post.author?.verified_creator && <VerifiedCreatorTag />}
+      {!!post.author?.badges?.length && <BadgeRow badges={post.author.badges} max={3} size="sm" />}
     </div>
   );
 }
