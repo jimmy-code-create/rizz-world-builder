@@ -1,6 +1,7 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
+  Activity,
   Bot,
   Home,
   Compass,
@@ -21,9 +22,12 @@ import {
   MoreHorizontal,
   MessageSquareText,
   Gamepad2,
+  ChevronRight,
+  Clock,
+  Pin,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -51,6 +55,8 @@ import { AppLoader } from "@/components/AppLoader";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
+import { useUnreadCounts } from "@/lib/use-unread-counts";
+import { loadPins, loadRecents, recordRecent, togglePin } from "@/lib/nav-shortcuts";
 
 // Secondary UI and the decorative background are split out of the initial shell
 // bundle: they load in their own chunks when first used instead of before paint.
@@ -89,8 +95,91 @@ const sideTabs = [
   { to: "/bots", label: "bots", icon: Bot },
 ] as const;
 
-// Keep Games in the desktop sidebar; omit it from the mobile More drawer.
-const moreSheetTabs = sideTabs.filter((tab) => tab.to !== "/games");
+/**
+ * Single source of truth for the More sheet: every screen it can show, so the
+ * grouped grid, the pinned chips and the recents row can never drift apart.
+ * The screen previously missed Games entirely, so it was unreachable on mobile.
+ */
+const destinations = {
+  "/pulse": { labelKey: "whats_happening", icon: Activity },
+  "/feed": { labelKey: "feed", icon: Home },
+  "/reels": { labelKey: "reels", icon: Film },
+  "/explore": { labelKey: "explore", icon: Compass },
+  "/groups": { labelKey: "groups", icon: Users },
+  "/realms": { labelKey: "realms", icon: Hash },
+  "/chat-stories": { labelKey: "chat_stories", icon: MessageSquareText },
+  "/dms": { labelKey: "messages", icon: MessageCircle },
+  "/games": { labelKey: "games", icon: Gamepad2 },
+  "/bots": { labelKey: "bots", icon: Bot },
+  "/drops": { labelKey: "bounties", icon: Coins },
+  "/leaderboard": { labelKey: "leaderboard", icon: Trophy },
+  "/notifications": { labelKey: "inbox", icon: Bell },
+  "/bookmarks": { labelKey: "saved", icon: Bookmark },
+  "/badges": { labelKey: "badges", icon: Trophy },
+  "/settings": { labelKey: "settings", icon: Settings },
+  "/settings/appearance": { labelKey: "theme", icon: Palette },
+  "/effects": { labelKey: "effects", icon: Palette },
+} as const;
+
+type DestKey = keyof typeof destinations;
+
+const destinationKeys = Object.keys(destinations) as DestKey[];
+
+/** The More sheet, grouped so a long feature list stays understandable. */
+const moreGroups: Array<{
+  titleKey: string;
+  items: Array<{ kind: "dest"; key: DestKey } | { kind: "action"; action: "new-post" }>;
+}> = [
+  {
+    titleKey: "create",
+    items: [
+      { kind: "action", action: "new-post" },
+      { kind: "dest", key: "/effects" },
+    ],
+  },
+  {
+    titleKey: "communities",
+    items: [
+      { kind: "dest", key: "/explore" },
+      { kind: "dest", key: "/groups" },
+      { kind: "dest", key: "/realms" },
+      { kind: "dest", key: "/chat-stories" },
+    ],
+  },
+  {
+    titleKey: "play",
+    items: [
+      { kind: "dest", key: "/games" },
+      { kind: "dest", key: "/bots" },
+      { kind: "dest", key: "/drops" },
+      { kind: "dest", key: "/leaderboard" },
+    ],
+  },
+  {
+    titleKey: "you",
+    items: [
+      { kind: "dest", key: "/notifications" },
+      { kind: "dest", key: "/bookmarks" },
+      { kind: "dest", key: "/badges" },
+      { kind: "dest", key: "/settings" },
+      { kind: "dest", key: "/settings/appearance" },
+    ],
+  },
+];
+
+const navItem = (active: boolean) =>
+  `flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+    active
+      ? "bg-primary text-primary-foreground font-semibold"
+      : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+  }`;
+
+const navTile = (active: boolean) =>
+  `flex min-h-[56px] flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+    active
+      ? "border-primary bg-primary/10 text-primary font-semibold"
+      : "border-border bg-card text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+  }`;
 
 const mobileTabs = [
   { to: "/feed", label: "feed", icon: Home },
@@ -108,6 +197,9 @@ export function AppShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
+  const [recentDests, setRecentDests] = useState<DestKey[]>([]);
+  const [pinnedDests, setPinnedDests] = useState<DestKey[]>([]);
+  const [editShortcuts, setEditShortcuts] = useState(false);
   const presence = useSelfPresence();
 
   const isConversation =
@@ -158,6 +250,25 @@ export function AppShell() {
     setMoreOpen(false);
   }, [path]);
 
+  // Load pinned / recent shortcuts on the client, then remember every visit.
+  useEffect(() => {
+    const known = destinationKeys as readonly string[];
+    setRecentDests(loadRecents().filter((key) => known.includes(key)) as DestKey[]);
+    setPinnedDests(loadPins().filter((key) => known.includes(key)) as DestKey[]);
+  }, []);
+
+  useEffect(() => {
+    const normalized = path.replace(/^\/_app/, "");
+    setRecentDests(recordRecent(normalized, destinationKeys) as DestKey[]);
+  }, [path]);
+
+  const handleTogglePin = (key: DestKey) => {
+    const next = togglePin(key);
+    setPinnedDests(
+      next.filter((item): item is DestKey => destinationKeys.includes(item as DestKey)),
+    );
+  };
+
   useEffect(() => {
     if (loading || profileError) return;
     if (!user) nav({ to: "/" });
@@ -174,50 +285,18 @@ export function AppShell() {
 
   const openSearch = () => window.dispatchEvent(new CustomEvent("rizz:command-palette"));
 
-  const unread = useQuery({
-    queryKey: ["unread-notifs", user?.id],
-    queryFn: async () => {
-      if (!user) return 0;
-      const { count, error } = await supabase
-        .from("notifications" as any)
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!user,
-    retry: false,
-    staleTime: 30_000,
-  });
-
-  const dmUnread = useQuery({
-    queryKey: ["unread-dms", user?.id],
-    queryFn: async () => {
-      if (!user) return 0;
-      const { count, error } = await supabase
-        .from("direct_messages" as any)
-        .select("id", { count: "exact", head: true })
-        .eq("recipient_id", user.id)
-        .eq("read", false);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!user,
-    retry: false,
-    staleTime: 30_000,
-  });
+  const counts = useUnreadCounts();
 
   const lastUnread = useRef<number | null>(null);
+  const notificationCount = counts.loaded ? counts.notifications : null;
   useEffect(() => {
-    const count = unread.data;
-    if (typeof count !== "number") return;
+    if (notificationCount === null) return;
     const previous = lastUnread.current;
-    lastUnread.current = count;
-    if (previous === null || count <= previous) return;
+    lastUnread.current = notificationCount;
+    if (previous === null || notificationCount <= previous) return;
     if (typeof document !== "undefined" && !document.hidden) return;
     playNotificationPing();
-  }, [unread.data]);
+  }, [notificationCount]);
 
   useEffect(() => {
     if (!user) return;
@@ -252,29 +331,15 @@ export function AppShell() {
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
-  const unreadCount = unread.data ?? 0;
+  const unreadCount = counts.notifications;
   const unreadBadge = unreadCount > 9 ? "9+" : String(unreadCount);
-  const dmUnreadCount = dmUnread.data ?? 0;
+  const dmUnreadCount = counts.messages;
   const dmBadge = dmUnreadCount > 9 ? "9+" : String(dmUnreadCount);
 
   const isActive = (to: string) =>
     path === to ||
     (to !== "/feed" && path.startsWith(to + "/")) ||
     (to === "/realms" && path.startsWith("/r/"));
-
-  const navItem = (active: boolean) =>
-    `flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-      active
-        ? "bg-primary text-primary-foreground font-semibold"
-        : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
-    }`;
-
-  const navTile = (active: boolean) =>
-    `flex min-h-[56px] flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-      active
-        ? "border-primary bg-primary/10 text-primary font-semibold"
-        : "border-border bg-card text-muted-foreground hover:bg-surface-2 hover:text-foreground"
-    }`;
 
   return (
     <div
@@ -316,6 +381,19 @@ export function AppShell() {
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto -mx-1 px-1">
             <button
               type="button"
+              onClick={openSearch}
+              className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-all hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Search className="h-5 w-5" />
+              <span className="font-medium text-sm flex-1 text-left">
+                {t("search_placeholder")}
+              </span>
+              <kbd className="rounded border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                ⌘K
+              </kbd>
+            </button>
+            <button
+              type="button"
               onClick={() => setStatusOpen(true)}
               className="flex min-h-[44px] items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground transition-all hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -329,6 +407,10 @@ export function AppShell() {
               <span className="font-medium text-sm flex-1 text-left">Status</span>
               <span className="text-xs">{statusShortLabel(presence.status)}</span>
             </button>
+            <Link to="/pulse" className={navItem(isActive("/pulse"))}>
+              <Activity className="h-5 w-5" />
+              <span className="flex-1 text-sm font-medium">{t("whats_happening")}</span>
+            </Link>
             {sideTabs.map((tab) => (
               <Link key={tab.to} to={tab.to} className={navItem(isActive(tab.to))}>
                 <tab.icon className="h-5 w-5" />
@@ -509,20 +591,68 @@ export function AppShell() {
       </Dialog>
 
       {/* Mobile "More" drawer */}
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+      <Sheet
+        open={moreOpen}
+        onOpenChange={(open) => {
+          setMoreOpen(open);
+          if (!open) setEditShortcuts(false);
+        }}
+      >
         <SheetContent
           side="bottom"
           className="border-border bg-card rounded-t-3xl max-h-[85dvh] overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
         >
-          <SheetHeader className="text-left pt-2">
-            <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
+          <SheetHeader className="text-left pt-2 pr-8">
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="font-display text-xl">{t("everything_on_rizz")}</SheetTitle>
+              <button
+                type="button"
+                onClick={() => setEditShortcuts((editing) => !editing)}
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {editShortcuts ? t("done") : t("edit")}
+              </button>
+            </div>
+            {editShortcuts && <p className="mt-1 text-xs text-muted-foreground">{t("pin_hint")}</p>}
           </SheetHeader>
+
+          {/* Search — opens the same command palette as ⌘K on desktop */}
+          <button
+            type="button"
+            onClick={() => {
+              setMoreOpen(false);
+              openSearch();
+            }}
+            className="mt-4 flex min-h-[48px] w-full items-center gap-2.5 rounded-2xl border border-border bg-surface-2/60 px-3.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{t("search_placeholder")}</span>
+          </button>
+
+          {/* What's happening */}
+          <Link
+            to="/pulse"
+            className="mt-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-primary/30 bg-primary/[0.07] p-3 transition-colors hover:bg-primary/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Activity className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">
+                {t("whats_happening")}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {t("pulse_subtitle")}
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Link>
 
           {/* Profile card */}
           <Link
             to="/u/$username"
             params={{ username: profile?.username ?? "" }}
-            className="mt-4 flex items-center gap-3 p-3 rounded-2xl border border-border bg-card/60 hover:bg-card transition-colors min-h-[56px]"
+            className="mt-3 flex items-center gap-3 p-3 rounded-2xl border border-border bg-card/60 hover:bg-card transition-colors min-h-[56px]"
           >
             <UserAvatar
               src={profile?.avatar_url}
@@ -540,45 +670,78 @@ export function AppShell() {
             </div>
           </Link>
 
-          {/* Grid of destinations */}
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            {moreSheetTabs.map((tab) => (
-              <Link key={tab.to} to={tab.to} className={navTile(isActive(tab.to))}>
-                <tab.icon className="h-5 w-5" />
-                <span className="text-[11px] font-medium text-center leading-tight">
-                  {t(tab.label)}
-                </span>
-              </Link>
-            ))}
-            <Link to="/notifications" className={`relative ${navTile(isActive("/notifications"))}`}>
-              <Bell className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("inbox")}</span>
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 rounded-full">
-                  {unreadBadge}
-                </span>
+          {/* Pinned + recently used shortcuts */}
+          {!editShortcuts && (pinnedDests.length > 0 || recentDests.length > 0) && (
+            <div className="mt-4 space-y-3">
+              {pinnedDests.length > 0 && (
+                <section>
+                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Pin className="h-3 w-3" /> {t("pinned")}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pinnedDests.map((key) => (
+                      <ShortcutChip key={key} destKey={key} />
+                    ))}
+                  </div>
+                </section>
               )}
-            </Link>
-            <Link to="/bookmarks" className={navTile(isActive("/bookmarks"))}>
-              <Bookmark className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("saved")}</span>
-            </Link>
-            <Link to="/effects" className={`relative ${navTile(isActive("/effects"))}`}>
-              <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("effects")}</span>
-              <span className="absolute top-1 right-1 text-[8px] font-bold border border-primary text-primary px-1 rounded-full">
-                {t("soon")}
-              </span>
-            </Link>
-            <Link to="/settings" className={navTile(path === "/settings")}>
-              <Settings className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("settings")}</span>
-            </Link>
-            <Link to="/settings/appearance" className={navTile(isActive("/settings/appearance"))}>
-              <Palette className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{t("theme")}</span>
-            </Link>
-          </div>
+              {recentDests.filter((key) => !pinnedDests.includes(key)).length > 0 && (
+                <section>
+                  <h3 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Clock className="h-3 w-3" /> {t("recent")}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {recentDests
+                      .filter((key) => !pinnedDests.includes(key))
+                      .map((key) => (
+                        <ShortcutChip key={key} destKey={key} />
+                      ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* Grouped destinations */}
+          {moreGroups.map((group) => (
+            <section key={group.titleKey} className="mt-4">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t(group.titleKey)}
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {group.items.map((item) =>
+                  item.kind === "action" ? (
+                    <button
+                      key={item.action}
+                      type="button"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setComposerOpen(true);
+                      }}
+                      className={navTile(false)}
+                    >
+                      <Plus className="h-5 w-5" />
+                      <span className="text-[11px] font-medium text-center leading-tight">
+                        {t("create_post")}
+                      </span>
+                    </button>
+                  ) : (
+                    <ShortcutTile
+                      key={item.key}
+                      destKey={item.key}
+                      active={isActive(item.key)}
+                      editing={editShortcuts}
+                      pinned={pinnedDests.includes(item.key)}
+                      badge={
+                        item.key === "/notifications" && unreadCount > 0 ? unreadBadge : undefined
+                      }
+                      onTogglePin={handleTogglePin}
+                    />
+                  ),
+                )}
+              </div>
+            </section>
+          ))}
 
           <button
             onClick={() => {
@@ -652,6 +815,80 @@ function NavBtn({
       >
         {label}
       </span>
+    </Link>
+  );
+}
+
+/**
+ * A More-sheet tile. In pin-edit mode it toggles its pin instead of
+ * navigating, so pinning never needs tiny nested buttons.
+ */
+function ShortcutTile({
+  destKey,
+  active,
+  editing,
+  pinned,
+  badge,
+  onTogglePin,
+}: {
+  destKey: DestKey;
+  active: boolean;
+  editing: boolean;
+  pinned: boolean;
+  badge?: string;
+  onTogglePin: (key: DestKey) => void;
+}) {
+  const { t } = useI18n();
+  const dest = destinations[destKey];
+  const className = `relative ${navTile(active)}`;
+  const content = (
+    <>
+      <dest.icon className="h-5 w-5" />
+      <span className="text-[11px] font-medium text-center leading-tight">{t(dest.labelKey)}</span>
+      {editing ? (
+        <Pin
+          className={`absolute right-1.5 top-1.5 h-3 w-3 ${
+            pinned ? "fill-primary text-primary" : "text-muted-foreground"
+          }`}
+        />
+      ) : badge ? (
+        <span className="absolute top-1.5 right-1.5 rounded-full bg-primary px-1.5 text-[9px] font-bold leading-4 text-primary-foreground">
+          {badge}
+        </span>
+      ) : destKey === "/effects" ? (
+        <span className="absolute top-1 right-1 rounded-full border border-primary px-1 text-[8px] font-bold text-primary">
+          {t("soon")}
+        </span>
+      ) : null}
+    </>
+  );
+  return editing ? (
+    <button
+      type="button"
+      onClick={() => onTogglePin(destKey)}
+      aria-pressed={pinned}
+      className={className}
+    >
+      {content}
+    </button>
+  ) : (
+    <Link to={destKey} className={className}>
+      {content}
+    </Link>
+  );
+}
+
+/** Compact chip for a pinned or recently visited destination. */
+function ShortcutChip({ destKey }: { destKey: DestKey }) {
+  const { t } = useI18n();
+  const dest = destinations[destKey];
+  return (
+    <Link
+      to={destKey}
+      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <dest.icon className="h-3.5 w-3.5 text-muted-foreground" />
+      {t(dest.labelKey)}
     </Link>
   );
 }

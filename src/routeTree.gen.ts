@@ -31,6 +31,7 @@ import { Route as AppGamesRouteImport } from './routes/_app/games'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppPulseRouteImport } from './routes/_app/pulse'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as ApiBotRouteImport } from './routes/api.bot'
@@ -170,6 +171,11 @@ const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPulseRoute = AppPulseRouteImport.update({
+  id: '/pulse',
+  path: '/pulse',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRealmsRoute = AppRealmsRouteImport.update({
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/pulse': typeof AppPulseRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -405,6 +412,7 @@ export interface FileRoutesByTo {
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
+  '/pulse': typeof AppPulseRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -461,6 +469,7 @@ export interface FileRoutesById {
   '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/pulse': typeof AppPulseRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -517,6 +526,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/pulse'
     | '/realms'
     | '/reels'
     | '/api/bot'
@@ -570,6 +580,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/leaderboard'
     | '/notifications'
+    | '/pulse'
     | '/realms'
     | '/reels'
     | '/api/bot'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/_app/groups'
     | '/_app/leaderboard'
     | '/_app/notifications'
+    | '/_app/pulse'
     | '/_app/realms'
     | '/_app/reels'
     | '/api/bot'
@@ -833,6 +845,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pulse': {
+      id: '/_app/pulse'
+      path: '/pulse'
+      fullPath: '/pulse'
+      preLoaderRoute: typeof AppPulseRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/realms': {
@@ -1083,6 +1102,7 @@ interface AppRouteChildren {
   AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppPulseRoute: typeof AppPulseRoute
   AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
   AppCallUserIdRoute: typeof AppCallUserIdRoute
@@ -1117,6 +1137,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppPulseRoute: AppPulseRoute,
   AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
   AppCallUserIdRoute: AppCallUserIdRoute,

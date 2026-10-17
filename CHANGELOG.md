@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-17 — Navigation & discovery: What's happening, grouped More sheet, pins and recents
+
+### What's happening (`/pulse`)
+- New **What's happening** page: unread DMs and notifications with one-tap **Continue**, **live voice rooms** across your realms (participant avatars, host, start time) with a **Join** button that deep-links straight to the channel (`/r/<slug>?room=<id>`), and your realm list for one-tap **Open**.
+- Useful empty states everywhere: "you're all caught up", "no live rooms" with a way into Realms, and a realm-discovery card when you haven't joined one yet. The live section refreshes every 30s.
+- Entry points: a hero card at the top of the mobile More sheet, the first destination in the desktop sidebar, and the command palette.
+
+### Mobile More sheet
+- Destinations are grouped into **Create / Communities / Play / You** instead of one flat grid (which had been duplicating Feed, Reels, Messages and Saved from the bottom nav).
+- **Games** is reachable on mobile again — it had no entry point at all after `d6abd50` removed it. It sits in the Play group and in the command palette.
+- **Pinned** and **Recent** shortcut chips at the top of the sheet (localStorage). **Edit** mode turns the tiles into pin toggles so no tiny nested buttons are needed; recents update automatically as you browse.
+- A **Search** button opens the same command palette as ⌘K, and the sheet shows a **What's happening** hero card.
+
+### Search & desktop
+- Command palette now jumps to **What's happening**, **Games** and **Effects**; the desktop sidebar gained a visible Search row and the What's happening item.
+
+## 2026-10-17 — Story composer: Lens tool removed
+
+- The **Lens** option (face-effects studio) is gone from the story composer toolbar — stories compose with Media, Sets, Text, Mention, Sticker, Brush, Motion, Layers, Filter, Tune, BG and audience as before.
+
 ## 2026-10-17 — GAME BOT overlays: action & open-world games, rotate, real art
 
 ### More games, fixed embeds

@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Bot, Home, Compass, Bell, MessageCircle, Hash, Coins, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText,
+  Activity, Bot, Home, Compass, Bell, MessageCircle, Hash, Coins, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText, Gamepad2, Palette,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -16,8 +16,10 @@ type Hit = { kind: "user"; id: string; username: string; display_name: string | 
   | { kind: "tag"; tag: string; post_count: number };
 
 const PAGES = [
+  { to: "/pulse", label: "What's happening", icon: Activity },
   { to: "/feed", label: "Feed", icon: Home },
   { to: "/reels", label: "Reels", icon: Film },
+  { to: "/games", label: "Games", icon: Gamepad2 },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/realms", label: "Realms", icon: Hash },
@@ -29,6 +31,7 @@ const PAGES = [
   { to: "/leaderboard", label: "Leaderboard", icon: Flame },
   { to: "/notifications", label: "Inbox", icon: Bell },
   { to: "/bots", label: "Bots", icon: Bot },
+  { to: "/effects", label: "Effects", icon: Palette },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
