@@ -23,7 +23,6 @@ import { formatDuration, musicQueueKey, runMusicCommand, useMusicQueue } from "@
 import { MUSIC_PROVIDERS, detectMusicSource } from "@/lib/music-sources";
 import { musicBotControls, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
-import { useAuth } from "@/lib/auth";
 
 type RealmMusicHubProps = {
   open: boolean;

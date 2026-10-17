@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-17 — The games section plays ready-made games
+
+### What the hub shows now
+- The `/games` hub, the realm Games menu and the in-call gamepad now lead with ready-made games — **Poxel.io**, **Krunker.io**, **Shell Shockers**, **Slither.io**, **OvO**, **Smash Karts**, **Basketball Stars**, **8 Ball Pool**, **Skribbl.io**, **Gartic Phone**, **PixelCanvas**, **PixelWar**, **Miniblox**, **2048**, plus **PlayPager Chess and Checkers** boards.
+- Every entry was header-checked before shipping: no `X-Frame-Options` and no `frame-ancestors`, so the game actually runs inside the RIZZ browser (bare .io domains, CrazyGames `/embed/` titles, PlayPager `/embed/` boards, the static 2048). Anything that later refuses framing falls back to an "open in new tab" card instead of hanging on a spinner.
+
+### RIZZ browser, Discord-style fullscreen
+- Games open in a RIZZ chrome bar (icon, title, traffic dots) with the cat-mark loader over near-black, a paused overlay for GAME BOT pauses, and a real browser-fullscreen button — the game takes the whole screen, Esc exits, the bar stays available.
+- FPS titles get `allow-pointer-lock` in the iframe sandbox so mouselook works.
+
+### GAME BOT sync, from anywhere
+- New `useGameBot` hook (`src/lib/game-bot.ts`) owns the shared GAME BOT state on `vc-game-bot:<roomId>`; the `/games` page, the realm Games menu and the VC surfaces all read the same broadcast, so launch / pause / resume stay in sync for everyone in the channel.
+- Launching a game while in a call broadcasts to the room; outside a call it opens as a solo stage.
+
+### Realm voice bar
+- The realm voice bar now has Games and Music icon buttons, opening the ready-made Games menu and the MUSIC BOT Music menu.
+
+### Kept
+- The fifteen built-in games, their engines and their checks stay in the tree (`src/lib/games/`, `GameStage`, `bun run arcade:check`) — the hub just no longer surfaces them.
+
 ## 2026-10-16 — Fifteen games in the hub: chess, checkers, arcade action, puzzles
 
 ### 12 new games, all instant and account-free

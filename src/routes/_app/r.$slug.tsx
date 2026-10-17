@@ -144,6 +144,9 @@ import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
+import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
+import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
+import { Gamepad2, Music as MusicIcon } from "lucide-react";
 import {
   RealmProfilePreviewDialog,
   type RealmProfilePreviewUser,
@@ -268,6 +271,8 @@ function RealmPage() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  const [realmGamesOpen, setRealmGamesOpen] = useState(false);
+  const [realmMusicOpen, setRealmMusicOpen] = useState(false);
 
   const members = useQuery({
     queryKey: ["realm-members", realm.data?.id],
@@ -1511,6 +1516,26 @@ function RealmPage() {
                 ))}
               </span>
             )}
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => setRealmGamesOpen(true)}
+              className="glass h-11 w-11 shrink-0 border-white/10"
+              title="Games"
+            >
+              <Gamepad2 className="h-5 w-5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => setRealmMusicOpen(true)}
+              className="glass h-11 w-11 shrink-0 border-white/10"
+              title="Music"
+            >
+              <MusicIcon className="h-5 w-5" />
+            </Button>
             {activeRoom.mods_only && !canModerate ? (
               <Button
                 type="button"
@@ -1545,6 +1570,27 @@ function RealmPage() {
               room, and a voice channel has no composer, so `/play` lives here. */}
           <VoiceChannelMusic realmId={c.id} roomId={activeRoom.id} />
         </div>
+      )}
+
+      {/* Dedicated Games and Music menus — the same hubs the VC header opens,
+          reachable straight from the Games / Music icons in the voice bar. */}
+      {activeRoom?.kind === "voice" && (
+        <>
+          <RealmGamesHub
+            open={realmGamesOpen}
+            onOpenChange={setRealmGamesOpen}
+            realmId={c.id}
+            roomId={activeRoom.id}
+            roomName={activeRoom.name}
+          />
+          <RealmMusicHub
+            open={realmMusicOpen}
+            onOpenChange={setRealmMusicOpen}
+            realmId={c.id}
+            roomId={activeRoom.id}
+            roomName={activeRoom.name}
+          />
+        </>
       )}
 
       {/* A forum channel swaps the message list for the forum surface: its own

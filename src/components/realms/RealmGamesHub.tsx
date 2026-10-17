@@ -1,19 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, Gamepad2, Maximize2, Minimize2, Pause, Play, RotateCw, Search, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
-import {
-  GAME_BOT_CHANNEL,
-  GAME_CATEGORIES,
-  GAME_LIBRARY,
-  type GameBotState,
-  type GameEntry,
-} from "@/lib/game-library";
+import { useGameBot } from "@/lib/game-bot";
+import { GAME_CATEGORIES, GAME_LIBRARY, type GameEntry } from "@/lib/game-library";
 import { RizzBrowserView } from "@/components/voice/RizzBrowserView";
 
 type RealmGamesHubProps = {
@@ -25,113 +18,48 @@ type RealmGamesHubProps = {
 };
 
 /**
- * Dedicated Games menu for a realm voice channel.
+ * Dedicated Games menu — one entry point for the realm voice bar, the VC
+ * header and the Games page.
  *
- * Opened from the game icon in the realm voice bar AND from the VC header, so
- * both entry points land on the same hub. Choosing a game launches it into the
- * shared GAME BOT (`vc-game-bot:<roomId>`): pause / resume / stop sync to
- * everyone in the channel, and the game itself renders in the RIZZ browser
- * (cat mark + lime loader) so it feels native.
+ * Every game is a ready-made third-party title that allows embedding, so it
+ * launches in the RIZZ browser (cat mark + lime loader). Pause / resume / stop
+ * go through the shared GAME BOT on `vc-game-bot:<roomId>`, so everyone in the
+ * channel stays in sync.
  */
 export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }: RealmGamesHubProps) {
-  const { user } = useAuth();
   const voice = useVoiceCallContext();
+  const gameBot = useGameBot(roomId, open);
+  const { state: bot } = gameBot;
 
   const [category, setCategory] = useState<"all" | GameEntry["category"]>("all");
   const [query, setQuery] = useState("");
-  const [bot, setBot] = useState<GameBotState>({
-    activeGame: null,
-    isPlaying: false,
-    isPaused: false,
-    launchedAt: null,
-    launchedBy: null,
-  });
   const [fullscreen, setFullscreen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const inThisCall = voice?.call?.channelId === roomId;
   const joining = voice?.busy ?? false;
 
-  // Shared GAME BOT state — same realtime channel the VC GameLauncher uses, so
-  // launching from the realm or from inside the call stays in sync.
-  useEffect(() => {
-    if (!open || !roomId || !user) return;
-    const channel = supabase.channel(GAME_BOT_CHANNEL(roomId));
-    channelRef.current = channel;
-    channel
-      .on("broadcast", { event: "game-bot-state" }, ({ payload }) => {
-        if (payload?.userId === user.id) return;
-        const s = payload?.state;
-        if (!s) return;
-        setBot({
-          activeGame: (s.activeGame as GameEntry | null) ?? null,
-          isPlaying: !!s.isPlaying && !s.isPaused,
-          isPaused: !!s.isPaused,
-          launchedAt: (s.launchedAt as number | null) ?? null,
-          launchedBy: (s.launchedBy as string | null) ?? null,
-        });
-        if (s.activeGame == null) setFullscreen(false);
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [open, roomId, user]);
-
-  const broadcast = (next: GameBotState) => {
-    if (!channelRef.current || !user) return;
-    channelRef.current.send({
-      type: "broadcast",
-      event: "game-bot-state",
-      payload: { userId: user.id, state: next },
-    });
-  };
-
   const launch = (game: GameEntry) => {
-    if (!user) return;
-    const next: GameBotState = {
-      activeGame: game,
-      isPlaying: true,
-      isPaused: false,
-      launchedAt: Date.now(),
-      launchedBy: user.id,
-    };
-    setBot(next);
+    gameBot.launch(game);
     setFullscreen(false);
     setReloadKey((k) => k + 1);
-    broadcast(next);
     toast.success(`Launched ${game.name} in GAME BOT`);
   };
 
   const pause = () => {
-    const next: GameBotState = { ...bot, isPlaying: false, isPaused: true };
-    setBot(next);
-    broadcast(next);
+    gameBot.pause();
     toast.success("Game paused for everyone");
   };
 
   const resume = () => {
-    if (!bot.activeGame) return;
-    const next: GameBotState = { ...bot, isPlaying: true, isPaused: false };
-    setBot(next);
+    gameBot.resume();
     setReloadKey((k) => k + 1);
-    broadcast(next);
     toast.success("Game resumed");
   };
 
   const stop = () => {
-    const next: GameBotState = {
-      activeGame: null,
-      isPlaying: false,
-      isPaused: false,
-      launchedAt: null,
-      launchedBy: null,
-    };
-    setBot(next);
+    gameBot.stop();
     setFullscreen(false);
-    broadcast(next);
     toast.success("GAME BOT stopped");
   };
 
@@ -175,8 +103,8 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
               )}
             </SheetTitle>
             <p className="text-xs text-muted-foreground">
-              Pick a game — it launches into GAME BOT for everyone in this voice channel, with
-              pause / resume in sync.
+              Ready-made games — pick one and it launches in GAME BOT for everyone in this voice
+              channel, with pause / resume in sync and Discord-style fullscreen.
             </p>
           </SheetHeader>
 
@@ -248,7 +176,7 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
                   onClick={() => setFullscreen(true)}
                   className="h-9 flex-1 gap-1.5 border-white/10 bg-white/5 text-xs"
                 >
-                  <Maximize2 className="h-3.5 w-3.5" /> Fullscreen
+                  <Maximize2 className="h-3.5 w-3.5" /> Stage
                 </Button>
                 <Button
                   type="button"
@@ -365,7 +293,7 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
         </SheetContent>
       </Sheet>
 
-      {/* Fullscreen GAME BOT stage */}
+      {/* Fullscreen GAME BOT stage (Discord-style takeover) */}
       {fullscreen && bot.activeGame && (
         <div className="fixed inset-0 z-[140] flex flex-col bg-[#0b0714]">
           <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
@@ -398,7 +326,7 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
               size="icon"
               variant="outline"
               onClick={() => setFullscreen(false)}
-              aria-label="Exit fullscreen"
+              aria-label="Exit fullscreen stage"
               className="h-10 w-10 shrink-0 border-white/10"
             >
               <Minimize2 className="h-4 w-4" />

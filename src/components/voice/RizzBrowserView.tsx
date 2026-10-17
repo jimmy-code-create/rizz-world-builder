@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Pause, RotateCw } from "lucide-react";
+import { AlertTriangle, Maximize2, Minimize2, Pause, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type RizzBrowserViewProps = {
@@ -14,8 +14,9 @@ type RizzBrowserViewProps = {
 
 /**
  * RIZZ browser: an iframe stage with RIZZ-style loading (cat mark + lime
- * progress bar on near-black), a paused overlay, and a graceful error state.
- * Used by the dedicated Games hub so launching a game feels native to RIZZ.
+ * progress bar on near-black), a paused overlay, a graceful error state, and
+ * Discord-style fullscreen that puts the game on the whole screen with the
+ * chrome bar still available to exit.
  */
 export function RizzBrowserView({
   title,
@@ -28,8 +29,10 @@ export function RizzBrowserView({
 }: RizzBrowserViewProps) {
   const [loading, setLoading] = useState(true);
   const [blocked, setBlocked] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   // Every new URL gets a fresh loading state. If the frame never fires `load`
   // (X-Frame-Options / CSP), fall back to an "open in new tab" card instead
@@ -49,24 +52,59 @@ export function RizzBrowserView({
     };
   }, [url]);
 
+  // Track real (browser) fullscreen so the chrome button flips back on Esc.
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const el = stageRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> }) | null;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (el?.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if (el?.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+      }
+    } catch {
+      // iOS Safari on iPhone has no element fullscreen; the in-app stage still works.
+    }
+  };
+
   const reload = () => {
     setLoading(true);
     setBlocked(false);
     if (iframeRef.current) {
-      // Re-assigning src is the reliable cross-browser reload for sandboxed frames.
       iframeRef.current.src = url;
     }
     onReload?.();
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-black/60">
+    <div
+      ref={stageRef}
+      className={`overflow-hidden rounded-xl border border-white/10 bg-black/60 ${
+        fullscreen ? "flex h-dvh flex-col rounded-none border-0" : ""
+      }`}
+    >
       {/* Browser chrome */}
-      <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-base">
           {icon ?? "🎮"}
         </span>
         <p className="min-w-0 flex-1 truncate text-xs font-semibold">{title}</p>
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+        >
+          {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
         <span className="flex shrink-0 items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-white/15" />
           <span className="h-2 w-2 rounded-full bg-white/15" />
@@ -74,7 +112,10 @@ export function RizzBrowserView({
         </span>
       </div>
 
-      <div className="relative bg-[#0b0b0c]" style={{ paddingBottom: compact ? "56.25%" : "62%" }}>
+      <div
+        className={`relative bg-[#0b0b0c] ${fullscreen ? "min-h-0 flex-1" : ""}`}
+        style={fullscreen ? undefined : { paddingBottom: compact ? "56.25%" : "62%" }}
+      >
         {/* RIZZ loading */}
         {loading && !blocked && (
           <div className="absolute inset-0 z-10 grid place-items-center bg-[#0b0b0c]">
@@ -140,7 +181,7 @@ export function RizzBrowserView({
               title={title}
               className="absolute inset-0 h-full w-full"
               allow="fullscreen; clipboard-write; autoplay; gamepad; microphone"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-pointer-lock"
               onLoad={() => {
                 setLoading(false);
                 if (timer.current) clearTimeout(timer.current);
@@ -164,7 +205,7 @@ export function RizzBrowserView({
       </div>
 
       {blocked && (
-        <div className="flex items-center justify-center border-t border-white/10 bg-white/[0.02] px-3 py-2">
+        <div className="flex shrink-0 items-center justify-center border-t border-white/10 bg-white/[0.02] px-3 py-2">
           <Button
             type="button"
             variant="ghost"
