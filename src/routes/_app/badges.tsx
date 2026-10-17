@@ -4,12 +4,18 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
-import { BADGE_SET, badgeArtForSlug, canonicalFor, TIER_LABEL } from "@/lib/badge-set";
+import {
+  BADGE_SET,
+  LEGACY_BADGE_SET,
+  badgeArtForSlug,
+  canonicalFor,
+  TIER_LABEL,
+} from "@/lib/badge-set";
 import { useI18n, tf } from "@/lib/i18n";
 import { BadgeChip } from "@/components/BadgeChip";
 import { BadgeIcon } from "@/components/BadgeIcon";
 import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
-import { Award, Lock, Sparkles, CheckCircle2, Search, Trophy, ShieldCheck, Share2 } from "lucide-react";
+import { Award, Lock, CheckCircle2, Search, Trophy, Share2 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +40,8 @@ export function BadgesPage() {
     enabled: !!user,
   });
 
-  // Admin-only award tool (best-effort gate; RLS "admins grant badges"
-  // is the real enforcement). Lets the team grant any of the 5 badges —
-  // including to yourself for testing — without touching the database.
+  // Existing admin tooling stays database-backed during the visual catalog
+  // rollout; actual awards still require the database's admin-only RLS policy.
   const adminCheck = useQuery({
     queryKey: ["am-admin", user?.id],
     enabled: !!user,
@@ -54,7 +59,7 @@ export function BadgesPage() {
       }
     },
   });
-  const [grantSlug, setGrantSlug] = useState(BADGE_SET[0].slug);
+  const [grantSlug, setGrantSlug] = useState("founder");
   const [grantUser, setGrantUser] = useState("");
   const [granting, setGranting] = useState(false);
 
@@ -64,7 +69,8 @@ export function BadgesPage() {
     setGranting(true);
     try {
       const badgeRow = (all.data ?? []).find((b) => b.slug === grantSlug);
-      if (!badgeRow) throw new Error("That badge isn't in the database yet — apply the badge migration first.");
+      if (!badgeRow)
+        throw new Error("That badge isn't in the database yet — apply the badge migration first.");
       // Handles are case-insensitive: "Jimmy" finds @jimmy.
       // Backslash-escape LIKE wildcards so "100%_real" still matches literally.
       const { data: target, error: lookupError } = await supabase
@@ -90,17 +96,43 @@ export function BadgesPage() {
     }
   };
 
-  const owned = useMemo(() => new Set((mine.data ?? []).map((r) => r.badge.id)), [mine.data]);
+  // The catalog is frontend metadata so the complete 12-badge collection stays
+  // visible even before the backend seed is deployed. Ownership comes only from
+  // real user_badges rows; a catalog entry is never treated as an earned award.
+  const catalog = useMemo<Badge[]>(
+    () =>
+      BADGE_SET.map((entry) => {
+        const stored = (all.data ?? []).find((row) => row.slug === entry.slug);
+        return {
+          id: stored?.id ?? `catalog:${entry.slug}`,
+          slug: entry.slug,
+          name: entry.name,
+          description: entry.flavor,
+          icon: stored?.icon ?? entry.icon,
+          color: entry.glow,
+          rarity: entry.tier,
+        };
+      }),
+    [all.data],
+  );
+  const owned = useMemo(() => new Set((mine.data ?? []).map((r) => r.badge.slug)), [mine.data]);
   const awardedAtFor = useMemo(
     () => new Map((mine.data ?? []).map((r) => [r.badge.slug, r.awardedAt])),
+    [mine.data],
+  );
+  const legacyEarned = useMemo(
+    () =>
+      (mine.data ?? []).filter((row) =>
+        LEGACY_BADGE_SET.some((badge) => badge.slug === row.badge.slug),
+      ),
     [mine.data],
   );
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
 
-  const totalCount = all.data?.length ?? 0;
-  const ownedCount = mine.data?.length ?? 0;
+  const totalCount = BADGE_SET.length;
+  const ownedCount = catalog.filter((badge) => owned.has(badge.slug)).length;
   const progressPct = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
   // Rarity breakdown for the header strip: how many of each tier you hold.
@@ -108,30 +140,32 @@ export function BadgesPage() {
     const tiers = ["mythic", "legendary", "epic", "rare", "common"] as const;
     return tiers
       .map((tier) => {
-        const rows = (all.data ?? []).filter((b) => b.rarity === tier);
+        const rows = catalog.filter((b) => b.rarity === tier);
         return {
           tier,
-          owned: rows.filter((b) => owned.has(b.id)).length,
+          owned: rows.filter((b) => owned.has(b.slug)).length,
           total: rows.length,
           color: rows[0]?.color ?? "#a1a1aa",
         };
       })
       .filter((row) => row.total > 0);
-  }, [all.data, owned]);
+  }, [catalog, owned]);
 
-  // Active badge defaulting to first in list or selected
-  const active = selectedBadge ?? all.data?.[0] ?? null;
-  const isActiveOwned = active ? owned.has(active.id) : false;
+  // Active badge defaulting to first in the 12-badge collection or selection.
+  const displayBadges = [...catalog, ...legacyEarned.map((row) => row.badge)];
+  const active =
+    displayBadges.find((badge) => badge.slug === selectedBadge?.slug) ?? catalog[0] ?? null;
+  const isActiveOwned = active ? owned.has(active.slug) : false;
 
   const filteredBadges = useMemo(() => {
-    return (all.data ?? []).filter((b) => {
+    return catalog.filter((b) => {
       const matchesSearch =
         !search.trim() ||
         b.name.toLowerCase().includes(search.toLowerCase()) ||
         b.description.toLowerCase().includes(search.toLowerCase());
       if (!matchesSearch) return false;
 
-      const isOwned = owned.has(b.id);
+      const isOwned = owned.has(b.slug);
       if (filter === "unlocked") return isOwned;
       if (filter === "locked") return !isOwned;
       if (filter === "legendary") return b.rarity === "legendary" || b.rarity === "mythic";
@@ -140,7 +174,7 @@ export function BadgesPage() {
       if (filter === "common") return b.rarity === "common";
       return true;
     });
-  }, [all.data, owned, filter, search]);
+  }, [catalog, owned, filter, search]);
 
   const [sharing, setSharing] = useState(false);
 
@@ -155,9 +189,11 @@ export function BadgesPage() {
         tier: active.rarity,
         glow: active.color,
         unlockedAt: isActiveOwned ? (awardedAtFor.get(active.slug) ?? null) : null,
+        earned: isActiveOwned,
         displayName: profile?.display_name || profile?.username || "RIZZ member",
         username: profile?.username || "member",
         avatarUrl: profile?.avatar_url ?? null,
+        artUrl: badgeArtForSlug(active.slug),
       });
       const result = await shareBadgePng(blob, `rizz-badge-${active.slug}.png`);
       toast.success(result === "shared" ? "Badge shared" : "Badge image downloaded");
@@ -174,7 +210,10 @@ export function BadgesPage() {
       {/* Header: collection metrics, progress and a rarity strip, so the page
           reads like a collector's shelf instead of a plain grid. */}
       <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-white/10 p-6">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
+          aria-hidden="true"
+        />
 
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -191,9 +230,12 @@ export function BadgesPage() {
           <div className="flex shrink-0 items-center gap-3 self-start sm:self-auto">
             <div className="text-right">
               <div className="font-mono text-base font-bold text-foreground">
-                {formatNumber(ownedCount)} <span className="text-muted-foreground">/ {formatNumber(totalCount)}</span>
+                {user && mine.isLoading ? "—" : formatNumber(ownedCount)}{" "}
+                <span className="text-muted-foreground">/ {formatNumber(totalCount)}</span>
               </div>
-              <div className="text-[11px] font-medium text-muted-foreground">{t("collected")}</div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                {user && mine.isLoading ? "Syncing collection…" : t("collected")}
+              </div>
             </div>
             <div
               className="grid h-12 w-12 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-sm font-bold text-primary"
@@ -209,7 +251,11 @@ export function BadgesPage() {
           <Progress value={progressPct} className="h-2 bg-white/5" />
           <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
             <span>{t("novice_collector")}</span>
-            <span>{ownedCount >= 10 ? t("master_achiever") : tf("needed_for_master", { count: 10 })}</span>
+            <span>
+              {ownedCount >= totalCount
+                ? t("master_achiever")
+                : tf("needed_for_master", { count: totalCount - ownedCount })}
+            </span>
           </div>
         </div>
 
@@ -218,16 +264,33 @@ export function BadgesPage() {
           <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.07] pt-4">
             {rarityRows.map((row) => (
               <div key={row.tier} className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color, boxShadow: `0 0 10px ${row.color}88` }} aria-hidden="true" />
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: row.color, boxShadow: `0 0 10px ${row.color}88` }}
+                  aria-hidden="true"
+                />
                 <span className="font-mono text-xs font-bold text-foreground">
-                  {row.owned}<span className="text-muted-foreground">/{row.total}</span>
+                  {row.owned}
+                  <span className="text-muted-foreground">/{row.total}</span>
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{row.tier}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {row.tier}
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {user && mine.isError && (
+        <div
+          role="status"
+          className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3 text-xs text-amber-100/80"
+        >
+          Your badge catalog is ready, but earned badges could not be loaded right now. Try again in
+          a moment.
+        </div>
+      )}
 
       {/* Dynamic Multi-Pane Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -245,7 +308,10 @@ export function BadgesPage() {
               />
             </div>
 
-            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none" role="tablist">
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none"
+              role="tablist"
+            >
               {(
                 [
                   ["all", t("filter_all")],
@@ -254,6 +320,7 @@ export function BadgesPage() {
                   ["legendary", t("filter_legendary")],
                   ["epic", t("filter_epic")],
                   ["rare", t("filter_rare")],
+                  ["common", t("filter_common")],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -275,14 +342,9 @@ export function BadgesPage() {
 
           {/* Badges Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-            {all.isLoading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="glass rounded-2xl p-4 border border-white/5 h-40 animate-pulse" />
-              ))}
-
             {filteredBadges.map((b) => {
-              const hasIt = owned.has(b.id);
-              const isSelected = active?.id === b.id;
+              const hasIt = owned.has(b.slug);
+              const isSelected = active?.slug === b.slug;
 
               return (
                 <button
@@ -308,14 +370,28 @@ export function BadgesPage() {
                     {hasIt ? (
                       <BadgeChip badge={b} size="lg" />
                     ) : (
-                      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      <div className="relative grid h-[76px] w-[76px] place-items-center rounded-[22px] border border-white/10 bg-black/25">
+                        <span className="opacity-40 grayscale transition-opacity group-hover:opacity-65">
+                          <BadgeIcon
+                            icon={b.icon}
+                            image={badgeArtForSlug(b.slug)}
+                            glow={b.color}
+                            size={62}
+                          />
+                        </span>
+                        <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[#101116] shadow-lg">
+                          <Lock className="h-3.5 w-3.5 text-white/70" />
+                        </span>
                       </div>
                     )}
                   </div>
                   <div className="relative my-2 min-w-0 w-full">
-                    <h3 className="truncate font-display text-xs font-bold text-foreground">{b.name}</h3>
-                    <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">{b.description}</p>
+                    <h3 className="truncate font-display text-xs font-bold text-foreground">
+                      {b.name}
+                    </h3>
+                    <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
+                      {b.description}
+                    </p>
                   </div>
                   <span
                     className="relative rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
@@ -328,7 +404,7 @@ export function BadgesPage() {
             })}
           </div>
 
-          {!all.isLoading && filteredBadges.length === 0 && (
+          {filteredBadges.length === 0 && (
             <div className="glass rounded-2xl p-8 border border-white/5 text-center text-xs text-muted-foreground">
               {t("no_badges_match")}
             </div>
@@ -361,7 +437,9 @@ export function BadgesPage() {
               {/* Art panel: the badge sits on a tier-tinted plinth with its glow. */}
               <div
                 className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 py-7"
-                style={{ background: `radial-gradient(120% 90% at 50% 0%, ${active.color}1f, rgba(255,255,255,0.02) 70%)` }}
+                style={{
+                  background: `radial-gradient(120% 90% at 50% 0%, ${active.color}1f, rgba(255,255,255,0.02) 70%)`,
+                }}
               >
                 <span
                   className="pointer-events-none absolute -bottom-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full blur-3xl"
@@ -374,13 +452,27 @@ export function BadgesPage() {
                       <BadgeChip badge={active} size="lg" />
                     </span>
                   ) : (
-                    <div className="grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-black/30 shadow-lg">
-                      <Lock className="h-6 w-6 text-muted-foreground" />
+                    <div className="relative grid h-28 w-28 place-items-center rounded-[30px] border border-white/10 bg-black/25 shadow-lg">
+                      <span className="opacity-45 grayscale">
+                        <BadgeIcon
+                          icon={active.icon}
+                          image={badgeArtForSlug(active.slug)}
+                          glow={active.color}
+                          size={96}
+                        />
+                      </span>
+                      <span className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-[#101116]">
+                        <Lock className="h-4 w-4 text-white/80" />
+                      </span>
                     </div>
                   )}
                   <div className="px-4">
-                    <h2 className="font-display text-lg font-bold text-foreground">{active.name}</h2>
-                    <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{active.description}</p>
+                    <h2 className="font-display text-lg font-bold text-foreground">
+                      {active.name}
+                    </h2>
+                    <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                      {active.description}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -402,10 +494,10 @@ export function BadgesPage() {
                   <p className="text-xs font-semibold text-foreground">
                     {isActiveOwned ? t("unlocked_owned") : t("locked_achiever")}
                   </p>
-                  <p className={`text-[11px] leading-snug ${isActiveOwned ? "text-emerald-200/90" : "text-muted-foreground"}`}>
-                    {isActiveOwned
-                      ? t("unlocked_owned_desc")
-                      : t("locked_desc")}
+                  <p
+                    className={`text-[11px] leading-snug ${isActiveOwned ? "text-emerald-200/90" : "text-muted-foreground"}`}
+                  >
+                    {isActiveOwned ? t("unlocked_owned_desc") : t("locked_desc")}
                   </p>
                 </div>
               </div>
@@ -415,7 +507,11 @@ export function BadgesPage() {
                 <div className="flex items-center justify-between py-1 text-muted-foreground">
                   <span>{t("badge_tier")}</span>
                   <span className="flex items-center gap-1.5 font-medium capitalize text-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active.color }} aria-hidden="true" />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: active.color }}
+                      aria-hidden="true"
+                    />
                     {active.rarity}
                   </span>
                 </div>
@@ -427,34 +523,28 @@ export function BadgesPage() {
                   <div className="flex items-center justify-between py-1 text-muted-foreground">
                     <span>{t("earned")}</span>
                     <span className="text-foreground">
-                      {new Date(awardedAtFor.get(active.slug)!).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                      {new Date(awardedAtFor.get(active.slug)!).toLocaleDateString([], {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Action buttons */}
-              <div className="pt-2 flex gap-2">
+              {/* Image generation is local and can share locked previews as well as earned badges. */}
+              <div className="pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={sharing}
                   onClick={() => void handleShare()}
-                  className="w-full gap-2 border-white/10 bg-white/[0.04] text-xs h-10 hover:bg-white/[0.08] disabled:opacity-60"
+                  className="h-11 w-full gap-2 border-white/10 bg-white/[0.04] text-xs hover:bg-white/[0.08] disabled:opacity-60"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                   {sharing ? t("making_image") : t("share")}
                 </Button>
-                {isActiveOwned && (
-                  <Button
-                    type="button"
-                    onClick={() => toast.success("Badge equipped to profile header!")}
-                    className="w-full gap-2 bg-primary text-primary-foreground text-xs h-10 font-semibold"
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    {t("feature_badge")}
-                  </Button>
-                )}
               </div>
             </div>
           ) : (
@@ -465,10 +555,72 @@ export function BadgesPage() {
         </aside>
       </div>
 
+      {legacyEarned.length > 0 && (
+        <section
+          className="glass rounded-3xl border border-white/10 p-5 sm:p-6"
+          aria-labelledby="legacy-badges-title"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Archive
+              </p>
+              <h2
+                id="legacy-badges-title"
+                className="mt-1 font-display text-lg font-bold text-foreground"
+              >
+                Classic RIZZ badges
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your original awards are kept and shareable.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold text-muted-foreground">
+              {legacyEarned.length} preserved
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {legacyEarned.map(({ badge }) => (
+              <button
+                key={badge.slug}
+                type="button"
+                onClick={() => setSelectedBadge(badge)}
+                aria-label={`Share ${canonicalFor(badge.slug)?.name ?? badge.name}`}
+                className="group flex min-h-12 items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <BadgeIcon
+                  icon={badge.icon}
+                  image={badgeArtForSlug(badge.slug)}
+                  glow={canonicalFor(badge.slug)?.glow ?? badge.color}
+                  size={32}
+                />
+                <span className="text-left">
+                  <span className="block text-xs font-semibold text-foreground">
+                    {canonicalFor(badge.slug)?.name ?? badge.name}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    Earned{" "}
+                    {awardedAtFor.get(badge.slug)
+                      ? new Date(awardedAtFor.get(badge.slug)!).toLocaleDateString([], {
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "in the classic set"}
+                  </span>
+                </span>
+                <Share2 className="ml-1 h-3.5 w-3.5 text-muted-foreground transition group-hover:text-primary" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {adminCheck.data === true && (
         <div className="glass rounded-3xl p-5 border border-white/10 space-y-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8A8A8E]">Admin</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8A8A8E]">
+              Admin
+            </p>
             <h2 className="font-display text-base font-bold mt-0.5">Award a badge</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Type your own @handle to assign one to yourself.
@@ -512,22 +664,23 @@ export function BadgesPage() {
           })()}
 
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Badge to award">
-            {BADGE_SET.map((entry) => {
-              const selected = grantSlug === entry.slug;
+            {(all.data ?? []).map((dbBadge) => {
+              const entry = canonicalFor(dbBadge.slug);
+              const selected = grantSlug === dbBadge.slug;
               return (
                 <button
-                  key={entry.slug}
+                  key={dbBadge.slug}
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => setGrantSlug(entry.slug)}
+                  onClick={() => setGrantSlug(dbBadge.slug)}
                   className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
                     selected
                       ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
                       : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {entry.name}
+                  {entry?.name ?? dbBadge.name}
                 </button>
               );
             })}

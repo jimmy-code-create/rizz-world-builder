@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Badge } from "@/lib/badges";
 import { startTrace } from "@/lib/upload-trace";
 import { parseExternalReelLink, type ExternalReelPlatform } from "@/lib/external-reels";
 
@@ -24,6 +25,7 @@ export type FeedPost = {
     avatar_url: string | null;
     accent_color: string | null;
     verified_creator?: boolean;
+    badges?: Badge[];
   } | null;
 };
 
@@ -98,18 +100,34 @@ export async function addVerifiedCreatorFlags<T extends { author_id: string; aut
 
   const { data, error } = await supabase
     .from("user_badges")
-    .select("user_id, badges!inner(slug)")
-    .in("user_id", authorIds)
-    // Badge set v2: identity-verified = the "no-cap" badge. The
-    // `verified_creator` flag name is kept so call sites don't churn.
-    .eq("badges.slug", "no-cap");
+    .select("user_id, badges!inner(id,slug,name,description,icon,color,rarity)")
+    .in("user_id", authorIds);
   if (error) throw error;
 
-  const verifiedIds = new Set((data ?? []).map((badge) => badge.user_id));
+  const badgesByUser = new Map<string, Badge[]>();
+  for (const row of (data ?? []) as unknown as Array<{
+    user_id: string;
+    badges: Badge | Badge[] | null;
+  }>) {
+    const badge = Array.isArray(row.badges) ? row.badges[0] : row.badges;
+    if (!badge) continue;
+    const list = badgesByUser.get(row.user_id) ?? [];
+    list.push(badge);
+    badgesByUser.set(row.user_id, list);
+  }
+  const verifiedIds = new Set(
+    [...badgesByUser.entries()]
+      .filter(([, badges]) => badges.some((badge) => badge.slug === "verified" || badge.slug === "no-cap"))
+      .map(([userId]) => userId),
+  );
   return posts.map((post) => ({
     ...post,
     author: post.author
-      ? { ...post.author, verified_creator: verifiedIds.has(post.author_id) }
+      ? {
+          ...post.author,
+          verified_creator: verifiedIds.has(post.author_id),
+          badges: badgesByUser.get(post.author_id) ?? [],
+        }
       : null,
   }));
 }
