@@ -4,6 +4,7 @@
  * Run: node tests/story-creator.test.mjs
  */
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   EMOJI_PACK,
   FONTS,
@@ -28,8 +29,8 @@ async function check(name, fn) {
   }
 }
 
-await check("12+ templates with valid slots and texts", async () => {
-  assert.ok(TEMPLATES.length >= 13, String(TEMPLATES.length));
+await check("20 templates with valid slots and texts", async () => {
+  assert.ok(TEMPLATES.length >= 20, String(TEMPLATES.length));
   const styles = new Set(TEXT_STYLES.map((s) => s.id));
   const fonts = new Set(FONTS.map((f) => f.id));
   for (const t of TEMPLATES) {
@@ -49,6 +50,48 @@ await check("12+ templates with valid slots and texts", async () => {
   }
   const ids = TEMPLATES.map((t) => t.id);
   assert.ok(new Set(ids).size === ids.length, "duplicate template ids");
+});
+
+await check("template preset texts sit inside the canvas", async () => {
+  for (const t of TEMPLATES) {
+    for (const p of t.texts) {
+      assert.ok(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1, `${t.id} text out of canvas`);
+    }
+  }
+});
+
+const composerSrc = await readFile(new URL("../src/components/StoryComposer.tsx", import.meta.url), "utf8");
+
+await check("overlay preview no longer double-translates (Tailwind v4 `translate` property)", async () => {
+  // Tailwind v4 compiles -translate-x-1/2 to the CSS `translate` property,
+  // which stacks with the inline transform: translate(-50%,-50%) and shifted
+  // every template slot/sticker half a slot off-canvas.
+  const overlayJsx = composerSrc.slice(composerSrc.indexOf("overlays.map"));
+  assert.ok(
+    !/className=\{`absolute -translate/.test(overlayJsx),
+    "overlay wrapper must not combine -translate-* classes with the inline transform",
+  );
+  assert.ok(overlayJsx.includes("transform: `translate(-50%,-50%) rotate"), "inline centering transform missing");
+});
+
+await check("slot preview height uses canvas-height fractions (matches the export)", async () => {
+  // Slots store h as a fraction of canvas height; the old aspectRatio sizing
+  // made preview slots 56% of their exported height on a 9:16 stage.
+  assert.ok(
+    composerSrc.includes("height: ov.kind === \"image\" && ov.h ? `${ov.h * 100}%` : undefined"),
+    "image overlays must size their height as a % of the stage height",
+  );
+  assert.ok(!composerSrc.includes("aspectRatio: ov.kind"), "slot aspect-ratio sizing must be gone");
+});
+
+await check("template text sizes are honored on apply (scale = size / 72)", async () => {
+  assert.ok(composerSrc.includes("preset.size / 72"), "applyTemplate must map the authored size to the overlay scale");
+});
+
+await check("lens tool removed from the story composer", async () => {
+  assert.ok(!composerSrc.includes("FaceEffectsStudio"), "FaceEffectsStudio must not be wired in");
+  assert.ok(!composerSrc.includes('label="Lens"'), "Lens tool button must be gone");
+  assert.ok(!composerSrc.includes("lensOpen"), "lensOpen state must be gone");
 });
 
 await check("fonts match RIZZ lime/black style", async () => {

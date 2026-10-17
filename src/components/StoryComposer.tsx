@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   X,
-  ScanFace,
   Type,
   Smile,
   Image as ImageIcon,
@@ -36,7 +35,6 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
-import { FaceEffectsStudio } from "@/components/story/FaceEffectsStudio";
 import {
   BRUSHES,
   EMOJI_PACK,
@@ -49,6 +47,7 @@ import {
   type BrushId,
   type FontId,
   type StickerTab,
+  type TemplateDef,
   type TextStyleId,
 } from "@/lib/story-creator/content";
 import {
@@ -161,7 +160,6 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [editorCaret, setEditorCaret] = useState(0);
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleHits, setPeopleHits] = useState<Person[]>([]);
-  const [lensOpen, setLensOpen] = useState(false);
   const [templateId, setTemplateId] = useState("blank");
   const [frame, setFrame] = useState<"none" | "polaroid" | "film" | "neon">("none");
   const [stickerTab, setStickerTab] = useState<(typeof STICKER_TABS)[number]>("Emoji");
@@ -224,6 +222,23 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     return () => window.clearTimeout(timer);
   }, [panel, peopleQuery]);
 
+  // Live stage width so text/sticker previews render at the exact size the
+  // 1080px-wide export will bake (72/140 base scaled by stage width).
+  const [stageW, setStageW] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setStageW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+  // Same base sizes the export uses (72 text / 140 sticker at 1080px wide).
+  const previewTextPx = stageW ? (72 * stageW) / CANVAS_W : 28;
+  const previewStickerPx = stageW ? (140 * stageW) / CANVAS_W : 56;
+
   const applyTemplate = (templateId: string) => {
     const def = TEMPLATES.find((t) => t.id === templateId);
     if (!def) return;
@@ -244,7 +259,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       for (const preset of def.texts) {
         fresh.push({
           id: crypto.randomUUID(), kind: "text", value: preset.text,
-          x: preset.x, y: preset.y, scale: 1, rotate: 0,
+          // Honors the authored size: text exports at 72 * scale * W / 1080.
+          x: preset.x, y: preset.y, scale: Math.max(0.25, preset.size / 72), rotate: 0,
           color: preset.color, font: preset.font, style: preset.style,
         });
       }
@@ -721,16 +737,16 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
               key={ov.id}
               onPointerDown={onDragOverlay(ov.id)}
               onDoubleClick={() => { if (ov.kind === "text") { setSelected(ov.id); setEditingId(ov.id); } }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 touch-none ${editingId===ov.id ? "cursor-text" : "cursor-grab active:cursor-grabbing"} ${selected===ov.id ? "outline outline-2 outline-white/70 rounded-md" : ""}`}
+              className={`absolute touch-none ${editingId===ov.id ? "cursor-text" : "cursor-grab active:cursor-grabbing"} ${selected===ov.id ? "outline outline-2 outline-white/70 rounded-md" : ""}`}
               style={{
                 left: `${ov.x * 100}%`, top: `${ov.y * 100}%`,
                 transform: `translate(-50%,-50%) rotate(${ov.rotate}deg) scale(${ov.scale})`,
-                fontSize: ov.kind === "text" ? 28 : 56,
+                fontSize: ov.kind === "text" ? previewTextPx : previewStickerPx,
                 color: ov.color, fontFamily: fontFor(ov.font), fontWeight: 700,
                 textShadow: ov.kind === "text" ? "0 2px 8px rgba(0,0,0,.5)" : undefined,
                 whiteSpace: "nowrap",
                 width: ov.kind === "image" && ov.w ? `${ov.w * 100}%` : undefined,
-                aspectRatio: ov.kind === "image" && ov.w && ov.h ? `${ov.w} / ${ov.h}` : undefined,
+                height: ov.kind === "image" && ov.h ? `${ov.h * 100}%` : undefined,
               }}
             >
               {ov.kind === "image" ? (
@@ -748,7 +764,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   </button>
                 )
               ) : ov.kind === "sticker" && ov.icon ? (
-                <IconThumb name={ov.icon} color={ov.iconColor || "#c8ff3d"} size={56} />
+                <IconThumb name={ov.icon} color={ov.iconColor || "#c8ff3d"} size={previewStickerPx} />
               ) : ov.kind === "text" && editingId === ov.id ? (
                 <span
                   ref={(el) => { if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r); } }}
@@ -1101,17 +1117,20 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       {panel === "templates" && (
         <div className="px-2 pb-1 shrink-0">
           <div className="glass-strong rounded-2xl p-2">
-            <p className="mb-2 px-1 text-xs font-semibold">Template sets — tap to apply, tap a dashed slot to fill it</p>
-            <div className="grid max-h-[26vh] grid-cols-3 gap-1.5 overflow-y-auto">
+            <p className="mb-2 px-1 text-xs font-semibold">
+              Template sets — {TEMPLATES.length} layouts · tap to apply, then tap a dashed slot to fill it
+            </p>
+            <div className="grid max-h-[34vh] grid-cols-4 gap-1.5 overflow-y-auto sm:grid-cols-6">
               {TEMPLATES.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   aria-pressed={templateId === t.id}
                   onClick={() => applyTemplate(t.id)}
-                  className={`rounded-xl border px-2 py-3 text-xs font-bold capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${templateId === t.id ? "border-primary/60 bg-primary/15" : "border-white/10 bg-white/5"}`}
+                  className={`rounded-xl border p-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${templateId === t.id ? "border-primary/60 bg-primary/15" : "border-white/10 bg-white/5"}`}
                 >
-                  {t.label}
+                  <TemplateThumb def={t} />
+                  <span className="mt-1 block truncate text-[10px] font-bold">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -1351,7 +1370,6 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         {/* Horizontally scrollable so every tool keeps a 44px target at 375px. */}
         <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
-          <ToolBtn icon={<ScanFace className="h-4 w-4" />} label="Lens" onClick={() => setLensOpen(true)} />
           <ToolBtn icon={<LayoutGrid className="h-4 w-4" />} label="Sets" onClick={() => setPanel(panel === "templates" ? null : "templates")} />
           <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
           <ToolBtn icon={<AtSign className="h-4 w-4" />} label="Mention" onClick={() => setPanel(panel === "caption" ? null : "caption")} />
@@ -1369,19 +1387,6 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           />
         </div>
       </div>
-      {/* The lens studio returns the composed frame, which becomes the story's
-          media — text, stickers and filters then layer on top of it. */}
-      <FaceEffectsStudio
-        open={lensOpen}
-        onClose={() => setLensOpen(false)}
-        onCapture={(lensed) => {
-          setFile(lensed);
-          setIsVideo(false);
-          setMediaUrl(URL.createObjectURL(lensed));
-          setLensOpen(false);
-        }}
-      />
-
       <input ref={fileRef} hidden type="file" accept="image/*,video/*" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
     </motion.div>
     </FullScreenLayer>
@@ -1599,6 +1604,48 @@ function MotionPreview({ kind }: { kind: ParticleKind }) {
       aria-hidden
       className="pointer-events-none absolute inset-0 h-full w-full"
     />
+  );
+}
+
+/** Live miniature of a template: the exact slot/text geometry the canvas uses. */
+function TemplateThumb({ def }: { def: TemplateDef }) {
+  return (
+    <div
+      className="relative aspect-[9/16] w-full overflow-hidden rounded-lg"
+      style={{
+        background: def.bg,
+        containerType: "inline-size",
+        boxShadow:
+          def.frame === "neon"
+            ? "inset 0 0 0 1px #c8ff3d, 0 0 6px rgba(200,255,61,.45)"
+            : def.frame === "polaroid"
+              ? "inset 0 0 0 2px #f5f1e6"
+              : undefined,
+      }}
+    >
+      {def.slots.map((s, i) => (
+        <div
+          key={i}
+          className="absolute rounded-[2px] border border-dashed border-primary/70 bg-white/10"
+          style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%`, width: `${s.w * 100}%`, height: `${s.h * 100}%` }}
+        />
+      ))}
+      {def.texts.map((tx, i) => (
+        <span
+          key={i}
+          className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold leading-none"
+          style={{
+            left: `${tx.x * 100}%`,
+            top: `${tx.y * 100}%`,
+            color: tx.color,
+            fontFamily: fontFor(tx.font),
+            fontSize: `${Math.max(2.5, (tx.size / CANVAS_W) * 100)}cqw`,
+          }}
+        >
+          {tx.text.length > 14 ? `${tx.text.slice(0, 13)}…` : tx.text}
+        </span>
+      ))}
+    </div>
   );
 }
 
