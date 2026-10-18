@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-18 — Featured badge: wear one crest beside your name
+
+### Pick a badge to wear
+- The badge inspector now has **Feature badge** next to Share. It saves the choice to `profiles.featured_badge` and swaps to **Worn · remove**; one badge at a time, and the helper line explains what it does. Previously this button was a toast placeholder that saved nothing.
+- Owned badges show a lime **Worn** chip in the collection grid, so the equipped one is visible without opening the inspector.
+
+### Where it shows
+- **Public profile:** the vector badge sits right of your display name, beside the nameplate effect.
+- **Profile hover card:** same mark beside the name, and the badge sheet labels that award **Worn**.
+- Only badges the member actually earned are rendered, so a stale column value can never fake an award.
+
+### Backend
+- Migration `20261024000000_featured_badge.sql` adds the nullable `featured_badge` column, rejects featuring a badge you don't hold, and clears the feature if that badge is revoked. Reads degrade to “nothing featured” until the migration is applied, so profiles keep loading on older databases.
+
 ## 2026-10-17 — Navigation & discovery: What's happening, grouped More sheet, pins and recents
 
 ### What's happening (`/pulse`)

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AtSign, Ban, Check, ChevronRight, Flag, Link2, MessageCircle, MoreHorizontal,
-  Pencil, Phone, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
+  Pencil, Phone, Pin, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -80,6 +80,8 @@ type CardData = {
   followers: number;
   following: number;
   badges: CardBadge[];
+  /** Slug of the badge the member wears beside their name (null when none). */
+  featuredBadge: string | null;
   mutualPreview: Array<{ id: string; username: string; display_name: string | null; avatar_url: string | null }>;
   mutualTotal: number;
   viewerFollows: boolean;
@@ -149,6 +151,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           followers: Number(d.followers ?? 0),
           following: Number(d.following ?? 0),
           badges: earnedBadges,
+          featuredBadge: str(p.featured_badge),
           mutualPreview: d.mutual_preview ?? [],
           mutualTotal: Number(d.mutual_total ?? 0),
           viewerFollows: !!d.viewer_follows,
@@ -187,6 +190,17 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     const { data: accent } = await supabase.from("profiles").select("accent_color").eq("id", userId).maybeSingle();
     accentColor = str((accent as Record<string, unknown> | null)?.accent_color);
   } catch { /* column missing */ }
+  let featuredBadge: string | null = null;
+  try {
+    const { data: featured } = await supabase
+      .from("profiles")
+      .select("featured_badge")
+      .eq("id", userId)
+      .maybeSingle();
+    featuredBadge = str((featured as Record<string, unknown> | null)?.featured_badge);
+  } catch {
+    /* column missing until the migration lands */
+  }
 
   const score = Number(p.rizz_score ?? 0);
   // NOTE: PostgREST builders are only PromiseLike, so each one is wrapped in a
@@ -277,6 +291,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     followers,
     following,
     badges,
+    featuredBadge,
     mutualPreview,
     mutualTotal,
     viewerFollows,
@@ -291,7 +306,7 @@ function deletedCard(userId: string): CardData {
     deleted: true, id: userId, username: "deleted", displayName: "Deleted user",
     avatarUrl: null, bannerUrl: null, accentColor: null, bio: null, pronouns: null, verified: false,
     createdAt: null, rizzScore: 0, rank: null, followers: 0, following: 0,
-    badges: [], mutualPreview: [], mutualTotal: 0, viewerFollows: false,
+    badges: [], featuredBadge: null, mutualPreview: [], mutualTotal: 0, viewerFollows: false,
     blockedByViewer: false, blockedViewer: false, mutedByViewer: false,
   };
 }
@@ -535,6 +550,7 @@ export function ProfileCard({
   const computedBadges: CardBadge[] = canonBadges(d.badges).slice(0, 24);
   const badgePreview = computedBadges.slice(0, 5);
   const badgeOverflow = computedBadges.length - badgePreview.length;
+  const featuredBadgeMeta = computedBadges.find((badge) => badge.slug === d.featuredBadge) ?? null;
 
   const realmRoleValue = realmRow.data?.role ?? realmRole ?? null;
   const realmRoleMeta = realmRoleValue
@@ -698,6 +714,13 @@ export function ProfileCard({
                 >
                   <Check className="h-3.5 w-3.5" />
                 </span>
+              )}
+              {featuredBadgeMeta && (
+                <Badge
+                  slug={featuredBadgeMeta.slug}
+                  size={24}
+                  title={`Featured badge: ${canonicalFor(featuredBadgeMeta.slug)?.name ?? featuredBadgeMeta.name}`}
+                />
               )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -923,8 +946,13 @@ export function ProfileCard({
                     <Badge slug={badge.slug} size={28} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#f2efe6]">
                       {canon?.name ?? badge.name}
+                      {badge.slug === d.featuredBadge && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[#c8ff3d]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c8ff3d]">
+                          <Pin className="h-2.5 w-2.5" /> Worn
+                        </span>
+                      )}
                       {canon && (
                         <span
                           className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"

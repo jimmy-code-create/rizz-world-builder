@@ -10,6 +10,7 @@ import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
+import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -267,6 +268,8 @@ function ProfilePage() {
   }
 
   const accent = profile.accent_color || "var(--brand-signal)";
+  // Only a badge this member actually earned can sit beside their name.
+  const featuredBadge = badges.data?.find((b) => b.slug === profile.featured_badge) ?? null;
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
@@ -323,6 +326,14 @@ function ProfilePage() {
                 className="text-xl md:text-2xl"
               />
             </h1>
+            {featuredBadge && (
+              <span
+                className="inline-flex items-center"
+                aria-label={`Featured badge: ${featuredBadge.name}`}
+              >
+                <BadgeMark slug={featuredBadge.slug} size={24} title={featuredBadge.name} />
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
           {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}

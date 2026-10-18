@@ -196,7 +196,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     badge_tier: "Badge Tier",
     earned: "Earned",
     slug_key: "Slug",
-    feature_badge: "Feature",
+    feature_badge: "Feature badge",
     locked_achiever: "Locked Achiever Badge",
     locked_desc: "Earn this badge by being active and engaging in the community.",
     select_badge: "Select a badge to inspect its details and rarity.",

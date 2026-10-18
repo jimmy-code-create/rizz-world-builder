@@ -2129,6 +2129,7 @@ export type Database = {
           bio: string | null
           created_at: string
           display_name: string | null
+          featured_badge: string | null
           id: string
           interests: string[]
           pronouns: string | null
@@ -2152,6 +2153,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          featured_badge?: string | null
           id: string
           interests?: string[]
           pronouns?: string | null
@@ -2175,6 +2177,7 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          featured_badge?: string | null
           id?: string
           interests?: string[]
           pronouns?: string | null

@@ -12,9 +12,10 @@ import {
   TIER_LABEL,
 } from "@/lib/badge-set";
 import { useI18n, tf } from "@/lib/i18n";
-import { Badge } from "@/components/Badge";
+import { Badge as BadgeMark } from "@/components/Badge";
 import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
-import { Award, Lock, CheckCircle2, Search, Trophy, Share2 } from "lucide-react";
+import { Award, Lock, CheckCircle2, Search, Trophy, Share2, Pin, ShieldCheck } from "lucide-react";
+import { setFeaturedBadge, useFeaturedBadge } from "@/lib/featured-badge";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +127,11 @@ export function BadgesPage() {
       ),
     [mine.data],
   );
+  // The badge worn beside this member's name (profiles.featured_badge).
+  const featuredQ = useFeaturedBadge(user?.id);
+  const featuredSlug = featuredQ.data?.slug ?? null;
+  const [featuring, setFeaturing] = useState(false);
+
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -155,6 +161,25 @@ export function BadgesPage() {
   const active =
     displayBadges.find((badge) => badge.slug === selectedBadge?.slug) ?? catalog[0] ?? null;
   const isActiveOwned = active ? owned.has(active.slug) : false;
+  const isActiveFeatured = !!active && featuredSlug === active.slug;
+
+  /** Wear / unwear a badge. One at a time, persisted on the profile. */
+  const toggleFeatured = async () => {
+    if (!active || !isActiveOwned || !user || featuring) return;
+    setFeaturing(true);
+    try {
+      const next = isActiveFeatured ? null : active.slug;
+      await setFeaturedBadge(user.id, next);
+      await qc.invalidateQueries({ queryKey: ["featured-badge"] });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await qc.invalidateQueries({ queryKey: ["profile-card"] });
+      toast.success(next ? `${active.name} is now on your profile` : "Featured badge removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't update your featured badge");
+    } finally {
+      setFeaturing(false);
+    }
+  };
 
   const filteredBadges = useMemo(() => {
     return catalog.filter((b) => {
@@ -356,7 +381,7 @@ export function BadgesPage() {
                 >
                   <div className="relative flex h-24 items-center justify-center">
                     <span className="badge-display relative">
-                      <Badge slug={b.slug} size={96} locked={!hasIt} title={b.name} />
+                      <BadgeMark slug={b.slug} size={96} locked={!hasIt} title={b.name} />
                       {!hasIt && (
                         <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[#101116] shadow-lg">
                           <Lock className="h-3.5 w-3.5 text-white/70" />
@@ -372,11 +397,21 @@ export function BadgesPage() {
                       {b.description}
                     </p>
                   </div>
-                  <span
-                    className="relative rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-                    style={{ background: `${b.color}22`, color: b.color }}
-                  >
-                    {t(`rarity_${b.rarity}`)}
+                  <span className="relative flex items-center gap-1">
+                    {featuredSlug === b.slug && (
+                      <span
+                        className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary"
+                        title="Worn on your profile"
+                      >
+                        <Pin className="h-2.5 w-2.5" /> Worn
+                      </span>
+                    )}
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                      style={{ background: `${b.color}22`, color: b.color }}
+                    >
+                      {t(`rarity_${b.rarity}`)}
+                    </span>
                   </span>
                 </button>
               );
@@ -417,7 +452,12 @@ export function BadgesPage() {
               <div className="relative grid place-items-center rounded-2xl border border-white/10 bg-white/[0.02] py-7">
                 <div className="relative flex flex-col items-center gap-3 text-center">
                   <span className="badge-display relative">
-                    <Badge slug={active.slug} size={96} locked={!isActiveOwned} title={active.name} />
+                    <BadgeMark
+                      slug={active.slug}
+                      size={96}
+                      locked={!isActiveOwned}
+                      title={active.name}
+                    />
                     {!isActiveOwned && (
                       <span className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-[#101116]">
                         <Lock className="h-4 w-4 text-white/80" />
@@ -491,18 +531,53 @@ export function BadgesPage() {
                 )}
               </div>
 
-              {/* Image generation is local and can share locked previews as well as earned badges. */}
-              <div className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={sharing}
-                  onClick={() => void handleShare()}
-                  className="h-11 w-full gap-2 border-white/10 bg-white/[0.04] text-xs hover:bg-white/[0.08] disabled:opacity-60"
-                >
-                  <Share2 className="h-3.5 w-3.5" />
-                  {sharing ? t("making_image") : t("share")}
-                </Button>
+              {/* Share previews (locked too), then wear / unwear the badge. */}
+              <div className="space-y-2 pt-2">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={sharing}
+                    onClick={() => void handleShare()}
+                    className="h-11 w-full gap-2 border-white/10 bg-white/[0.04] text-xs hover:bg-white/[0.08] disabled:opacity-60"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    {sharing ? t("making_image") : t("share")}
+                  </Button>
+                  {isActiveOwned && (
+                    <Button
+                      type="button"
+                      disabled={featuring}
+                      onClick={() => void toggleFeatured()}
+                      aria-pressed={isActiveFeatured}
+                      className={
+                        isActiveFeatured
+                          ? "h-11 w-full gap-2 border border-primary/40 bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/15"
+                          : "h-11 w-full gap-2 bg-primary text-xs font-semibold text-primary-foreground"
+                      }
+                    >
+                      {isActiveFeatured ? (
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Worn · remove
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {featuring ? "Saving…" : t("feature_badge")}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <p className="flex items-start gap-1.5 text-[10.5px] leading-snug text-muted-foreground">
+                  <Pin className="mt-0.5 h-3 w-3 shrink-0" />
+                  {isActiveFeatured
+                    ? `${active.name} sits beside your name on your profile and hover card.`
+                    : isActiveOwned
+                      ? "One badge at a time — it follows you across the app."
+                      : "Earn this badge to wear it beside your name."}
+                </p>
               </div>
             </div>
           ) : (
@@ -546,7 +621,7 @@ export function BadgesPage() {
                 aria-label={`Share ${canonicalFor(badge.slug)?.name ?? badge.name}`}
                 className="group flex min-h-12 items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <Badge slug={badge.slug} size={32} />
+                <BadgeMark slug={badge.slug} size={32} />
                 <span className="text-left">
                   <span className="block text-xs font-semibold text-foreground">
                     {canonicalFor(badge.slug)?.name ?? badge.name}
@@ -587,7 +662,7 @@ export function BadgesPage() {
             return (
               <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
-                  <Badge slug={entry.slug} size={34} />
+                  <BadgeMark slug={entry.slug} size={34} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">
