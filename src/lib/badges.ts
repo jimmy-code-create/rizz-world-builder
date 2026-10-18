@@ -51,11 +51,3 @@ export async function fetchUserBadgesWithDates(userId: string) {
     .filter((r): r is { badge: Badge; awardedAt: string | null } => !!r.badge)
     .map((r) => ({ ...r, badge: presentBadge(r.badge) }));
 }
-
-export const RARITY_GLOW: Record<Badge["rarity"], string> = {
-  common: "0 0 8px",
-  rare: "0 0 12px",
-  epic: "0 0 16px",
-  legendary: "0 0 22px",
-  mythic: "0 0 30px",
-};

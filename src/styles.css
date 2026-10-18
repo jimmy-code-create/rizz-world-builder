@@ -1715,35 +1715,70 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 [data-reduced-motion="true"] .status-bubble-in,
 [data-reduced-motion="true"] .status-bubble-float { animation: none !important; }
 
-/* Transparent badge art: crisp at small sizes, with restrained tier-color motion. */
-.badge-art-image {
-  display: block;
+/* Vector badges: one sprite file, flat marks, no containers of their own.
+   These rules only handle sizing, the 150ms hover lift and locked states;
+   the artwork itself is pure SVG symbol geometry. */
+:root {
+  --bz-ink: #0b0b0b;
+  --bz-base: #161616;
+  --bz-lime: #c6ff1a;
+  --bz-white: #f2f2f2;
+  --bz-grey: #3a3a3a;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  object-fit: contain;
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--badge-glow, #c8ff3d) 62%, transparent));
   transform-origin: center;
-  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms ease;
+  transition: transform 150ms ease;
   -webkit-user-drag: none;
   user-select: none;
 }
-.badge-art-tile:hover .badge-art-image,
-.badge-art-tile:focus-within .badge-art-image {
-  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--badge-glow, #c8ff3d) 86%, transparent));
-  transform: translateY(-1px) scale(1.08) rotate(-2deg);
+.badge > svg {
+  display: block;
 }
-.badge-art-image--float {
-  animation: badge-art-float 3.4s ease-in-out infinite;
+.badge:hover,
+.badge:focus-visible,
+.badge:active {
+  transform: scale(1.08);
 }
-@keyframes badge-art-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-3px) scale(1.025); }
+/* Locked badges read as earned-so-far: quiet and colourless. */
+.badge--locked {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+.badge--locked:hover,
+.badge--locked:focus-visible,
+.badge--locked:active {
+  transform: none;
+}
+/* The one piece of chrome allowed at showcase size: a soft ring behind the mark. */
+.badge-display {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bz-base);
+  padding: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .badge-art-image,
-  .badge-art-image--float { animation: none !important; transition: none !important; }
+  .badge {
+    transition: none !important;
+  }
+  .badge:hover,
+  .badge:focus-visible,
+  .badge:active {
+    transform: none;
+  }
 }
-[data-reduced-motion="true"] .badge-art-image,
-[data-reduced-motion="true"] .badge-art-image--float { animation: none !important; transition: none !important; }
+[data-reduced-motion="true"] .badge {
+  transition: none !important;
+}
+[data-reduced-motion="true"] .badge:hover,
+[data-reduced-motion="true"] .badge:active {
+  transform: none;
+}
 
 /* Game cards: covers drift slowly so the shelf feels alive (real gameplay
    shows in the GAME BOT overlay; this is just the still). */

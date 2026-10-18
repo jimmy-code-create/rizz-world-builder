@@ -7,13 +7,12 @@ import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badg
 import {
   BADGE_SET,
   LEGACY_BADGE_SET,
-  badgeArtForSlug,
+  badgeSymbolForSlug,
   canonicalFor,
   TIER_LABEL,
 } from "@/lib/badge-set";
 import { useI18n, tf } from "@/lib/i18n";
-import { BadgeChip } from "@/components/BadgeChip";
-import { BadgeIcon } from "@/components/BadgeIcon";
+import { Badge } from "@/components/Badge";
 import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
 import { Award, Lock, CheckCircle2, Search, Trophy, Share2 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
@@ -193,7 +192,7 @@ export function BadgesPage() {
         displayName: profile?.display_name || profile?.username || "RIZZ member",
         username: profile?.username || "member",
         avatarUrl: profile?.avatar_url ?? null,
-        artUrl: badgeArtForSlug(active.slug),
+        symbol: badgeSymbolForSlug(active.slug),
       });
       const result = await shareBadgePng(blob, `rizz-badge-${active.slug}.png`);
       toast.success(result === "shared" ? "Badge shared" : "Badge image downloaded");
@@ -210,11 +209,6 @@ export function BadgesPage() {
       {/* Header: collection metrics, progress and a rarity strip, so the page
           reads like a collector's shelf instead of a plain grid. */}
       <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-white/10 p-6">
-        <div
-          className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
-          aria-hidden="true"
-        />
-
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -266,7 +260,7 @@ export function BadgesPage() {
               <div key={row.tier} className="flex items-center gap-2">
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: row.color, boxShadow: `0 0 10px ${row.color}88` }}
+                  style={{ backgroundColor: row.color }}
                   aria-hidden="true"
                 />
                 <span className="font-mono text-xs font-bold text-foreground">
@@ -354,36 +348,21 @@ export function BadgesPage() {
                   aria-pressed={isSelected}
                   className={`group glass relative flex flex-col items-center justify-between overflow-hidden rounded-2xl border p-4 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isSelected
-                      ? "border-primary bg-primary/[0.08] shadow-[0_0_20px_rgba(200,255,61,0.18)]"
+                      ? "border-primary bg-primary/[0.08]"
                       : hasIt
                         ? "border-white/10 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.04]"
                         : "border-dashed border-white/10 opacity-70 hover:border-white/25 hover:bg-white/[0.03] hover:opacity-100"
                   }`}
                 >
-                  {/* Tier glow blooms on hover — the tile's only colour until you own it. */}
-                  <span
-                    className="pointer-events-none absolute inset-x-6 -top-12 h-24 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-100"
-                    style={{ background: `${b.color}33` }}
-                    aria-hidden="true"
-                  />
-                  <div className="relative flex h-20 items-center justify-center">
-                    {hasIt ? (
-                      <BadgeChip badge={b} size="lg" />
-                    ) : (
-                      <div className="relative grid h-[76px] w-[76px] place-items-center rounded-[22px] border border-white/10 bg-black/25">
-                        <span className="opacity-40 grayscale transition-opacity group-hover:opacity-65">
-                          <BadgeIcon
-                            icon={b.icon}
-                            image={badgeArtForSlug(b.slug)}
-                            glow={b.color}
-                            size={62}
-                          />
-                        </span>
+                  <div className="relative flex h-24 items-center justify-center">
+                    <span className="badge-display relative">
+                      <Badge slug={b.slug} size={96} locked={!hasIt} title={b.name} />
+                      {!hasIt && (
                         <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[#101116] shadow-lg">
                           <Lock className="h-3.5 w-3.5 text-white/70" />
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </span>
                   </div>
                   <div className="relative my-2 min-w-0 w-full">
                     <h3 className="truncate font-display text-xs font-bold text-foreground">
@@ -434,38 +413,17 @@ export function BadgesPage() {
                 </span>
               </div>
 
-              {/* Art panel: the badge sits on a tier-tinted plinth with its glow. */}
-              <div
-                className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 py-7"
-                style={{
-                  background: `radial-gradient(120% 90% at 50% 0%, ${active.color}1f, rgba(255,255,255,0.02) 70%)`,
-                }}
-              >
-                <span
-                  className="pointer-events-none absolute -bottom-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full blur-3xl"
-                  style={{ background: `${active.color}33` }}
-                  aria-hidden="true"
-                />
+              {/* Art panel: the badge at full showcase size on its soft ring. */}
+              <div className="relative grid place-items-center rounded-2xl border border-white/10 bg-white/[0.02] py-7">
                 <div className="relative flex flex-col items-center gap-3 text-center">
-                  {isActiveOwned ? (
-                    <span data-badge-art className="inline-flex scale-125">
-                      <BadgeChip badge={active} size="lg" />
-                    </span>
-                  ) : (
-                    <div className="relative grid h-28 w-28 place-items-center rounded-[30px] border border-white/10 bg-black/25 shadow-lg">
-                      <span className="opacity-45 grayscale">
-                        <BadgeIcon
-                          icon={active.icon}
-                          image={badgeArtForSlug(active.slug)}
-                          glow={active.color}
-                          size={96}
-                        />
-                      </span>
+                  <span className="badge-display relative">
+                    <Badge slug={active.slug} size={96} locked={!isActiveOwned} title={active.name} />
+                    {!isActiveOwned && (
                       <span className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-[#101116]">
                         <Lock className="h-4 w-4 text-white/80" />
                       </span>
-                    </div>
-                  )}
+                    )}
+                  </span>
                   <div className="px-4">
                     <h2 className="font-display text-lg font-bold text-foreground">
                       {active.name}
@@ -588,12 +546,7 @@ export function BadgesPage() {
                 aria-label={`Share ${canonicalFor(badge.slug)?.name ?? badge.name}`}
                 className="group flex min-h-12 items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <BadgeIcon
-                  icon={badge.icon}
-                  image={badgeArtForSlug(badge.slug)}
-                  glow={canonicalFor(badge.slug)?.glow ?? badge.color}
-                  size={32}
-                />
+                <Badge slug={badge.slug} size={32} />
                 <span className="text-left">
                   <span className="block text-xs font-semibold text-foreground">
                     {canonicalFor(badge.slug)?.name ?? badge.name}
@@ -632,18 +585,9 @@ export function BadgesPage() {
             const dbRow = (all.data ?? []).find((b) => b.slug === entry.slug);
             const glow = dbRow?.color ?? entry.glow;
             return (
-              <div
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
-                style={{ boxShadow: `0 0 24px ${glow}22` }}
-              >
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
-                  <BadgeIcon
-                    icon={dbRow?.icon ?? entry.icon}
-                    image={badgeArtForSlug(entry.slug)}
-                    glow={glow}
-                    size={34}
-                    animate
-                  />
+                  <Badge slug={entry.slug} size={34} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">

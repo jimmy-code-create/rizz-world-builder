@@ -1,5 +1,4 @@
-import { BadgeIcon } from "@/components/BadgeIcon";
-import { badgeArtForSlug } from "@/lib/badge-set";
+import { Badge } from "@/components/Badge";
 
 /** The identity-verified pill shown beside verified member names. */
 export function VerifiedCreatorTag() {
@@ -8,9 +7,9 @@ export function VerifiedCreatorTag() {
       role="img"
       title="Verified"
       aria-label="Verified"
-      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-lime-300/30 bg-gradient-to-r from-lime-300/15 via-emerald-300/10 to-lime-300/15 px-1.5 py-1 text-[10px] font-bold leading-none text-lime-100 shadow-[0_0_12px_rgba(200,255,61,0.16)] backdrop-blur-sm"
+      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-lime-300/25 bg-lime-300/10 px-1.5 py-1 text-[10px] font-bold leading-none text-lime-100"
     >
-      <BadgeIcon icon=":cat_love:" image={badgeArtForSlug("verified")} glow="#c8ff3d" size={14} />
+      <Badge slug="verified" size={16} />
       Verified
     </span>
   );

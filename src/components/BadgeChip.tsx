@@ -1,36 +1,28 @@
 import type { Badge } from "@/lib/badges";
-import { badgeArtForSlug, badgeMiniArtForSlug, canonBadges } from "@/lib/badge-set";
-import { BadgeIcon } from "@/components/BadgeIcon";
+import { canonBadges, canonicalFor } from "@/lib/badge-set";
+import { Badge as BadgeMark } from "@/components/Badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+/**
+ * Badge chips carry no container of their own: the vector mark sits directly
+ * on the surface, exactly like a Discord profile badge. The only chrome is a
+ * tooltip with the badge name.
+ */
 export function BadgeChip({ badge, size = "md" }: { badge: Badge; size?: "sm" | "md" | "lg" }) {
-  const box = size === "sm" ? "h-5 w-5" : size === "lg" ? "h-10 w-10" : "h-8 w-8";
-  const shape = size === "sm" ? "rounded-md" : "rounded-xl";
-  const iconSize = size === "sm" ? 18 : size === "lg" ? 20 : 16;
+  const px = size === "lg" ? 28 : 20;
+  const name = canonicalFor(badge.slug)?.name ?? badge.name;
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div
-            className={`${box} ${shape} badge-art-tile group flex items-center justify-center border border-white/10 backdrop-blur-md transition-transform hover:scale-110`}
-            style={{
-              background: `linear-gradient(135deg, ${badge.color}22, ${badge.color}08)`,
-              boxShadow: `0 0 14px ${badge.color}44`,
-            }}
-          >
-            <BadgeIcon
-              icon={badge.icon}
-              image={size === "sm" ? badgeMiniArtForSlug(badge.slug) : badgeArtForSlug(badge.slug)}
-              glow={badge.color}
-              size={iconSize}
-              animate={size === "lg"}
-            />
-          </div>
+          <span className="inline-flex shrink-0 items-center justify-center">
+            <BadgeMark slug={badge.slug} size={px} />
+          </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="glass-strong border-white/10">
           <div className="flex flex-col items-start gap-0.5 max-w-[200px]">
             <div className="flex items-center gap-1.5">
-              <span className="font-display font-bold text-sm">{badge.name}</span>
+              <span className="font-display font-bold text-sm">{name}</span>
               <span className="text-[10px] uppercase tracking-wider opacity-60">
                 {badge.rarity}
               </span>
@@ -58,7 +50,7 @@ export function BadgeRow({
   const extra = orderedBadges.length - shown.length;
   if (!shown.length) return null;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+    <div className="flex shrink-0 flex-wrap items-center gap-1">
       {shown.map((b) => (
         <BadgeChip key={b.id} badge={b} size={size} />
       ))}
@@ -66,7 +58,7 @@ export function BadgeRow({
         <span
           title={`${extra} more badge${extra === 1 ? "" : "s"}`}
           aria-label={`${extra} more badges`}
-          className="text-xs font-medium text-muted-foreground"
+          className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-1 text-[10px] font-semibold tabular-nums text-muted-foreground"
         >
           +{extra}
         </span>

@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence/StatusDot";
-import { BadgeIcon } from "@/components/BadgeIcon";
-import { badgeArtForSlug, canonBadges, canonicalFor } from "@/lib/badge-set";
+import { Badge } from "@/components/Badge";
+import { canonBadges, canonicalFor } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -732,14 +732,8 @@ export function ProfileCard({
                     title={canonicalFor(badge.slug)?.name ?? badge.name}
                     aria-label={canonicalFor(badge.slug)?.name ?? badge.name}
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                    style={{ color: canonicalFor(badge.slug)?.glow ?? badge.color }}
                   >
-                    <BadgeIcon
-                      icon={badge.icon}
-                      image={badgeArtForSlug(badge.slug)}
-                      glow={canonicalFor(badge.slug)?.glow ?? badge.color}
-                      size={24}
-                    />
+                    <Badge slug={badge.slug} size={28} />
                   </button>
                 ))}
                 {badgeOverflow > 0 && (
@@ -925,16 +919,8 @@ export function ProfileCard({
                 const canon = canonicalFor(badge.slug);
                 return (
                 <li key={badge.slug} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <span
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]"
-                    style={{ color: canonicalFor(badge.slug)?.glow ?? badge.color }}
-                  >
-                    <BadgeIcon
-                      icon={badge.icon}
-                      image={badgeArtForSlug(badge.slug)}
-                      glow={canonicalFor(badge.slug)?.glow ?? badge.color}
-                      size={24}
-                    />
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]">
+                    <Badge slug={badge.slug} size={28} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">

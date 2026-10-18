@@ -1,8 +1,10 @@
 /**
  * The 12-badge RIZZ collection shown in the gallery and share cards.
- * Older RIZZ awards remain renderable below so existing profiles do not lose
- * badges during the catalog transition; they are not counted in the 12-badge
- * collection.
+ * Every badge is a hand-coded vector symbol in /badges/badges.svg; `symbol`
+ * is the sprite id and `art` is the same reference kept for share cards.
+ * Older RIZZ awards remain renderable below (mapped onto the current symbols)
+ * so existing profiles do not lose badges during the catalog transition; they
+ * are not counted in the 12-badge collection.
  */
 export type BadgeTier = "common" | "rare" | "epic" | "legendary" | "mythic";
 
@@ -10,15 +12,25 @@ export type CanonicalBadge = {
   slug: string;
   name: string;
   flavor: string;
-  /** Legacy emoji fallback for badges without custom artwork. */
+  /**
+   * Legacy emoji shortcode, kept only as a last-resort fallback for unknown
+   * slugs; the 12-badge set always renders its vector symbol instead.
+   */
   icon: string;
-  /** Stable, transparent 256px artwork for cards, profiles, and sharing. */
+  /** Sprite symbol id inside /badges/badges.svg. */
+  symbol: string;
+  /** Stable reference to the vector artwork (sprite + symbol). */
   art: string;
-  /** Crisp 48px artwork for compact name-row chips. */
-  miniArt?: string;
   tier: BadgeTier;
+  /**
+   * Single tint used by surrounding UI (chips, rarity rows). Part of the
+   * badge palette: lime for signal tones, white for quiet tones.
+   */
   glow: string;
 };
+
+const LIME = "#C6FF1A";
+const WHITE = "#F2F2F2";
 
 export const BADGE_SET: CanonicalBadge[] = [
   {
@@ -26,169 +38,174 @@ export const BADGE_SET: CanonicalBadge[] = [
     name: "Newcomer",
     flavor: "Join RIZZ and claim your first badge.",
     icon: ":cat_gg:",
-    art: "/badges/rookie.png",
-    miniArt: "/badges/mini/rookie.png",
+    symbol: "rookie",
+    art: "/badges/badges.svg#rookie",
     tier: "common",
-    glow: "#62e6c6",
+    glow: WHITE,
   },
   {
     slug: "rising-star",
     name: "Rising Star",
     flavor: "Earn 100 likes across your posts and stories.",
     icon: ":cat_hype:",
-    art: "/badges/rising-star.png",
-    miniArt: "/badges/mini/rising-star.png",
+    symbol: "rising-star",
+    art: "/badges/badges.svg#rising-star",
     tier: "rare",
-    glow: "#84e3ff",
+    glow: LIME,
   },
   {
     slug: "smooth-talker",
     name: "Chatterbox",
     flavor: "Send 100 messages across RIZZ chats.",
     icon: ":cat_music:",
-    art: "/badges/smooth-talker.png",
-    miniArt: "/badges/mini/smooth-talker.png",
+    symbol: "smooth-talker",
+    art: "/badges/badges.svg#smooth-talker",
     tier: "common",
-    glow: "#ffcb69",
+    glow: WHITE,
   },
   {
     slug: "night-owl",
     name: "Night Owl",
     flavor: "Take part in RIZZ between midnight and 4am.",
     icon: ":cat_cool:",
-    art: "/badges/night-owl.png",
-    miniArt: "/badges/mini/night-owl.png",
+    symbol: "night-owl",
+    art: "/badges/badges.svg#night-owl",
     tier: "rare",
-    glow: "#c3a6ff",
+    glow: WHITE,
   },
   {
     slug: "meme-lord",
     name: "Meme Lord",
     flavor: "Make a post that reaches 50 likes.",
     icon: ":cat_hype:",
-    art: "/badges/meme-lord.png",
-    miniArt: "/badges/mini/meme-lord.png",
+    symbol: "meme-lord",
+    art: "/badges/badges.svg#meme-lord",
     tier: "epic",
-    glow: "#ff8fb4",
+    glow: WHITE,
   },
   {
     slug: "top-rizzler",
     name: "Top Rizzler",
     flavor: "Reach the top 10 on the RIZZ leaderboard.",
     icon: ":cat_gg:",
-    art: "/badges/top-rizzler.png",
-    miniArt: "/badges/mini/top-rizzler.png",
+    symbol: "top-rizzler",
+    art: "/badges/badges.svg#top-rizzler",
     tier: "legendary",
-    glow: "#ffe27d",
+    glow: LIME,
   },
   {
     slug: "verified",
     name: "Verified",
     flavor: "Verified by a RIZZ admin.",
     icon: ":cat_love:",
-    art: "/badges/verified.png",
-    miniArt: "/badges/mini/verified.png",
+    symbol: "verified",
+    art: "/badges/badges.svg#verified",
     tier: "rare",
-    glow: "#77c7ff",
+    glow: LIME,
   },
   {
     slug: "streak-7",
     name: "7 Day Streak",
     flavor: "Show up on RIZZ seven days in a row.",
     icon: ":cat_gg:",
-    art: "/badges/streak-7.png",
-    miniArt: "/badges/mini/streak-7.png",
+    symbol: "streak-7",
+    art: "/badges/badges.svg#streak-7",
     tier: "rare",
-    glow: "#ffae68",
+    glow: LIME,
   },
   {
     slug: "streak-30",
     name: "30 Day Streak",
     flavor: "Show up on RIZZ thirty days in a row.",
     icon: ":cat_hype:",
-    art: "/badges/streak-30.png",
-    miniArt: "/badges/mini/streak-30.png",
+    symbol: "streak-30",
+    art: "/badges/badges.svg#streak-30",
     tier: "epic",
-    glow: "#ff7194",
+    glow: LIME,
   },
   {
     slug: "bounty-hunter",
     name: "Bounty Hunter",
     flavor: "Complete a RIZZ bounty.",
     icon: ":cat_cool:",
-    art: "/badges/bounty-hunter.png",
-    miniArt: "/badges/mini/bounty-hunter.png",
+    symbol: "bounty-hunter",
+    art: "/badges/badges.svg#bounty-hunter",
     tier: "epic",
-    glow: "#9be178",
+    glow: WHITE,
   },
   {
     slug: "game-champ",
     name: "Game Champ",
     flavor: "Win ten RIZZ games.",
     icon: ":cat_gg:",
-    art: "/badges/game-champ.png",
-    miniArt: "/badges/mini/game-champ.png",
+    symbol: "game-champ",
+    art: "/badges/badges.svg#game-champ",
     tier: "legendary",
-    glow: "#9b9bff",
+    glow: WHITE,
   },
   {
     slug: "og",
     name: "Early Supporter",
     flavor: "Your account joined in RIZZ's first 30 days.",
     icon: ":cat_love:",
-    art: "/badges/og.png",
-    miniArt: "/badges/mini/og.png",
+    symbol: "og",
+    art: "/badges/badges.svg#og",
     tier: "mythic",
-    glow: "#f4d882",
+    glow: LIME,
   },
 ];
 
-/** Existing awards stay visible while accounts migrate to the 12-badge set. */
+/** Existing awards stay visible by reusing the closest current symbol. */
 export const LEGACY_BADGE_SET: CanonicalBadge[] = [
   {
     slug: "founder",
     name: "RIZZ Team",
     flavor: "Built by the people behind RIZZ.",
     icon: ":cat_gg:",
-    art: "/badges/rizz-team.png",
+    symbol: "verified",
+    art: "/badges/badges.svg#verified",
     tier: "mythic",
-    glow: "#c8ff3d",
+    glow: LIME,
   },
   {
     slug: "main-character",
     name: "Main Character",
     flavor: "Content that moves the room.",
     icon: ":cat_hype:",
-    art: "/badges/main-character.png",
+    symbol: "rising-star",
+    art: "/badges/badges.svg#rising-star",
     tier: "epic",
-    glow: "#a855f7",
+    glow: LIME,
   },
   {
     slug: "voice-of-realm",
     name: "Voice of the Realms",
     flavor: "When they talk, rooms fill.",
     icon: ":cat_music:",
-    art: "/badges/voice-of-the-realms.png",
+    symbol: "smooth-talker",
+    art: "/badges/badges.svg#smooth-talker",
     tier: "epic",
-    glow: "#a855f7",
+    glow: WHITE,
   },
   {
     slug: "the-rizz",
     name: "The Rizz",
     flavor: "Not just rizz. The Rizz.",
     icon: ":cat_cool:",
-    art: "/badges/the-rizz.png",
+    symbol: "top-rizzler",
+    art: "/badges/badges.svg#top-rizzler",
     tier: "mythic",
-    glow: "#ff4d6d",
+    glow: LIME,
   },
   {
     slug: "no-cap",
     name: "Verified",
     flavor: "Identity verified. A real one, no cap.",
     icon: ":cat_love:",
-    art: "/badges/verified.png",
+    symbol: "verified",
+    art: "/badges/badges.svg#verified",
     tier: "rare",
-    glow: "#3b82f6",
+    glow: LIME,
   },
 ];
 
@@ -198,8 +215,8 @@ export function badgeArtForSlug(slug: string | null | undefined): string | undef
   return ALL_BADGES.find((badge) => badge.slug === slug)?.art;
 }
 
-export function badgeMiniArtForSlug(slug: string | null | undefined): string | undefined {
-  return BADGE_SET.find((badge) => badge.slug === slug)?.miniArt ?? badgeArtForSlug(slug);
+export function badgeSymbolForSlug(slug: string | null | undefined): string | undefined {
+  return ALL_BADGES.find((badge) => badge.slug === slug)?.symbol;
 }
 
 const SET_ORDER: Record<string, number> = Object.fromEntries(ALL_BADGES.map((b, i) => [b.slug, i]));

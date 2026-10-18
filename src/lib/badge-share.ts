@@ -14,7 +14,8 @@ export type ShareBadgeInput = {
   displayName: string;
   username: string;
   avatarUrl: string | null;
-  artUrl?: string;
+  /** Sprite symbol id (e.g. "rookie") drawn from /badges/badges.svg. */
+  symbol?: string;
 };
 
 const W = 1080;
@@ -41,6 +42,39 @@ function loadImage(src: string, crossOrigin?: string): Promise<HTMLImageElement>
     };
     img.src = src;
   });
+}
+
+/**
+ * Badge artwork comes from the shared vector sprite, never from raster assets.
+ * The sprite is fetched once, the requested <symbol> is inlined into a
+ * standalone SVG and handed to the canvas as a data URL.
+ */
+let spriteText: Promise<string> | null = null;
+
+function fetchBadgeSprite(): Promise<string> {
+  if (!spriteText) {
+    spriteText = fetch("/badges/badges.svg")
+      .then((res) => {
+        if (!res.ok) throw new Error(`badge sprite ${res.status}`);
+        return res.text();
+      })
+      .catch((error) => {
+        spriteText = null;
+        throw error;
+      });
+  }
+  return spriteText;
+}
+
+async function loadBadgeSymbol(symbol: string): Promise<HTMLImageElement> {
+  const markup = await fetchBadgeSprite();
+  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = markup.match(
+    new RegExp(`<symbol[^>]*id="${escaped}"[^>]*>([\\s\\S]*?)</symbol>`),
+  );
+  if (!match) throw new Error(`badge symbol "${symbol}" not found`);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${match[1]}</svg>`;
+  return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
 }
 
 function roundRectPath(
@@ -226,9 +260,8 @@ export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> 
   ctx.fill();
 
   let drewArt = false;
-  const artUrl = input.artUrl ?? `/badges/${input.slug}.png`;
   try {
-    const art = await loadImage(artUrl);
+    const art = await loadBadgeSymbol(input.symbol ?? input.slug);
     ctx.save();
     ctx.shadowColor = `${input.glow}a0`;
     ctx.shadowBlur = 40;
@@ -236,7 +269,7 @@ export async function buildBadgeSharePng(input: ShareBadgeInput): Promise<Blob> 
     ctx.restore();
     drewArt = true;
   } catch {
-    // A missing art file never prevents sharing; draw a clean monogram medallion.
+    // A missing symbol never prevents sharing; draw a clean monogram medallion.
   }
   if (!drewArt) {
     ctx.fillStyle = input.glow;
