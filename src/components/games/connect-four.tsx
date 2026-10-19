@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot } from "lucide-react";
 import { GameChip, GameShell } from "@/components/games/board-frame";
+import { useArcadeWin } from "@/lib/games/arcade-record";
 import {
   bestColumn,
   COLS,
@@ -23,6 +24,7 @@ export function ConnectFourGame({ players = 1 }: { players?: number }) {
   const [history, setHistory] = useState<number[]>([]);
 
   const winner = useMemo(() => winnerOf(board), [board]);
+  useArcadeWin("connect-four", winner === 1);
   const winLine = useMemo(() => (winner ? winningLine(board, winner) : null), [board, winner]);
   const draw = !winner && isFull(board);
   const myTurn = !winner && !draw && board.filter(Boolean).length % 2 === 0;

@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Send, ChevronUp, CornerDownRight, Sparkles, Flame, Users } from "lucide-react";
+import {
+  MessageSquare,
+  Send,
+  ChevronUp,
+  CornerDownRight,
+  Sparkles,
+  Flame,
+  Users,
+} from "lucide-react";
 import { CloseButton } from "@/components/ui/close-button";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,6 +19,7 @@ import { fetchComments, addComment, toggleCommentLike, type FeedPost } from "@/l
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { RizzCat } from "@/components/RizzCat";
 import { formatCount, cn } from "@/lib/utils";
+import { commentDepths, commentIndent } from "@/lib/comment-tree";
 import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
 import { toast } from "@/lib/toast";
@@ -27,7 +36,10 @@ type CommentRow = {
 
 type VoteData = { counts: Map<string, number>; mine: Set<string> };
 
-async function fetchCommentVotes(commentIds: string[], myId: string | undefined): Promise<VoteData> {
+async function fetchCommentVotes(
+  commentIds: string[],
+  myId: string | undefined,
+): Promise<VoteData> {
   const counts = new Map<string, number>();
   const mine = new Set<string>();
   if (!commentIds.length) return { counts, mine };
@@ -112,7 +124,10 @@ export function FeedSideDiscussion({
       if (!current) return;
       const counts = new Map(current.counts);
       const mine = new Set(current.mine);
-      counts.set(commentId, typeof result?.like_count === "number" ? result.like_count : counts.get(commentId) ?? 0);
+      counts.set(
+        commentId,
+        typeof result?.like_count === "number" ? result.like_count : (counts.get(commentId) ?? 0),
+      );
       if (result?.liked) mine.add(commentId);
       else mine.delete(commentId);
       qc.setQueryData<VoteData>(votesKey, { counts, mine });
@@ -138,6 +153,9 @@ export function FeedSideDiscussion({
     return map;
   }, [comments.data]);
 
+  /** How deep each comment sits in the reply chain, so the thread has shape. */
+  const depths = useMemo(() => commentDepths(comments.data ?? []), [comments.data]);
+
   useEffect(() => {
     if (replyTo) bodyRef.current?.focus();
   }, [replyTo]);
@@ -149,10 +167,13 @@ export function FeedSideDiscussion({
         <div className="glass rounded-3xl p-5 border border-white/10">
           <div className="flex items-center gap-2 mb-2 text-primary">
             <MessageSquare className="h-4 w-4" />
-            <h3 className="text-sm font-display font-bold text-foreground">{t("side_discussions")}</h3>
+            <h3 className="text-sm font-display font-bold text-foreground">
+              {t("side_discussions")}
+            </h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            On wide screens, tap the comment icon on any post to read and reply here side-by-side without losing your place in the feed.
+            On wide screens, tap the comment icon on any post to read and reply here side-by-side
+            without losing your place in the feed.
           </p>
         </div>
 
@@ -162,10 +183,13 @@ export function FeedSideDiscussion({
         <div className="glass rounded-3xl p-5 border border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <h4 className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">{t("vibe_check")}</h4>
+            <h4 className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">
+              {t("vibe_check")}
+            </h4>
           </div>
           <p className="text-xs text-foreground/80 leading-relaxed">
-            Drop polls and GIFs to spark more reactions. Active contributors earn exclusive profile badges and drops.
+            Drop polls and GIFs to spark more reactions. Active contributors earn exclusive profile
+            badges and drops.
           </p>
         </div>
       </div>
@@ -188,13 +212,12 @@ export function FeedSideDiscussion({
           />
           <div className="min-w-0">
             <p className="text-xs font-semibold truncate leading-tight">{t("discussion")}</p>
-            <p className="text-[10px] text-muted-foreground truncate leading-tight">@{activePost.author?.username}</p>
+            <p className="text-[10px] text-muted-foreground truncate leading-tight">
+              @{activePost.author?.username}
+            </p>
           </div>
         </div>
-        <CloseButton
-          onClick={onClose}
-          aria-label="Close discussion pane"
-        />
+        <CloseButton onClick={onClose} aria-label="Close discussion pane" />
       </div>
 
       {/* Post Caption Preview */}
@@ -213,7 +236,9 @@ export function FeedSideDiscussion({
         {!comments.isLoading && (comments.data?.length ?? 0) === 0 && (
           <div className="py-10 text-center">
             <RizzCat mood="peek" size={80} className="mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">No comments yet — be the first to reply!</p>
+            <p className="text-xs text-muted-foreground">
+              No comments yet — be the first to reply!
+            </p>
           </div>
         )}
 
@@ -222,12 +247,16 @@ export function FeedSideDiscussion({
           const name = author?.display_name || author?.username || "someone";
           const count = votes.data?.counts.get(comment.id) ?? 0;
           const isVoted = votes.data?.mine.has(comment.id) ?? false;
-          const parentName = comment.parent_comment_id ? authorsById.get(comment.parent_comment_id) : null;
+          const parentName = comment.parent_comment_id
+            ? authorsById.get(comment.parent_comment_id)
+            : null;
+          const depth = depths.get(comment.id) ?? 0;
 
           return (
             <div
               key={comment.id}
-              className={cn("flex gap-2 text-xs", parentName && "ml-3 border-l border-white/10 pl-2")}
+              className={cn("flex gap-2 text-xs", depth > 0 && "border-l border-white/10 pl-2")}
+              style={depth > 0 ? { marginLeft: commentIndent(depth) } : undefined}
             >
               <button
                 type="button"
@@ -247,19 +276,28 @@ export function FeedSideDiscussion({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-foreground truncate">{name}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(comment.created_at)}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {timeAgo(comment.created_at)}
+                  </span>
                 </div>
                 {parentName && (
                   <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                     <CornerDownRight className="h-2.5 w-2.5" /> @{parentName}
                   </p>
                 )}
-                <p className={cn("mt-0.5 whitespace-pre-wrap leading-snug", emojiTextClass(comment.body, "comment"))}>
+                <p
+                  className={cn(
+                    "mt-0.5 whitespace-pre-wrap leading-snug",
+                    emojiTextClass(comment.body, "comment"),
+                  )}
+                >
                   <GifContent>{comment.body}</GifContent>
                 </p>
                 <button
                   type="button"
-                  onClick={() => setReplyTo({ id: comment.id, username: author?.username ?? "user" })}
+                  onClick={() =>
+                    setReplyTo({ id: comment.id, username: author?.username ?? "user" })
+                  }
                   className="mt-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
                 >
                   Reply

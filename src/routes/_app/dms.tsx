@@ -5,7 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar, Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { previewText } from "@/lib/formatters";
-import { MessageCircle, Search, X, Check, Users, UsersRound, Camera, Loader2, Plus } from "lucide-react";
+import {
+  MessageCircle,
+  Search,
+  X,
+  Check,
+  Users,
+  UsersRound,
+  Camera,
+  Loader2,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
@@ -28,7 +38,12 @@ export const Route = createFileRoute("/_app/dms")({
 const DOUBLE_TAP_MS = 280;
 
 type Thread = {
-  other: { id: string; username: string | null; display_name: string | null; avatar_url: string | null };
+  other: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
   last: { body: string | null; created_at: string };
   unread: number;
 };
@@ -53,7 +68,11 @@ function DMsPage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"all" | "direct" | "groups">("all");
   /** Long-pressed inbox row — opens the profile/delete sheet for that person. */
-  const [rowMenu, setRowMenu] = useState<{ id: string; username: string | null; display_name: string | null } | null>(null);
+  const [rowMenu, setRowMenu] = useState<{
+    id: string;
+    username: string | null;
+    display_name: string | null;
+  } | null>(null);
   /** Chats deleted on this device: hidden here, and the messages you sent are removed. */
   const [hiddenDms, setHiddenDms] = useState<string[]>(() => {
     if (typeof localStorage === "undefined") return [];
@@ -69,7 +88,10 @@ function DMsPage() {
   const longPressFired = useRef(false);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
 
-  const startLongPress = (other: { id: string; username: string | null; display_name: string | null }, point: { x: number; y: number }) => {
+  const startLongPress = (
+    other: { id: string; username: string | null; display_name: string | null },
+    point: { x: number; y: number },
+  ) => {
     if (selecting) return;
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
     longPressFired.current = false;
@@ -80,7 +102,7 @@ function DMsPage() {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
     }, 500);
   };
-  
+
   const cancelLongPress = (point?: { x: number; y: number }) => {
     if (longPressTimer.current) {
       // Cancel on movement (scrolling)
@@ -98,7 +120,7 @@ function DMsPage() {
       }
     }
   };
-  
+
   const endLongPress = () => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
@@ -135,6 +157,8 @@ function DMsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
+  /** Filters the member picker inside the "New group" sheet. */
+  const [memberQuery, setMemberQuery] = useState("");
   const [groupPhoto, setGroupPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [preparingPhoto, setPreparingPhoto] = useState(false);
@@ -149,7 +173,9 @@ function DMsPage() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("direct_messages")
-        .select("*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)")
+        .select(
+          "*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)",
+        )
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(100);
@@ -187,11 +213,29 @@ function DMsPage() {
     const refresh = () => qc.invalidateQueries({ queryKey: ["dm-threads", user.id] });
     const asSender = supabase
       .channel(`dm-threads-sent-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `sender_id=eq.${user.id}` }, refresh)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "direct_messages",
+          filter: `sender_id=eq.${user.id}`,
+        },
+        refresh,
+      )
       .subscribe();
     const asRecipient = supabase
       .channel(`dm-threads-received-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `recipient_id=eq.${user.id}` }, refresh)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "direct_messages",
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        refresh,
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(asSender);
@@ -210,31 +254,43 @@ function DMsPage() {
         () => qc.invalidateQueries({ queryKey: ["my-groups", user.id] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, qc]);
 
   // Leaving the page (or pressing back) cancels selection mode.
   useEffect(() => {
     if (!selecting) return;
-    const cancel = () => { setSelecting(false); setSelected([]); };
+    const cancel = () => {
+      setSelecting(false);
+      setSelected([]);
+    };
     window.addEventListener("popstate", cancel);
     return () => window.removeEventListener("popstate", cancel);
   }, [selecting]);
 
-  useEffect(() => () => {
-    if (navTimer.current) window.clearTimeout(navTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (navTimer.current) window.clearTimeout(navTimer.current);
+    },
+    [],
+  );
 
-  useEffect(() => () => {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-  }, [photoPreview]);
+  useEffect(
+    () => () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    },
+    [photoPreview],
+  );
 
   const filtered = useMemo(() => {
     const list = threads.data ?? [];
     if (!q.trim()) return list;
     const t = q.toLowerCase();
-    return list.filter(({ other }) =>
-      other.username?.toLowerCase().includes(t) || other.display_name?.toLowerCase().includes(t),
+    return list.filter(
+      ({ other }) =>
+        other.username?.toLowerCase().includes(t) || other.display_name?.toLowerCase().includes(t),
     );
   }, [threads.data, q]);
 
@@ -246,6 +302,30 @@ function DMsPage() {
   }, [groups.data, q]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  /**
+   * People who can be pulled into a new group: the creator's DM partners.
+   * createGroupChat rejects anyone outside this set, so the picker offers
+   * exactly what the server will accept.
+   */
+  const memberCandidates = useMemo(() => {
+    const list = (threads.data ?? [])
+      .map((thread) => thread.other)
+      .filter((other) => other.id !== user?.id && !hiddenDms.includes(other.id));
+    const seen = new Set<string>();
+    const unique = list.filter((other) => {
+      if (seen.has(other.id)) return false;
+      seen.add(other.id);
+      return true;
+    });
+    const term = memberQuery.trim().toLowerCase();
+    if (!term) return unique;
+    return unique.filter(
+      (other) =>
+        (other.display_name ?? "").toLowerCase().includes(term) ||
+        (other.username ?? "").toLowerCase().includes(term),
+    );
+  }, [threads.data, user?.id, hiddenDms, memberQuery]);
 
   const activeThreads = useMemo(
     () => filtered.filter(({ other }) => !hiddenDms.includes(other.id)),
@@ -284,10 +364,14 @@ function DMsPage() {
       return;
     }
     const now = Date.now();
-    const isDoubleTap = lastTap.current?.id === other.id && now - lastTap.current.at < DOUBLE_TAP_MS;
+    const isDoubleTap =
+      lastTap.current?.id === other.id && now - lastTap.current.at < DOUBLE_TAP_MS;
     lastTap.current = { id: other.id, at: now };
     if (isDoubleTap) {
-      if (navTimer.current) { window.clearTimeout(navTimer.current); navTimer.current = null; }
+      if (navTimer.current) {
+        window.clearTimeout(navTimer.current);
+        navTimer.current = null;
+      }
       lastTap.current = null;
       startSelecting(other.id);
       return;
@@ -318,8 +402,14 @@ function DMsPage() {
   const createTheGroup = async () => {
     if (!user) return;
     const name = groupName.trim();
-    if (!name) { toast.error("Give the group a name."); return; }
-    if (selected.length < 2) { toast.error("Pick at least 2 people to start a group."); return; }
+    if (!name) {
+      toast.error("Give the group a name.");
+      return;
+    }
+    if (selected.length < 1) {
+      toast.error("Pick at least one person to start a group.");
+      return;
+    }
     setCreating(true);
     try {
       let iconUrl: string | null = null;
@@ -327,7 +417,11 @@ function DMsPage() {
         const path = `${user.id}/group-icons/${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from("avatars")
-          .upload(path, groupPhoto, { contentType: groupPhoto.type || "image/jpeg", upsert: true, cacheControl: "31536000" });
+          .upload(path, groupPhoto, {
+            contentType: groupPhoto.type || "image/jpeg",
+            upsert: true,
+            cacheControl: "31536000",
+          });
         if (uploadError) throw uploadError;
         iconUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
       }
@@ -336,6 +430,7 @@ function DMsPage() {
       qc.invalidateQueries({ queryKey: ["my-groups"] });
       setGroupSheetOpen(false);
       setGroupName("");
+      setMemberQuery("");
       setGroupPhoto(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
       setPhotoPreview(null);
@@ -362,11 +457,12 @@ function DMsPage() {
             className="rounded-xl"
           />
           <span className="min-w-0 flex-1 text-sm font-semibold">
-            {selected.length} selected <span className="font-normal text-muted-foreground">(max {MAX_GROUP_PICKS})</span>
+            {selected.length} selected{" "}
+            <span className="font-normal text-muted-foreground">(max {MAX_GROUP_PICKS})</span>
           </span>
           <Button
             onClick={() => setGroupSheetOpen(true)}
-            disabled={selected.length < 2}
+            disabled={selected.length < 1}
             className="min-h-12 shrink-0 rounded-xl border-0 bg-primary text-primary-foreground shadow-md px-4"
           >
             <UsersRound className="h-4 w-4" /> Create group
@@ -374,9 +470,15 @@ function DMsPage() {
         </motion.div>
       ) : (
         <>
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3 mb-3">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-3 mb-3"
+          >
             <div className="min-w-0">
-              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight">Messages</h1>
+              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight">
+                Messages
+              </h1>
               <p className="text-xs text-muted-foreground">Start a conversation.</p>
             </div>
             <Button
@@ -396,7 +498,13 @@ function DMsPage() {
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={tab === "groups" ? "Search groups…" : tab === "direct" ? "Search messages…" : "Search conversations…"}
+          placeholder={
+            tab === "groups"
+              ? "Search groups…"
+              : tab === "direct"
+                ? "Search messages…"
+                : "Search conversations…"
+          }
           className="pl-9 h-11 border-border bg-card"
         />
       </div>
@@ -464,7 +572,9 @@ function DMsPage() {
               <div className="h-12 w-12 rounded-2xl border border-dashed border-border bg-card group-hover:border-primary/50 group-hover:bg-surface-2 flex items-center justify-center transition-colors">
                 <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
-              <span className="text-[11px] font-medium text-muted-foreground truncate max-w-16">New</span>
+              <span className="text-[11px] font-medium text-muted-foreground truncate max-w-16">
+                New
+              </span>
             </button>
             {filteredGroups.map((g) => (
               <button
@@ -507,7 +617,11 @@ function DMsPage() {
           {filteredGroups.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-6 text-center">
               <p className="text-sm text-muted-foreground mb-3">No groups found.</p>
-              <Button onClick={() => setGroupSheetOpen(true)} size="sm" className="bg-primary text-primary-foreground font-semibold">
+              <Button
+                onClick={() => setGroupSheetOpen(true)}
+                size="sm"
+                className="bg-primary text-primary-foreground font-semibold"
+              >
                 <Plus className="h-4 w-4 mr-1" /> New group
               </Button>
             </div>
@@ -523,7 +637,8 @@ function DMsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate text-foreground">{g.name}</p>
                   <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                    <Users className="h-3.5 w-3.5 shrink-0" /> {g.member_count} member{g.member_count === 1 ? "" : "s"}
+                    <Users className="h-3.5 w-3.5 shrink-0" /> {g.member_count} member
+                    {g.member_count === 1 ? "" : "s"}
                   </p>
                 </div>
               </button>
@@ -547,7 +662,9 @@ function DMsPage() {
           )}
           {threads.isPending && !threads.isError && (
             <div className="space-y-2">
-              {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-xl" />
+              ))}
             </div>
           )}
           {activeThreads.map(({ other, last, unread }) => {
@@ -555,100 +672,123 @@ function DMsPage() {
             const peerStatus = publicCustomStatus(presence.rows[other.id], false);
             return (
               <Fragment key={other.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  const wasLongPress = endLongPress();
-                  if (wasLongPress) {
+                <button
+                  type="button"
+                  onClick={() => {
+                    const wasLongPress = endLongPress();
+                    if (wasLongPress) {
+                      longPressFired.current = false;
+                      return;
+                    }
+                    handleRowTap(other);
+                  }}
+                  onPointerDown={(e) => startLongPress(other, { x: e.clientX, y: e.clientY })}
+                  onPointerUp={() => {
+                    const wasLongPress = endLongPress();
                     longPressFired.current = false;
-                    return;
-                  }
-                  handleRowTap(other);
-                }}
-                onPointerDown={(e) => startLongPress(other, { x: e.clientX, y: e.clientY })}
-                onPointerUp={() => { const wasLongPress = endLongPress(); longPressFired.current = false; }}
-                onPointerMove={(e) => cancelLongPress({ x: e.clientX, y: e.clientY })}
-                onPointerLeave={() => { endLongPress(); longPressFired.current = false; }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  setRowMenu(other);
-                }}
-                aria-pressed={selecting ? isSelected : undefined}
-                className={`w-full min-h-[56px] rounded-xl p-3 border flex items-center gap-3 text-left transition-colors ${
-                  isSelected
-                    ? "border-primary bg-primary/10"
-                    : unread > 0
-                      ? "border-primary/40 bg-card"
-                      : "border-border bg-card hover:bg-surface-2"
-                }`}
-              >
-                <div className="relative shrink-0">
-                  <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={10}>
-                    <Avatar className={`h-11 w-11 ring-1 ${isSelected ? "ring-primary" : "ring-border"}`}>
-                      <AvatarImage src={other.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-surface-2 text-foreground font-semibold text-xs">{(other.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  </AvatarWithStatus>
-                  {isSelected && (
-                    <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
-                      <Check className="h-3 w-3" strokeWidth={3} />
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-foreground">{other.display_name || other.username}</p>
-                  {peerStatus && (
-                    <CustomStatusLine status={peerStatus} className="text-[11px] text-primary/90" />
-                  )}
-                  <p className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{previewText(last.body)}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-[10px] text-muted-foreground">{fmtTime(last.created_at)}</span>
-                  {unread > 0 && (
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
-                  )}
-                </div>
-              </button>
-              <Sheet
-                open={rowMenu?.id === other.id}
-                onOpenChange={(nextOpen) => {
-                  if (!nextOpen) setRowMenu(null);
-                }}
-              >
-                <SheetContent
-                  side="bottom"
-                  className="bg-card border-border rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+                  }}
+                  onPointerMove={(e) => cancelLongPress({ x: e.clientX, y: e.clientY })}
+                  onPointerLeave={() => {
+                    endLongPress();
+                    longPressFired.current = false;
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setRowMenu(other);
+                  }}
+                  aria-pressed={selecting ? isSelected : undefined}
+                  className={`w-full min-h-[56px] rounded-xl p-3 border flex items-center gap-3 text-left transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary/10"
+                      : unread > 0
+                        ? "border-primary/40 bg-card"
+                        : "border-border bg-card hover:bg-surface-2"
+                  }`}
                 >
-                  <SheetHeader className="text-left">
-                    <SheetTitle className="font-display text-lg">
+                  <div className="relative shrink-0">
+                    <AvatarWithStatus status={presence.statusOf(other.id)} dotSize={10}>
+                      <Avatar
+                        className={`h-11 w-11 ring-1 ${isSelected ? "ring-primary" : "ring-border"}`}
+                      >
+                        <AvatarImage src={other.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-surface-2 text-foreground font-semibold text-xs">
+                          {(other.username ?? "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </AvatarWithStatus>
+                    {isSelected && (
+                      <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate text-foreground">
                       {other.display_name || other.username}
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4 space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const target = other.username;
-                        setRowMenu(null);
-                        if (target) nav({ to: "/u/$username", params: { username: target } });
-                      }}
-                      className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-left text-sm font-semibold transition hover:bg-surface-3"
+                    </p>
+                    {peerStatus && (
+                      <CustomStatusLine
+                        status={peerStatus}
+                        className="text-[11px] text-primary/90"
+                      />
+                    )}
+                    <p
+                      className={`text-xs truncate ${unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}
                     >
-                      View profile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteThread(other)}
-                      className="w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-left text-sm font-semibold text-destructive transition hover:bg-destructive/20"
-                    >
-                      Delete chat
-                    </button>
-                    <p className="px-1 pt-1 text-[11px] text-muted-foreground">
-                      Deleting removes the messages you sent and hides this chat from your inbox.
+                      {previewText(last.body)}
                     </p>
                   </div>
-                </SheetContent>
-              </Sheet>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[10px] text-muted-foreground">
+                      {fmtTime(last.created_at)}
+                    </span>
+                    {unread > 0 && (
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                        {unread}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <Sheet
+                  open={rowMenu?.id === other.id}
+                  onOpenChange={(nextOpen) => {
+                    if (!nextOpen) setRowMenu(null);
+                  }}
+                >
+                  <SheetContent
+                    side="bottom"
+                    className="bg-card border-border rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+                  >
+                    <SheetHeader className="text-left">
+                      <SheetTitle className="font-display text-lg">
+                        {other.display_name || other.username}
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = other.username;
+                          setRowMenu(null);
+                          if (target) nav({ to: "/u/$username", params: { username: target } });
+                        }}
+                        className="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-left text-sm font-semibold transition hover:bg-surface-3"
+                      >
+                        View profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteThread(other)}
+                        className="w-full rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-left text-sm font-semibold text-destructive transition hover:bg-destructive/20"
+                      >
+                        Delete chat
+                      </button>
+                      <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                        Deleting removes the messages you sent and hides this chat from your inbox.
+                      </p>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </Fragment>
             );
           })}
@@ -658,7 +798,9 @@ function DMsPage() {
       {!threads.isError && !threads.isPending && filtered.length === 0 && (
         <div className="glass rounded-3xl p-8 text-center">
           <RizzCat mood={q ? "searching" : "peek"} size={112} className="mx-auto mb-1" />
-          <p className="text-sm text-muted-foreground">{q ? "No matches." : "No conversations yet. Go say hi from someone's profile."}</p>
+          <p className="text-sm text-muted-foreground">
+            {q ? "No matches." : "No conversations yet. Go say hi from someone's profile."}
+          </p>
         </div>
       )}
 
@@ -671,7 +813,7 @@ function DMsPage() {
             <SheetTitle className="font-display text-xl">New group</SheetTitle>
           </SheetHeader>
 
-          <div className="mt-4 space-y-5">
+          <div className="mt-4 max-h-[70dvh] space-y-5 overflow-y-auto overscroll-contain pr-1">
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -680,7 +822,11 @@ function DMsPage() {
                 aria-label="Add a group photo"
               >
                 {photoPreview ? (
-                  <img src={photoPreview} alt="Group photo preview" className="h-full w-full object-cover" />
+                  <img
+                    src={photoPreview}
+                    alt="Group photo preview"
+                    className="h-full w-full object-cover"
+                  />
                 ) : preparingPhoto ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : (
@@ -688,12 +834,20 @@ function DMsPage() {
                 )}
               </button>
               <div className="min-w-0">
-                <p className="text-sm font-medium">Group photo <span className="text-muted-foreground">(optional)</span></p>
-                <p className="text-xs text-muted-foreground">Square crop, compressed before upload.</p>
+                <p className="text-sm font-medium">
+                  Group photo <span className="text-muted-foreground">(optional)</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Square crop, compressed before upload.
+                </p>
                 {photoPreview && (
                   <button
                     type="button"
-                    onClick={() => { if (photoPreview) URL.revokeObjectURL(photoPreview); setPhotoPreview(null); setGroupPhoto(null); }}
+                    onClick={() => {
+                      if (photoPreview) URL.revokeObjectURL(photoPreview);
+                      setPhotoPreview(null);
+                      setGroupPhoto(null);
+                    }}
                     className="mt-1 text-xs font-medium text-primary"
                   >
                     Remove photo
@@ -710,7 +864,9 @@ function DMsPage() {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground" htmlFor="group-name">Group name</label>
+              <label className="text-xs text-muted-foreground" htmlFor="group-name">
+                Group name
+              </label>
               <Input
                 id="group-name"
                 value={groupName}
@@ -718,25 +874,108 @@ function DMsPage() {
                 placeholder="e.g. The Group Chat"
                 className="mt-1 glass border-white/10"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">{groupName.trim() ? `${groupName.trim().length}/40` : "Required"}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {groupName.trim() ? `${groupName.trim().length}/40` : "Required"}
+              </p>
+            </div>
+
+            {/* Members. createGroupChat only accepts people you already have a
+                DM thread with, so the inbox threads are the candidate list —
+                the same set the server checks. */}
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-muted-foreground" htmlFor="group-members">
+                  Members
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  {selected.length} of {MAX_GROUP_PICKS}
+                </span>
+              </div>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="group-members"
+                  value={memberQuery}
+                  onChange={(e) => setMemberQuery(e.target.value)}
+                  placeholder="Search people you have DMs with…"
+                  className="pl-9 h-10 glass border-white/10"
+                />
+              </div>
+
+              {memberCandidates.length === 0 ? (
+                <p className="mt-2 rounded-xl border border-white/5 px-3 py-4 text-center text-[11px] text-muted-foreground">
+                  {memberQuery
+                    ? "Nobody here matches that name."
+                    : "People you have a DM with show up here. Start a conversation first."}
+                </p>
+              ) : (
+                <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain rounded-xl border border-white/5 p-1">
+                  {memberCandidates.map((person) => {
+                    const isSelected = selectedSet.has(person.id);
+                    const full = selected.length >= MAX_GROUP_PICKS && !isSelected;
+                    return (
+                      <button
+                        key={person.id}
+                        type="button"
+                        disabled={full}
+                        onClick={() => toggleSelected(person.id)}
+                        aria-pressed={isSelected}
+                        className={`flex w-full min-h-12 items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-40 ${
+                          isSelected ? "bg-primary/10" : "hover:bg-white/5"
+                        }`}
+                      >
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage src={person.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
+                            {(person.username ?? "?").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-foreground">
+                            {person.display_name || person.username}
+                          </span>
+                          {person.display_name && person.username && (
+                            <span className="block truncate text-[11px] text-muted-foreground">
+                              @{person.username}
+                            </span>
+                          )}
+                        </span>
+                        {isSelected && (
+                          <Check className="h-5 w-5 shrink-0 text-primary" strokeWidth={3} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                You are added as the owner. Pick at least one person.
+              </p>
             </div>
 
             <div className="rounded-2xl glass border border-white/5 p-3">
               <p className="text-xs text-muted-foreground">
-                {selected.length} selected ({selected.length}/{MAX_GROUP_PICKS}) · needs at least 2
+                {selected.length
+                  ? `${selected.length} selected · ${MAX_GROUP_PICKS - selected.length} spot${MAX_GROUP_PICKS - selected.length === 1 ? "" : "s"} left`
+                  : "Nobody picked yet"}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {selected.map((id) => {
                   const person = (threads.data ?? []).find((t) => t.other.id === id)?.other;
                   return (
-                    <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 pl-1 pr-2 py-1 text-xs">
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 pl-1 pr-2 py-1 text-xs"
+                    >
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={person?.avatar_url ?? undefined} />
                         <AvatarFallback className="bg-primary text-primary-foreground text-[9px] font-bold">
                           {(person?.username ?? "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="max-w-24 truncate">{person?.display_name || person?.username || "Member"}</span>
+                      <span className="max-w-24 truncate">
+                        {person?.display_name || person?.username || "Member"}
+                      </span>
                     </span>
                   );
                 })}
@@ -745,10 +984,16 @@ function DMsPage() {
 
             <Button
               onClick={() => void createTheGroup()}
-              disabled={creating || preparingPhoto || !groupName.trim() || selected.length < 2}
+              disabled={creating || preparingPhoto || !groupName.trim() || selected.length < 1}
               className="w-full min-h-12 rounded-xl border-0 bg-primary text-primary-foreground shadow-md"
             >
-              {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> : "Create group"}
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Creating…
+                </>
+              ) : (
+                "Create group"
+              )}
             </Button>
           </div>
         </SheetContent>
@@ -760,9 +1005,17 @@ function DMsPage() {
 function GroupAvatar({ group, size = "md" }: { group: Group; size?: "sm" | "md" }) {
   const dim = size === "sm" ? "h-11 w-11 text-sm rounded-xl" : "h-12 w-12 text-base rounded-2xl";
   return (
-    <div className={`${dim} shrink-0 overflow-hidden bg-surface-2 border border-border grid place-items-center font-display font-bold text-foreground`}>
+    <div
+      className={`${dim} shrink-0 overflow-hidden bg-surface-2 border border-border grid place-items-center font-display font-bold text-foreground`}
+    >
       {group.icon_url ? (
-        <img src={group.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        <img
+          src={group.icon_url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       ) : (
         <span className="flex items-center gap-0.5">
           <Users className="h-3.5 w-3.5 text-muted-foreground mr-0.5" />

@@ -85,7 +85,8 @@ function LeaderboardPage() {
     queryKey: ["board", period, followingOnly, user?.id ?? "anon"],
     queryFn: ({ pageParam }) => fetchBoardPage(period, user?.id ?? null, followingOnly, pageParam),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, pages) => (lastPage.rows.length === BOARD_PAGE_SIZE ? pages.length : undefined),
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.rows.length === BOARD_PAGE_SIZE ? pages.length : undefined,
     staleTime: 30_000,
   });
 
@@ -105,6 +106,16 @@ function LeaderboardPage() {
     return () => {
       void supabase.removeChannel(ch);
     };
+  }, [qc]);
+
+  // A score awarded in this browser (the client fallback) does not need the
+  // realtime publication to be live, so the app is told directly.
+  useEffect(() => {
+    const onAwarded = () => {
+      void qc.invalidateQueries({ queryKey: ["board"] });
+    };
+    window.addEventListener("rizz:awarded", onAwarded);
+    return () => window.removeEventListener("rizz:awarded", onAwarded);
   }, [qc]);
 
   // Infinite scroll: 50 per page.
@@ -249,11 +260,18 @@ function LeaderboardPage() {
 
         {!board.isLoading && !board.isError && !tracked && (
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
-            <p className="text-sm font-semibold text-foreground">Daily boards aren&apos;t tracked yet</p>
+            <p className="text-sm font-semibold text-foreground">
+              Daily boards aren&apos;t tracked yet
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Today / This week light up once the scoring update lands. All time works now.
             </p>
-            <Button type="button" variant="outline" onClick={() => setPeriod("all")} className="mt-3 h-11">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPeriod("all")}
+              className="mt-3 h-11"
+            >
               View All time
             </Button>
           </div>
@@ -262,9 +280,16 @@ function LeaderboardPage() {
         {showEmpty && (
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
             <Trophy className="mx-auto h-8 w-8 text-primary" />
-            <p className="mt-2 text-sm font-semibold text-foreground">Earn your first rizz to get on the board</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              Earn your first rizz to get on the board
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">Only scores above 0 show up here.</p>
-            <Button type="button" variant="outline" onClick={() => setEarnOpen(true)} className="mt-3 h-11 gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEarnOpen(true)}
+              className="mt-3 h-11 gap-1.5"
+            >
               <Info className="h-4 w-4" /> How to earn rizz
             </Button>
           </div>
@@ -297,7 +322,9 @@ function LeaderboardPage() {
 
         <div ref={sentinelRef} aria-hidden className="h-1" />
         {!hasMore && rows.length > 3 && (
-          <p className="mt-3 text-center text-[11px] text-muted-foreground">That&apos;s the whole board.</p>
+          <p className="mt-3 text-center text-[11px] text-muted-foreground">
+            That&apos;s the whole board.
+          </p>
         )}
       </div>
 
@@ -332,11 +359,21 @@ function LeaderboardPage() {
         </button>
       )}
 
-      <ProfileCardDialog user={cardUserId ? { userId: cardUserId } : null} open={!!cardUserId} onOpenChange={(o) => { if (!o) setCardUserId(null); }} />
+      <ProfileCardDialog
+        user={cardUserId ? { userId: cardUserId } : null}
+        open={!!cardUserId}
+        onOpenChange={(o) => {
+          if (!o) setCardUserId(null);
+        }}
+      />
 
       {/* How to earn rizz */}
       <Sheet open={earnOpen} onOpenChange={setEarnOpen}>
-        <SheetContent side="bottom" hideClose className="mx-auto w-full max-w-md rounded-t-3xl border-white/10 glass-strong">
+        <SheetContent
+          side="bottom"
+          hideClose
+          className="mx-auto w-full max-w-md rounded-t-3xl border-white/10 glass-strong"
+        >
           <div className="flex items-center gap-3">
             <SheetTitle className="flex-1 font-display text-lg">How to earn rizz</SheetTitle>
             <SheetClose asChild>
@@ -345,14 +382,19 @@ function LeaderboardPage() {
           </div>
           <ul className="mt-3 space-y-1">
             {EARN_ROWS.map((e) => (
-              <li key={e.action} className="flex min-h-[44px] items-center justify-between rounded-xl px-3 hover:bg-white/5">
+              <li
+                key={e.action}
+                className="flex min-h-[44px] items-center justify-between rounded-xl px-3 hover:bg-white/5"
+              >
                 <span className="text-sm text-foreground">{e.action}</span>
                 <span className="font-display font-bold text-[#c8ff3d]">{e.points}</span>
               </li>
             ))}
           </ul>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            Scores update live. Only scores above 0 appear on the board.
+            Rizz is earned, not shared: there is no common pool and no fixed supply, so every point
+            you make is yours and nobody&apos;s score goes down because you earned one. Scores
+            update live, and only scores above 0 appear on the board.
           </p>
         </SheetContent>
       </Sheet>
@@ -379,7 +421,9 @@ function PodiumSpot({
       onClick={() => onOpen(row.id)}
       aria-label={`Rank ${place}: ${name}`}
       className={`flex min-h-[44px] flex-col items-center gap-1 rounded-2xl border px-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
-        tall ? "border-[#c8ff3d]/60 bg-[#c8ff3d]/10 pb-4 pt-3" : "border-[#2a2a2e] bg-card pb-3 pt-2.5"
+        tall
+          ? "border-[#c8ff3d]/60 bg-[#c8ff3d]/10 pb-4 pt-3"
+          : "border-[#2a2a2e] bg-card pb-3 pt-2.5"
       }`}
     >
       {tall ? (
@@ -395,7 +439,9 @@ function PodiumSpot({
       <span className="w-full truncate text-sm font-bold text-foreground">{name}</span>
       <span className="w-full truncate text-[11px] text-muted-foreground">@{row.username}</span>
       <span className="flex items-center gap-1.5">
-        <span className="font-display text-base font-bold text-[#c8ff3d]">{formatNumber(row.score)}</span>
+        <span className="font-display text-base font-bold text-[#c8ff3d]">
+          {formatNumber(row.score)}
+        </span>
         <RankDelta rank={row.rank} prevRank={row.prevRank} />
       </span>
     </button>
@@ -421,7 +467,9 @@ function BoardRowCard({
         onClick={() => onOpen(row.id)}
         aria-label={`Rank ${row.rank}: ${name}`}
         className={`flex h-16 w-full items-center gap-3 rounded-2xl border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
-          isMe ? "border-[#c8ff3d] bg-[#c8ff3d]/10" : "border-[#2a2a2e] bg-card hover:bg-white/[0.04]"
+          isMe
+            ? "border-[#c8ff3d] bg-[#c8ff3d]/10"
+            : "border-[#2a2a2e] bg-card hover:bg-white/[0.04]"
         }`}
       >
         <span className="w-8 shrink-0 text-center font-display text-base font-bold text-muted-foreground">
@@ -456,7 +504,10 @@ function BoardSkeleton({ short = false }: { short?: boolean }) {
   return (
     <div className="space-y-2" role="status" aria-label="Loading leaderboard">
       {Array.from({ length: short ? 3 : 8 }).map((_, i) => (
-        <div key={i} className="flex h-16 items-center gap-3 rounded-2xl border border-border bg-card/60 px-3">
+        <div
+          key={i}
+          className="flex h-16 items-center gap-3 rounded-2xl border border-border bg-card/60 px-3"
+        >
           <div className="skeleton-shimmer h-6 w-8 rounded" />
           <div className="skeleton-shimmer h-10 w-10 rounded-full" />
           <div className="flex-1 space-y-1.5">

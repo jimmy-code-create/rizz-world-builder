@@ -8,10 +8,34 @@
  */
 export type BadgeTier = "common" | "rare" | "epic" | "legendary" | "mythic";
 
+/**
+ * What a badge measures, in a form the UI can turn into a progress bar.
+ *
+ * The badge's `flavor` is prose ("Earn 100 likes across your posts and
+ * stories."); this is the same rule as data, so the collection can say
+ * "42 / 100" instead of only repeating the sentence.
+ */
+export type BadgeCriteria =
+  | { kind: "badges_earned"; target: number }
+  | { kind: "likes_received"; target: number }
+  | { kind: "messages_sent"; target: number }
+  | { kind: "post_likes_max"; target: number }
+  | { kind: "leaderboard_rank"; target: number }
+  | { kind: "day_streak"; target: number }
+  | { kind: "bounties_claimed"; target: number }
+  | { kind: "games_won"; target: number }
+  | { kind: "account_age_days"; target: number }
+  | { kind: "posts_published"; target: number };
+
 export type CanonicalBadge = {
   slug: string;
   name: string;
   flavor: string;
+  /**
+   * The measurable rule behind the badge, when there is one. Badges that only
+   * an admin can hand out have no criteria and no progress bar.
+   */
+  criteria?: BadgeCriteria;
   /**
    * Legacy emoji shortcode, kept only as a last-resort fallback for unknown
    * slugs; the 12-badge set always renders its vector symbol instead.
@@ -35,6 +59,7 @@ const WHITE = "#F2F2F2";
 export const BADGE_SET: CanonicalBadge[] = [
   {
     slug: "rookie",
+    criteria: { kind: "badges_earned", target: 1 },
     name: "Newcomer",
     flavor: "Join RIZZ and claim your first badge.",
     icon: ":cat_gg:",
@@ -45,6 +70,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "rising-star",
+    criteria: { kind: "likes_received", target: 100 },
     name: "Rising Star",
     flavor: "Earn 100 likes across your posts and stories.",
     icon: ":cat_hype:",
@@ -55,6 +81,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "smooth-talker",
+    criteria: { kind: "messages_sent", target: 100 },
     name: "Chatterbox",
     flavor: "Send 100 messages across RIZZ chats.",
     icon: ":cat_music:",
@@ -75,6 +102,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "meme-lord",
+    criteria: { kind: "post_likes_max", target: 50 },
     name: "Meme Lord",
     flavor: "Make a post that reaches 50 likes.",
     icon: ":cat_hype:",
@@ -85,6 +113,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "top-rizzler",
+    criteria: { kind: "leaderboard_rank", target: 10 },
     name: "Top Rizzler",
     flavor: "Reach the top 10 on the RIZZ leaderboard.",
     icon: ":cat_gg:",
@@ -105,6 +134,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "streak-7",
+    criteria: { kind: "day_streak", target: 7 },
     name: "7 Day Streak",
     flavor: "Show up on RIZZ seven days in a row.",
     icon: ":cat_gg:",
@@ -115,6 +145,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "streak-30",
+    criteria: { kind: "day_streak", target: 30 },
     name: "30 Day Streak",
     flavor: "Show up on RIZZ thirty days in a row.",
     icon: ":cat_hype:",
@@ -125,6 +156,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "bounty-hunter",
+    criteria: { kind: "bounties_claimed", target: 1 },
     name: "Bounty Hunter",
     flavor: "Complete a RIZZ bounty.",
     icon: ":cat_cool:",
@@ -135,6 +167,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "game-champ",
+    criteria: { kind: "games_won", target: 10 },
     name: "Game Champ",
     flavor: "Win ten RIZZ games.",
     icon: ":cat_gg:",
@@ -145,6 +178,7 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "og",
+    criteria: { kind: "account_age_days", target: 30 },
     name: "Early Supporter",
     flavor: "Your account joined in RIZZ's first 30 days.",
     icon: ":cat_love:",

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Tr
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
+import { commentDepths as commentDepthsFor, commentIndent } from "@/lib/comment-tree";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
@@ -349,7 +350,9 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   });
 
   const isMine = user?.id === post.author_id;
-  const postUrl = typeof window !== "undefined" ? `${window.location.origin}/u/${post.author?.username}` : "";
+  // The permalink for a single post, so a link can point at the post itself
+  // and not just the profile it happens to sit on.
+  const postUrl = typeof window !== "undefined" ? `${window.location.origin}/p/${post.id}` : "";
   const sharePost = async () => {
     if (typeof navigator !== "undefined" && (navigator as any).share) {
       try { await (navigator as any).share({ title: `@${post.author?.username} on RIZZ`, text: post.caption ?? "", url: postUrl }); return; } catch {}
@@ -419,6 +422,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   return (
     <motion.article
       ref={cardRef}
+      id={`post-${post.id}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
@@ -820,6 +824,8 @@ function CommentsThread({ postId }: { postId: string }) {
     queryKey: ["comments", postId],
     queryFn: () => fetchComments(postId),
   });
+  /** How deep each comment sits in the reply chain, so the thread has shape. */
+  const commentDepths = useMemo(() => commentDepthsFor(comments.data ?? []), [comments.data]);
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to comment");
@@ -850,8 +856,13 @@ function CommentsThread({ postId }: { postId: string }) {
         {comments.data?.map((c: any) => {
           const a = (c as unknown as { author: { username: string; display_name: string | null; avatar_url: string | null } }).author;
           const comment = c as typeof c & { parent_comment_id?: string | null };
+          const depth = commentDepths.get(c.id) ?? 0;
           return (
-            <div key={c.id} className={`flex gap-2 text-sm ${comment.parent_comment_id ? "ml-8" : ""}`}>
+            <div
+              key={c.id}
+              className={cn("flex gap-2 text-sm", depth > 0 && "border-l border-white/10 pl-2")}
+              style={depth > 0 ? { marginLeft: commentIndent(depth) } : undefined}
+            >
               <Avatar className="h-7 w-7 shrink-0">
                 <AvatarImage src={a?.avatar_url ?? undefined} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">

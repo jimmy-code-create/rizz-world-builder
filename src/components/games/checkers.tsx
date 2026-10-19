@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot, Flag } from "lucide-react";
 import { GameChip, GameShell } from "@/components/games/board-frame";
+import { useArcadeWin } from "@/lib/games/arcade-record";
 import {
   applyMove,
   bestMove,
@@ -22,6 +23,7 @@ export function CheckersGame({ players = 1 }: { players?: number }) {
   const [chain, setChain] = useState<string[]>([]);
 
   const winner = useMemo(() => winnerOf(state), [state]);
+  useArcadeWin("checkers", winner === "r");
   const legal = useMemo(() => generateMoves(state), [state]);
   const myTurn = state.turn === "r" && !winner;
 

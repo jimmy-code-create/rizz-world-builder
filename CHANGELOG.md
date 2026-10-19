@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-10-20 — Messages, groups, replies, badges and rizz: ten fixes in one pass
+
+### Messages stop breaking one character per line
+- A short message like "Hi" rendered as **H / i**, and longer ones wrapped mid-word. The bubble was sized with `width: fit-content` inside the message trigger, which is a shrink-to-fit box, so the browser resolved the width against an indefinite available width and sized the bubble to its *minimum* content — a single glyph. The bubble now uses `width: max-content` with an absolute cap, and the 44px tap target moved to the height, where it can no longer eat the padding.
+- The conversation column is capped and centred (`max-w-3xl`), so messages line up with the composer instead of hugging the far left of a wide screen — and the far right of it for outgoing messages. The group chat got the same column.
+- The time chip moved inside the message block, so consecutive messages are 8px apart rather than 40px.
+
+### Leaving a conversation
+- The header back arrow is a real 44px button with a label, and **Escape** now leaves the conversation. The only way out used to be the browser's own back button.
+
+### Group chats can be created again
+- The **New group** sheet had a member *counter* but no member *list* — "0 selected (0/5)" with nothing to tap, because the only way to add someone was a double-tap on an inbox row. The sheet now has a searchable picker of the people you have DMs with (exactly the set the server accepts), a search field, and a scrollable body. The button says how many spots are left, and the sheet no longer opens wider than the screen.
+
+### Replies have a shape
+- Post comments carry a real `parent_comment_id`, but the three renderers only asked "does this comment have a parent?" and answered with one hard-coded indent — so a reply to a reply sat at the same level as a reply to a comment. Depth is now derived from the parent chain (`src/lib/comment-tree.ts`) and every level indents further, in the post sheet, the side discussion and the inline thread.
+- Forum replies indent past depth three instead of flattening out, and a nested reply now names who it replies to.
+
+### Notifications link to the post
+- "New Comment" is gone. The comment behind the notification is recovered and shown, the post it belongs to is named, and the whole row is a link to that post.
+- New route **`/p/<post id>`** renders a single post — the post permalink. `?comment=<id>` opens straight into the thread. **Copy link** on a post now copies that permalink.
+
+### Badges show how far along you are
+- Every measurable badge has a progress bar and a count: "42 / 100 · 58 to go" on the card and in the inspector. Likes received, messages sent, best post, day streak, bounties claimed, leaderboard rank, badges held and account age are all measured from the tables the app already reads.
+- Arcade wins are recorded on the device (like the games' own best scores), so **Game Champ** can show progress too.
+
+### "Bring 1 freind" reads "Bring 1 friend"
+- Bounty titles and descriptions are corrected on the way out for unambiguous misspellings, and the **New bounty** dialog offers a one-tap "Did you mean…?" before the typo is saved.
+
+### Rizz is actually earnable
+- Rizz was not earnable: `profiles.rizz_score` was only ever set by an admin gift, so every creator on the board read **0**. It is now earned — a post is +5, a like received +2, a comment received +3, a reaction received +1, a badge +25.
+- **Rizz is earned, not shared.** There is no common pool and no fixed supply: a pool would make the board zero-sum, so your gain would be somebody else's loss and the number would stop meaning anything. Every event is worth a fixed number of points and the board ranks contributions.
+- The server does the awarding through the rizz migration (which now carries the award triggers, and puts `profiles` in the realtime publication so the live board is actually live). Until that migration is deployed, the app credits you for the things that happen on your own device — the posts you make and the badges you earn — capped at 250 a day, and it stops the moment the server answers, so nothing is counted twice.
+
+### Buttons line up
+- The **Status** row in the account menu had a 10px icon where every other row had a 28px tile, so its label sat 18px left of every other label in the same menu. The icon column is now the same width everywhere, in the menu and in the help sheet.
+
 ## 2026-10-18 — Featured badge: wear one crest beside your name
 
 ### Pick a badge to wear

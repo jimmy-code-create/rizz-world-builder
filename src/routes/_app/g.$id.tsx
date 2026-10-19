@@ -417,10 +417,14 @@ function GroupRoom() {
         <div
           ref={messagesListRef}
           onClick={media.onMediaClick}
-          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-2"
+          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
           style={wallpaperStyle(wallpaper)}
         >
           {media.viewer}
+          {/* The conversation column is capped and centred so the messages line
+              up with the composer instead of hugging the far left of a wide
+              screen (and the far right of it for outgoing messages). */}
+          <div className="mx-auto w-full max-w-3xl space-y-2">
           {hasOlderMessages && (
             <div className="flex justify-center pb-2">
               <Button onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -583,6 +587,7 @@ function GroupRoom() {
           <p className="text-center text-sm text-muted-foreground py-12">Say hi to start the conversation 👋</p>
         )}
         <div ref={endRef} />
+          </div>
       </div>
 
       <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">

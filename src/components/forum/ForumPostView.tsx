@@ -36,7 +36,7 @@ import {
 import { AuthorLine, ReactionBar, StateFlag, StatusChip, TagChip } from "@/components/forum/ForumBits";
 import { ForumRichBody } from "@/components/forum/ForumEmbeds";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
-import { buildForumReplyTree, forumActivityLabel, forumJoinLabel, type ForumReplyNode } from "@/lib/forum-content";
+import { buildForumReplyTree, forumActivityLabel, forumIndentFor, forumJoinLabel, type ForumReplyNode } from "@/lib/forum-content";
 import {
   createForumReply,
   deleteForumPost,
@@ -164,6 +164,7 @@ function ReplyItem({
   muted,
   roles,
   badges,
+  replyNames,
 }: {
   node: ForumReplyNode<ForumReply>;
   post: ForumPost;
@@ -178,6 +179,8 @@ function ReplyItem({
   muted: boolean;
   roles: Map<string, RealmRole>;
   badges: Map<string, Badge[]>;
+  /** reply id -> author name, so a reply can name the reply it answers. */
+  replyNames: Map<string, string>;
 }) {
   const qc = useQueryClient();
   const reply = node.reply;
@@ -188,6 +191,8 @@ function ReplyItem({
   const isBest = post.best_reply_id === reply.id;
   const mine = !!userId && reply.author_id === userId;
   const deleted = !!reply.deleted_at || !reply.body.trim();
+  /** The reply this one answers, so a nested reply says who it replies to. */
+  const parentName = reply.parent_id ? replyNames.get(reply.parent_id) ?? null : null;
 
   const act = (run: () => Promise<unknown>, failure: string) => {
     void run()
@@ -209,7 +214,7 @@ function ReplyItem({
   return (
     <div
       className={cn("forum-branch forum-branch-elbow", node.depth > 0 && "mt-3")}
-      style={{ marginLeft: `${Math.min(node.depth, 3) * 0.5}rem` }}
+      style={{ marginLeft: `${forumIndentFor(node.depth)}rem` }}
     >
       <div
         className={cn(
@@ -240,6 +245,12 @@ function ReplyItem({
               </span>
             }
           />
+          {parentName && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <CornerDownRight className="h-3 w-3 shrink-0" aria-hidden />
+              replying to {parentName}
+            </span>
+          )}
           {isOp && (
             <span className="forum-chip border-[var(--forum-role-owner)] text-[var(--forum-role-owner)]">OP</span>
           )}
@@ -360,6 +371,7 @@ function ReplyItem({
           muted={muted}
           roles={roles}
           badges={badges}
+          replyNames={replyNames}
         />
       ))}
     </div>
@@ -433,6 +445,14 @@ export function ForumPostView({
   }, [open]);
 
   const tree = useMemo(() => buildForumReplyTree(thread.data?.replies ?? []), [thread.data?.replies]);
+  /** reply id -> the name of whoever wrote it, so a nested reply can name its parent. */
+  const replyNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const reply of thread.data?.replies ?? []) {
+      map.set(reply.id, reply.author?.display_name || reply.author?.username || "member");
+    }
+    return map;
+  }, [thread.data?.replies]);
   const bestReply = useMemo(
     () => (post?.best_reply_id ? (thread.data?.replies ?? []).find((item) => item.id === post.best_reply_id) ?? null : null),
     [post?.best_reply_id, thread.data?.replies],
@@ -990,6 +1010,7 @@ export function ForumPostView({
                       muted={muted}
                       roles={roleMap}
                       badges={badgeMap}
+                      replyNames={replyNames}
                     />
                   </div>
                 ))}

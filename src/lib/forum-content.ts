@@ -40,7 +40,8 @@ const MARKDOWN_LINK = /\[([^\]]+)\]\((\S+)\)/g;
 /** A single URL on its own line is a block; anything else is prose. */
 function classifyUrl(url: string, alt: string | null): ForumBlock {
   const reel = parseExternalReelLink(url);
-  if (reel.ok && reel.value.platform === "youtube") return { kind: "video", url: reel.value.sourceUrl };
+  if (reel.ok && reel.value.platform === "youtube")
+    return { kind: "video", url: reel.value.sourceUrl };
   if (looksLikeMusicLink(url)) {
     const music = detectMusicSource(url);
     if (music && music.kind !== "youtube") return { kind: "music", url: music.url };
@@ -232,8 +233,24 @@ export function buildForumReplyTree<T extends { id: string; parent_id: string | 
   return roots;
 }
 
+/**
+ * How far a reply is indented, in rem.
+ *
+ * The first three levels step by 0.5rem. Past that the step shrinks, so a
+ * deep thread still shows its shape instead of collapsing every level onto
+ * the same line, while the thread never runs off the side of the card.
+ */
+export function forumIndentFor(depth: number): number {
+  const level = Math.max(0, depth);
+  if (level <= 3) return level * 0.5;
+  return 1.5 + (level - 3) * 0.25;
+}
+
 /** "3m", "5h", "2d", "Mar 4" — how long ago something happened. */
-export function forumActivityLabel(value: string | number | Date | null | undefined, now = Date.now()): string {
+export function forumActivityLabel(
+  value: string | number | Date | null | undefined,
+  now = Date.now(),
+): string {
   if (!value) return "";
   const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
   if (!Number.isFinite(time)) return "";

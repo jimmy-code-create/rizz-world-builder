@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot, Crown, Lightbulb } from "lucide-react";
 import { GameChip, GameShell } from "@/components/games/board-frame";
+import { useArcadeWin } from "@/lib/games/arcade-record";
 import {
   applyMove,
   bestMove,
@@ -43,6 +44,7 @@ export function ChessGame({ players = 1 }: { players?: number }) {
   const [depth, setDepth] = useState(players > 2 ? 4 : 3);
 
   const info = useMemo(() => status(state), [state]);
+  useArcadeWin("chess", info.over && info.result === "checkmate" && info.winner === "w");
   const myMoves = info.moves;
   const flipped = false;
 

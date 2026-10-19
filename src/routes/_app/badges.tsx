@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
+import { fetchBadgeProgress } from "@/lib/badge-progress";
+import { awardRizz, RIZZ_RULES } from "@/lib/rizz";
 import {
   BADGE_SET,
   LEGACY_BADGE_SET,
@@ -39,6 +41,14 @@ export function BadgesPage() {
     queryFn: () => fetchUserBadgesWithDates(user!.id),
     enabled: !!user,
   });
+  // How far along this member is for every badge that has a measurable rule.
+  const progressQuery = useQuery({
+    queryKey: ["badge-progress", user?.id],
+    queryFn: () => fetchBadgeProgress(user!.id),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const progressMap = progressQuery.data;
 
   // Existing admin tooling stays database-backed during the visual catalog
   // rollout; actual awards still require the database's admin-only RLS policy.
@@ -86,6 +96,11 @@ export function BadgesPage() {
       if (insertError) throw insertError;
       toast.success(`Awarded ${badgeRow.name} to @${handle}`);
       setGrantUser("");
+      // Earning a badge is worth rizz. The server awards it when the scoring
+      // pipeline is live; until then the client can only credit itself.
+      void awardRizz((target as { id: string }).id, RIZZ_RULES.badge_earned, "badge").catch(
+        () => false,
+      );
       if ((target as { id: string }).id === user?.id) {
         void qc.invalidateQueries({ queryKey: ["badges-mine", user?.id] });
       }
@@ -162,6 +177,7 @@ export function BadgesPage() {
     displayBadges.find((badge) => badge.slug === selectedBadge?.slug) ?? catalog[0] ?? null;
   const isActiveOwned = active ? owned.has(active.slug) : false;
   const isActiveFeatured = !!active && featuredSlug === active.slug;
+  const activeProgress = active ? (progressMap?.[active.slug] ?? null) : null;
 
   /** Wear / unwear a badge. One at a time, persisted on the profile. */
   const toggleFeatured = async () => {
@@ -364,6 +380,7 @@ export function BadgesPage() {
             {filteredBadges.map((b) => {
               const hasIt = owned.has(b.slug);
               const isSelected = active?.slug === b.slug;
+              const progress = progressMap?.[b.slug] ?? null;
 
               return (
                 <button
@@ -396,6 +413,25 @@ export function BadgesPage() {
                     <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
                       {b.description}
                     </p>
+                    {progress && !hasIt && (
+                      <div className="mt-2 w-full">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${progress.pct}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[10px] font-semibold text-primary">
+                          {progress.current} / {progress.target}
+                          {progress.current < progress.target && (
+                            <span className="font-normal text-muted-foreground">
+                              {" · "}
+                              {progress.target - progress.current} to go
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <span className="relative flex items-center gap-1">
                     {featuredSlug === b.slug && (
@@ -492,11 +528,34 @@ export function BadgesPage() {
                   <p className="text-xs font-semibold text-foreground">
                     {isActiveOwned ? t("unlocked_owned") : t("locked_achiever")}
                   </p>
-                  <p
-                    className={`text-[11px] leading-snug ${isActiveOwned ? "text-emerald-200/90" : "text-muted-foreground"}`}
-                  >
-                    {isActiveOwned ? t("unlocked_owned_desc") : t("locked_desc")}
-                  </p>
+                  {isActiveOwned ? (
+                    <p className="text-[11px] leading-snug text-emerald-200/90">
+                      {t("unlocked_owned_desc")}
+                    </p>
+                  ) : activeProgress ? (
+                    <div className="mt-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-primary">
+                          {activeProgress.current} / {activeProgress.target}
+                        </span>
+                        {activeProgress.current < activeProgress.target && (
+                          <span className="text-muted-foreground">
+                            {activeProgress.target - activeProgress.current} to go
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${activeProgress.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-snug text-muted-foreground">
+                      {t("locked_desc")}
+                    </p>
+                  )}
                 </div>
               </div>
 

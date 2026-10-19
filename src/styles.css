@@ -647,10 +647,28 @@
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
-  /* Fit the content, cap at 82% of the list, keep a 44px tap target. */
-  width: fit-content;
-  max-width: min(82%, 34rem);
-  min-width: 2.75rem;
+  /* The bubble hugs its text.
+     `width: max-content` (never `fit-content`) is deliberate: the bubble sits
+     inside the message trigger, which is a shrink-to-fit box, so `fit-content`
+     resolved against an indefinite available width and Chrome sized the bubble
+     to its MIN-content — a single glyph. That is what rendered "Hi" as
+     "H / i" and wrapped every short message one character per line.
+     The width cap is absolute for the same reason: a percentage max-width
+     inside a shrink-to-fit parent resolves against an indefinite width and
+     collapses the bubble to nothing. */
+  width: max-content;
+  max-width: 34rem;
+  min-width: 0;
+  /* The 44px tap target lives on the HEIGHT. As a border-box width floor it
+     ate the px-4 padding and left a 12px content box, which is the other half
+     of the one-character-per-line bug. */
+  min-height: 2.75rem;
+  /* A column flex box so the text stays vertically centred inside that
+     44px target, and so the bubble can shrink (flex-shrink) on narrow
+     screens instead of overflowing the message column. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 /* A long token inside a bubble must be allowed to shrink rather than push the
    flex row past the bubble's max-width. */

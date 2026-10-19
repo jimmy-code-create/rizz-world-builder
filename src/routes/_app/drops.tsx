@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
+import { fixCommonTypos, hasKnownTypo } from "@/lib/text-fix";
 import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/drops")({
@@ -245,9 +246,11 @@ function DropsPage() {
               <div className="p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-xl">{d.title}</h3>
+                    <h3 className="font-display font-bold text-xl">{fixCommonTypos(d.title)}</h3>
                     {d.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{d.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {fixCommonTypos(d.description)}
+                      </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">by @{d.creator?.username}</p>
                   </div>
@@ -479,6 +482,15 @@ function CreateDropDialog({
             maxLength={60}
             className="glass border-white/10"
           />
+          {hasKnownTypo(title) && (
+            <button
+              type="button"
+              onClick={() => setTitle(fixCommonTypos(title))}
+              className="-mt-1 text-left text-[11px] text-primary hover:underline"
+            >
+              Did you mean “{fixCommonTypos(title)}”?
+            </button>
+          )}
           <Textarea
             placeholder="Hype it up"
             value={desc}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { GameChip, GameShell } from "@/components/games/board-frame";
+import { useArcadeWin } from "@/lib/games/arcade-record";
 import {
   bestCell,
   emptyBoard,
@@ -26,6 +27,7 @@ export function TicTacToeGame({ players = 1 }: { players?: number }) {
   const full = isFull(board);
 
   const endState = win ? (win.mark === human ? "win" : "loss") : full ? "draw" : null;
+  useArcadeWin("tic-tac-toe", endState === "win");
 
   // Counting once per finished board: effects can re-run (StrictMode, a parent
   // re-render), and a score that jumps by two on one draw looks like a bug.

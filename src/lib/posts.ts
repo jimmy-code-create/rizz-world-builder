@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Badge } from "@/lib/badges";
 import { startTrace } from "@/lib/upload-trace";
 import { parseExternalReelLink, type ExternalReelPlatform } from "@/lib/external-reels";
+import { awardRizz, RIZZ_RULES } from "@/lib/rizz";
 
 export type FeedPost = {
   id: string;
@@ -252,6 +253,10 @@ export async function createPost(input: {
     throw new Error(error.message);
   }
   trace.done();
+  // Creating a post is worth rizz. The server awards it when the scoring
+  // pipeline is deployed; until then the client credits the author, who can
+  // only ever credit themselves.
+  void awardRizz(input.authorId, RIZZ_RULES.post, "post").catch(() => false);
   return row;
 }
 

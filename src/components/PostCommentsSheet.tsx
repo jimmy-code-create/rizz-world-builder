@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { addComment, fetchComments, toggleCommentLike } from "@/lib/posts";
 import { cn, formatCount } from "@/lib/utils";
+import { commentDepths, commentIndent } from "@/lib/comment-tree";
 import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
@@ -59,7 +60,10 @@ function voteErrorMessage(error: Error): string {
  * Vote counts for a page of comments. Kept in one request for the whole list:
  * the page is capped, so this is a single indexed read rather than one per row.
  */
-async function fetchCommentVotes(commentIds: string[], myId: string | undefined): Promise<VoteData> {
+async function fetchCommentVotes(
+  commentIds: string[],
+  myId: string | undefined,
+): Promise<VoteData> {
   const counts = new Map<string, number>();
   const mine = new Set<string>();
   if (!commentIds.length) return { counts, mine };
@@ -82,6 +86,7 @@ const CommentRowView = memo(function CommentRowView({
   votes,
   voted,
   parentName,
+  depth,
   onVote,
   onReply,
   isMine,
@@ -92,6 +97,8 @@ const CommentRowView = memo(function CommentRowView({
   voted: boolean;
   /** Set when this comment answers another one, so the thread reads as a thread. */
   parentName: string | null;
+  /** How deep this comment sits in the reply chain. */
+  depth: number;
   onVote: (id: string) => void;
   onReply: (id: string, username: string) => void;
   isMine: boolean;
@@ -100,7 +107,10 @@ const CommentRowView = memo(function CommentRowView({
   const author = comment.author;
   const name = author?.display_name || author?.username || "someone";
   return (
-    <div className={cn("flex gap-2.5 py-2.5", parentName && "ml-3 border-l border-white/10 pl-2.5")}>
+    <div
+      className={cn("flex gap-2.5 py-2.5", depth > 0 && "border-l border-white/10 pl-2.5")}
+      style={depth > 0 ? { marginLeft: commentIndent(depth) } : undefined}
+    >
       <button
         type="button"
         onClick={() => onVote(comment.id)}
@@ -126,10 +136,15 @@ const CommentRowView = memo(function CommentRowView({
             userId={comment.author_id}
             username={author?.username}
           />
-          <ProfilePreviewTrigger username={author?.username ?? null} className="min-w-0 truncate text-xs font-semibold">
+          <ProfilePreviewTrigger
+            username={author?.username ?? null}
+            className="min-w-0 truncate text-xs font-semibold"
+          >
             {name}
           </ProfilePreviewTrigger>
-          <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(comment.created_at)}</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">
+            {timeAgo(comment.created_at)}
+          </span>
         </div>
         {parentName && (
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -137,7 +152,12 @@ const CommentRowView = memo(function CommentRowView({
             replying to @{parentName}
           </p>
         )}
-        <p className={cn("mt-1 whitespace-pre-wrap text-sm leading-snug", emojiTextClass(comment.body, "comment"))}>
+        <p
+          className={cn(
+            "mt-1 whitespace-pre-wrap text-sm leading-snug",
+            emojiTextClass(comment.body, "comment"),
+          )}
+        >
           <GifContent>{comment.body}</GifContent>
         </p>
         <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
@@ -233,7 +253,10 @@ export function PostCommentsSheet({
       if (!current) return;
       const counts = new Map(current.counts);
       const mine = new Set(current.mine);
-      counts.set(commentId, typeof result?.like_count === "number" ? result.like_count : counts.get(commentId) ?? 0);
+      counts.set(
+        commentId,
+        typeof result?.like_count === "number" ? result.like_count : (counts.get(commentId) ?? 0),
+      );
       if (result?.liked) mine.add(commentId);
       else mine.delete(commentId);
       qc.setQueryData<VoteData>(votesKey, { counts, mine });
@@ -272,7 +295,11 @@ export function PostCommentsSheet({
       list.sort((a, b) => b.created_at.localeCompare(a.created_at));
     } else {
       const counts = votes.data?.counts;
-      list.sort((a, b) => (counts?.get(b.id) ?? 0) - (counts?.get(a.id) ?? 0) || b.created_at.localeCompare(a.created_at));
+      list.sort(
+        (a, b) =>
+          (counts?.get(b.id) ?? 0) - (counts?.get(a.id) ?? 0) ||
+          b.created_at.localeCompare(a.created_at),
+      );
     }
     return list;
   }, [comments.data, sort, votes.data]);
@@ -285,6 +312,9 @@ export function PostCommentsSheet({
     }
     return map;
   }, [comments.data]);
+
+  /** How deep each comment sits in the reply chain, so the thread has shape. */
+  const depths = useMemo(() => commentDepths(comments.data ?? []), [comments.data]);
 
   // Tapping Reply should land the caret in the box, not just change a label.
   useEffect(() => {
@@ -305,9 +335,7 @@ export function PostCommentsSheet({
           <DialogTitle className="min-w-0 truncate font-display text-base font-bold">
             Comments{" "}
             {comments.data ? (
-              <span className="text-muted-foreground">
-                · {capped ? `${loaded}+` : loaded}
-              </span>
+              <span className="text-muted-foreground">· {capped ? `${loaded}+` : loaded}</span>
             ) : null}
           </DialogTitle>
           <div className="flex items-center gap-2">
@@ -315,12 +343,18 @@ export function PostCommentsSheet({
               type="button"
               variant="outline"
               size="sm"
-              aria-label={sort === "top" ? "Sorted by top voted. Switch to newest" : "Sorted by newest. Switch to top voted"}
+              aria-label={
+                sort === "top"
+                  ? "Sorted by top voted. Switch to newest"
+                  : "Sorted by newest. Switch to top voted"
+              }
               onClick={() => setSort((s) => (s === "top" ? "new" : "top"))}
               className="h-8 shrink-0 gap-1.5 border-white/10 bg-white/5 px-2.5 text-xs"
             >
               <ArrowDownUp className="h-3.5 w-3.5" />
-              <span className="hidden min-[360px]:inline">{sort === "top" ? "Top voted" : "Newest"}</span>
+              <span className="hidden min-[360px]:inline">
+                {sort === "top" ? "Top voted" : "Newest"}
+              </span>
             </Button>
             <DialogClose asChild>
               <CloseButton />
@@ -329,15 +363,24 @@ export function PostCommentsSheet({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4">
-          {comments.isLoading && <p className="py-6 text-center text-xs text-muted-foreground">Loading comments…</p>}
+          {comments.isLoading && (
+            <p className="py-6 text-center text-xs text-muted-foreground">Loading comments…</p>
+          )}
 
           {/* A failed read must not look like an empty thread. */}
           {comments.isError && (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
-                {comments.error instanceof Error ? comments.error.message : "Comments couldn’t load."}
+                {comments.error instanceof Error
+                  ? comments.error.message
+                  : "Comments couldn’t load."}
               </p>
-              <Button variant="outline" size="sm" className="mt-3 h-8" onClick={() => void comments.refetch()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 h-8"
+                onClick={() => void comments.refetch()}
+              >
                 Try again
               </Button>
             </div>
@@ -356,7 +399,12 @@ export function PostCommentsSheet({
               comment={comment}
               votes={votes.data?.counts.get(comment.id) ?? 0}
               voted={votes.data?.mine.has(comment.id) ?? false}
-              parentName={comment.parent_comment_id ? authorsById.get(comment.parent_comment_id) ?? null : null}
+              parentName={
+                comment.parent_comment_id
+                  ? (authorsById.get(comment.parent_comment_id) ?? null)
+                  : null
+              }
+              depth={depths.get(comment.id) ?? 0}
               onVote={(id) => voteMut.mutate(id)}
               onReply={(id, username) => setReplyTo({ id, username })}
               isMine={comment.author_id === user?.id}

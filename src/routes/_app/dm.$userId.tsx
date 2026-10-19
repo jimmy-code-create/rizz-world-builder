@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -156,6 +156,21 @@ function DMPage() {
   useEffect(() => {
     setWallpaper(loadWallpaper("dm", userId));
   }, [userId]);
+
+  // Escape leaves the conversation. Without it the only way out of a DM was
+  // the browser's own back button, which is not an affordance the app owns.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (openMsg || searchOpen || replyTo || wallpaperOpen) return;
+      // Never steal the key from a field the user is typing in.
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) return;
+      nav({ to: "/dms" });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [nav, openMsg, searchOpen, replyTo, wallpaperOpen]);
 
   useEffect(() => {
     if (!draftReady || !draftKey) return;
@@ -758,7 +773,14 @@ function DMPage() {
         className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
-        <Link to="/dms"><ArrowLeft className="h-5 w-5" /></Link>
+        <Link
+          to="/dms"
+          aria-label="Back to messages"
+          title="Back to messages"
+          className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
         <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="grid min-h-12 min-w-12 place-items-center">
         <AvatarWithStatus status={peerStatus} dotSize={12}>
           <Avatar className="h-9 w-9 ring-2 ring-primary/40">
@@ -858,9 +880,13 @@ function DMPage() {
       <div
         ref={scrollRef}
         onClick={media.onMediaClick}
-        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3 space-y-2"
+        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3"
       >
         {media.viewer}
+        {/* The conversation column is capped and centred so the messages line
+            up with the composer instead of hugging the far left of a wide
+            screen (and the far right of it for outgoing messages). */}
+        <div className="mx-auto w-full max-w-3xl space-y-2">
         {hasOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -900,10 +926,10 @@ function DMPage() {
                   : []),
               ];
               return (
-                <Fragment key={m.id}>
+                <div key={m.id} className="space-y-1">
                   {startsGroup && !deliveryStatus && (
-                    <div className="flex w-full justify-center py-1">
-                      <span className="rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                    <div className="flex w-full justify-center py-0.5">
+                      <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                         {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                       </span>
                     </div>
@@ -934,15 +960,15 @@ function DMPage() {
                       onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                     />
                   </motion.div>
-                </Fragment>
+                </div>
               );
             }
             const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
-              <Fragment key={m.id}>
+              <div key={m.id} className="space-y-1">
               {startsGroup && !deliveryStatus && (
-                <div className="flex w-full justify-center py-1">
-                  <span className="rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                <div className="flex w-full justify-center py-0.5">
+                  <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                     {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                   </span>
                 </div>
@@ -1024,7 +1050,7 @@ function DMPage() {
                   ]}
                 >
                   <div
-                    className={`chat-bubble message-bubble flex-none px-4 py-2 rounded-2xl text-left select-none touch-manipulation ${
+                    className={`chat-bubble message-bubble px-4 py-2 rounded-2xl text-left select-none touch-manipulation ${
                       deliveryStatus ? "opacity-60" : ""
                     } ${
                       deletedAt
@@ -1042,7 +1068,7 @@ function DMPage() {
                         role="button"
                         tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
-                        className="mb-1 flex items-center gap-1 text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
+                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
                       >
                         <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                       </span>
@@ -1113,7 +1139,7 @@ function DMPage() {
                   removed={removedPreviews.hidden.has(m.id)}
                 />
               </motion.div>
-              </Fragment>
+              </div>
             );
           })}
         </AnimatePresence>
@@ -1129,6 +1155,7 @@ function DMPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {showJump && (

@@ -398,7 +398,10 @@ export function AccountMenu({
           aria-label={`Status, ${statusShortLabel(selfPresence.status)}`}
           className={rowCls}
         >
-          <span className="grid h-2.5 w-2.5 shrink-0 place-items-center" aria-hidden>
+          <span
+            className="grid h-7 w-7 shrink-0 place-items-center"
+            aria-hidden
+          >
             <StatusIcon status={selfPresence.status} size={10} />
           </span>
           <span className="min-w-0 flex-1 truncate text-left font-medium">Status</span>
@@ -735,7 +738,9 @@ export function AccountMenu({
               onClick={() => setHelpOpen(false)}
               className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
             >
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </span>
               Bots & developer tools
             </Link>
             <Link
@@ -743,7 +748,9 @@ export function AccountMenu({
               onClick={() => setHelpOpen(false)}
               className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
             >
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </span>
               Account & data settings
             </Link>
             <p className="px-1 pt-1 text-xs text-muted-foreground">

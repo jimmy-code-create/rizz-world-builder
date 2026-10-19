@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot, RefreshCw } from "lucide-react";
 import { GameChip, GameShell } from "@/components/games/board-frame";
+import { useArcadeWin } from "@/lib/games/arcade-record";
 import {
   applyMove,
   bestSquare,
@@ -25,6 +26,7 @@ export function ReversiGame({ players = 1 }: { players?: number }) {
   const myMoves = useMemo(() => (mine ? legalMoves(board, "b") : []), [board, mine]);
   const totals = useMemo(() => counts(board), [board]);
   const over = myMoves.length === 0 && !mine && legalMoves(board, "w").length === 0;
+  useArcadeWin("reversi", over && totals.b > totals.w);
   const passed = mine && myMoves.length === 0 && legalMoves(board, "w").length > 0;
 
   const hover = useMemo(
