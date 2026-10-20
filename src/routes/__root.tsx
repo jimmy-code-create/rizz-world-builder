@@ -6,22 +6,19 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-  useLocation,
   ScrollRestoration,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactorPeekProvider } from "@/components/reactions/ReactorPeek";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { LilRizzCompanion } from "@/components/voice-companion/LilRizzCompanion";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
-import { useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -219,25 +216,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Public and marketing surfaces never show the floating cat.
- *
- * It is a signed-in companion, so it only mounts for a session on a product
- * route — never on the landing page, auth, invite or onboarding screens, where
- * a fixed bottom-right button sat on top of headlines and CTAs. Any overlay
- * also pushes it aside via the `.overlay-hide` rule in styles.css.
- */
-const COMPANION_HIDDEN_ROUTE =
-  /^\/(?:$|login|signup|reset-password|onboarding|tutorial|claim|join|join-realm|_app\/auth)/;
-
-function RizzCompanionLayer() {
-  const { user } = useAuth();
-  const companionEnabled = useRizzCompanionEnabled();
-  const location = useLocation();
-  if (!companionEnabled || !user || COMPANION_HIDDEN_ROUTE.test(location.pathname)) return null;
-  return <LilRizzCompanion />;
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -265,7 +243,6 @@ function RootComponent() {
             {/* One shared reactor peek for every reaction chip in the app. */}
             <ReactorPeekProvider>
               <Outlet />
-              <RizzCompanionLayer />
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />

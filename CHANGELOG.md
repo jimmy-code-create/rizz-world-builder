@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-10-20 — Badge names: HypeSquad Bravery and Verified Creator
+
+### Two badges renamed, no award lost
+- **Early Rizzer → HypeSquad Bravery.** The first-wave badge takes the
+  house-badge presentation it was modelled on: the name, a one-line flavor
+  ("First in, no hesitation. Joined RIZZ in the first wave.") and the story in
+  the card below, instead of a description doing all three jobs.
+- **Channel Founder → Verified Creator.** Creating a channel was always a
+  creator milestone, so the catalog keeps one creator badge, not two that read
+  almost the same. Existing Founder awards move onto Verified Creator
+  (deduplicated), and the profile-card verified check — which already accepted
+  either slug — keeps working.
+- Migration `20261026000000_badge_renames.sql` is rerun-safe, and a no-op on
+  databases where `badge_set_v2` already removed the old rows.
+- Both new slugs joined the profile's legacy shelf, so holders see the renamed
+  badge beside their name and in the share card instead of losing it to the
+  catalog filter.
+
+## 2026-10-20 — Story composer: typing, living text, Instagram-style templates
+
+### Typing works past the first letter
+- Editing a story text layer re-focused and re-selected the whole span on every
+  keystroke (the focus lived in a `ref` callback, which React re-runs on each
+  render), so every new letter replaced the previous one and typing appeared to
+  stop after one character. Focus + select now happen once, when the editor
+  opens; the caret stays where you left it.
+- Template photo slots could not be tapped at all: the drag handler on the
+  overlay captured the pointer on `pointerdown`, which swallowed the slot's
+  click, so the picker never opened. Slots own their press now.
+
+### Living text
+- New **Live text** tool (and a **Live** toggle in the text toolbar): the words
+  breathe with a soft glow in the editor, and stay alive after posting — Share
+  records a 3 s clip with the text animated per frame instead of flattening it
+  into a still.
+- Reduced-motion users get a static preview; the clip still posts.
+
+### New text spawns below centre
+- Adding a text layer dropped it at the exact centre — on the middle of the
+  photo, and straight over a template's centre slot. It now spawns in the same
+  lower band the phrase stickers already use, draggable from there.
+
+### Templates behave like Instagram's frames
+- A template owns its slots and sample text; anything you added by hand is kept
+  when you switch layouts.
+- Photos already in slots follow across to the new layout instead of being
+  dropped, and filling a slot jumps to the next empty one, so a 4-up grid fills
+  in four taps.
+- Double-tap a filled slot to swap its photo; the first empty slot is selected
+  when a template is applied; Blank keeps your background.
+
+### RIZZ Companion removed
+- The floating Lil Rizz orb, its preference, the Settings toggle, its dead
+  server function and its animations are gone.
+
 ## 2026-10-20 — Badges are earned, not handed out
 
 ### Earning

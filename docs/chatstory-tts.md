@@ -1,6 +1,6 @@
 # Chat-story narration (Hindi / English / Hinglish)
 
-Realistic-first, free-first. Chat stories keep the companion's Kokoro TTS
+Realistic-first, free-first. Chat stories keep the app's Kokoro TTS
 untouched; only chat-story narration changes.
 
 ## What speaks what

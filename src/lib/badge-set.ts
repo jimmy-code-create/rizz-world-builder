@@ -193,6 +193,26 @@ export const BADGE_SET: CanonicalBadge[] = [
 /** Existing awards stay visible by reusing the closest current symbol. */
 export const LEGACY_BADGE_SET: CanonicalBadge[] = [
   {
+    slug: "hypesquad-bravery",
+    name: "HypeSquad Bravery",
+    flavor: "First in, no hesitation. Joined RIZZ in the first wave.",
+    icon: ":cat_hype:",
+    symbol: "og",
+    art: "/badges/badges.svg#og",
+    tier: "legendary",
+    glow: LIME,
+  },
+  {
+    slug: "verified_creator",
+    name: "Verified Creator",
+    flavor: "Official creator on RIZZ.",
+    icon: ":cat_love:",
+    symbol: "verified",
+    art: "/badges/badges.svg#verified",
+    tier: "epic",
+    glow: LIME,
+  },
+  {
     slug: "founder",
     name: "RIZZ Team",
     flavor: "Built by the people behind RIZZ.",

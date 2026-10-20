@@ -1,5 +1,36 @@
 # RIZZ Test Checklist
 
+## Badge renames (this pass)
+
+- [ ] A member who held Early Rizzer now shows **HypeSquad Bravery** on their profile, badge shelf and share card — same award date, new name.
+- [ ] A member who held Channel Founder shows **Verified Creator** and holds exactly one row for it (the merge must not duplicate).
+- [ ] On a fresh database the migration is a no-op: applying it twice changes nothing and throws no error.
+- [ ] `/badges` → Archive lists the renamed badges with the new names; searching "Bravery" finds HypeSquad Bravery.
+- [ ] Creating a new realm grants neither badge (the old channel-founder trigger is gone).
+
+## Story composer: typing, living text, templates (this pass)
+
+- [ ] Open a story, add **Text**, and type a full sentence without stopping: every letter lands, the caret follows, and Backspace deletes one character at a time (it used to keep only the last letter).
+- [ ] Type `@` inside the story text: the mention picker appears and picking someone inserts the handle instead of eating the sentence.
+- [ ] Press **Live text** in the tool row: a text layer opens with the Live toggle on; the words breathe in the editor.
+- [ ] Tap **Text** on a photo story: the label appears below the centre — not stacked on the middle of the photo or a template's centre slot — and drags anywhere.
+- [ ] Tune a layer's Live toggle from the text toolbar: on/off both update the preview immediately.
+- [ ] Share a story with a live layer and no motion overlay picked: the post is a 3s clip where the text keeps moving (not a still), and the caption is still written.
+- [ ] With reduced motion enabled in the OS, the editor shows the text still; posting still produces the clip.
+- [ ] Apply **Grid 4** from Sets: four dashed slots appear, the first is selected, and tapping a slot opens the picker (previously the tap was swallowed by dragging).
+- [ ] Fill the first slot: selection jumps to the next dashed slot, so four taps fill the grid.
+- [ ] Add your own text and sticker, then switch to **Grid 2**: your text and sticker survive, the grid re-shapes, and the photo already placed carries across to the first new slot.
+- [ ] Double-tap a filled slot: the picker opens and replaces that photo.
+- [ ] Apply **Blank**: layout layers clear, your own text/stickers remain, and the background is not forced back.
+- [ ] Apply **Polaroid** then post: the frame border and the handwritten caption are in the exported image.
+- [ ] Story text export matches the editor (position, font, colour, size) for both a preset template caption and a hand-typed one.
+
+## RIZZ Companion removed (this pass)
+
+- [ ] No floating Lil Rizz orb on any signed-in route, including feed, DMs and realms.
+- [ ] Settings → Preferences no longer lists a RIZZ Companion row and the page still saves the other switches.
+- [ ] Account → clear local cache still works and no longer special-cases the companion key.
+
 ## Badge earning (this pass)
 
 - [ ] Open `/badges` as a fresh account: Newcomer is already unlocked (the first sync awards it) and the other cards show their progress bars.

@@ -919,21 +919,9 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
-@keyframes rizz-companion-poof {
-  to { opacity: 0; filter: blur(8px); transform: scale(0.72) rotate(8deg); }
-}
 @keyframes rizz-cat-purr {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-1px) scale(1.025); }
-}
-@keyframes lil-rizz-orb-pulse {
-  0%, 100% { box-shadow: 0 0 12px rgb(201 255 61 / 0.28), 0 0 0 0 rgb(244 241 231 / 0.12); }
-  50% { box-shadow: 0 0 22px rgb(201 255 61 / 0.45), 0 0 0 9px rgb(244 241 231 / 0.06); }
-}
-@media (prefers-reduced-motion: reduce) {
-  @keyframes rizz-companion-poof {
-    to { opacity: 0; }
-  }
 }
 @keyframes shimmer {
   0% { background-position: -200% 0; }
@@ -957,6 +945,32 @@
     animation: none !important;
   }
 }
+/* Living story text: a slow breath plus a soft glow. The canvas bake in
+   StoryComposer uses the same 2.1 rad/s rhythm so the editor and the posted
+   clip read alike. */
+.story-live-text {
+  display: inline-block;
+  animation: story-live-text 2.99s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes story-live-text {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.88;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 0.5), 0 0 10px currentColor;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 0.5), 0 0 22px currentColor;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-live-text {
+    animation: none !important;
+  }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }

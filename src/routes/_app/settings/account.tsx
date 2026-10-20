@@ -7,7 +7,6 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { PREFS_KEY } from "@/lib/prefs";
-import { RIZZ_COMPANION_PREF_KEY } from "@/lib/rizz-companion-preference";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
@@ -43,7 +42,7 @@ function AccountSettingsPage() {
 
   function clearLocalCache() {
     Object.keys(localStorage)
-      .filter((k) => k.startsWith("rizz:") && k !== PREFS_KEY && k !== RIZZ_COMPANION_PREF_KEY)
+      .filter((k) => k.startsWith("rizz:") && k !== PREFS_KEY)
       .forEach((k) => localStorage.removeItem(k));
     toast.success("Local cache cleared");
   }

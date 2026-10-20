@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { PrefRow } from "@/components/settings/PrefRow";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 import { DEFAULT_PREFS, applyPrefs, loadPrefs, savePrefs, type Prefs } from "@/lib/prefs";
-import { setRizzCompanionEnabled, useRizzCompanionEnabled } from "@/lib/rizz-companion-preference";
 import { areRizzSoundsMuted, setRizzSoundsMuted as persistRizzSoundsMuted } from "@/lib/rizz-sounds";
 
 export const Route = createFileRoute("/_app/settings/preferences")({
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/_app/settings/preferences")({
 function PreferencesSettingsPage() {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const { t } = useI18n();
-  const companionEnabled = useRizzCompanionEnabled();
   const [rizzSoundsMutedState, setRizzSoundsMutedState] = useState(false);
 
   useEffect(() => {
@@ -44,18 +42,6 @@ function PreferencesSettingsPage() {
     >
       <SettingsCard className="space-y-4">
         <PrefRow label={t("pref_autoplay")} desc={t("pref_autoplay_desc")} checked={prefs.autoplay} onChange={(v) => updatePref("autoplay", v)} />
-        <PrefRow
-          label="RIZZ Companion"
-          desc="Show Lil Rizz for chat and voice help. Saved in this browser."
-          checked={companionEnabled}
-          onChange={(enabled) => {
-            try {
-              setRizzCompanionEnabled(enabled);
-            } catch {
-              toast.error("Couldn't save the companion setting. Allow browser storage and try again.");
-            }
-          }}
-        />
         <PrefRow label={t("pref_datasaver")} desc={t("pref_datasaver_desc")} checked={prefs.dataSaver} onChange={(v) => updatePref("dataSaver", v)} />
         <PrefRow label={t("pref_linkpreviews")} desc={t("pref_linkpreviews_desc")} checked={prefs.linkPreviews !== false} onChange={(v) => updatePref("linkPreviews", v)} icon={<Link2 className="h-4 w-4" />} />
         <PrefRow label={t("pref_sounds")} desc={t("pref_sounds_desc")} checked={prefs.sounds} onChange={(v) => updatePref("sounds", v)} icon={<Bell className="h-4 w-4" />} />

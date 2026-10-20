@@ -25,6 +25,7 @@ import {
   Pipette,
   Redo2,
   Sparkle,
+  Waves,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
@@ -50,6 +51,7 @@ import {
   type TemplateDef,
   type TextStyleId,
 } from "@/lib/story-creator/content";
+import { mergeTemplateLayers } from "@/lib/story-creator/templates";
 import {
   BAKE_FILTERS,
   MOTIONS,
@@ -113,6 +115,17 @@ type Overlay = {
   brushColor?: string;
   brushSize?: number;
   points?: StrokePoint[];
+  /**
+   * "Living" text: it breathes in the editor and is baked into a 3s clip on
+   * share, because a still JPEG would lose the motion.
+   */
+  live?: boolean;
+  /**
+   * Added by a template (slot or preset text) rather than by the member. Kept
+   * apart so re-applying a template replaces its own layers without eating
+   * anything the member typed or uploaded.
+   */
+  template?: boolean;
 };
 
 const STICKER_TABS: StickerTab[] = ["Emoji", "Icons", "Mood", "Gen Z", "Hinglish", "Desi pop"];
@@ -171,6 +184,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [brushSize, setBrushSize] = useState(10);
   const [redoStack, setRedoStack] = useState<Overlay[][]>([]);
   const drawingRef = useRef<{ id: string; points: StrokePoint[] } | null>(null);
+  const textEditorRef = useRef<HTMLSpanElement | null>(null);
   
   const pushHistory = (prev: Overlay[]) => {
     setRedoStack([]);
@@ -239,36 +253,44 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const previewTextPx = stageW ? (72 * stageW) / CANVAS_W : 28;
   const previewStickerPx = stageW ? (140 * stageW) / CANVAS_W : 56;
 
+  /**
+   * Focus and select the whole text once per edit session.
+   *
+   * This used to be the span's `ref` callback, which React re-invokes on every
+   * render: each keystroke re-focused the field and re-selected all of it, so
+   * the next letter replaced the previous one and typing looked like it stopped
+   * after a single character. Selecting is only useful when the editor opens.
+   */
+  useEffect(() => {
+    if (!editingId) return;
+    const el = textEditorRef.current;
+    if (!el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }, [editingId]);
+
+  const liveTexts = overlays.filter((ov) => ov.kind === "text" && ov.live);
+
   const applyTemplate = (templateId: string) => {
     const def = TEMPLATES.find((t) => t.id === templateId);
     if (!def) return;
     pushHistory(overlays);
     setTemplateId(templateId);
     setFrame(def.frame);
-    if (!def.bg.startsWith("#131315")) setBg(def.bg);
-    setOverlays((o) => {
-      const kept = o.filter((it) => it.kind === "image" && it.src);
-      const fresh: Overlay[] = [];
-      for (const slot of def.slots) {
-        fresh.push({
-          id: crypto.randomUUID(), kind: "image", value: "",
-          x: slot.x + slot.w / 2, y: slot.y + slot.h / 2,
-          scale: 1, rotate: 0, w: slot.w, h: slot.h,
-        });
-      }
-      for (const preset of def.texts) {
-        fresh.push({
-          id: crypto.randomUUID(), kind: "text", value: preset.text,
-          // Honors the authored size: text exports at 72 * scale * W / 1080.
-          x: preset.x, y: preset.y, scale: Math.max(0.25, preset.size / 72), rotate: 0,
-          color: preset.color, font: preset.font, style: preset.style,
-        });
-      }
-      return [...kept, ...fresh];
-    });
-    setSelected(null);
+    if (templateId !== "blank") setBg(def.bg);
+    // The frame owns its slots and sample text; the member's own layers stay.
+    // Photos already in slots carry across, so switching layouts resizes the
+    // page instead of starting over.
+    const merged = mergeTemplateLayers<Overlay>(overlays, def, () => crypto.randomUUID());
+    setOverlays(merged.layers);
+    // Land on the first empty slot so the next tap already has a target.
+    setSelected(merged.firstEmptyId);
     setPanel(null);
-    toast.success(`Template: ${def.label}`);
+    toast.success(`Template: ${def.label} · tap a dashed slot to fill it`);
   };
 
   const pickFile = (f: File | null, asSticker = false) => {
@@ -282,8 +304,14 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     }
     // A selected empty photo slot eats the upload; otherwise it becomes the backdrop.
     const slot = selected ? overlays.find((o) => o.id === selected) : undefined;
-    if (slot?.kind === "image" && !slot.src) {
+    if (slot?.kind === "image") {
       setOverlays((o) => o.map((it) => it.id === slot.id ? { ...it, src: url } : it));
+      // Grids fill like Instagram's: jump to the next dashed slot so a 4-up
+      // layout doesn't need four rounds of hunting for the right box.
+      const nextEmpty = overlays.find(
+        (it) => it.template && it.kind === "image" && !it.src && it.id !== slot.id,
+      );
+      if (nextEmpty) setSelected(nextEmpty.id);
       return;
     }
     setFile(f);
@@ -291,10 +319,14 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     setMediaUrl(url);
   };
 
-  const addText = () => {
+  const addText = (opts?: { live?: boolean }) => {
     const id = crypto.randomUUID();
     pushHistory(overlays);
-    setOverlays((o) => [...o, { id, kind:"text", value:"Tap to edit", x:0.5, y:0.5, scale:1, rotate:0, color:"#ffffff", font:"rizz-display", style:"classic" }]);
+    // Spawning at the exact centre dropped the words on the middle of the photo
+    // (and straight over a template's centre slot). New text lands below the
+    // centre instead — the same band the phrase stickers already use — and the
+    // member drags it wherever they want from there.
+    setOverlays((o) => [...o, { id, kind:"text", value:"Tap to edit", x:0.5, y:0.62, scale:1, rotate:0, color:"#ffffff", font:"rizz-display", style:"classic", live: opts?.live }]);
     setSelected(id); setPanel(null); setEditingId(id);
   };
   const addSticker = (s: string) => {
@@ -515,7 +547,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   });
 
   // Render the export base into any 2d context (image export, video frames).
-  async function renderExportBase(c: CanvasRenderingContext2D, W: number, H: number) {
+  async function renderExportBase(
+    c: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    opts?: { skipLiveText?: boolean },
+  ) {
     // background
     if (mediaUrl) {
       const img = await loadImage(mediaUrl);
@@ -558,6 +595,8 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       const size = (baseSize * ov.scale * W) / CANVAS_W;
       c.textAlign = "center"; c.textBaseline = "middle";
       if (ov.kind === "text") {
+        // Living text is painted per frame instead, so the clip keeps it moving.
+        if (opts?.skipLiveText && ov.live) { c.restore(); continue; }
         paintStyledText(c, ov.value, 0, 0, size, ov);
       } else if (ov.icon && ICONS[ov.icon]) {
         c.save();
@@ -592,9 +631,35 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   const [recording, setRecording] = useState(false);
 
-  /** Records a 3 s motion story (animated overlay baked per frame) via MediaRecorder. */
+  /** Living text, one frame at a time: a slow breath plus a soft glow. */
+  function paintLiveTexts(c: CanvasRenderingContext2D, W: number, H: number, t: number) {
+    for (const ov of overlays) {
+      if (ov.kind !== "text" || !ov.live) continue;
+      const size = (72 * ov.scale * W) / CANVAS_W;
+      const breath = Math.sin(t * 2.1);
+      c.save();
+      c.translate(ov.x * W, ov.y * H);
+      c.rotate((ov.rotate * Math.PI) / 180);
+      c.scale(1 + 0.04 * breath, 1 + 0.04 * breath);
+      c.globalAlpha = 0.84 + 0.16 * breath;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.shadowColor = ov.color ?? "#ffffff";
+      c.shadowBlur = 16 + 10 * (0.5 + 0.5 * breath);
+      paintStyledText(c, ov.value, 0, 0, size, ov);
+      c.restore();
+    }
+  }
+
+  /**
+   * Records a 3 s clip: motion particles and/or living text baked per frame.
+   * A still export would freeze the words, so anything animated becomes a clip.
+   */
   async function exportMotionVideo(): Promise<Blob> {
-    if (motionKind === "none") throw new Error("Pick a motion overlay first.");
+    const hasLive = overlays.some((ov) => ov.kind === "text" && ov.live);
+    if (motionKind === "none" && !hasLive) {
+      throw new Error("Pick a motion overlay or turn on Live text first.");
+    }
     if (typeof MediaRecorder === "undefined") throw new Error("Video export isn't supported in this browser.");
     const W = 540;
     const H = 960;
@@ -612,19 +677,20 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     const stopped = new Promise<void>((resolve) => {
       rec.onstop = () => resolve();
     });
-    // Base is rendered once; particles animate per frame on top.
-    await renderExportBase(ctx, W, H);
+    // Base is rendered once (sans living text); the moving parts go per frame.
+    await renderExportBase(ctx, W, H, { skipLiveText: true });
     const base = document.createElement("canvas");
     base.width = W;
     base.height = H;
     base.getContext("2d")?.drawImage(canvas, 0, 0);
-    const ps = createParticles(motionKind, (Date.now() % 100000) + 3);
+    const ps = motionKind === "none" ? [] : createParticles(motionKind, (Date.now() % 100000) + 3);
     rec.start();
     const frames = 90;
     for (let i = 0; i < frames; i += 1) {
       ctx.drawImage(base, 0, 0);
-      drawParticles(ctx, ps, motionKind, W, H);
-      stepParticles(ps, motionKind, 1 / 30);
+      if (motionKind !== "none") drawParticles(ctx, ps, motionKind, W, H);
+      paintLiveTexts(ctx, W, H, i / 30);
+      if (motionKind !== "none") stepParticles(ps, motionKind, 1 / 30);
       await new Promise((r) => requestAnimationFrame(r));
     }
     rec.stop();
@@ -638,8 +704,20 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     if (!mediaUrl && overlays.length === 0) { toast.error("Add media or a sticker/text"); return; }
     setBusy(true);
     try {
-      const { blob, type } = recorded ? { blob: recorded, type: "video" as const } : await compose();
-      const ext = type === "video" ? (recorded ? "webm" : (file?.name.split(".").pop() ?? "mp4")) : "jpg";
+      // Living text has to post as a clip — a still JPEG would freeze the
+      // words. A motion overlay keeps its explicit "Post motion story" button,
+      // so Share still behaves the way it did for motion-only stories.
+      let clip = recorded;
+      const wantsClip = overlays.some((ov) => ov.kind === "text" && ov.live);
+      if (!clip && wantsClip && !isVideo && typeof MediaRecorder !== "undefined") {
+        try {
+          clip = await exportMotionVideo();
+        } catch {
+          // A still beats a failed post: the caption still carries the words.
+        }
+      }
+      const { blob, type } = clip ? { blob: clip, type: "video" as const } : await compose();
+      const ext = type === "video" ? (clip ? "webm" : (file?.name.split(".").pop() ?? "mp4")) : "jpg";
       const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("stories").upload(path, blob, { contentType: blob.type || (type==="video"?"video/mp4":"image/jpeg") });
       if (upErr) throw upErr;
@@ -736,7 +814,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
             <div
               key={ov.id}
               onPointerDown={onDragOverlay(ov.id)}
-              onDoubleClick={() => { if (ov.kind === "text") { setSelected(ov.id); setEditingId(ov.id); } }}
+              onDoubleClick={() => {
+                if (ov.kind === "text") { setSelected(ov.id); setEditingId(ov.id); return; }
+                // Filled photo slot: double-tap swaps the picture, like Instagram's frame.
+                if (ov.kind === "image" && ov.src) { setSelected(ov.id); fileRef.current?.click(); }
+              }}
               className={`absolute touch-none ${editingId===ov.id ? "cursor-text" : "cursor-grab active:cursor-grabbing"} ${selected===ov.id ? "outline outline-2 outline-white/70 rounded-md" : ""}`}
               style={{
                 left: `${ov.x * 100}%`, top: `${ov.y * 100}%`,
@@ -756,6 +838,10 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   <button
                     type="button"
                     aria-label="Fill photo slot"
+                    // The parent starts a drag on pointerdown and captures the
+                    // pointer, which swallowed this tap: the picker never opened
+                    // and template slots looked dead. The slot owns its press.
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); setSelected(ov.id); fileRef.current?.click(); }}
                     className="grid h-full w-full place-items-center rounded-lg border-2 border-dashed border-primary/60 bg-white/5 text-xs font-bold text-primary"
                     style={{ maxWidth: "100%", maxHeight: "100%" }}
@@ -767,7 +853,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 <IconThumb name={ov.icon} color={ov.iconColor || "#c8ff3d"} size={previewStickerPx} />
               ) : ov.kind === "text" && editingId === ov.id ? (
                 <span
-                  ref={(el) => { if (el) { el.focus(); const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r); } }}
+                  ref={textEditorRef}
                   contentEditable
                   suppressContentEditableWarning
                   onPointerDown={(e) => e.stopPropagation()}
@@ -784,8 +870,10 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   }}
                   onBlur={(e) => { updateSelected({ value: e.currentTarget.textContent || " " }); setEditingId(null); setEditorText(""); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
-                  className="outline-none"
+                  className={`inline-block outline-none ${ov.live ? "story-live-text" : ""}`}
                 >{ov.value}</span>
+              ) : ov.kind === "text" && ov.live ? (
+                <span className="story-live-text">{ov.value}</span>
               ) : ov.value}
             </div>
               )
@@ -881,6 +969,17 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                     style={{ background: c }} aria-label={c} />
                 ))}
               </div>
+            )}
+            {sel.kind === "text" && (
+              <button
+                type="button"
+                onClick={() => updateSelected({ live: !sel.live })}
+                aria-pressed={!!sel.live}
+                title="Living text — it breathes in the editor and shares as a 3s clip"
+                className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${sel.live ? "border-primary/60 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground"}`}
+              >
+                <Sparkle className="h-3 w-3" /> Live
+              </button>
             )}
             {sel.kind === "text" && (
               <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Text style">
@@ -1310,11 +1409,13 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Animated overlays play on the canvas and bake into a 3&nbsp;s looping clip on export.
+              Animated overlays play on the canvas and bake into a 3&nbsp;s looping clip on
+              export. Living text (the <span className="font-bold text-primary">Live</span> toggle in
+              the text toolbar) posts as a clip too, even with no motion picked.
             </p>
             <Button
               className="w-full bg-primary text-primary-foreground font-bold"
-              disabled={busy || recording || motionKind === "none"}
+              disabled={busy || recording || (motionKind === "none" && liveTexts.length === 0)}
               onClick={async () => {
                 if (!user) {
                   toast.error("Sign in first");
@@ -1371,11 +1472,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         <div className="glass-strong flex items-center gap-1 overflow-x-auto rounded-2xl p-2 scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
           <ToolBtn icon={<ImageIcon className="h-4 w-4" />} label="Media" onClick={() => fileRef.current?.click()} />
           <ToolBtn icon={<LayoutGrid className="h-4 w-4" />} label="Sets" onClick={() => setPanel(panel === "templates" ? null : "templates")} />
-          <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={addText} />
+          <ToolBtn icon={<Type className="h-4 w-4" />} label="Text" onClick={() => addText()} />
+          <ToolBtn icon={<Sparkle className="h-4 w-4" />} label="Live text" onClick={() => addText({ live: true })} />
           <ToolBtn icon={<AtSign className="h-4 w-4" />} label="Mention" onClick={() => setPanel(panel === "caption" ? null : "caption")} />
           <ToolBtn icon={<Smile className="h-4 w-4" />} label="Sticker" onClick={() => setPanel(panel === "sticker" ? null : "sticker")} />
           <ToolBtn icon={<Brush className="h-4 w-4" />} label="Brush" onClick={() => setPanel(panel === "brush" ? null : "brush")} />
-          <ToolBtn icon={<Sparkle className="h-4 w-4" />} label="Motion" onClick={() => setPanel(panel === "motion" ? null : "motion")} />
+          <ToolBtn icon={<Waves className="h-4 w-4" />} label="Motion" onClick={() => setPanel(panel === "motion" ? null : "motion")} />
           <ToolBtn icon={<Layers className="h-4 w-4" />} label="Layers" onClick={() => setPanel(panel === "layers" ? null : "layers")} />
           <ToolBtn icon={<Wand2 className="h-4 w-4" />} label="Filter" onClick={() => setPanel(panel === "filter" ? null : "filter")} />
           <ToolBtn icon={<Palette className="h-4 w-4" />} label="Tune" onClick={() => setPanel(panel === "tune" ? null : "tune")} />

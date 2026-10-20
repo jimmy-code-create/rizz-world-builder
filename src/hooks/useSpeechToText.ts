@@ -141,7 +141,7 @@ export function useSpeechToText({
       recognition.onerror = (event) => {
         if (event.error === "no-speech" || event.error === "aborted") return;
         const messages: Record<string, string> = {
-          "not-allowed": "Allow microphone access in your browser to talk with Lil Rizz.",
+          "not-allowed": "Allow microphone access in your browser to use voice input.",
           "service-not-allowed": "Speech recognition is blocked by this browser.",
           "audio-capture": "No microphone was found.",
           network: "Your browser’s speech recognition service is unavailable.",
