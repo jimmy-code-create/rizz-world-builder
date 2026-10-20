@@ -148,8 +148,9 @@ export function parseSvgPath(d) {
       cy = ny;
     } else if (upper === "Z") {
       if (vertices.length) {
-        // Close back onto the first vertex.
-        inTangents[outTangents.length - 1] = [startX - cx, startY - cy];
+        // Z closes with a straight line. Leave the tangents at the vertices
+        // alone: the closing edge uses v[last] -> v[0] with zero tangents, and
+        // overwriting i[last] would bow the previous straight segment.
         cx = startX;
         cy = startY;
       }
@@ -178,6 +179,38 @@ export function toLottiePath(d) {
     nm: "path",
     hd: false,
   };
+}
+
+/**
+ * An animated path. The web line has to end exactly on the hand every frame,
+ * so its geometry is keyframed rather than transformed.
+ */
+export function animPath(frames) {
+  const base = toLottiePath(frames[0].d);
+  base.ks = {
+    a: 1,
+    k: frames.map((frame, index) => {
+      const parsed = parseSvgPath(frame.d);
+      const key = {
+        t: frame.t,
+        s: [
+          {
+            i: parsed.inTangents,
+            o: parsed.outTangents,
+            v: parsed.vertices,
+            c: parsed.closed,
+          },
+        ],
+      };
+      if (index < frames.length - 1) {
+        const ease = frame.ease ?? EASE_SOFT;
+        key.i = { x: ease.i.x, y: ease.i.y };
+        key.o = { x: ease.o.x, y: ease.o.y };
+      }
+      return key;
+    }),
+  };
+  return base;
 }
 
 /* ------------------------------------------------------------------ *
@@ -358,11 +391,28 @@ export function gradientStroke(stops, x1, y1, x2, y2, width, opacity = 100) {
 }
 
 /** Trim path: the "draw on" of a strand. */
+/** An animated 1D property needs both ends of every segment spelled out;
+ *  lottie-web's trim modifier reads `e` directly and produces invalid paths
+ *  without it. */
+const withEndValues = (prop) => {
+  if (!prop || typeof prop !== "object" || prop.a !== 1 || !Array.isArray(prop.k)) return prop;
+  return {
+    ...prop,
+    k: prop.k.map((key, index) => {
+      if (key.e !== undefined) return key;
+      const next = prop.k[index + 1];
+      return { ...key, e: next ? next.s : key.s };
+    }),
+  };
+};
+
 export function trim(start, end, offset = 0) {
+  const scalar = (value) =>
+    typeof value === "number" ? still(value) : withEndValues(value);
   return {
     ty: "tm",
-    s: start,
-    e: end,
+    s: scalar(start),
+    e: scalar(end),
     o: still(offset),
     m: 1,
     nm: "trim",
@@ -428,3 +478,34 @@ export function shapeLayer(name, shapes, transform = {}, { ip = 0, op = OP, ind 
 }
 
 export { EASE_IN, EASE_OUT, EASE_SOFT, RED, DEEP_RED, BLUE, DEEP_BLUE, INK, W, H, FR, OP };
+
+/**
+ * Lottie's shape and layer arrays run top-to-bottom, while the scenes are
+ * built in painter's order (bottom-to-top). Within a group, the paint items
+ * (path, fill, stroke, transform) must keep their order — the fill belongs to
+ * the path above it and the transform must stay last — so only sibling groups
+ * are reversed.
+ */
+export function lottieZOrder(layers) {
+  const flip = (node) => {
+    if (Array.isArray(node)) return node.map(flip);
+    if (!node || typeof node !== "object") return node;
+    const out = {};
+    for (const [key, value] of Object.entries(node)) out[key] = flip(value);
+    if (out.ty === "gr" && Array.isArray(out.it)) {
+      const groups = out.it.filter((item) => item.ty === "gr");
+      if (groups.length > 1) {
+        const rest = out.it.filter((item) => item.ty !== "gr");
+        out.it = [...groups.reverse(), ...rest];
+      }
+    }
+    return out;
+  };
+  return layers.map((layer) => {
+    const out = flip(layer);
+    if (Array.isArray(out.shapes) && out.shapes.every((item) => item.ty === "gr")) {
+      out.shapes = out.shapes.reverse();
+    }
+    return out;
+  });
+}

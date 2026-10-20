@@ -10,8 +10,9 @@
 import { valueAt, rgba } from "./web-slinger-lib.mjs";
 
 /** Lottie vertex/tangent data back into an SVG path string. */
-function pathData(shape) {
-  const k = shape.ks.k;
+function pathData(shape, frame) {
+  let k = shape.ks.k;
+  if (shape.ks.a === 1) k = sampleShape(shape.ks, frame);
   const v = k.v;
   const i = k.i;
   const o = k.o;
@@ -37,6 +38,35 @@ function pathData(shape) {
 
 function round(value) {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * Sample an animated shape at a frame. The web lines keep a constant vertex
+ * count, so a straight lerp of the vertices and tangents is exact enough for
+ * the still renderer.
+ */
+function sampleShape(ks, frame) {
+  const keys = ks.k;
+  if (!keys.length) return { v: [], i: [], o: [], c: false };
+  const at = (key) => key.s?.[0] ?? key.s;
+  if (frame <= keys[0].t) return at(keys[0]);
+  for (let n = 0; n < keys.length - 1; n += 1) {
+    const a = at(keys[n]);
+    const b = at(keys[n + 1]);
+    if (frame >= keys[n].t && frame <= keys[n + 1].t) {
+      if (!a?.v || !b?.v || a.v.length !== b.v.length) return a;
+      const t = (frame - keys[n].t) / (keys[n + 1].t - keys[n].t || 1);
+      const e = t * t * (3 - 2 * t);
+      const lerp = (p, q) => [p[0] + (q[0] - p[0]) * e, p[1] + (q[1] - p[1]) * e];
+      return {
+        v: a.v.map((p, idx) => lerp(p, b.v[idx])),
+        i: a.i.map((p, idx) => lerp(p, b.i[idx] ?? p)),
+        o: a.o.map((p, idx) => lerp(p, b.o[idx] ?? p)),
+        c: a.c,
+      };
+    }
+  }
+  return at(keys[keys.length - 1]);
 }
 
 function transformString(ks, frame) {
@@ -107,7 +137,7 @@ function renderGroup(groupItem, frame, defs, gradientIndex) {
         const centre = valueAt(shape.p, frame);
         return `<ellipse cx="${round(centre[0])}" cy="${round(centre[1])}" rx="${round((size[0] ?? 0) / 2)}" ry="${round((size[1] ?? 0) / 2)}"/>`;
       }
-      return `<path d="${pathData(shape)}"/>`;
+      return `<path d="${pathData(shape, frame)}"/>`;
     })
     .join("");
 
@@ -122,8 +152,9 @@ function renderGroup(groupItem, frame, defs, gradientIndex) {
     const colour = valueAt(fillItem.c, frame);
     const opacity = valueAt(fillItem.o, frame)[0] / 100;
     paint += ` fill="rgb(${Math.round(colour[0] * 255)},${Math.round(colour[1] * 255)},${Math.round(colour[2] * 255)})" fill-opacity="${round(opacity, 3)}"`;
-  } else if (strokeItem) {
-    // A stroke-only group must not fill its paths.
+  } else {
+    // A stroke-only group must not fill its paths, and a group with nested
+    // paint must not leak its own paint into them.
     paint += ` fill="none"`;
   }
   if (strokeItem) {
@@ -139,6 +170,8 @@ function renderGroup(groupItem, frame, defs, gradientIndex) {
       const colour = valueAt(strokeItem.c, frame);
       paint += ` stroke="rgb(${Math.round(colour[0] * 255)},${Math.round(colour[1] * 255)},${Math.round(colour[2] * 255)})" stroke-width="${round(width, 2)}" stroke-opacity="${round(opacity, 3)}" stroke-linecap="round"`;
     }
+  } else {
+    paint += ` stroke="none"`;
   }
 
   // Trim paths are approximated by the still: the full strand is drawn.
