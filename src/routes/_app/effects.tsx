@@ -72,7 +72,9 @@ function EffectsPage() {
     () =>
       SECTIONS.map((section) => ({
         ...section,
-        items: DISCORD_SHOWCASE_EFFECTS.filter((e) => e.type === section.type),
+        items: DISCORD_SHOWCASE_EFFECTS.filter((e) => e.type === section.type).sort(
+          (a, b) => Number(NEW_EFFECTS.has(b.slug)) - Number(NEW_EFFECTS.has(a.slug)),
+        ),
       })),
     [],
   );
