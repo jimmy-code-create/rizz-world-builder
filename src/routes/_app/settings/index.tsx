@@ -56,7 +56,7 @@ function SettingsHubPage() {
     { to: "/settings/preferences", label: t("preferences"), description: t("settings_preferences_desc"), icon: Sliders },
     { to: "/settings/blocked", label: t("settings_blocked_label"), description: t("settings_blocked_desc"), icon: Shield },
     { to: "/settings/account", label: t("settings_account_label"), description: t("settings_account_desc"), icon: UserCog },
-    { to: "/effects", label: t("effects"), description: t("settings_effects_desc"), icon: Palette, soon: true },
+    { to: "/effects", label: t("effects"), description: t("settings_effects_desc"), icon: Palette },
   ];
 
   useEffect(() => {

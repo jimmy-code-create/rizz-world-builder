@@ -59,6 +59,7 @@ export function Nameplate({
   accent,
   variant = "badge",
   className,
+  preview = false,
 }: {
   name: string;
   slug?: string | null;
@@ -66,9 +67,11 @@ export function Nameplate({
   /** "badge" renders a Discord-style framed banner plate; "text" renders compact animated text */
   variant?: "badge" | "text";
   className?: string;
+  /** Render the plate even while cosmetics are paused (the effects gallery). */
+  preview?: boolean;
 }) {
-  // When cosmetics are paused, render all names plain
-  if (!COSMETICS_ENABLED) {
+  // When cosmetics are paused, render all names plain — except in previews
+  if (!COSMETICS_ENABLED && !preview) {
     return <span className={className}>{name}</span>;
   }
 

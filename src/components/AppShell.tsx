@@ -858,10 +858,6 @@ function ShortcutTile({
         <span className="absolute top-1.5 right-1.5 rounded-full bg-primary px-1.5 text-[9px] font-bold leading-4 text-primary-foreground">
           {badge}
         </span>
-      ) : destKey === "/effects" ? (
-        <span className="absolute top-1 right-1 rounded-full border border-primary px-1 text-[8px] font-bold text-primary">
-          {t("soon")}
-        </span>
       ) : null}
     </>
   );

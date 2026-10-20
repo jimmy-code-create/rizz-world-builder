@@ -32,10 +32,20 @@ type Props = {
   effectSlug?: string | null;
   accent?: string | null;
   className?: string;
+  /** Render the decoration even while cosmetics are paused (the effects gallery). */
+  preview?: boolean;
 };
 
-export function AvatarDecoration({ src, fallback, size = 40, effectSlug, accent, className }: Props) {
-  const isDecorated = COSMETICS_ENABLED && Boolean(effectSlug);
+export function AvatarDecoration({
+  src,
+  fallback,
+  size = 40,
+  effectSlug,
+  accent,
+  className,
+  preview = false,
+}: Props) {
+  const isDecorated = (COSMETICS_ENABLED || preview) && Boolean(effectSlug);
   const ringClass = isDecorated ? resolveRingClass(effectSlug) : undefined;
   const isDiscordDeco = isDecorated && effectSlug?.startsWith("deco-");
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-20 — Effects has a page
+
+- `/effects` was still a "Coming soon" card with a notify button. The pieces
+  existed in the catalogue and rendered on profiles, but there was nowhere in
+  the app to actually see them.
+- It is now a gallery: every catalogue piece, grouped into avatar
+  decorations, nameplates and profile effects, with a live preview stage at the
+  top. Tapping a tile swaps the stage.
+- **Web Slinger is the default selection.** The avatar-decoration variant plays
+  in a square stage built around the avatar — the format Discord uses — and the
+  banner variant is listed under profile effects with the rendered still as its
+  tile, so only one Lottie plays at a time.
+- Avatar decorations preview in the square format; nameplates and banner
+  effects preview on a mock profile with the real avatar, the banner edge and
+  the username, so the placement is the placement people will get.
+- Previews come from a new `preview` prop on `ProfileEffect`, `AvatarDecoration`
+  and `Nameplate`. The `COSMETICS_ENABLED` killswitch still stops anything from
+  being *worn*; it no longer hides what exists. The page says "Preview only"
+  and keeps the notify-me chip while equipping stays closed.
+- The Effects destination in the nav and in Settings no longer carries a
+  "soon" badge.
+
 ## 2026-10-20 — Badge names: HypeSquad Bravery and Verified Creator
 
 ### Two badges renamed, no award lost

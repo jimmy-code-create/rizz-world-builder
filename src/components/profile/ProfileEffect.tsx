@@ -15,9 +15,23 @@ const STYLE_CLASS: Record<string, string> = {
   meteors: "pfx-meteors",
 };
 
-/** Full-coverage overlay effect (banner/profile card background). */
-export function ProfileEffect({ slug, accent }: { slug?: string | null; accent?: string | null }) {
-  if (!COSMETICS_ENABLED || !slug) return null;
+/**
+ * Full-coverage overlay effect (banner/profile card background).
+ *
+ * `preview` renders the effect even while cosmetics are paused. The killswitch
+ * still hides effects that are *worn*; it must not hide the catalogue that
+ * shows people what exists.
+ */
+export function ProfileEffect({
+  slug,
+  accent,
+  preview = false,
+}: {
+  slug?: string | null;
+  accent?: string | null;
+  preview?: boolean;
+}) {
+  if (!slug || (!COSMETICS_ENABLED && !preview)) return null;
 
   // Discord-style effects
   if (slug === "fx-cosmic-nebula") return <CosmicNebulaOverlay />;

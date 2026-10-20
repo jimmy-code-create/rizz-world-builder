@@ -27,6 +27,7 @@ carrying anyone's licence.
 | `scripts/check-web-slinger-effect.mjs` | Validates the Lottie by playing it through lottie-web, frame by frame. |
 | `src/components/profile/WebSlingerEffect.tsx` | The React player the app uses. |
 | `src/lib/effects.ts` | The two catalogue entries: `deco-web-slinger` and `fx-web-slinger`. |
+| `src/routes/_app/effects.tsx` | The Effects gallery: every catalogue entry on one page, with Web Slinger selected by default and a live preview stage. |
 
 ## Commands
 
@@ -131,8 +132,14 @@ The effect is registered twice in `src/lib/effects.ts`:
 | `fx-web-slinger` | profile effect | At the left of the profile banner, so the hero looms behind the avatar that overlaps it. |
 
 Both are behind the global `COSMETICS_ENABLED` killswitch in `src/lib/effects.ts`.
-That flag is currently `false`, so nothing renders until it is turned on — the
-effect is wired and ready, but it stays hidden while cosmetics are paused.
+That flag is currently `false`, so neither can be equipped and neither appears
+on a profile. The **Effects page** (`src/routes/_app/effects.tsx`) is the one
+surface that still draws them: `AvatarDecoration`, `Nameplate` and
+`ProfileEffect` take a `preview` prop that renders the art without enabling the
+cosmetic, so the catalogue is browsable while equipping stays closed. The page
+opens on `deco-web-slinger`, plays the Lottie live in a square stage, and lists
+`fx-web-slinger` in the profile-effects section with a banner preview. Flipping
+the flag turns the same art on everywhere else.
 
 ### Performance
 
