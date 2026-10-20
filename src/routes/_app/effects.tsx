@@ -11,7 +11,6 @@ import {
   Lock,
   PawPrint,
   Play,
-  ShieldAlert,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,6 @@ import {
   COSMETICS_ENABLED,
   RARITY_FLAT,
   SHOWCASE_EFFECTS,
-  effectIsInRightsReview,
   effectPawPrice,
   equipProfileEffect,
   fetchUserEffects,
@@ -65,10 +63,10 @@ const CHECKOUT_BY_SLUG: Record<string, string | undefined> = {
   "fx-sakura-storm": env.VITE_EFFECTS_CHECKOUT_SAKURA_STORM,
 };
 
-function checkoutFor(slug: string, rightsReview: boolean): string | null {
+function checkoutFor(slug: string): string | null {
   // The operator must explicitly confirm that the fulfilment webhook is live.
   // A checkout URL on its own is not enough to grant an effect.
-  if (!CHECKOUT_READY || rightsReview) return null;
+  if (!CHECKOUT_READY) return null;
   return CHECKOUT_BY_SLUG[slug] || DEFAULT_CHECKOUT || null;
 }
 
@@ -112,8 +110,7 @@ function EffectsPage() {
   const selectedAsset = CINEMATIC_BY_SLUG[selectedSlug] ?? CINEMATIC_EFFECTS[0]!;
   const selected = metaFor(selectedAsset.slug);
   const pawPrice = effectPawPrice(selected);
-  const rightsReview = effectIsInRightsReview(selected);
-  const checkoutBase = checkoutFor(selected.slug, rightsReview);
+  const checkoutBase = checkoutFor(selected.slug);
   const checkoutUrl = checkoutBase && user ? checkoutHref(checkoutBase, user.id, selected.slug) : checkoutBase;
   const balance = profile?.paw_balance ?? 0;
 
@@ -340,15 +337,7 @@ function EffectsPage() {
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2 px-0.5">
-          {rightsReview ? (
-            <Button
-              type="button"
-              onClick={() => setShopOpen(true)}
-              className="h-10 rounded-full border border-amber-400/30 bg-amber-400/10 px-5 text-sm font-bold text-amber-200 hover:bg-amber-400/15"
-            >
-              <ShieldAlert className="h-4 w-4" /> Rights review
-            </Button>
-          ) : !user ? (
+          {!user ? (
             <Button
               asChild
               className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-5 text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)]"
@@ -421,20 +410,11 @@ function EffectsPage() {
               <Eye className="h-4 w-4" /> Preview on profile
             </Button>
           )}
-          <span className="text-[11px] text-muted-foreground">
-            {rightsReview ? "Preview only · rights review" : "One-time unlock · 9.6s loop"}
-          </span>
+          <span className="text-[11px] text-muted-foreground">One-time unlock · 9.6s loop</span>
         </div>
 
         <div className="mt-2 px-0.5">
           <p className="text-sm leading-relaxed text-muted-foreground">{selected.description}</p>
-          {rightsReview && (
-            <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-300/90">
-              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Supplied character footage. It stays preview-only until the operator clears the rights
-              review; it cannot be bought with Paws or card.
-            </p>
-          )}
         </div>
       </div>
 
@@ -491,11 +471,6 @@ function EffectsPage() {
                   <span className="absolute left-2 top-2 rounded-full bg-black/55 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white backdrop-blur">
                     {meta.type === "avatar_decoration" ? "Avatar" : "Profile"}
                   </span>
-                  {meta.rights_review && (
-                    <span className="absolute left-2 top-8 rounded-full border border-amber-400/30 bg-black/55 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-amber-200 backdrop-blur">
-                      Rights check
-                    </span>
-                  )}
                   {isEquipped ? (
                     <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-950">
                       <Check className="h-2.5 w-2.5" /> Applied
@@ -518,9 +493,7 @@ function EffectsPage() {
                       <p className="mt-0.5 text-[11px] text-white/70">
                         <span style={{ color: RARITY_FLAT[meta.rarity] }}>{meta.rarity}</span>
                         <span aria-hidden> · </span>
-                        {meta.rights_review
-                          ? "Rights review"
-                          : `${formatNumber(effectPawPrice(meta))} Paws`}
+                        {formatNumber(effectPawPrice(meta))} Paws
                       </p>
                     </div>
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur">
@@ -610,7 +583,6 @@ function ShopDialog({
   onEarn: () => void;
 }) {
   const price = effectPawPrice(effect);
-  const rightsReview = effectIsInRightsReview(effect);
   const shortfall = Math.max(price - balance, 0);
   const canAfford = balance >= price;
 
@@ -626,30 +598,14 @@ function ShopDialog({
           <DialogHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <DialogTitle className="font-display text-xl">
-                  {rightsReview ? `Rights review: ${effect.name}` : `Unlock ${effect.name}`}
-                </DialogTitle>
+                <DialogTitle className="font-display text-xl">Unlock {effect.name}</DialogTitle>
                 <DialogDescription className="mt-1">
-                  {rightsReview
-                    ? "Supplied third-party character footage. This preview is not for sale yet."
-                    : `${typeLabel(effect)} · one-time unlock.`}
+                  {typeLabel(effect)} · one-time unlock.
                 </DialogDescription>
               </div>
               <RarityPill rarity={effect.rarity} />
             </div>
           </DialogHeader>
-
-          {rightsReview && (
-            <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-200">
-              <p className="flex items-center gap-1.5 font-semibold">
-                <ShieldAlert className="h-3.5 w-3.5" /> Rights review required
-              </p>
-              <p className="mt-1 text-amber-200/80">
-                This clip contains supplied third-party character footage. Paws and card checkout
-                are both locked until the rights to sell it are confirmed.
-              </p>
-            </div>
-          )}
 
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
             <div>
@@ -673,7 +629,7 @@ function ShopDialog({
             </div>
           </div>
 
-          {owned && !rightsReview ? (
+          {owned ? (
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-xs text-emerald-200">
               <Check className="h-4 w-4 shrink-0" /> Already in your collection.
             </div>
@@ -686,15 +642,7 @@ function ShopDialog({
           )}
 
           <div className="mt-4 flex flex-col gap-2">
-            {rightsReview ? (
-              <Button
-                type="button"
-                disabled
-                className="h-10 rounded-full border border-amber-400/25 bg-amber-400/10 text-sm font-bold text-amber-200"
-              >
-                <ShieldAlert className="h-4 w-4" /> Rights review pending
-              </Button>
-            ) : !signedIn ? (
+            {!signedIn ? (
               <Button
                 asChild
                 className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
@@ -738,7 +686,7 @@ function ShopDialog({
               </>
             )}
 
-            {!rightsReview && checkoutUrl ? (
+            {checkoutUrl ? (
               signedIn ? (
                 <Button
                   asChild
@@ -780,11 +728,9 @@ function ShopDialog({
           </div>
 
           <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-            {rightsReview
-              ? "No payment is taken for this clip."
-              : checkoutUrl
-                ? "Paws unlock instantly. Card checkout opens in a new tab and is fulfilled separately."
-                : "Paws unlock instantly. No card checkout is connected in this build."}
+            {checkoutUrl
+              ? "Paws unlock instantly. Card checkout opens in a new tab and is fulfilled separately."
+              : "Paws unlock instantly. No card checkout is connected in this build."}
           </p>
         </div>
       </DialogContent>

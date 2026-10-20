@@ -24,9 +24,9 @@ export function FollowSuggestions() {
       const excludeIds = [user!.id, ...(following ?? []).map((r: any) => r.following_id)];
       const { data: profs } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, rizz_score, accent_color, interests")
+        .select("id, username, display_name, avatar_url, paw_balance, accent_color, interests")
         .not("id", "in", `(${excludeIds.join(",")})`)
-        .order("rizz_score", { ascending: false })
+        .order("paw_balance", { ascending: false })
         .not("username", "is", null)
         .limit(40);
       const interests = new Set((profile?.interests ?? []).map((item) => item.toLowerCase()));
@@ -38,7 +38,7 @@ export function FollowSuggestions() {
             0,
           ),
         }))
-        .sort((left, right) => right.interestScore - left.interestScore || right.rizz_score - left.rizz_score)
+        .sort((left, right) => right.interestScore - left.interestScore || right.paw_balance - left.paw_balance)
         .slice(0, 5);
     },
     staleTime: 60_000,
@@ -80,7 +80,7 @@ export function FollowSuggestions() {
               />
               <Link to="/u/$username" params={{ username: p.username }} className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.display_name || p.username}</p>
-                <p className="text-xs text-muted-foreground truncate">@{p.username} · {p.rizz_score} rizz</p>
+                <p className="text-xs text-muted-foreground truncate">@{p.username} · {p.paw_balance} Paws</p>
               </Link>
               <Button
                 size="sm"

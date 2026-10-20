@@ -39,8 +39,8 @@ function ExplorePage() {
     queryFn: async () => {
       const query = supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, bio, rizz_score, accent_color")
-        .order("rizz_score", { ascending: false })
+        .select("id, username, display_name, avatar_url, bio, paw_balance, accent_color")
+        .order("paw_balance", { ascending: false })
         .not("username", "is", null)
         .limit(30);
       if (q.trim()) query.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
@@ -165,8 +165,8 @@ function ExplorePage() {
                 <p className="text-xs text-muted-foreground truncate">@{p.username}</p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-muted-foreground">Rizz</p>
-                <p className="font-display font-bold text-sm text-primary">{formatNumber(p.rizz_score)}</p>
+                <p className="text-[11px] text-muted-foreground">Paws</p>
+                <p className="font-display font-bold text-sm text-primary">{formatNumber(p.paw_balance)}</p>
               </div>
             </ProfilePreviewTrigger>
           ))}

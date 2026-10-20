@@ -17,11 +17,6 @@ export type CinematicAsset = {
   accent: string;
   /** One-time launch price in USD. */
   priceUsd: number;
-  /**
-   * Supplied third-party character footage. The buy sheet must stay locked
-   * until the operator confirms they have the rights to sell it.
-   */
-  rightsReview?: boolean;
 };
 
 export const CINEMATIC_EFFECTS: CinematicAsset[] = [
@@ -31,7 +26,6 @@ export const CINEMATIC_EFFECTS: CinematicAsset[] = [
     poster: "/effects/cinematic/web-slinger.png",
     accent: "#e8253f",
     priceUsd: 4.99,
-    rightsReview: true,
   },
   {
     slug: "fx-sakura-bloom",

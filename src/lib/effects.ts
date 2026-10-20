@@ -41,7 +41,7 @@ export const SHOWCASE_EFFECTS: ProfileEffect[] = [
     unlock_rizz: 1800,
     paw_price: 1800,
     price_cents: 499,
-    rights_review: true,
+    rights_review: false,
     sort_order: 10,
     preview_color: "#e8253f",
   },
@@ -94,10 +94,6 @@ export const DISCORD_SHOWCASE_EFFECTS = SHOWCASE_EFFECTS;
 
 export function effectPawPrice(effect: ProfileEffect): number {
   return effect.paw_price ?? effect.unlock_rizz ?? 0;
-}
-
-export function effectIsInRightsReview(effect: ProfileEffect): boolean {
-  return Boolean(effect.rights_review);
 }
 
 function normalizeEffect(row: Partial<ProfileEffect> & Record<string, unknown>): ProfileEffect {

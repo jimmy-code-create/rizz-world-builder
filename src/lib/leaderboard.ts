@@ -23,7 +23,7 @@ export function periodLabel(period: BoardPeriod): string {
 /**
  * Leaderboard reader. Prefers the get_leaderboard RPC (score + rank +
  * prev_rank per period); when the backend update hasn't landed yet it falls
- * back to profiles.rizz_score for "All time" and reports period boards as
+ * back to profiles.paw_earned for "All time" and reports period boards as
  * untracked instead of guessing.
  */
 export async function fetchBoardPage(
@@ -79,11 +79,11 @@ export async function fetchBoardPage(
     if (period !== "all") return { rows: [], periodsTracked: false };
     let req = supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, rizz_score")
-      .order("rizz_score", { ascending: false })
+      .select("id, username, display_name, avatar_url, paw_earned")
+      .order("paw_earned", { ascending: false })
       .order("created_at", { ascending: true })
       .not("username", "is", null)
-      .gt("rizz_score", 0)
+      .gt("paw_earned", 0)
       .range(offset, offset + limit - 1);
     if (followingIds) req = req.in("id", followingIds);
     const { data, error } = await req;
@@ -93,7 +93,7 @@ export async function fetchBoardPage(
       username: string;
       display_name: string | null;
       avatar_url: string | null;
-      rizz_score: number;
+      paw_earned: number;
     }>).filter((p) => p.username);
     return {
       rows: list.map((p, i) => ({
@@ -101,7 +101,7 @@ export async function fetchBoardPage(
         username: p.username,
         display_name: p.display_name,
         avatar_url: p.avatar_url,
-        score: p.rizz_score ?? 0,
+        score: p.paw_earned ?? 0,
         rank: offset + i + 1,
         prevRank: null,
       })),

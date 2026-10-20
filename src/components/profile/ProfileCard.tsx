@@ -75,7 +75,7 @@ type CardData = {
   pronouns: string | null;
   verified: boolean;
   createdAt: string | null;
-  rizzScore: number;
+  pawBalance: number;
   rank: number | null;
   followers: number;
   following: number;
@@ -146,7 +146,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           pronouns: str(p.pronouns),
           verified: p.verified === true || isVerified,
           createdAt: str(p.created_at),
-          rizzScore: Number(p.rizz_score ?? 0),
+          pawBalance: Number(p.paw_balance ?? p.rizz_score ?? 0),
           rank: typeof d.rank === "number" ? d.rank : null,
           followers: Number(d.followers ?? 0),
           following: Number(d.following ?? 0),
@@ -171,7 +171,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   // (that is what broke every profile preview).
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, banner_url, bio, created_at, rizz_score")
+    .select("id, username, display_name, avatar_url, banner_url, bio, created_at, paw_balance, paw_earned")
     .eq("id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -202,7 +202,8 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     /* column missing until the migration lands */
   }
 
-  const score = Number(p.rizz_score ?? 0);
+  const balance = Number(p.paw_balance ?? 0);
+  const earned = Number(p.paw_earned ?? balance);
   // NOTE: PostgREST builders are only PromiseLike, so each one is wrapped in a
   // real Promise before `.then(...).catch(...)` — `.catch` does not exist on
   // PromiseLike and that is what used to break this fallback path.
@@ -213,8 +214,8 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     Promise.resolve(supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("follower_id", userId))
       .then((r) => r.count ?? 0)
       .catch(() => 0),
-    score > 0
-      ? Promise.resolve(supabase.from("profiles").select("id", { count: "exact", head: true }).gt("rizz_score", score))
+    earned > 0
+      ? Promise.resolve(supabase.from("profiles").select("id", { count: "exact", head: true }).gt("paw_earned", earned))
           .then((r) => (r.count ?? 0) + 1)
           .catch(() => null)
       : Promise.resolve(null),
@@ -286,7 +287,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     pronouns,
     verified,
     createdAt: str(p.created_at),
-    rizzScore: score,
+    pawBalance: balance,
     rank: rankRow,
     followers,
     following,
@@ -305,7 +306,7 @@ function deletedCard(userId: string): CardData {
   return {
     deleted: true, id: userId, username: "deleted", displayName: "Deleted user",
     avatarUrl: null, bannerUrl: null, accentColor: null, bio: null, pronouns: null, verified: false,
-    createdAt: null, rizzScore: 0, rank: null, followers: 0, following: 0,
+    createdAt: null, pawBalance: 0, rank: null, followers: 0, following: 0,
     badges: [], featuredBadge: null, mutualPreview: [], mutualTotal: 0, viewerFollows: false,
     blockedByViewer: false, blockedViewer: false, mutedByViewer: false,
   };
@@ -811,8 +812,8 @@ export function ProfileCard({
             {/* Stats — the two counts are buttons, so they keep 44px targets. */}
             <div className="mt-3.5 grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
               <div className="rounded-xl py-2">
-                <p className="truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">{formatCount(d.rizzScore)}</p>
-                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Rizz</p>
+                <p className="truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">{formatCount(d.pawBalance)}</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paws</p>
               </div>
               <div className="rounded-xl py-2">
                 <p className="truncate font-display text-base font-bold tabular-nums text-foreground">

@@ -23,6 +23,14 @@ const effectsPage = readFileSync(
   new URL("../src/routes/_app/effects.tsx", import.meta.url),
   "utf8",
 );
+const cinematicLib = readFileSync(
+  new URL("../src/lib/cinematic-effects.ts", import.meta.url),
+  "utf8",
+);
+const scoreMigration = readFileSync(
+  new URL("../supabase/migrations/20261028000000_paws_score_and_web_slinger.sql", import.meta.url),
+  "utf8",
+);
 const profilePage = readFileSync(
   new URL("../src/routes/_app/u.$username.tsx", import.meta.url),
   "utf8",
@@ -46,6 +54,8 @@ await check(
     assert.ok(effectsLib.includes("export const COSMETICS_ENABLED = true"));
     assert.ok(effectsLib.includes('id: "fx-web-slinger"'));
     assert.ok(effectsLib.includes('type: "profile_effect"'));
+    assert.ok(effectsLib.includes("rights_review: false"));
+    assert.ok(!cinematicLib.includes("rightsReview"));
     for (const slug of ["fx-sakura-bloom", "fx-arcane-nexus", "fx-sakura-storm"]) {
       assert.ok(effectsLib.includes(`id: "${slug}"`), `missing ${slug}`);
     }
@@ -65,6 +75,9 @@ await check(
         effectsLib.includes('rpc("equip_profile_effect"'),
     );
     assert.ok(effectsPage.includes("Apply to profile"));
+    assert.ok(!effectsPage.includes("Rights review"));
+    assert.ok(!effectsPage.includes("rightsReview"));
+    assert.ok(!effectsPage.includes("rights_review"));
   },
 );
 
@@ -90,8 +103,19 @@ await check("migration protects the wallet and rewards bounty claims", async () 
   assert.ok(migration.includes("reward_bounty_claim"));
   assert.ok(migration.includes("SELECT 25::integer"));
   assert.ok(migration.includes("rights_review"));
+  assert.ok(scoreMigration.includes("rights_review = false"));
+  assert.ok(scoreMigration.includes("legacy_rizz_transfer"));
+  assert.ok(scoreMigration.includes("paw_earned"));
   assert.ok(migration.includes('DROP POLICY IF EXISTS "users acquire own effects"'));
   assert.ok(migration.includes('DROP POLICY IF EXISTS "users drop own effects"'));
+});
+
+await check("Paws replaces the visible Rizz score", async () => {
+  assert.ok(profilePage.includes("Paws balance"));
+  assert.ok(profilePage.includes("PawsBreakdown"));
+  assert.ok(!profilePage.includes("Rizz Score"));
+  assert.ok(!profilePage.includes("spend on effects"));
+  assert.ok(scoreMigration.includes("get_leaderboard"));
 });
 
 await check("tour describes live Paws instead of a preview", async () => {

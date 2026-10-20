@@ -46,8 +46,8 @@ type Quest = {
 
 /**
  * Promo challenges stay device-tracked. The economy itself is server-side:
- * every successful bounty claim pays Paws through `claim_bounty`, while Rizz
- * points still come from posts, likes and the rest of the existing score.
+ * every successful bounty claim pays Paws through `claim_bounty`, and Paws are
+ * the score shown across profiles and the leaderboard.
  */
 const BOUNTY_PAW_REWARD = 25;
 
@@ -75,7 +75,7 @@ const QUESTS: Quest[] = [
     icon: Users,
     title: "Bring 3 friends to your group",
     desc: "Groups grow through invite links — be the connector.",
-    pays: "Their likes earn +2 rizz each",
+    pays: "More people in your corner",
     action: { kind: "link", to: "/groups" },
     done: () => false,
   },
@@ -93,7 +93,7 @@ const QUESTS: Quest[] = [
     icon: Megaphone,
     title: "Hype a win on the feed",
     desc: "Post your bounty haul so others join the hunt.",
-    pays: "+5 rizz per post",
+    pays: "More eyes on your haul",
     action: { kind: "link", to: "/feed" },
     done: () => false,
   },
@@ -168,7 +168,7 @@ function DropsPage() {
 
   const shareApp = async () => {
     const url = typeof window !== "undefined" ? window.location.origin : "https://rizz.app";
-    const data = { title: "RIZZ", text: "Join me on RIZZ — claim bounties and stack rizz.", url };
+    const data = { title: "RIZZ", text: "Join me on RIZZ — claim bounties and stack Paws.", url };
     try {
       const nav =
         typeof navigator === "undefined"
@@ -237,7 +237,7 @@ function DropsPage() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Paws wallet
+            Paws balance
           </p>
           <p className="font-display text-xl font-bold leading-tight">
             {formatNumber(profile?.paw_balance ?? 0)} Paws
@@ -250,7 +250,7 @@ function DropsPage() {
           to="/effects"
           className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Spend on effects
+          Use Paws
         </Link>
       </div>
 
@@ -363,7 +363,7 @@ function DropsPage() {
             search={{ earn: true }}
             className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Rizz score guide
+            Top Paws
           </Link>
         </div>
       </div>
@@ -441,7 +441,7 @@ function DropsPage() {
         </div>
         <p className="mt-2 px-1 text-[11px] text-muted-foreground">
           Bounty claims pay {BOUNTY_PAW_REWARD} Paws each. Quest progress is tracked on this device;
-          Rizz points still come from posts, likes and the rest of the score.
+          Paws never expire and never lose their leaderboard value when you spend them.
         </p>
       </section>
     </div>

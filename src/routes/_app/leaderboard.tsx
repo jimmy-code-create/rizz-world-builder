@@ -34,11 +34,7 @@ const PERIODS: Array<{ value: BoardPeriod; label: string }> = [
 ];
 
 const EARN_ROWS: Array<{ action: string; points: string }> = [
-  { action: "Create a post", points: "+5" },
-  { action: "Like received", points: "+2" },
-  { action: "Comment received", points: "+3" },
-  { action: "Reaction received", points: "+1" },
-  { action: "Earn a badge", points: "+25" },
+  { action: "Claim an active bounty", points: "+25" },
 ];
 
 function RankDelta({ rank, prevRank }: { rank: number; prevRank: number | null }) {
@@ -170,7 +166,7 @@ function LeaderboardPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-1 flex items-center gap-2">
         <Trophy className="h-7 w-7 text-primary" />
-        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Top Rizz</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Top Paws</h1>
         <Button
           type="button"
           variant="ghost"
@@ -281,7 +277,7 @@ function LeaderboardPage() {
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
             <Trophy className="mx-auto h-8 w-8 text-primary" />
             <p className="mt-2 text-sm font-semibold text-foreground">
-              Earn your first rizz to get on the board
+              Earn your first Paws to get on the board
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Only scores above 0 show up here.</p>
             <Button
@@ -290,7 +286,7 @@ function LeaderboardPage() {
               onClick={() => setEarnOpen(true)}
               className="mt-3 h-11 gap-1.5"
             >
-              <Info className="h-4 w-4" /> How to earn rizz
+              <Info className="h-4 w-4" /> How to earn Paws
             </Button>
           </div>
         )}
@@ -338,7 +334,7 @@ function LeaderboardPage() {
           {me.above ? (
             <span>
               You&apos;re <span className="font-bold text-[#c8ff3d]">#{me.rank}</span>
-              <span className="text-muted-foreground"> · {formatNumber(me.gap)} rizz to pass </span>
+              <span className="text-muted-foreground"> · {formatNumber(me.gap)} Paws to pass </span>
               <span className="font-semibold">@{me.above.username}</span>
             </span>
           ) : (
@@ -355,7 +351,7 @@ function LeaderboardPage() {
           onClick={() => setEarnOpen(true)}
           className="sticky bottom-0 z-10 mx-auto mb-2 flex min-h-[44px] w-full max-w-md items-center justify-center gap-1.5 rounded-2xl border border-[#2a2a2e] bg-[#141416]/95 px-4 text-sm text-muted-foreground shadow-xl backdrop-blur"
         >
-          You&apos;re unranked — earn rizz to join the board
+          You&apos;re unranked — earn Paws to join the board
         </button>
       )}
 
@@ -367,7 +363,7 @@ function LeaderboardPage() {
         }}
       />
 
-      {/* How to earn rizz */}
+      {/* How to earn Paws */}
       <Sheet open={earnOpen} onOpenChange={setEarnOpen}>
         <SheetContent
           side="bottom"
@@ -375,7 +371,7 @@ function LeaderboardPage() {
           className="mx-auto w-full max-w-md rounded-t-3xl border-white/10 glass-strong"
         >
           <div className="flex items-center gap-3">
-            <SheetTitle className="flex-1 font-display text-lg">How to earn rizz</SheetTitle>
+            <SheetTitle className="flex-1 font-display text-lg">How to earn Paws</SheetTitle>
             <SheetClose asChild>
               <CloseButton />
             </SheetClose>
@@ -392,9 +388,9 @@ function LeaderboardPage() {
             ))}
           </ul>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            Rizz is earned, not shared: there is no common pool and no fixed supply, so every point
-            you make is yours and nobody&apos;s score goes down because you earned one. Scores
-            update live, and only scores above 0 appear on the board.
+            Paws are earned from real bounty claims: every successful claim pays 25 Paws.
+            Spending Paws on effects never removes the lifetime Paws that put you on this board.
+            Scores update live, and only scores above 0 appear on the board.
           </p>
         </SheetContent>
       </Sheet>

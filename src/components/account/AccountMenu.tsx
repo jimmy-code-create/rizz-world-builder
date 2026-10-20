@@ -105,18 +105,18 @@ export function AccountMenu({
     enabled: !!userId,
     staleTime: 60_000,
     queryFn: async () => {
-      const fallback = { bannerUrl: null as string | null, rizzScore: 0, followers: 0, saved: 0, badges: 0 };
+      const fallback = { bannerUrl: null as string | null, pawBalance: 0, followers: 0, saved: 0, badges: 0 };
       try {
         const [prof, followers, saved, badges] = await Promise.all([
-          supabase.from("profiles").select("banner_url, rizz_score").eq("id", userId!).maybeSingle(),
+          supabase.from("profiles").select("banner_url, paw_balance").eq("id", userId!).maybeSingle(),
           supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", userId!),
           supabase.from("bookmarks").select("id", { count: "exact", head: true }).eq("user_id", userId!),
           supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", userId!),
         ]);
-        const p = (prof.data ?? null) as { banner_url: string | null; rizz_score: number | null } | null;
+        const p = (prof.data ?? null) as { banner_url: string | null; paw_balance: number | null } | null;
         return {
           bannerUrl: p?.banner_url ?? null,
-          rizzScore: Number(p?.rizz_score ?? 0),
+          pawBalance: Number(p?.paw_balance ?? 0),
           followers: followers.count ?? 0,
           saved: saved.count ?? 0,
           badges: badges.count ?? 0,
@@ -371,8 +371,8 @@ export function AccountMenu({
           ) : (
             <>
               <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#c8ff3d]">{formatCount(stats?.rizzScore ?? 0)}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Rizz</span>
+                <span className="font-mono text-sm font-bold text-[#c8ff3d]">{formatCount(stats?.pawBalance ?? 0)}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paws</span>
               </span>
               <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
               <span className="flex flex-1 flex-col items-center gap-0.5">

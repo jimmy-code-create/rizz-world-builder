@@ -138,11 +138,12 @@ Card checkout is still optional infrastructure, and the UI says so:
   advertises an automatic card unlock.
 - Once the webhook is live, it should call the service-role-only
   `grant_profile_effect(_user, _slug)` RPC after verifying the payment. That
-  RPC refuses rights-review clips, grants ownership, and never touches Paws.
-- The **Web Slinger** clip is supplied Spider-Man footage. It is marked
-  `rightsReview: true` in `src/lib/cinematic-effects.ts` and `rights_review` in
-  the database. Both Paws and card purchasing are refused until the operator
-  clears the rights. Do not describe it as original RIZZ art.
+  RPC grants ownership and never touches Paws.
+- The **Web Slinger** clip is supplied Spider-Man footage. It is sold for
+  Paws by operator decision; `rights_review` is `false` in the catalogue
+  migration. The flag remains as an emergency sale switch: setting it back to
+  `true` makes both Paws and card purchasing refuse the clip.
+- Do not describe the Web Slinger clip as original RIZZ art.
 
 ## Source and rights
 
@@ -150,5 +151,9 @@ The four clips are cut from the Google Drive reel supplied for this build.
 The cherry and arcane takes are the supplied generated footage; the spider
 take is a recognizable third-party character. The project's earlier "original
 art only" rule does not apply to this supplied reel, and the spider effect
-must not be presented as original art. Review the rights for every clip before
-publishing or charging for it.
+must not be presented as original art. The operator is responsible for holding
+the rights to the supplied footage before charging for it.
+
+The profile effect is rendered as a transparent VP9 layer. The component does
+not paint a tinted stage behind the clip: any banner or profile background
+shows through the transparent area unchanged.

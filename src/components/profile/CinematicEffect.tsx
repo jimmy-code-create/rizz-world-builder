@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
  */
 export function CinematicEffect({
   slug,
-  accent,
   className,
   posterOnly = false,
   priority = false,
@@ -113,14 +112,6 @@ export function CinematicEffect({
       aria-hidden
       className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
     >
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(ellipse 62% 78% at 50% 50%, ${
-            accent ?? asset.accent
-          }26, transparent 72%)`,
-        }}
-      />
       <img
         src={asset.poster}
         alt=""

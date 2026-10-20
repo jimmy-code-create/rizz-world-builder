@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Phone, MoreHorizontal, Check, UserPlus, UserCheck, Ban } from "lucide-react";
+import { MessageCircle, Phone, MoreHorizontal, Check, UserPlus, UserCheck, Ban, PawPrint } from "lucide-react";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { bannerToneFor } from "@/components/profile/ProfileCard";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
@@ -21,7 +21,7 @@ type PreviewProfile = {
   bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
-  rizz_score: number;
+  paw_balance: number;
   verified: boolean;
   created_at: string;
 };
@@ -29,7 +29,7 @@ type PreviewProfile = {
 async function fetchPreview(username: string): Promise<PreviewProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, banner_url, rizz_score, created_at")
+    .select("id, username, display_name, bio, avatar_url, banner_url, paw_balance, created_at")
     .eq("username", username)
     .maybeSingle();
   if (error) throw error;
@@ -314,8 +314,11 @@ export function ProfilePreviewDialog({
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Stats</h4>
                 <div className="flex items-center gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{p.rizz_score.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Rizz Score</p>
+                    <p className="flex items-center gap-1 text-sm font-semibold text-primary">
+                      <PawPrint className="h-3.5 w-3.5" />
+                      {Number(p.paw_balance ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Paws balance</p>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div>

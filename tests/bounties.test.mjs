@@ -54,7 +54,7 @@ await check("route, tables, and claim mechanics still present", async () => {
   assert.ok(drops.includes("claim_limit") && drops.includes("Claim · +"));
   assert.ok(drops.includes('rpc("claim_bounty"'));
   assert.ok(drops.includes("BOUNTY_PAW_REWARD"));
-  assert.ok(drops.includes("Paws wallet"));
+  assert.ok(drops.includes("Paws balance"));
   assert.ok(drops.includes("Every successful bounty claim pays"));
 });
 
@@ -75,15 +75,15 @@ await check("quests drive promotion with existing flows only", async () => {
   assert.ok(!drops.includes("quest_completions") && !drops.includes("awardQuest"));
 });
 
-await check("Paws can be spent on effects and the Rizz guide stays reachable", async () => {
+await check("Paws can be spent on effects and the Paws guide stays reachable", async () => {
   assert.ok(drops.includes("Spend your Paws"));
   assert.ok(drops.includes("Open Effects"));
   assert.ok(drops.includes('to="/effects"'));
-  assert.ok(drops.includes("Rizz score guide"));
+  assert.ok(drops.includes("Top Paws"));
   assert.ok(drops.includes("search={{ earn: true }}"));
   assert.ok(board.includes("validateSearch"));
   assert.ok(board.includes("useState(search.earn ?? false)"));
-  assert.ok(board.includes("How to earn rizz"), "guide stays on the leaderboard");
+  assert.ok(board.includes("How to earn Paws"), "guide stays on the leaderboard");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

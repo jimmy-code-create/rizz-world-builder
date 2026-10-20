@@ -12,7 +12,7 @@ import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile, PawPrint } from "lucide-react";
+import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -184,26 +184,18 @@ function ProfilePage() {
     enabled: !!profile,
   });
 
-  const rizzBreakdown = useQuery({
-    queryKey: ["rizz-breakdown", profile?.id],
+  const pawLedger = useQuery({
+    queryKey: ["paw-ledger", profile?.id],
     queryFn: async () => {
-      const uid = profile!.id;
-      const [{ count: likes }, { count: comments }, { count: reactions }, postsRes, { count: badgeCount }] = await Promise.all([
-        supabase.from("post_likes").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
-        supabase.from("post_comments").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
-        supabase.from("post_reactions").select("post_id,posts!inner(author_id)", { count: "exact", head: true }).eq("posts.author_id", uid),
-        supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", uid),
-        supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", uid),
-      ]);
-      return {
-        likes: likes ?? 0,
-        comments: comments ?? 0,
-        reactions: reactions ?? 0,
-        postCount: postsRes.count ?? 0,
-        badges: badgeCount ?? 0,
-      };
+      const { data } = await supabase
+        .from("paw_transactions")
+        .select("id, amount, kind, description, created_at")
+        .eq("user_id", profile!.id)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      return data ?? [];
     },
-    enabled: !!profile,
+    enabled: !!profile && !!isMe,
   });
 
   const shareProfile = async () => {
@@ -328,9 +320,7 @@ function ProfilePage() {
             preview={Boolean(previewProfileEffect)}
             reducedMotion={Boolean(profile.reduced_motion)}
             fit="cover"
-            className="opacity-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/10 to-background" />
         </div>
       )}
 
@@ -500,7 +490,7 @@ function ProfilePage() {
         </div>
       )}
 
-      <div className="px-1 md:px-2 mt-4 flex items-center gap-5 text-sm">
+      <div className="px-1 md:px-2 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
         <button onClick={() => setListOpen("followers")} className="hover:underline">
           <span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span>
@@ -508,24 +498,11 @@ function ProfilePage() {
         <button onClick={() => setListOpen("following")} className="hover:underline">
           <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
         </button>
-        <div className="ml-auto flex items-center gap-1.5 text-primary font-bold">
-          <Sparkles className="h-4 w-4" />
-          {formatNumber(profile.rizz_score)} Rizz
+        <div className="flex items-center gap-1.5 text-primary font-bold sm:ml-auto">
+          <PawPrint className="h-4 w-4" />
+          {formatNumber(profile.paw_balance ?? 0)} <span className="text-muted-foreground">Paws balance</span>
         </div>
       </div>
-
-      {isMe && (
-        <div className="px-1 md:px-2 mt-2">
-          <Link
-            to="/effects"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/[0.07] px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <PawPrint className="h-3.5 w-3.5" />
-            {formatNumber(profile.paw_balance ?? 0)} Paws
-            <span className="font-medium text-muted-foreground">· spend on effects</span>
-          </Link>
-        </div>
-      )}
 
       <div className="px-1 md:px-2 mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" /> Joined {joined}
@@ -537,7 +514,7 @@ function ProfilePage() {
           <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
           <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
           <TabsTrigger value="groups" className="gap-1.5"><Users className="h-4 w-4" />Groups</TabsTrigger>
-          <TabsTrigger value="rizz" className="gap-1.5"><Trophy className="h-4 w-4" />Rizz</TabsTrigger>
+          <TabsTrigger value="paws" className="gap-1.5"><PawPrint className="h-4 w-4" />Paws</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-4 space-y-3">
@@ -619,8 +596,15 @@ function ProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="rizz" className="mt-4">
-          <RizzBreakdown score={profile.rizz_score} data={rizzBreakdown.data} loading={rizzBreakdown.isLoading} accent={accent} />
+        <TabsContent value="paws" className="mt-4">
+          <PawsBreakdown
+            balance={Number(profile.paw_balance ?? 0)}
+            earned={Number(profile.paw_earned ?? profile.paw_balance ?? 0)}
+            ledger={(pawLedger.data ?? []) as PawLedgerRow[]}
+            loading={pawLedger.isLoading}
+            isMe={Boolean(isMe)}
+            accent={accent}
+          />
         </TabsContent>
       </Tabs>
 
@@ -646,40 +630,120 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-function RizzBreakdown({ score, data, loading, accent }: { score: number; data?: { likes: number; comments: number; reactions: number; postCount: number; badges: number }; loading: boolean; accent: string }) {
-  if (loading || !data) return <div className="h-40 animate-pulse rounded-3xl glass" />;
-  const rows = [
-    { icon: Heart, label: "Likes received", value: data.likes, pts: data.likes * 2, color: "var(--brand-signal)" },
-    { icon: MessageSquare, label: "Comments received", value: data.comments, pts: data.comments * 3, color: "var(--brand-paper-dim)" },
-    { icon: Smile, label: "Reactions received", value: data.reactions, pts: data.reactions * 1, color: "var(--brand-signal)" },
-    { icon: UserPlus, label: "Posts published", value: data.postCount, pts: data.postCount * 5, color: "var(--brand-paper-dim)" },
-    { icon: Star, label: "Badges earned", value: data.badges, pts: data.badges * 25, color: "var(--brand-signal)" },
+type PawLedgerRow = {
+  id: string;
+  amount: number;
+  kind: string;
+  description: string | null;
+  created_at: string;
+};
+
+export function PawsBreakdown({
+  balance,
+  earned,
+  ledger,
+  loading,
+  isMe,
+  accent,
+}: {
+  balance: number;
+  earned: number;
+  ledger: PawLedgerRow[];
+  loading: boolean;
+  isMe: boolean;
+  accent: string;
+}) {
+  const spent = Math.max(earned - balance, 0);
+  const stats = [
+    { label: "Lifetime earned", value: earned, note: "Bounties and legacy transfers" },
+    { label: "Spent", value: spent, note: "Effects and avatar decorations" },
   ];
-  const total = rows.reduce((a, r) => a + r.pts, 0) || 1;
+
   return (
     <div className="space-y-4">
       <div className="border border-border bg-card rounded-2xl p-6 text-center">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Rizz Score</div>
-        <div className="font-display text-5xl font-bold mt-2 flex items-center justify-center gap-2" style={{ color: accent }}>
-          <Sparkles className="h-8 w-8" />{formatNumber(score)}
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Paws balance</div>
+        <div
+          className="font-display text-5xl font-bold mt-2 flex items-center justify-center gap-2"
+          style={{ color: accent }}
+        >
+          <PawPrint className="h-8 w-8" />
+          {formatNumber(balance)}
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {isMe ? "Your spendable Paws." : "Paws are earned by claiming bounties."}
+        </p>
       </div>
-      <div className="glass rounded-3xl p-5 space-y-3">
-        {rows.map((r) => {
-          const pct = Math.min(100, (r.pts / total) * 100);
-          const Icon = r.icon;
-          return (
-            <div key={r.label}>
-              <div className="flex items-center justify-between text-sm mb-1.5">
-                <div className="flex items-center gap-2"><Icon className="h-4 w-4" style={{ color: r.color }} /> {r.label}</div>
-                <div className="text-muted-foreground"><span className="font-semibold text-foreground">{r.value}</span> · +{r.pts}</div>
-              </div>
-              <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: r.color }} />
-              </div>
-            </div>
-          );
-        })}
+
+      <div className="glass rounded-3xl p-5 grid gap-3 sm:grid-cols-2">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {stat.label}
+            </p>
+            <p className="font-display text-2xl font-bold mt-1">{formatNumber(stat.value)}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{stat.note}</p>
+          </div>
+        ))}
+      </div>
+
+      {isMe && (
+        <div className="glass rounded-3xl p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-display text-sm font-bold">Recent Paws activity</h3>
+            <PawPrint className="h-4 w-4 text-primary" />
+          </div>
+          {loading ? (
+            <div className="mt-3 h-20 animate-pulse rounded-2xl bg-white/5" />
+          ) : ledger.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              No Paws activity yet. Claim a bounty to start earning.
+            </p>
+          ) : (
+            <ul className="mt-2 divide-y divide-white/5">
+              {ledger.slice(0, 8).map((row) => (
+                <li key={row.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {row.description || (row.amount > 0 ? "Paws earned" : "Paws spent")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(row.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 font-display font-bold tabular-nums ${
+                      row.amount > 0 ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {row.amount > 0 ? "+" : ""}
+                    {formatNumber(row.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to="/drops"
+          className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+        >
+          <PawPrint className="h-4 w-4" /> Earn Paws
+        </Link>
+        {isMe && (
+          <Link
+            to="/effects"
+            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/10 px-4 text-sm font-bold"
+          >
+            Use Paws
+          </Link>
+        )}
       </div>
     </div>
   );

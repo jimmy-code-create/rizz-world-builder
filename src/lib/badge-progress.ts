@@ -114,7 +114,7 @@ export async function fetchBadgeProgress(userId: string): Promise<BadgeProgressM
       .eq("author_id", userId)
       .order("like_count", { ascending: false })
       .limit(1),
-    supabase.from("profiles").select("rizz_score").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("paw_earned").eq("id", userId).maybeSingle(),
     supabase
       .from("drop_claims")
       .select("drop_id", { count: "exact", head: true })
@@ -137,11 +137,11 @@ export async function fetchBadgeProgress(userId: string): Promise<BadgeProgressM
   out["bounty-hunter"] = progress(count(claimsResult), 1);
 
   // Leaderboard rank: how many members are ahead of this one.
-  const myRizz = rizzResult.data?.rizz_score ?? 0;
+  const myPaws = rizzResult.data?.paw_earned ?? 0;
   const aheadResult = await supabase
     .from("profiles")
     .select("id", { count: "exact", head: true })
-    .gt("rizz_score", myRizz);
+    .gt("paw_earned", myPaws);
   out["top-rizzler"] = progress((aheadResult.count ?? 0) + 1, 10);
 
   // Day streak: the days this member was active on.
