@@ -11,9 +11,7 @@ import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
-import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { useEquipped } from "@/lib/useEquipped";
 import { PostCommentsButton } from "@/components/PostCommentsSheet";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
@@ -428,7 +426,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
     >
       <header className="flex items-center gap-2.5 p-3 pb-2">
-        <AuthorAvatarLink post={post} accent={accent} initial={initial} />
+        <AuthorAvatarLink post={post} initial={initial} />
         <div className="flex-1 min-w-0">
           <AuthorNameLink post={post} />
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
@@ -1079,22 +1077,7 @@ function CommentInteractions({ commentId }: { commentId: string }) {
   );
 }
 
-function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string; initial: string }) {
-  const eq = useEquipped(post.author_id);
-  const deco = eq.data?.avatar_decoration;
-  if (deco) {
-    return (
-      <ProfilePreviewTrigger username={post.author?.username} className="shrink-0">
-        <AvatarDecoration
-          src={normalizeAvatarUrl(post.author?.avatar_url) ?? undefined}
-          fallback={initial}
-          size={40}
-          effectSlug={deco.slug}
-          accent={deco.preview_color || accent}
-        />
-      </ProfilePreviewTrigger>
-    );
-  }
+function AuthorAvatarLink({ post, initial }: { post: any; initial: string }) {
   return (
     <InteractiveAvatar
       src={post.author?.avatar_url}
@@ -1107,8 +1090,6 @@ function AuthorAvatarLink({ post, accent, initial }: { post: any; accent: string
 }
 
 function AuthorNameLink({ post }: { post: any }) {
-  const eq = useEquipped(post.author_id);
-  const np = eq.data?.nameplate;
   const name = post.author?.display_name || post.author?.username || "";
   return (
     <div className="flex min-w-0 items-center gap-1.5">
@@ -1116,7 +1097,7 @@ function AuthorNameLink({ post }: { post: any }) {
         username={post.author?.username}
         className="min-w-0 truncate text-left text-sm font-semibold hover:underline"
       >
-        <Nameplate name={name} slug={np?.slug} />
+        <Nameplate name={name} />
       </ProfilePreviewTrigger>
       {!!post.author?.badges?.length && <BadgeRow badges={post.author.badges} max={3} size="sm" />}
     </div>

@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { useEquipped } from "@/lib/useEquipped";
 import { isSelfDoNotDisturb } from "@/lib/presence";
 import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
 
@@ -109,10 +108,6 @@ export function IncomingCallRinger() {
     setCall(null);
   };
 
-  const eq = useEquipped(call?.fromId);
-  const decor = (eq.data as any)?.avatar_decoration;
-  const namep = (eq.data as any)?.nameplate;
-
   return (
     <AnimatePresence>
       {call && (
@@ -128,16 +123,10 @@ export function IncomingCallRinger() {
               src={call.fromAvatar}
               fallback={(call.fromUsername ?? "?").charAt(0).toUpperCase()}
               size={48}
-              effectSlug={decor?.slug}
-              accent={decor?.preview_color}
             />
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate">
-                <Nameplate
-                  name={call.fromDisplayName || call.fromUsername || "Someone"}
-                  slug={namep?.slug}
-                  accent={namep?.preview_color}
-                />
+                <Nameplate name={call.fromDisplayName || call.fromUsername || "Someone"} />
               </p>
               <p className="text-xs text-muted-foreground">
                 Incoming {call.video ? "video" : "voice"} call…

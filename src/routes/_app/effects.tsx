@@ -1,42 +1,84 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { ArrowLeft, Check, Bell } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Check, Eye, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
 import { useAuth } from "@/lib/auth";
+import { useEquipped } from "@/lib/useEquipped";
+import {
+  COSMETICS_ENABLED,
+  WEB_SLINGER_EFFECT,
+  equipEffect,
+  unequipEffect,
+} from "@/lib/effects";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/effects")({
   head: () => ({ meta: [{ title: "Effects · RIZZ" }] }),
-  component: EffectsComingSoonPage,
+  component: EffectsPage,
 });
 
-function EffectsComingSoonPage() {
+/**
+ * The effects shelf.
+ *
+ * There is exactly one cosmetic — the Web Slinger profile effect — so this is
+ * a showcase rather than a marketplace: the scene plays at the size it plays
+ * on a profile banner, with the avatar disc in place, and the owner can equip
+ * or remove it. The preview surface is the page's own banner mock; the effect
+ * itself is transparent vector art.
+ */
+function EffectsPage() {
   const { user, profile } = useAuth();
   const nav = useNavigate();
-  const storageKey = `rizz_effects_notify_${user?.id || "guest"}`;
-  const [notified, setNotified] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored === "true") setNotified(true);
-    } catch {}
-  }, [storageKey]);
-
-  const toggleNotify = () => {
-    const next = !notified;
-    setNotified(next);
-    try {
-      localStorage.setItem(storageKey, String(next));
-    } catch {}
-  };
-
+  const qc = useQueryClient();
+  const equippedQ = useEquipped(user?.id);
+  const isEquipped = equippedQ.data?.profile_effect?.slug === WEB_SLINGER_EFFECT.slug;
   const profileUsername = profile?.username;
+  const initial = (profile?.display_name || profileUsername || "?").charAt(0).toUpperCase();
+
+  const equip = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to equip effects.");
+      return equipEffect(user.id, WEB_SLINGER_EFFECT.slug, "profile_effect");
+    },
+    onSuccess: ({ persisted }) => {
+      void qc.invalidateQueries({ queryKey: ["equipped", user?.id] });
+      toast.success("Web Slinger equipped", {
+        description: persisted
+          ? "It now shows on your profile for everyone."
+          : "Saved on this device. Apply the latest migration to show it to visitors.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Couldn't equip Web Slinger", {
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+      });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to change effects.");
+      return unequipEffect(user.id, WEB_SLINGER_EFFECT.slug, "profile_effect");
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["equipped", user?.id] });
+      toast.success("Web Slinger removed from your profile");
+    },
+    onError: (error) => {
+      toast.error("Couldn't remove the effect", {
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+      });
+    },
+  });
+
+  const busy = equip.isPending || remove.isPending;
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 md:py-12">
-      {/* Header with back button */}
-      <div className="mb-8 flex items-center gap-3">
+    <div className="mx-auto max-w-3xl px-4 py-6 md:py-10">
+      <div className="mb-6 flex items-center gap-3">
         <IconButton
           aria-label="Back"
           size="lg"
@@ -48,74 +90,117 @@ function EffectsComingSoonPage() {
         <span className="text-sm font-medium text-muted-foreground">Profile</span>
       </div>
 
-      {/* Main calm card */}
-      <div className="flex flex-col items-center rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] p-8 text-center sm:p-12">
-        {/* 96px Cat mark in lime */}
-        <div className="mb-6 flex h-24 w-24 items-center justify-center">
-          <img
-            src="/brand/rizz-cat-logo.svg"
-            alt="RIZZ"
-            width={96}
-            height={96}
-            className="h-24 w-24 object-contain"
-          />
-        </div>
-
-        {/* Title & Coming soon pill */}
-        <div className="mb-3 flex items-center justify-center gap-2.5">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--brand-paper,#f4f1e7)] sm:text-3xl">
-            Effects
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-paper-dim,#a9a69c)]">
+            Cosmetics
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            Profile effects
           </h1>
-          <span className="rounded-full border border-[var(--brand-signal,#c8ff3d)] px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-signal,#c8ff3d)]">
-            Coming soon
-          </span>
         </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-line,rgba(244,241,231,0.13))] px-3 py-1 text-xs font-medium text-[var(--brand-paper-dim,#a9a69c)]">
+          <Sparkles className="h-3.5 w-3.5" />
+          1 available
+        </span>
+      </div>
 
-        {/* One line description */}
-        <p className="max-w-md text-sm text-[var(--brand-paper-dim,#a9a69c)] leading-relaxed">
-          Avatar decorations, nameplates and profile banners are on the way.
-        </p>
-
-        {/* Primary Action: Notify me */}
-        <div className="mt-8 flex flex-col items-center gap-3 w-full max-w-xs">
-          <Button
-            type="button"
-            onClick={toggleNotify}
-            className={
-              notified
-                ? "w-full border border-[var(--brand-signal,#c8ff3d)]/60 bg-[var(--brand-signal,#c8ff3d)]/15 text-[var(--brand-signal,#c8ff3d)] font-semibold hover:bg-[var(--brand-signal,#c8ff3d)]/25"
-                : "w-full bg-[var(--brand-signal,#c8ff3d)] text-[var(--brand-signal-ink,#0a0a0b)] font-bold hover:brightness-105 active:scale-95"
-            }
-          >
-            {notified ? (
-              <>
-                <Check className="mr-2 h-4 w-4" /> You're on the list
-              </>
-            ) : (
-              <>
-                <Bell className="mr-2 h-4 w-4" /> Notify me
-              </>
-            )}
-          </Button>
-
-          {notified && (
-            <span className="text-xs text-[var(--brand-signal,#c8ff3d)] font-medium animate-fade-in" role="status">
-              We'll notify you as soon as cosmetics launch.
+      <article className="overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)]">
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-6">
+          <div>
+            <h2 className="font-display text-lg font-bold tracking-tight text-[var(--brand-paper,#f4f1e7)]">
+              {WEB_SLINGER_EFFECT.name}
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
+              Profile effect · <span className="text-[#ff8d9c]">Mythic</span>
+            </p>
+          </div>
+          {isEquipped && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--brand-signal,#c8ff3d)]/50 px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-signal,#c8ff3d)]">
+              <Check className="h-3.5 w-3.5" /> Equipped
             </span>
           )}
         </div>
 
-        {/* Back to profile link */}
-        <div className="mt-8">
-          <Link
-            to={profileUsername ? "/u/$username" : "/feed"}
-            params={profileUsername ? { username: profileUsername } : undefined}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground underline underline-offset-4"
+        {/* A real banner-shaped surface, with the real effect and a real avatar
+            disc — the same composition a visitor sees on a profile. */}
+        <div className="px-4 pt-4 sm:px-6">
+          <div
+            className="relative h-44 overflow-hidden rounded-2xl sm:h-52"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--brand-ink-3,#1c1c1f), color-mix(in srgb, #e8253f 16%, var(--brand-ink,#0a0a0b)))",
+            }}
+            role="img"
+            aria-label="Web Slinger preview: a masked hero crouched on a web strand inside a profile banner"
           >
-            Back to profile
-          </Link>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--brand-ink-2,#131315)]/70 to-transparent" />
+            <WebSlingerEffect />
+            {/* The avatar disc sits in the shot so the composition is readable,
+                but it is chrome in the preview — the effect itself contains no
+                avatar, card or badge. */}
+            <div className="absolute bottom-3 left-3">
+              <Avatar className="h-12 w-12 ring-4 ring-[var(--brand-ink-2,#131315)]">
+                <AvatarImage src={profile?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[var(--brand-paper-dim,#a9a69c)]">
+            <Eye className="h-3.5 w-3.5" />
+            Banner preview — the effect itself has no background and never covers profile controls.
+          </p>
         </div>
-      </div>
+
+        <div className="space-y-4 px-4 pb-5 pt-8 sm:px-6">
+          <p className="max-w-xl text-sm leading-relaxed text-[var(--brand-paper-dim,#a9a69c)]">
+            {WEB_SLINGER_EFFECT.description}
+          </p>
+
+          <ul className="flex flex-wrap gap-2 text-[11px] font-medium text-[var(--brand-paper-dim,#a9a69c)]">
+            <li className="rounded-full border border-[var(--brand-line,rgba(244,241,231,0.13))] px-2.5 py-1">
+              Transparent vector
+            </li>
+            <li className="rounded-full border border-[var(--brand-line,rgba(244,241,231,0.13))] px-2.5 py-1">
+              Seamless loop
+            </li>
+            <li className="rounded-full border border-[var(--brand-line,rgba(244,241,231,0.13))] px-2.5 py-1">
+              Reduced-motion aware
+            </li>
+          </ul>
+
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+            {!COSMETICS_ENABLED ? (
+              <p className="text-sm text-[var(--brand-paper-dim,#a9a69c)]">
+                Cosmetics are paused right now.
+              </p>
+            ) : isEquipped ? (
+              <Button
+                variant="outline"
+                className="glass border-white/10"
+                onClick={() => remove.mutate()}
+                disabled={busy}
+              >
+                {remove.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Remove from profile
+              </Button>
+            ) : (
+              <Button onClick={() => equip.mutate()} disabled={busy || equippedQ.isLoading}>
+                {equip.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Equip on my profile
+              </Button>
+            )}
+
+            <Link to={profileUsername ? "/u/$username" : "/feed"} params={profileUsername ? { username: profileUsername } : undefined}>
+              <Button variant="ghost" className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-[var(--brand-paper,#f4f1e7)]">
+                View my profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </article>
     </div>
   );
 }

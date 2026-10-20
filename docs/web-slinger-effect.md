@@ -1,14 +1,16 @@
-# Web Slinger — profile effect
+# Web Slinger — the one profile effect
 
-A cinematic, looping profile effect: a masked web-slinger looms out of the
-dark behind the avatar, webbing reaches in from the edges, a spider sigil
-burns behind the hero at the climax, and the whole thing loops without a seam.
+A masked web-slinger crouched on a strand, lenses lit, both hands throwing
+web. The scene is **transparent inline SVG**: the character, the strand, the
+web lines, two energy trails and a handful of motes. There is no stage, sky,
+city, floor, card or badge behind it — the profile's own banner shows through
+and around the art.
 
-The character is **original work**. It is a masked web-slinger in the
-red-and-blue spider aesthetic, drawn from scratch as bezier paths in this
-repository. No Marvel, Sony or Disney assets, models, textures or reference
-imagery are used, referenced or required — so the effect can ship without
-carrying anyone's licence.
+The character is **original work**, drawn from scratch as vector paths in
+`src/components/profile/WebSlingerEffect.tsx`. No Marvel, Sony or Disney
+assets, models or reference artwork are used. No image-generation provider was
+available for this pass, and none was faked: the shipped artwork is the
+hand-authored vector scene, not a generated bitmap and not a placeholder.
 
 ---
 
@@ -16,158 +18,154 @@ carrying anyone's licence.
 
 | File | What it is |
 | --- | --- |
-| `public/effects/fx-web-slinger.json` | **The effect.** A Lottie file, 512×512, 30fps, 240 frames (8s loop), ~80 kB. |
-| `public/effects/fx-web-slinger-frame.svg` | A still of the hero moment, generated from the same scene. |
-| `public/effects/fx-web-slinger-contact.svg` | The still on a dark and on a light background, with the avatar disc drawn in place. |
-| `public/effects/preview.html` | A standalone preview page: the effect on dark and light, at full size, small and tiny. |
-| `scripts/effects/web-slinger-lib.mjs` | The drawing primitives: path parser, keyframes, gradients, trim paths, shape builders. |
-| `scripts/effects/web-slinger-scene.mjs` | The scene: the character, the web physics, the particles, the lighting, the timeline. |
-| `scripts/effects/web-slinger-svg.mjs` | Renders any frame of the scene as a static SVG. |
-| `scripts/build-web-slinger-effect.mjs` | Builds every output above. |
-| `scripts/check-web-slinger-effect.mjs` | Validates the Lottie by playing it through lottie-web, frame by frame. |
-| `src/components/profile/WebSlingerEffect.tsx` | The React player the app uses. |
-| `src/lib/effects.ts` | The two catalogue entries: `deco-web-slinger` and `fx-web-slinger`. |
+| `src/components/profile/WebSlingerEffect.tsx` | The scene: character geometry, lighting, webs, particles, and the placement/motion shell. |
+| `src/components/profile/ProfileEffect.tsx` | The profile-effect layer. Renders the Web Slinger for its slug and nothing for anything else. |
+| `src/styles.css` | `.wsx*` animation rules (breath, sway, strand draw, lens pulse, motes) with reduced-motion and calm fallbacks. |
+| `src/lib/effects.ts` | The catalogue — exactly one entry, `fx-web-slinger` — plus equip/acquire/fetch. Stale database rows are filtered out. |
+| `src/routes/_app/effects.tsx` | The single-effect showcase and equip/remove control. |
+| `supabase/migrations/20261027000000_web_slinger_only.sql` | Seeds the effect row (for the uuid foreign key) and retires the old catalogue. |
+| `tests/web-slinger-effect.test.mjs` | Guards transparency, the removed effects, the integration and the motion fallbacks. |
 
-## Commands
+No binary asset is required. Nothing is fetched at runtime for the effect, so
+there is no asset URL, CDN dependency or loading failure to handle: if React
+renders, the art renders.
 
-```bash
-npm run effects:build   # rebuild the Lottie, the still and the contact sheet
-npm run effects:check   # validate the file by rendering every frame
-```
+## Transparency
 
-The build is deterministic: same source, same bytes.
+- The `<span>` host paints nothing. The `<svg>` paints nothing. There is **no
+  `<rect>` covering the canvas** and no gradient behind the figure.
+- Every gradient is attached to a suit panel, lens, strand or trail shape.
+  The only `rect` in the scene is a clipped fabric-weave pattern inside the
+  torso; it is transparent outside the weave lines.
+- The preview surface on `/effects` and the real banner on a profile are the
+  app's own surfaces. The asset never supplies one.
+- The host is `pointer-events: none` and `aria-hidden="true"`, and it sits in
+  the banner layer. Avatars, names, buttons, menus and links stay clickable.
 
----
+## Composition
 
-## The scene
+- 640 × 360 viewBox, figure centred, full body visible from mask to boots.
+- The hand strands and the strand under the boots intentionally run past the
+  viewBox; the SVG paints with `overflow: visible`, so they reach the edges of
+  a wide banner instead of ending in mid-air. The banner's own `overflow:
+  hidden` keeps the excess inside the header.
+- Red suit with a deep-red gradient, blue side panels, blue forearms and
+  shins, red gloves and boots. Black web lattice clipped to the mask, torso
+  and thighs; dashed stitching along the seams; a fabric weave on the torso.
+- White lenses with a blue bevel, catchlights and a soft bloom that pulses
+  inside the mask.
+- Cool rim light from the upper right and a warm red rim on the left, applied
+  to the shared silhouette paths.
+- Thin white strands extend from both hands; a taut strand runs beneath the
+  crouch. Subtle red and blue energy trails sit behind the figure, plus small
+  glowing motes and two four-point sparks.
+- The small chest mark is an original ink spider, not an official logo.
 
-Fourteen layers, back to front. Each one is a separate Lottie shape layer, so
-any of them can be re-timed or re-coloured without touching the others.
+## Motion
 
-| Layer | What it does |
-| --- | --- |
-| `stage` | The dark stage, its cold pool of light and its warm counter-light. Carries the slow camera push-in. |
-| `haze-back` | Colour clouds drifting on the far parallax plane. |
-| `backlight` | A cold pool of light behind the mask. A dark figure on a dark stage is invisible; this is what makes the silhouette read. |
-| `emblem-back` | The spider sigil, which flares at the hero moment. |
-| `web-back` | Strands that reach in from the edges, drawn on with a trim path. |
-| `hero` | The character: a tilted mask, glowing lenses, rim light, the web texture. |
-| `web-line` | The line the hero swings on. |
-| `shockwave` | The ring that lands with them. |
-| `web-front` | Strands that spread outward at the hero moment. |
-| `particles-back` / `particles-front` | Motes on closed orbits, so the loop closes exactly. |
-| `hero-light` | A specular sweep across the suit. |
-| `bokeh` | Out-of-focus foreground dust. |
-| `grade` | The vignette that focuses the centre. |
+One seamless loop, built from CSS keyframes in `src/styles.css`:
 
-### The timeline (240 frames, 30fps)
-
-| Frames | Beat |
-| --- | --- |
-| 0–34 | Darkness. The strands draw on from the edges. |
-| 34–112 | The hero swings in on a web line, rotating as they come. |
-| 112–132 | They land. The web line retracts, the shockwave ring expands. |
-| 120–168 | The hero moment: the sigil flares, the front strands spread, a light sweeps the suit. |
-| 168–240 | Idle — a breath, drifting motes — then the scene returns to its opening state. |
-
-Every animated property ends on the value it started with, so frame 240 is
-frame 0 and the loop has no seam.
-
----
-
-## Discord: what actually works
-
-**Discord's profile effects are a Shop feature, and the official way to get
-one is to buy it.** The help centre documents no user upload path: you buy an
-effect in the Shop, then apply it from *User Settings → Profiles → Change
-Effect*. There is no public REST API for uploading a profile effect, and no
-supported way for a third party to publish one into a user's profile.
-
-What *is* true, and what this asset is built for:
-
-- Discord's profile effects are **Lottie animations**. That is the format the
-  client plays, and `fx-web-slinger.json` is a Lottie file.
-- The same file is what the RIZZ app plays, through `lottie-web`, so the
-  effect in the app and the effect on Discord are one asset.
-
-### To use it on Discord
-
-1. Open the effect in a Lottie player and confirm the loop:
-   `public/effects/preview.html`.
-2. Apply the effect's size and frame rate to your design. This one is
-   **512×512, 30fps, 8 seconds, looping** — a square canvas, because Discord
-   draws the avatar disc in the middle of it.
-3. Export the Lottie with the same settings bodymovin uses: shapes only, no
-   expressions, no raster images, no masks with unsupported features. This
-   file already avoids all of those: it is pure vector, and it uses no effect
-   layers, so it renders in the simplest possible player.
-4. Upload it through the profile effect upload in the Discord desktop client,
-   where the client exposes it, and apply it from *Change Effect*.
-
-**The honest caveat:** because Discord has no public upload API, step 4 is a
-client-side action that has to be done in the app, and distribution to other
-users still goes through the Shop. This repository can produce the file; it
-cannot publish it for you. If you want the effect in the Shop, it has to go
-through Discord's own submission process.
-
-### If a different Discord surface is meant
-
-Discord also accepts Lottie for animated **stickers** and **emoji** (as
-`.json` or the gzipped `.tgs`). Those use the same file, but the canvas and
-the framing change: a sticker wants a square canvas with the character
-centred and a safe margin, and a 128×128 emoji wants the character to fill
-the frame. The scene is built on a 512 grid, so either is a re-frame of the
-same source rather than a redraw.
-
----
-
-## Using it in the RIZZ app
-
-The effect is registered twice in `src/lib/effects.ts`:
-
-| Slug | Type | Where it plays |
+| Element | Behaviour | Period |
 | --- | --- | --- |
-| `deco-web-slinger` | avatar decoration | Behind the avatar, the way Discord draws a profile effect. The lenses peek out at the upper left. |
-| `fx-web-slinger` | profile effect | At the left of the profile banner, so the hero looms behind the avatar that overlaps it. |
+| Figure | breath from the feet, ±2 px | 8 s |
+| Strands | gentle sway around each hand | 7 s / 8.5 s |
+| Strand draw | extend, hold, settle; closes on its start | 11 s |
+| Lenses | soft pulse | 5.5 s |
+| Chest mark | soft pulse | 6.5 s |
+| Motes | slow drift and twinkle | 9–14 s |
+| Trails | slow dash flow | 7 s / 9 s |
 
-Both are behind the global `COSMETICS_ENABLED` killswitch in `src/lib/effects.ts`.
-That flag is currently `false`, so nothing renders until it is turned on — the
-effect is wired and ready, but it stays hidden while cosmetics are paused.
+No shaking, flashing or sudden jumps. The loop's first and last frames hold
+the same values, so it restarts without a seam.
 
-### Performance
+### Reduced motion and low-performance devices
 
-- The player only loads the animation when the effect scrolls into view
-  (`IntersectionObserver`), and the file is fetched once and cached by the
-  browser.
-- It is vector, so it stays sharp at any size and costs nothing to resize.
-- `prefers-reduced-motion` holds the hero moment instead of looping it.
-- The player is loaded on demand (`await import("lottie-web")`), so it never
-  lands in the main bundle.
+- `prefers-reduced-motion: reduce` removes every animation and shows the
+  fully-drawn still (strands visible, motes at rest).
+- A device reporting ≤ 2 logical cores or ≤ 2 GB memory gets the same still
+  through `data-calm="true"`, detected in `prefersStillFrame()` and updated
+  live when the OS preference changes.
+- An `IntersectionObserver` pauses every animation while the banner is off
+  screen (`data-visible="false"`).
+- Only transforms and opacity are animated; the filters are small and static.
 
----
+## Profile integration
 
-## Editing the effect
+`src/routes/_app/u.$username.tsx` renders the effect **after** the banner's
+bottom gradient, so the feet and the strand are not dimmed:
 
-Everything is in `scripts/effects/web-slinger-scene.mjs`:
-
-- The character is four bezier paths — `HEAD`, `LENS_LEFT`, `LENS_RIGHT`,
-  `TORSO`, `ARM_RAISED`, `ARM_LOW` — written as ordinary SVG path strings and
-  parsed into Lottie geometry by `web-slinger-lib.mjs`.
-- The web strands are bezier paths with a **trim path**, which is what makes
-  them draw on and retract. The physics is the curve and the easing, not a
-  simulation.
-- The particles are closed orbits: the last keyframe of each mote is written
-  back to its first, so the loop closes exactly.
-- The lighting is gradients over stacked ellipses, so it renders identically in
-  the Lottie player and in the SVG still.
-
-After any change:
-
-```bash
-npm run effects:build
-npm run effects:check
+```tsx
+<div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+{eq?.profile_effect && <ProfileEffectVisual slug={eq.profile_effect.slug} />}
 ```
 
-`effects:check` loads the file into the real player, steps through all 240
-frames, and fails if a frame throws, if a shape's tangents do not match its
-vertices, if the file is over 300 kB, or if the scene is missing its layers.
+The banner already clips its children, so the scene stays inside the effect
+layer and cannot cover the identity row. The avatar, name, bio, badges and
+actions are untouched. On a 160 px-tall mobile banner the hero is ~122 px tall;
+on a 224 px-tall desktop banner it is ~170 px, centred with the webs reaching
+toward both edges.
+
+## Equipping it
+
+`/effects` is no longer a coming-soon page. It shows the effect at banner size
+with the avatar disc in place, and the owner can equip or remove it:
+
+1. `equipEffect(userId, "fx-web-slinger", "profile_effect")` writes the local
+   fallback immediately (so the owner sees the change on this device).
+2. It then resolves the database row by slug — `user_profile_effects.effect_id`
+   is a uuid foreign key — and upserts `equipped = true`.
+3. `fetchEquippedEffects` reads that row for visitors and only accepts slugs
+   that still exist in the catalogue, so a retired effect can never reappear.
+
+Apply `supabase/migrations/20261027000000_web_slinger_only.sql` to make the
+effect visible to other members. Without it, equipping still works on the
+owner's device and the toast says so; nothing throws a raw PostgREST error.
+
+## Verify
+
+```bash
+bun tests/web-slinger-effect.test.mjs
+bun tsc -b --noEmit
+```
+
+Then, in the running app:
+
+1. Open `/effects`; the scene plays inside the banner preview.
+2. Press **Equip on my profile**, open your profile: the hero sits in the
+   banner, the avatar and name are unobstructed, and every button still works.
+3. Enable **Reduce motion** in the OS: the scene becomes a still with strands
+   drawn.
+4. Resize to phone width: the figure stays centred and complete.
+5. Right-click/inspect the scene: there is no background element and no
+   `<img>`; the host is `pointer-events: none`.
+
+## Optional painted upgrade
+
+The art shipped here is final, hand-authored vector work. No image-generation
+provider was available in this environment, so no generated raster is claimed
+or used. If a painted still is wanted later, this is the brief for an external
+image tool:
+
+> A full-body original masked web-slinger in a dynamic crouching, web-shooting
+> pose: detailed crimson and deep-blue suit, fine black web lattice, white
+> angular eye lenses, subtle fabric weave and visible stitching, balanced
+> heroic proportions, crisp silhouette. Cinematic cool rim light from the
+> upper right, a soft warm red rim on the left, thin white web strands leaving
+> both hands, restrained red and blue energy trails and a few glowing motes.
+> Character centred and complete in frame. **Transparent background** — a PNG
+> or WebP with a real alpha channel, 1024 × 1024, no background, floor, city,
+> card, frame, text, watermark or official logos. Original design, do not copy
+> any existing superhero artwork.
+
+That raster would need its own integration pass: the current loop animates SVG
+parts (figure breath, strand draw, lens pulse), which a flat image cannot do
+without a separate rig.
+
+## Editing the art
+
+Geometry lives as plain path constants at the top of
+`WebSlingerEffect.tsx` (`HEAD`, `TORSO`, `ARM_RIGHT`, `SHIN_LEFT`, …). Keep the
+canvas at 640 × 360 and the feet near `y = 324` so the character stays on the
+strand. The rim-light `<use>` list must include any new silhouette path.
+Animation belongs in the `.wsx*` section of `src/styles.css`; keep the first
+and last keyframes identical so the loop stays seamless.

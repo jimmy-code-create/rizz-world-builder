@@ -207,8 +207,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "Verified Creator",
     flavor: "Official creator on RIZZ.",
     icon: ":cat_love:",
-    symbol: "verified",
-    art: "/badges/badges.svg#verified",
+    // Its own mark: a creator seal (play glyph), not the member Verified check.
+    symbol: "verified-creator",
+    art: "/badges/badges.svg#verified-creator",
     tier: "epic",
     glow: LIME,
   },
@@ -306,3 +307,33 @@ export const TIER_LABEL: Record<BadgeTier, string> = {
   legendary: "Legendary",
   mythic: "Mythic",
 };
+
+/**
+ * Profile showcase: the badges a member actively equips onto the body of
+ * their profile (stored in `profiles.badges`). The cap keeps the row readable
+ * — a curated handful beside the bio, not the whole cabinet.
+ */
+export const MAX_SHOWCASE_BADGES = 3;
+
+/**
+ * Equipped slugs cleaned for display: the member's own order is kept,
+ * duplicates and unknown entries are dropped, and — the part that matters — a
+ * slug survives only when it appears in `earned`. The profile therefore can
+ * never show an emblem the member does not hold, whatever the stored column
+ * contains. An absent column (migration not applied yet) reads as empty.
+ */
+export function showcaseBadges(
+  stored: readonly string[] | null | undefined,
+  earned: readonly { slug: string }[],
+): string[] {
+  const owned = new Set(earned.map((badge) => badge.slug));
+  const seen = new Set<string>();
+  const equipped: string[] = [];
+  for (const slug of stored ?? []) {
+    if (!slug || seen.has(slug) || !owned.has(slug)) continue;
+    seen.add(slug);
+    equipped.push(slug);
+    if (equipped.length >= MAX_SHOWCASE_BADGES) break;
+  }
+  return equipped;
+}

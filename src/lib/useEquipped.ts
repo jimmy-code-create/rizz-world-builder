@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchEquippedEffects } from "@/lib/effects";
 
-/** Return equipped avatar_decoration / nameplate / profile_effect for a user. */
+/** Return the equipped profile effect for a user (only the Web Slinger remains). */
 export function useEquipped(userId?: string | null) {
   return useQuery({
     queryKey: ["equipped", userId],

@@ -472,91 +472,104 @@ export function BadgesPage() {
                     Badge Inspector
                   </span>
                 </div>
-                <span
-                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border"
-                  style={{
-                    backgroundColor: `${active.color}18`,
-                    color: active.color,
-                    borderColor: `${active.color}35`,
-                  }}
-                >
-                  {active.rarity}
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                  {isActiveOwned ? t("earned") : t("locked_achiever")}
                 </span>
               </div>
 
-              {/* Art panel: the badge at full showcase size on its soft ring. */}
-              <div className="relative grid place-items-center rounded-2xl border border-white/10 bg-white/[0.02] py-7">
-                <div className="relative flex flex-col items-center gap-3 text-center">
+              {/* Art panel, Discord sheet style: the mark big and alone on a soft
+                  pedestal, an uppercase title, then state + rarity on one line. */}
+              <div className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] py-8">
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 50% 36%, rgba(255,255,255,0.075), transparent 62%)",
+                  }}
+                  aria-hidden="true"
+                />
+                <div className="relative flex flex-col items-center gap-4 text-center">
                   <span className="badge-display relative">
                     <BadgeMark
                       slug={active.slug}
-                      size={96}
+                      size={120}
                       locked={!isActiveOwned}
                       title={active.name}
                     />
-                    {!isActiveOwned && (
-                      <span className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-[#101116]">
-                        <Lock className="h-4 w-4 text-white/80" />
-                      </span>
-                    )}
                   </span>
-                  <div className="px-4">
-                    <h2 className="font-display text-lg font-bold text-foreground">
+                  <div className="px-5">
+                    <h2 className="font-display text-xl font-extrabold uppercase leading-tight tracking-[0.09em] text-foreground">
                       {active.name}
                     </h2>
-                    <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                      {active.description}
-                    </p>
+                    <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-[11px]">
+                      <span className="font-medium text-muted-foreground">
+                        {isActiveOwned
+                          ? awardedAtFor.get(active.slug)
+                            ? `${t("earned")} ${new Date(awardedAtFor.get(active.slug)!).toLocaleDateString([], {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}`
+                            : t("unlocked_owned")
+                          : t("locked_achiever")}
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-white/30" aria-hidden="true" />
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]"
+                        style={{
+                          backgroundColor: `${active.color}14`,
+                          color: active.color,
+                          borderColor: `${active.color}45`,
+                        }}
+                      >
+                        <span aria-hidden="true" className="text-[7px] leading-none">
+                          ▲
+                        </span>
+                        {t(`rarity_${active.rarity}`)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Unlock status / how to earn */}
-              <div
-                className={`flex items-center gap-3 rounded-2xl border p-4 ${
-                  isActiveOwned
-                    ? "border-emerald-500/25 bg-emerald-500/10"
-                    : "border-white/10 bg-white/[0.02]"
-                }`}
-              >
+              {/* How to earn: one labelled card, like Discord's badge sheet. */}
+              <div className="space-y-2.5 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  How to earn
+                </p>
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {active.description}
+                </p>
                 {isActiveOwned ? (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
-                ) : (
-                  <Lock className="h-5 w-5 shrink-0 text-muted-foreground" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground">
-                    {isActiveOwned ? t("unlocked_owned") : t("locked_achiever")}
+                  <p className="flex items-center gap-2 pt-0.5 text-[11px] font-medium text-emerald-300">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    {t("unlocked_owned_desc")}
                   </p>
-                  {isActiveOwned ? (
-                    <p className="text-[11px] leading-snug text-emerald-200/90">
-                      {t("unlocked_owned_desc")}
-                    </p>
-                  ) : activeProgress ? (
-                    <div className="mt-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-semibold text-primary">
-                          {activeProgress.current} / {activeProgress.target}
+                ) : activeProgress ? (
+                  <div className="pt-0.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-primary">
+                        {activeProgress.current} / {activeProgress.target}
+                      </span>
+                      {activeProgress.current < activeProgress.target && (
+                        <span className="text-muted-foreground">
+                          {activeProgress.target - activeProgress.current} to go
                         </span>
-                        {activeProgress.current < activeProgress.target && (
-                          <span className="text-muted-foreground">
-                            {activeProgress.target - activeProgress.current} to go
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${activeProgress.pct}%` }}
-                        />
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-[11px] leading-snug text-muted-foreground">
-                      {t("locked_desc")}
-                    </p>
-                  )}
-                </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${activeProgress.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-2 pt-0.5 text-[11px] text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    {t("locked_desc")}
+                  </p>
+                )}
               </div>
 
               {/* Rarity & stats */}

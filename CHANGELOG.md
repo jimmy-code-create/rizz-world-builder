@@ -1,5 +1,96 @@
 # Changelog
 
+## 2026-10-20 — Web Slinger is the one profile effect
+
+### Every other effect is gone
+- The cosmetics catalogue is now a single entry: **Web Slinger**
+  (`fx-web-slinger`, mythic profile effect). Avatar decorations, nameplates,
+  the legacy rings and all the procedural profile overlays are removed from
+  the catalogue, the renderer, the profile header, feed credits and the call
+  ringer. Stale rows in `profile_effects` are filtered out on read, so an old
+  equipped effect can never come back through the database.
+- The old Lottie pipeline is deleted with its 512×512 stage, preview page and
+  build scripts. There is no binary asset to fetch: the effect is inline SVG.
+
+### A redrawn, genuinely transparent spider hero
+- A full-body, original masked web-slinger is authored as vector paths: red
+  suit with a deep-red gradient, blue side panels, forearms and shins, a black
+  web lattice clipped to the mask, torso and thighs, dashed stitching, fabric
+  weave, white lenses with a cool bevel, and a warm/cool rim on the silhouette.
+- The character is centred and complete from mask to boots, crouched on a thin
+  web strand with three strands leaving each hand, restrained red and blue
+  energy trails behind the body, and a handful of glowing motes.
+- **No background ships.** The host and the SVG paint nothing; there is no
+  canvas rect, stage, gradient wash, vignette, card or badge. Every gradient is
+  confined to a suit panel, lens, strand or trail.
+- The scene breathes, sways, draws its strands and pulses its lenses on one
+  seamless 11s loop. `prefers-reduced-motion`, very small devices and an
+  off-screen banner all show/pause the same still frame.
+
+### Integration and control
+- The profile renders the effect **after** the banner gradient, inside the
+  clipped banner layer, with `pointer-events: none` and `aria-hidden`; the
+  avatar, name, bio, badges and actions keep working and keep their layout.
+- `/effects` is now a one-effect showcase with a banner-sized preview and an
+  **Equip on my profile** / **Remove from profile** control. Equip resolves the
+  database uuid by slug, writes the local fallback instantly and upserts the
+  row so visitors see it; without the migration the toast says it is local.
+- `supabase/migrations/20261027000000_web_slinger_only.sql` seeds the effect
+  row and retires the old catalogue (cascading its old user rows).
+- `tests/web-slinger-effect.test.mjs` (13 checks) guards the single entry,
+  transparency, the complete character, both-hand webbing, profile layering,
+  pointer-events, motion fallbacks, the removal of the old surfaces and the
+  Lottie pipeline, the equip path and the migration.
+
+## 2026-10-20 — Equip badges on the profile
+
+### The profile gains a badge section you control
+- The profile page now has a **Badges** section under the bio: members press
+  **Equip badges**, tap up to three earned badges, and the showcase appears
+  there for everyone who visits. The choice persists in `profiles.badges` —
+  the showcase column the profile-card migration introduced, which nothing
+  wrote until now.
+- Display is earned-gated on read (`showcaseBadges` in `badge-set.ts`), so a
+  hand-edited column can never show an emblem the member does not hold, and
+  until something is equipped the section falls back to the full earned row
+  the page already showed — no profile loses badges.
+- Before `20261020010000_profile_card.sql` is applied the section still
+  renders; equipping reports a readable "needs the latest database migration"
+  message instead of a PostgREST error (the same best-effort pattern as
+  featured badges), and a silent RLS no-op is no longer reported as a save.
+- The single **featured badge** beside the name is untouched — name chip and
+  profile showcase are separate controls with separate copy.
+- `tests/profile-badges.test.mjs` guards the loop: sanitizer filtering and
+  cap, the migration column, route wiring, the equip control and the write
+  path (7 checks); `tests/profile-badges.render.test.tsx` executes the real
+  section through renderToStaticMarkup — visitor showcase, fallback, owner
+  controls, the unearned-slug filter, loading and the empty state (8 checks).
+
+## 2026-10-20 — Badges redrawn in Discord's language
+
+### One design system, thirteen marks
+- The flat sprite is replaced by gradient emblems in Discord's house style: a
+  tier gradient silhouette (light at the top), an engraved rim, the glyph cut
+  out in ink, and one small specular. Depth is layered vectors only — no
+  filters — so the 20px chip beside a name and the 120px showcase are the same
+  geometry.
+- A shield family for honor badges: Early Supporter / HypeSquad Bravery, Top
+  Rizzler and Verified. The HypeSquad crest from the reference carries over —
+  deep crest, bold black chevron.
+- Silver medallions for common badges, lime emblems for earned signal, amber →
+  red flames for the streaks, a creator seal (play glyph) for Verified Creator
+  so it no longer shares the member Verified mark, and a light-only crescent
+  for Night Owl, which needs no cut-out.
+
+### Badge sheet
+- The inspector now reads like Discord's badge sheet: the mark alone and large
+  on a soft pedestal, an uppercase title, a state · rarity line with a ▲ tier
+  tag, and the earning story in a labelled "How to earn" card with progress.
+- `tests/badge-sprite.test.mjs` guards the artwork: every catalog badge has a
+  symbol, every symbol stays on the 24 grid the app renders, gradient ids are
+  unique and every `url(#…)` resolves inside its symbol, the share canvas can
+  still extract each mark, and the set stays vector-only.
+
 ## 2026-10-20 — Badge names: HypeSquad Bravery and Verified Creator
 
 ### Two badges renamed, no award lost

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
-import { BadgeRow } from "@/components/BadgeChip";
+import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile } from "lucide-react";
@@ -285,10 +285,8 @@ function ProfilePage() {
               : `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
           }}
         >
-          {eq?.profile_effect && (
-            <ProfileEffectVisual slug={eq.profile_effect.slug} accent={eq.profile_effect.preview_color} />
-          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+          {eq?.profile_effect && <ProfileEffectVisual slug={eq.profile_effect.slug} />}
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
           <span className="relative inline-flex shrink-0">
@@ -296,8 +294,6 @@ function ProfilePage() {
               src={profile.avatar_url}
               fallback={initial}
               size={96}
-              effectSlug={eq?.avatar_decoration?.slug}
-              accent={eq?.avatar_decoration?.preview_color}
               className="ring-4 ring-background rounded-full"
             />
             <AvatarStatusBadge emoji={customStatus?.emoji} />
@@ -320,9 +316,6 @@ function ProfilePage() {
             <h1 className="font-display text-2xl font-bold tracking-tight">
               <Nameplate
                 name={profile.display_name || profileUsername}
-                slug={eq?.nameplate?.slug}
-                accent={eq?.nameplate?.preview_color}
-                variant="badge"
                 className="text-xl md:text-2xl"
               />
             </h1>
@@ -442,11 +435,13 @@ function ProfilePage() {
         </section>
       )}
 
-      {badges.data && badges.data.length > 0 && (
-        <div className="px-1 md:px-2 mt-4">
-          <BadgeRow badges={badges.data} max={5} />
-        </div>
-      )}
+      <ProfileBadgesSection
+        profileId={profile.id}
+        isOwner={Boolean(isMe)}
+        stored={profile.badges}
+        earned={badges.data ?? []}
+        loading={badges.isLoading}
+      />
 
       <div className="px-1 md:px-2 mt-4 flex items-center gap-5 text-sm">
         <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
