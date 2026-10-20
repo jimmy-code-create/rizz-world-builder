@@ -2,6 +2,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { COSMETICS_ENABLED } from "@/lib/effects";
 import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
+import { CinematicAvatarDecoration } from "@/components/profile/CinematicAvatarDecoration";
+
+/**
+ * The cinematic shop sells three avatar decorations. Their slugs are the real
+ * clip slugs; the older `deco-` names are kept for the legacy catalogue.
+ */
+const CINEMATIC_DECO: Record<string, string> = {
+  "fx-sakura-bloom": "deco-sakura-bloom",
+  "fx-arcane-nexus": "deco-arcane-runes",
+  "fx-sakura-storm": "deco-sakura-storm",
+};
 
 const STYLE_CLASS: Record<string, string> = {
   neon: "fx-ring-neon",
@@ -34,6 +45,8 @@ type Props = {
   className?: string;
   /** Render the decoration even while cosmetics are paused (the effects gallery). */
   preview?: boolean;
+  /** Respect the member's reduced-motion preference for cinematic decorations. */
+  reducedMotion?: boolean;
 };
 
 export function AvatarDecoration({
@@ -44,25 +57,40 @@ export function AvatarDecoration({
   accent,
   className,
   preview = false,
+  reducedMotion = false,
 }: Props) {
   const isDecorated = (COSMETICS_ENABLED || preview) && Boolean(effectSlug);
   const ringClass = isDecorated ? resolveRingClass(effectSlug) : undefined;
-  const isDiscordDeco = isDecorated && effectSlug?.startsWith("deco-");
+  const cinematicSlug = effectSlug ? CINEMATIC_DECO[effectSlug] : undefined;
+  const isCinematicDeco = isDecorated && Boolean(cinematicSlug);
+  const decoSlug = isDecorated
+    ? cinematicSlug ?? (effectSlug?.startsWith("deco-") ? effectSlug : undefined)
+    : undefined;
+  const isDiscordDeco = Boolean(decoSlug) && !isCinematicDeco;
 
   return (
     <div
       className={cn("relative inline-block select-none", className)}
       style={{ width: size, height: size }}
     >
-      {/* 1. Discord-Style Animated SVG Decorations (only when cosmetics flag is on) */}
+      {/* 1. Cinematic avatar decorations — the real shop loops, centred on the avatar. */}
+      {isCinematicDeco && (
+        <CinematicAvatarDecoration
+          slug={effectSlug}
+          avatarSize={size}
+          reducedMotion={reducedMotion}
+        />
+      )}
+
+      {/* 2. Animated SVG decorations kept for the legacy catalogue. */}
       {isDiscordDeco && effectSlug === "deco-web-slinger" && (
         <WebSlingerEffect variant="avatar" avatarSize={size} />
       )}
       {isDiscordDeco && effectSlug !== "deco-web-slinger" && (
-        <DiscordAvatarDecoration slug={effectSlug!} size={size} accent={accent} />
+        <DiscordAvatarDecoration slug={decoSlug!} size={size} accent={accent} />
       )}
 
-      {/* 2. Legacy / Procedural Rings (only when cosmetics flag is on) */}
+      {/* 3. Legacy / Procedural Rings (only when cosmetics flag is on) */}
       {ringClass && (
         <div
           className={cn("absolute inset-0 rounded-full pointer-events-none", ringClass)}
@@ -74,7 +102,7 @@ export function AvatarDecoration({
       <Avatar
         className="relative h-full w-full"
         style={{
-          boxShadow: isDecorated && !ringClass && !isDiscordDeco && accent ? `0 0 0 2px ${accent}66, 0 0 12px ${accent}33` : undefined,
+          boxShadow: isDecorated && !ringClass && !decoSlug && accent ? `0 0 0 2px ${accent}66, 0 0 12px ${accent}33` : undefined,
         }}
       >
         <AvatarImage src={src ?? undefined} />

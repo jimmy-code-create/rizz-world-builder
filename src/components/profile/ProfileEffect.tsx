@@ -28,11 +28,15 @@ export function ProfileEffect({
   accent,
   preview = false,
   reducedMotion = false,
+  className,
+  fit = "contain",
 }: {
   slug?: string | null;
   accent?: string | null;
   preview?: boolean;
   reducedMotion?: boolean;
+  className?: string;
+  fit?: "contain" | "cover";
 }) {
   if (!slug || (!COSMETICS_ENABLED && !preview)) return null;
 
@@ -45,6 +49,8 @@ export function ProfileEffect({
         slug={slug}
         accent={accent ?? cinematic.accent}
         reducedMotion={reducedMotion}
+        className={className}
+        fit={fit}
       />
     );
   }

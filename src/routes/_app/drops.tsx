@@ -17,6 +17,7 @@ import {
   Share2,
   Megaphone,
   Check,
+  PawPrint,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
@@ -44,18 +45,19 @@ type Quest = {
 };
 
 /**
- * Discord-quest-style promo challenges. Completion derives from data the app
- * already loads (claims, posted bounties) or a device-local share flag —
- * there is no new currency and no backend tracking. Rewards land through the
- * existing rizz scoring (posts, likes) and bounty claims.
+ * Promo challenges stay device-tracked. The economy itself is server-side:
+ * every successful bounty claim pays Paws through `claim_bounty`, while Rizz
+ * points still come from posts, likes and the rest of the existing score.
  */
+const BOUNTY_PAW_REWARD = 25;
+
 const QUESTS: Quest[] = [
   {
     id: "quest:claim",
     icon: Coins,
     title: "Claim your first bounty",
     desc: "Grab any active bounty below before it sells out.",
-    pays: "Bounty loot",
+    pays: `${BOUNTY_PAW_REWARD} Paws per claim`,
     action: { kind: "link", to: "/drops" },
     done: ({ claims }) => claims > 0,
   },
@@ -98,7 +100,7 @@ const QUESTS: Quest[] = [
 ];
 
 function DropsPage() {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const qc = useQueryClient();
   const [dropOpen, setDropOpen] = useState(false);
   const [shared, setShared] = useState<boolean>(() => {
@@ -146,11 +148,22 @@ function DropsPage() {
 
   const claim = async (dropId: string) => {
     if (!user) return;
-    const { error } = await supabase
-      .from("drop_claims")
-      .insert({ drop_id: dropId, user_id: user.id });
-    if (error) toast.error(error.message);
-    else toast.success("Claimed! 🪙");
+    const { data, error } = await supabase.rpc("claim_bounty", { _drop_id: dropId });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const result = data as { status?: string; reward?: number } | null;
+    if (result?.status === "already_claimed") {
+      toast.info("Already claimed");
+    } else {
+      toast.success(`Claimed! +${result?.reward ?? BOUNTY_PAW_REWARD} Paws`);
+    }
+    await Promise.all([
+      refreshProfile(),
+      qc.invalidateQueries({ queryKey: ["my-claims", user.id] }),
+      qc.invalidateQueries({ queryKey: ["drops"] }),
+    ]);
   };
 
   const shareApp = async () => {
@@ -218,12 +231,36 @@ function DropsPage() {
         <CreateDropDialog open={dropOpen} onOpenChange={setDropOpen} />
       </motion.div>
 
+      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+          <PawPrint className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Paws wallet
+          </p>
+          <p className="font-display text-xl font-bold leading-tight">
+            {formatNumber(profile?.paw_balance ?? 0)} Paws
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Every successful bounty claim pays {BOUNTY_PAW_REWARD} Paws.
+          </p>
+        </div>
+        <Link
+          to="/effects"
+          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Spend on effects
+        </Link>
+      </div>
+
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
 
       <div className="space-y-3">
         {drops.data?.map((d: any) => {
           const claimed = myClaims.data?.has(d.id);
           const soldOut = d.claim_count >= d.claim_limit;
+          const ownBounty = d.creator_id === user?.id;
           const pct = Math.min(100, (d.claim_count / d.claim_limit) * 100);
           return (
             <motion.div
@@ -277,17 +314,19 @@ function DropsPage() {
                 </div>
                 <Button
                   onClick={() => claim(d.id)}
-                  disabled={claimed || soldOut || !user}
-                  className={`w-full mt-4 ${claimed || soldOut ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
-                  variant={claimed || soldOut ? "outline" : "default"}
+                  disabled={claimed || soldOut || ownBounty || !user}
+                  className={`w-full mt-4 ${claimed || soldOut || ownBounty ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
+                  variant={claimed || soldOut || ownBounty ? "outline" : "default"}
                 >
                   {claimed ? (
                     "✓ Claimed"
                   ) : soldOut ? (
                     "Sold out"
+                  ) : ownBounty ? (
+                    "Your bounty"
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4 mr-1" /> Claim now
+                      <PawPrint className="h-4 w-4 mr-1" /> Claim · +{BOUNTY_PAW_REWARD} Paws
                     </>
                   )}
                 </Button>
@@ -307,16 +346,26 @@ function DropsPage() {
 
       <div className="glass rounded-3xl p-5 mt-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
-          <h2 className="font-display text-lg font-bold">Want to earn more Rizz?</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">See every way to stack points.</p>
+          <h2 className="font-display text-lg font-bold">Spend your Paws</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Unlock a full-profile effect or an avatar decoration.
+          </p>
         </div>
-        <Link
-          to="/leaderboard"
-          search={{ earn: true }}
-          className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <Sparkles className="h-4 w-4" /> How to earn rizz
-        </Link>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Link
+            to="/effects"
+            className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Sparkles className="h-4 w-4" /> Open Effects
+          </Link>
+          <Link
+            to="/leaderboard"
+            search={{ earn: true }}
+            className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Rizz score guide
+          </Link>
+        </div>
       </div>
 
       <section aria-label="Bounty quests" className="mt-3">
@@ -391,8 +440,8 @@ function DropsPage() {
           })}
         </div>
         <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-          Quest rewards land through existing rizz scoring and bounty claims — progress here is
-          tracked on this device.
+          Bounty claims pay {BOUNTY_PAW_REWARD} Paws each. Quest progress is tracked on this device;
+          Rizz points still come from posts, likes and the rest of the score.
         </p>
       </section>
     </div>

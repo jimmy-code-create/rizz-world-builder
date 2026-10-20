@@ -10,6 +10,8 @@ type Profile = {
   banner_url: string | null;
   bio: string | null;
   rizz_score: number;
+  paw_balance: number;
+  paw_earned?: number;
   accent_color: string | null;
   theme_preset: string | null;
   theme_mode: string | null;

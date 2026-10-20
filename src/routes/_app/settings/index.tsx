@@ -6,6 +6,7 @@ import {
   Palette,
   Shield,
   Sliders,
+  Sparkles,
   UserCog,
   UserRound,
   Volume2,
@@ -133,6 +134,23 @@ function SettingsHubPage() {
           </Link>
         ))}
       </nav>
+
+      <Link
+        to="/tutorial"
+        search={{ replay: true }}
+        className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-2.5 transition-colors hover:bg-primary/[0.08]"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Sparkles className="h-4.5 w-4.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold leading-tight">Welcome tour</span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            Replay Rizzy’s eight-scene tour
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
     </div>

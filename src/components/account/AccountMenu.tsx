@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bookmark, Check, ChevronDown, ChevronRight, HelpCircle, Link2, LogOut, Medal,
-  Pencil, Settings, Smile, Trophy, User as UserIcon, UserPlus, X,
+  Pencil, Settings, Smile, Sparkles, Trophy, User as UserIcon, UserPlus, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -742,6 +742,17 @@ export function AccountMenu({
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </span>
               Bots & developer tools
+            </Link>
+            <Link
+              to="/tutorial"
+              search={{ replay: true }}
+              onClick={() => setHelpOpen(false)}
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </span>
+              Replay the welcome tour
             </Link>
             <Link
               to="/settings/account"

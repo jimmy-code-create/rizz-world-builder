@@ -12,7 +12,7 @@ import { fetchUserBadges } from "@/lib/badges";
 import { BadgeRow } from "@/components/BadgeChip";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile } from "lucide-react";
+import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Trophy, Heart, MessageSquare, UserPlus, Star, Wand2, Smile, PawPrint } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -23,7 +23,7 @@ import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { DISCORD_SHOWCASE_EFFECTS } from "@/lib/effects";
+import { SHOWCASE_EFFECTS } from "@/lib/effects";
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -53,7 +53,7 @@ function ProfilePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const slug = new URLSearchParams(window.location.search).get("previewEffect");
-    if (slug && DISCORD_SHOWCASE_EFFECTS.some((effect) => effect.slug === slug)) {
+    if (slug && SHOWCASE_EFFECTS.some((effect) => effect.slug === slug)) {
       setPreviewEffect(slug);
     }
   }, []);
@@ -287,60 +287,85 @@ function ProfilePage() {
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
   const previewMeta = previewEffect
-    ? DISCORD_SHOWCASE_EFFECTS.find((effect) => effect.slug === previewEffect) ?? null
+    ? SHOWCASE_EFFECTS.find((effect) => effect.slug === previewEffect) ?? null
     : null;
-  const shownEffect = previewMeta ?? eq?.profile_effect ?? null;
+  const previewProfileEffect = previewMeta?.type === "profile_effect" ? previewMeta : null;
+  const previewAvatarEffect = previewMeta?.type === "avatar_decoration" ? previewMeta : null;
+  // Web Slinger is the full-profile effect. The other three cinematic pieces
+  // are worn around the avatar, so they never get the page-wide layer.
+  const shownEffect = previewProfileEffect ?? eq?.profile_effect ?? null;
+  const shownAvatar = previewAvatarEffect ?? eq?.avatar_decoration ?? null;
+  // The cinematic avatar loops extend roughly a third of the avatar size past
+  // the picture. Give them room so the ring does not sit on the display name.
+  const hasCinematicAvatar = Boolean(shownAvatar?.slug?.startsWith("fx-"));
 
   return (
-    <div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
+    <div className="relative isolate">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
         <div
-          className="h-40 md:h-56 rounded-3xl mb-16 relative overflow-hidden"
+          className={`h-40 md:h-56 rounded-3xl ${hasCinematicAvatar ? "mb-24" : "mb-16"} relative overflow-hidden`}
           style={{
             background: profile.banner_url
               ? `url(${profile.banner_url}) center/cover`
               : `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
           }}
         >
-          {shownEffect && (
-            <ProfileEffectVisual
-              slug={shownEffect.slug}
-              accent={shownEffect.preview_color}
-              preview={Boolean(previewMeta)}
-              reducedMotion={Boolean(profile.reduced_motion)}
-            />
-          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-          {previewMeta && (
-            <span className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-              <Sparkles className="h-3 w-3" /> Preview
-            </span>
-          )}
-        </div>
-        <div className="absolute -bottom-12 left-4 md:left-6">
-          <span className="relative inline-flex shrink-0">
-            <AvatarDecoration
-              src={profile.avatar_url}
-              fallback={initial}
-              size={96}
-              effectSlug={eq?.avatar_decoration?.slug}
-              accent={eq?.avatar_decoration?.preview_color}
-              className="ring-4 ring-background rounded-full"
-            />
-            <AvatarStatusBadge emoji={customStatus?.emoji} />
-            <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
-              <StatusDotButton
-                userId={profile.id}
-                username={profileUsername}
-                status={presenceStatus}
-                isSelf={Boolean(isMe)}
-                size={18}
-              />
-            </span>
-          </span>
         </div>
       </motion.div>
 
+      {/* The old renderer clipped the cinematic loop to the banner. This layer
+          starts on the banner and continues behind the profile header, then
+          fades into the page so text and tabs stay readable. */}
+      {shownEffect && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[clamp(18rem,42vw,34rem)] overflow-hidden rounded-3xl [mask-image:linear-gradient(to_bottom,#000_0%,#000_54%,transparent_100%)]"
+        >
+          <ProfileEffectVisual
+            slug={shownEffect.slug}
+            accent={shownEffect.preview_color}
+            preview={Boolean(previewProfileEffect)}
+            reducedMotion={Boolean(profile.reduced_motion)}
+            fit="cover"
+            className="opacity-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/10 to-background" />
+        </div>
+      )}
+
+      {previewMeta && (
+        <span className="absolute right-3 top-3 z-30 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+          <Sparkles className="h-3 w-3" /> Preview
+        </span>
+      )}
+
+      <div className="absolute left-4 top-28 z-20 md:left-6 md:top-44">
+        <span className="relative inline-flex shrink-0">
+          <AvatarDecoration
+            src={profile.avatar_url}
+            fallback={initial}
+            size={96}
+            effectSlug={shownAvatar?.slug}
+            accent={shownAvatar?.preview_color}
+            preview={Boolean(previewAvatarEffect)}
+            reducedMotion={Boolean(profile.reduced_motion)}
+            className="ring-4 ring-background rounded-full"
+          />
+          <AvatarStatusBadge emoji={customStatus?.emoji} />
+          <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
+            <StatusDotButton
+              userId={profile.id}
+              username={profileUsername}
+              status={presenceStatus}
+              isSelf={Boolean(isMe)}
+              size={18}
+            />
+          </span>
+        </span>
+      </div>
+
+      <div className="relative z-20">
       <div className="px-1 md:px-2 mt-4 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -489,6 +514,19 @@ function ProfilePage() {
         </div>
       </div>
 
+      {isMe && (
+        <div className="px-1 md:px-2 mt-2">
+          <Link
+            to="/effects"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/[0.07] px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <PawPrint className="h-3.5 w-3.5" />
+            {formatNumber(profile.paw_balance ?? 0)} Paws
+            <span className="font-medium text-muted-foreground">· spend on effects</span>
+          </Link>
+        </div>
+      )}
+
       <div className="px-1 md:px-2 mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" /> Joined {joined}
       </div>
@@ -595,6 +633,7 @@ function ProfilePage() {
         />
       )}
       {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
+      </div>
     </div>
   );
 }

@@ -218,7 +218,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     // Settings
     settings_profile_desc: "Name, bio, avatar and banner",
     settings_appearance_desc: "Theme, mode, density and motion",
-    settings_effects_desc: "Animated profile effects",
+    settings_effects_desc: "Paws effects & avatar decorations",
     settings_notifications_desc: "Push alerts and delivery",
     settings_voice_label: "Voice & Sound",
     settings_voice_desc: "Bot, call and alert volume, mic and devices",

@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/me")({
 
         const { data: profile, error } = await auth.client
           .from("profiles")
-          .select("id, username, display_name, avatar_url, banner_url, bio, rizz_score, accent_color, theme_preset, theme_mode, ui_density, reduced_motion, trial_active, trial_ends_at, tutorial_seen, interests")
+          .select("id, username, display_name, avatar_url, banner_url, bio, rizz_score, paw_balance, paw_earned, accent_color, theme_preset, theme_mode, ui_density, reduced_motion, trial_active, trial_ends_at, tutorial_seen, interests")
           .eq("id", auth.userId)
           .maybeSingle();
         if (error) {

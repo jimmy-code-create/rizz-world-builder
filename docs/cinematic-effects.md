@@ -1,15 +1,28 @@
 # Cinematic profile effects
 
-The effects gallery is now a four-piece cinematic collection cut from one
-supplied reel. The old avatar-decoration / nameplate catalogue and its
-placeholder thumbnails are gone from `/effects`.
+The effects gallery is a four-piece cinematic collection cut from one supplied
+reel. One piece is a full-profile effect; the other three are avatar
+decorations. The shop spends **Paws**, the RIZZ currency earned by claiming
+bounties.
 
-| Effect | Slug | Source segment | Price |
-| --- | --- | --- | --- |
-| Web Slinger | `fx-web-slinger` | 5.2s–14.8s | $4.99 (rights review) |
-| Sakura Bloom | `fx-sakura-bloom` | 15.2s–24.8s | $2.99 |
-| Arcane Nexus | `fx-arcane-nexus` | 25.2s–34.8s | $3.99 |
-| Sakura Storm | `fx-sakura-storm` | 35.2s–44.8s | $3.49 |
+| Effect | Slug | Placement | Paws | Card | Rights |
+| --- | --- | --- | --- | --- | --- |
+| Web Slinger | `fx-web-slinger` | Full-profile effect | 1,800 | $4.99 | Review |
+| Sakura Bloom | `fx-sakura-bloom` | Avatar decoration | 1,200 | $2.99 | Clear |
+| Arcane Nexus | `fx-arcane-nexus` | Avatar decoration | 1,500 | $3.99 | Clear |
+| Sakura Storm | `fx-sakura-storm` | Avatar decoration | 900 | $3.49 | Clear |
+
+## Placement
+
+- **Web Slinger** is the only `profile_effect`. `/u/<username>` renders it in
+  a page-wide layer that starts on the banner, continues behind the profile
+  header, and fades into the page. It is not clipped to the banner.
+- **Sakura Bloom, Arcane Nexus and Sakura Storm** are `avatar_decoration`.
+  `AvatarDecoration` sizes the 1600×480 clip from the avatar diameter so the
+  central 480×480 ring sits around the picture. The wide transparent sides
+  stay transparent.
+- Buying an effect applies it immediately. Only one effect of each type can
+  be worn at a time; the other rows are unequipped in the same transaction.
 
 ## Assets
 
@@ -61,8 +74,8 @@ and the matching RGBA poster. It does not need the source reel.
 
 - The effects page stage plays the **actual loop**. Grid cards use poster
   frames from that same loop, not a different static illustration. The stage
-  crops to the effect's 16:9 area; the profile preview shows the full 1600×480
-  banner placement.
+  crops to the effect's 16:9 area; Web Slinger uses a page-wide layer on the
+  profile, and the other three clips are centred on the avatar.
 - The player renders the poster first. The video fades in only when it can
   play; a failed load, blocked autoplay, or an unsupported browser leaves the
   real poster visible rather than a black rectangle.
@@ -72,35 +85,64 @@ and the matching RGBA poster. It does not need the source reel.
 - `prefers-reduced-motion` or the member's reduced-motion preference shows the
   poster. The stage badge changes to "Still preview".
 - Only one video is mounted on the gallery stage, and videos pause when they
-  leave the viewport. The profile banner plays one loop.
+  leave the viewport. A member can wear one full-profile effect and one avatar
+  decoration at the same time.
+- Small avatars in feeds use the poster instead of mounting a video.
 
 The gallery's **Preview on profile** link opens
-`/u/<username>?previewEffect=<slug>`. The banner labels the result as a
-preview and renders it even while the cosmetics killswitch is off. Opening the
-link never equips the effect.
+`/u/<username>?previewEffect=<slug>`. A full-profile slug renders in the
+page-wide layer; an avatar-decoration slug renders around the profile picture.
+The badge labels the result as a preview. Opening the link never equips the
+effect and never charges Paws.
 
-## Buy sheet and checkout
+## Paws shop
 
-The buy sheet is honest about what is wired:
+- `COSMETICS_ENABLED` is `true`. Equipped effects render across the profile and
+  avatar surfaces.
+- `profiles.paw_balance` is the wallet. Only `award_paws()` and
+  `purchase_profile_effect()` may change it; a trigger rejects direct profile
+  updates that touch the wallet.
+- Bounty claims pay **25 Paws** via `claim_bounty()`. The trigger rejects
+  self-claims, expired bounties and sold-out bounties. Every payout and
+  purchase writes a `paw_transactions` row.
+- `purchase_profile_effect(_slug)` checks the server-side price, deducts the
+  balance under a row lock, inserts ownership, and equips the new look. The
+  client cannot choose its own price or write `user_profile_effects` directly.
+- `equip_profile_effect(_slug)` and `unequip_profile_effect(_slug)` are the only
+  equip surfaces. The old direct INSERT/UPDATE/DELETE policies are removed so
+  the shop cannot be bypassed with PostgREST calls.
+- The migration is
+  `supabase/migrations/20261027000000_paws_effects_shop.sql`. Apply it before
+  deploying this client; `/api/me` now selects the wallet columns.
 
-- `COSMETICS_ENABLED` is still `false`. The sheet therefore offers a per-effect,
-  on-device save-for-launch marker and does not charge while unlocks cannot be
-  equipped. There is no server-side launch list yet.
+## Card checkout
+
+Card checkout is still optional infrastructure, and the UI says so:
+
 - A single `VITE_EFFECTS_CHECKOUT_URL`, or per-effect
   `VITE_EFFECTS_CHECKOUT_WEB_SLINGER`,
   `VITE_EFFECTS_CHECKOUT_SAKURA_BLOOM`,
   `VITE_EFFECTS_CHECKOUT_ARCANE_NEXUS`, and
-  `VITE_EFFECTS_CHECKOUT_SAKURA_STORM` links can be set at build time. When
-  cosmetics are enabled and a link is present, the sheet opens a real
-  checkout in a new tab.
+  `VITE_EFFECTS_CHECKOUT_SAKURA_STORM` links can be set at build time. Without
+  one, the sheet shows **Card checkout not connected**.
+- `VITE_EFFECTS_CHECKOUT_READY=true` is a second, explicit gate. Set it only
+  after the fulfilment webhook is live; a checkout URL alone never enables the
+  card button.
+- The sheet adds `client_reference_id=<user.id>` and `effect=<slug>` to the
+  checkout URL. A provider that preserves `client_reference_id` (Stripe Payment
+  Links do) can map the completed payment to the member; use per-effect links
+  or your own metadata to identify the slug.
 - There is **no entitlement webhook** in this repository yet. A completed
   checkout does not automatically write `user_profile_effects`; that sync still
-  needs a provider webhook or a server-side fulfilment job. Do not advertise
-  automatic unlocks until it exists.
+  needs a provider webhook or a server-side fulfilment job. The sheet never
+  advertises an automatic card unlock.
+- Once the webhook is live, it should call the service-role-only
+  `grant_profile_effect(_user, _slug)` RPC after verifying the payment. That
+  RPC refuses rights-review clips, grants ownership, and never touches Paws.
 - The **Web Slinger** clip is supplied Spider-Man footage. It is marked
-  `rightsReview: true` in `src/lib/cinematic-effects.ts`; the buy sheet is
-  locked for it regardless of checkout configuration. Clear the rights before
-  selling it. Do not describe it as original RIZZ art.
+  `rightsReview: true` in `src/lib/cinematic-effects.ts` and `rights_review` in
+  the database. Both Paws and card purchasing are refused until the operator
+  clears the rights. Do not describe it as original RIZZ art.
 
 ## Source and rights
 

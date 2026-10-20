@@ -1623,6 +1623,44 @@ export type Database = {
           },
         ]
       }
+      paw_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          kind: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paw_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pinned_messages: {
         Row: {
           created_at: string
@@ -2090,9 +2128,13 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          paw_price: number
           preview_color: string
+          price_cents: number
           rarity: Database["public"]["Enums"]["badge_rarity"]
+          rights_review: boolean
           slug: string
+          sort_order: number
           type: Database["public"]["Enums"]["profile_effect_type"]
           unlock_rizz: number
         }
@@ -2101,9 +2143,13 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          paw_price?: number
           preview_color?: string
+          price_cents?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"]
+          rights_review?: boolean
           slug: string
+          sort_order?: number
           type: Database["public"]["Enums"]["profile_effect_type"]
           unlock_rizz?: number
         }
@@ -2112,9 +2158,13 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          paw_price?: number
           preview_color?: string
+          price_cents?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"]
+          rights_review?: boolean
           slug?: string
+          sort_order?: number
           type?: Database["public"]["Enums"]["profile_effect_type"]
           unlock_rizz?: number
         }
@@ -2132,6 +2182,8 @@ export type Database = {
           featured_badge: string | null
           id: string
           interests: string[]
+          paw_balance: number
+          paw_earned: number
           pronouns: string | null
           reduced_motion: boolean
           rizz_score: number
@@ -2156,6 +2208,8 @@ export type Database = {
           featured_badge?: string | null
           id: string
           interests?: string[]
+          paw_balance?: number
+          paw_earned?: number
           pronouns?: string | null
           reduced_motion?: boolean
           rizz_score?: number
@@ -2180,6 +2234,8 @@ export type Database = {
           featured_badge?: string | null
           id?: string
           interests?: string[]
+          paw_balance?: number
+          paw_earned?: number
           pronouns?: string | null
           reduced_motion?: boolean
           rizz_score?: number
@@ -4629,6 +4685,16 @@ export type Database = {
         Args: { _slug: string; _user: string }
         Returns: undefined
       }
+      award_paws: {
+        Args: {
+          _amount: number
+          _description?: string | null
+          _kind: string
+          _reference?: string | null
+          _user: string
+        }
+        Returns: number
+      }
       award_rizz: {
         Args: { _points: number; _reason: string; _user_id: string }
         Returns: undefined
@@ -4668,6 +4734,7 @@ export type Database = {
         Args: { _bot_id: string; _realm_id: string }
         Returns: boolean
       }
+      bounty_paw_reward: { Args: never; Returns: number }
       can_manage_realm_bots: {
         Args: { _realm_id: string; _user_id: string }
         Returns: boolean
@@ -4701,6 +4768,7 @@ export type Database = {
         Args: { _realm_id: string; _room_id: string; _user_id: string }
         Returns: boolean
       }
+      claim_bounty: { Args: { _drop_id: string }; Returns: Json }
       clear_custom_status: { Args: never; Returns: undefined }
       clear_realm_warns: {
         Args: { _realm_id: string; _user_id: string }
@@ -4765,6 +4833,7 @@ export type Database = {
         Args: { _max_host_absence_minutes?: number }
         Returns: number
       }
+      equip_profile_effect: { Args: { _slug: string }; Returns: Json }
       forum_archive_stale: { Args: { _realm_id?: string }; Returns: number }
       forum_create_post: {
         Args: {
@@ -4876,6 +4945,10 @@ export type Database = {
         Args: { _user_id: string; _viewer?: string }
         Returns: Json
       }
+      grant_profile_effect: {
+        Args: { _slug: string; _user: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4976,6 +5049,7 @@ export type Database = {
           topic: string
         }[]
       }
+      purchase_profile_effect: { Args: { _slug: string }; Returns: Json }
       rate_bot: {
         Args: { _bot_id: string; _rating: number; _review?: string }
         Returns: Json
@@ -5262,6 +5336,7 @@ export type Database = {
         Args: { _realm_id: string; _user_id: string }
         Returns: undefined
       }
+      unequip_profile_effect: { Args: { _slug: string }; Returns: Json }
       uninstall_realm_bot: {
         Args: { _bot_id: string; _realm_id: string }
         Returns: Json

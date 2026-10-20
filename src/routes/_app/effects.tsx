@@ -1,13 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  Bookmark,
   Check,
   Eye,
+  Loader2,
   Lock,
+  PawPrint,
   Play,
   ShieldAlert,
   Sparkles,
@@ -22,15 +24,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { CinematicEffect } from "@/components/profile/CinematicEffect";
 import { useAuth } from "@/lib/auth";
 import {
   COSMETICS_ENABLED,
-  DISCORD_SHOWCASE_EFFECTS,
   RARITY_FLAT,
+  SHOWCASE_EFFECTS,
+  effectIsInRightsReview,
+  effectPawPrice,
+  equipProfileEffect,
+  fetchUserEffects,
+  purchaseEffectWithPaws,
+  unequipProfileEffect,
   type ProfileEffect as CatalogEffect,
+  type UserEffect,
 } from "@/lib/effects";
 import { CINEMATIC_BY_SLUG, CINEMATIC_EFFECTS, type CinematicAsset } from "@/lib/cinematic-effects";
-import { CinematicEffect } from "@/components/profile/CinematicEffect";
+import { formatNumber } from "@/lib/formatters";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/effects")({
@@ -39,11 +51,12 @@ export const Route = createFileRoute("/_app/effects")({
 });
 
 /**
- * Checkout links are optional. A single default link or a per-effect link can
- * be supplied at build time. Without one, the buy sheet offers a local
- * save-for-launch marker instead of pretending a charge happened.
+ * Optional card-checkout links. Paws unlocks are handled by the server RPC;
+ * card checkout still needs a provider webhook before it can grant ownership,
+ * so the UI never pretends a card payment unlocked anything by itself.
  */
 const env = import.meta.env as Record<string, string | undefined>;
+const CHECKOUT_READY = env.VITE_EFFECTS_CHECKOUT_READY === "true";
 const DEFAULT_CHECKOUT = env.VITE_EFFECTS_CHECKOUT_URL;
 const CHECKOUT_BY_SLUG: Record<string, string | undefined> = {
   "fx-web-slinger": env.VITE_EFFECTS_CHECKOUT_WEB_SLINGER,
@@ -51,64 +64,145 @@ const CHECKOUT_BY_SLUG: Record<string, string | undefined> = {
   "fx-arcane-nexus": env.VITE_EFFECTS_CHECKOUT_ARCANE_NEXUS,
   "fx-sakura-storm": env.VITE_EFFECTS_CHECKOUT_SAKURA_STORM,
 };
-const CHECKOUT_CONFIGURED = Boolean(
-  DEFAULT_CHECKOUT ||
-  Object.entries(CHECKOUT_BY_SLUG).some(
-    ([slug, url]) => Boolean(url) && !CINEMATIC_BY_SLUG[slug]?.rightsReview,
-  ),
-);
 
-function checkoutFor(slug: string): string | null {
+function checkoutFor(slug: string, rightsReview: boolean): string | null {
+  // The operator must explicitly confirm that the fulfilment webhook is live.
+  // A checkout URL on its own is not enough to grant an effect.
+  if (!CHECKOUT_READY || rightsReview) return null;
   return CHECKOUT_BY_SLUG[slug] || DEFAULT_CHECKOUT || null;
 }
 
+/**
+ * Give the payment provider enough context to fulfil the right effect for the
+ * right member. Stripe Payment Links pass `client_reference_id` through to the
+ * completed session; other providers can read the same query keys.
+ */
+function checkoutHref(base: string, userId: string, slug: string): string {
+  try {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://rizz.app";
+    const url = new URL(base, origin);
+    url.searchParams.set("client_reference_id", userId);
+    url.searchParams.set("effect", slug);
+    return url.toString();
+  } catch {
+    return base;
+  }
+}
+
 function metaFor(slug: string): CatalogEffect {
-  return (
-    DISCORD_SHOWCASE_EFFECTS.find((effect) => effect.slug === slug) ?? DISCORD_SHOWCASE_EFFECTS[0]!
-  );
+  return SHOWCASE_EFFECTS.find((effect) => effect.slug === slug) ?? SHOWCASE_EFFECTS[0]!;
+}
+
+function typeLabel(effect: CatalogEffect) {
+  return effect.type === "avatar_decoration" ? "Avatar decoration" : "Full-profile effect";
 }
 
 function EffectsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const nav = useNavigate();
-  const stageRef = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
   const osReduced = useReducedMotion();
   const reduced = Boolean(profile?.reduced_motion) || Boolean(osReduced);
-  const [playback, setPlayback] = useState<"live" | "still">("still");
-  const still = reduced || playback === "still";
 
-  const [selectedSlug, setSelectedSlug] = useState(CINEMATIC_EFFECTS[0]!.slug);
-  const [buyOpen, setBuyOpen] = useState(false);
+  const [selectedSlug, setSelectedSlug] = useState(SHOWCASE_EFFECTS[0]!.slug);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [busy, setBusy] = useState<"buy" | "apply" | "remove" | null>(null);
+  const [shopError, setShopError] = useState<string | null>(null);
+
   const selectedAsset = CINEMATIC_BY_SLUG[selectedSlug] ?? CINEMATIC_EFFECTS[0]!;
   const selected = metaFor(selectedAsset.slug);
+  const pawPrice = effectPawPrice(selected);
+  const rightsReview = effectIsInRightsReview(selected);
+  const checkoutBase = checkoutFor(selected.slug, rightsReview);
+  const checkoutUrl = checkoutBase && user ? checkoutHref(checkoutBase, user.id, selected.slug) : checkoutBase;
+  const balance = profile?.paw_balance ?? 0;
+
+  const ownedQ = useQuery({
+    queryKey: ["user-effects", user?.id],
+    queryFn: () => fetchUserEffects(user!.id),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const ownedBySlug = useMemo(() => {
+    const map = new Map<string, UserEffect>();
+    for (const row of ownedQ.data ?? []) map.set(row.effect.slug, row);
+    return map;
+  }, [ownedQ.data]);
+  const ownedRow = ownedBySlug.get(selected.slug);
+  const owned = Boolean(ownedRow);
+  const equipped = Boolean(ownedRow?.equipped);
 
   const displayName = profile?.display_name || profile?.username || "you";
   const username = profile?.username || "you";
   const initial = displayName.charAt(0).toUpperCase();
 
-  const storageKey = `rizz_effects_saved_${user?.id || "guest"}_${selectedAsset.slug}`;
-  const [saved, setSaved] = useState(false);
   useEffect(() => {
-    try {
-      setSaved(localStorage.getItem(storageKey) === "true");
-    } catch {
-      // localStorage can be unavailable in private or embedded contexts.
-    }
-  }, [storageKey]);
-  const toggleSaved = () => {
-    const next = !saved;
-    setSaved(next);
-    try {
-      localStorage.setItem(storageKey, String(next));
-    } catch {
-      // A failed write must not break the buy sheet.
-    }
-  };
+    setShopError(null);
+  }, [selected.slug, shopOpen]);
 
   const choose = (asset: CinematicAsset) => {
     setSelectedSlug(asset.slug);
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    }
+  };
+
+  const invalidate = async () => {
+    if (user) {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["user-effects", user.id] }),
+        qc.invalidateQueries({ queryKey: ["equipped", user.id] }),
+      ]);
+    }
+    await refreshProfile().catch(() => undefined);
+  };
+
+  const buyWithPaws = async () => {
+    if (!user) {
+      nav({ to: "/login" });
+      return;
+    }
+    setBusy("buy");
+    setShopError(null);
+    try {
+      const result = await purchaseEffectWithPaws(selected.slug);
+      await invalidate();
+      toast.success(
+        result.status === "owned"
+          ? `${selected.name} is already in your collection`
+          : `${selected.name} unlocked and applied to your profile`,
+      );
+      setShopOpen(false);
+    } catch (error) {
+      setShopError(error instanceof Error ? error.message : "Couldn't unlock this effect.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const apply = async () => {
+    setBusy("apply");
+    try {
+      await equipProfileEffect(selected.slug);
+      await invalidate();
+      toast.success(`${selected.name} applied`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't apply this effect.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async () => {
+    setBusy("remove");
+    try {
+      await unequipProfileEffect(selected.slug);
+      await invalidate();
+      toast.success(`${selected.name} removed from your profile`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't remove this effect.");
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -124,13 +218,21 @@ function EffectsPage() {
           <ArrowLeft className="h-5 w-5" />
         </IconButton>
         <span className="text-sm font-medium text-muted-foreground">Profile</span>
+        <Link
+          to="/drops"
+          className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/[0.07] px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <PawPrint className="h-3.5 w-3.5" />
+          {formatNumber(balance)} Paws
+          <span className="font-medium text-muted-foreground">· earn</span>
+        </Link>
       </div>
 
       <div className="mb-5">
         <div className="mb-2 flex flex-wrap items-center gap-2.5">
           <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Effects</h1>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-signal,#c8ff3d)]/35 bg-[var(--brand-signal,#c8ff3d)]/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand-signal,#c8ff3d)]">
-            <Sparkles className="h-3 w-3" /> Cinematic collection
+            <Sparkles className="h-3 w-3" /> Live collection
           </span>
           {!COSMETICS_ENABLED && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">
@@ -139,81 +241,159 @@ function EffectsPage() {
           )}
         </div>
         <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Four cinematic profile effects cut and cleaned from one reel. The stage plays the real
-          loop on supported browsers; every card is a frame from that same loop.
+          One full-profile effect, three avatar decorations. Unlock with Paws earned from bounties,
+          then apply the look straight to your profile.
         </p>
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          {!COSMETICS_ENABLED
-            ? "Previews are ready. Checkout and equipping open when cosmetics launch."
-            : CHECKOUT_CONFIGURED
-              ? "Checkout is available in the buy sheet."
-              : "Checkout is not connected in this build; save the effect in the buy sheet."}
+          Paws are earned by claiming bounties. Card checkout is available only when the operator
+          has connected a checkout link and a fulfilment webhook.
         </p>
       </div>
 
-      <div
-        ref={stageRef}
-        className="mb-7 scroll-mt-20 rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] p-3 sm:p-4"
-      >
+      <div className="mb-7 rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] p-3 sm:p-4">
         <div className="mb-3 flex items-start justify-between gap-3 px-0.5">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Now previewing
             </p>
             <h2 className="truncate font-display text-lg font-bold sm:text-xl">{selected.name}</h2>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{typeLabel(selected)}</p>
           </div>
-          <RarityPill rarity={selected.rarity} />
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <RarityPill rarity={selected.rarity} />
+            {equipped && (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                Applied
+              </span>
+            )}
+            {owned && !equipped && (
+              <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Owned
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-white/5 bg-[#08080b]">
-          <div className="relative aspect-video">
-            <CinematicEffect
-              slug={selectedAsset.slug}
-              accent={selected.preview_color}
-              reducedMotion={reduced}
-              onPlaybackChange={setPlayback}
-              fit="cover"
-              priority
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
-
-            <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  still ? "bg-white/45" : "animate-pulse bg-[var(--brand-signal,#c8ff3d)]",
-                )}
+        {selected.type === "avatar_decoration" ? (
+          <div className="relative overflow-hidden rounded-xl border border-white/5 bg-[#08080b]">
+            <div className="relative flex aspect-[16/9] items-center justify-center">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background: `radial-gradient(60% 95% at 50% 50%, ${selectedAsset.accent}33, transparent 70%)`,
+                }}
               />
-              {still ? "Still preview" : "Live preview"}
-            </div>
-
-            <div className="absolute inset-x-3 bottom-3 flex items-end gap-2.5">
-              <Avatar className="h-10 w-10 shrink-0 shadow-lg ring-2 ring-white/75">
-                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-                <AvatarFallback className="bg-white/15 text-sm font-bold text-white">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 pb-0.5">
-                <p className="truncate font-display text-sm font-bold text-white drop-shadow-md">
-                  {displayName}
-                </p>
-                <p className="truncate text-[11px] text-white/65">@{username}</p>
+              <div className="relative z-10 scale-[1.35] sm:scale-[1.5]">
+                <AvatarDecoration
+                  src={profile?.avatar_url}
+                  fallback={initial}
+                  size={112}
+                  effectSlug={selected.slug}
+                  accent={selected.preview_color}
+                  preview
+                  reducedMotion={reduced}
+                  className="rounded-full ring-4 ring-white/75"
+                />
+              </div>
+              <div className="absolute inset-x-3 bottom-3 z-20 flex items-end gap-2.5">
+                <div className="min-w-0 rounded-xl bg-black/45 px-3 py-1.5 backdrop-blur-md">
+                  <p className="truncate font-display text-sm font-bold text-white drop-shadow-md">
+                    {displayName}
+                  </p>
+                  <p className="truncate text-[11px] text-white/65">@{username}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-xl border border-white/5 bg-[#08080b]">
+            <div className="relative aspect-video">
+              <CinematicEffect
+                slug={selectedAsset.slug}
+                accent={selected.preview_color}
+                reducedMotion={reduced}
+                fit="cover"
+                priority
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+              <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-signal,#c8ff3d)]" />
+                Full profile
+              </div>
+              <div className="absolute inset-x-3 bottom-3 flex items-end gap-2.5">
+                <Avatar className="h-10 w-10 shrink-0 shadow-lg ring-2 ring-white/75">
+                  {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+                  <AvatarFallback className="bg-white/15 text-sm font-bold text-white">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 pb-0.5">
+                  <p className="truncate font-display text-sm font-bold text-white drop-shadow-md">
+                    {displayName}
+                  </p>
+                  <p className="truncate text-[11px] text-white/65">@{username}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2 px-0.5">
-          <Button
-            type="button"
-            onClick={() => setBuyOpen(true)}
-            className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-5 text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
-          >
-            {selectedAsset.rightsReview
-              ? "Rights review"
-              : `Buy $${selectedAsset.priceUsd.toFixed(2)}`}
-          </Button>
+          {rightsReview ? (
+            <Button
+              type="button"
+              onClick={() => setShopOpen(true)}
+              className="h-10 rounded-full border border-amber-400/30 bg-amber-400/10 px-5 text-sm font-bold text-amber-200 hover:bg-amber-400/15"
+            >
+              <ShieldAlert className="h-4 w-4" /> Rights review
+            </Button>
+          ) : !user ? (
+            <Button
+              asChild
+              className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-5 text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)]"
+            >
+              <Link to="/login">Sign in to unlock</Link>
+            </Button>
+          ) : equipped ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={remove}
+              disabled={busy === "remove"}
+              className="h-10 rounded-full border-white/10 bg-white/5"
+            >
+              {busy === "remove" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Applied · remove
+            </Button>
+          ) : owned ? (
+            <Button
+              type="button"
+              onClick={apply}
+              disabled={busy === "apply"}
+              className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-5 text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+            >
+              {busy === "apply" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Apply to profile
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => setShopOpen(true)}
+              className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-5 text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+            >
+              <PawPrint className="h-4 w-4" /> Unlock for {formatNumber(pawPrice)} Paws
+            </Button>
+          )}
+
           {profile?.username ? (
             <Button
               asChild
@@ -242,18 +422,17 @@ function EffectsPage() {
             </Button>
           )}
           <span className="text-[11px] text-muted-foreground">
-            {selectedAsset.rightsReview
-              ? "Preview only · 9.6s loop"
-              : "One-time unlock · 9.6s loop"}
+            {rightsReview ? "Preview only · rights review" : "One-time unlock · 9.6s loop"}
           </span>
         </div>
 
         <div className="mt-2 px-0.5">
           <p className="text-sm leading-relaxed text-muted-foreground">{selected.description}</p>
-          {selectedAsset.rightsReview && (
+          {rightsReview && (
             <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-300/90">
               <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Supplied character footage. Checkout stays locked until the rights review is cleared.
+              Supplied character footage. It stays preview-only until the operator clears the rights
+              review; it cannot be bought with Paws or card.
             </p>
           )}
         </div>
@@ -263,10 +442,12 @@ function EffectsPage() {
         <div className="mb-2.5 flex items-baseline justify-between gap-3 px-0.5">
           <div>
             <h2 className="font-display text-base font-bold sm:text-lg">The collection</h2>
-            <p className="text-xs text-muted-foreground">Four loops. One reel. Real previews.</p>
+            <p className="text-xs text-muted-foreground">
+              One full-profile effect. Three avatar decorations.
+            </p>
           </div>
           <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
-            4
+            {SHOWCASE_EFFECTS.length}
           </span>
         </div>
 
@@ -274,6 +455,8 @@ function EffectsPage() {
           {CINEMATIC_EFFECTS.map((asset) => {
             const meta = metaFor(asset.slug);
             const isSelected = asset.slug === selectedAsset.slug;
+            const row = ownedBySlug.get(asset.slug);
+            const isEquipped = Boolean(row?.equipped);
             return (
               <button
                 key={asset.slug}
@@ -303,30 +486,41 @@ function EffectsPage() {
                     draggable={false}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
-                  <span className="absolute left-2 top-2 rounded-full bg-[var(--brand-signal,#c8ff3d)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--brand-signal-ink,#0a0a0b)]">
-                    New
+                  <span className="absolute left-2 top-2 rounded-full bg-black/55 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white backdrop-blur">
+                    {meta.type === "avatar_decoration" ? "Avatar" : "Profile"}
                   </span>
-                  {asset.rightsReview && (
+                  {meta.rights_review && (
                     <span className="absolute left-2 top-8 rounded-full border border-amber-400/30 bg-black/55 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-amber-200 backdrop-blur">
                       Rights check
                     </span>
                   )}
-                  {isSelected && (
+                  {isEquipped ? (
+                    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-950">
+                      <Check className="h-2.5 w-2.5" /> Applied
+                    </span>
+                  ) : row ? (
+                    <span className="absolute right-2 top-2 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-black">
+                      Owned
+                    </span>
+                  ) : isSelected ? (
                     <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-[var(--brand-signal,#c8ff3d)] text-[var(--brand-signal-ink,#0a0a0b)]">
                       <Eye className="h-3.5 w-3.5" />
                     </span>
-                  )}
+                  ) : null}
 
                   <div className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-white drop-shadow">
                         {meta.name}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-white/65">
+                      <p className="mt-0.5 text-[11px] text-white/70">
                         <span style={{ color: RARITY_FLAT[meta.rarity] }}>{meta.rarity}</span>
-                        <span aria-hidden> · </span>${asset.priceUsd.toFixed(2)}
+                        <span aria-hidden> · </span>
+                        {meta.rights_review
+                          ? "Rights review"
+                          : `${formatNumber(effectPawPrice(meta))} Paws`}
                       </p>
                     </div>
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur">
@@ -341,8 +535,11 @@ function EffectsPage() {
       </section>
 
       <p className="mt-6 px-0.5 text-[11px] leading-relaxed text-muted-foreground">
-        The stage and every card are built from the real 9.6-second loop; nothing here is a stand-in
-        illustration.{" "}
+        Paws come from real bounty claims.{" "}
+        <Link to="/drops" className="underline underline-offset-4 hover:text-foreground">
+          Earn Paws in Bounties
+        </Link>
+        . The stage and every card are built from the real 9.6-second loop.{" "}
         <Link
           to="/settings/preferences"
           className="underline underline-offset-4 hover:text-foreground"
@@ -352,14 +549,22 @@ function EffectsPage() {
         in preferences holds it on a still frame. Profile previews open in a new tab.
       </p>
 
-      <BuyDialog
-        open={buyOpen}
-        onOpenChange={setBuyOpen}
+      <ShopDialog
+        open={shopOpen}
+        onOpenChange={setShopOpen}
         effect={selected}
         asset={selectedAsset}
         signedIn={Boolean(user)}
-        saved={saved}
-        onSave={toggleSaved}
+        balance={balance}
+        owned={owned}
+        busy={busy === "buy"}
+        error={shopError}
+        checkoutUrl={checkoutUrl}
+        onBuy={buyWithPaws}
+        onEarn={() => {
+          setShopOpen(false);
+          nav({ to: "/drops" });
+        }}
       />
     </div>
   );
@@ -377,25 +582,37 @@ function RarityPill({ rarity }: { rarity: CatalogEffect["rarity"] }) {
   );
 }
 
-function BuyDialog({
+function ShopDialog({
   open,
   onOpenChange,
   effect,
   asset,
   signedIn,
-  saved,
-  onSave,
+  balance,
+  owned,
+  busy,
+  error,
+  checkoutUrl,
+  onBuy,
+  onEarn,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   effect: CatalogEffect;
   asset: CinematicAsset;
   signedIn: boolean;
-  saved: boolean;
-  onSave: () => void;
+  balance: number;
+  owned: boolean;
+  busy: boolean;
+  error: string | null;
+  checkoutUrl: string | null;
+  onBuy: () => void;
+  onEarn: () => void;
 }) {
-  const checkoutUrl = asset.rightsReview ? null : checkoutFor(asset.slug);
-  const canCheckout = COSMETICS_ENABLED && !asset.rightsReview && Boolean(checkoutUrl);
+  const price = effectPawPrice(effect);
+  const rightsReview = effectIsInRightsReview(effect);
+  const shortfall = Math.max(price - balance, 0);
+  const canAfford = balance >= price;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -410,47 +627,26 @@ function BuyDialog({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <DialogTitle className="font-display text-xl">
-                  {asset.rightsReview ? `Rights review: ${effect.name}` : `Unlock ${effect.name}`}
+                  {rightsReview ? `Rights review: ${effect.name}` : `Unlock ${effect.name}`}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
-                  {asset.rightsReview
+                  {rightsReview
                     ? "Supplied third-party character footage. This preview is not for sale yet."
-                    : `One cinematic profile loop. $${asset.priceUsd.toFixed(2)} one-time.`}
+                    : `${typeLabel(effect)} · one-time unlock.`}
                 </DialogDescription>
               </div>
               <RarityPill rarity={effect.rarity} />
             </div>
           </DialogHeader>
 
-          {asset.rightsReview && (
+          {rightsReview && (
             <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-200">
               <p className="flex items-center gap-1.5 font-semibold">
                 <ShieldAlert className="h-3.5 w-3.5" /> Rights review required
               </p>
               <p className="mt-1 text-amber-200/80">
-                This clip contains supplied third-party character footage. Checkout is intentionally
-                locked until the rights to sell it are confirmed.
-              </p>
-            </div>
-          )}
-
-          {!asset.rightsReview && !COSMETICS_ENABLED && (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed">
-              <p className="font-semibold text-foreground">Checkout opens at launch.</p>
-              <p className="mt-1 text-muted-foreground">
-                Cosmetics are paused, so unlocks cannot be equipped yet. Save this effect on this
-                device for launch; this only marks it in this browser.
-              </p>
-            </div>
-          )}
-
-          {!asset.rightsReview && COSMETICS_ENABLED && !checkoutUrl && (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed">
-              <p className="font-semibold text-foreground">
-                Checkout is not connected in this build.
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                Save this effect on this device for later; this only marks it in this browser.
+                This clip contains supplied third-party character footage. Paws and card checkout
+                are both locked until the rights to sell it are confirmed.
               </p>
             </div>
           )}
@@ -458,56 +654,121 @@ function BuyDialog({
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                One-time
+                Paws price
               </p>
-              <p className="font-display text-lg font-bold">${asset.priceUsd.toFixed(2)}</p>
+              <p className="font-display text-lg font-bold">{formatNumber(price)} Paws</p>
             </div>
-            <p className="text-right text-[11px] text-muted-foreground">
-              {asset.rightsReview ? "Preview only" : "Lifetime unlock"}
-            </p>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Balance
+              </p>
+              <p
+                className={cn(
+                  "font-display text-sm font-bold",
+                  canAfford ? "text-emerald-300" : "text-amber-300",
+                )}
+              >
+                {formatNumber(balance)} Paws
+              </p>
+            </div>
           </div>
 
+          {owned && !rightsReview ? (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-xs text-emerald-200">
+              <Check className="h-4 w-4 shrink-0" /> Already in your collection.
+            </div>
+          ) : null}
+
+          {error && (
+            <div className="mt-4 rounded-xl border border-red-400/25 bg-red-400/10 p-3 text-xs leading-relaxed text-red-200">
+              {error}
+            </div>
+          )}
+
           <div className="mt-4 flex flex-col gap-2">
-            {canCheckout ? (
+            {rightsReview ? (
+              <Button
+                type="button"
+                disabled
+                className="h-10 rounded-full border border-amber-400/25 bg-amber-400/10 text-sm font-bold text-amber-200"
+              >
+                <ShieldAlert className="h-4 w-4" /> Rights review pending
+              </Button>
+            ) : !signedIn ? (
+              <Button
+                asChild
+                className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+              >
+                <Link to="/login">Sign in to unlock with Paws</Link>
+              </Button>
+            ) : owned ? (
+              <Button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)]"
+              >
+                <Check className="h-4 w-4" /> Owned
+              </Button>
+            ) : canAfford ? (
+              <Button
+                type="button"
+                onClick={onBuy}
+                disabled={busy}
+                className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+              >
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PawPrint className="h-4 w-4" />
+                )}
+                Unlock for {formatNumber(price)} Paws
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  onClick={onEarn}
+                  className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+                >
+                  <PawPrint className="h-4 w-4" /> Earn {formatNumber(shortfall)} more Paws
+                </Button>
+                <p className="text-center text-[11px] text-muted-foreground">
+                  Claim bounties to top up your wallet.
+                </p>
+              </>
+            )}
+
+            {!rightsReview && checkoutUrl ? (
               signedIn ? (
                 <Button
                   asChild
-                  className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+                  variant="outline"
+                  className="h-10 rounded-full border-white/10 bg-white/5"
                 >
-                  <a href={checkoutUrl!} target="_blank" rel="noreferrer">
-                    Continue to secure checkout <ArrowRight className="h-4 w-4" />
+                  <a href={checkoutUrl} target="_blank" rel="noreferrer">
+                    Buy with card · ${asset.priceUsd.toFixed(2)} <ArrowRight className="h-4 w-4" />
                   </a>
                 </Button>
               ) : (
                 <Button
                   asChild
-                  className="h-10 rounded-full bg-[var(--brand-signal,#c8ff3d)] text-sm font-bold text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+                  variant="outline"
+                  className="h-10 rounded-full border-white/10 bg-white/5"
                 >
-                  <Link to="/login">Sign in to buy</Link>
+                  <Link to="/login">Sign in to buy with card</Link>
                 </Button>
               )
             ) : (
               <Button
                 type="button"
-                onClick={onSave}
-                className={cn(
-                  "h-10 rounded-full border px-4 text-sm font-semibold",
-                  saved
-                    ? "border-[var(--brand-signal,#c8ff3d)]/60 bg-[var(--brand-signal,#c8ff3d)]/15 text-[var(--brand-signal,#c8ff3d)] hover:bg-[var(--brand-signal,#c8ff3d)]/25"
-                    : "border-transparent bg-[var(--brand-signal,#c8ff3d)] text-[var(--brand-signal-ink,#0a0a0b)] hover:bg-[var(--brand-signal,#c8ff3d)]/90",
-                )}
+                variant="outline"
+                disabled
+                className="h-10 rounded-full border-white/10 bg-white/5 text-muted-foreground"
               >
-                {saved ? (
-                  <>
-                    <Check className="h-4 w-4" /> Saved on this device
-                  </>
-                ) : (
-                  <>
-                    <Bookmark className="h-4 w-4" /> Save on this device
-                  </>
-                )}
+                <Lock className="h-4 w-4" /> Card checkout not connected
               </Button>
             )}
+
             <Button
               type="button"
               variant="ghost"
@@ -519,11 +780,11 @@ function BuyDialog({
           </div>
 
           <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-            {asset.rightsReview
+            {rightsReview
               ? "No payment is taken for this clip."
-              : canCheckout
-                ? "Checkout opens in a new tab. Keep your receipt; fulfilment is confirmed separately."
-                : "No payment is taken in this build."}
+              : checkoutUrl
+                ? "Paws unlock instantly. Card checkout opens in a new tab and is fulfilled separately."
+                : "Paws unlock instantly. No card checkout is connected in this build."}
           </p>
         </div>
       </DialogContent>

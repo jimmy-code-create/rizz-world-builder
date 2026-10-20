@@ -47,11 +47,15 @@ await check("old voice aliases kept, speak wording updated", async () => {
   assert.ok(commands.includes('id: "open:drops", path: "/drops"'));
 });
 
-await check("route, tables, and claim mechanics untouched", async () => {
+await check("route, tables, and claim mechanics still present", async () => {
   assert.ok(drops.includes('createFileRoute("/_app/drops")'));
   assert.ok(drops.includes('from("drops")') && drops.includes('from("drop_claims")'));
   assert.ok(drops.includes('storage.from("drops")'));
-  assert.ok(drops.includes("claim_limit") && drops.includes("Claim now"));
+  assert.ok(drops.includes("claim_limit") && drops.includes("Claim · +"));
+  assert.ok(drops.includes('rpc("claim_bounty"'));
+  assert.ok(drops.includes("BOUNTY_PAW_REWARD"));
+  assert.ok(drops.includes("Paws wallet"));
+  assert.ok(drops.includes("Every successful bounty claim pays"));
 });
 
 await check("quests drive promotion with existing flows only", async () => {
@@ -71,9 +75,11 @@ await check("quests drive promotion with existing flows only", async () => {
   assert.ok(!drops.includes("quest_completions") && !drops.includes("awardQuest"));
 });
 
-await check("earn prompt links to the leaderboard guide", async () => {
-  assert.ok(drops.includes("Want to earn more Rizz?"));
-  assert.ok(drops.includes("How to earn rizz"));
+await check("Paws can be spent on effects and the Rizz guide stays reachable", async () => {
+  assert.ok(drops.includes("Spend your Paws"));
+  assert.ok(drops.includes("Open Effects"));
+  assert.ok(drops.includes('to="/effects"'));
+  assert.ok(drops.includes("Rizz score guide"));
   assert.ok(drops.includes("search={{ earn: true }}"));
   assert.ok(board.includes("validateSearch"));
   assert.ok(board.includes("useState(search.earn ?? false)"));
