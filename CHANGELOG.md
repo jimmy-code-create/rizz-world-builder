@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-20 — Cinematic effects: four transparent loops, real previews
+
+- **The old effects catalogue is replaced by four cinematic profile
+  effects.** Web Slinger, Sakura Bloom, Arcane Nexus and Sakura Storm are cut
+  from the supplied reel at 24fps, 1600×480, ~9.6s. Avatar decorations and
+  nameplates are no longer part of the gallery.
+- **Every asset has a real alpha plane.** The cherry and spider checkerboards
+  are removed with saturation/body mattes; the arcane ring is luma-keyed and
+  its Gemini watermark is cleared. The videos are VP9 + `ALPHA_MODE=1`; the
+  posters are RGBA PNG frames from the same loops. Chromium playback at
+  1600×480 was verified over both light and dark backgrounds.
+- **The stage plays the loop; the cards are frames from it.** No stand-in
+  Lottie thumbnail is used. Poster-first playback covers slow loads, blocked
+  autoplay, Safari/Firefox and reduced-motion visitors without a black box.
+- **The buy sheet is wired, but honest.** Prices and a checkout-link
+  integration point are present; `COSMETICS_ENABLED` is still false, so the
+  sheet offers a per-effect, on-device save-for-launch marker instead of
+  charging. There is no server-side launch list or entitlement webhook yet.
+  The Web Slinger clip is flagged `rightsReview` because it is supplied
+  Spider-Man footage, and its checkout stays locked.
+- **Profile previews are opt-in and labelled.** `/u/<username>?previewEffect=
+  <slug>` renders the loop on the banner with a Preview pill; it never equips.
+- `npm run effects:build-cinematic` and `npm run effects:check-cinematic` were
+  added. The old Lottie pipeline remains in the repository for reference but
+  is no longer used by the catalogue.
+
 ## 2026-10-20 — Web Slinger: swing, land, hold (two compositions)
 
 - **The effect is now a character, not a silhouette.** A fully articulated

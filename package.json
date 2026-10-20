@@ -18,6 +18,8 @@
     "effects:build": "node scripts/build-web-slinger-effect.mjs && node scripts/build-web-slinger-banner.mjs",
     "effects:banner": "node scripts/build-web-slinger-banner.mjs",
     "effects:check": "node scripts/check-web-slinger-effect.mjs",
+    "effects:build-cinematic": "node scripts/effects/build-cinematic.mjs",
+    "effects:check-cinematic": "node scripts/effects/check-cinematic.mjs",
     "format": "prettier --write .",
     "i18n:check": "node scripts/i18n-check.mjs",
     "arcade:check": "bun scripts/arcade-check.ts",

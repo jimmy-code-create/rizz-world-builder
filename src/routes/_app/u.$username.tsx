@@ -23,6 +23,7 @@ import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { DISCORD_SHOWCASE_EFFECTS } from "@/lib/effects";
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -44,6 +45,18 @@ function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [previewEffect, setPreviewEffect] = useState<string | null>(null);
+
+  // The effects gallery opens a profile preview in a new tab. The preview is
+  // deliberately opt-in and labelled so nobody mistakes it for an equipped
+  // cosmetic while the cosmetics launch switch is off.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const slug = new URLSearchParams(window.location.search).get("previewEffect");
+    if (slug && DISCORD_SHOWCASE_EFFECTS.some((effect) => effect.slug === slug)) {
+      setPreviewEffect(slug);
+    }
+  }, []);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -273,6 +286,10 @@ function ProfilePage() {
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  const previewMeta = previewEffect
+    ? DISCORD_SHOWCASE_EFFECTS.find((effect) => effect.slug === previewEffect) ?? null
+    : null;
+  const shownEffect = previewMeta ?? eq?.profile_effect ?? null;
 
   return (
     <div>
@@ -285,10 +302,20 @@ function ProfilePage() {
               : `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
           }}
         >
-          {eq?.profile_effect && (
-            <ProfileEffectVisual slug={eq.profile_effect.slug} accent={eq.profile_effect.preview_color} />
+          {shownEffect && (
+            <ProfileEffectVisual
+              slug={shownEffect.slug}
+              accent={shownEffect.preview_color}
+              preview={Boolean(previewMeta)}
+              reducedMotion={Boolean(profile.reduced_motion)}
+            />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+          {previewMeta && (
+            <span className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+              <Sparkles className="h-3 w-3" /> Preview
+            </span>
+          )}
         </div>
         <div className="absolute -bottom-12 left-4 md:left-6">
           <span className="relative inline-flex shrink-0">

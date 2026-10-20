@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { COSMETICS_ENABLED } from "@/lib/effects";
-import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
+import { CINEMATIC_BY_SLUG } from "@/lib/cinematic-effects";
+import { CinematicEffect } from "@/components/profile/CinematicEffect";
 
 const STYLE_CLASS: Record<string, string> = {
   sparkles: "pfx-sparkles",
@@ -26,12 +27,27 @@ export function ProfileEffect({
   slug,
   accent,
   preview = false,
+  reducedMotion = false,
 }: {
   slug?: string | null;
   accent?: string | null;
   preview?: boolean;
+  reducedMotion?: boolean;
 }) {
   if (!slug || (!COSMETICS_ENABLED && !preview)) return null;
+
+  // The cinematic collection. These are transparent video loops, not the
+  // legacy procedural CSS or Lottie effects below.
+  const cinematic = CINEMATIC_BY_SLUG[slug];
+  if (cinematic) {
+    return (
+      <CinematicEffect
+        slug={slug}
+        accent={accent ?? cinematic.accent}
+        reducedMotion={reducedMotion}
+      />
+    );
+  }
 
   // Discord-style effects
   if (slug === "fx-cosmic-nebula") return <CosmicNebulaOverlay />;
@@ -40,7 +56,6 @@ export function ProfileEffect({
   if (slug === "fx-dragon-inferno") return <DragonInfernoOverlay />;
   if (slug === "fx-thunder-storm") return <ThunderStormOverlay />;
   if (slug === "fx-kawaii-hearts") return <KawaiiHeartsOverlay />;
-  if (slug === "fx-web-slinger") return <WebSlingerEffect variant="banner" />;
 
   // Legacy exact overlays
   if (slug === "fx-confetti") return <ConfettiOverlay />;

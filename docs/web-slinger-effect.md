@@ -1,4 +1,9 @@
-# Web Slinger — profile effect
+# Web Slinger — profile effect (superseded)
+
+> **Superseded 2026-10-20.** The live gallery now plays the supplied
+> cinematic clip and no longer loads the Lottie files described here. This
+> document is kept as the record of the retired original-art pipeline. See
+> `docs/cinematic-effects.md` for the current assets, build and rights notes.
 
 A masked web-slinger swings in on a web line, releases at the top of the arc,
 flips, lands in a deep crouch and holds the perch before zipping out again.
