@@ -187,7 +187,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     empty_tab: "Nothing here in this tab.",
     // Badges
     badge_showcase: "Badge Showcase",
-    badge_showcase_desc: "Unlock exclusive badges by creating drops, hosting realms, and leveling up your rizz score.",
+    badge_showcase_desc: "Earn badges by posting, chatting and climbing the board.",
     collected: "Collected",
     novice_collector: "Novice Collector",
     master_achiever: "Master Achiever",
@@ -213,6 +213,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     rarity_epic: "Epic",
     rarity_legendary: "Legendary",
     rarity_mythic: "Mythic",
+    badge_unlocked_one: "Badge unlocked · {name}",
+    badge_unlocked_many: "{count} badges unlocked",
     // Settings
     settings_profile_desc: "Name, bio, avatar and banner",
     settings_appearance_desc: "Theme, mode, density and motion",
@@ -560,7 +562,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     empty_tab: "Rien dans cet onglet.",
     // Badges
     badge_showcase: "Vitrine des badges",
-    badge_showcase_desc: "Débloquez des badges exclusifs en postant, en animant des royaumes et en gagnant du rizz.",
+    badge_showcase_desc: "Gagnez des badges en postant, discutant et grimpant au classement.",
     collected: "Collectionnés",
     novice_collector: "Collectionneur novice",
     master_achiever: "Maître collectionneur",
@@ -586,6 +588,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     rarity_epic: "Épique",
     rarity_legendary: "Légendaire",
     rarity_mythic: "Mythique",
+    badge_unlocked_one: "Badge débloqué · {name}",
+    badge_unlocked_many: "{count} badges débloqués",
     // Settings
     settings_profile_desc: "Nom, bio, avatar et bannière",
     settings_appearance_desc: "Thème, mode, densité et animations",

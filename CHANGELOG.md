@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-10-20 — Badges are earned, not handed out
+
+### Earning
+- The collection's progress bars existed but nothing ever awarded the badge:
+  every badge was still an admin INSERT.
+- Earning now syncs on app open and on tab refocus: the server re-measures the
+  rules, awards whatever is already met and returns only the new slugs, which
+  arrive as one non-stacking toast. Awarding is idempotent — re-syncing never
+  duplicates and never revokes.
+- Rules: join (Newcomer, so the very first badge is instant), 100 likes across
+  posts and stories, 100 messages across realms/channels/DMs, a 00:00–04:00 UTC
+  message, a single 50-like post, one bounty (drop claim), a 7 or 30 day
+  activity streak, and top 10 all-time by rizz score. Early Supporter stays
+  "joined in RIZZ's first 30 days".
+- **Verified** and **Game Champ** remain team awards: verification is a human
+  decision, and arcade wins are recorded per device (`rizz:arcade:wins`), so
+  there is no account-level result to measure.
+
+### Correctness
+- Early Supporter's bar measured *account age* ("30 days old"), which contradicts
+  the name and would have shown 30/30 for everyone. It no longer has a bar — it
+  is awarded from the first account's join date instead.
+
+### Security
+- `award_badge(_user, _slug)` was `SECURITY DEFINER` with the default PUBLIC
+  grant, so any signed-in client could award itself any badge, mythic included.
+  It is now revoked from clients; awards come from `sync_my_badges()` (measured
+  rules, self only) or an admin action.
+
+### Backend
+- Migration `20261025000000_badge_earning.sql` seeds the 12-badge collection with
+  `earn_rule` / `earn_target`, adds `badge_progress()` and `sync_my_badges()`,
+  and closes the `award_badge` grant. Until it is applied the sync is a no-op and
+  everything else keeps working.
+
 ## 2026-10-20 — Messages, groups, replies, badges and rizz: ten fixes in one pass
 
 ### Messages stop breaking one character per line

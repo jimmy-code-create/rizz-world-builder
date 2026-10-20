@@ -24,7 +24,6 @@ export type BadgeCriteria =
   | { kind: "day_streak"; target: number }
   | { kind: "bounties_claimed"; target: number }
   | { kind: "games_won"; target: number }
-  | { kind: "account_age_days"; target: number }
   | { kind: "posts_published"; target: number };
 
 export type CanonicalBadge = {
@@ -178,7 +177,9 @@ export const BADGE_SET: CanonicalBadge[] = [
   },
   {
     slug: "og",
-    criteria: { kind: "account_age_days", target: 30 },
+    // No bar on purpose: "early" means joining in RIZZ's first 30 days, which
+    // has no per-member counter — account age is a different (and wrong) rule.
+    // The server awards it from the first account's join date instead.
     name: "Early Supporter",
     flavor: "Your account joined in RIZZ's first 30 days.",
     icon: ":cat_love:",

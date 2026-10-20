@@ -1,5 +1,20 @@
 # RIZZ Test Checklist
 
+## Badge earning (this pass)
+
+- [ ] Open `/badges` as a fresh account: Newcomer is already unlocked (the first sync awards it) and the other cards show their progress bars.
+- [ ] Send 100 messages across a realm, a channel and a DM, then reopen the app: Chatterbox unlocks, the toast names it once, and reloading does not repeat the toast.
+- [ ] Send one message at 02:00 UTC: Night Owl unlocks. Repeat on a clean account at 05:00: it stays locked.
+- [ ] Claim a drop: Bounty Hunter unlocks (its bar reads 1 / 1).
+- [ ] Get a post to 50 likes: Meme Lord unlocks — one hit post is enough, other posts' likes do not matter.
+- [ ] Post on seven consecutive days (or seed backdated posts): 7 Day Streak unlocks; skip a day and the bar resets to the new run.
+- [ ] Comment on each of the last three days without posting: the streak bar still shows 3 (comments count as activity).
+- [ ] Move into the all-time top 10 with test scores: Top Rizzler unlocks; stay at #11 on a fresh account and it does not.
+- [ ] A brand-new account created long after launch never gets Early Supporter, and the earliest account always does. Its card carries no bar (account age is not the rule).
+- [ ] Verified and Game Champ never auto-unlock: they are team awards.
+- [ ] Before the badge-earning migration is applied the app still loads: no toast, no error, no crash from the missing RPCs.
+- [ ] Reload several times: nothing is awarded twice and nothing is revoked.
+
 ## Games hub and activities in the call (this pass)
 
 - [ ] The gamepad button in the voice call opens `/games` (the call keeps running; the mini bar stays at the bottom of the page with a way back in).

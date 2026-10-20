@@ -56,6 +56,7 @@ import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
 import { useUnreadCounts } from "@/lib/use-unread-counts";
+import { useBadgeSync } from "@/lib/badge-earning";
 import { loadPins, loadRecents, recordRecent, togglePin } from "@/lib/nav-shortcuts";
 
 // Secondary UI and the decorative background are split out of the initial shell
@@ -201,6 +202,8 @@ export function AppShell() {
   const [pinnedDests, setPinnedDests] = useState<DestKey[]>([]);
   const [editShortcuts, setEditShortcuts] = useState(false);
   const presence = useSelfPresence();
+  // Keeps earned badges current app-wide: awards on mount, re-checks on focus.
+  useBadgeSync(user?.id);
 
   const isConversation =
     /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);

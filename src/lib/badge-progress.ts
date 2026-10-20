@@ -82,7 +82,6 @@ export async function fetchBadgeProgress(userId: string): Promise<BadgeProgressM
     topPostResult,
     rizzResult,
     claimsResult,
-    profileResult,
     postsActivityResult,
     commentsActivityResult,
     dmActivityResult,
@@ -120,7 +119,6 @@ export async function fetchBadgeProgress(userId: string): Promise<BadgeProgressM
       .from("drop_claims")
       .select("drop_id", { count: "exact", head: true })
       .eq("user_id", userId),
-    supabase.from("profiles").select("created_at").eq("id", userId).maybeSingle(),
     supabase.from("posts").select("created_at").eq("author_id", userId).limit(300),
     supabase.from("post_comments").select("created_at").eq("author_id", userId).limit(300),
     supabase.from("direct_messages").select("created_at").eq("sender_id", userId).limit(300),
@@ -137,12 +135,6 @@ export async function fetchBadgeProgress(userId: string): Promise<BadgeProgressM
   );
   out["meme-lord"] = progress(topPostResult.data?.[0]?.like_count ?? 0, 50);
   out["bounty-hunter"] = progress(count(claimsResult), 1);
-  out.og = progress(
-    profileResult.data?.created_at
-      ? Math.floor((Date.now() - new Date(profileResult.data.created_at).getTime()) / 86_400_000)
-      : 0,
-    30,
-  );
 
   // Leaderboard rank: how many members are ahead of this one.
   const myRizz = rizzResult.data?.rizz_score ?? 0;

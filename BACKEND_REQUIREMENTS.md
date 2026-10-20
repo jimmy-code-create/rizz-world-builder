@@ -324,6 +324,44 @@ a signed-URL refresh flow. Users must understand that anyone with an image URL
 can view that image. If public media is not acceptable, do not apply this
 bucket setup; the frontend will show a friendly upload error.
 
+## 4. Badge earning
+
+**Why:** the badge shelf now shows how far along each badge is and awards the
+ones already earned. Both need server-side criteria — the client cannot be
+trusted to say "I earned this", and message/like counts are not readable per
+user from RLS-protected tables.
+
+**Frontend expects:** `public.badge_progress()` (own rows only: `slug`, `rule`,
+`progress`, `goal`, `met`) and `public.sync_my_badges()` (awards everything met,
+returns a jsonb array of the slugs that were new). Both are derived from
+`auth.uid()`, so neither takes a user id. The sealed helper
+`badge_progress_for(uuid)` powers them and must stay unreadable to clients.
+
+The migration lives in this repo as
+`supabase/migrations/20261025000000_badge_earning.sql`; apply it as-is. It also
+seeds the 12-badge collection (`earn_rule` / `earn_target` per badge) and
+revokes the old PUBLIC execute grant on `award_badge(uuid, text)`.
+
+Until it is applied nothing breaks: the shelf hides progress bars and the sync
+is a no-op, but badges can still be awarded by an admin.
+
+Rules, for reference: join (auto), 100 likes across posts + stories, 100
+messages across `group_messages` + `messages` + `direct_messages`, one message
+between 00:00–04:00 UTC, a single post at 50 likes, one `drop_claims` row (the
+bounty), a 7 or 30 day activity streak over posts, comments, messages, stories
+and story likes, top 10 all-time by `profiles.rizz_score`, and account created
+within 30 days of the earliest account.
+
+`Verified` and `Game Champ` remain team awards. Verification is a human
+decision, and arcade wins are recorded in `localStorage` per device
+(`rizz:arcade:wins`) so there is no account-level result the server can check.
+The collection still shows that bar on the device that played, which is why the
+badge stays manually granted.
+
+Progress bars are client-side (`src/lib/badge-progress.ts`); the RPCs here are
+the awarding side and the only authority on what is actually earned. Keep the
+two in step when a rule changes.
+
 ## Existing backend features the frontend reuses
 
 - Group joining continues to use the existing `accept_group_invite(_code text)`
@@ -336,6 +374,11 @@ bucket setup; the frontend will show a friendly upload error.
   fields. Story expiry remains the existing 24-hour `expires_at` behavior.
 
 ## Lovable apply-and-test checklist
+
+0. Apply `20261025000000_badge_earning.sql`, then call `badge_progress()` as a
+   member and confirm 12 rows; call `sync_my_badges()` twice — the first call
+   may return slugs, the second must return `[]`.
+
 
 1. Apply the SQL above as an additive migration; keep all existing rows.
 2. Confirm the four RPCs and `preview_group_invite` exist, RLS is enabled on
