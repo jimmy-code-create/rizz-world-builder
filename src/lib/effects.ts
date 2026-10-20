@@ -112,6 +112,16 @@ export const DISCORD_SHOWCASE_EFFECTS: ProfileEffect[] = [
     unlock_rizz: 1400,
     preview_color: "#818cf8",
   },
+  {
+    id: "deco-web-slinger",
+    slug: "deco-web-slinger",
+    name: "Web Slinger",
+    description: "A masked web-slinger looms behind you — glowing lenses, red and blue rim light, and webbing that shoots across the frame.",
+    type: "avatar_decoration",
+    rarity: "mythic",
+    unlock_rizz: 1800,
+    preview_color: "#e8253f",
+  },
 
   // 2. Animated Nameplates
   {
@@ -255,6 +265,16 @@ export const DISCORD_SHOWCASE_EFFECTS: ProfileEffect[] = [
     rarity: "common",
     unlock_rizz: 100,
     preview_color: "#ff2d92",
+  },
+  {
+    id: "fx-web-slinger",
+    slug: "fx-web-slinger",
+    name: "Web Slinger",
+    description: "A masked web-slinger drops into your banner on a web line, lands, and lights the frame with red and blue rim light.",
+    type: "profile_effect",
+    rarity: "mythic",
+    unlock_rizz: 1800,
+    preview_color: "#e8253f",
   },
 ];
 

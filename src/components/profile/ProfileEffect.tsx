@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { COSMETICS_ENABLED } from "@/lib/effects";
+import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
 
 const STYLE_CLASS: Record<string, string> = {
   sparkles: "pfx-sparkles",
@@ -25,6 +26,7 @@ export function ProfileEffect({ slug, accent }: { slug?: string | null; accent?:
   if (slug === "fx-dragon-inferno") return <DragonInfernoOverlay />;
   if (slug === "fx-thunder-storm") return <ThunderStormOverlay />;
   if (slug === "fx-kawaii-hearts") return <KawaiiHeartsOverlay />;
+  if (slug === "fx-web-slinger") return <WebSlingerEffect variant="banner" />;
 
   // Legacy exact overlays
   if (slug === "fx-confetti") return <ConfettiOverlay />;

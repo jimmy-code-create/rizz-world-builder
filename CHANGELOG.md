@@ -35,6 +35,23 @@
   and closes the `award_badge` grant. Until it is applied the sync is a no-op and
   everything else keeps working.
 
+## 2026-10-20 — Web Slinger: a cinematic profile effect, built as one asset
+
+### The effect
+- A new **Web Slinger** profile effect: a masked web-slinger looms out of the dark behind the avatar, webbing reaches in from the edges, a spider sigil burns behind the hero at the climax, and the scene loops without a seam.
+- The character is **original work** — a masked web-slinger in the red-and-blue spider aesthetic, drawn from scratch as bezier paths. No Marvel, Sony or Disney assets are used, referenced or required.
+- It is **one asset for two places**: `public/effects/fx-web-slinger.json` is a Lottie file, which is what Discord's profile effects are and what the RIZZ app plays through `lottie-web`. 512×512, 30fps, 240 frames (8s), ~80 kB.
+
+### Where it plays
+- **`deco-web-slinger`** (avatar decoration) sits behind the avatar, the way Discord draws a profile effect, with the lenses peeking out at the upper left.
+- **`fx-web-slinger`** (profile effect) anchors to the left of the profile banner, so the hero looms behind the avatar that overlaps it.
+- The player loads the animation only when it scrolls into view, keeps it sharp at any size, and holds the hero moment under `prefers-reduced-motion`.
+
+### Built, not hand-waved
+- The whole effect is procedural: the geometry, the gradients, the web physics (trim paths on bezier strands) and the timeline live in `scripts/effects/`, so it can be re-tuned without an After Effects round trip.
+- `npm run effects:build` regenerates the Lottie, a still and a contact sheet; `npm run effects:check` loads the file into the real player and steps through every one of the 240 frames.
+- `docs/web-slinger-effect.md` has the asset manifest, the scene breakdown, the timeline and the Discord integration steps — including the honest part: Discord's profile effects are a Shop feature with no public upload API, so the file is the deliverable and publishing it is a client-side action.
+
 ## 2026-10-20 — Messages, groups, replies, badges and rizz: ten fixes in one pass
 
 ### Messages stop breaking one character per line

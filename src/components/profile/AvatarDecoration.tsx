@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { COSMETICS_ENABLED } from "@/lib/effects";
+import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
 
 const STYLE_CLASS: Record<string, string> = {
   neon: "fx-ring-neon",
@@ -44,7 +45,12 @@ export function AvatarDecoration({ src, fallback, size = 40, effectSlug, accent,
       style={{ width: size, height: size }}
     >
       {/* 1. Discord-Style Animated SVG Decorations (only when cosmetics flag is on) */}
-      {isDiscordDeco && <DiscordAvatarDecoration slug={effectSlug!} size={size} accent={accent} />}
+      {isDiscordDeco && effectSlug === "deco-web-slinger" && (
+        <WebSlingerEffect variant="avatar" avatarSize={size} />
+      )}
+      {isDiscordDeco && effectSlug !== "deco-web-slinger" && (
+        <DiscordAvatarDecoration slug={effectSlug!} size={size} accent={accent} />
+      )}
 
       {/* 2. Legacy / Procedural Rings (only when cosmetics flag is on) */}
       {ringClass && (
