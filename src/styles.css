@@ -1491,6 +1491,31 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   }
 }
 
+/* Profile preview: a drawer that rises from the bottom edge with a short
+   overshoot, then settles. Closing accelerates away so it never feels sticky.
+   The gesture itself lives in ProfilePreview.tsx (drag + spring back). */
+@keyframes profile-sheet-in {
+  0% { transform: translateY(100%); }
+  70% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+@keyframes profile-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+.profile-sheet[data-state="open"] {
+  animation: profile-sheet-in 400ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+.profile-sheet[data-state="closed"] {
+  animation: profile-sheet-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-sheet[data-state="open"],
+  .profile-sheet[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}
+
 /* Floating buttons step aside while an overlay is open, so the cat never sits
    on top of a sheet's rows. */
 body:has([role="dialog"][data-state="open"]) [data-overlay-hide],
@@ -1857,6 +1882,54 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
   50% { transform: translateY(-2px) scale(1.005); }
 }
 
+/* The symbiote lunges at the hero on the same 9s beat as the web burst. */
+.wsx-foe {
+  transform-box: fill-box;
+  transform-origin: 62% 86%;
+  animation: wsx-lunge 9s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes wsx-lunge {
+  0%, 100% { transform: translateX(8px) scale(1); }
+  40% { transform: translateX(-14px) scale(1.015); }
+  55% { transform: translateX(-18px) scale(1.02); }
+  70% { transform: translateX(-6px) scale(1.005); }
+}
+.wsx-foe-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wsx-foe-eye 6.5s ease-in-out infinite;
+}
+@keyframes wsx-foe-eye {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  48% { opacity: 1; transform: scale(1.06); }
+  56% { opacity: 1; transform: scale(1.04); }
+}
+.wsx-tendril {
+  transform-box: fill-box;
+  transform-origin: 8% 92%;
+  animation: wsx-tendril 5.6s ease-in-out var(--wsx-delay, 0s) infinite;
+}
+@keyframes wsx-tendril {
+  0%, 100% { transform: rotate(-2.2deg) scaleY(1); }
+  50% { transform: rotate(3.4deg) scaleY(1.04); }
+}
+
+/* Web hits the chest: a white burst that blooms and fades in ~1s per loop. */
+.wsx-impact {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wsx-impact 9s ease-in-out infinite;
+}
+@keyframes wsx-impact {
+  0%, 64%, 100% { opacity: 0; transform: scale(0.55); }
+  68% { opacity: 0.95; transform: scale(1); }
+  74% { opacity: 0.55; transform: scale(1.12); }
+  82% { opacity: 0.18; transform: scale(1.2); }
+  90% { opacity: 0; transform: scale(1.24); }
+}
+
 .wsx-strands--right {
   transform-box: view-box;
   transform-origin: 468px 64px;
@@ -1961,6 +2034,7 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
   opacity: 0.55;
 }
 .wsx[data-calm="true"] .wsx-mote { opacity: 0.55; }
+.wsx[data-calm="true"] .wsx-impact { opacity: 0.55; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .wsx * { animation: none !important; }
@@ -1970,6 +2044,7 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
     opacity: 0.55;
   }
   .wsx .wsx-mote { opacity: 0.55; }
+  .wsx .wsx-impact { opacity: 0.55; transform: none; }
 }
 [data-reduced-motion="true"] .wsx * { animation: none !important; }
 [data-reduced-motion="true"] .wsx-strand {
@@ -1977,3 +2052,4 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
   stroke-dashoffset: 0;
   opacity: 0.55;
 }
+[data-reduced-motion="true"] .wsx-impact { opacity: 0.55; transform: none; }

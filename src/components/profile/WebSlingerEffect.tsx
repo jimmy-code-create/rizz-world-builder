@@ -197,8 +197,8 @@ export function WebSlingerEffect({ className }: Props) {
     >
       <svg
         className="wsx-svg"
-        viewBox="0 0 640 360"
-        preserveAspectRatio="xMidYMid meet"
+        viewBox="0 0 1100 360"
+        preserveAspectRatio="xMidYMid slice"
         role="presentation"
         focusable="false"
       >
@@ -277,6 +277,27 @@ export function WebSlingerEffect({ className }: Props) {
           <filter id="wsx-glow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="5" />
           </filter>
+          {/* The symbiote: a purple-black mass with a wet sheen, lit by the
+              hero's webs. Original vector art, no footage and no logo. */}
+          <linearGradient id="wsx-symbiote" x1="0" y1="0" x2="0.85" y2="1">
+            <stop offset="0%" stopColor="#3b2b55" />
+            <stop offset="34%" stopColor="#1b1327" />
+            <stop offset="100%" stopColor="#07040e" />
+          </linearGradient>
+          <linearGradient id="wsx-symbiote-rim" x1="0" y1="0" x2="1" y2="0.4">
+            <stop offset="0%" stopColor="#d9c8ff" stopOpacity="0.9" />
+            <stop offset="54%" stopColor="#8b5cf6" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.65" />
+          </linearGradient>
+          <linearGradient id="wsx-eye" x1="0" y1="0" x2="0.4" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#cfe6ff" />
+          </linearGradient>
+          <radialGradient id="wsx-impact">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="42%" stopColor="#bfe0ff" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#7fb4ff" stopOpacity="0" />
+          </radialGradient>
           <filter id="wsx-rim-blur" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="0.6" />
           </filter>
@@ -319,6 +340,144 @@ export function WebSlingerEffect({ className }: Props) {
           <path id="wsx-boot-right-shape" d={BOOT_RIGHT} />
         </defs>
 
+        {/* ---- the symbiote lunging in from the right ---- */}
+        {/* Rendered before the hero, so the webs he throws land on top of it. */}
+        <g className="wsx-foe">
+          <g fill="none" stroke="url(#wsx-symbiote)" strokeLinecap="round">
+            <path
+              className="wsx-tendril"
+              style={{ "--wsx-delay": "0s" } as React.CSSProperties}
+              d="M 986 236 C 1042 206 1080 156 1120 96"
+              strokeWidth="15"
+            />
+            <path
+              className="wsx-tendril"
+              style={{ "--wsx-delay": "0.8s" } as React.CSSProperties}
+              d="M 1000 268 C 1064 258 1114 226 1160 176"
+              strokeWidth="11"
+            />
+            <path
+              className="wsx-tendril"
+              style={{ "--wsx-delay": "1.6s" } as React.CSSProperties}
+              d="M 1008 306 C 1066 314 1122 302 1168 270"
+              strokeWidth="9"
+            />
+            <path
+              className="wsx-tendril"
+              style={{ "--wsx-delay": "2.3s" } as React.CSSProperties}
+              d="M 968 208 C 1004 158 1030 108 1062 58"
+              strokeWidth="8"
+            />
+          </g>
+
+          {/* the arm that reaches for the hero */}
+          <path
+            d="M 868 262 C 826 250 792 258 762 276 L 726 296 C 717 300 713 294 721 287 L 766 258 C 796 238 838 230 876 236 Z"
+            fill="url(#wsx-symbiote)"
+            stroke="#0a0712"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <g fill="#120d1e" stroke="#05030a" strokeWidth="1.1" strokeLinejoin="round">
+            <path d="M 728 292 L 700 304 L 722 282 Z" />
+            <path d="M 736 297 L 712 316 L 736 289 Z" />
+            <path d="M 745 300 L 728 324 L 750 292 Z" />
+          </g>
+          <path
+            d="M 874 240 C 836 236 800 246 772 264"
+            fill="none"
+            stroke="url(#wsx-symbiote-rim)"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            opacity="0.65"
+          />
+
+          {/* torso: broad shoulders that fill the right edge */}
+          <path
+            d="M 858 226 C 900 202 952 200 994 222 C 1042 248 1068 302 1082 360 L 790 360 C 798 300 820 250 858 226 Z"
+            fill="url(#wsx-symbiote)"
+            stroke="#08050f"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <g fill="none" stroke="url(#wsx-symbiote-rim)" strokeLinecap="round" opacity="0.5">
+            <path d="M 866 236 C 908 216 952 216 986 234" strokeWidth="2.6" />
+            <path d="M 852 266 C 880 258 906 258 930 266" strokeWidth="1.6" opacity="0.8" />
+            <path d="M 900 286 C 928 280 952 282 974 292" strokeWidth="1.2" opacity="0.6" />
+            <path d="M 872 320 C 900 312 926 314 948 324" strokeWidth="1" opacity="0.45" />
+          </g>
+          <g fill="none" stroke="#0a0712" strokeLinecap="round" opacity="0.55">
+            <path d="M 928 244 C 940 274 942 312 936 350" strokeWidth="2" />
+            <path d="M 968 240 C 986 272 996 310 998 348" strokeWidth="1.6" />
+          </g>
+          {/* shoulder spikes, so the silhouette is not a blob */}
+          <g fill="url(#wsx-symbiote)" stroke="#08050f" strokeWidth="1">
+            <path d="M 1006 214 L 1044 176 L 1020 226 Z" />
+            <path d="M 1036 232 L 1082 206 L 1050 250 Z" />
+          </g>
+
+          {/* head: wide skull, narrow jaw, both eyes forward */}
+          <path
+            d="M 838 186 C 824 156 830 120 856 102 C 884 82 926 82 952 102 C 976 120 984 154 970 182 C 956 210 924 226 892 220 C 862 214 846 202 838 186 Z"
+            fill="url(#wsx-symbiote)"
+            stroke="#08050f"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          {/* the open maw, angled at the hero */}
+          <path
+            d="M 838 186 C 848 208 866 222 892 226 C 872 242 842 236 826 212 C 828 202 832 193 838 186 Z"
+            fill="#0b0714"
+            stroke="#05030a"
+            strokeWidth="1"
+          />
+          <path
+            d="M 832 200 L 844 214 L 852 204 L 862 220 L 872 208 L 882 224"
+            fill="none"
+            stroke="#eef4ff"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity="0.92"
+          />
+          {/* eyes */}
+          <g className="wsx-foe-eye" fill="url(#wsx-eye)" stroke="#0a0712" strokeWidth="0.8">
+            <path d="M 852 142 L 882 130 L 892 150 L 860 158 Z" />
+            <path d="M 914 128 L 946 132 L 948 154 L 914 148 Z" />
+          </g>
+          <g fill="none" stroke="#0a0712" strokeWidth="2" strokeLinecap="round" opacity="0.7">
+            <path d="M 846 120 C 864 110 886 110 902 120" />
+            <path d="M 908 112 C 926 108 946 112 958 122" />
+          </g>
+          <path
+            d="M 848 190 C 866 202 888 206 908 204"
+            fill="none"
+            stroke="url(#wsx-symbiote-rim)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            opacity="0.6"
+          />
+        </g>
+
+        {/* ---- web impact on the symbiote's chest ---- */}
+        <g className="wsx-impact" aria-hidden="true">
+          <circle cx="828" cy="176" r="34" fill="url(#wsx-impact)" />
+          <g stroke="#eaf6ff" strokeWidth="1.3" strokeLinecap="round" opacity="0.85">
+            <path d="M 828 176 L 828 122" />
+            <path d="M 828 176 L 872 134" />
+            <path d="M 828 176 L 886 174" />
+            <path d="M 828 176 L 866 214" />
+            <path d="M 828 176 L 812 226" />
+            <path d="M 828 176 L 774 206" />
+            <path d="M 828 176 L 770 168" />
+            <path d="M 828 176 L 786 132" />
+            <path d="M 802 150 C 818 140 840 138 856 148" fill="none" strokeWidth="1" opacity="0.7" />
+            <path d="M 796 176 C 814 194 842 198 860 188" fill="none" strokeWidth="1" opacity="0.7" />
+          </g>
+          <ellipse cx="828" cy="176" rx="44" ry="26" fill="none" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1.2" />
+        </g>
+
+        <g className="wsx-scene" transform="translate(230,0)">
         {/* Energy trails sit behind the figure, so they never veil the face. */}
         <g className="wsx-trails" filter="url(#wsx-soft)">
           <path
@@ -642,6 +801,7 @@ export function WebSlingerEffect({ className }: Props) {
             fill="#ffc2ca"
             opacity="0.7"
           />
+        </g>
         </g>
       </svg>
     </span>

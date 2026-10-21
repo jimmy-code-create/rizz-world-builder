@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -181,20 +182,24 @@ export function MessageActionMenu({
 
   const select = (action: MessageActionDescriptor) => handleSelect(action);
 
+  // Discord's context-menu header: avatar, name, timestamp, then the text — no
+  // card, no border, just a hairline under the whole block.
   const previewHeader = preview ? (
-    <div className="mb-2 flex items-start gap-3 rounded-2xl border border-white/10 bg-card p-3 shadow-md">
-      <Avatar className="mt-0.5 h-8 w-8 shrink-0 ring-1 ring-white/15">
+    <div className="flex items-start gap-2.5 px-2 pb-2 pt-1.5">
+      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
         <AvatarImage src={preview.avatarUrl ?? undefined} alt="" />
-        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+        <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
           {preview.author.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-xs font-semibold text-foreground">
+        <p className="flex items-baseline gap-1.5 text-[13px] font-semibold leading-[18px] text-white">
           <span className="truncate">{preview.author}</span>
-          {preview.time && <span className="shrink-0 font-normal text-[10px] text-muted-foreground">{preview.time}</span>}
+          {preview.time && (
+            <span className="shrink-0 text-[11px] font-normal text-[#949ba4]">{preview.time}</span>
+          )}
         </p>
-        <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/95">
+        <p className="mt-0.5 line-clamp-4 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
@@ -207,7 +212,7 @@ export function MessageActionMenu({
           }}
           aria-label="Open this message"
           title="Open this message"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         >
           <Maximize2 className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -215,37 +220,49 @@ export function MessageActionMenu({
     </div>
   ) : null;
 
-  const actionRows = (
-    <div role="group" aria-label="Available actions" className="flex flex-col gap-0.5">
+  /**
+   * Discord groups the destructive action at the bottom behind a hairline, so
+   * Delete never sits next to Reply. `dense` is the desktop row height; the
+   * phone sheet keeps full 44px targets.
+   */
+  const renderActions = (dense: boolean) => (
+    <div role="group" aria-label="Available actions" className="flex flex-col">
       {actions.map((action, index) => {
         const Icon = action.icon;
+        const startsDanger = action.destructive && !actions.slice(0, index).some((item) => item.destructive);
         return (
-          <button
-            key={`${action.label}-${index}`}
-            ref={index === 0 ? firstActionRef : undefined}
-            type="button"
-            onClick={() => select(action)}
-            className={`group flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 text-left text-[12px] font-medium tracking-[0.01em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
-              action.destructive
-                ? "text-destructive hover:bg-destructive/10"
-                : "text-foreground/85 hover:bg-white/[0.07] hover:text-foreground"
-            }`}
-          >
-            <Icon
-              aria-hidden="true"
-              className={`h-4 w-4 shrink-0 ${
+          <Fragment key={`${action.label}-${index}`}>
+            {startsDanger && index > 0 && (
+              <div aria-hidden className="my-1 h-px bg-white/[0.06]" />
+            )}
+            <button
+              ref={index === 0 ? firstActionRef : undefined}
+              type="button"
+              onClick={() => select(action)}
+              className={`group flex w-full items-center gap-2.5 rounded-[3px] px-2 text-left text-[13px] font-medium leading-[18px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
+                dense ? "min-h-8" : "min-h-11"
+              } ${
                 action.destructive
-                  ? "text-destructive"
-                  : "text-muted-foreground transition-colors group-hover:text-primary"
+                  ? "text-[#f23f43] hover:bg-[#da373c] hover:text-white"
+                  : "text-[#dbdee1] hover:bg-white/[0.08] hover:text-white"
               }`}
-              strokeWidth={1.9}
-            />
-            <span className="truncate">{action.label}</span>
-          </button>
+            >
+              <Icon
+                aria-hidden="true"
+                className={`h-4 w-4 shrink-0 ${
+                  action.destructive
+                    ? "text-[#f23f43] group-hover:text-white"
+                    : "text-[#b5bac1] transition-colors group-hover:text-white"
+                }`}
+                strokeWidth={2}
+              />
+              <span className="truncate">{action.label}</span>
+            </button>
+          </Fragment>
         );
       })}
       {actions.length === 0 && (
-        <p className="px-2.5 py-3 text-xs text-muted-foreground">No actions available</p>
+        <p className="px-2 py-3 text-[13px] text-[#949ba4]">No actions available</p>
       )}
     </div>
   );
@@ -301,14 +318,15 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="glass-strong z-[100] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="z-[100] max-h-[80dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
               <SheetTitle>Message actions</SheetTitle>
             </SheetHeader>
-            <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-white/20" />
+            <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-white/20" />
             {previewHeader}
+            {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
             {reactionBar && (
               <ReactionQuickBar
                 className="mb-2"
@@ -318,7 +336,7 @@ export function MessageActionMenu({
                 }}
               />
             )}
-            {actionRows}
+            {renderActions(false)}
           </SheetContent>
         </Sheet>
         ) : null}
@@ -346,13 +364,10 @@ export function MessageActionMenu({
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className={`glass-strong relative max-h-[min(72dvh,30rem)] w-[min(${reactionBar ? "21rem" : "15rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-xl border-white/10 p-1.5 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.9)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
+        className={`relative max-h-[min(72dvh,30rem)] w-[min(${reactionBar ? "21rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent"
-        />
         {previewHeader}
+        {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
         {reactionBar && (
           <ReactionQuickBar
             className="mb-2"
@@ -362,7 +377,7 @@ export function MessageActionMenu({
             }}
           />
         )}
-        {actionRows}
+        {renderActions(true)}
       </PopoverContent>
       ) : null}
     </Popover>

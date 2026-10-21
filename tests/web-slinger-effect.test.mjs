@@ -90,7 +90,10 @@ await check("the scene is genuinely transparent", async () => {
   );
   assert.ok(!/#0a0a0b|#0e0e10|#05060b/i.test(effect), "no stage background colours belong in the scene");
   assert.ok(!/backlight|haze|vignette|grade/i.test(effect), "removed stage layers must stay removed");
-  assert.match(effect, /viewBox="0 0 640 360"/);
+  // A wide stage that fills the banner (Discord profile effects are full-bleed),
+  // not a 16:9 picture letterboxed in the middle of it.
+  assert.match(effect, /viewBox="0 0 1100 360"/);
+  assert.match(effect, /preserveAspectRatio="xMidYMid slice"/);
 });
 
 await check("the character is complete and centred", async () => {
@@ -114,7 +117,7 @@ await check("the character is complete and centred", async () => {
   }
   assert.match(effect, /#wsx-head-shape/, "rim light must reference the mask silhouette");
   assert.match(effect, /#wsx-boot-left-shape/, "rim light must reference the boots");
-  assert.ok(!/preserveAspectRatio="xMidYMid slice"/.test(effect), "the figure must not be cropped");
+  assert.match(effect, /<g className="wsx-scene" transform="translate\(230,0\)">/, "the hero sits inside the wide stage");
 });
 
 await check("webs leave both hands and the figure crouches on a strand", async () => {
@@ -124,6 +127,20 @@ await check("webs leave both hands and the figure crouches on a strand", async (
   assert.equal((effect.match(/M 184 214 C/g) ?? []).length, 3, "three strands must leave the left hand");
   assert.match(effect, /const WEB_LINE =/, "the crouch needs its strand");
   assert.match(effect, /className="wsx-strand"/);
+});
+
+await check("a symbiote answers the hero, and the webs burst on it", async () => {
+  assert.match(effect, /className="wsx-foe"/, "the antagonist must be part of the scene");
+  assert.match(effect, /className="wsx-foe-eye"/, "its eyes must be able to flare");
+  assert.ok((effect.match(/className="wsx-tendril"/g) ?? []).length >= 4, "tendrils");
+  assert.match(effect, /className="wsx-impact"/, "the web burst");
+  assert.match(effect, /fill="url\(#wsx-symbiote\)"/, "the antagonist must share the vector style");
+  assert.match(effect, /M 832 200 L 844 214/, "the open maw needs teeth");
+  assert.match(styles, /@keyframes wsx-lunge/);
+  assert.match(styles, /@keyframes wsx-tendril/);
+  assert.match(styles, /@keyframes wsx-impact/);
+  assert.match(styles, /\.wsx\[data-calm="true"\] \.wsx-impact \{ opacity: 0\.55; transform: none; \}/);
+  assert.match(styles, /\.wsx \.wsx-impact \{ opacity: 0\.55; transform: none; \}/, "reduced motion keeps a burst");
 });
 
 await check("the profile mounts the effect above the banner gradient, pointer-free", async () => {
