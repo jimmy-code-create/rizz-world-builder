@@ -53,23 +53,24 @@ type Scene = {
 const SCENES: Scene[] = [
   {
     id: "welcome",
-    kicker: "Welcome",
-    title: "Hey! I'm Rizzy. Welcome to Rizz!",
-    body: "I'm your tour guide, your hype cat, and the reason your cursor keeps drifting left. Let me show you around — eight quick scenes, no homework.",
+    kicker: "Welcome to RIZZ",
+    title: "Hey — I'm Rizzy. Welcome to RIZZ.",
+    body: "You're in. I'm your tour guide and resident hype cat, and this is the quickest way to make RIZZ feel like your place. Eight scenes, no homework, skip whenever you like.",
     pose: "wave",
-    bubble: "Let's get you settled.",
+    bubble: "Hi! Let's make this yours.",
     bullets: [
       {
         icon: Sparkles,
-        title: "Built for real people",
-        text: "A feed, communities, realms, voice and DMs — all in one place.",
+        title: "One app, your whole world",
+        text: "A feed, communities, realms, voice rooms and DMs — built to hang out in, not just scroll.",
       },
       {
         icon: Heart,
-        title: "No cold starts",
-        text: "Your interests help Rizz surface people and rooms that get you.",
+        title: "Start warm, not cold",
+        text: "Your interests shape the people, posts and rooms RIZZ puts in front of you first.",
       },
     ],
+    note: "New here? This is your welcome. You can replay it any time from Settings.",
   },
   {
     id: "profile",
@@ -136,28 +137,28 @@ const SCENES: Scene[] = [
     id: "vibe",
     kicker: "Make it yours",
     title: "Customize your vibe",
-    body: "Try an accent color, choose a theme, and wear a cinematic profile effect or avatar decoration. Your profile should look like you, not a template.",
+    body: "Try an accent color, choose a theme, and wear RIZZ's signature profile effect: Biscuit, our heart-eyed pup, living on your banner. Your profile should look like you, not a template.",
     pose: "present",
     bubble: "Make it loud. Or very quiet.",
     bullets: [
       {
         icon: Sparkles,
-        title: "Effects that move",
-        text: "One full-profile loop and three animated avatar decorations in Effects.",
+        title: "Puppy Love",
+        text: "One full-profile effect, drawn just for RIZZ — shades, hoodie and floating hearts.",
       },
       {
         icon: Paintbrush,
-        title: "Accent, theme, nameplate",
-        text: "Tune the details that make your corner feel like yours.",
+        title: "Accent + theme",
+        text: "Tune the colors that make your corner look like yours.",
       },
     ],
-    note: "Effects are live. Unlock a look with Paws, then apply it from the Effects page.",
+    note: "Effects are live. Unlock a look with Paws, then wear it from the Effects page.",
   },
   {
     id: "rewards",
     kicker: "Show up, collect",
     title: "Collect Paws",
-    body: "Paws are RIZZ's currency — earned by claiming bounties. Spend them on a full-profile effect or an animated avatar decoration. No purchase is required to earn them.",
+    body: "Paws are RIZZ's currency — earned by claiming bounties and showing up. Spend them on the Puppy Love profile effect. No purchase is required to earn them.",
     pose: "paw",
     bubble: "Earned in bounties.",
     bullets: [
@@ -169,7 +170,7 @@ const SCENES: Scene[] = [
       {
         icon: Sparkles,
         title: "Spend in Effects",
-        text: "Unlock a look and apply it straight to your profile.",
+        text: "Unlock Puppy Love and apply it straight to your banner.",
       },
     ],
     note: "Paws are live. Claim a bounty, then spend them on the Effects page.",
@@ -243,6 +244,11 @@ export function RizzyTour({
   const isLast = index === SCENES.length - 1;
   const isFirst = index === 0;
   const hasMounted = useRef(false);
+  const isWelcome = scene.id === "welcome";
+  // The first scene greets the member by the name they just set, so the tour
+  // lands as their welcome rather than a generic slideshow.
+  const firstName = (profile?.display_name || profile?.username || "").trim().split(/\s+/)[0];
+  const title = isWelcome && firstName ? `Hey ${firstName} — welcome to RIZZ.` : scene.title;
 
   function go(next: number) {
     if (busy) return;
@@ -343,9 +349,17 @@ export function RizzyTour({
       </header>
 
       <main className="rz-main">
-        <section className="rz-stage" aria-label="Rizzy's scene">
+        <section className={cn("rz-stage", isWelcome && "rz-stage--welcome")} aria-label="Rizzy's scene">
           <div className="rz-stage-grid" aria-hidden="true" />
           <div className="rz-stage-ring" aria-hidden="true" />
+          {isWelcome && (
+            <>
+              <div className="rz-welcome-halo" aria-hidden="true" />
+              <div className="rz-welcome-wordmark" aria-hidden="true">
+                RIZZ
+              </div>
+            </>
+          )}
           <div className={cn("rz-stage-layer", dirClass)} key={`stage-${scene.id}`}>
             <SceneArt scene={scene} profile={profile} />
             <div className="rz-mascot">
@@ -364,9 +378,13 @@ export function RizzyTour({
               Scene {String(index + 1).padStart(2, "0")} · {scene.kicker}
             </p>
             <h1 id="rizzy-scene-title" className="rz-title">
-              {scene.title}
+              {title}
             </h1>
-            <p className="rz-body">{scene.body}</p>
+            <p className="rz-body">
+              {isWelcome && firstName
+                ? `${firstName}, this is your corner of RIZZ. I'm your tour guide and resident hype cat — eight quick scenes, no homework, and you can skip any time.`
+                : scene.body}
+            </p>
 
             <ul className="rz-bullets">
               {scene.bullets.map((bullet) => (
@@ -440,7 +458,7 @@ export function RizzyTour({
       </main>
 
       <p className="sr-only" aria-live="polite">
-        Scene {index + 1} of {SCENES.length}: {scene.title}
+        Scene {index + 1} of {SCENES.length}: {title}
       </p>
     </div>
   );
@@ -496,6 +514,13 @@ function WelcomeArt() {
       <div className="rz-welcome-sticker">
         <Sparkles className="h-4 w-4" />
         <span>Meet Rizzy</span>
+      </div>
+      <div className="rz-welcome-trail">
+        {["Feed", "Realms", "Voice", "DMs"].map((label) => (
+          <span key={label} className="rz-welcome-chip">
+            {label}
+          </span>
+        ))}
       </div>
       <div className="rz-spark rz-spark-a">✦</div>
       <div className="rz-spark rz-spark-b">✦</div>
@@ -682,11 +707,11 @@ function RewardsArt() {
         </div>
         <div className="rz-paw-token">
           <PawPrint className="h-5 w-5" />
-          <span>Profile effects</span>
+          <span>Puppy Love</span>
         </div>
         <div className="rz-paw-token">
           <PawPrint className="h-5 w-5" />
-          <span>Avatar decorations</span>
+          <span>No card needed</span>
         </div>
       </div>
       <div className="rz-reward-tag">

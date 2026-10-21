@@ -1,0 +1,154 @@
+/* Puppy Love — Biscuit's idle loop.
+   Everything is CSS so the effect costs no JS frames. The scene is transparent
+   and pointer-free; these rules only move parts of the character. */
+
+.plx {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.plx-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Breathing and a small head bob keep the pup alive without bouncing. */
+.plx-head {
+  transform-box: fill-box;
+  transform-origin: 50% 92%;
+  animation: plx-bob 6.4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes plx-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-1.8px) rotate(0.7deg); }
+}
+
+.plx-ear {
+  transform-box: fill-box;
+  transform-origin: 50% 6%;
+}
+.plx-ear--left {
+  animation: plx-flop-left 7.2s ease-in-out infinite;
+}
+.plx-ear--right {
+  animation: plx-flop-right 8.1s ease-in-out infinite;
+}
+@keyframes plx-flop-left {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-2.6deg); }
+  44% { transform: rotate(1.4deg); }
+}
+@keyframes plx-flop-right {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  36% { transform: rotate(2.4deg); }
+  52% { transform: rotate(-1.2deg); }
+}
+
+/* Tail: two quick beats then rest, like a real wag. */
+.plx-tail {
+  transform-box: view-box;
+  transform-origin: 938px 318px;
+  animation: plx-wag 4.8s ease-in-out infinite;
+}
+@keyframes plx-wag {
+  0%, 58%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-5deg); }
+  24% { transform: rotate(4deg); }
+  36% { transform: rotate(-3.4deg); }
+  48% { transform: rotate(2deg); }
+}
+
+/* Raised paw waves hello on its own slower beat. */
+.plx-paw {
+  transform-box: view-box;
+  transform-origin: 556px 318px;
+  animation: plx-wave 5.4s ease-in-out infinite;
+}
+@keyframes plx-wave {
+  0%, 58%, 100% { transform: rotate(0deg); }
+  14% { transform: rotate(-6deg); }
+  28% { transform: rotate(4deg); }
+  42% { transform: rotate(-3deg); }
+}
+
+.plx-tongue {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: plx-pant 4.2s ease-in-out infinite;
+}
+@keyframes plx-pant {
+  0%, 100% { transform: scaleY(1); }
+  55% { transform: scaleY(1.14); }
+}
+
+/* Shades catch the light once per loop. */
+.plx-shades {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.plx-shades > path:nth-of-type(6),
+.plx-shades > path:nth-of-type(7) {
+  animation: plx-glint 7s ease-in-out infinite;
+}
+@keyframes plx-glint {
+  0%, 70%, 100% { opacity: 0.85; }
+  78% { opacity: 0.35; }
+  86% { opacity: 0.95; }
+}
+
+/* Hearts rise, lean with the drift and fade before they leave the banner. */
+.plx-heart {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: plx-heart var(--plx-dur, 10s) ease-in-out var(--plx-delay, 0s) infinite;
+}
+@keyframes plx-heart {
+  0% { transform: translate(0, 22px) scale(0.6); opacity: 0; }
+  18% { opacity: 0.9; }
+  55% { transform: translate(var(--plx-drift, 8px), -18px) scale(1); opacity: 0.75; }
+  100% { transform: translate(calc(var(--plx-drift, 8px) * 1.6), -62px) scale(0.72); opacity: 0; }
+}
+
+.plx-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: plx-spark 6.5s ease-in-out infinite;
+}
+@keyframes plx-spark {
+  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+  45% { opacity: 0.9; transform: scale(1.05); }
+  60% { opacity: 0.55; transform: scale(0.92); }
+}
+
+/* Off-screen profiles cost nothing. */
+.plx[data-visible="false"] * {
+  animation-play-state: paused !important;
+}
+
+/* Still frame: same composition, no movement. */
+.plx[data-calm="true"] * {
+  animation: none !important;
+  opacity: 1;
+}
+.plx[data-calm="true"] .plx-heart {
+  opacity: 0.6;
+}
+.plx[data-calm="true"] .plx-spark {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plx * { animation: none !important; }
+  .plx-heart { opacity: 0.6; }
+  .plx-spark { opacity: 0.45; }
+}
+
+[data-reduced-motion="true"] .plx * { animation: none !important; }
+[data-reduced-motion="true"] .plx-heart { opacity: 0.6; }
+[data-reduced-motion="true"] .plx-spark { opacity: 0.45; }

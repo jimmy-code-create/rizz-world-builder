@@ -383,20 +383,21 @@ marked "PROPOSED - NOT APPLIED" in its header per the project's ask-first
 rule, so it needs the owner's OK before running; apply it as-is (rerun-safe:
 `ADD COLUMN IF NOT EXISTS`).
 
-## 5. Web Slinger profile effect row
+## 5. Puppy Love profile effect row
 
 **Why:** the frontend catalogue is keyed by slug, but
 `user_profile_effects.effect_id` is a uuid foreign key to `profile_effects.id`.
 Equipping needs a real catalogue row to point at.
 
-**Frontend expects:** a `profile_effects` row with slug `fx-web-slinger` and
-type `profile_effect`. Apply `supabase/migrations/20261029000000_web_slinger_only.sql`
-as-is. It seeds (or refreshes) that row and deletes the retired cosmetics; the
-delete intentionally cascades their `user_profile_effects` rows, because those
-effects no longer exist anywhere in the app. Until it is applied, equipping
-still works on the owner's device through the existing local fallback, and the
-UI says the effect is not yet shared with visitors instead of throwing a
-PostgREST error.
+**Frontend expects:** a `profile_effects` row with slug `fx-puppy-love` and
+type `profile_effect`. Apply `supabase/migrations/20261030000000_puppy_love_effect.sql`
+as-is. It renames the old `fx-web-slinger` row in place (so an owner keeps their
+equipped effect and its uuid), refreshes the metadata, and deletes every other
+cosmetic; that delete intentionally cascades their `user_profile_effects` rows,
+because those effects no longer exist anywhere in the app. Until it is applied,
+equipping still works on the owner's device through the existing local
+fallback, and the UI says the effect is not yet shared with visitors instead of
+throwing a PostgREST error.
 
 ## Existing backend features the frontend reuses
 
@@ -426,7 +427,8 @@ PostgREST error.
    and the unsent placeholder appears for both.
 5. Upload one image to `chat-media` as an authenticated user and confirm a
    second user can display the posted URL.
-6. Apply `20261029000000_web_slinger_only.sql`, equip Web Slinger from
+6. Apply `20261030000000_puppy_love_effect.sql`, equip Puppy Love from
    `/effects`, and confirm `user_profile_effects` has one equipped row pointing
-   at the `fx-web-slinger` uuid. Open the profile in a second browser: the
-   effect is visible to a visitor. Re-running the migration changes nothing.
+   at the `fx-puppy-love` uuid. Open the profile in a second browser: Biscuit is
+   visible to a visitor. Re-running the migration changes nothing, and a
+   previously equipped Web Slinger row stays equipped under the new name.

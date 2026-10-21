@@ -4,12 +4,12 @@ import { ArrowLeft, Check, Eye, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { WebSlingerEffect } from "@/components/profile/WebSlingerEffect";
+import { PuppyLoveEffect } from "@/components/profile/PuppyLoveEffect";
 import { useAuth } from "@/lib/auth";
 import { useEquipped } from "@/lib/useEquipped";
 import {
   COSMETICS_ENABLED,
-  WEB_SLINGER_EFFECT,
+  PUPPY_LOVE_EFFECT,
   equipEffect,
   unequipEffect,
 } from "@/lib/effects";
@@ -23,10 +23,10 @@ export const Route = createFileRoute("/_app/effects")({
 /**
  * The effects shelf.
  *
- * There is exactly one cosmetic — the Web Slinger profile effect — so this is
- * a showcase rather than a marketplace: the scene plays at the size it plays
- * on a profile banner, with the avatar disc in place, and the owner can equip
- * or remove it. The preview surface is the page's own banner mock; the effect
+ * There is exactly one cosmetic — the Puppy Love profile effect — so this is
+ * a showcase rather than a marketplace: Biscuit plays at the size he plays on
+ * a profile banner, with the avatar disc in place, and the owner can equip or
+ * remove him. The preview surface is the page's own banner mock; the effect
  * itself is transparent vector art.
  */
 function EffectsPage() {
@@ -34,25 +34,25 @@ function EffectsPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const equippedQ = useEquipped(user?.id);
-  const isEquipped = equippedQ.data?.profile_effect?.slug === WEB_SLINGER_EFFECT.slug;
+  const isEquipped = equippedQ.data?.profile_effect?.slug === PUPPY_LOVE_EFFECT.slug;
   const profileUsername = profile?.username;
   const initial = (profile?.display_name || profileUsername || "?").charAt(0).toUpperCase();
 
   const equip = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to equip effects.");
-      return equipEffect(user.id, WEB_SLINGER_EFFECT.slug, "profile_effect");
+      return equipEffect(user.id, PUPPY_LOVE_EFFECT.slug, "profile_effect");
     },
     onSuccess: ({ persisted }) => {
       void qc.invalidateQueries({ queryKey: ["equipped", user?.id] });
-      toast.success("Web Slinger equipped", {
+      toast.success("Puppy Love equipped", {
         description: persisted
-          ? "It now shows on your profile for everyone."
+          ? "Biscuit now shows on your profile for everyone."
           : "Saved on this device. Apply the latest migration to show it to visitors.",
       });
     },
     onError: (error) => {
-      toast.error("Couldn't equip Web Slinger", {
+      toast.error("Couldn't equip Puppy Love", {
         description: error instanceof Error ? error.message : "Try again in a moment.",
       });
     },
@@ -61,11 +61,11 @@ function EffectsPage() {
   const remove = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to change effects.");
-      return unequipEffect(user.id, WEB_SLINGER_EFFECT.slug, "profile_effect");
+      return unequipEffect(user.id, PUPPY_LOVE_EFFECT.slug, "profile_effect");
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["equipped", user?.id] });
-      toast.success("Web Slinger removed from your profile");
+      toast.success("Puppy Love removed from your profile");
     },
     onError: (error) => {
       toast.error("Couldn't remove the effect", {
@@ -109,10 +109,10 @@ function EffectsPage() {
         <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-6">
           <div>
             <h2 className="font-display text-lg font-bold tracking-tight text-[var(--brand-paper,#f4f1e7)]">
-              {WEB_SLINGER_EFFECT.name}
+              {PUPPY_LOVE_EFFECT.name}
             </h2>
             <p className="mt-0.5 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
-              Profile effect · <span className="text-[#ff8d9c]">Mythic</span>
+              Profile effect · <span className="text-[var(--brand-signal,#c8ff3d)]">Mythic</span>
             </p>
           </div>
           {isEquipped && (
@@ -129,13 +129,13 @@ function EffectsPage() {
             className="relative h-44 overflow-hidden rounded-2xl sm:h-52"
             style={{
               background:
-                "linear-gradient(135deg, var(--brand-ink-3,#1c1c1f), color-mix(in srgb, #e8253f 16%, var(--brand-ink,#0a0a0b)))",
+                "radial-gradient(120% 140% at 70% 20%, color-mix(in srgb, #c9ff3d 22%, var(--brand-ink,#0a0a0b)), var(--brand-ink,#0a0a0b) 62%)",
             }}
             role="img"
-            aria-label="Web Slinger preview: a masked hero crouched on a web strand inside a profile banner"
+            aria-label="Puppy Love preview: Biscuit the dog in a lime hoodie and heart-shaped shades inside a profile banner"
           >
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--brand-ink-2,#131315)]/70 to-transparent" />
-            <WebSlingerEffect />
+            <PuppyLoveEffect />
             {/* The avatar disc sits in the shot so the composition is readable,
                 but it is chrome in the preview — the effect itself contains no
                 avatar, card or badge. */}
@@ -156,7 +156,7 @@ function EffectsPage() {
 
         <div className="space-y-4 px-4 pb-5 pt-8 sm:px-6">
           <p className="max-w-xl text-sm leading-relaxed text-[var(--brand-paper-dim,#a9a69c)]">
-            {WEB_SLINGER_EFFECT.description}
+            {PUPPY_LOVE_EFFECT.description}
           </p>
 
           <ul className="flex flex-wrap gap-2 text-[11px] font-medium text-[var(--brand-paper-dim,#a9a69c)]">

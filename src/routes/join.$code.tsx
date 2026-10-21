@@ -25,7 +25,7 @@ export const Route = createFileRoute("/join/$code")({
 
 function JoinPage() {
   const { code } = Route.useParams();
-  const { user } = useAuth();
+  const { user, profile, loading } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
   const autoJoinStarted = useRef(false);
@@ -65,8 +65,22 @@ function JoinPage() {
   });
   const joinInvite = join.mutate;
 
+  // A brand-new member finishes the welcome tour before joining anything.
+  // The invite code stays pending, so the tour hands them back here afterwards.
   useEffect(() => {
-    if (!user || autoJoinStarted.current) return;
+    if (loading || !user || !profile?.username) return;
+    if (!profile.tutorial_seen) {
+      try {
+        window.sessionStorage.setItem(PENDING_INVITE_KEY, code);
+      } catch {
+        /* session storage is optional */
+      }
+      nav({ to: "/tutorial", search: { replay: false } });
+    }
+  }, [code, loading, nav, profile, user]);
+
+  useEffect(() => {
+    if (!user || autoJoinStarted.current || !profile?.tutorial_seen) return;
     let pending = false;
     try {
       pending = window.sessionStorage.getItem(PENDING_INVITE_KEY) === code;
@@ -84,7 +98,7 @@ function JoinPage() {
     ) {
       try { window.sessionStorage.removeItem(PENDING_INVITE_KEY); } catch { /* optional */ }
     }
-  }, [code, invite.data, user, nav, joinInvite]);
+  }, [code, invite.data, user, nav, joinInvite, profile?.tutorial_seen]);
 
   const signInToJoin = () => {
     try { window.sessionStorage.setItem(PENDING_INVITE_KEY, code); } catch { /* optional */ }

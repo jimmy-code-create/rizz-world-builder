@@ -266,7 +266,7 @@ function ProfilePage() {
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  // Web Slinger is the only cosmetic left, and it is a full-profile layer: the
+  // Puppy Love is the only cosmetic left, and it is a full-profile layer: the
   // component renders nothing for a slug that no longer exists, so a stale row
   // can never resurrect a removed overlay.
   const shownEffect = eq?.profile_effect ?? null;

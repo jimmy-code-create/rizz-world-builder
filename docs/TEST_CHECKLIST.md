@@ -1,18 +1,19 @@
 # RIZZ Test Checklist
 
-## Web Slinger — the single profile effect (this pass)
+## Puppy Love — the single profile effect (this pass)
 
-- [ ] `/effects` shows one card: the Web Slinger at banner size, with the avatar disc in place. No other effects, decorations or nameplates are listed anywhere.
-- [ ] Equip it: the toast confirms, `/u/<you>` shows the hero in the banner, and the scene is still there after a reload.
-- [ ] Open the same profile in a second browser (or signed out, after the migration): the effect is visible to visitors, not just the owner.
-- [ ] Inspect the effect: the host and SVG have no background, no `<img>` and no full-canvas rect; the character is complete from mask to boots; webs leave both hands; the profile banner colour shows through the gaps.
+- [ ] `/effects` shows one card: Biscuit at banner size, with the avatar disc in place. No other effects, decorations or nameplates are listed anywhere, and nothing spider-shaped survives anywhere in the app.
+- [ ] Equip it: the toast confirms, `/u/<you>` shows the pup in the banner, and he is still there after a reload.
+- [ ] Open the same profile in a second browser (or signed out, after `20261030000000_puppy_love_effect.sql`): the effect is visible to visitors, not just the owner.
+- [ ] Inspect the scene: no `<img>`, no full-canvas rect, no stage background; the pup is complete from ears to paws, the hearts float out and fade, and the banner colour shows through.
+- [ ] The heart-shaped shades, heart nose and chest paw crest are all visible at phone banner width and still legible at 340px.
 - [ ] Click the avatar, name, edit/follow buttons and the tab bar: all still work — the effect never intercepts a pointer.
-- [ ] Enable OS reduced motion: the scene becomes a still with the strands drawn and the motes at rest. Disable it: the loop resumes.
-- [ ] On a phone-width banner the figure stays centred and complete; on a low-end device (`navigator.hardwareConcurrency <= 2`) it renders still.
+- [ ] Enable OS reduced motion: the scene becomes a still (head, ears, tail, paw, hearts at rest). Disable it: the loop resumes.
+- [ ] On a low-end device (`navigator.hardwareConcurrency <= 2`) it renders still.
 - [ ] Scroll the banner out of view and back: animations pause off screen and resume without a jump.
 - [ ] Remove the effect from `/effects`: the banner returns to its plain banner image/gradient.
-- [ ] Without `20261029000000_web_slinger_only.sql`, equipping still shows the effect for you and the toast says it is saved on this device.
-- [ ] `bun tests/web-slinger-effect.test.mjs` passes (13 checks); `bun tsc -b --noEmit` passes.
+- [ ] Apply `20261030000000_puppy_love_effect.sql`: the Web Slinger row is renamed to `fx-puppy-love` (an owner keeps it equipped), every other effect row is gone, and `rights_review` is false.
+- [ ] `bun tests/puppy-love-effect.test.mjs` passes; `bun tsc -b --noEmit` passes.
 
 ## Profile badge showcase (this pass)
 

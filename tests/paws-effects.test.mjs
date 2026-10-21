@@ -2,7 +2,7 @@
  * Paws economy + single-effect catalogue static guards.
  *
  * The economy (wallet, bounty rewards, ledger) is unchanged, but the cosmetics
- * catalogue is back to one entry: the Web Slinger profile effect. These checks
+ * catalogue is back to one entry: the Puppy Love profile effect. These checks
  * lock both halves down so a future gallery cannot quietly reintroduce removed
  * effects, and so the wallet rules cannot be dropped while the catalogue moves.
  *
@@ -42,7 +42,7 @@ const avatarDeco = readFileSync(
   "utf8",
 );
 const showcaseMigration = readFileSync(
-  new URL("../supabase/migrations/20261029000000_web_slinger_only.sql", import.meta.url),
+  new URL("../supabase/migrations/20261030000000_puppy_love_effect.sql", import.meta.url),
   "utf8",
 );
 const walletMigration = readFileSync(
@@ -61,11 +61,11 @@ const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url),
 
 await check("the catalogue is one profile effect and nothing else", async () => {
   assert.ok(effectsLib.includes("export const COSMETICS_ENABLED = true"));
-  assert.ok(effectsLib.includes('export const WEB_SLINGER_SLUG = "fx-web-slinger"'));
-  assert.ok(effectsLib.includes("id: WEB_SLINGER_SLUG"));
+  assert.ok(effectsLib.includes('export const PUPPY_LOVE_SLUG = "fx-puppy-love"'));
+  assert.ok(effectsLib.includes("id: PUPPY_LOVE_SLUG"));
   assert.ok(effectsLib.includes('type: "profile_effect"'));
   assert.equal(
-    (effectsLib.match(/export const PROFILE_EFFECTS: ProfileEffect\[\] = \[WEB_SLINGER_EFFECT\]/g) ?? [])
+    (effectsLib.match(/export const PROFILE_EFFECTS: ProfileEffect\[\] = \[PUPPY_LOVE_EFFECT\]/g) ?? [])
       .length,
     1,
     "PROFILE_EFFECTS must still be the one-effect array",
@@ -83,11 +83,11 @@ await check("the catalogue is one profile effect and nothing else", async () => 
 await check("the effects page showcases and equips the one effect", async () => {
   assert.ok(effectsPage.includes("Equip on my profile"));
   assert.ok(effectsPage.includes("Remove from profile"));
-  assert.ok(effectsPage.includes("WebSlingerEffect"));
+  assert.ok(effectsPage.includes("PuppyLoveEffect"));
   assert.ok(effectsLib.includes("equipEffect"));
-  assert.ok(effectsComponent.includes("WEB_SLINGER_SLUG"));
+  assert.ok(effectsComponent.includes("PUPPY_LOVE_SLUG"));
   assert.ok(
-    effectsComponent.includes("slug !== WEB_SLINGER_SLUG"),
+    effectsComponent.includes("slug !== PUPPY_LOVE_SLUG"),
     "a stale slug must render nothing",
   );
 });
@@ -122,9 +122,10 @@ await check("the retired cinematic pipeline is gone", async () => {
 });
 
 await check("the migration retires the old catalogue and keeps the effect", async () => {
-  assert.ok(showcaseMigration.includes("'fx-web-slinger',"));
+  assert.ok(showcaseMigration.includes("'fx-puppy-love',"));
+  assert.ok(showcaseMigration.includes("UPDATE public.profile_effects"));
   assert.ok(showcaseMigration.includes("DELETE FROM public.profile_effects"));
-  assert.ok(showcaseMigration.includes("WHERE slug <> 'fx-web-slinger'"));
+  assert.ok(showcaseMigration.includes("WHERE slug <> 'fx-puppy-love'"));
   assert.ok(showcaseMigration.includes("ON CONFLICT (slug) DO UPDATE"));
 });
 

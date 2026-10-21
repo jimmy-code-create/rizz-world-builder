@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-10-21 — Puppy Love replaces the Web Slinger, and the tour greets new members
+
+### Biscuit takes over the banner
+- The Spider-Man-style Web Slinger effect is **gone**: component, scene CSS,
+  docs and tests are removed. In its place is **Puppy Love** (`fx-puppy-love`),
+  an original RIZZ character: Biscuit, a floppy-eared pup in a lime hoodie and
+  heart-shaped shades, leaning into the banner with a waving paw and hearts
+  floating off the edge.
+- The scene is transparent inline SVG again — no raster art, no stage, no
+  full-canvas rectangle — and keeps the safety rails: `pointer-events: none`,
+  `aria-hidden`, off-screen pause, `prefers-reduced-motion` still frame and a
+  low-end-device fallback.
+- `20261030000000_puppy_love_effect.sql` **renames the existing catalogue row**
+  instead of deleting it, so anyone already wearing the old effect keeps their
+  fitted effect (and its uuid) under the new name, then removes every other
+  cosmetic.
+- `tests/puppy-love-effect.test.mjs` guards the one-effect catalogue, the
+  transparent scene, the dog's parts, the motion fallbacks and the migration.
+
+### The welcome tour is a real welcome
+- New members are now sent to `/tutorial` **before** a pending invite is
+  handled, on login, signup and the join page; the invite stays pending and the
+  tour hands them back to it when they finish or skip. Finishing writes
+  `tutorial_seen` once, and the app shell keeps holding the feed until it is set.
+- The first scene greets the member by the name they just chose (“Hey Jimmy —
+  welcome to RIZZ”), with a larger mascot on a lime halo, the RIZZ wordmark
+  behind Rizzy, and Feed · Realms · Voice · DMs chips.
+- Tour copy now describes what actually ships: Puppy Love, one profile effect,
+  and no removed avatar decorations or nameplates.
+
 ## 2026-10-21 — Every badge gets its own emblem, and the preview sheet swipes
 
 ### One symbol per award

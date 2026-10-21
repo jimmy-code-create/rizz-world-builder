@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Global cosmetics killswitch.
  *
- * Only one cosmetic ships today: the Web Slinger profile effect. Every other
+ * Only one cosmetic ships today: the Puppy Love profile effect. Every other
  * decoration, nameplate and profile overlay has been removed, and the catalog
  * below is the only source of truth for what can be equipped. The flag stays
  * so the whole surface can still be paused in one line.
@@ -23,30 +23,30 @@ export type ProfileEffect = {
   preview_color: string;
 };
 
-export const WEB_SLINGER_SLUG = "fx-web-slinger";
+export const PUPPY_LOVE_SLUG = "fx-puppy-love";
 
 /**
  * The one effect.
  *
- * An original masked web-slinger — red-and-blue suit, black web lattice,
- * white lenses — crouched on a web strand with both hands slinging. It is
- * drawn as transparent inline SVG (see `WebSlingerEffect.tsx`), so there is no
- * raster asset, no background and nothing to clip.
+ * **Biscuit**, RIZZ's own floppy-eared pup: lime hoodie, heart-shaped shades,
+ * one paw up and hearts drifting off the banner. It is an original character
+ * drawn as transparent inline SVG (see `PuppyLoveEffect.tsx`) — no raster
+ * asset, no background and nothing to clip.
  */
-export const WEB_SLINGER_EFFECT: ProfileEffect = {
-  id: WEB_SLINGER_SLUG,
-  slug: WEB_SLINGER_SLUG,
-  name: "Web Slinger",
+export const PUPPY_LOVE_EFFECT: ProfileEffect = {
+  id: PUPPY_LOVE_SLUG,
+  slug: PUPPY_LOVE_SLUG,
+  name: "Puppy Love",
   description:
-    "A masked web-slinger crouches on a strand, lenses lit, webbing thrown across your profile.",
+    "Biscuit, RIZZ's heart-eyed pup, leans into your banner in a lime hoodie and sends hearts floating across your profile.",
   type: "profile_effect",
   rarity: "mythic",
   unlock_rizz: 1800,
-  preview_color: "#e8253f",
+  preview_color: "#c9ff3d",
 };
 
 /** Every effect the app knows about. */
-export const PROFILE_EFFECTS: ProfileEffect[] = [WEB_SLINGER_EFFECT];
+export const PROFILE_EFFECTS: ProfileEffect[] = [PUPPY_LOVE_EFFECT];
 
 const EFFECTS_BY_SLUG = new Map(PROFILE_EFFECTS.map((effect) => [effect.slug, effect]));
 

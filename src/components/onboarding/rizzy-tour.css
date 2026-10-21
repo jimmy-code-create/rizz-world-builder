@@ -1467,6 +1467,122 @@
   }
 }
 
+/* ---------- Welcome scene: Rizzy's hero moment ---------- */
+
+/* A lime spotlight and bigger mascot turn scene one into a real greeting,
+   while later scenes keep the calmer shelf-like stage. */
+.rz-stage--welcome::after {
+  position: absolute;
+  top: -26%;
+  left: 50%;
+  z-index: 0;
+  width: 82%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(201, 255, 61, 0.16), transparent 62%);
+  content: "";
+  pointer-events: none;
+}
+
+.rz-welcome-halo {
+  position: absolute;
+  bottom: -44px;
+  left: 36%;
+  z-index: 2;
+  width: min(78%, 320px);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border: 1px solid rgba(201, 255, 61, 0.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 255, 61, 0.16), rgba(201, 255, 61, 0.04) 58%, transparent 72%);
+  box-shadow:
+    0 0 0 22px rgba(201, 255, 61, 0.025),
+    0 0 0 44px rgba(201, 255, 61, 0.012);
+  pointer-events: none;
+}
+
+.rz-stage--welcome .rz-mascot {
+  left: 36%;
+  width: min(70%, 290px);
+  filter:
+    drop-shadow(0 24px 28px rgba(0, 0, 0, 0.52))
+    drop-shadow(0 0 30px rgba(201, 255, 61, 0.2));
+}
+
+.rz-welcome-wordmark {
+  position: absolute;
+  right: 8px;
+  bottom: 10px;
+  z-index: 0;
+  color: transparent;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(58px, 17vw, 142px);
+  font-weight: 800;
+  line-height: 0.74;
+  letter-spacing: -0.055em;
+  -webkit-text-stroke: 1px rgba(201, 255, 61, 0.18);
+  user-select: none;
+  pointer-events: none;
+}
+
+.rz-prop-welcome {
+  top: 14px;
+  right: 12px;
+  bottom: auto;
+  left: auto;
+  display: flex;
+  width: auto;
+  max-width: 152px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.rz-welcome-trail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rz-welcome-chip {
+  border: 1px solid rgba(201, 255, 61, 0.26);
+  border-radius: 9999px;
+  background: rgba(9, 9, 11, 0.64);
+  padding: 3px 7px;
+  color: var(--rz-lime);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+
+@media (min-width: 641px) {
+  .rz-welcome-halo {
+    bottom: -60px;
+    left: 38%;
+    width: min(64%, 360px);
+  }
+
+  .rz-stage--welcome .rz-mascot {
+    left: 38%;
+    width: min(62%, 340px);
+  }
+
+  .rz-prop-welcome {
+    top: 18px;
+    right: 18px;
+    max-width: 186px;
+    gap: 8px;
+  }
+
+  .rz-welcome-chip {
+    padding: 4px 9px;
+    font-size: 9px;
+  }
+}
+
 /* ---------- Motion preferences ---------- */
 
 @media (prefers-reduced-motion: reduce) {

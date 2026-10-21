@@ -32,7 +32,13 @@ function SignupPage() {
 
   useEffect(() => {
     if (!user || authLoading || profileError) return;
-    // A new account created from an invite link joins it straight away.
+    // New members meet Rizzy first, even when they arrived from an invite
+    // link. The tour keeps the invite pending and hands them back afterwards.
+    if (profile?.username && !profile.tutorial_seen) {
+      nav({ to: "/tutorial", search: { replay: false } });
+      return;
+    }
+    // An existing account created from an invite link joins it straight away.
     const pendingInvite = getPendingInvitePath();
     if (pendingInvite) {
       window.location.replace(pendingInvite);
@@ -57,7 +63,7 @@ function SignupPage() {
       : await supabase.auth.signUp({
         email, password,
         options: {
-          emailRedirectTo: window.location.origin + "/feed",
+          emailRedirectTo: window.location.origin + "/tutorial",
           data: { username, display_name: username, avatar_url: randomDefaultAvatar(username) },
         },
       });

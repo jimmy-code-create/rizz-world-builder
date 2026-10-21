@@ -12,7 +12,7 @@ type Props = {
  * A plain avatar.
  *
  * Avatar decorations were part of the cosmetics catalogue that was removed
- * when the profile effects were trimmed to the single Web Slinger effect. The
+ * when the profile effects were trimmed to the single Puppy Love effect. The
  * component and its call sites stay so every avatar surface keeps its exact
  * size, ring and layout.
  */

@@ -26,6 +26,13 @@ function LoginPage() {
 
   useEffect(() => {
     if (!user || authLoading || profileError) return;
+    // New members see the welcome tour before anything else — including a
+    // pending invite. Finishing the tour lands them on the invite, so the link
+    // is not lost, it just does not skip onboarding.
+    if (profile?.username && !profile.tutorial_seen) {
+      nav({ to: "/tutorial", search: { replay: false } });
+      return;
+    }
     // Someone who followed an invite link finishes joining instead of landing
     // on the feed. Group and realm invites are both handled here.
     const pendingInvite = getPendingInvitePath();
