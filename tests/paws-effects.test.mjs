@@ -54,7 +54,7 @@ const scoreMigration = readFileSync(
   "utf8",
 );
 const tour = readFileSync(
-  new URL("../src/components/onboarding/RizzyTour.tsx", import.meta.url),
+  new URL("../src/components/onboarding/WelcomeTourOverlay.tsx", import.meta.url),
   "utf8",
 );
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
@@ -150,7 +150,8 @@ await check("Paws replaces the visible Rizz score", async () => {
 await check("tour describes live Paws instead of a preview", async () => {
   assert.ok(tour.includes("Earned in bounties."));
   assert.ok(tour.includes("Claim bounties"));
-  assert.ok(tour.includes("Paws are live."));
+  assert.match(tour, /title: "Paws are live"/);
+  assert.match(tour, /\[\"\[data-tour='nav-drops'\]\"/, "the Paws step must point at the real Bounties nav");
   assert.ok(!tour.includes("Paws preview · cosmetics not live yet"));
 });
 

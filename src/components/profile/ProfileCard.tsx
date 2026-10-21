@@ -15,6 +15,8 @@ import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence
 import { Badge } from "@/components/Badge";
 import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
+import { useEquipped } from "@/lib/useEquipped";
+import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,6 +412,9 @@ export function ProfileCard({
   });
   // Same realtime presence store as the profile page.
   const presenceRow = usePresence(userId);
+  // The equipped effect follows the member onto every card surface: leaderboard,
+  // realm previews and the menu header, not just the full profile page.
+  const equipped = useEquipped(userId);
   const status = presenceRow ? publicStatusOf(presenceRow, !!isSelf) : "offline";
   const customStatus = presenceRow ? publicCustomStatus(presenceRow, !!isSelf) : null;
 
@@ -616,6 +621,9 @@ export function ProfileCard({
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.09]" aria-hidden="true" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#141416] via-[#141416]/80 to-transparent" aria-hidden="true" />
+        {equipped.data?.profile_effect && (
+          <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
+        )}
         <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>

@@ -1,27 +1,34 @@
 /**
- * Welcome tour — every new member meets Rizzy before the app opens.
+ * Welcome tour — new members meet Rizzy over the real app, not a slide deck.
  *
- * These guards cover the paths that used to skip onboarding: an invite link
- * handled before the tour, and a direct join page. They also lock the welcome
- * scene's personalized greeting and hero presentation in place.
+ * The guards below cover the handoff from profile setup into the feed, the
+ * invite that must survive the tour, the single completion write, and the
+ * coach marks that spotlight real controls instead of a mock-up.
  *
  * Run: bun tests/welcome-tour.test.mjs
  */
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [login, signup, join, tutorial, shell, tour, tourCss, onboarding] = await Promise.all([
-  read("src/routes/login.tsx"),
-  read("src/routes/signup.tsx"),
-  read("src/routes/join.$code.tsx"),
-  read("src/routes/tutorial.tsx"),
-  read("src/components/AppShell.tsx"),
-  read("src/components/onboarding/RizzyTour.tsx"),
-  read("src/components/onboarding/rizzy-tour.css"),
-  read("src/lib/onboarding.ts"),
-]);
+const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding, settings, accountMenu, feed, postCard] =
+  await Promise.all([
+    read("src/routes/login.tsx"),
+    read("src/routes/signup.tsx"),
+    read("src/routes/join.$code.tsx"),
+    read("src/routes/tutorial.tsx"),
+    read("src/components/AppShell.tsx"),
+    read("src/components/onboarding/WelcomeTourHost.tsx"),
+    read("src/components/onboarding/WelcomeTourOverlay.tsx"),
+    read("src/components/onboarding/welcome-tour.css"),
+    read("src/lib/onboarding.ts"),
+    read("src/routes/_app/settings/index.tsx"),
+    read("src/components/account/AccountMenu.tsx"),
+    read("src/routes/_app/feed.tsx"),
+    read("src/components/PostCard.tsx"),
+  ]);
 
 let passed = 0;
 async function check(name, fn) {
@@ -36,25 +43,37 @@ async function check(name, fn) {
   }
 }
 
-await check("the tour is the gate for accounts without tutorial_seen", async () => {
+await check("new members finish onboarding on the feed", async () => {
   assert.match(onboarding, /if \(!profile\.tutorial_seen\) return "\/tutorial";/);
-  assert.match(shell, /else if \(!profile\.tutorial_seen\) nav\(\{ to: "\/tutorial", search: \{ replay: false \} \}\)/);
-  // The shell must also hold the app behind the loader until the tour is done.
-  assert.match(shell, /if \(loading \|\| !user \|\| !profile\?\.username \|\| !profile\.tutorial_seen\) \{/);
+  // The shell sends new members to the feed, where the coach marks can point
+  // at the real composer, stories, nav and account menu.
+  assert.match(
+    shell,
+    /if \(!profile\.tutorial_seen && path !== "\/feed"\) nav\(\{ to: "\/feed" \}\)/,
+  );
+  assert.ok(
+    !/if \(loading \|\| !user \|\| !profile\?\.username \|\| !profile\.tutorial_seen\)/.test(shell),
+    "the shell must render the feed while the tour is open",
+  );
+  assert.match(host, /if \(path !== "\/feed"\) return;/);
+  assert.match(host, /setOpen\(true\)/);
 });
 
-await check("a new member is sent to the tour before a pending invite", async () => {
+await check("the profile steps still come before the tour", async () => {
   for (const [name, source] of [
     ["login", login],
     ["signup", signup],
   ]) {
-    const tourAt = source.indexOf('nav({ to: "/tutorial", search: { replay: false } })');
+    const profileAt = source.indexOf('nav({ to: "/tutorial", search: { replay: false } })');
     const inviteAt = source.indexOf("getPendingInvitePath()");
-    assert.ok(tourAt > -1, `${name} never routes new members to the tour`);
+    assert.ok(profileAt > -1, `${name} never routes new members through profile setup`);
     assert.ok(inviteAt > -1, `${name} lost the pending-invite handoff`);
-    assert.ok(tourAt < inviteAt, `${name} checks the invite before the welcome tour`);
+    assert.ok(profileAt < inviteAt, `${name} checks the invite before onboarding`);
     assert.match(source, /if \(profile\?\.username && !profile\.tutorial_seen\)/, `${name} gate`);
   }
+  assert.match(tutorial, /setTourPending\(user\.id, true\)/);
+  assert.match(tutorial, /nav\(\{ to: "\/feed" \}\)/);
+  assert.ok(!tutorial.includes("RizzyTour"), "the slide deck must be gone");
 });
 
 await check("the join page keeps the invite and waits for the tour", async () => {
@@ -63,35 +82,70 @@ await check("the join page keeps the invite and waits for the tour", async () =>
   assert.match(join, /if \(!user \|\| autoJoinStarted\.current \|\| !profile\?\.tutorial_seen\) return;/);
 });
 
-await check("only finishing or skipping writes tutorial_seen", async () => {
-  assert.match(tutorial, /\.update\(\{ tutorial_seen: true \}\)/);
-  assert.equal((tutorial.match(/tutorial_seen: true/g) ?? []).length, 1, "one completion write");
+await check("only the overlay marks the tour complete", async () => {
+  assert.match(overlay, /\.update\(\{ tutorial_seen: true \}\)/);
+  assert.equal((overlay.match(/tutorial_seen: true/g) ?? []).length, 1, "one completion write");
   assert.ok(
-    !/tutorial_seen: true/.test(tour) && !/tutorial_seen: true/.test(onboarding),
-    "the tour component must not mark itself complete",
+    !/tutorial_seen: true/.test(host) && !/tutorial_seen: true/.test(tutorial),
+    "the host and profile steps must not mark the tour complete",
   );
-  // Finishing still resolves the invite that the tour preserved.
-  assert.match(tutorial, /getPendingInvitePath\(\)/);
+  assert.match(overlay, /getPendingInvitePath\(\)/);
+  assert.match(host, /setTourPending\(user\.id, false\)/);
 });
 
-await check("welcome is a personalized brand moment, not a generic slide", async () => {
-  assert.match(tour, /const firstName = \(profile\?\.display_name \|\| profile\?\.username/, "greets by name");
-  assert.match(tour, /`Hey \$\{firstName\} — welcome to RIZZ\.`/, "personal welcome headline");
-  assert.match(tour, /rz-stage--welcome/, "welcome gets its own stage treatment");
-  assert.match(tour, /rz-welcome-halo/);
-  assert.match(tour, /rz-welcome-wordmark/);
-  assert.match(tour, /\[\"Feed\", \"Realms\", \"Voice\", \"DMs\"\]/, "brand feature trail");
-  assert.match(tourCss, /\.rz-stage--welcome \.rz-mascot \{[\s\S]*?width: min\(70%, 290px\)/);
-  assert.match(tourCss, /\.rz-welcome-halo \{[\s\S]*?rgba\(201, 255, 61/);
-  assert.match(tourCss, /\.rz-welcome-chip \{/);
+await check("the tour is a transparent cat over the real controls", async () => {
+  assert.match(overlay, /className="wt-root"/);
+  assert.match(overlay, /className="wt-spot"/);
+  assert.match(overlay, /className=\"wt-cat\"/);
+  assert.match(overlay, /<Rizzy pose=\{step\.pose\} \/>/);
+  for (const target of [
+    "\"#feed-composer\"",
+    "\"[data-tour='stories']\"",
+    "\"[data-tour='post-like']\"",
+    "\"[data-tour='account']\"",
+    "\"[data-tour='nav-realms']\"",
+    "\"[data-tour='mobile-more']\"",
+  ]) {
+    assert.ok(overlay.includes(target), `the tour stopped pointing at ${target}`);
+  }
+  // The app really exposes those hooks.
+  assert.match(feed, /data-tour="stories"/);
+  assert.match(feed, /data-tour="composer"/);
+  assert.match(postCard, /data-tour="post"/);
+  assert.match(postCard, /data-tour="post-like"/);
+  assert.match(shell, /"nav-realms"/);
+  assert.match(shell, /data-tour="mobile-more"/);
+  assert.match(accountMenu, /data-tour="account"/);
+  assert.match(tourCss, /\.wt-root \{[\s\S]*?pointer-events: none;/, "the layer must not block the page");
+  assert.match(tourCss, /\.wt-spot \{[\s\S]*?9999px/, "the spotlight must dim everything but the control");
+  assert.match(tourCss, /\.wt-cat \{[\s\S]*?animation: wt-float/);
+  assert.match(tourCss, /prefers-reduced-motion: reduce/);
 });
 
-await check("the welcome copy matches what ships: one effect, no spider", async () => {
-  assert.ok(tour.includes("Puppy Love"));
-  assert.ok(tour.includes("Biscuit"));
-  assert.ok(!/web[- ]slinger/i.test(tour), "the retired effect is still advertised in the tour");
-  assert.ok(!tour.includes("avatar decoration"), "removed decoration shelf is still advertised");
-  assert.ok(!tour.includes("nameplate"), "removed nameplate is still advertised");
+await check("the old slide deck is retired", async () => {
+  for (const path of [
+    "src/components/onboarding/RizzyTour.tsx",
+    "src/components/onboarding/rizzy-tour.css",
+  ]) {
+    assert.ok(!existsSync(new URL(`../${path}`, import.meta.url)), `${path} still exists`);
+  }
+});
+
+await check("welcome is still a personal greeting", async () => {
+  assert.match(overlay, /const firstName = displayName\.trim\(\)/);
+  assert.match(overlay, /`Hi \$\{firstName\} — I'm Rizzy\.`/);
+});
+
+await check("replay starts over the feed from Settings and the account menu", async () => {
+  assert.match(onboarding, /export const WELCOME_TOUR_EVENT = "rizz:welcome-tour"/);
+  assert.match(onboarding, /export function startWelcomeTour\(\)/);
+  assert.match(host, /window\.addEventListener\(WELCOME_TOUR_EVENT, onReplay\)/);
+  assert.match(settings, /startWelcomeTour/);
+  assert.match(accountMenu, /startWelcomeTour/);
+  assert.match(accountMenu, /nav\(\{ to: "\/feed" \}\)/);
+  for (const source of [settings, accountMenu]) {
+    assert.ok(!source.includes("search={{ replay: true }}"), "a link still opens the retired tour route");
+  }
 });
 
 console.log(`\n${passed} checks passed.`);

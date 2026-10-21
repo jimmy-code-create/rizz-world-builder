@@ -26,6 +26,9 @@ import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useEquipped } from "@/lib/useEquipped";
+import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { startWelcomeTour } from "@/lib/onboarding";
 
 type ShellProfile = {
   username: string | null;
@@ -83,6 +86,9 @@ export function AccountMenu({
   const nav = useNavigate();
   const isMobile = useIsMobile();
   const selfPresence = useSelfPresence();
+  // The equipped profile effect rides along on the menu header, so a member
+  // who is wearing Puppy Love sees it here too, not only on their profile.
+  const equipped = useEquipped(user?.id);
   const [open, setOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
@@ -308,22 +314,33 @@ export function AccountMenu({
     );
   };
 
-  const sep = isMobile ? (
-    <div aria-hidden className="my-1 h-px bg-[#2a2a2e]" />
-  ) : (
-    <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />
+  // Desktop groups its rows into two columns, so separators are a phone-only
+  // device there; the columns get headings and a hairline divider instead.
+  const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-[#2a2a2e]" /> : null;
+
+  const startTour = () => {
+    setOpen(false);
+    resetSub();
+    nav({ to: "/feed" });
+    window.setTimeout(startWelcomeTour, 80);
+  };
+
+  const sectionLabel = (label: string) => (
+    <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+      {label}
+    </p>
   );
 
   const body = username ? (
-    <div>
+    <div className={isMobile ? undefined : "grid grid-cols-2 gap-x-2"}>
       {/* Header card: banner, avatar + dot, custom status, stats. Opens the profile card. */}
       <button
         type="button"
         onClick={openCard}
         aria-label={`Open your profile card, @${username}`}
-        className="block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
       >
-        <span className="relative block h-24 w-full overflow-hidden" aria-hidden>
+        <span className="relative block h-28 w-full overflow-hidden md:h-40" aria-hidden>
           <span
             className="absolute inset-0"
             style={{
@@ -337,6 +354,9 @@ export function AccountMenu({
             className="absolute inset-0"
             style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
           />
+          {equipped.data?.profile_effect && (
+            <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
+          )}
           <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
         </span>
         <span className="flex items-center gap-3 px-3">
@@ -390,7 +410,7 @@ export function AccountMenu({
       </button>
 
       {/* Status submenu */}
-      <div className="mt-1">
+      <div className={cn("mt-1", !isMobile && "col-span-2")}>
         <button
           type="button"
           onClick={() => setStatusExpanded((prev) => !prev)}
@@ -492,8 +512,9 @@ export function AccountMenu({
 
       {sep}
 
-      {/* Group 1: destinations */}
-      <div className="space-y-0.5">
+      {/* Group 1: destinations — left column on desktop. */}
+      <div className={cn("space-y-0.5", !isMobile && "col-start-1 row-start-3 self-start")}>
+        {!isMobile && sectionLabel("Account")}
         {destRow("/u/$username", { username }, UserIcon, "View profile")}
         {destRow("/settings/profile", undefined, Pencil, "Edit profile")}
         {destRow("/bookmarks", undefined, Bookmark, "Saved", stats?.saved ?? 0, "posts")}
@@ -503,8 +524,14 @@ export function AccountMenu({
 
       {sep}
 
-      {/* Group 2: accounts + link */}
-      <div className="space-y-0.5">
+      {/* Group 2 + 3: the right column on desktop, one list on a phone. */}
+      <div
+        className={cn(
+          "space-y-0.5",
+          !isMobile && "col-start-2 row-start-3 self-start border-l border-white/[0.06] pl-2",
+        )}
+      >
+        {!isMobile && sectionLabel("More")}
         <button
           type="button"
           onClick={() => setAccountsExpanded((prev) => !prev)}
@@ -561,47 +588,43 @@ export function AccountMenu({
           </div>
         )}
         {actionRow("copy-link", Link2, "Copy profile link", () => void copyLink())}
-      </div>
-
-      {sep}
-
-      {/* Group 3: settings + help */}
-      <div className="space-y-0.5">
+        {!isMobile && <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />}
         {destRow("/settings", undefined, Settings, "Settings")}
         {actionRow("help", HelpCircle, "Help & feedback", () => closeThen(() => setHelpOpen(true)))}
+        {actionRow("replay-tour", Sparkles, "Welcome tour", startTour)}
       </div>
 
-      {sep}
-
-      {/* Group 4: sign out */}
-      {confirmSignOut ? (
-        <div className="flex min-h-12 items-center justify-between gap-2 px-3" role="alert">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#ff5d5d]">
-            Sign out of @{username}?
-          </span>
-          <span className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => void doSignOut()}
-              className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-[#ff5d5d] transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-            >
-              Sign out
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmSignOut(false)}
-              className="min-h-11 rounded-lg bg-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-            >
-              Cancel
-            </button>
-          </span>
-        </div>
-      ) : (
-        actionRow("sign-out", LogOut, "Sign out", () => setConfirmSignOut(true), {
-          danger: true,
-          ariaLabel: "Sign out",
-        })
-      )}
+      {/* Group 4: sign out, pinned to the bottom of the panel */}
+      <div className={cn(!isMobile && "col-span-2 mt-1 border-t border-white/[0.06] pt-1")}>
+        {confirmSignOut ? (
+          <div className="flex min-h-12 items-center justify-between gap-2 px-3" role="alert">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#ff5d5d]">
+              Sign out of @{username}?
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => void doSignOut()}
+                className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-[#ff5d5d] transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
+                Sign out
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmSignOut(false)}
+                className="min-h-11 rounded-lg bg-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
+                Cancel
+              </button>
+            </span>
+          </div>
+        ) : (
+          actionRow("sign-out", LogOut, "Sign out", () => setConfirmSignOut(true), {
+            danger: true,
+            ariaLabel: "Sign out",
+          })
+        )}
+      </div>
     </div>
   ) : (
     <div className="space-y-2 p-1" role="status" aria-label="Loading account">
@@ -647,7 +670,7 @@ export function AccountMenu({
     <>
       {isMobile ? (
         <>
-          <button type="button" onClick={() => { resetSub(); setOpen(true); }} aria-label={triggerLabel} className={triggerClass}>
+          <button type="button" data-tour="account" onClick={() => { resetSub(); setOpen(true); }} aria-label={triggerLabel} className={triggerClass}>
             {triggerInner}
           </button>
           <Sheet
@@ -691,14 +714,16 @@ export function AccountMenu({
           }}
         >
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={triggerLabel} className={triggerClass}>
+            <button type="button" data-tour="account" aria-label={triggerLabel} className={triggerClass}>
               {triggerInner}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
+            side="right"
             align="end"
-            collisionPadding={8}
-            className="max-h-[85dvh] w-[300px] overflow-y-auto rounded-2xl border border-[#2a2a2e] bg-[#141416] p-2 shadow-2xl"
+            sideOffset={12}
+            collisionPadding={12}
+            className="max-h-[min(85dvh,46rem)] w-[540px] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl border border-[#2a2a2e] bg-[#141416] p-2.5 shadow-[0_28px_80px_-20px_rgba(0,0,0,0.9)]"
           >
             {body}
           </DropdownMenuContent>
@@ -743,17 +768,19 @@ export function AccountMenu({
               </span>
               Bots & developer tools
             </Link>
-            <Link
-              to="/tutorial"
-              search={{ replay: true }}
-              onClick={() => setHelpOpen(false)}
+            <button
+              type="button"
+              onClick={() => {
+                setHelpOpen(false);
+                startTour();
+              }}
               className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
                 <Sparkles className="h-4 w-4 text-primary" />
               </span>
               Replay the welcome tour
-            </Link>
+            </button>
             <Link
               to="/settings/account"
               onClick={() => setHelpOpen(false)}

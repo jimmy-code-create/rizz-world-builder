@@ -1,0 +1,338 @@
+/* Welcome tour — a floating, transparent Rizzy over the live app.
+   The layer never blocks the page: only the speech bubble takes pointers, so
+   the highlighted control can be used while the tour is open. */
+
+.wt-root {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  pointer-events: none;
+  color: #f4f1e7;
+  font-family: inherit;
+}
+
+.wt-dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, rgba(8, 9, 6, 0.62), rgba(4, 5, 3, 0.82));
+  pointer-events: none;
+}
+
+/* The lit window around the real control; the huge shadow dims everything else. */
+.wt-spot {
+  position: fixed;
+  z-index: 0;
+  border: 1px solid rgba(201, 255, 61, 0.55);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 9999px rgba(4, 5, 3, 0.76),
+    0 0 0 4px rgba(201, 255, 61, 0.08),
+    0 18px 50px -18px rgba(0, 0, 0, 0.9);
+  transition:
+    left 280ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    top 280ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    width 280ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    height 280ms cubic-bezier(0.22, 0.9, 0.24, 1);
+  pointer-events: none;
+}
+
+.wt-topbar {
+  position: fixed;
+  top: max(env(safe-area-inset-top), 12px);
+  right: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.wt-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto;
+  border: 1px solid rgba(244, 241, 231, 0.12);
+  border-radius: 9999px;
+  background: rgba(9, 10, 7, 0.6);
+  padding: 7px 10px;
+  backdrop-filter: blur(10px);
+}
+
+.wt-dot {
+  height: 4px;
+  width: 12px;
+  border-radius: 9999px;
+  background: rgba(244, 241, 231, 0.2);
+  transition: width 200ms ease, background-color 200ms ease;
+}
+
+.wt-dot--done {
+  background: rgba(201, 255, 61, 0.55);
+}
+
+.wt-dot--current {
+  width: 22px;
+  background: #c9ff3d;
+}
+
+.wt-count {
+  border-radius: 9999px;
+  background: rgba(9, 10, 7, 0.6);
+  padding: 6px 9px;
+  color: rgba(244, 241, 231, 0.7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(10px);
+}
+
+.wt-skip {
+  pointer-events: auto;
+  min-height: 36px;
+  border: 1px solid rgba(244, 241, 231, 0.14);
+  border-radius: 9999px;
+  background: rgba(9, 10, 7, 0.66);
+  padding: 0 13px;
+  color: #f4f1e7;
+  font-size: 12px;
+  font-weight: 650;
+  backdrop-filter: blur(10px);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.wt-skip:hover {
+  border-color: rgba(201, 255, 61, 0.35);
+  background: rgba(201, 255, 61, 0.12);
+}
+
+/* Speech bubble */
+.wt-bubble {
+  position: fixed;
+  z-index: 2;
+  display: flex;
+  gap: 12px;
+  max-height: min(72dvh, 420px);
+  overflow: visible;
+  border: 1px solid rgba(201, 255, 61, 0.22);
+  border-radius: 22px;
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(201, 255, 61, 0.12), transparent 58%),
+    rgba(14, 16, 11, 0.97);
+  padding: 16px 16px 14px;
+  box-shadow:
+    0 30px 80px -24px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+  animation: wt-bubble-in 220ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+
+/* Animate opacity only: an inline transform positions the bubble above or
+   beside the target, and a transform keyframe would override it. */
+@keyframes wt-bubble-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wt-bubble--center {
+  transform: translateY(-50%);
+}
+
+/* The little connector to the control. */
+.wt-bubble::before {
+  position: absolute;
+  top: -6px;
+  left: 46px;
+  height: 12px;
+  width: 12px;
+  transform: rotate(45deg);
+  border-top: 1px solid rgba(201, 255, 61, 0.22);
+  border-left: 1px solid rgba(201, 255, 61, 0.22);
+  background: #10120c;
+  content: "";
+}
+
+.wt-bubble--above::before {
+  top: auto;
+  bottom: -6px;
+  border: 0;
+  border-right: 1px solid rgba(201, 255, 61, 0.22);
+  border-bottom: 1px solid rgba(201, 255, 61, 0.22);
+}
+
+.wt-bubble--center::before {
+  display: none;
+}
+
+.wt-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.wt-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #c9ff3d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.wt-title {
+  margin-top: 6px;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(18px, 4.4vw, 21px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #f7f5ec;
+}
+
+.wt-text {
+  margin-top: 7px;
+  color: rgba(244, 241, 231, 0.75);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.wt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.wt-btn {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 12px;
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
+}
+
+.wt-btn:active {
+  transform: scale(0.98);
+}
+
+.wt-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.wt-btn--ghost {
+  border: 1px solid rgba(244, 241, 231, 0.14);
+  color: rgba(244, 241, 231, 0.72);
+}
+
+.wt-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f4f1e7;
+}
+
+.wt-btn--try {
+  border: 1px dashed rgba(201, 255, 61, 0.4);
+  background: rgba(201, 255, 61, 0.07);
+  color: #d8ff7a;
+}
+
+.wt-btn--try:hover {
+  background: rgba(201, 255, 61, 0.14);
+}
+
+.wt-btn--tried {
+  border-style: solid;
+  border-color: rgba(201, 255, 61, 0.5);
+  color: #c9ff3d;
+}
+
+.wt-btn--next {
+  margin-left: auto;
+  background: #c9ff3d;
+  color: #0b0d06;
+  box-shadow: 0 10px 26px -12px rgba(201, 255, 61, 0.5);
+}
+
+.wt-btn--next:hover:not(:disabled) {
+  background: #d8ff72;
+}
+
+/* The transparent mascot sitting on the bubble's edge. No card, no backdrop. */
+.wt-cat {
+  position: absolute;
+  bottom: calc(100% - 14px);
+  right: 6px;
+  width: clamp(92px, 22vw, 126px);
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+  animation: wt-float 5s ease-in-out infinite;
+}
+
+.wt-cat > svg {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.wt-bubble--above .wt-cat {
+  bottom: auto;
+  top: calc(100% - 14px);
+  right: 8px;
+}
+
+@keyframes wt-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(1.2deg);
+  }
+}
+
+@media (min-width: 900px) {
+  .wt-cat {
+    width: 136px;
+  }
+
+  .wt-body {
+    padding-right: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-bubble {
+    animation: none;
+  }
+
+  .wt-spot {
+    transition: none;
+  }
+
+  .wt-cat {
+    animation: none;
+  }
+}
+
+[data-reduced-motion="true"] .wt-cat,
+[data-reduced-motion="true"] .wt-bubble {
+  animation: none !important;
+}

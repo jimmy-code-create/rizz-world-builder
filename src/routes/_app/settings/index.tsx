@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   Bell,
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { statusLabel, useSelfPresence } from "@/lib/presence";
+import { startWelcomeTour } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Settings · RIZZ" }] }),
@@ -45,6 +46,7 @@ type SettingsSection = {
 function SettingsHubPage() {
   const { profile } = useAuth();
   const { t } = useI18n();
+  const nav = useNavigate();
   const [statusOpen, setStatusOpen] = useState(false);
   const presence = useSelfPresence();
 
@@ -135,10 +137,13 @@ function SettingsHubPage() {
         ))}
       </nav>
 
-      <Link
-        to="/tutorial"
-        search={{ replay: true }}
-        className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-2.5 transition-colors hover:bg-primary/[0.08]"
+      <button
+        type="button"
+        onClick={() => {
+          nav({ to: "/feed" });
+          window.setTimeout(startWelcomeTour, 80);
+        }}
+        className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-2.5 text-left transition-colors hover:bg-primary/[0.08]"
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <Sparkles className="h-4.5 w-4.5" />
@@ -146,11 +151,11 @@ function SettingsHubPage() {
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold leading-tight">Welcome tour</span>
           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            Replay Rizzy’s eight-scene tour
+            Rizzy points out the real controls on your feed
           </span>
         </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </Link>
+      </button>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
     </div>

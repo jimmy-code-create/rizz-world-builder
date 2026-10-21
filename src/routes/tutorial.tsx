@@ -3,14 +3,20 @@ import { useEffect, useRef, useState } from "react";
 import { AuthCard } from "@/components/AuthCard";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { Button } from "@/components/ui/button";
-import { RizzyTour } from "@/components/onboarding/RizzyTour";
 import { DEFAULT_AVATARS, isDefaultAvatar } from "@/lib/default-avatars";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { getPendingInvitePath } from "@/lib/onboarding";
+import { hasTourPending, setTourPending } from "@/lib/onboarding";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
-import { toast } from "@/lib/toast";
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+
+/**
+ * The profile half of onboarding.
+ *
+ * This page only collects the avatar and interests. The welcome tour itself is
+ * not a page: it starts over the feed after this save, so the things Rizzy
+ * points at are the real controls, not a mock-up in a card.
+ */
 
 export const Route = createFileRoute("/tutorial")({
   validateSearch: (search: Record<string, unknown>): { replay: boolean } => ({
@@ -20,40 +26,11 @@ export const Route = createFileRoute("/tutorial")({
   head: () => ({ meta: [{ title: "Meet Rizzy · RIZZ" }] }),
 });
 
-type Phase = "profile" | "tour";
-
-/**
- * The welcome tour sits after the two profile steps but still belongs to the
- * same onboarding gate. `tutorial_seen` is only written when the tour (or its
- * Skip button) finishes, so a refresh mid-tour does not lose the person's
- * profile choices and the app never treats the tour as complete early.
- */
-function tourResumeKey(userId: string) {
-  return `rizz:tour-pending:${userId}`;
-}
-
-function hasTourResume(userId: string) {
-  try {
-    return window.sessionStorage.getItem(tourResumeKey(userId)) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function setTourResume(userId: string, pending: boolean) {
-  try {
-    if (pending) window.sessionStorage.setItem(tourResumeKey(userId), "1");
-    else window.sessionStorage.removeItem(tourResumeKey(userId));
-  } catch {
-    // A blocked session store must not stop onboarding.
-  }
-}
 
 function TutorialPage() {
   const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const nav = useNavigate();
   const { replay } = Route.useSearch();
-  const [phase, setPhase] = useState<Phase>(replay ? "tour" : "profile");
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
@@ -81,19 +58,17 @@ function TutorialPage() {
     setSelected(profile.interests ?? []);
     setSelectedAvatar(profile.avatar_url ?? DEFAULT_AVATARS[0].url);
 
+    // `replay` links from older builds land here; the feed host owns replay now.
     if (replay) {
-      setPhase("tour");
-      return;
-    }
-    if (profile.tutorial_seen) {
+      if (user) setTourPending(user.id, true);
       nav({ to: "/feed" });
       return;
     }
-    if (hasTourResume(user.id)) {
-      setPhase("tour");
-      return;
+    // A refresh mid-tour keeps the pending flag; go straight back to the feed
+    // instead of walking through the profile steps again.
+    if (profile.tutorial_seen || hasTourPending(user.id)) {
+      nav({ to: "/feed" });
     }
-    setPhase("profile");
   }, [loading, profileError, user, profile, nav, replay]);
 
   const toggleInterest = (interest: string) => {
@@ -106,8 +81,8 @@ function TutorialPage() {
     );
   };
 
-  /** Save the profile half, then hand the same onboarding session to Rizzy. */
-  const startTour = async (interests: string[], avatarUrl: string) => {
+  /** Save the profile half, then let the feed host start the coach marks. */
+  const saveProfile = async (interests: string[], avatarUrl: string) => {
     if (!user) return;
     setBusy(true);
     setError("");
@@ -118,60 +93,13 @@ function TutorialPage() {
         .eq("id", user.id);
       if (updateError) throw updateError;
       await refreshProfile();
-      setTourResume(user.id, true);
-      setPhase("tour");
-      window.scrollTo({ top: 0, behavior: "auto" });
+      setTourPending(user.id, true);
+      nav({ to: "/feed" });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Couldn't save your profile.");
     } finally {
       setBusy(false);
     }
-  };
-
-  /** Finish (or skip) the tour and close the existing onboarding gate. */
-  const completeTour = async (skipped: boolean) => {
-    if (!user) return;
-
-    if (replay) {
-      setTourResume(user.id, false);
-      nav({ to: "/settings" });
-      return;
-    }
-
-    setBusy(true);
-    setError("");
-    try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ tutorial_seen: true })
-        .eq("id", user.id);
-      if (updateError) throw updateError;
-      await refreshProfile();
-      setTourResume(user.id, false);
-
-      const pendingInvite = getPendingInvitePath();
-      if (pendingInvite) {
-        window.location.replace(pendingInvite);
-        return;
-      }
-
-      toast.success(
-        skipped ? "Tour skipped — replay it any time from Settings." : "You're all set.",
-      );
-      nav({ to: "/feed" });
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Couldn't finish the tour.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const backToProfile = () => {
-    if (!user || replay) return;
-    setTourResume(user.id, false);
-    setError("");
-    setStep(2);
-    setPhase("profile");
   };
 
   if (loading || !user) {
@@ -208,21 +136,6 @@ function TutorialPage() {
           aria-label="Loading"
         />
       </div>
-    );
-  }
-
-  if (phase === "tour") {
-    return (
-      <RizzyTour
-        profile={profile}
-        replay={replay}
-        busy={busy}
-        error={error}
-        reducedMotion={Boolean(profile.reduced_motion)}
-        onFinish={() => void completeTour(false)}
-        onSkip={() => void completeTour(true)}
-        onBackToOnboarding={replay ? () => nav({ to: "/settings" }) : backToProfile}
-      />
     );
   }
 
@@ -367,8 +280,8 @@ function TutorialPage() {
           variant="ghost"
           disabled={busy}
           onClick={() =>
-            void startTour(
-              step === 2 ? (profile.interests ?? []) : (profile.interests ?? selected),
+            void saveProfile(
+              step === 2 ? selected : (profile.interests ?? []),
               selectedAvatar,
             )
           }
@@ -381,7 +294,7 @@ function TutorialPage() {
           disabled={busy || !selectedAvatar}
           onClick={() => {
             if (step === 1) setStep(2);
-            else void startTour(selected, selectedAvatar);
+            else void saveProfile(selected, selectedAvatar);
           }}
           className="ml-auto h-11 gap-1.5 rounded-xl px-5 font-semibold"
         >

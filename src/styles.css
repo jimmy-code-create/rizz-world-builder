@@ -1516,6 +1516,22 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   }
 }
 
+/* Long-press message sheet: rise fast instead of the generic 500ms glide, so
+   the menu feels attached to the thumb. The reaction picker mounts inside it
+   only when its smiley is tapped, so the sheet starts short. */
+.action-sheet[data-state="open"] {
+  animation-duration: 200ms;
+}
+.action-sheet[data-state="closed"] {
+  animation-duration: 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .action-sheet[data-state="open"],
+  .action-sheet[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}
+
 /* Floating buttons step aside while an overlay is open, so the cat never sits
    on top of a sheet's rows. */
 body:has([role="dialog"][data-state="open"]) [data-overlay-hide],

@@ -2,16 +2,17 @@ import {
   Fragment,
   useEffect,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Maximize2 } from "lucide-react";
+import { SmilePlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ReactionQuickBar } from "@/components/chat/ReactionQuickBar";
+import { ReactionPicker } from "@/components/chat/ReactionPicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type MessageActionDescriptor = {
@@ -27,16 +28,14 @@ export type MessageActionDescriptor = {
  * Long-pressing a message used to replace it with a list of actions, so the
  * message you pressed was no longer readable — and with the menu open there was
  * nothing to read it in. The header keeps the author, the time and the text in
- * view, and `onView` opens the message full size (the whole message, including
- * anything the bubble clipped).
+ * view; the only control on its right edge is the reaction smiley, so the menu
+ * never turns into a wall of emoji before someone asks for it.
  */
 export type MessageActionPreview = {
   author: string;
   time?: string;
   body?: string | null;
   avatarUrl?: string | null;
-  /** Opens the focused, full-size message view. */
-  onView?: () => void;
 };
 
 export type MessageActionMenuProps = {
@@ -46,7 +45,7 @@ export type MessageActionMenuProps = {
   align: "left" | "right";
   actions: readonly MessageActionDescriptor[];
   triggerRole?: "button" | "group";
-  /** Adds the six quick emojis + "+" reaction bar at the top of the menu. */
+  /** Adds the emoji button that opens the reaction picker (not a whole tray). */
   reactionBar?: { onPick: (emoji: string) => void };
   /** Double tapping the message (not the menu) fires this. */
   onDoubleTap?: () => void;
@@ -97,6 +96,13 @@ export function MessageActionMenu({
   // Phones get Discord's bottom sheet (thumb reach, nothing covered); a mouse
   // keeps the popover next to the message it belongs to.
   const isMobile = useIsMobile();
+  // Actions are the default view. Reactions mount only after the emoji button
+  // is tapped, which keeps opening the menu cheap and the sheet short.
+  const [view, setView] = useState<"actions" | "reactions">("actions");
+
+  useEffect(() => {
+    if (!open) setView("actions");
+  }, [open]);
 
   const clearPress = () => {
     if (pressTimer.current !== null) {
@@ -182,8 +188,21 @@ export function MessageActionMenu({
 
   const select = (action: MessageActionDescriptor) => handleSelect(action);
 
-  // Discord's context-menu header: avatar, name, timestamp, then the text — no
-  // card, no border, just a hairline under the whole block.
+  /** The one control for reactions: a smiley on the message's right edge. */
+  const reactionButton = reactionBar ? (
+    <button
+      type="button"
+      onClick={() => setView("reactions")}
+      aria-label="Add reaction"
+      title="Add reaction"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+    >
+      <SmilePlus className="h-4 w-4" aria-hidden="true" />
+    </button>
+  ) : null;
+
+  // Discord's context-menu header: avatar, name, timestamp, then the text, with
+  // the reaction smiley at the right edge of the message. No card, no border.
   const previewHeader = preview ? (
     <div className="flex items-start gap-2.5 px-2 pb-2 pt-1.5">
       <Avatar className="mt-0.5 h-8 w-8 shrink-0">
@@ -199,26 +218,31 @@ export function MessageActionMenu({
             <span className="shrink-0 text-[11px] font-normal text-[#949ba4]">{preview.time}</span>
           )}
         </p>
-        <p className="mt-0.5 line-clamp-4 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
+        <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
-      {preview.onView && (
-        <button
-          type="button"
-          onClick={() => {
-            onOpenChange(false);
-            preview.onView?.();
-          }}
-          aria-label="Open this message"
-          title="Open this message"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-        >
-          <Maximize2 className="h-4 w-4" aria-hidden="true" />
-        </button>
-      )}
+      <div className="flex shrink-0 items-center">{reactionButton}</div>
+    </div>
+  ) : reactionBar ? (
+    <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-1">
+      <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#949ba4]">
+        Message actions
+      </span>
+      {reactionButton}
     </div>
   ) : null;
+
+  const reactionsView = reactionBar ? (
+    <ReactionPicker
+      onBack={() => setView("actions")}
+      onPick={(emoji) => {
+        onOpenChange(false);
+        reactionBar.onPick(emoji);
+      }}
+    />
+  ) : null;
+  const showingReactions = view === "reactions" && !!reactionBar;
 
   /**
    * Discord groups the destructive action at the bottom behind a hairline, so
@@ -318,25 +342,22 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="z-[100] max-h-[80dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="action-sheet z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
               <SheetTitle>Message actions</SheetTitle>
             </SheetHeader>
             <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-white/20" />
-            {previewHeader}
-            {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
-            {reactionBar && (
-              <ReactionQuickBar
-                className="mb-2"
-                onPick={(emoji) => {
-                  onOpenChange(false);
-                  reactionBar.onPick(emoji);
-                }}
-              />
+            {showingReactions ? (
+              reactionsView
+            ) : (
+              <>
+                {previewHeader}
+                {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
+                {renderActions(false)}
+              </>
             )}
-            {renderActions(false)}
           </SheetContent>
         </Sheet>
         ) : null}
@@ -364,20 +385,17 @@ export function MessageActionMenu({
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className={`relative max-h-[min(72dvh,30rem)] w-[min(${reactionBar ? "21rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
+        className={`relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
-        {previewHeader}
-        {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
-        {reactionBar && (
-          <ReactionQuickBar
-            className="mb-2"
-            onPick={(emoji) => {
-              onOpenChange(false);
-              reactionBar.onPick(emoji);
-            }}
-          />
+        {showingReactions ? (
+          reactionsView
+        ) : (
+          <>
+            {previewHeader}
+            {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
+            {renderActions(true)}
+          </>
         )}
-        {renderActions(true)}
       </PopoverContent>
       ) : null}
     </Popover>

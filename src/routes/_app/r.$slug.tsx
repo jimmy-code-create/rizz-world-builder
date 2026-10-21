@@ -62,6 +62,7 @@ import {
   BarChart3,
   Bot as BotIcon,
   CalendarClock,
+  ChevronDown,
   Flag,
   Hash,
   Lock,
@@ -1325,12 +1326,7 @@ function RealmPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {c.topic && (
-        <div className="chat-bar flex shrink-0 items-start gap-2 border-b border-white/5 px-4 py-3 text-sm text-muted-foreground">
-          <Hash className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-          {c.topic}
-        </div>
-      )}
+      {c.topic && <RealmTopicBar topic={c.topic} />}
 
       {joined && rooms.data && rooms.data.length > 0 && (
         <div
@@ -1947,7 +1943,6 @@ function RealmPage() {
                           time: messageTime,
                           body: m.body,
                           avatarUrl: authorAvatar,
-                          onView: openFullMessage,
                         }}
                         actions={[
                           {
@@ -2531,5 +2526,42 @@ function SheetRowButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * The realm description used to print its full length as three lines of
+ * body-size copy above the room tabs. It now reads as a compact one-line strip
+ * with a chevron; tapping it reveals the full text in place. The description is
+ * never lost, it just stops pushing the rooms off screen.
+ */
+function RealmTopicBar({ topic }: { topic: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="chat-bar shrink-0 border-b border-white/5 px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Hide realm description" : "Show full realm description"}
+        className="flex w-full items-start gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      >
+        <Hash className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+        <span
+          className={`min-w-0 flex-1 text-[12.5px] leading-[1.45] text-muted-foreground ${
+            expanded ? "whitespace-pre-wrap" : "line-clamp-1"
+          }`}
+        >
+          {topic}
+        </span>
+        <ChevronDown
+          className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70 transition-transform duration-200 ${
+            expanded ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+    </div>
   );
 }

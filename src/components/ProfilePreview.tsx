@@ -391,6 +391,41 @@ export function ProfilePreviewDialog({
 
               <div className="h-px bg-white/[0.06]" />
 
+              {/* Primary actions sit directly under the identity, like Discord's
+                  profile menu — no scrolling past the bio to message someone. */}
+              {!isOwnProfile ? (
+                <div className="flex items-center gap-2 pt-0.5">
+                  <Button
+                    onClick={handleMessage}
+                    className="h-9 flex-1 gap-1.5 bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Message
+                  </Button>
+                  {!blocked.data && (
+                    <Button
+                      onClick={() => toggleFollow.mutate()}
+                      disabled={toggleFollow.isPending}
+                      variant="outline"
+                      aria-label={following.data ? "Unfollow" : "Follow"}
+                      title={following.data ? "Unfollow" : "Follow"}
+                      className={`h-9 shrink-0 gap-1.5 border-white/10 px-3 text-[13px] font-semibold ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
+                    >
+                      {following.data ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                      {following.data ? "Following" : "Follow"}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  onClick={handleViewProfile}
+                  variant="outline"
+                  className="h-9 w-full border-white/10 bg-transparent text-[13px] font-semibold text-foreground hover:bg-white/[0.06]"
+                >
+                  View Full Profile
+                </Button>
+              )}
+
               {/* Quick stats: the three numbers people actually came to see. */}
               <section className="grid grid-cols-3 gap-2" aria-label="Quick stats">
                 <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-2.5 py-2">
@@ -426,39 +461,6 @@ export function ProfilePreviewDialog({
                 </section>
               )}
 
-              {/* Actions */}
-              {!isOwnProfile ? (
-                <div className="flex items-center gap-2 pt-0.5">
-                  <Button
-                    onClick={handleMessage}
-                    className="h-9 flex-1 gap-1.5 bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Message
-                  </Button>
-                  {!blocked.data && (
-                    <Button
-                      onClick={() => toggleFollow.mutate()}
-                      disabled={toggleFollow.isPending}
-                      variant="outline"
-                      aria-label={following.data ? "Unfollow" : "Follow"}
-                      title={following.data ? "Unfollow" : "Follow"}
-                      className={`h-9 shrink-0 gap-1.5 border-white/10 px-3 text-[13px] font-semibold ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
-                    >
-                      {following.data ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-                      {following.data ? "Following" : "Follow"}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Button
-                  onClick={handleViewProfile}
-                  variant="outline"
-                  className="h-9 w-full border-white/10 bg-transparent text-[13px] font-semibold text-foreground hover:bg-white/[0.06]"
-                >
-                  View Full Profile
-                </Button>
-              )}
             </div>
           </motion.div>
         )}

@@ -421,6 +421,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     <motion.article
       ref={cardRef}
       id={`post-${post.id}`}
+      data-tour="post"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
@@ -701,6 +702,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           variant="ghost"
           size="sm"
           onClick={() => likeMut.mutate()}
+          data-tour="post-like"
           className={`h-8 px-2.5 relative gap-1.5 rounded-full touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0 ${liked ? "text-primary" : "text-muted-foreground"}`}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>

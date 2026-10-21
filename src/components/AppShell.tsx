@@ -52,6 +52,7 @@ import { StatusDot } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
+import { WelcomeTourHost } from "@/components/onboarding/WelcomeTourHost";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
@@ -276,8 +277,10 @@ export function AppShell() {
     if (loading || profileError) return;
     if (!user) nav({ to: "/" });
     else if (!profile?.username) nav({ to: "/claim" });
-    else if (!profile.tutorial_seen) nav({ to: "/tutorial", search: { replay: false } });
-  }, [loading, user, profile, profileError, nav]);
+    // New members finish onboarding on the real feed: the tour runs over it as
+    // a coach-mark layer, so there is no separate tour page to send them to.
+    else if (!profile.tutorial_seen && path !== "/feed") nav({ to: "/feed" });
+  }, [loading, user, profile, profileError, path, nav]);
 
   // Allow the keyboard shortcut "n" to open the composer
   useEffect(() => {
@@ -329,7 +332,7 @@ export function AppShell() {
     );
   }
 
-  if (loading || !user || !profile?.username || !profile.tutorial_seen) {
+  if (loading || !user || !profile?.username) {
     return <AppLoader />;
   }
 
@@ -415,7 +418,14 @@ export function AppShell() {
               <span className="flex-1 text-sm font-medium">{t("whats_happening")}</span>
             </Link>
             {sideTabs.map((tab) => (
-              <Link key={tab.to} to={tab.to} className={navItem(isActive(tab.to))}>
+              <Link
+                key={tab.to}
+                to={tab.to}
+                data-tour={
+                  tab.to === "/realms" ? "nav-realms" : tab.to === "/drops" ? "nav-drops" : undefined
+                }
+                className={navItem(isActive(tab.to))}
+              >
                 <tab.icon className="h-5 w-5" />
                 <span className="flex-1 text-sm font-medium">{t(tab.label)}</span>
                 {tab.to === "/dms" && dmUnreadCount > 0 && (
@@ -530,6 +540,9 @@ export function AppShell() {
       {/* Global voice call bar */}
       <VoiceCallBar />
 
+      {/* First-run + replay coach marks, over the real feed. */}
+      <WelcomeTourHost />
+
       {/* Mobile bottom nav — 5 items, center FAB with 48px min touch height */}
       {!isConversation && (
         <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
@@ -572,6 +585,7 @@ export function AppShell() {
             })}
             <button
               onClick={() => setMoreOpen(true)}
+              data-tour="mobile-more"
               className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
               aria-label={t("more")}
             >

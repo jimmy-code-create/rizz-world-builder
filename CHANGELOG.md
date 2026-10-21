@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-10-21 — Rizzy floats over the real feed, and the account menu grows up
+
+### The welcome tour is a coach-mark layer, not a slide deck
+- The eight-scene card is gone. Rizzy now appears as a **transparent cat over the
+  live feed**, with a dimmed page, a soft spotlight around the real control and a
+  small speech bubble pointing at it.
+- Steps spotlight the real composer, stories strip, first post and like button,
+  Realms and Bounties in the sidebar (More on phones), and the account menu.
+  **Try it** focuses the actual composer or presses the actual heart, so the
+  tour verifies the feature instead of describing it.
+- New members finish profile setup and land on `/feed`, where the tour starts by
+  itself; replay is one row in the account menu and Settings → Welcome tour.
+  A pending invite still hands them back to the invite when the tour closes.
+- `RizzyTour.tsx` and its 1,600-line deck stylesheet are deleted.
+
+### The desktop account menu reads as a panel
+- Instead of one tall 340px list, desktop opens a **540px two-column panel** with
+  the effect-bearing banner, identity and stat block across the top, Account and
+  More columns below, and Sign out pinned after a hairline.
+- Phones keep the compact single-column sheet, now with the replay row.
+
+### One equipped effect, every surface
+- Puppy Love now rides along on the **account menu banner**, profile card
+  dialogs, profile previews and the full profile, not only the profile page. One
+  `useEquipped` query per surface keeps the owner and visitors in sync.
+
+## 2026-10-21 — A lighter long-press menu, a compact realm description
+
+### Reactions moved behind one icon
+- Long-pressing a message no longer opens a permanent reaction tray. The menu
+  header keeps the author, time and text, with a single **smiley** at the right
+  edge of the message; tapping it swaps the sheet to a compact picker with six
+  quick reactions, a collapsible wider emoji grid and the twelve cat emoji.
+  The actions list is the default view again, so Pin/Reply/Delete are visible
+  without scrolling.
+- The picker only mounts after the smiley is tapped and the action sheet's
+  rise is trimmed from the primitive's 500ms to **200ms** (`150ms` out), with a
+  reduced-motion override. Opening the menu is cheaper and feels immediate.
+- The redundant expand icon in the header is gone; “View message” stays in the
+  action list.
+
+### The realm description stops eating the screen
+- The full description used to print as three lines of body copy above the
+  room tabs. It is now a one-line strip with a chevron; tapping expands the
+  full text in place (line breaks preserved), tapping again collapses it.
+
+### Profile menu matches Discord's order
+- Message/Follow (or View Full Profile on your own card) now sit directly under
+  the identity block, above the stats and bio, so nobody scrolls past a long
+  bio to send a message.
+
 ## 2026-10-21 — Puppy Love replaces the Web Slinger, and the tour greets new members
 
 ### Biscuit takes over the banner

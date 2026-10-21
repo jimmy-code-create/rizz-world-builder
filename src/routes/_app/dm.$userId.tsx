@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
-import { ReactionQuickBar } from "@/components/chat/ReactionQuickBar";
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";

@@ -28,7 +28,7 @@ const [catalog, effect, css, layer, route, styles, avatarDeco, nameplate, effect
     read("src/components/profile/AvatarDecoration.tsx"),
     read("src/components/profile/Nameplate.tsx"),
     read("src/routes/_app/effects.tsx"),
-    read("src/components/onboarding/RizzyTour.tsx"),
+    read("src/components/onboarding/WelcomeTourOverlay.tsx"),
   ]);
 
 let passed = 0;
@@ -163,9 +163,23 @@ await check("the migration renames the owned row and retires everything else", a
 });
 
 await check("the welcome tour still talks about the live cosmetics", async () => {
-  assert.ok(tour.includes("Effects are live."));
+  assert.ok(tour.includes("Puppy Love"));
+  assert.ok(tour.includes("Biscuit"));
   assert.ok(!tour.includes("Web Slinger"));
   assert.ok(!tour.includes("avatar decorations"), "removed decoration shelf must not be advertised");
+});
+
+await check("an equipped effect follows the member onto every profile surface", async () => {
+  const surfaces = await Promise.all([
+    read("src/routes/_app/u.$username.tsx"),
+    read("src/components/account/AccountMenu.tsx"),
+    read("src/components/profile/ProfileCard.tsx"),
+    read("src/components/ProfilePreview.tsx"),
+  ]);
+  for (const source of surfaces) {
+    assert.match(source, /useEquipped\(/);
+    assert.match(source, /<ProfileEffectVisual slug=\{/, "a profile surface forgot the effect layer");
+  }
 });
 
 console.log(`\n${passed} checks passed.`);

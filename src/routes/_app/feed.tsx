@@ -152,9 +152,11 @@ function FeedPage() {
         </div>
 
         <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
-        <StoriesStrip />
+        <div data-tour="stories" className="scroll-mt-24">
+          <StoriesStrip />
+        </div>
 
-        <div id="feed-composer" className="scroll-mt-24">
+        <div id="feed-composer" data-tour="composer" className="scroll-mt-24">
           <PostComposer />
         </div>
 

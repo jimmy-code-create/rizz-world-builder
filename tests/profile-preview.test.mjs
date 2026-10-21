@@ -58,6 +58,13 @@ await check("actions: Message with follow, own profile gets a single button", as
   assert.ok(card.includes("toggleFollow.mutate"));
   assert.ok(card.includes("isOwnProfile"));
   assert.ok(card.includes("View Full Profile"));
+  // Discord puts Message/Call above the bio tabs; ours keeps that order so
+  // nobody scrolls past a long bio to send a message.
+  assert.ok(
+    card.indexOf("Primary actions sit directly under the identity") <
+      card.indexOf("{/* ABOUT ME */}"),
+    "primary actions must precede the bio",
+  );
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);
