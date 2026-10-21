@@ -10,7 +10,13 @@ import { PuppyLoveEffect } from "@/components/profile/PuppyLoveEffect";
  * none`, so the banner, avatar, name and every control above it keep working
  * untouched.
  */
-export function ProfileEffect({ slug }: { slug?: string | null }) {
+export function ProfileEffect({
+  slug,
+  className,
+}: {
+  slug?: string | null;
+  className?: string;
+}) {
   if (!COSMETICS_ENABLED || slug !== PUPPY_LOVE_SLUG) return null;
-  return <PuppyLoveEffect />;
+  return <PuppyLoveEffect className={className} />;
 }

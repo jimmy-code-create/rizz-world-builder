@@ -1251,6 +1251,34 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   box-shadow: 0 0 22px var(--ec, var(--brand-signal));
 }
 
+/* Decoration glow cap: a 2px ring plus at most a 6px, 35% halo. The older
+   rings went as wide as 30px and washed over the display name. */
+[class*="fx-ring-"] {
+  box-shadow: 0 0 0 2px var(--ec), 0 0 6px color-mix(in srgb, var(--ec) 35%, transparent);
+}
+[class*="fx-ring-"]::before {
+  filter: blur(6px);
+  opacity: 0.35;
+}
+
+/* Avatars under 48px keep a static ring and no halo at all. */
+.deco-compact [class*="fx-ring-"] {
+  animation: none !important;
+  box-shadow: 0 0 0 2px var(--ec);
+}
+.deco-compact [class*="fx-ring-"]::before {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="fx-ring-"] {
+    animation: none !important;
+  }
+  [class*="fx-ring-"]::before {
+    display: none;
+  }
+}
+
 /* Procedural nameplate variants — all use --nc for tint. */
 .np-base {
   background: linear-gradient(90deg, var(--nc, var(--brand-signal)), color-mix(in oklab, var(--nc, var(--brand-signal)) 40%, white 60%), var(--nc, var(--brand-signal)));

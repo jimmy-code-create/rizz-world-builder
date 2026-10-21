@@ -8,12 +8,14 @@ type Profile = {
   display_name: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  banner_mode: string | null;
+  banner_gradient: unknown;
+  updated_at?: string | null;
   bio: string | null;
   rizz_score: number;
   paw_balance: number;
   paw_earned?: number;
   accent_color: string | null;
-  banner_gradient?: string | null;
   theme_preset: string | null;
   theme_mode: string | null;
   ui_density: string | null;

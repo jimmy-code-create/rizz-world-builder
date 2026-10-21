@@ -87,7 +87,7 @@ await check("the retired effect is gone from the app and its docs", async () => 
 
 await check("the renderer only draws Puppy Love", async () => {
   assert.match(layer, /slug !== PUPPY_LOVE_SLUG/, "unknown slugs must render nothing");
-  assert.match(layer, /<PuppyLoveEffect \/>/, "the layer must mount the scene");
+  assert.match(layer, /<PuppyLoveEffect className=\{className\} \/>/, "the layer must mount the scene");
   assert.ok(!layer.includes("CosmicNebula"), "a removed overlay survived in the renderer");
   assert.ok(!layer.includes("KawaiiHearts"), "a removed overlay survived in the renderer");
 });
@@ -141,12 +141,15 @@ await check("Biscuit is an original, complete dog — not a recoloured hero", as
 });
 
 await check("the profile mounts the effect above the banner gradient, pointer-free", async () => {
-  const gradient = route.indexOf("bg-gradient-to-t from-background");
-  const visual = route.indexOf("<ProfileEffectVisual");
-  assert.ok(gradient > -1, "the banner gradient must still exist");
-  assert.ok(visual > -1, "the profile must mount the effect");
-  assert.ok(visual > gradient, "the effect must render after the gradient so it is not dimmed");
-  assert.match(route, /<ProfileEffectVisual slug=\{shownEffect\.slug\} \/>/);
+  const header = await read("src/components/profile/ProfileHeader.tsx");
+  assert.match(route, /<ProfileHeader/, "the profile must use the shared header");
+  assert.match(header, /getBanner\(user\)/, "the banner source comes from the shared helper");
+  const banner = header.indexOf("background: banner.background");
+  const visual = header.indexOf("<ProfileEffect slug=");
+  assert.ok(banner > -1, "the banner must still paint");
+  assert.ok(visual > banner, "the effect must render after the banner so it is not dimmed");
+  assert.match(header, /className="pointer-events-none absolute inset-0 z-10 overflow-hidden"/);
+  assert.match(header, /aria-hidden/);
   assert.match(css, /\.plx \{[\s\S]*?pointer-events: none;[\s\S]*?\}/, "the scene must never capture pointers");
   assert.match(effect, /aria-hidden="true"/);
 });
@@ -221,22 +224,40 @@ await check("the welcome tour still talks about the live cosmetics", async () =>
 });
 
 await check("equipped looks follow the member onto every profile surface", async () => {
-  const surfaces = await Promise.all([
-    read("src/routes/_app/u.$username.tsx"),
+  const [header, accountMenu, profilePage, profileCard, profilePreview] = await Promise.all([
+    read("src/components/profile/ProfileHeader.tsx"),
     read("src/components/account/AccountMenu.tsx"),
+    read("src/routes/_app/u.$username.tsx"),
     read("src/components/profile/ProfileCard.tsx"),
     read("src/components/ProfilePreview.tsx"),
   ]);
-  for (const source of surfaces) {
+
+  // The shared header renders every slot once, clipped inside the banner box.
+  assert.match(header, /<ProfileEffect slug=/, "the header forgot the banner effect");
+  assert.match(header, /<ProfileFrame slug=/, "the header forgot the frame");
+  assert.match(header, /<AvatarDecoration/, "the header forgot the avatar");
+  assert.match(header, /decorationSlug=\{avatarDecoration\?\.slug\}/, "the header forgot the decoration slot");
+
+  for (const source of [profilePage, profileCard, profilePreview]) {
     assert.match(source, /useEquipped\(/);
-    assert.match(source, /<ProfileEffectVisual slug=\{/, "a profile surface forgot the banner effect");
-    assert.match(source, /<ProfileFrame slug=\{/, "a profile surface forgot the frame");
-    assert.match(
-      source,
-      /<BloodwebDecoration slug=\{|decorationSlug=/,
-      "a profile surface forgot the avatar decoration",
-    );
+    assert.match(source, /<ProfileHeader/, "a profile surface must use the shared header");
   }
+  for (const source of [profileCard, profilePreview]) {
+    assert.match(source, /effects=\{equipped\.data\}/, "a profile surface forgot the equipped looks");
+  }
+  for (const slot of ["profile_effect: shownEffect", "avatar_decoration: shownDecoration", "profile_frame: shownFrame"]) {
+    assert.ok(profilePage.includes(slot), `the full profile forgot ${slot}`);
+  }
+
+  // The account menu keeps its compact header, so it mounts the three slots directly.
+  assert.match(accountMenu, /useEquipped\(/);
+  assert.match(accountMenu, /<ProfileEffectVisual slug=\{/, "the account menu forgot the banner effect");
+  assert.match(accountMenu, /<ProfileFrame slug=\{/, "the account menu forgot the frame");
+  assert.match(
+    accountMenu,
+    /<BloodwebDecoration slug=\{|decorationSlug=/,
+    "the account menu forgot the avatar decoration",
+  );
 });
 
 console.log(`\n${passed} checks passed.`);

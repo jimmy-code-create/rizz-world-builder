@@ -7,7 +7,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Award,
   Ban,
@@ -20,14 +19,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { StatusIcon } from "@/components/presence/StatusDot";
-import { defaultAvatarFor } from "@/lib/default-avatars";
-import { bannerToneFor } from "@/components/profile/ProfileCard";
-import { bannerBackground } from "@/lib/profile-banner";
-import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { ProfileFrame } from "@/components/profile/ProfileFrame";
-import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
-import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -45,22 +37,26 @@ type PreviewProfile = {
   bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
-  banner_gradient?: string | null;
-  accent_color?: string | null;
+  banner_mode: string | null;
+  banner_gradient: unknown;
+  accent_color: string | null;
+  reduced_motion: boolean | null;
+  updated_at: string | null;
   paw_balance: number;
   created_at: string;
   featured_badge?: string | null;
 };
 
 async function fetchPreview(username: string): Promise<PreviewProfile | null> {
+  // `*` keeps the preview readable before/after the banner migration and gives
+  // the header the same row the full profile reads.
   const { data, error } = await supabase
     .from("profiles")
-    // `*` keeps the preview working before the gradient migration lands.
     .select("*")
     .eq("username", username)
     .maybeSingle();
   if (error) throw error;
-  return (data as PreviewProfile) ?? null;
+  return (data as unknown as PreviewProfile) ?? null;
 }
 
 async function checkFollowing(viewerId: string, userId: string): Promise<boolean> {
@@ -156,8 +152,8 @@ export function ProfilePreviewDialog({
     staleTime: 60_000,
   });
 
-  // A profile effect belongs on the preview, like Discord's popout: it is the
-  // place people actually look at someone's banner.
+  // The preview carries the same equipped effects as the full profile, so the
+  // popout never shows a different banner treatment than the page behind it.
   const equipped = useEquipped(p?.id);
 
   const following = useQuery({
@@ -225,8 +221,6 @@ export function ProfilePreviewDialog({
     }
   };
 
-  const bannerUrl = p?.banner_url ?? null;
-  const bannerBg = bannerBackground(bannerUrl, p?.banner_gradient, bannerToneFor(p?.id ?? ""));
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
   // Name-row marks: canonical order, no two awards drawing the same emblem.
@@ -235,9 +229,11 @@ export function ProfilePreviewDialog({
   // Verified is a badge, not a profiles column (same rule as the profile page).
   const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
 
-  // Phones drag the sheet down from the banner or the grab handle.
+  // Phones drag the sheet down from the banner or the grab handle. Taps on the
+  // banner's own buttons must not start a drag.
   const beginSheetDrag = (event: ReactPointerEvent) => {
     if (!isMobile) return;
+    if ((event.target as HTMLElement).closest("button, a, [role='menuitem']")) return;
     dragControls.start(event);
   };
 
@@ -275,129 +271,98 @@ export function ProfilePreviewDialog({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
           >
-            {/* Banner. On phones this doubles as the sheet's drag surface. */}
-            <div
-              className="relative h-40 w-full touch-none overflow-hidden sm:h-44 sm:touch-auto"
-              style={{ background: bannerBg }}
-              onPointerDown={beginSheetDrag}
-            >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
-              />
-              {equipped.data?.profile_effect && (
-                <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
-              )}
-              {equipped.data?.profile_frame && (
-                <ProfileFrame slug={equipped.data.profile_frame.slug} />
-              )}
-              <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5">
-                {!isOwnProfile && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="More options"
-                        className="grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={handleViewProfile}>View Full Profile</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => void copyUsername()}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy username
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => blockMutation.mutate()} className="text-destructive">
-                        <Ban className="mr-2 h-4 w-4" />
-                        Block
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                <button
-                  type="button"
-                  aria-label="Close profile preview"
-                  onClick={() => onOpenChange(false)}
-                  className="grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Avatar — overlaps the banner, ringed in the card colour like Discord */}
-            <div className="relative -mt-12 px-4">
-              <div className="relative inline-block">
-                <Avatar className="relative z-[1] h-24 w-24 rounded-full ring-[6px] ring-[#111214]">
-                  <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
-                  <AvatarFallback className="bg-surface-2 text-xl font-bold text-foreground">
-                    {p.display_name?.[0] ?? p.username[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
-                <span
-                  aria-hidden
-                  className="absolute -bottom-0.5 -right-0.5 z-[3] grid h-[22px] w-[22px] place-items-center rounded-full bg-[#111214]"
-                >
-                  <StatusIcon status={status} size={18} />
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4 px-4 pb-4 pt-2.5">
-              {/* Name row: display name, verified tick, badges — Discord order */}
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                  <h3 className="truncate text-[22px] font-bold leading-7 text-foreground">
-                    {p.display_name || p.username}
-                  </h3>
-                  {verified && (
-                    <VerifiedSeal size={22} className="mb-0.5" />
-                  )}
-                  {markBadges.length > 0 && (
-                    <span className="flex items-center gap-1" aria-label="Badges">
-                      {markBadges.slice(0, 6).map((badge) => (
-                        <span
-                          key={badge.slug}
-                          className={
-                            badge.slug === wornSlug
-                              ? "grid h-[21px] w-[21px] place-items-center rounded-full ring-1 ring-primary/70"
-                              : "grid h-[21px] w-[21px] place-items-center"
-                          }
-                          title={badge.slug === wornSlug ? `${badge.name} · worn` : badge.name}
-                        >
-                          <Badge slug={badge.slug} size={17} title={badge.name} />
-                        </span>
-                      ))}
+            <ProfileHeader
+              user={{
+                id: p.id,
+                username: p.username,
+                displayName: p.display_name,
+                avatarUrl: p.avatar_url,
+                bannerUrl: p.banner_url,
+                bannerMode: p.banner_mode,
+                bannerGradient: p.banner_gradient,
+                updatedAt: p.updated_at,
+                accentColor: p.accent_color,
+                verified,
+                reducedMotion: Boolean(p.reduced_motion),
+              }}
+              effects={equipped.data}
+              status={status}
+              statusIsSelf={isOwnProfile}
+              customStatus={null}
+              statusLine={
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{statusText}</span>
+                  {wornSlug && markBadges.some((badge) => badge.slug === wornSlug) && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      <Pin className="h-2.5 w-2.5" />
+                      {markBadges.find((badge) => badge.slug === wornSlug)?.name}
                     </span>
                   )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void copyUsername()}
-                  className="mt-0.5 text-[13px] leading-4 text-muted-foreground transition-colors hover:text-foreground"
-                  title="Copy username"
-                >
-                  @{p.username}
-                </button>
-              </div>
-
-              {/* Presence row */}
-              <div className="flex items-center justify-between gap-2 text-[12px] text-foreground/80">
-                <span className="flex items-center gap-1.5">
-                  <StatusIcon status={status} size={12} />
-                  <span>{statusText}</span>
-                </span>
-                {wornSlug && markBadges.some((badge) => badge.slug === wornSlug) && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    <Pin className="h-2.5 w-2.5" />
-                    {markBadges.find((badge) => badge.slug === wornSlug)?.name}
+                </p>
+              }
+              featuredBadge={
+                markBadges.length > 0 ? (
+                  <span className="flex items-center gap-1" aria-label="Badges">
+                    {markBadges.slice(0, 6).map((badge) => (
+                      <span
+                        key={badge.slug}
+                        className={
+                          badge.slug === wornSlug
+                            ? "grid h-[21px] w-[21px] place-items-center rounded-full ring-1 ring-primary/70"
+                            : "grid h-[21px] w-[21px] place-items-center"
+                        }
+                        title={badge.slug === wornSlug ? `${badge.name} · worn` : badge.name}
+                      >
+                        <Badge slug={badge.slug} size={17} title={badge.name} />
+                      </span>
+                    ))}
                   </span>
-                )}
-              </div>
+                ) : undefined
+              }
+              overlayActions={
+                <>
+                  {!isOwnProfile && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Profile options"
+                          className="grid h-11 w-11 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={handleViewProfile}>View Full Profile</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => void copyUsername()}>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copy username
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => blockMutation.mutate()} className="text-destructive">
+                          <Ban className="mr-2 h-4 w-4" />
+                          Block
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Close profile preview"
+                    onClick={() => onOpenChange(false)}
+                    className="grid h-11 w-11 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </>
+              }
+              avatarRing={p.accent_color}
+              surface="#111214"
+              gutter="16px"
+              onBannerPointerDown={beginSheetDrag}
+            />
 
+            {/* Profile info */}
+            <div className="space-y-3 px-4 pb-4 pt-3">
               <div className="h-px bg-white/[0.06]" />
 
               {/* Primary actions sit directly under the identity, like Discord's
@@ -469,7 +434,6 @@ export function ProfilePreviewDialog({
                   />
                 </section>
               )}
-
             </div>
           </motion.div>
         )}

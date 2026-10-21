@@ -11,17 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence/StatusDot";
+import { StatusPill } from "@/components/presence/StatusDot";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { Badge } from "@/components/Badge";
 import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { useEquipped } from "@/lib/useEquipped";
-import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { ProfileFrame } from "@/components/profile/ProfileFrame";
-import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
-import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
-import { defaultAvatarFor } from "@/lib/default-avatars";
-import { bannerBackground } from "@/lib/profile-banner";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
@@ -41,13 +36,6 @@ export type ProfileCardUser = {
   isBot?: boolean;
   botName?: string | null;
 };
-
-/** Dark muted tone derived from the user id (never lime). */
-export function bannerToneFor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) % 360;
-  return `hsl(${h} 18% 14%)`;
-}
 
 /** 943 → "943" · 12,400 → "12.4K" · 500,000 → "500K" · 1,200,000 → "1.2M" */
 export function formatCount(value: number): string {
@@ -76,8 +64,11 @@ type CardData = {
   displayName: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
-  bannerGradient: string | null;
+  bannerMode: string | null;
+  bannerGradient: unknown;
+  updatedAt: string | null;
   accentColor: string | null;
+  reducedMotion: boolean;
   bio: string | null;
   pronouns: string | null;
   verified: boolean;
@@ -130,6 +121,16 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
         if (d.deleted || !d.profile) return deletedCard(userId);
         const p = d.profile;
         const str = (v: unknown) => (typeof v === "string" ? v : null);
+        // The RPC was deployed before banner_mode/banner_gradient existed, so a
+        // popup could show a different banner than the full page. Read the live
+        // profile row for the visual fields; the RPC still supplies stats.
+        let fresh: Record<string, unknown> = {};
+        try {
+          const { data: live } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+          fresh = (live as Record<string, unknown> | null) ?? {};
+        } catch {
+          /* keep the RPC copy when the direct read is denied */
+        }
         const earnedBadges: CardBadge[] = (d.earned_badges ?? []).map((b) => ({
           slug: b.slug ?? "badge",
           name: b.name ?? "Badge",
@@ -143,15 +144,18 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
         const isVerified = earnedBadges.some((b) => b.slug === "verified" || b.slug === "no-cap");
         return {
           deleted: false,
-          id: String(p.id ?? userId),
-          username: str(p.username) ?? "member",
-          displayName: str(p.display_name) ?? str(p.username) ?? "Member",
-          avatarUrl: str(p.avatar_url),
-          bannerUrl: str(p.banner_url),
-          bannerGradient: str(p.banner_gradient),
-          accentColor: str(p.accent_color),
-          bio: str(p.bio),
-          pronouns: str(p.pronouns),
+          id: String(fresh.id ?? p.id ?? userId),
+          username: str(fresh.username) ?? str(p.username) ?? "member",
+          displayName: str(fresh.display_name) ?? str(p.display_name) ?? str(p.username) ?? "Member",
+          avatarUrl: str(fresh.avatar_url) ?? str(p.avatar_url),
+          bannerUrl: str(fresh.banner_url) ?? str(p.banner_url),
+          bannerMode: str(fresh.banner_mode) ?? str(p.banner_mode),
+          bannerGradient: fresh.banner_gradient ?? p.banner_gradient ?? null,
+          updatedAt: str(fresh.updated_at) ?? str(p.updated_at),
+          accentColor: str(fresh.accent_color) ?? str(p.accent_color),
+          reducedMotion: Boolean(fresh.reduced_motion ?? p.reduced_motion),
+          bio: str(fresh.bio) ?? str(p.bio),
+          pronouns: str(fresh.pronouns) ?? str(p.pronouns),
           verified: p.verified === true || isVerified,
           createdAt: str(p.created_at),
           pawBalance: Number(p.paw_balance ?? p.rizz_score ?? 0),
@@ -179,41 +183,16 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
   // (that is what broke every profile preview).
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, banner_url, bio, created_at, paw_balance, paw_earned")
+    .select("*")
     .eq("id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
   if (!profile) return deletedCard(userId);
   const p = profile as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" ? v : null);
-
-  // Optional new columns (missing until the migration lands → hidden).
-  let pronouns: string | null = null;
-  try {
-    const { data: ext } = await supabase.from("profiles").select("pronouns").eq("id", userId).maybeSingle();
-    pronouns = str((ext as Record<string, unknown> | null)?.pronouns);
-  } catch { /* column missing */ }
-  let accentColor: string | null = null;
-  try {
-    const { data: accent } = await supabase.from("profiles").select("accent_color").eq("id", userId).maybeSingle();
-    accentColor = str((accent as Record<string, unknown> | null)?.accent_color);
-  } catch { /* column missing */ }
-  let bannerGradient: string | null = null;
-  try {
-    const { data: gradient } = await supabase.from("profiles").select("banner_gradient").eq("id", userId).maybeSingle();
-    bannerGradient = str((gradient as Record<string, unknown> | null)?.banner_gradient);
-  } catch { /* column missing until the gradient migration lands */ }
-  let featuredBadge: string | null = null;
-  try {
-    const { data: featured } = await supabase
-      .from("profiles")
-      .select("featured_badge")
-      .eq("id", userId)
-      .maybeSingle();
-    featuredBadge = str((featured as Record<string, unknown> | null)?.featured_badge);
-  } catch {
-    /* column missing until the migration lands */
-  }
+  const pronouns = str(p.pronouns);
+  const accentColor = str(p.accent_color);
+  const featuredBadge = str(p.featured_badge);
 
   const balance = Number(p.paw_balance ?? 0);
   const earned = Number(p.paw_earned ?? balance);
@@ -295,8 +274,11 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     displayName: str(p.display_name) ?? str(p.username) ?? "Member",
     avatarUrl: str(p.avatar_url),
     bannerUrl: str(p.banner_url),
-    bannerGradient,
+    bannerMode: str(p.banner_mode),
+    bannerGradient: p.banner_gradient ?? null,
+    updatedAt: str(p.updated_at),
     accentColor,
+    reducedMotion: Boolean(p.reduced_motion),
     bio: str(p.bio),
     pronouns,
     verified,
@@ -319,7 +301,8 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
 function deletedCard(userId: string): CardData {
   return {
     deleted: true, id: userId, username: "deleted", displayName: "Deleted user",
-    avatarUrl: null, bannerUrl: null, bannerGradient: null, accentColor: null, bio: null, pronouns: null, verified: false,
+    avatarUrl: null, bannerUrl: null, bannerMode: null, bannerGradient: null, updatedAt: null,
+    accentColor: null, reducedMotion: false, bio: null, pronouns: null, verified: false,
     createdAt: null, pawBalance: 0, rank: null, followers: 0, following: 0,
     badges: [], featuredBadge: null, mutualPreview: [], mutualTotal: 0, viewerFollows: false,
     blockedByViewer: false, blockedViewer: false, mutedByViewer: false,
@@ -542,7 +525,6 @@ export function ProfileCard({
   }
 
   const hintName = displayNameHint || usernameHint || d.displayName;
-  const avatarSrc = d.avatarUrl ?? avatarUrlHint ?? defaultAvatarFor(d.username);
 
   // They blocked me: reveal nothing (no banner/photo/status).
   if (d.blockedViewer && !isSelf) {
@@ -557,7 +539,6 @@ export function ProfileCard({
     );
   }
 
-  const bannerBg = bannerBackground(d.bannerUrl, d.bannerGradient, bannerToneFor(userId));
   const ringColor = d.accentColor ?? accentColorHint ?? "#c8ff3d";
   const joinDate = d.createdAt
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
@@ -622,134 +603,40 @@ export function ProfileCard({
         dragStart.current = null;
       }}
     >
-      {/* Banner: the uploaded image (or a muted tone from the id) gets an accent
-          wash, a hairline highlight and a long fade, so the card has depth
-          without ever flashing a bright block of colour. */}
-      <div className="relative h-40 w-full overflow-hidden sm:h-44" style={{ background: bannerBg }}>
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden="true"
-          style={{ background: `radial-gradient(130% 100% at 12% 0%, ${ringColor}33, transparent 62%)` }}
-        />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.09]" aria-hidden="true" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#141416] via-[#141416]/80 to-transparent" aria-hidden="true" />
-        {equipped.data?.profile_effect && (
-          <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
-        )}
-        {equipped.data?.profile_frame && (
-          <ProfileFrame slug={equipped.data.profile_frame.slug} />
-        )}
-        <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Profile options"
-                className="grid h-11 w-11 place-items-center rounded-full bg-black/40 text-[#f2efe6] backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onSelect={copyLink} className="gap-2">
-                <Link2 className="h-4 w-4" /> Copy profile link
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => { setMenuOpen(false); void setMuted.mutate(!d.mutedByViewer); }}
-                className="gap-2"
-              >
-                {d.mutedByViewer ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                {d.mutedByViewer ? "Unmute" : "Mute"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => { setMenuOpen(false); void setBlocked.mutate(!d.blockedByViewer); }}
-                className="gap-2"
-              >
-                <Ban className="h-4 w-4" /> {d.blockedByViewer ? "Unblock" : "Block"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  setMenuOpen(false);
-                  toast.info("Report sent", { description: "A moderator will take a look." });
-                }}
-                className="gap-2"
-              >
-                <Flag className="h-4 w-4" /> Report
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <span className="sm:hidden">
-            <CloseButton aria-label="Close profile" onClick={close} className="bg-black/40 backdrop-blur-sm" />
-          </span>
-        </div>
-      </div>
-
-      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* Avatar overlapping banner, accent halo + presence dot */}
-        <div className="-mt-12 flex items-end justify-between gap-3">
-          <span className="relative inline-flex">
-            <Avatar
-              className="relative z-[1] h-24 w-24 rounded-full"
-              style={{
-                // Accent glow, not an accent ring: a dark separator keeps the
-                // photo crisp, then two soft colour blooms light the backdrop.
-                // No crisp colour edge — the avatar should look lit, not boxed.
-                boxShadow: `0 0 0 3px #141416, 0 0 24px 5px ${ringColor}59, 0 0 56px 16px ${ringColor}29, 0 20px 44px -22px #000`,
-              }}
-            >
-              <AvatarImage src={avatarSrc ?? undefined} className="object-cover" />
-              <AvatarFallback className="rounded-full bg-[#1c1c1f] text-2xl font-bold text-[#f2efe6]">
-                {d.displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
-            <AvatarStatusBadge emoji={customStatus?.emoji} size={18} />
-            <span
-              className="absolute -bottom-0.5 -right-0.5 z-[3] grid h-6 w-6 place-items-center rounded-full bg-[#141416] p-[2px]"
-              title={status}
-            >
-              <StatusIcon status={status} size={20} />
-            </span>
-          </span>
-          {d.blockedByViewer && (
-            <span className="mb-1 rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-muted-foreground">
-              You blocked this account
-            </span>
-          )}
-        </div>
-
-        {d.blockedByViewer && !isSelf ? (
-          <div className="mt-3 rounded-xl bg-[#1c1c1f] p-4 text-center" style={{ borderRadius: 12 }}>
-            <p className="text-sm font-semibold text-foreground">@{d.username} is blocked</p>
-            <p className="mt-1 text-xs text-muted-foreground">Unblock to see their banner, photo and status.</p>
-            <Button
-              type="button" variant="outline" disabled={setBlocked.isPending}
-              onClick={() => setBlocked.mutate(false)} className="mt-3 h-11"
-            >
-              Unblock
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* Name / handle / pronouns / realm role / status */}
-            <div className="mt-2.5 flex items-center gap-2">
-              <h2 className="truncate font-display text-[22px] font-bold leading-tight tracking-tight text-[#f2efe6]">
-                {d.displayName}
-              </h2>
-              {d.verified && <VerifiedSeal size={22} className="mt-0.5" />}
-              {featuredBadgeMeta && (
-                <Badge
-                  slug={featuredBadgeMeta.slug}
-                  size={24}
-                  title={`Featured badge: ${canonicalFor(featuredBadgeMeta.slug)?.name ?? featuredBadgeMeta.name}`}
-                />
+      <ProfileHeader
+        user={{
+          id: d.id,
+          username: d.username,
+          displayName: d.displayName,
+          avatarUrl: d.avatarUrl ?? avatarUrlHint,
+          bannerUrl: d.bannerUrl,
+          bannerMode: d.bannerMode,
+          bannerGradient: d.bannerGradient,
+          updatedAt: d.updatedAt,
+          accentColor: ringColor,
+          verified: d.verified,
+          reducedMotion: d.reducedMotion,
+        }}
+        effects={equipped.data}
+        status={status}
+        statusIsSelf={Boolean(isSelf)}
+        customStatus={customStatus}
+        statusLine={
+          statusPill || d.blockedByViewer ? (
+            <>
+              {statusPill}
+              {d.blockedByViewer && (
+                <span className="mt-1.5 inline-flex rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  You blocked this account
+                </span>
               )}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-              <p className="text-sm text-muted-foreground">
-                @{d.username}
-                {d.pronouns && <span className="text-muted-foreground"> · {d.pronouns}</span>}
-              </p>
+            </>
+          ) : undefined
+        }
+        handleExtra={
+          d.pronouns || realmRoleMeta ? (
+            <>
+              {d.pronouns && <span className="truncate text-sm text-muted-foreground">· {d.pronouns}</span>}
               {realmRoleMeta && (
                 <span
                   className="inline-flex h-6 items-center gap-1.5 rounded-full border px-2 text-[11px] font-bold uppercase tracking-wider"
@@ -763,9 +650,82 @@ export function ProfileCard({
                   {realmRoleMeta.label}
                 </span>
               )}
-            </div>
-            {statusPill}
+            </>
+          ) : undefined
+        }
+        featuredBadge={
+          featuredBadgeMeta ? (
+            <Badge
+              slug={featuredBadgeMeta.slug}
+              size={24}
+              title={`Featured badge: ${canonicalFor(featuredBadgeMeta.slug)?.name ?? featuredBadgeMeta.name}`}
+            />
+          ) : undefined
+        }
+        avatarRing={ringColor}
+        overlayActions={
+          <>
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Profile options"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-black/40 text-[#f2efe6] backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={copyLink} className="gap-2">
+                  <Link2 className="h-4 w-4" /> Copy profile link
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => { setMenuOpen(false); void setMuted.mutate(!d.mutedByViewer); }}
+                  className="gap-2"
+                >
+                  {d.mutedByViewer ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  {d.mutedByViewer ? "Unmute" : "Mute"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => { setMenuOpen(false); void setBlocked.mutate(!d.blockedByViewer); }}
+                  className="gap-2"
+                >
+                  <Ban className="h-4 w-4" /> {d.blockedByViewer ? "Unblock" : "Block"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setMenuOpen(false);
+                    toast.info("Report sent", { description: "A moderator will take a look." });
+                  }}
+                  className="gap-2"
+                >
+                  <Flag className="h-4 w-4" /> Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span className="sm:hidden">
+              <CloseButton aria-label="Close profile" onClick={close} className="bg-black/40 backdrop-blur-sm" />
+            </span>
+          </>
+        }
+        surface="#141416"
+        gutter="16px"
+      />
 
+      <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {d.blockedByViewer && !isSelf ? (
+          <div className="mt-3 rounded-xl bg-[#1c1c1f] p-4 text-center" style={{ borderRadius: 12 }}>
+            <p className="text-sm font-semibold text-foreground">@{d.username} is blocked</p>
+            <p className="mt-1 text-xs text-muted-foreground">Unblock to see their banner, photo and status.</p>
+            <Button
+              type="button" variant="outline" disabled={setBlocked.isPending}
+              onClick={() => setBlocked.mutate(false)} className="mt-3 h-11"
+            >
+              Unblock
+            </Button>
+          </div>
+        ) : (
+          <>
             {/* Canonical transparent badge art; the sheet shows the full award details. */}
             {computedBadges.length > 0 && (
               <div className="mt-2.5 flex items-center gap-1.5" aria-label={`${computedBadges.length} badges`}>

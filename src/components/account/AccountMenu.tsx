@@ -20,8 +20,8 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
-import { ProfileCardDialog, bannerToneFor, formatCount } from "@/components/profile/ProfileCard";
-import { bannerBackground } from "@/lib/profile-banner";
+import { ProfileCardDialog, formatCount } from "@/components/profile/ProfileCard";
+import { getBanner } from "@/lib/banner";
 import { CustomStatusLine, StatusIcon, AvatarStatusBadge } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
@@ -114,18 +114,36 @@ export function AccountMenu({
     enabled: !!userId,
     staleTime: 60_000,
     queryFn: async () => {
-      const fallback = { bannerUrl: null as string | null, bannerGradient: null as string | null, pawBalance: 0, followers: 0, saved: 0, badges: 0 };
+      const fallback = {
+        bannerUrl: null as string | null,
+        bannerMode: null as string | null,
+        bannerGradient: null as unknown,
+        updatedAt: null as string | null,
+        pawBalance: 0,
+        followers: 0,
+        saved: 0,
+        badges: 0,
+      };
       try {
         const [prof, followers, saved, badges] = await Promise.all([
+          // `*` keeps the menu working before the banner migration lands.
           supabase.from("profiles").select("*").eq("id", userId!).maybeSingle(),
           supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", userId!),
           supabase.from("bookmarks").select("id", { count: "exact", head: true }).eq("user_id", userId!),
           supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", userId!),
         ]);
-        const p = (prof.data ?? null) as { banner_url: string | null; banner_gradient: string | null; paw_balance: number | null } | null;
+        const p = (prof.data ?? null) as {
+          banner_url: string | null;
+          banner_mode: string | null;
+          banner_gradient: unknown;
+          updated_at: string | null;
+          paw_balance: number | null;
+        } | null;
         return {
           bannerUrl: p?.banner_url ?? null,
+          bannerMode: p?.banner_mode ?? null,
           bannerGradient: p?.banner_gradient ?? null,
+          updatedAt: p?.updated_at ?? null,
           pawBalance: Number(p?.paw_balance ?? 0),
           followers: followers.count ?? 0,
           saved: saved.count ?? 0,
@@ -137,6 +155,12 @@ export function AccountMenu({
     },
   });
   const stats = menuQuery.data;
+  const menuBanner = getBanner({
+    banner_url: stats?.bannerUrl,
+    banner_mode: stats?.bannerMode,
+    banner_gradient: stats?.bannerGradient,
+    updated_at: stats?.updatedAt,
+  });
 
   // Remember this account on the device (max 3) so switching is one tap.
   useEffect(() => {
@@ -348,11 +372,7 @@ export function AccountMenu({
           <span
             className="absolute inset-0"
             style={{
-              background: bannerBackground(
-                stats?.bannerUrl,
-                stats?.bannerGradient,
-                bannerToneFor(userId ?? username),
-              ),
+              background: menuBanner.background,
             }}
           />
           {/* Same accent wash as the profile card, so the two surfaces match. */}

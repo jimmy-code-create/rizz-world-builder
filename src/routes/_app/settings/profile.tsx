@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useI18n, tf } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import { Check, Loader2, Trash2, Upload, UserRound } from "lucide-react";
+import { Check, Loader2, Upload, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,16 @@ import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSub
 import { DEFAULT_AVATARS } from "@/lib/default-avatars";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
-import { BANNER_GRADIENTS, bannerBackground, bannerGradientCss } from "@/lib/profile-banner";
+import { BannerGradientPicker } from "@/components/profile/BannerGradientPicker";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { useEquipped } from "@/lib/useEquipped";
+import {
+  BANNER_PRESETS,
+  normalizeBannerGradient,
+  normalizeBannerMode,
+  type BannerGradient,
+  type BannerMode,
+} from "@/lib/banner";
 
 export const Route = createFileRoute("/_app/settings/profile")({
   head: () => ({ meta: [{ title: "Profile · Settings · RIZZ" }] }),
@@ -27,41 +36,98 @@ function ProfileSettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#c9ff3d");
-  const [gradient, setGradient] = useState<string | null>(null);
   const [interests, setInterests] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [bannerMode, setBannerMode] = useState<BannerMode>("none");
+  const [bannerGradient, setBannerGradient] = useState<BannerGradient | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const equipped = useEquipped(profile?.id);
 
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.display_name ?? "");
     setBio(profile.bio ?? "");
     setAccent(profile.accent_color ?? "#c9ff3d");
-    setGradient(profile.banner_gradient ?? null);
     setInterests(profile.interests ?? []);
+    const gradient = normalizeBannerGradient(profile.banner_gradient);
+    setBannerGradient(gradient);
+    setBannerMode(
+      normalizeBannerMode(profile.banner_mode) ??
+        (profile.banner_url ? "image" : gradient ? "gradient" : "none"),
+    );
   }, [profile]);
 
   async function uploadAvatar(file: File, kind: "avatar" | "banner") {
     if (!user) return;
+    if (kind === "banner") setBannerUploading(true);
     const ext = file.name.split(".").pop() ?? "png";
     const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (upErr) return toast.error(upErr.message);
+    if (upErr) {
+      if (kind === "banner") setBannerUploading(false);
+      return toast.error(upErr.message);
+    }
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     const { error } = await supabase
       .from("profiles")
-      .update(kind === "avatar" ? { avatar_url: data.publicUrl } : { banner_url: data.publicUrl })
+      .update(
+        kind === "avatar"
+          ? { avatar_url: data.publicUrl }
+          : { banner_url: data.publicUrl, banner_mode: "image" },
+      )
       .eq("id", user.id);
+    if (kind === "banner") {
+      setBannerUploading(false);
+      if (!error) setBannerMode("image");
+    }
     if (error) return toast.error(error.message);
     await refreshProfile();
     toast.success("Updated ✨");
   }
 
-  async function removeBanner() {
-    if (!user) return;
-    const { error } = await supabase.from("profiles").update({ banner_url: null }).eq("id", user.id);
-    if (error) return toast.error(error.message);
+  /** Banner edits are instant: the preview above is the source of truth. */
+  async function persistBanner(patch: {
+    banner_mode: BannerMode;
+    banner_gradient?: BannerGradient | null;
+    banner_url?: string | null;
+  }) {
+    if (!user) return false;
+    const { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     await refreshProfile();
-    toast.success("Banner removed");
+    return true;
+  }
+
+  function changeBannerMode(next: BannerMode) {
+    if (next === "gradient" && !bannerGradient) {
+      const fallback: BannerGradient = {
+        c1: BANNER_PRESETS[0].c1,
+        c2: BANNER_PRESETS[0].c2,
+        angle: BANNER_PRESETS[0].angle,
+      };
+      setBannerGradient(fallback);
+      setBannerMode("gradient");
+      void persistBanner({ banner_mode: "gradient", banner_gradient: fallback });
+      return;
+    }
+    setBannerMode(next);
+    void persistBanner({ banner_mode: next });
+  }
+
+  function changeBannerGradient(next: BannerGradient) {
+    setBannerGradient(next);
+    setBannerMode("gradient");
+    void persistBanner({ banner_mode: "gradient", banner_gradient: next });
+  }
+
+  async function removeBannerImage() {
+    const nextMode: BannerMode = bannerGradient ? "gradient" : "none";
+    setBannerMode(nextMode);
+    const ok = await persistBanner({ banner_url: null, banner_mode: nextMode });
+    if (ok) toast.success("Banner image removed");
   }
 
   /** Pick one of the built-in cat avatars — no upload, no storage. */
@@ -80,16 +146,18 @@ function ProfileSettingsPage() {
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
       accent_color: accent,
-      banner_gradient: gradient,
+      banner_mode: bannerMode,
+      banner_gradient: bannerGradient,
       interests,
     };
     let { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
     let gradientUnsupported = false;
-    if (error && /banner_gradient/i.test(error.message)) {
-      // Keep the rest of the editor usable until the gradient migration lands.
-      const { banner_gradient: _pendingGradient, ...withoutGradient } = patch;
+    if (error && /banner_(gradient|mode)/i.test(error.message)) {
+      // Keep the rest of the editor usable until the banner migration lands.
+      const { banner_gradient: _pendingGradient, banner_mode: _pendingMode, ...withoutBanner } = patch;
       void _pendingGradient;
-      ({ error } = await supabase.from("profiles").update(withoutGradient).eq("id", user.id));
+      void _pendingMode;
+      ({ error } = await supabase.from("profiles").update(withoutBanner).eq("id", user.id));
       gradientUnsupported = !error;
     }
     setSaving(false);
@@ -122,6 +190,33 @@ function ProfileSettingsPage() {
       icon={<UserRound className="h-5 w-5" />}
     >
       <SettingsCard className="space-y-5">
+        <div>
+          <Label className="text-xs text-muted-foreground">Live preview</Label>
+          <div className="mt-2 overflow-hidden rounded-3xl border border-white/10 bg-[#141416]">
+            <ProfileHeader
+              user={{
+                id: profile.id,
+                username: profile.username,
+                displayName: displayName || profile.username,
+                avatarUrl: profile.avatar_url,
+                bannerUrl: profile.banner_url,
+                bannerMode,
+                bannerGradient,
+                updatedAt: profile.updated_at,
+                accentColor: accent,
+                reducedMotion: Boolean(profile.reduced_motion),
+              }}
+              effects={equipped.data}
+              status="offline"
+              surface="#141416"
+              gutter="16px"
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            This is exactly how the banner, avatar and name row render on your profile.
+          </p>
+        </div>
+
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20 ring-2 ring-primary/40">
             <AvatarImage src={profile.avatar_url ?? undefined} />
@@ -161,86 +256,19 @@ function ProfileSettingsPage() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between gap-3">
-            <Label className="text-xs text-muted-foreground">{t("profile_banner")}</Label>
-            {profile.banner_url && (
-              <button
-                type="button"
-                onClick={() => void removeBanner()}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-destructive"
-              >
-                <Trash2 className="h-3 w-3" /> Remove image
-              </button>
-            )}
+          <Label className="text-xs text-muted-foreground">{t("profile_banner")}</Label>
+          <div className="mt-2">
+            <BannerGradientPicker
+              imageUrl={profile.banner_url}
+              mode={bannerMode}
+              gradient={bannerGradient}
+              onModeChange={changeBannerMode}
+              onGradientChange={changeBannerGradient}
+              onUpload={(file) => void uploadAvatar(file, "banner")}
+              onRemoveImage={removeBannerImage}
+              uploading={bannerUploading}
+            />
           </div>
-          <label className="mt-1 block cursor-pointer">
-            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "banner")} />
-            <div
-              className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-muted-foreground transition hover:bg-white/5"
-              style={{
-                background: bannerBackground(
-                  profile.banner_url,
-                  gradient,
-                  `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
-                ),
-              }}
-            >
-              {!profile.banner_url && !bannerGradientCss(gradient) && (
-                <>
-                  <Upload className="mr-2 h-4 w-4" /> Upload banner
-                </>
-              )}
-            </div>
-          </label>
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
-            {profile.banner_url
-              ? "An uploaded image wins over the gradient. Remove it to use a gradient."
-              : "Pick a standing gradient below, or upload an image above."}
-          </p>
-        </div>
-
-        <div>
-          <Label className="text-xs text-muted-foreground">Banner gradient</Label>
-          <div className="mt-2 grid grid-cols-4 gap-2" role="radiogroup" aria-label="Banner gradient">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!gradient}
-              onClick={() => setGradient(null)}
-              className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl border text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                !gradient ? "border-primary bg-primary/10 text-foreground" : "border-white/10 text-muted-foreground hover:border-white/25"
-              }`}
-            >
-              <span className="h-5 w-8 rounded-md border border-white/10 bg-white/[0.04]" />
-              None
-            </button>
-            {BANNER_GRADIENTS.map((preset) => {
-              const active = gradient === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setGradient(preset.id)}
-                  className={`relative flex h-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                    active ? "border-primary text-white" : "border-white/10 text-white/75 hover:border-white/30"
-                  }`}
-                  style={{ background: bannerGradientCss(preset.id)! }}
-                >
-                  <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{preset.label}</span>
-                  {active && (
-                    <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-black/55">
-                      <Check className="h-2.5 w-2.5" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
-            Like Discord: one standing gradient, visible on your card, preview and full profile.
-          </p>
         </div>
 
         <div>

@@ -30,6 +30,10 @@ const profileCard = readFileSync(
   "utf8",
 );
 const profilePage = readFileSync(new URL("../src/routes/_app/u.$username.tsx", import.meta.url), "utf8");
+const profileHeader = readFileSync(
+  new URL("../src/components/profile/ProfileHeader.tsx", import.meta.url),
+  "utf8",
+);
 
 await check("the bio renders markdown instead of raw asterisks", async () => {
   assert.ok(card.includes('from "@/components/MarkdownText"'));
@@ -47,42 +51,33 @@ await check("distinct earned badges sit on the name row", async () => {
   assert.match(card, /<Badge slug=\{badge\.slug\} size=\{17\} title=\{badge\.name\} \/>/);
 });
 
-await check("Discord anatomy: banner, ringed avatar, presence dot, sections", async () => {
-  assert.match(
-    card,
-    /className="relative h-40 w-full touch-none overflow-hidden sm:h-44 sm:touch-auto"/,
-    "banner matches the profile card and clips the effect",
-  );
-  assert.match(
-    card,
-    /h-24 w-24 rounded-full ring-\[6px\] ring-\[#111214\]/,
-    "same 96px avatar as the profile card",
-  );
-  assert.ok(card.includes("<VerifiedSeal"), "the name row uses the verified seal");
-  assert.ok(!card.includes("BadgeCheck"), "no leftover stock tick icon");
-  assert.ok(card.includes("StatusIcon status={status}"), "presence dot uses the DND/Idle icons");
-  assert.ok(card.includes("z-[3]"), "presence dot paints above the avatar");
+await check("Discord anatomy: shared banner, avatar, presence dot, sections", async () => {
+  assert.ok(card.includes("<ProfileHeader"), "the preview renders the shared header");
+  assert.ok(card.includes("bannerMode: p.banner_mode"), "the preview honours banner_mode");
+  assert.ok(card.includes("bannerGradient: p.banner_gradient"), "the preview honours the gradient");
+  assert.ok(card.includes("effects={equipped.data}"), "the preview wears the equipped looks");
   assert.ok(card.includes("Close profile preview"), "the preview has a visible close control");
-  assert.match(card, /h-\[22px\] w-\[22px\]/, "presence dot fits the 96px avatar");
   assert.ok(card.includes("About Me"));
   assert.ok(card.includes("Member Since"));
   assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
   assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
+
+  assert.ok(profileHeader.includes("aspectRatio: \"3 / 1\""), "the banner is always 3:1");
+  assert.ok(profileHeader.includes("overflow-hidden"), "banner art is clipped");
+  assert.ok(profileHeader.includes("<AvatarDecoration"), "the header owns the avatar");
+  assert.ok(profileHeader.includes("<VerifiedSeal"), "the header uses the verified seal");
+  assert.ok(profileHeader.includes("<StatusDotButton"), "the header owns the presence dot");
+  assert.ok(profileHeader.includes("onPointerDown={onBannerPointerDown}"), "the sheet can drag from the banner");
 });
 
-await check("the accent is a glow around the avatar, never a solid colour hoop", async () => {
-  assert.ok(profileCard.includes("Accent glow, not an accent ring"));
-  assert.match(profileCard, /0 0 24px 5px \$\{ringColor\}59/, "close accent bloom");
-  assert.match(profileCard, /0 0 56px 16px \$\{ringColor\}29/, "wide accent bloom");
-  assert.ok(
-    !/0 0 0 6px \$\{ringColor\}/.test(profileCard),
-    "the old saturated ring must not come back",
-  );
-  assert.ok(profileCard.includes("<VerifiedSeal"), "profile card uses the verified seal");
-  assert.match(profileCard, /h-24 w-24 rounded-full/, "profile card uses the same 96px avatar");
-  assert.match(profileCard, /relative h-40 w-full overflow-hidden sm:h-44/, "profile card banner matches the preview");
-  assert.ok(profilePage.includes("<VerifiedSeal"), "the full profile uses the verified seal");
+await check("one avatar treatment across card, preview and full profile", async () => {
+  assert.ok(profileCard.includes("<ProfileHeader"), "profile card uses the shared header");
+  assert.ok(profilePage.includes("<ProfileHeader"), "full profile uses the shared header");
+  assert.ok(profileCard.includes("avatarRing={ringColor}"), "profile card passes its accent");
+  assert.ok(profilePage.includes('avatarRing="var(--background)"'), "full profile rings against the page");
+  assert.ok(profileHeader.includes('boxShadow: `0 0 0 2px ${avatarRing}`'), "one accent ring");
+  assert.ok(profileHeader.includes('"--avatar-size"'), "the avatar scales from the container");
 });
 
 await check("actions: Message with follow, own profile gets a single button", async () => {

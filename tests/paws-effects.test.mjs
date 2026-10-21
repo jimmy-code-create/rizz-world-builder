@@ -11,7 +11,13 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { untypedFrom, untypedRpc } from "../src/lib/untyped-db.ts";
-import { BANNER_GRADIENTS, bannerGradientCss } from "../src/lib/profile-banner.ts";
+import {
+  BANNER_PRESETS,
+  DEFAULT_BANNER_ANGLE,
+  getBanner,
+  normalizeBannerGradient,
+  normalizeBannerMode,
+} from "../src/lib/banner.ts";
 import { buildReceiptHtml, buildReceiptText, newOrderId } from "../src/lib/effect-receipt.ts";
 
 let passed = 0;
@@ -60,6 +66,26 @@ const walletMigration = readFileSync(
   new URL("../supabase/migrations/20261027000000_paws_effects_shop.sql", import.meta.url),
   "utf8",
 );
+const profileHeader = readFileSync(
+  new URL("../src/components/profile/ProfileHeader.tsx", import.meta.url),
+  "utf8",
+);
+const profileCard = readFileSync(
+  new URL("../src/components/profile/ProfileCard.tsx", import.meta.url),
+  "utf8",
+);
+const profilePreview = readFileSync(
+  new URL("../src/components/ProfilePreview.tsx", import.meta.url),
+  "utf8",
+);
+const bannerPicker = readFileSync(
+  new URL("../src/components/profile/BannerGradientPicker.tsx", import.meta.url),
+  "utf8",
+);
+const bannerLib = readFileSync(
+  new URL("../src/lib/banner.ts", import.meta.url),
+  "utf8",
+);
 const scoreMigration = readFileSync(
   new URL("../supabase/migrations/20261028000000_paws_score_and_web_slinger.sql", import.meta.url),
   "utf8",
@@ -86,6 +112,10 @@ const profileSettings = readFileSync(
 );
 const gradientMigration = readFileSync(
   new URL("../supabase/migrations/20261101000000_profile_banner_gradient.sql", import.meta.url),
+  "utf8",
+);
+const jsonbMigration = readFileSync(
+  new URL("../supabase/migrations/20261102000000_banner_gradient_jsonb.sql", import.meta.url),
   "utf8",
 );
 const effectCss = [
@@ -171,15 +201,47 @@ await check("the shelf labels each preview and its detail chips", async () => {
 
 await check("the profile wears the frame, decoration, effect and chosen badges", async () => {
   assert.ok(profilePage.includes("ProfileBadgesSection"));
-  assert.ok(profilePage.includes("ProfileEffectVisual"));
-  assert.ok(profilePage.includes("ProfileFrame"));
-  assert.ok(profilePage.includes("decorationSlug"));
+  assert.ok(profilePage.includes("<ProfileHeader"));
+  assert.ok(profilePage.includes("avatar_decoration: shownDecoration"));
+  assert.ok(profilePage.includes("profile_frame: shownFrame"));
+  assert.ok(profilePage.includes("profile_effect: shownEffect"));
   assert.ok(profilePage.includes("PawsBreakdown"));
   assert.ok(profilePage.includes("Paws balance"));
   assert.ok(!profilePage.includes("Rizz Score"));
   assert.ok(avatarDeco.includes("BloodwebDecoration"));
   assert.ok(avatarDeco.includes("decorationSlug"));
   assert.ok(!avatarDeco.includes("CinematicAvatarDecoration"));
+});
+
+await check("one shared header paints every profile surface", async () => {
+  for (const [surface, source] of [
+    ["settings preview", profileSettings],
+    ["profile card", profileCard],
+    ["profile popup", profilePreview],
+    ["full profile", profilePage],
+  ]) {
+    assert.ok(source.includes("<ProfileHeader"), `${surface} must use the shared header`);
+  }
+  // 3:1 banner, clipped effects, and an avatar sized from the container.
+  assert.ok(
+    profileHeader.includes('aspectRatio: "3 / 1"'),
+    "the banner must always be 3:1",
+  );
+  assert.ok(profileHeader.includes("overflow-hidden"), "banner art must stay clipped");
+  assert.ok(profileHeader.includes('containerType: "inline-size"'));
+  assert.ok(profileHeader.includes('"--avatar-size"'));
+  assert.ok(profileHeader.includes("getBanner(user)"));
+  assert.ok(profileHeader.includes("onPointerDown={onBannerPointerDown}"));
+  // Every visual surface feeds the header the same banner source.
+  for (const [surface, source] of [
+    ["profile card", profileCard],
+    ["profile popup", profilePreview],
+    ["full profile", profilePage],
+    ["settings", profileSettings],
+  ]) {
+    assert.ok(source.includes("bannerMode"), `${surface} must pass banner_mode`);
+    assert.ok(source.includes("bannerGradient"), `${surface} must pass banner_gradient`);
+  }
 });
 
 await check("the new looks have their own slots and seed migration", async () => {
@@ -258,14 +320,71 @@ await check("untyped database calls keep the Supabase client receiver", async ()
   assert.equal(untypedFrom(client)("profile_effects").url, "https://example.supabase.co/rest/v1");
 });
 
-await check("banner gradients are presets, not uploaded assets", async () => {
-  assert.ok(BANNER_GRADIENTS.length >= 7, "enough gradients for a Discord-style picker");
-  assert.ok(bannerGradientCss("aurora")?.startsWith("linear-gradient("), "a preset resolves to CSS");
-  assert.equal(bannerGradientCss("not-a-preset"), null);
+await check("banner gradients use one validated helper and 16 presets", async () => {
+  assert.equal(BANNER_PRESETS.length, 16, "the picker offers sixteen presets");
+  assert.equal(DEFAULT_BANNER_ANGLE, 160, "the default angle is 160deg");
+  const aurora = normalizeBannerGradient("aurora");
+  assert.deepEqual(aurora, { c1: "#38bdf8", c2: "#6366f1", angle: 160 }, "legacy preset ids migrate");
+  assert.deepEqual(
+    normalizeBannerGradient({ c1: "#ABCDEF", c2: "#123456", angle: 400 }),
+    { c1: "#abcdef", c2: "#123456", angle: 360 },
+    "hex is normalized and the angle clamped",
+  );
+  assert.equal(normalizeBannerGradient({ c1: "nope", c2: "#123456" }), null);
+  assert.equal(normalizeBannerMode("image"), "image");
+  assert.equal(normalizeBannerMode("uploaded"), null);
+
+  const image = getBanner({
+    banner_url: "https://cdn.example/banner.png",
+    banner_mode: "image",
+    updated_at: "2026-10-21T12:00:00Z",
+  });
+  assert.equal(image.mode, "image");
+  assert.ok(image.background.includes("cover"), "an image is cropped to fill the banner");
+  assert.ok(image.background.includes("center top"), "the crop is anchored to the top");
+  assert.ok(image.background.includes("v=2026-10-21T12%3A00%3A00Z"), "cache-busting uses updated_at");
+
+  const gradient = getBanner({
+    banner_url: null,
+    banner_mode: "gradient",
+    banner_gradient: { c1: "#112233", c2: "#445566", angle: 160 },
+  });
+  assert.equal(gradient.mode, "gradient");
+  assert.ok(gradient.background.startsWith("linear-gradient(160deg"), "the gradient honours its angle");
+
+  const none = getBanner({ banner_url: null, banner_mode: "none" });
+  assert.equal(none.mode, "none");
+
+  // The picker wires all three modes, a custom sheet and the instant save path.
+  for (const piece of ["Image", "Gradient", "None", "Swap primary and accent", "Custom colors", "BannerGradientPicker"]) {
+    assert.ok(bannerPicker.includes(piece), `${piece} missing from the gradient picker`);
+  }
+  assert.ok(bannerPicker.includes("aria-checked"));
+  assert.ok(bannerPicker.includes("h-14"), "swatches stay at least 56px tall");
+  assert.ok(profileSettings.includes("BannerGradientPicker"));
+  assert.ok(profileSettings.includes("persistBanner"));
+  assert.ok(profileSettings.includes("banner_mode: nextMode"));
+  assert.ok(bannerLib.includes("export function getBanner"));
+  assert.ok(bannerLib.includes("LEGACY_PRESETS"), "old preset ids keep their look");
+});
+
+await check("the final migration stores jsonb and keeps the card RPC intact", async () => {
   assert.ok(gradientMigration.includes("banner_gradient"));
   assert.ok(gradientMigration.includes("get_profile_card"), "the card RPC carries the gradient");
-  assert.ok(profileSettings.includes("Banner gradient"), "the editor exposes the picker");
-  assert.ok(profileSettings.includes("banner_gradient: gradient"), "saving persists the choice");
+  assert.ok(jsonbMigration.includes("ADD COLUMN IF NOT EXISTS banner_mode"));
+  assert.match(jsonbMigration, /ALTER COLUMN banner_gradient TYPE jsonb/);
+  assert.match(
+    jsonbMigration,
+    /USING public\._banner_gradient_json\(banner_gradient\)/,
+    "the type change must not put a subquery in USING",
+  );
+  assert.ok(jsonbMigration.includes("'aurora'"), "legacy preset ids are converted");
+  assert.ok(jsonbMigration.includes("profiles_banner_gradient_check"));
+  assert.ok(
+    jsonbMigration.includes("'banner_gradient', v_profile->'banner_gradient'"),
+    "the RPC must return an object, not a stringified gradient",
+  );
+  assert.ok(!jsonbMigration.includes("v_profile->>'banner_gradient'"));
 });
 
 await check("an effects purchase produces a downloadable receipt", async () => {

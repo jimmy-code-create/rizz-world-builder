@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { UserAvatar, Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
@@ -12,21 +11,15 @@ import { fetchUserBadges } from "@/lib/badges";
 import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
+import { Calendar, MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
-import { StatusDotButton, StatusPill, AvatarStatusBadge } from "@/components/presence/StatusDot";
+import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
-import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
-import { Nameplate } from "@/components/profile/Nameplate";
-import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { ProfileFrame } from "@/components/profile/ProfileFrame";
-import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
-import { bannerBackground } from "@/lib/profile-banner";
-
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -266,103 +259,86 @@ function ProfilePage() {
   const accent = profile.accent_color || "var(--brand-signal)";
   // Only a badge this member actually earned can sit beside their name.
   const featuredBadge = badges.data?.find((b) => b.slug === profile.featured_badge) ?? null;
-  const verified = badges.data?.some((b) => b.slug === "verified" || b.slug === "no-cap") ?? false;
+  const verified = Boolean(badges.data?.some((b) => b.slug === "verified" || b.slug === "no-cap"));
   const profileUsername = profile.username ?? username;
-  const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  // Three independent slots: avatar decoration, banner effect and frame. Each
-  // renderer ignores slugs that are not in the live catalogue, so a stale row
-  // can never resurrect a removed overlay.
+  // Three independent slots: decoration, banner effect and frame. Each
+  // renderer ignores slugs outside the live catalogue, so a stale row can
+  // never resurrect a removed overlay.
   const shownEffect = eq?.profile_effect ?? null;
-  const shownFrame = eq?.profile_frame ?? null;
   const shownDecoration = eq?.avatar_decoration ?? null;
+  const shownFrame = eq?.profile_frame ?? null;
 
   return (
     <div className="relative isolate">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
-        <div
-          className="h-40 md:h-56 rounded-3xl mb-16 relative overflow-hidden"
-          style={{
-            background: bannerBackground(
-              profile.banner_url,
-              profile.banner_gradient,
-              `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
-            ),
+        <ProfileHeader
+          user={{
+            id: profile.id,
+            username: profileUsername,
+            displayName: profile.display_name,
+            avatarUrl: profile.avatar_url,
+            bannerUrl: profile.banner_url,
+            bannerMode: profile.banner_mode,
+            bannerGradient: profile.banner_gradient,
+            updatedAt: profile.updated_at,
+            accentColor: profile.accent_color,
+            verified,
+            reducedMotion: Boolean(profile.reduced_motion),
           }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-          {shownEffect && <ProfileEffectVisual slug={shownEffect.slug} />}
-          {shownFrame && <ProfileFrame slug={shownFrame.slug} />}
-        </div>
-      </motion.div>
-
-      <div className="absolute left-4 top-28 z-20 md:left-6 md:top-44">
-        <span className="relative inline-flex shrink-0">
-          <AvatarDecoration
-            src={profile.avatar_url}
-            fallback={initial}
-            size={96}
-            decorationSlug={shownDecoration?.slug}
-            className="ring-4 ring-background rounded-full"
-          />
-          <AvatarStatusBadge emoji={customStatus?.emoji} />
-          <span className="absolute -bottom-0.5 -right-0.5 z-20 grid place-items-center rounded-full bg-background p-[3px]">
-            <StatusDotButton
-              userId={profile.id}
-              username={profileUsername}
-              status={presenceStatus}
-              isSelf={Boolean(isMe)}
-              size={18}
-            />
-          </span>
-        </span>
-      </div>
-
-      <div className="relative z-20">
-      <div className="px-1 md:px-2 mt-4 flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-display text-2xl font-bold tracking-tight">
-              <Nameplate
-                name={profile.display_name || profileUsername}
-                className="text-xl md:text-2xl"
-              />
-            </h1>
-            {verified && <VerifiedSeal size={24} className="mt-0.5" />}
-            {featuredBadge && (
+          effects={{
+            profile_effect: shownEffect,
+            avatar_decoration: shownDecoration,
+            profile_frame: shownFrame,
+          }}
+          status={presenceStatus}
+          statusIsSelf={Boolean(isMe)}
+          customStatus={customStatus}
+          statusLine={
+            <>
+              {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
+              {customStatus && (customStatus.emoji || customStatus.text) ? (
+                <StatusPill
+                  emoji={customStatus.emoji}
+                  text={customStatus.text}
+                  expiresAt={presenceRow?.custom_status_expires_at ?? null}
+                  onActivate={isMe ? () => setStatusOpen(true) : undefined}
+                  className="mt-1.5"
+                />
+              ) : isMe ? (
+                <StatusPill emptyLabel="+ Set status" onActivate={() => setStatusOpen(true)} className="mt-1.5" />
+              ) : null}
+            </>
+          }
+          featuredBadge={
+            featuredBadge ? (
               <span
                 className="inline-flex items-center"
                 aria-label={`Featured badge: ${featuredBadge.name}`}
               >
                 <BadgeMark slug={featuredBadge.slug} size={24} title={featuredBadge.name} />
               </span>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5">@{profileUsername}</p>
-          {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
-          {customStatus && (customStatus.emoji || customStatus.text) ? (
-            <StatusPill
-              emoji={customStatus.emoji}
-              text={customStatus.text}
-              expiresAt={presenceRow?.custom_status_expires_at ?? null}
-              onActivate={isMe ? () => setStatusOpen(true) : undefined}
-              className="mt-1.5"
-            />
-          ) : isMe ? (
-            <StatusPill emptyLabel="+ Set status" onActivate={() => setStatusOpen(true)} className="mt-1.5" />
-          ) : null}
-        </div>
+            ) : undefined
+          }
+          avatarRing="var(--background)"
+          surface="var(--background)"
+          gutter="clamp(4px, 1.2vw, 8px)"
+        />
+      </motion.div>
+
+      <div className="relative z-20">
+      <div className="mt-4 flex flex-wrap items-center gap-2 px-1 md:px-2">
         {isMe ? (
-          <div className="flex gap-2">
+          <>
             <Button variant="outline" size="sm" className="glass border-white/10" onClick={shareProfile}>
               <Share2 className="h-4 w-4" />
             </Button>
             <Link to="/settings">
               <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
             </Link>
-          </div>
+          </>
         ) : user ? (
-          <div className="flex gap-2">
+          <>
             <Button
               size="sm"
               onClick={() => followMut.mutate()}
@@ -387,7 +363,7 @@ function ProfilePage() {
             <Button size="sm" variant="outline" className="glass border-white/10" onClick={shareProfile}>
               <Share2 className="h-4 w-4" />
             </Button>
-          </div>
+          </>
         ) : null}
       </div>
 

@@ -5,7 +5,8 @@ import { BloodwebDecoration } from "./BloodwebDecoration";
 type Props = {
   src?: string | null;
   fallback: string;
-  size?: number;
+  /** Pixels or a CSS length (the shared header passes var(--avatar-size)). */
+  size?: number | string;
   className?: string;
   /** Equipped avatar decoration slug; unknown slugs render plain. */
   decorationSlug?: string | null;
@@ -15,6 +16,9 @@ type Props = {
  * A plain avatar plus whatever decoration is equipped in the avatar slot.
  * The decoration is transparent vector art that sits just outside the photo,
  * so ring, presence dot and layout stay exactly where they were.
+ *
+ * The wrapper is exactly the avatar box with `overflow: visible`; the art owns
+ * its own percentage-based overhang and never intercepts pointer events.
  */
 export function AvatarDecoration({
   src,
@@ -23,9 +27,11 @@ export function AvatarDecoration({
   className,
   decorationSlug,
 }: Props) {
+  const compact = typeof size === "number" ? size < 44 : false;
+
   return (
     <div
-      className={cn("relative inline-block select-none", className)}
+      className={cn("relative inline-block shrink-0 select-none overflow-visible", className)}
       style={{ width: size, height: size }}
     >
       <Avatar className="relative z-[1] h-full w-full">
@@ -36,7 +42,7 @@ export function AvatarDecoration({
       </Avatar>
       <BloodwebDecoration
         slug={decorationSlug}
-        intensity={size < 44 ? 0.82 : 1}
+        intensity={compact ? 0.82 : 1}
       />
     </div>
   );
