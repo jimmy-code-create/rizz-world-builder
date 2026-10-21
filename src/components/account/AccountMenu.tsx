@@ -28,6 +28,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useEquipped } from "@/lib/useEquipped";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { ProfileFrame } from "@/components/profile/ProfileFrame";
+import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 import { startWelcomeTour } from "@/lib/onboarding";
 
 type ShellProfile = {
@@ -357,16 +359,20 @@ export function AccountMenu({
           {equipped.data?.profile_effect && (
             <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
           )}
+          {equipped.data?.profile_frame && (
+            <ProfileFrame slug={equipped.data.profile_frame.slug} />
+          )}
           <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
         </span>
         <span className="flex items-center gap-3 px-3">
           <span className="relative -mt-6 inline-flex shrink-0">
-            <Avatar className="h-12 w-12 rounded-full ring-2 ring-[#141416]">
+            <Avatar className="relative z-[1] h-12 w-12 rounded-full ring-2 ring-[#141416]">
               <AvatarImage src={profile?.avatar_url ?? undefined} className="object-cover" />
               <AvatarFallback className="rounded-full bg-[#1c1c1f] text-base font-bold text-[#f2efe6]">
                 {initial}
               </AvatarFallback>
             </Avatar>
+            <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} intensity={0.85} />
             <AvatarStatusBadge emoji={custom?.emoji} size={14} />
             <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[2px]">
               <StatusIcon status={selfPresence.status} size={16} />

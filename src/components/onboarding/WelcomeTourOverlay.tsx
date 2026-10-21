@@ -114,7 +114,7 @@ export function WelcomeTourOverlay({
         id: "account",
         target: "[data-tour='account']",
         title: "This corner is yours",
-        body: "Open this for your status, profile and badges. Puppy Love by Biscuit rides along on your banner here, on profile cards and on every preview — one effect, everywhere you appear.",
+        body: "Open this for your status, profile and badges. Equipped looks ride along here and on every profile card — Bloodweb around your avatar, Puppy Love by Biscuit on the banner and Dark Moon framing the whole card.",
         pose: "present",
       },
       {

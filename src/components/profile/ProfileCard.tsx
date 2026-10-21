@@ -17,6 +17,8 @@ import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { useEquipped } from "@/lib/useEquipped";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { ProfileFrame } from "@/components/profile/ProfileFrame";
+import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
@@ -624,6 +626,9 @@ export function ProfileCard({
         {equipped.data?.profile_effect && (
           <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
         )}
+        {equipped.data?.profile_frame && (
+          <ProfileFrame slug={equipped.data.profile_frame.slug} />
+        )}
         <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
@@ -674,7 +679,7 @@ export function ProfileCard({
         <div className="-mt-11 flex items-end justify-between gap-3">
           <span className="relative inline-flex">
             <Avatar
-              className="h-[84px] w-[84px] rounded-full"
+              className="relative z-[1] h-[84px] w-[84px] rounded-full"
               style={{ boxShadow: `0 0 0 3px #141416, 0 0 0 6px ${ringColor}, 0 14px 34px -18px ${ringColor}` }}
             >
               <AvatarImage src={avatarSrc ?? undefined} className="object-cover" />
@@ -682,6 +687,7 @@ export function ProfileCard({
                 {d.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+            <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
             <AvatarStatusBadge emoji={customStatus?.emoji} size={18} />
             <span
               className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[3px]"

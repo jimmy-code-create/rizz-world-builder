@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-21 — Three wearable looks: Bloodweb, Dark Moon and Puppy Love
+
+### One look per slot, worn together
+- The cosmetics catalogue is a **three-slot wardrobe** now: **Bloodweb** wraps
+  the avatar, **Puppy Love** plays across the banner, and **Dark Moon** frames the
+  whole profile. Each slot equips independently through the secure
+  `equip_profile_effect()` RPC, so a member can wear all three at once.
+- **Bloodweb**: an original transparent vector collar of red veins and glowing
+  nodes that breathes and pulses around the photo at any avatar size.
+- **Dark Moon**: a gothic frame with a bone-white moon, black branches, four
+  red-eyed ravens and cold light falling across the banner. Vector and
+  reduced-motion aware like Puppy Love.
+- A profile frame has its own `profile_frame` enum value, separate from the old
+  nameplate type that nothing uses.
+
+### The effects page is a real shelf
+- `/effects` is now a three-card gallery with live previews of the actual art,
+  Paws balance, one-slot-per-type ownership, **Unlock · 1,400 Paws** for looks
+  the member does not own, **Equip** for owned ones and **Remove** for the worn
+  one. Purchases go through the server wallet RPC; no direct table writes.
+- Equipping or removing invalidates the shared `equipped` cache, so the profile
+  page, account menu, profile cards and previews update at once.
+- Migration `20261031000000_profile_frame_type.sql` adds the frame slot and
+  `20261031000100_bloodweb_dark_moon.sql` seeds the two looks; Puppy Love keeps
+  its row and owners.
+
 ## 2026-10-21 — Rizzy floats over the real feed, and the account menu grows up
 
 ### The welcome tour is a coach-mark layer, not a slide deck

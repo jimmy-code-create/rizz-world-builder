@@ -1,0 +1,60 @@
+/* Bloodweb: a slow breath in the strands and a pulse in the nodes. */
+.pl-bw {
+  filter: drop-shadow(0 0 7px rgba(255, 28, 52, 0.5));
+  transform-origin: 50% 50%;
+  animation: pl-bw-breathe 7.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.pl-bw-web {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: pl-bw-drift 11s ease-in-out infinite;
+}
+
+.pl-bw-orbs {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: pl-bw-pulse 3.4s ease-in-out infinite;
+}
+
+@keyframes pl-bw-breathe {
+  0%,
+  100% {
+    transform: scale(1) rotate(-0.6deg);
+  }
+  50% {
+    transform: scale(1.025) rotate(0.8deg);
+  }
+}
+
+@keyframes pl-bw-drift {
+  0%,
+  100% {
+    transform: rotate(-1.2deg);
+  }
+  50% {
+    transform: rotate(1.4deg);
+  }
+}
+
+@keyframes pl-bw-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+  46% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 0.86;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-bw,
+  .pl-bw-web,
+  .pl-bw-orbs {
+    animation: none;
+  }
+}

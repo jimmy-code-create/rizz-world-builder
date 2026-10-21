@@ -5411,7 +5411,7 @@ export type Database = {
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       group_member_role: "owner" | "admin" | "member"
       post_visibility: "public" | "close_friends" | "followers"
-      profile_effect_type: "avatar_decoration" | "profile_effect" | "nameplate"
+      profile_effect_type: "avatar_decoration" | "profile_effect" | "profile_frame" | "nameplate"
       realm_role: "owner" | "mod" | "member"
       realm_type: "text" | "announcement" | "drops" | "voice"
       voice_role: "host" | "speaker" | "listener"
@@ -5546,7 +5546,7 @@ export const Constants = {
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       group_member_role: ["owner", "admin", "member"],
       post_visibility: ["public", "close_friends", "followers"],
-      profile_effect_type: ["avatar_decoration", "profile_effect", "nameplate"],
+      profile_effect_type: ["avatar_decoration", "profile_effect", "profile_frame", "nameplate"],
       realm_role: ["owner", "mod", "member"],
       realm_type: ["text", "announcement", "drops", "voice"],
       voice_role: ["host", "speaker", "listener"],

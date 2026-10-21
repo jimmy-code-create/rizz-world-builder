@@ -1,10 +1,10 @@
 /**
- * Paws economy + single-effect catalogue static guards.
+ * Paws economy + cosmetics catalogue static guards.
  *
- * The economy (wallet, bounty rewards, ledger) is unchanged, but the cosmetics
- * catalogue is back to one entry: the Puppy Love profile effect. These checks
- * lock both halves down so a future gallery cannot quietly reintroduce removed
- * effects, and so the wallet rules cannot be dropped while the catalogue moves.
+ * The economy (wallet, bounty rewards, ledger) is unchanged. The catalogue now
+ * ships three original looks, one per wearable slot: Bloodweb (avatar), Puppy
+ * Love (banner) and Dark Moon (frame). These checks lock the slots, the secure
+ * purchase/equip path and the retired catalogue down together.
  *
  * Run: node tests/paws-effects.test.mjs
  */
@@ -45,6 +45,14 @@ const showcaseMigration = readFileSync(
   new URL("../supabase/migrations/20261030000000_puppy_love_effect.sql", import.meta.url),
   "utf8",
 );
+const looksMigration = readFileSync(
+  new URL("../supabase/migrations/20261031000100_bloodweb_dark_moon.sql", import.meta.url),
+  "utf8",
+);
+const frameTypeMigration = readFileSync(
+  new URL("../supabase/migrations/20261031000000_profile_frame_type.sql", import.meta.url),
+  "utf8",
+);
 const walletMigration = readFileSync(
   new URL("../supabase/migrations/20261027000000_paws_effects_shop.sql", import.meta.url),
   "utf8",
@@ -59,48 +67,70 @@ const tour = readFileSync(
 );
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
-await check("the catalogue is one profile effect and nothing else", async () => {
+await check("the catalogue is three looks, one per wearable slot", async () => {
   assert.ok(effectsLib.includes("export const COSMETICS_ENABLED = true"));
-  assert.ok(effectsLib.includes('export const PUPPY_LOVE_SLUG = "fx-puppy-love"'));
-  assert.ok(effectsLib.includes("id: PUPPY_LOVE_SLUG"));
-  assert.ok(effectsLib.includes('type: "profile_effect"'));
-  assert.equal(
-    (effectsLib.match(/export const PROFILE_EFFECTS: ProfileEffect\[\] = \[PUPPY_LOVE_EFFECT\]/g) ?? [])
-      .length,
-    1,
-    "PROFILE_EFFECTS must still be the one-effect array",
+  for (const slug of ["fx-puppy-love", "fx-bloodweb", "fx-dark-moon"]) {
+    assert.ok(effectsLib.includes(slug), `${slug} missing from the catalogue`);
+  }
+  assert.match(effectsLib, /type: "avatar_decoration"/);
+  assert.match(effectsLib, /type: "profile_effect"/);
+  assert.match(effectsLib, /type: "profile_frame"/);
+  assert.match(
+    effectsLib,
+    /export const PROFILE_EFFECTS: ProfileEffect\[\] = \[\n\s+BLOODWEB_EFFECT,\n\s+DARK_MOON_EFFECT,\n\s+PUPPY_LOVE_EFFECT,\n\];/,
+    "the catalogue must list exactly the three live looks",
   );
-  // The retired gallery, its decorations and its paywall copy must stay gone.
-  for (const slug of ["fx-sakura-bloom", "fx-arcane-nexus", "fx-sakura-storm"]) {
+  // The retired gallery must stay gone.
+  for (const slug of ["fx-sakura-bloom", "fx-arcane-nexus", "fx-sakura-storm", "fx-web-slinger"]) {
     assert.ok(!effectsLib.includes(slug), `${slug} came back`);
     assert.ok(!effectsPage.includes(slug), `${slug} is still linked from the effects page`);
   }
-  assert.ok(!effectsLib.includes("avatar_decoration"));
-  assert.ok(!effectsPage.includes("Buy with card"));
-  assert.ok(!effectsPage.includes("Paws"));
+  assert.ok(!effectsLib.includes("nameplate"));
 });
 
-await check("the effects page showcases and equips the one effect", async () => {
-  assert.ok(effectsPage.includes("Equip on my profile"));
-  assert.ok(effectsPage.includes("Remove from profile"));
+await check("the effects page previews, unlocks and equips each slot", async () => {
+  assert.ok(effectsPage.includes("PROFILE_EFFECTS.map"));
+  assert.ok(effectsPage.includes("BloodwebDecoration"));
+  assert.ok(effectsPage.includes("DarkMoonFrame"));
   assert.ok(effectsPage.includes("PuppyLoveEffect"));
-  assert.ok(effectsLib.includes("equipEffect"));
+  assert.ok(effectsPage.includes("Unlock ·"));
+  assert.ok(effectsPage.includes("Remove from profile"));
+  assert.ok(effectsPage.includes("purchase_profile_effect"));
+  assert.ok(effectsPage.includes("equipEffect"));
+  assert.ok(effectsPage.includes("unequipEffect"));
+  assert.ok(effectsPage.includes("useOwnedEffectSlugs"));
   assert.ok(effectsComponent.includes("PUPPY_LOVE_SLUG"));
   assert.ok(
     effectsComponent.includes("slug !== PUPPY_LOVE_SLUG"),
     "a stale slug must render nothing",
   );
+  // Direct table writes are revoked; the gallery must go through the RPCs.
+  assert.ok(effectsLib.includes('supabase.rpc("equip_profile_effect"'));
+  assert.ok(effectsLib.includes('supabase.rpc("unequip_profile_effect"'));
+  assert.ok(!/from\("user_profile_effects"\)\s*\n?\s*\.upsert/.test(effectsLib));
 });
 
-await check("the profile wears the effect and the chosen badges", async () => {
+await check("the profile wears the frame, decoration, effect and chosen badges", async () => {
   assert.ok(profilePage.includes("ProfileBadgesSection"));
   assert.ok(profilePage.includes("ProfileEffectVisual"));
+  assert.ok(profilePage.includes("ProfileFrame"));
+  assert.ok(profilePage.includes("decorationSlug"));
   assert.ok(profilePage.includes("PawsBreakdown"));
   assert.ok(profilePage.includes("Paws balance"));
   assert.ok(!profilePage.includes("Rizz Score"));
-  assert.ok(!profilePage.includes("previewEffect"));
+  assert.ok(avatarDeco.includes("BloodwebDecoration"));
+  assert.ok(avatarDeco.includes("decorationSlug"));
   assert.ok(!avatarDeco.includes("CinematicAvatarDecoration"));
-  assert.ok(avatarDeco.includes("decorations were part of the cosmetics catalogue"));
+});
+
+await check("the new looks have their own slots and seed migration", async () => {
+  assert.match(frameTypeMigration, /ADD VALUE IF NOT EXISTS 'profile_frame'/);
+  assert.match(looksMigration, /'fx-bloodweb'/);
+  assert.match(looksMigration, /'fx-dark-moon'/);
+  assert.match(looksMigration, /'avatar_decoration'/);
+  assert.match(looksMigration, /'profile_frame'/);
+  assert.match(looksMigration, /'fx-puppy-love'/);
+  assert.ok(!/DELETE FROM public\.profile_effects/.test(looksMigration), "new looks must not delete Puppy Love");
 });
 
 await check("the retired cinematic pipeline is gone", async () => {

@@ -23,6 +23,8 @@ import {
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { bannerToneFor } from "@/components/profile/ProfileCard";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { ProfileFrame } from "@/components/profile/ProfileFrame";
+import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -291,6 +293,9 @@ export function ProfilePreviewDialog({
               {equipped.data?.profile_effect && (
                 <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
               )}
+              {equipped.data?.profile_frame && (
+                <ProfileFrame slug={equipped.data.profile_frame.slug} />
+              )}
               {!isOwnProfile && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -320,12 +325,13 @@ export function ProfilePreviewDialog({
             {/* Avatar — overlaps the banner, ringed in the card colour like Discord */}
             <div className="relative -mt-[46px] px-4">
               <div className="relative inline-block">
-                <Avatar className="h-[88px] w-[88px] rounded-full ring-[6px] ring-[#111214]">
+                <Avatar className="relative z-[1] h-[88px] w-[88px] rounded-full ring-[6px] ring-[#111214]">
                   <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
                   <AvatarFallback className="bg-surface-2 text-xl font-bold text-foreground">
                     {p.display_name?.[0] ?? p.username[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
+                <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
                 <span
                   aria-hidden
                   className="absolute bottom-0.5 right-0.5 h-[18px] w-[18px] rounded-full ring-[3px] ring-[#111214]"

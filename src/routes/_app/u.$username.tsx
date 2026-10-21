@@ -23,6 +23,7 @@ import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { ProfileFrame } from "@/components/profile/ProfileFrame";
 
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
@@ -266,10 +267,12 @@ function ProfilePage() {
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  // Puppy Love is the only cosmetic left, and it is a full-profile layer: the
-  // component renders nothing for a slug that no longer exists, so a stale row
+  // Three independent slots: avatar decoration, banner effect and frame. Each
+  // renderer ignores slugs that are not in the live catalogue, so a stale row
   // can never resurrect a removed overlay.
   const shownEffect = eq?.profile_effect ?? null;
+  const shownFrame = eq?.profile_frame ?? null;
+  const shownDecoration = eq?.avatar_decoration ?? null;
 
   return (
     <div className="relative isolate">
@@ -284,6 +287,7 @@ function ProfilePage() {
         >
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
           {shownEffect && <ProfileEffectVisual slug={shownEffect.slug} />}
+          {shownFrame && <ProfileFrame slug={shownFrame.slug} />}
         </div>
       </motion.div>
 
@@ -293,6 +297,7 @@ function ProfilePage() {
             src={profile.avatar_url}
             fallback={initial}
             size={96}
+            decorationSlug={shownDecoration?.slug}
             className="ring-4 ring-background rounded-full"
           />
           <AvatarStatusBadge emoji={customStatus?.emoji} />

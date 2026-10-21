@@ -3,14 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Global cosmetics killswitch.
  *
- * Only one cosmetic ships today: the Puppy Love profile effect. Every other
- * decoration, nameplate and profile overlay has been removed, and the catalog
- * below is the only source of truth for what can be equipped. The flag stays
- * so the whole surface can still be paused in one line.
+ * Three looks ship, one per slot, so they can be worn together: Bloodweb
+ * wraps the avatar, Puppy Love plays across the banner and Dark Moon frames
+ * the whole profile. The catalog below is the only source of truth; removed
+ * catalogue rows can never reach a profile.
  */
 export const COSMETICS_ENABLED = true;
 
-export type ProfileEffectType = "profile_effect";
+export type ProfileEffectType = "avatar_decoration" | "profile_effect" | "profile_frame";
 
 export type ProfileEffect = {
   id: string;
@@ -20,13 +20,16 @@ export type ProfileEffect = {
   type: ProfileEffectType;
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic";
   unlock_rizz: number;
+  paw_price: number;
   preview_color: string;
 };
 
 export const PUPPY_LOVE_SLUG = "fx-puppy-love";
+export const BLOODWEB_SLUG = "fx-bloodweb";
+export const DARK_MOON_SLUG = "fx-dark-moon";
 
 /**
- * The one effect.
+ * The banner effect.
  *
  * **Biscuit**, RIZZ's own floppy-eared pup: lime hoodie, heart-shaped shades,
  * one paw up and hearts drifting off the banner. It is an original character
@@ -42,11 +45,51 @@ export const PUPPY_LOVE_EFFECT: ProfileEffect = {
   type: "profile_effect",
   rarity: "mythic",
   unlock_rizz: 1800,
+  paw_price: 1800,
   preview_color: "#c9ff3d",
 };
 
-/** Every effect the app knows about. */
-export const PROFILE_EFFECTS: ProfileEffect[] = [PUPPY_LOVE_EFFECT];
+/**
+ * **Bloodweb** — a living collar of red veins and glowing nodes around the
+ * avatar. Original transparent vector art (`BloodwebDecoration.tsx`), so it
+ * scales from a 24px mention avatar to the 96px profile portrait.
+ */
+export const BLOODWEB_EFFECT: ProfileEffect = {
+  id: BLOODWEB_SLUG,
+  slug: BLOODWEB_SLUG,
+  name: "Bloodweb",
+  description:
+    "A pulsing web of red veins and fever-bright nodes wraps your avatar. Give your avatar a new look.",
+  type: "avatar_decoration",
+  rarity: "mythic",
+  unlock_rizz: 1400,
+  paw_price: 1400,
+  preview_color: "#ff2338",
+};
+
+/**
+ * **Dark Moon** — a gothic branch-and-raven frame with a bone-white moon and
+ * falling light. Original transparent vector art (`DarkMoonFrame.tsx`).
+ */
+export const DARK_MOON_EFFECT: ProfileEffect = {
+  id: DARK_MOON_SLUG,
+  slug: DARK_MOON_SLUG,
+  name: "Dark Moon",
+  description:
+    "A bone-white moon behind black branches and red-eyed ravens, with cold light falling across your banner. Elevate and wrap your profile with a frame.",
+  type: "profile_frame",
+  rarity: "legendary",
+  unlock_rizz: 1600,
+  paw_price: 1600,
+  preview_color: "#cfd6e2",
+};
+
+/** Every effect the app knows about, one per wearable slot. */
+export const PROFILE_EFFECTS: ProfileEffect[] = [
+  BLOODWEB_EFFECT,
+  DARK_MOON_EFFECT,
+  PUPPY_LOVE_EFFECT,
+];
 
 const EFFECTS_BY_SLUG = new Map(PROFILE_EFFECTS.map((effect) => [effect.slug, effect]));
 
@@ -161,9 +204,9 @@ export async function fetchEquippedEffects(
     for (const row of (data ?? []) as any[]) {
       const effect = row.effect as ProfileEffect | null;
       // Removed effects may still sit in the database; only the current
-      // catalog is allowed to reach a profile.
-      if (effect && effect.type === "profile_effect" && isAvailableEffect(effect.slug)) {
-        out.profile_effect = effect;
+      // catalog is allowed to reach a profile. Each row fills its own slot.
+      if (effect && isAvailableEffect(effect.slug)) {
+        out[effect.type] = effect;
       }
     }
   } catch {}
@@ -179,44 +222,8 @@ export async function fetchEquippedEffects(
   return out;
 }
 
-/**
- * The database keys effects by uuid; the catalogue keys them by slug. Resolve
- * the row once so equipping works whatever uuid a deployment seeded.
- */
-async function resolveEffectRowId(slug: string): Promise<string | null> {
-  try {
-    const { data } = await supabase
-      .from("profile_effects")
-      .select("id")
-      .eq("slug", slug)
-      .maybeSingle();
-    return (data as { id?: string } | null)?.id ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /** Whether the choice reached the database, or only this browser. */
 export type EquipResult = { persisted: boolean };
-
-export async function acquireEffect(userId: string, effectId: string): Promise<EquipResult> {
-  if (!COSMETICS_ENABLED) {
-    throw new Error("Cosmetics are currently paused.");
-  }
-  if (!isAvailableEffect(effectId)) {
-    throw new Error("That effect is no longer available.");
-  }
-  saveLocalAcquired(userId, effectId);
-  const rowId = await resolveEffectRowId(effectId);
-  if (!rowId) return { persisted: false };
-  const { error } = await supabase
-    .from("user_profile_effects")
-    .upsert(
-      { user_id: userId, effect_id: rowId, equipped: false },
-      { onConflict: "user_id,effect_id" },
-    );
-  return { persisted: !error };
-}
 
 export function isTrialActive(profile: { trial_active?: boolean | null; trial_ends_at?: string | null } | null) {
   if (!profile) return false;
@@ -237,20 +244,15 @@ export async function equipEffect(
   if (!effect || effect.type !== type) {
     throw new Error("That effect is no longer available.");
   }
-  // The local copy is instant and is what the owner sees even before the
-  // request settles; the database row is what visitors read.
+
+  // Direct writes to user_profile_effects are revoked, so the secure RPC is
+  // the only path that also makes the look visible to visitors.
+  const { error } = await supabase.rpc("equip_profile_effect", { _slug: effectId });
+  if (error) throw error;
+
   saveLocalAcquired(userId, effectId);
   saveLocalEquipped(userId, type, effectId);
-
-  const rowId = await resolveEffectRowId(effectId);
-  if (!rowId) return { persisted: false };
-  const { error } = await supabase
-    .from("user_profile_effects")
-    .upsert(
-      { user_id: userId, effect_id: rowId, equipped: true },
-      { onConflict: "user_id,effect_id" },
-    );
-  return { persisted: !error };
+  return { persisted: true };
 }
 
 export async function unequipEffect(
@@ -258,17 +260,12 @@ export async function unequipEffect(
   effectId: string,
   type?: ProfileEffectType,
 ): Promise<EquipResult> {
-  if (type) saveLocalEquipped(userId, type, null);
-  else if (EFFECTS_BY_SLUG.has(effectId)) saveLocalEquipped(userId, "profile_effect", null);
+  const effect = EFFECTS_BY_SLUG.get(effectId);
+  if (effect) saveLocalEquipped(userId, type ?? effect.type, null);
 
-  const rowId = await resolveEffectRowId(effectId);
-  if (!rowId) return { persisted: true };
-  const { error } = await supabase
-    .from("user_profile_effects")
-    .update({ equipped: false })
-    .eq("user_id", userId)
-    .eq("effect_id", rowId);
-  return { persisted: !error };
+  const { error } = await supabase.rpc("unequip_profile_effect", { _slug: effectId });
+  if (error) throw error;
+  return { persisted: true };
 }
 
 export const RARITY_FLAT: Record<ProfileEffect["rarity"], string> = {
