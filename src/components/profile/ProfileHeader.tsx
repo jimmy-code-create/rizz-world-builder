@@ -58,7 +58,10 @@ export type ProfileHeaderProps = {
   featuredBadge?: ReactNode;
   /** Accent ring for an avatar with no decoration; false hides it. */
   avatarRing?: string | false | null;
-  /** Background behind the name row; also the status-dot cutout. */
+  /**
+   * Background behind the name row; also the status-dot cutout. Defaults to
+   * the dark tone derived from the profile gradient, so every surface agrees.
+   */
   surface?: string;
   /** Inline page gutter (matches the content below the header). */
   gutter?: string;
@@ -86,7 +89,7 @@ export function ProfileHeader({
   onBannerPointerDown,
   featuredBadge,
   avatarRing,
-  surface = "#141416",
+  surface,
   gutter,
   className,
 }: ProfileHeaderProps) {
@@ -97,6 +100,7 @@ export function ProfileHeader({
   const initial = displayName.charAt(0).toUpperCase();
   const avatarSrc = user.avatarUrl ?? defaultAvatarFor(username);
   const banner = getBanner(user);
+  const headerSurface = surface ?? banner.surface;
   const profileEffect = effects?.profile_effect ?? null;
   const avatarDecoration = effects?.avatar_decoration ?? null;
   const profileFrame = effects?.profile_frame ?? null;
@@ -109,23 +113,23 @@ export function ProfileHeader({
       style={
         {
           containerType: "inline-size",
-          "--avatar-size": "clamp(64px, 22cqw, 128px)",
+          "--avatar-size": "clamp(60px, 20cqw, 116px)",
           "--header-gutter": gutter ?? "clamp(12px, 2.6cqw, 24px)",
-          "--header-bg": surface,
+          "--header-bg": headerSurface,
         } as CSSProperties
       }
     >
-      {/* 1. Banner photo/gradient. The box never changes height, even when empty. */}
+      {/* 1. Banner photo. The box never changes height, even when empty. */}
       <div
         className="relative w-full touch-none overflow-hidden rounded-3xl bg-[#141416] sm:touch-auto"
         style={{ aspectRatio: "3 / 1", background: banner.background }}
         onPointerDown={onBannerPointerDown}
       >
-        {/* 2. Effect: clipped to the banner, above the photo, below content. */}
+        {/* 2. Effect: clipped to the banner, above the scrim so it stays vivid. */}
         {effectSpec && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+            className="pointer-events-none absolute inset-0 z-[22] overflow-hidden"
             style={{
               height: `${effectSpec.maxHeightPct}%`,
               width: "100%",
@@ -140,11 +144,11 @@ export function ProfileHeader({
           </div>
         )}
 
-        {/* 2b. Frame: same banner box, above the effect, below the scrim. */}
+        {/* 2b. Frame: same banner box, above the scrim, below the avatar/name. */}
         {frameSpec && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-[15] overflow-hidden"
+            className="pointer-events-none absolute inset-0 z-[25] overflow-hidden"
             style={{ opacity: frameSpec.opacity }}
           >
             <ProfileFrame slug={profileFrame?.slug} />
@@ -170,7 +174,7 @@ export function ProfileHeader({
       </div>
 
       <div className="relative z-30" style={{ paddingInline: "var(--header-gutter)" }}>
-        {/* Avatar overlaps the banner; the gutter keeps the 120% ring off the edge. */}
+        {/* Avatar overlaps the banner; the gutter keeps the small collar off the edge. */}
         <div
           className="flex items-end justify-between gap-3"
           style={{ marginTop: "calc(var(--avatar-size) * -0.5)" }}

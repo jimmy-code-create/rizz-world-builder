@@ -20,6 +20,7 @@ import { useEquipped } from "@/lib/useEquipped";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
+import { getBanner } from "@/lib/banner";
 import { useAuth } from "@/lib/auth";
 
 /** Legacy shape (realm chat passes these); userId is the only required field. */
@@ -558,6 +559,12 @@ export function ProfileCard({
   const realmJoinedAt = realmRow.data?.joined_at
     ? new Date(realmRow.data.joined_at).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
+  const cardBanner = getBanner({
+    banner_url: d.bannerUrl,
+    banner_mode: d.bannerMode,
+    banner_gradient: d.bannerGradient,
+    updated_at: d.updatedAt,
+  });
 
   const hasStatus = customStatus && (customStatus.emoji || customStatus.text);
   const statusPill = hasStatus ? (
@@ -595,6 +602,7 @@ export function ProfileCard({
 
   return (
     <div
+      style={cardBanner.profileBackground ? { background: cardBanner.profileBackground } : undefined}
       onTouchStart={(e) => { dragStart.current = e.touches[0]?.clientY ?? null; }}
       onTouchEnd={(e) => {
         if (dragStart.current === null) return;
@@ -708,7 +716,7 @@ export function ProfileCard({
             </span>
           </>
         }
-        surface="#141416"
+        surface={cardBanner.profileBackground ? cardBanner.surface : "#141416"}
         gutter="16px"
       />
 
@@ -777,7 +785,10 @@ export function ProfileCard({
                   {joinDate && (
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Member since</p>
-                      <p className="mt-1 truncate text-sm font-medium text-[#f2efe6]">{joinDate}</p>
+                      <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-medium text-[#f2efe6]">
+                        <img src="/brand/rizz-cat-logo.svg" alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                        {joinDate}
+                      </p>
                     </div>
                   )}
                   {realmJoinedAt && (
@@ -790,8 +801,12 @@ export function ProfileCard({
               )}
             </div>
 
-            {/* Stats — the two counts are buttons, so they keep 44px targets. */}
-            <div className="mt-3.5 grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
+            {/* Stats — the same Activity block the full profile and popup use. */}
+            <div className="mt-3.5 flex items-center justify-between">
+              <p className="text-[12px] font-bold uppercase tracking-wide text-foreground">Activity</p>
+              <span className="text-[10px] text-muted-foreground">Lifetime</span>
+            </div>
+            <div className="mt-1.5 grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
               <div className="rounded-xl py-2">
                 <p className="truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">{formatCount(d.pawBalance)}</p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paws</p>

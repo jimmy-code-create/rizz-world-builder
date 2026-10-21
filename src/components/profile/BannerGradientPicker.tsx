@@ -19,7 +19,6 @@ import {
   isValidBannerHex,
   presetForGradient,
   type BannerGradient,
-  type BannerMode,
 } from "@/lib/banner";
 import { cn } from "@/lib/utils";
 
@@ -101,26 +100,26 @@ function hsvToHex(h: number, s: number, v: number): string {
 
 type Props = {
   imageUrl: string | null;
-  mode: BannerMode;
   gradient: BannerGradient | null;
-  onModeChange: (mode: BannerMode) => void;
   onGradientChange: (gradient: BannerGradient) => void;
+  onClearGradient: () => void;
   onUpload: (file: File) => void | Promise<void>;
   onRemoveImage: () => void | Promise<void>;
   uploading?: boolean;
 };
 
 /**
- * Discord-style banner picker: Image / Gradient / None, sixteen presets, and a
- * custom two-colour sheet with an SV square, hue slider, validated hex input,
- * quick colours, swap and angle (including ↓ ↘ → ↗).
+ * Discord-style profile customiser: a 3:1 banner image plus a profile-wide
+ * gradient. The gradient never paints the banner box — it tints the whole
+ * profile behind the banner and content. Includes sixteen presets and a custom
+ * two-colour sheet with an SV square, hue slider, validated hex input, quick
+ * colours, swap and angle (including ↓ ↘ → ↗).
  */
 export function BannerGradientPicker({
   imageUrl,
-  mode,
   gradient,
-  onModeChange,
   onGradientChange,
+  onClearGradient,
   onUpload,
   onRemoveImage,
   uploading = false,
@@ -183,18 +182,6 @@ export function BannerGradientPicker({
     setCustomOpen(false);
   }
 
-  function pickMode(next: BannerMode) {
-    if (next === "image" && !imageUrl) {
-      fileRef.current?.click();
-      return;
-    }
-    if (next === "gradient" && !gradient) {
-      onGradientChange({ ...BANNER_PRESETS[0], angle: DEFAULT_BANNER_ANGLE });
-      return;
-    }
-    onModeChange(next);
-  }
-
   return (
     <div className="space-y-3">
       <input
@@ -209,194 +196,168 @@ export function BannerGradientPicker({
         }}
       />
 
-      {/* Image / Gradient / None */}
-      <div
-        role="radiogroup"
-        aria-label="Banner type"
-        className="grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1"
-      >
-        {(
-          [
-            { id: "image", label: "Image", icon: ImageIcon },
-            { id: "gradient", label: "Gradient", icon: Palette },
-            { id: "none", label: "None", icon: Ban },
-          ] as const
-        ).map(({ id, label, icon: Icon }) => {
-          const selected = mode === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => pickMode(id)}
-              className={cn(
-                "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]",
-                selected
-                  ? "bg-[#c8ff3d] text-[#0b0b0c]"
-                  : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" aria-hidden />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {mode === "image" && (
-        <div className="space-y-2">
-          <div
-            className="relative flex h-24 w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1f] bg-cover bg-top"
-            style={
-              imageUrl ? { backgroundImage: `url("${imageUrl.replace(/"/g, '\\"')}")` } : undefined
-            }
-          >
-            {!imageUrl && (
-              <span className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
-                <ImageIcon className="h-5 w-5" />
-                No banner image yet
-              </span>
-            )}
-            {imageUrl && (
-              <span className="absolute inset-x-0 bottom-0 flex justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={uploading}
-                  onClick={() => fileRef.current?.click()}
-                  className="h-11 border-white/20 bg-black/40"
-                >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Replace
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={uploading}
-                  onClick={() => void onRemoveImage()}
-                  className="h-11 border-white/20 bg-black/40"
-                >
-                  Remove
-                </Button>
-              </span>
-            )}
-          </div>
+      {/* Banner image. The gradient below is independent, like Discord's
+          banner image + profile theme colours. */}
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Banner image
+          </p>
+          <span className="text-[10px] text-muted-foreground">3:1 · top anchored</span>
+        </div>
+        <div
+          className="relative flex h-24 w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1f] bg-cover bg-top"
+          style={
+            imageUrl ? { backgroundImage: `url("${imageUrl.replace(/"/g, '\\"')}")` } : undefined
+          }
+        >
           {!imageUrl && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={uploading}
-              onClick={() => fileRef.current?.click()}
-              className="h-11 w-full border-white/10"
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {uploading ? "Uploading…" : "Upload banner"}
-            </Button>
+            <span className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+              <ImageIcon className="h-5 w-5" />
+              No banner image yet
+            </span>
+          )}
+          {imageUrl && (
+            <span className="absolute inset-x-0 bottom-0 flex justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+                className="h-11 border-white/20 bg-black/40"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Replace
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => void onRemoveImage()}
+                className="h-11 border-white/20 bg-black/40"
+              >
+                Remove
+              </Button>
+            </span>
           )}
         </div>
-      )}
-
-      {mode === "none" && (
-        <p className="rounded-2xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
-          No banner. Your avatar and name sit on your profile background.
-        </p>
-      )}
-
-      {mode !== "image" && (
-        <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Presets
-          </p>
-          <div className="grid grid-cols-4 gap-2.5">
-            {BANNER_PRESETS.map((preset) => {
-              const selected = mode === "gradient" && selectedPreset?.id === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  aria-pressed={selected}
-                  aria-label={`${preset.label} gradient`}
-                  onClick={() => {
-                    onGradientChange({ c1: preset.c1, c2: preset.c2, angle: preset.angle });
-                  }}
-                  className="group flex min-h-11 flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                >
-                  <span
-                    className={cn(
-                      "relative block h-14 w-full rounded-xl border border-white/10 transition-transform group-hover:scale-[1.03]",
-                      selected && "ring-2 ring-[#c8ff3d] ring-offset-2 ring-offset-[#141416]",
-                    )}
-                    style={{ background: gradientCss(preset) }}
-                  >
-                    {selected && (
-                      <span className="absolute inset-0 grid place-items-center rounded-xl bg-black/25">
-                        <Check className="h-4 w-4 text-white" strokeWidth={3} />
-                      </span>
-                    )}
-                  </span>
-                  <span className="max-w-full truncate text-[10px] font-medium text-muted-foreground">
-                    {preset.label}
-                  </span>
-                </button>
-              );
-            })}
-
-            {/* None is a first-class swatch, marked with a slashed circle. */}
-            <button
-              type="button"
-              aria-pressed={mode === "none"}
-              aria-label="No banner"
-              onClick={() => onModeChange("none")}
-              className="group flex min-h-11 flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-            >
-              <span
-                className={cn(
-                  "relative grid h-14 w-full place-items-center rounded-xl border border-white/10 bg-[#1c1c1f] transition-transform group-hover:scale-[1.03]",
-                  mode === "none" && "ring-2 ring-[#c8ff3d] ring-offset-2 ring-offset-[#141416]",
-                )}
-              >
-                <Ban className="h-5 w-5 text-muted-foreground" />
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground">None</span>
-            </button>
-          </div>
-
+        {!imageUrl && (
           <Button
             type="button"
             variant="outline"
-            onClick={openCustom}
-            className="mt-3 h-11 w-full justify-center gap-2 border-white/10"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="h-11 w-full border-white/10"
           >
-            <Palette className="h-4 w-4" />
-            Custom colors
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {uploading ? "Uploading…" : "Upload banner"}
           </Button>
+        )}
+      </div>
+
+      {/* Profile-wide gradient. It never paints the 3:1 banner. */}
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Profile gradient
+          </p>
+          <span className="truncate text-[10px] text-muted-foreground">
+            {gradient ? (selectedPreset?.label ?? "Custom") : "Default"}
+          </span>
         </div>
-      )}
+        <p className="text-[11px] leading-4 text-muted-foreground">
+          Tints the whole profile behind your banner and content.
+        </p>
+        <div className="grid grid-cols-4 gap-2.5">
+          {BANNER_PRESETS.map((preset) => {
+            const selected = selectedPreset?.id === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={selected}
+                aria-label={`${preset.label} profile gradient`}
+                onClick={() => {
+                  onGradientChange({ c1: preset.c1, c2: preset.c2, angle: preset.angle });
+                }}
+                className="group flex min-h-11 flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              >
+                <span
+                  className={cn(
+                    "relative block h-14 w-full rounded-xl border border-white/10 transition-transform group-hover:scale-[1.03]",
+                    selected && "ring-2 ring-[#c8ff3d] ring-offset-2 ring-offset-[#141416]",
+                  )}
+                  style={{ background: gradientCss(preset) }}
+                >
+                  {selected && (
+                    <span className="absolute inset-0 grid place-items-center rounded-xl bg-black/25">
+                      <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                    </span>
+                  )}
+                </span>
+                <span className="max-w-full truncate text-[10px] font-medium text-muted-foreground">
+                  {preset.label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* None is a first-class swatch, marked with a slashed circle. */}
+          <button
+            type="button"
+            aria-pressed={!gradient}
+            aria-label="No profile gradient"
+            onClick={onClearGradient}
+            className="group flex min-h-11 flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+          >
+            <span
+              className={cn(
+                "relative grid h-14 w-full place-items-center rounded-xl border border-white/10 bg-[#1c1c1f] transition-transform group-hover:scale-[1.03]",
+                !gradient && "ring-2 ring-[#c8ff3d] ring-offset-2 ring-offset-[#141416]",
+              )}
+            >
+              <Ban className="h-5 w-5 text-muted-foreground" />
+            </span>
+            <span className="text-[10px] font-medium text-muted-foreground">None</span>
+          </button>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={openCustom}
+          className="mt-1 h-11 w-full justify-center gap-2 border-white/10"
+        >
+          <Palette className="h-4 w-4" />
+          Custom colors
+        </Button>
+      </div>
 
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
         <DialogContent
           hideClose
           className="left-0 right-0 top-auto bottom-0 max-h-[92dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[400px] sm:max-w-[400px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         >
-          <DialogTitle className="sr-only">Custom banner gradient</DialogTitle>
+          <DialogTitle className="sr-only">Custom profile gradient</DialogTitle>
           <div
             className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden"
             aria-hidden
           />
           <div className="space-y-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-base font-bold text-[#f2efe6]">Custom gradient</h3>
+              <h3 className="font-display text-base font-bold text-[#f2efe6]">
+                Custom profile gradient
+              </h3>
               <button
                 type="button"
                 aria-label="Close custom gradient"
@@ -410,7 +371,7 @@ export function BannerGradientPicker({
             <div
               className="h-16 w-full rounded-2xl border border-white/10"
               style={{ background: gradientCss(draft) }}
-              aria-label="Gradient preview"
+              aria-label="Profile gradient preview"
             />
 
             {/* Primary / Accent */}

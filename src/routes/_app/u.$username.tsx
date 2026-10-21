@@ -11,7 +11,7 @@ import { fetchUserBadges } from "@/lib/badges";
 import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
-import { Calendar, MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
+import { MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -21,6 +21,7 @@ import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
+import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -268,9 +269,25 @@ function ProfilePage() {
   const shownEffect = eq?.profile_effect ?? null;
   const shownDecoration = eq?.avatar_decoration ?? null;
   const shownFrame = eq?.profile_frame ?? null;
+  const pageBanner = getBanner({
+    banner_url: profile.banner_url,
+    banner_mode: profile.banner_mode,
+    banner_gradient: profile.banner_gradient,
+    updated_at: profile.updated_at,
+  });
+  // With no gradient the header keeps the app surface; with one it melts into
+  // the darkened profile theme.
+  const profileSurface = pageBanner.profileBackground ? pageBanner.surface : "var(--background)";
 
   return (
-    <div className="relative isolate">
+    <div
+      className="relative isolate -mx-3 min-h-[70vh] px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6"
+      style={
+        pageBanner.profileBackground
+          ? { background: pageBanner.profileBackground }
+          : undefined
+      }
+    >
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
         <ProfileHeader
           user={{
@@ -320,8 +337,8 @@ function ProfilePage() {
               </span>
             ) : undefined
           }
-          avatarRing="var(--background)"
-          surface="var(--background)"
+          avatarRing={profileSurface}
+          surface={profileSurface}
           gutter="clamp(4px, 1.2vw, 8px)"
         />
       </motion.div>
@@ -429,22 +446,29 @@ function ProfilePage() {
         loading={badges.isLoading}
       />
 
-      <div className="px-1 md:px-2 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-        <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
-        <button onClick={() => setListOpen("followers")} className="hover:underline">
-          <span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span>
-        </button>
-        <button onClick={() => setListOpen("following")} className="hover:underline">
-          <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
-        </button>
-        <div className="flex items-center gap-1.5 text-primary font-bold sm:ml-auto">
-          <PawPrint className="h-4 w-4" />
-          {formatNumber(profile.paw_balance ?? 0)} <span className="text-muted-foreground">Paws balance</span>
+      <section className="px-1 md:px-2 mt-4" aria-label="Profile activity">
+        <div className="mb-1.5 flex items-center justify-between">
+          <h2 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Activity</h2>
+          <span className="text-[10px] text-muted-foreground">Lifetime</span>
         </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+          <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
+          <button onClick={() => setListOpen("followers")} className="hover:underline">
+            <span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span>
+          </button>
+          <button onClick={() => setListOpen("following")} className="hover:underline">
+            <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
+          </button>
+          <div className="flex items-center gap-1.5 text-primary font-bold sm:ml-auto">
+            <PawPrint className="h-4 w-4" />
+            {formatNumber(profile.paw_balance ?? 0)} <span className="text-muted-foreground">Paws balance</span>
+          </div>
+        </div>
+      </section>
 
       <div className="px-1 md:px-2 mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Calendar className="h-3 w-3" /> Joined {joined}
+        <img src="/brand/rizz-cat-logo.svg" alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
+        Joined {joined}
       </div>
 
       <Tabs defaultValue="posts" className="mt-4">

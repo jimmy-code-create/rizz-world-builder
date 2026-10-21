@@ -28,7 +28,7 @@ export function BloodwebDecoration({
   return (
     <span
       aria-hidden="true"
-      className={cn("pl-bw pointer-events-none absolute -inset-[15%] z-0", className)}
+      className={cn("pl-bw pointer-events-none absolute -inset-[8%] z-0", className)}
       style={{ opacity: intensity }}
     >
       <svg viewBox="0 0 120 120" className="h-full w-full overflow-visible">

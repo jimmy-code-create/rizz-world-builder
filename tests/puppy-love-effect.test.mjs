@@ -148,7 +148,7 @@ await check("the profile mounts the effect above the banner gradient, pointer-fr
   const visual = header.indexOf("<ProfileEffect slug=");
   assert.ok(banner > -1, "the banner must still paint");
   assert.ok(visual > banner, "the effect must render after the banner so it is not dimmed");
-  assert.match(header, /className="pointer-events-none absolute inset-0 z-10 overflow-hidden"/);
+  assert.match(header, /className="pointer-events-none absolute inset-0 z-\[22\] overflow-hidden"/);
   assert.match(header, /aria-hidden/);
   assert.match(css, /\.plx \{[\s\S]*?pointer-events: none;[\s\S]*?\}/, "the scene must never capture pointers");
   assert.match(effect, /aria-hidden="true"/);

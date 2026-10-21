@@ -1,10 +1,11 @@
 /**
- * One source of truth for how a profile banner is rendered.
+ * One source of truth for how a profile banner + theme is rendered.
  *
  * Every surface (settings preview, card, popup, full profile, account menu)
- * calls `getBanner(user)` so an uploaded image, a gradient, or an empty banner
- * can never disagree between two views. The gradient selector only needs to
- * write `banner_mode` + `banner_gradient`; rendering lives here.
+ * calls `getBanner(user)` so an uploaded image, the full-page gradient, or an
+ * empty banner can never disagree between two views. The v1 column names still
+ * say "banner", but the gradient now paints the whole profile behind the
+ * banner and content — never the 3:1 banner box itself.
  */
 
 export type BannerMode = "image" | "gradient" | "none";
@@ -114,6 +115,43 @@ export function gradientCss(gradient: BannerGradient): string {
   return `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2})`;
 }
 
+function mixHex(from: string, to: string, toWeight: number): string {
+  const weight = Math.min(1, Math.max(0, toWeight));
+  const a = Number.parseInt(from.slice(1), 16);
+  const b = Number.parseInt(to.slice(1), 16);
+  const channel = (shift: number) => {
+    const av = (a >> shift) & 255;
+    const bv = (b >> shift) & 255;
+    return Math.round(av + (bv - av) * weight)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
+const DEFAULT_PROFILE_SURFACE = "#141416";
+
+/**
+ * The profile-wide theme. Discord tints the whole profile with the banner's
+ * colours, then darkens it enough for white text to stay readable. The raw
+ * gradient is only shown in the picker swatches; this version is the surface.
+ */
+export function profileThemeFor(gradient: BannerGradient | null): {
+  background: string | null;
+  surface: string;
+} {
+  if (!gradient) return { background: null, surface: DEFAULT_PROFILE_SURFACE };
+  return {
+    background: [
+      "linear-gradient(180deg, rgba(8,8,10,0.40) 0%, rgba(8,8,10,0.70) 48%, rgba(8,8,10,0.90) 100%)",
+      `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2})`,
+    ].join(", "),
+    // The presence-dot cutout and banner scrim need one solid colour. Use a
+    // heavily darkened accent so it melts into the bottom of the page theme.
+    surface: mixHex(gradient.c2, "#0b0b0c", 0.82),
+  };
+}
+
 /** Match a saved gradient to a preset so the swatch can show its selected ring. */
 export function presetForGradient(gradient: BannerGradient | null): BannerPreset | null {
   if (!gradient) return null;
@@ -145,8 +183,12 @@ export type BannerSource = {
   mode: BannerMode;
   imageUrl: string | null;
   gradient: BannerGradient | null;
-  /** A CSS `background` value for the banner box. */
+  /** A CSS `background` value for the banner box (image or neutral empty). */
   background: string;
+  /** Full-profile gradient layer; null means keep the app background. */
+  profileBackground: string | null;
+  /** Solid colour for the header scrim and presence-dot cutout. */
+  surface: string;
   /** Stable React key for the selected source. */
   key: string;
 };
@@ -155,16 +197,20 @@ const EMPTY_BANNER_BACKGROUND = "linear-gradient(135deg, #1a1a1d, #0f0f11)";
 
 /**
  * Resolve a profile row (snake_case) or a form object (camelCase) into one
- * banner source. `banner_mode` is optional for old rows: image wins only when
- * the row actually has an image, otherwise a saved gradient, otherwise none.
+ * banner source. Images still own the 3:1 banner; the saved gradient is
+ * returned separately as a profile-wide background. `banner_mode` is optional
+ * for old rows, and a legacy "gradient" row with an image keeps the image.
  */
 export function getBanner(user: unknown): BannerSource {
   if (!user || typeof user !== "object") {
+    const theme = profileThemeFor(null);
     return {
       mode: "none",
       imageUrl: null,
       gradient: null,
       background: EMPTY_BANNER_BACKGROUND,
+      profileBackground: theme.background,
+      surface: theme.surface,
       key: "none",
     };
   }
@@ -173,10 +219,13 @@ export function getBanner(user: unknown): BannerSource {
   const rawImage = valueFrom(row, "banner_url", "bannerUrl");
   const image = typeof rawImage === "string" && rawImage.trim() ? rawImage.trim() : null;
   const gradient = normalizeBannerGradient(valueFrom(row, "banner_gradient", "bannerGradient"));
-  const explicitMode = normalizeBannerMode(valueFrom(row, "banner_mode", "bannerMode"));
-  const mode: BannerMode = explicitMode ?? (image ? "image" : gradient ? "gradient" : "none");
+  // Image and gradient are independent now: an uploaded image owns the banner,
+  // the gradient owns the page, and the legacy banner_mode is no longer a
+  // visibility switch (Remove clears banner_url itself).
+  const mode: BannerMode = image ? "image" : gradient ? "gradient" : "none";
+  const theme = profileThemeFor(gradient);
 
-  if (mode === "image" && image) {
+  if (image) {
     const url = bustCache(image, valueFrom(row, "updated_at", "updatedAt"));
     return {
       mode,
@@ -185,17 +234,9 @@ export function getBanner(user: unknown): BannerSource {
       // Anchor to the top so faces stay in frame when a wide photo is cropped
       // into the 3:1 banner.
       background: `url("${url.replace(/"/g, '\\"')}") center top / cover no-repeat`,
-      key: `image:${url}`,
-    };
-  }
-
-  if (mode === "gradient" && gradient) {
-    return {
-      mode,
-      imageUrl: image,
-      gradient,
-      background: gradientCss(gradient),
-      key: `gradient:${gradient.c1}:${gradient.c2}:${gradient.angle}`,
+      profileBackground: theme.background,
+      surface: theme.surface,
+      key: `image:${url}:${gradient ? `${gradient.c1}:${gradient.c2}:${gradient.angle}` : "plain"}`,
     };
   }
 
@@ -204,6 +245,8 @@ export function getBanner(user: unknown): BannerSource {
     imageUrl: image,
     gradient,
     background: EMPTY_BANNER_BACKGROUND,
-    key: `empty:${mode}`,
+    profileBackground: theme.background,
+    surface: theme.surface,
+    key: `empty:${mode}:${gradient ? `${gradient.c1}:${gradient.c2}:${gradient.angle}` : "plain"}`,
   };
 }

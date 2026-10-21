@@ -343,6 +343,7 @@ await check("banner gradients use one validated helper and 16 presets", async ()
   assert.ok(image.background.includes("cover"), "an image is cropped to fill the banner");
   assert.ok(image.background.includes("center top"), "the crop is anchored to the top");
   assert.ok(image.background.includes("v=2026-10-21T12%3A00%3A00Z"), "cache-busting uses updated_at");
+  assert.equal(image.profileBackground, null, "no gradient leaves the app background alone");
 
   const gradient = getBanner({
     banner_url: null,
@@ -350,21 +351,32 @@ await check("banner gradients use one validated helper and 16 presets", async ()
     banner_gradient: { c1: "#112233", c2: "#445566", angle: 160 },
   });
   assert.equal(gradient.mode, "gradient");
-  assert.ok(gradient.background.startsWith("linear-gradient(160deg"), "the gradient honours its angle");
+  assert.ok(
+    gradient.profileBackground?.includes("linear-gradient(160deg"),
+    "the gradient honours its angle on the full-profile surface",
+  );
+  assert.ok(
+    !gradient.background.startsWith("linear-gradient(160deg"),
+    "the gradient must never paint the 3:1 banner",
+  );
 
   const none = getBanner({ banner_url: null, banner_mode: "none" });
   assert.equal(none.mode, "none");
+  assert.equal(none.profileBackground, null);
 
-  // The picker wires all three modes, a custom sheet and the instant save path.
-  for (const piece of ["Image", "Gradient", "None", "Swap primary and accent", "Custom colors", "BannerGradientPicker"]) {
+  // The picker wires banner image + profile gradient, a custom sheet and the
+  // instant save path. The gradient is no longer a banner mode.
+  for (const piece of ["Banner image", "Profile gradient", "None", "Swap primary and accent", "Custom colors", "BannerGradientPicker"]) {
     assert.ok(bannerPicker.includes(piece), `${piece} missing from the gradient picker`);
   }
-  assert.ok(bannerPicker.includes("aria-checked"));
+  assert.ok(bannerPicker.includes("onClearGradient"));
   assert.ok(bannerPicker.includes("h-14"), "swatches stay at least 56px tall");
   assert.ok(profileSettings.includes("BannerGradientPicker"));
   assert.ok(profileSettings.includes("persistBanner"));
   assert.ok(profileSettings.includes("banner_mode: nextMode"));
+  assert.ok(profileSettings.includes("getBanner"));
   assert.ok(bannerLib.includes("export function getBanner"));
+  assert.ok(bannerLib.includes("profileThemeFor"), "the full-profile theme is derived in one place");
   assert.ok(bannerLib.includes("LEGACY_PRESETS"), "old preset ids keep their look");
 });
 

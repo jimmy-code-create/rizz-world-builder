@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import {
-  Award,
   Ban,
   Copy,
   MessageCircle,
@@ -20,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { getBanner } from "@/lib/banner";
 import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -45,6 +45,9 @@ type PreviewProfile = {
   paw_balance: number;
   created_at: string;
   featured_badge?: string | null;
+  post_count?: number;
+  follower_count?: number;
+  following_count?: number;
 };
 
 async function fetchPreview(username: string): Promise<PreviewProfile | null> {
@@ -56,7 +59,35 @@ async function fetchPreview(username: string): Promise<PreviewProfile | null> {
     .eq("username", username)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as PreviewProfile) ?? null;
+  const profile = (data as unknown as PreviewProfile | null) ?? null;
+  if (!profile) return null;
+
+  // The preview lists the same activity numbers as the full profile.
+  const [posts, followers, following] = await Promise.all([
+    Promise.resolve(
+      supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", profile.id),
+    )
+      .then((result) => result.count ?? 0)
+      .catch(() => 0),
+    Promise.resolve(
+      supabase
+        .from("follows")
+        .select("follower_id", { count: "exact", head: true })
+        .eq("following_id", profile.id),
+    )
+      .then((result) => result.count ?? 0)
+      .catch(() => 0),
+    Promise.resolve(
+      supabase
+        .from("follows")
+        .select("follower_id", { count: "exact", head: true })
+        .eq("follower_id", profile.id),
+    )
+      .then((result) => result.count ?? 0)
+      .catch(() => 0),
+  ]);
+
+  return { ...profile, post_count: posts, follower_count: followers, following_count: following };
 }
 
 async function checkFollowing(viewerId: string, userId: string): Promise<boolean> {
@@ -83,11 +114,18 @@ function monthYear(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
+function activityCount(value: number | undefined) {
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(
+    Number(value ?? 0),
+  );
+}
+
 /**
  * Discord-style profile preview: banner, overlapping avatar with a presence
  * dot, name row with the member's badges, ABOUT ME (markdown, like Discord),
- * MEMBER SINCE, then the actions. It uses the same 400px / 176px / 96px
- * proportions as the profile card, so opening either surface never jumps.
+ * MEMBER SINCE with the Rizz mark, and the same Activity numbers as the full
+ * profile. It uses the same 400px / 176px / 96px proportions as the profile
+ * card, so opening either surface never jumps.
  */
 export function ProfilePreviewTrigger({
   username,
@@ -228,6 +266,14 @@ export function ProfilePreviewDialog({
   const wornSlug = p?.featured_badge ?? null;
   // Verified is a badge, not a profiles column (same rule as the profile page).
   const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
+  const previewBanner = p
+    ? getBanner({
+        banner_url: p.banner_url,
+        banner_mode: p.banner_mode,
+        banner_gradient: p.banner_gradient,
+        updated_at: p.updated_at,
+      })
+    : null;
 
   // Phones drag the sheet down from the banner or the grab handle. Taps on the
   // banner's own buttons must not start a drag.
@@ -356,12 +402,12 @@ export function ProfilePreviewDialog({
                 </>
               }
               avatarRing={p.accent_color}
-              surface="#111214"
+              surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
               gutter="16px"
               onBannerPointerDown={beginSheetDrag}
             />
 
-            {/* Profile info */}
+            {/* Profile info — same anatomy as the card and full profile. */}
             <div className="space-y-3 px-4 pb-4 pt-3">
               <div className="h-px bg-white/[0.06]" />
 
@@ -400,40 +446,78 @@ export function ProfilePreviewDialog({
                 </Button>
               )}
 
-              {/* Quick stats: the three numbers people actually came to see. */}
-              <section className="grid grid-cols-3 gap-2" aria-label="Quick stats">
-                <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-2.5 py-2">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-primary/70">Paws</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[13px] font-bold tabular-nums text-primary">
-                    <PawPrint className="h-3 w-3 shrink-0" />
-                    {Number(p.paw_balance ?? 0).toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Badges</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[13px] font-bold tabular-nums text-foreground">
-                    <Award className="h-3 w-3 shrink-0 text-muted-foreground" />
-                    {earned.length}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Member Since
-                  </p>
-                  <p className="mt-0.5 text-[13px] font-bold text-foreground">{monthYear(p.created_at)}</p>
+              <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+                {p.bio ? (
+                  <>
+                    <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">About Me</h4>
+                    <MarkdownText
+                      text={p.bio}
+                      className="mt-1.5 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
+                    />
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No bio yet.</p>
+                )}
+                <div className="mt-3 flex items-center gap-2 border-t border-white/[0.07] pt-3">
+                  <img
+                    src="/brand/rizz-cat-logo.svg"
+                    alt=""
+                    aria-hidden
+                    className="h-4 w-4 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Member Since
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-medium text-[#f2efe6]">
+                      {monthYear(p.created_at)}
+                    </p>
+                  </div>
                 </div>
               </section>
 
-              {/* ABOUT ME */}
-              {p.bio && (
-                <section>
-                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">About Me</h4>
-                  <MarkdownText
-                    text={p.bio}
-                    className="mt-1.5 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
-                  />
-                </section>
-              )}
+              {/* Activity: the same four numbers the full profile shows. */}
+              <section aria-label="Profile activity">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Activity</h4>
+                  <span className="text-[10px] text-muted-foreground">Lifetime</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
+                  <div className="rounded-xl py-2">
+                    <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
+                      {activityCount(p.post_count)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Posts
+                    </p>
+                  </div>
+                  <div className="rounded-xl py-2">
+                    <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
+                      {activityCount(p.follower_count)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Followers
+                    </p>
+                  </div>
+                  <div className="rounded-xl py-2">
+                    <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
+                      {activityCount(p.following_count)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Following
+                    </p>
+                  </div>
+                  <div className="rounded-xl py-2">
+                    <p className="flex items-center justify-center gap-1 truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">
+                      <PawPrint className="h-3.5 w-3.5 shrink-0" />
+                      {activityCount(p.paw_balance)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Paws
+                    </p>
+                  </div>
+                </div>
+              </section>
             </div>
           </motion.div>
         )}
@@ -451,6 +535,11 @@ export function ProfilePreviewDialog({
           // The own spring keyframes below replace the primitive's linear slide,
           // so the sheet rises like a drawer and settles instead of gliding.
           className="profile-sheet max-h-[90dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+          style={
+            previewBanner?.profileBackground
+              ? { background: previewBanner.profileBackground }
+              : undefined
+          }
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Profile preview for {username}</SheetTitle>
@@ -487,6 +576,11 @@ export function ProfilePreviewDialog({
       <DialogContent
         hideClose
         className="gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
+        style={
+          previewBanner?.profileBackground
+            ? { background: previewBanner.profileBackground }
+            : undefined
+        }
       >
         <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
         <div className="max-h-[86dvh] overflow-y-auto">{panel}</div>

@@ -18,7 +18,7 @@ import { BannerGradientPicker } from "@/components/profile/BannerGradientPicker"
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
 import {
-  BANNER_PRESETS,
+  getBanner,
   normalizeBannerGradient,
   normalizeBannerMode,
   type BannerGradient,
@@ -85,9 +85,9 @@ function ProfileSettingsPage() {
     toast.success("Updated ✨");
   }
 
-  /** Banner edits are instant: the preview above is the source of truth. */
+  /** Banner/theme edits are instant: the preview above is the source of truth. */
   async function persistBanner(patch: {
-    banner_mode: BannerMode;
+    banner_mode?: BannerMode;
     banner_gradient?: BannerGradient | null;
     banner_url?: string | null;
   }) {
@@ -101,26 +101,20 @@ function ProfileSettingsPage() {
     return true;
   }
 
-  function changeBannerMode(next: BannerMode) {
-    if (next === "gradient" && !bannerGradient) {
-      const fallback: BannerGradient = {
-        c1: BANNER_PRESETS[0].c1,
-        c2: BANNER_PRESETS[0].c2,
-        angle: BANNER_PRESETS[0].angle,
-      };
-      setBannerGradient(fallback);
-      setBannerMode("gradient");
-      void persistBanner({ banner_mode: "gradient", banner_gradient: fallback });
-      return;
-    }
-    setBannerMode(next);
-    void persistBanner({ banner_mode: next });
+  function changeBannerGradient(next: BannerGradient) {
+    // The image and the full-profile gradient are independent. Keep the old
+    // banner_mode column coherent for clients that have not updated yet.
+    const nextMode: BannerMode = profile?.banner_url ? "image" : "gradient";
+    setBannerGradient(next);
+    setBannerMode(nextMode);
+    void persistBanner({ banner_mode: nextMode, banner_gradient: next });
   }
 
-  function changeBannerGradient(next: BannerGradient) {
-    setBannerGradient(next);
-    setBannerMode("gradient");
-    void persistBanner({ banner_mode: "gradient", banner_gradient: next });
+  function clearBannerGradient() {
+    const nextMode: BannerMode = profile?.banner_url ? "image" : "none";
+    setBannerGradient(null);
+    setBannerMode(nextMode);
+    void persistBanner({ banner_mode: nextMode, banner_gradient: null });
   }
 
   async function removeBannerImage() {
@@ -164,7 +158,7 @@ function ProfileSettingsPage() {
     if (error) return toast.error(error.message);
     await refreshProfile();
     if (gradientUnsupported) {
-      toast.info("Profile saved — run the banner gradient migration to enable gradients.");
+      toast.info("Profile saved — run the profile gradient migration to enable gradients.");
     } else {
       toast.success("Profile saved");
     }
@@ -182,6 +176,19 @@ function ProfileSettingsPage() {
 
   if (!profile) return null;
   const initial = (profile.display_name || profile.username || "?").charAt(0).toUpperCase();
+  const previewUser = {
+    id: profile.id,
+    username: profile.username,
+    displayName: displayName || profile.username,
+    avatarUrl: profile.avatar_url,
+    bannerUrl: profile.banner_url,
+    bannerMode,
+    bannerGradient,
+    updatedAt: profile.updated_at,
+    accentColor: accent,
+    reducedMotion: Boolean(profile.reduced_motion),
+  };
+  const previewBanner = getBanner(previewUser);
 
   return (
     <SettingsSubPage
@@ -192,28 +199,24 @@ function ProfileSettingsPage() {
       <SettingsCard className="space-y-5">
         <div>
           <Label className="text-xs text-muted-foreground">Live preview</Label>
-          <div className="mt-2 overflow-hidden rounded-3xl border border-white/10 bg-[#141416]">
+          <div
+            className="mt-2 overflow-hidden rounded-3xl border border-white/10 bg-[#141416]"
+            style={
+              previewBanner.profileBackground
+                ? { background: previewBanner.profileBackground }
+                : undefined
+            }
+          >
             <ProfileHeader
-              user={{
-                id: profile.id,
-                username: profile.username,
-                displayName: displayName || profile.username,
-                avatarUrl: profile.avatar_url,
-                bannerUrl: profile.banner_url,
-                bannerMode,
-                bannerGradient,
-                updatedAt: profile.updated_at,
-                accentColor: accent,
-                reducedMotion: Boolean(profile.reduced_motion),
-              }}
+              user={previewUser}
               effects={equipped.data}
               status="offline"
-              surface="#141416"
+              surface={previewBanner.surface}
               gutter="16px"
             />
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            This is exactly how the banner, avatar and name row render on your profile.
+            This is exactly how the banner, avatar, name row and profile gradient render on your profile.
           </p>
         </div>
 
@@ -260,10 +263,9 @@ function ProfileSettingsPage() {
           <div className="mt-2">
             <BannerGradientPicker
               imageUrl={profile.banner_url}
-              mode={bannerMode}
               gradient={bannerGradient}
-              onModeChange={changeBannerMode}
               onGradientChange={changeBannerGradient}
+              onClearGradient={clearBannerGradient}
               onUpload={(file) => void uploadAvatar(file, "banner")}
               onRemoveImage={removeBannerImage}
               uploading={bannerUploading}

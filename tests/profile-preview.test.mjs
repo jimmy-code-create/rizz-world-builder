@@ -75,9 +75,12 @@ await check("one avatar treatment across card, preview and full profile", async 
   assert.ok(profileCard.includes("<ProfileHeader"), "profile card uses the shared header");
   assert.ok(profilePage.includes("<ProfileHeader"), "full profile uses the shared header");
   assert.ok(profileCard.includes("avatarRing={ringColor}"), "profile card passes its accent");
-  assert.ok(profilePage.includes('avatarRing="var(--background)"'), "full profile rings against the page");
+  assert.ok(profilePage.includes("avatarRing={profileSurface}"), "full profile rings against its theme");
+  assert.ok(profilePage.includes("background: pageBanner.profileBackground"), "full profile paints the gradient");
   assert.ok(profileHeader.includes('boxShadow: `0 0 0 2px ${avatarRing}`'), "one accent ring");
   assert.ok(profileHeader.includes('"--avatar-size"'), "the avatar scales from the container");
+  assert.ok(card.includes("Profile activity"), "the preview lists the same activity numbers");
+  assert.ok(card.includes("/brand/rizz-cat-logo.svg"), "joined date carries the Rizz mark");
 });
 
 await check("actions: Message with follow, own profile gets a single button", async () => {
@@ -89,7 +92,7 @@ await check("actions: Message with follow, own profile gets a single button", as
   // nobody scrolls past a long bio to send a message.
   assert.ok(
     card.indexOf("Primary actions sit directly under the identity") <
-      card.indexOf("{/* ABOUT ME */}"),
+      card.indexOf("About Me"),
     "primary actions must precede the bio",
   );
 });
