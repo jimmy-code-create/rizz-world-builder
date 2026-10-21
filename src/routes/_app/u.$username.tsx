@@ -24,6 +24,7 @@ import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
+import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
@@ -264,6 +265,7 @@ function ProfilePage() {
   const accent = profile.accent_color || "var(--brand-signal)";
   // Only a badge this member actually earned can sit beside their name.
   const featuredBadge = badges.data?.find((b) => b.slug === profile.featured_badge) ?? null;
+  const verified = badges.data?.some((b) => b.slug === "verified" || b.slug === "no-cap") ?? false;
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
@@ -323,6 +325,7 @@ function ProfilePage() {
                 className="text-xl md:text-2xl"
               />
             </h1>
+            {verified && <VerifiedSeal size={24} className="mt-0.5" />}
             {featuredBadge && (
               <span
                 className="inline-flex items-center"

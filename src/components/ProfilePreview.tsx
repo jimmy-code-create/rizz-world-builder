@@ -10,7 +10,6 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Award,
-  BadgeCheck,
   Ban,
   Copy,
   MessageCircle,
@@ -25,6 +24,7 @@ import { bannerToneFor } from "@/components/profile/ProfileCard";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
+import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -251,8 +251,8 @@ export function ProfilePreviewDialog({
         {profile.isLoading && (
           <div className="p-4">
             <div className="animate-pulse space-y-4">
-              <div className="h-28 w-full rounded-xl bg-white/[0.06]" />
-              <div className="mx-2 -mt-12 h-[88px] w-[88px] rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
+              <div className="h-44 w-full rounded-xl bg-white/[0.06]" />
+              <div className="mx-2 -mt-16 h-[104px] w-[104px] rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
               <div className="space-y-2 pt-2">
                 <div className="h-5 w-32 rounded bg-white/[0.06]" />
                 <div className="h-4 w-24 rounded bg-white/[0.06]" />
@@ -282,7 +282,7 @@ export function ProfilePreviewDialog({
           >
             {/* Banner. On phones this doubles as the sheet's drag surface. */}
             <div
-              className="relative h-32 w-full touch-none sm:touch-auto"
+              className="relative h-44 w-full touch-none sm:h-48 sm:touch-auto"
               style={{ background: bannerUrl ? `${bannerBg} center/cover` : bannerBg }}
               onPointerDown={beginSheetDrag}
             >
@@ -323,9 +323,9 @@ export function ProfilePreviewDialog({
             </div>
 
             {/* Avatar — overlaps the banner, ringed in the card colour like Discord */}
-            <div className="relative -mt-[46px] px-4">
+            <div className="relative -mt-[56px] px-4">
               <div className="relative inline-block">
-                <Avatar className="relative z-[1] h-[88px] w-[88px] rounded-full ring-[6px] ring-[#111214]">
+                <Avatar className="relative z-[1] h-[104px] w-[104px] rounded-full ring-[6px] ring-[#111214]">
                   <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
                   <AvatarFallback className="bg-surface-2 text-xl font-bold text-foreground">
                     {p.display_name?.[0] ?? p.username[0].toUpperCase()}
@@ -344,14 +344,11 @@ export function ProfilePreviewDialog({
               {/* Name row: display name, verified tick, badges — Discord order */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                  <h3 className="truncate text-[20px] font-bold leading-6 text-foreground">
+                  <h3 className="truncate text-[24px] font-bold leading-7 text-foreground">
                     {p.display_name || p.username}
                   </h3>
                   {verified && (
-                    <BadgeCheck
-                      className="h-[18px] w-[18px] shrink-0 text-primary"
-                      aria-label="Verified"
-                    />
+                    <VerifiedSeal size={22} className="mb-0.5" />
                   )}
                   {markBadges.length > 0 && (
                     <span className="flex items-center gap-1" aria-label="Badges">
@@ -483,7 +480,7 @@ export function ProfilePreviewDialog({
           hideClose
           // The own spring keyframes below replace the primitive's linear slide,
           // so the sheet rises like a drawer and settles instead of gliding.
-          className="profile-sheet max-h-[88dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+          className="profile-sheet max-h-[92dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Profile preview for {username}</SheetTitle>
@@ -499,7 +496,7 @@ export function ProfilePreviewDialog({
               // Either a deliberate pull or a flick closes the sheet.
               if (info.offset.y > 120 || info.velocity.y > 700) onOpenChange(false);
             }}
-            className="flex max-h-[88dvh] flex-col"
+            className="flex max-h-[92dvh] flex-col"
           >
             <div
               onPointerDown={beginSheetDrag}
@@ -519,7 +516,7 @@ export function ProfilePreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
-        className="gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[340px] sm:max-w-[340px]"
+        className="gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
       >
         <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
         <div className="max-h-[86dvh] overflow-y-auto">{panel}</div>

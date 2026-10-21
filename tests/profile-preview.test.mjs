@@ -25,6 +25,11 @@ async function check(name, fn) {
 }
 
 const card = readFileSync(new URL("../src/components/ProfilePreview.tsx", import.meta.url), "utf8");
+const profileCard = readFileSync(
+  new URL("../src/components/profile/ProfileCard.tsx", import.meta.url),
+  "utf8",
+);
+const profilePage = readFileSync(new URL("../src/routes/_app/u.$username.tsx", import.meta.url), "utf8");
 
 await check("the bio renders markdown instead of raw asterisks", async () => {
   assert.ok(card.includes('from "@/components/MarkdownText"'));
@@ -43,14 +48,36 @@ await check("distinct earned badges sit on the name row", async () => {
 });
 
 await check("Discord anatomy: banner, ringed avatar, presence dot, sections", async () => {
-  assert.match(card, /className="relative h-32 w-full touch-none sm:touch-auto"/, "banner");
-  assert.match(card, /h-\[88px\] w-\[88px\] rounded-full ring-\[6px\] ring-\[#111214\]/, "ringed avatar");
+  assert.match(
+    card,
+    /className="relative h-44 w-full touch-none sm:h-48 sm:touch-auto"/,
+    "banner fills like Discord's profile modal",
+  );
+  assert.match(
+    card,
+    /h-\[104px\] w-\[104px\] rounded-full ring-\[6px\] ring-\[#111214\]/,
+    "large ringed avatar",
+  );
+  assert.ok(card.includes("<VerifiedSeal"), "the name row uses the verified seal");
+  assert.ok(!card.includes("BadgeCheck"), "no leftover stock tick icon");
   assert.match(card, /ring-\[3px\] ring-\[#111214\]/, "presence dot ring");
   assert.ok(card.includes("About Me"));
   assert.ok(card.includes("Member Since"));
   assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
   assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
+});
+
+await check("the accent is a glow around the avatar, never a solid colour hoop", async () => {
+  assert.ok(profileCard.includes("Accent glow, not an accent ring"));
+  assert.match(profileCard, /0 0 24px 5px \$\{ringColor\}59/, "close accent bloom");
+  assert.match(profileCard, /0 0 56px 16px \$\{ringColor\}29/, "wide accent bloom");
+  assert.ok(
+    !/0 0 0 6px \$\{ringColor\}/.test(profileCard),
+    "the old saturated ring must not come back",
+  );
+  assert.ok(profileCard.includes("<VerifiedSeal"), "profile card uses the verified seal");
+  assert.ok(profilePage.includes("<VerifiedSeal"), "the full profile uses the verified seal");
 });
 
 await check("actions: Message with follow, own profile gets a single button", async () => {

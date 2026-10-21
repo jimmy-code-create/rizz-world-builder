@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-21 — Profile previews at Discord scale, an accent glow and a real seal
+
+### The avatar is lit, not boxed
+- The profile card now draws the member's accent as a **soft glow** instead of a
+  hard colour ring: a dark separator, a close bloom and a wide, faint halo. A
+  blue accent reads as blue light around the photo rather than a blue hoop.
+
+### The preview has room to breathe
+- The popout/preview banner grows from 128px to **176–192px** and the avatar
+  from 88px to **104px**, so the sheet reads like Discord's profile panel
+  instead of a cramped mini-card. The profile card itself follows at 184px/96px.
+- The desktop popout widens to 400px; phones keep the swipe-down sheet.
+
+### A verified seal worth the name
+- The thin circle-and-tick beside verified names is replaced by a **scalloped
+  lime seal** with a bold dark check, a gradient fill and a faint brand glow.
+  It renders sharp at 22–24px on profile cards, previews and the full profile.
+
 ## 2026-10-21 — Three wearable looks: Bloodweb, Dark Moon and Puppy Love
 
 ### One look per slot, worn together

@@ -2,7 +2,7 @@ import { Fragment, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AtSign, Ban, Check, ChevronRight, Flag, Link2, MessageCircle, MoreHorizontal,
+  AtSign, Ban, ChevronRight, Flag, Link2, MessageCircle, MoreHorizontal,
   Pencil, Phone, Pin, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -19,6 +19,7 @@ import { useEquipped } from "@/lib/useEquipped";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
+import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
@@ -615,7 +616,7 @@ export function ProfileCard({
       {/* Banner: the uploaded image (or a muted tone from the id) gets an accent
           wash, a hairline highlight and a long fade, so the card has depth
           without ever flashing a bright block of colour. */}
-      <div className="relative h-[148px] w-full overflow-hidden" style={{ background: bannerBg }}>
+      <div className="relative h-[184px] w-full overflow-hidden" style={{ background: bannerBg }}>
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden="true"
@@ -675,12 +676,17 @@ export function ProfileCard({
       </div>
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* Avatar overlapping banner, accent ring + presence dot */}
-        <div className="-mt-11 flex items-end justify-between gap-3">
+        {/* Avatar overlapping banner, accent halo + presence dot */}
+        <div className="-mt-14 flex items-end justify-between gap-3">
           <span className="relative inline-flex">
             <Avatar
-              className="relative z-[1] h-[84px] w-[84px] rounded-full"
-              style={{ boxShadow: `0 0 0 3px #141416, 0 0 0 6px ${ringColor}, 0 14px 34px -18px ${ringColor}` }}
+              className="relative z-[1] h-[96px] w-[96px] rounded-full"
+              style={{
+                // Accent glow, not an accent ring: a dark separator keeps the
+                // photo crisp, then two soft colour blooms light the backdrop.
+                // No crisp colour edge — the avatar should look lit, not boxed.
+                boxShadow: `0 0 0 3px #141416, 0 0 24px 5px ${ringColor}59, 0 0 56px 16px ${ringColor}29, 0 20px 44px -22px #000`,
+              }}
             >
               <AvatarImage src={avatarSrc ?? undefined} className="object-cover" />
               <AvatarFallback className="rounded-full bg-[#1c1c1f] text-2xl font-bold text-[#f2efe6]">
@@ -718,18 +724,10 @@ export function ProfileCard({
           <>
             {/* Name / handle / pronouns / realm role / status */}
             <div className="mt-2.5 flex items-center gap-2">
-              <h2 className="truncate font-display text-[22px] font-bold leading-tight tracking-tight text-[#f2efe6]">
+              <h2 className="truncate font-display text-[24px] font-bold leading-tight tracking-tight text-[#f2efe6]">
                 {d.displayName}
               </h2>
-              {d.verified && (
-                <span
-                  title="Verified"
-                  aria-label="Verified"
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 text-[#c8ff3d]"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                </span>
-              )}
+              {d.verified && <VerifiedSeal size={22} className="mt-0.5" />}
               {featuredBadgeMeta && (
                 <Badge
                   slug={featuredBadgeMeta.slug}
@@ -1089,7 +1087,7 @@ export function ProfileCardDialog({
     <Dialog open={open} onOpenChange={handleChange}>
       <DialogContent
         hideClose
-        className="left-0 right-0 top-auto bottom-0 max-h-[86dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="left-0 right-0 top-auto bottom-0 max-h-[90dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[400px] sm:max-w-[400px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
         <DialogTitle className="sr-only">Profile</DialogTitle>
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden />
