@@ -52,7 +52,6 @@ type Listener = () => void;
 
 let sessions: GameSessionMap = {};
 let viewersByHost: Record<string, string[]> = {};
-let snapshot: GameBotSnapshot = buildSnapshot();
 
 const listeners = new Set<Listener>();
 
@@ -64,6 +63,13 @@ let meName = "Someone";
 let viewingHostId: string | null = null;
 /** Session ids that already ended, so a delayed broadcast cannot revive them. */
 let endedSessions = new Set<string>();
+
+/**
+ * Declared after the state it reads: `buildSnapshot` touches `meId` and
+ * `viewingHostId`, so initialising this above them threw a temporal-dead-zone
+ * ReferenceError during SSR and blanked every page.
+ */
+let snapshot: GameBotSnapshot = buildSnapshot();
 
 function buildSnapshot(): GameBotSnapshot {
   const state = viewFor(sessions, meId, viewingHostId);

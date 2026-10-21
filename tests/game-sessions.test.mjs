@@ -9,6 +9,7 @@
  * Run: node tests/game-sessions.test.mjs
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   makeSessionId,
   removeSession,
@@ -145,5 +146,15 @@ console.log("ok - a stale join falls back to the client's own game");
 
 assert.notEqual(makeSessionId(), makeSessionId());
 console.log("ok - every launch gets a unique session id");
+
+// Regression guard: the module-level snapshot reads `meId`/`viewingHostId`, so
+// initialising it above those `let` declarations threw a temporal-dead-zone
+// ReferenceError during SSR and blanked every page.
+const botSource = readFileSync(new URL("../src/lib/game-bot.ts", import.meta.url), "utf8");
+assert.ok(
+  botSource.indexOf("let meId") < botSource.indexOf("= buildSnapshot()"),
+  "the initial snapshot must be built after the state it reads",
+);
+console.log("ok - the store's initial snapshot is declared after the state it reads");
 
 console.log("\nAll game session checks passed.");
