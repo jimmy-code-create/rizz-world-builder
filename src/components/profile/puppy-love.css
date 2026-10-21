@@ -131,10 +131,10 @@
   animation-play-state: paused !important;
 }
 
-/* Still frame: same composition, no movement. */
+/* Still frame: same composition, no movement. Translucent layers keep their
+   opacity — only the animation stops. */
 .plx[data-calm="true"] * {
   animation: none !important;
-  opacity: 1;
 }
 .plx[data-calm="true"] .plx-heart {
   opacity: 0.6;
