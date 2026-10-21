@@ -135,7 +135,7 @@ function ClaimUsernamePage() {
 
       await refreshProfile();
       toast.success("Your @ is yours.");
-      nav({ to: "/tutorial" });
+      nav({ to: "/tutorial", search: { replay: false } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Couldn't claim that username.";
       setErrorKind(classifyAuthError(message));

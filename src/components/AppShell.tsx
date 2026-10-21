@@ -276,7 +276,7 @@ export function AppShell() {
     if (loading || profileError) return;
     if (!user) nav({ to: "/" });
     else if (!profile?.username) nav({ to: "/claim" });
-    else if (!profile.tutorial_seen) nav({ to: "/tutorial" });
+    else if (!profile.tutorial_seen) nav({ to: "/tutorial", search: { replay: false } });
   }, [loading, user, profile, profileError, nav]);
 
   // Allow the keyboard shortcut "n" to open the composer
