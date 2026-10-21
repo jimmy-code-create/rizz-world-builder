@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-21 — Every badge gets its own emblem, and the preview sheet swipes
+
+### One symbol per award
+- The four legacy awards that borrowed someone else's art now have their own
+  emblems: **RIZZ Team** (crest with rising bars), **Main Character**
+  (spotlight star), **Voice of the Realms** (voice bubble with a waveform) and
+  **The Rizz** (crowned gem). Early Supporter's shield no longer stands in for
+  HypeSquad Bravery, which becomes a bolt.
+- Profile previews and profile cards run the earned list through
+  `distinctBadges()`, so a row never repeats the same emblem when two awards
+  resolve to one symbol. `tests/badge-sprite.test.mjs` now fails if a catalog
+  award reuses a symbol (the documented `no-cap`/`verified` alias excepted).
+- The gallery cards are display cases: a tier-coloured wash, the emblem on a
+  tinted pedestal, a rarity label, worn/locked state, and a slim progress bar
+  tinted to the badge instead of the same primary lime for all twelve.
+
+### The preview is a drawer now
+- On phones the profile preview rises from the bottom edge with a short spring
+  overshoot and can be pulled down from the grab handle **or the banner**,
+  snapping back when the drag is short. Closing accelerates away at a fixed
+  240ms, and `prefers-reduced-motion` collapses both animations.
+- Paws, badge count and member-since sit in a three-tile stat row, the worn
+  badge is called out under the presence line, and the banner is taller so the
+  avatar and its ring have room to breathe.
+
 ## 2026-10-21 — Web Slinger is the only effect, and badges go on your profile
 
 ### The four cinematic loops are retired

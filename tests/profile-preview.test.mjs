@@ -35,18 +35,21 @@ await check("the bio renders markdown instead of raw asterisks", async () => {
   );
 });
 
-await check("earned badges sit on the name row", async () => {
+await check("distinct earned badges sit on the name row", async () => {
   assert.ok(card.includes("fetchUserBadges"));
-  assert.match(card, /earned\.slice\(0, 5\)\.map/);
-  assert.match(card, /<Badge key=\{badge\.slug\} slug=\{badge\.slug\} size=\{17\} title=\{badge\.name\} \/>/);
+  assert.ok(card.includes("distinctBadges(canonBadges(earned))"));
+  assert.match(card, /markBadges\.slice\(0, 6\)\.map/);
+  assert.match(card, /<Badge slug=\{badge\.slug\} size=\{17\} title=\{badge\.name\} \/>/);
 });
 
 await check("Discord anatomy: banner, ringed avatar, presence dot, sections", async () => {
-  assert.match(card, /className="relative h-28 w-full"/, "banner");
+  assert.match(card, /className="relative h-32 w-full touch-none sm:touch-auto"/, "banner");
   assert.match(card, /h-\[88px\] w-\[88px\] rounded-full ring-\[6px\] ring-\[#111214\]/, "ringed avatar");
   assert.match(card, /ring-\[3px\] ring-\[#111214\]/, "presence dot ring");
   assert.ok(card.includes("About Me"));
   assert.ok(card.includes("Member Since"));
+  assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
+  assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
 });
 

@@ -44,6 +44,18 @@ await check("every catalog badge has artwork in the sprite", async () => {
   }
 });
 
+await check("no two catalog awards draw the same emblem", async () => {
+  // Profile rows render earned badges side by side; a shared symbol reads as
+  // the same award repeated. `no-cap` is the documented alias of `verified`.
+  const bySymbol = new Map();
+  for (const badge of catalog) {
+    if (badge.slug === "no-cap") continue;
+    const other = bySymbol.get(badge.symbol);
+    assert.equal(other, undefined, `${badge.slug} reuses #${badge.symbol} from ${other}`);
+    bySymbol.set(badge.symbol, badge.slug);
+  }
+});
+
 await check("symbols stay on the 24 grid the app renders", async () => {
   // Badge.tsx wraps <use> in a 0 0 24 24 viewBox and badge-share.ts extracts
   // the inner markup into its own 0 0 24 24 document. Any other grid crops.

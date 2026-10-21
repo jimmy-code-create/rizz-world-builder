@@ -197,8 +197,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "HypeSquad Bravery",
     flavor: "First in, no hesitation. Joined RIZZ in the first wave.",
     icon: ":cat_hype:",
-    symbol: "og",
-    art: "/badges/badges.svg#og",
+    // A bolt, so it never collides with Early Supporter's shield.
+    symbol: "hypesquad-bravery",
+    art: "/badges/badges.svg#hypesquad-bravery",
     tier: "legendary",
     glow: LIME,
   },
@@ -218,8 +219,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "RIZZ Team",
     flavor: "Built by the people behind RIZZ.",
     icon: ":cat_gg:",
-    symbol: "verified",
-    art: "/badges/badges.svg#verified",
+    // A crest with rising bars, so the team mark never reads as member Verified.
+    symbol: "rizzz-team",
+    art: "/badges/badges.svg#rizzz-team",
     tier: "mythic",
     glow: LIME,
   },
@@ -228,8 +230,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "Main Character",
     flavor: "Content that moves the room.",
     icon: ":cat_hype:",
-    symbol: "rising-star",
-    art: "/badges/badges.svg#rising-star",
+    // Spotlight star: distinct from Rising Star's plain star.
+    symbol: "main-character",
+    art: "/badges/badges.svg#main-character",
     tier: "epic",
     glow: LIME,
   },
@@ -238,8 +241,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "Voice of the Realms",
     flavor: "When they talk, rooms fill.",
     icon: ":cat_music:",
-    symbol: "smooth-talker",
-    art: "/badges/badges.svg#smooth-talker",
+    // Voice bubble with a waveform, instead of borrowing Smooth Talker.
+    symbol: "voice-of-realm",
+    art: "/badges/badges.svg#voice-of-realm",
     tier: "epic",
     glow: WHITE,
   },
@@ -248,8 +252,9 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "The Rizz",
     flavor: "Not just rizz. The Rizz.",
     icon: ":cat_cool:",
-    symbol: "top-rizzler",
-    art: "/badges/badges.svg#top-rizzler",
+    // A crowned gem for the one badge above Top Rizzler.
+    symbol: "the-rizz",
+    art: "/badges/badges.svg#the-rizz",
     tier: "mythic",
     glow: LIME,
   },
@@ -298,6 +303,21 @@ export function canonBadges<T extends { slug: string }>(badges: T[]): T[] {
       return true;
     })
     .sort((a, b) => (SET_ORDER[a.slug] ?? 99) - (SET_ORDER[b.slug] ?? 99));
+}
+
+/**
+ * Drop awards that would draw the same emblem twice (Verified + a legacy mark
+ * that reused the check). The first badge in order wins, so the row reads as a
+ * set of distinct symbols instead of a repeated icon.
+ */
+export function distinctBadges<T extends { slug: string }>(badges: T[]): T[] {
+  const seen = new Set<string>();
+  return badges.filter((badge) => {
+    const symbol = canonicalFor(badge.slug)?.symbol ?? badge.slug;
+    if (seen.has(symbol)) return false;
+    seen.add(symbol);
+    return true;
+  });
 }
 
 export const TIER_LABEL: Record<BadgeTier, string> = {

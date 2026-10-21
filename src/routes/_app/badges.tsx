@@ -375,12 +375,15 @@ export function BadgesPage() {
             </div>
           </div>
 
-          {/* Badges Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          {/* Badges Grid. Each card is a small display case: the tier colour
+              washes the top edge, the emblem sits on a tinted pedestal, and the
+              state (worn / locked / progress) never hides the artwork. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {filteredBadges.map((b) => {
               const hasIt = owned.has(b.slug);
               const isSelected = active?.slug === b.slug;
               const progress = progressMap?.[b.slug] ?? null;
+              const worn = featuredSlug === b.slug;
 
               return (
                 <button
@@ -388,67 +391,96 @@ export function BadgesPage() {
                   type="button"
                   onClick={() => setSelectedBadge(b)}
                   aria-pressed={isSelected}
-                  className={`group glass relative flex flex-col items-center justify-between overflow-hidden rounded-2xl border p-4 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  className={`group relative flex flex-col overflow-hidden rounded-2xl border p-3 text-left transition-[transform,border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isSelected
-                      ? "border-primary bg-primary/[0.08]"
+                      ? "border-primary/60 bg-primary/[0.07]"
                       : hasIt
-                        ? "border-white/10 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.04]"
-                        : "border-dashed border-white/10 opacity-70 hover:border-white/25 hover:bg-white/[0.03] hover:opacity-100"
+                        ? "border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+                        : "border-white/[0.07] bg-white/[0.015] hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.03]"
                   }`}
                 >
-                  <div className="relative flex h-24 items-center justify-center">
-                    <span className="badge-display relative">
-                      <BadgeMark slug={b.slug} size={96} locked={!hasIt} title={b.name} />
-                      {!hasIt && (
-                        <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[#101116] shadow-lg">
-                          <Lock className="h-3.5 w-3.5 text-white/70" />
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="relative my-2 min-w-0 w-full">
-                    <h3 className="truncate font-display text-xs font-bold text-foreground">
-                      {b.name}
-                    </h3>
-                    <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
-                      {b.description}
-                    </p>
-                    {progress && !hasIt && (
-                      <div className="mt-2 w-full">
-                        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${progress.pct}%` }}
-                          />
-                        </div>
-                        <p className="mt-1 text-[10px] font-semibold text-primary">
-                          {progress.current} / {progress.target}
-                          {progress.current < progress.target && (
-                            <span className="font-normal text-muted-foreground">
-                              {" · "}
-                              {progress.target - progress.current} to go
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  <span className="relative flex items-center gap-1">
-                    {featuredSlug === b.slug && (
+                  {/* Tier wash keeps twelve cards from looking like twelve clones. */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-80 transition-opacity group-hover:opacity-100"
+                    style={{
+                      background: `radial-gradient(120% 100% at 50% 0%, ${b.color}${hasIt ? "26" : "12"}, transparent 72%)`,
+                    }}
+                  />
+
+                  <div className="relative flex items-center justify-between gap-2">
+                    <span
+                      className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground"
+                      style={hasIt ? { color: b.color } : undefined}
+                    >
                       <span
-                        className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary"
+                        aria-hidden="true"
+                        className="h-1 w-1 rounded-full"
+                        style={{ background: hasIt ? b.color : "rgba(255,255,255,0.25)" }}
+                      />
+                      {t(`rarity_${b.rarity}`)}
+                    </span>
+                    {worn ? (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-primary"
                         title="Worn on your profile"
                       >
                         <Pin className="h-2.5 w-2.5" /> Worn
                       </span>
+                    ) : !hasIt ? (
+                      <span
+                        className="grid h-5 w-5 place-items-center rounded-full border border-white/10 bg-black/30"
+                        title="Locked"
+                      >
+                        <Lock className="h-2.5 w-2.5 text-white/45" />
+                      </span>
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary/70" aria-label="Unlocked" />
                     )}
+                  </div>
+
+                  <div className="relative mt-1 grid place-items-center py-2">
                     <span
-                      className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-                      style={{ background: `${b.color}22`, color: b.color }}
+                      className="badge-display relative grid h-[76px] w-[76px] place-items-center rounded-full border"
+                      style={{
+                        borderColor: hasIt ? `${b.color}3d` : "rgba(255,255,255,0.08)",
+                        background: `radial-gradient(circle at 50% 34%, ${
+                          hasIt ? `${b.color}1f` : "rgba(255,255,255,0.04)"
+                        }, transparent 72%)`,
+                      }}
                     >
-                      {t(`rarity_${b.rarity}`)}
+                      <BadgeMark slug={b.slug} size={60} locked={!hasIt} title={b.name} />
                     </span>
-                  </span>
+                  </div>
+
+                  <div className="relative min-w-0 w-full text-center">
+                    <h3 className="truncate font-display text-[12px] font-bold leading-4 text-foreground">
+                      {b.name}
+                    </h3>
+                    <p className="mx-auto mt-0.5 line-clamp-2 text-[10px] leading-[1.35] text-muted-foreground">
+                      {b.description}
+                    </p>
+                  </div>
+
+                  {progress && !hasIt && (
+                    <div className="relative mt-2 w-full">
+                      <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
+                        <div
+                          className="h-full rounded-full transition-[width] duration-500"
+                          style={{ width: `${progress.pct}%`, backgroundColor: b.color }}
+                        />
+                      </div>
+                      <p className="mt-1 flex items-baseline justify-between text-[9.5px] font-semibold">
+                        <span style={{ color: b.color }}>
+                          {progress.current}
+                          <span className="text-muted-foreground"> / {progress.target}</span>
+                        </span>
+                        <span className="font-normal text-muted-foreground">
+                          {progress.target - progress.current} to go
+                        </span>
+                      </p>
+                    </div>
+                  )}
                 </button>
               );
             })}

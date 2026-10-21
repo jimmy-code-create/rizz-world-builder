@@ -192,4 +192,76 @@
     <path d="M19.55 2.55c.26 1.1.8 1.64 1.9 1.9-1.1.26-1.64.8-1.9 1.9-.26-1.1-.8-1.64-1.9-1.9 1.1-.26 1.64-.8 1.9-1.9Z" fill="#fff" opacity=".9"/>
     <path d="M4.45 18.85c.2.85.62 1.27 1.47 1.47-.85.2-1.27.62-1.47 1.47-.2-.85-.62-1.27-1.47-1.47.85-.2 1.27-.62 1.47-1.47Z" fill="#fff" opacity=".55"/>
   </symbol>
+  <symbol id="hypesquad-bravery" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-hype" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F3FFB8"/>
+        <stop offset=".5" stop-color="#C6FF1A"/>
+        <stop offset="1" stop-color="#71AA00"/>
+      </linearGradient>
+    </defs>
+    <path d="M12 2 21 5.4v6.9c0 4.8-3.6 8.1-9 9.7-5.4-1.6-9-4.9-9-9.7V5.4z" fill="url(#bzg-hype)"/>
+    <path d="M14.05 4.6 7.35 13.05h3.5l-1.1 6.35 6.9-9.05h-3.6z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M12 3.95 19.15 6.7v5.6c0 3.8-2.65 6.6-7.15 8.1" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".85" stroke-linecap="round"/>
+    <path d="M19.8 17.2c.22.9.66 1.34 1.56 1.56-.9.22-1.34.66-1.56 1.56-.22-.9-.66-1.34-1.56-1.56.9-.22 1.34-.66 1.56-1.56Z" fill="#fff" opacity=".7"/>
+  </symbol>
+  <symbol id="rizzz-team" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-team" x1="12" y1="2.2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#EDFF9C"/>
+        <stop offset=".55" stop-color="#C6FF1A"/>
+        <stop offset="1" stop-color="#78B400"/>
+      </linearGradient>
+    </defs>
+    <path d="M12 2.2 21 6.1v6.5c0 5.2-3.7 8.6-9 9.7-5.3-1.1-9-4.5-9-9.7V6.1z" fill="url(#bzg-team)"/>
+    <path d="M12 4.15 19.15 7v5.55c0 4.1-2.9 6.9-7.15 7.9" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width=".85" stroke-linecap="round"/>
+    <path d="M7.6 15.4V12.1h1.9v3.3zm3.45 0V9.7h1.9v5.7zm3.45 0V7.4h1.9v8z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M17.9 3.1c.22.95.69 1.42 1.64 1.64-.95.22-1.42.69-1.64 1.64-.22-.95-.69-1.42-1.64-1.64.95-.22 1.42-.69 1.64-1.64Z" fill="#fff" opacity=".9"/>
+  </symbol>
+  <symbol id="main-character" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-main" x1="12" y1="1.8" x2="12" y2="22.2" gradientUnits="userSpaceOnUse">
+        <stop stop-color="var(--bz-white,#F7F7F2)"/>
+        <stop offset=".5" stop-color="#D6FF6B"/>
+        <stop offset="1" stop-color="#8CCB00"/>
+      </linearGradient>
+    </defs>
+    <path d="M3.1 20.4 8.4 9.4l3.6 2-3.1 9z" fill="url(#bzg-main)" opacity=".55"/>
+    <path d="M20.9 20.4 15.6 9.4l-3.6 2 3.1 9z" fill="url(#bzg-main)" opacity=".55"/>
+    <path d="M12 2.3l2.15 4.75 5.2.65-3.85 3.55 1 5.15L12 13.85 7.5 16.4l1-5.15-3.85-3.55 5.2-.65z" fill="url(#bzg-main)"/>
+    <path d="M12 4.9l1.5 3.3 3.6.45-2.65 2.45.7 3.55L12 12.85 8.85 14.65l.7-3.55-2.65-2.45 3.6-.45z" fill="var(--bz-ink,#0B0B0B)" opacity=".82"/>
+    <path d="M12 6.6l.85 1.9 2.05.25-1.5 1.4.4 2.05L12 11.15l-1.8 1.05.4-2.05-1.5-1.4 2.05-.25z" fill="url(#bzg-main)"/>
+    <path d="M12 18.7v3.2" stroke="url(#bzg-main)" stroke-width="1.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="voice-of-realm" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-voice" x1="12" y1="2.6" x2="12" y2="21.4" gradientUnits="userSpaceOnUse">
+        <stop stop-color="var(--bz-white,#F7F7F2)"/>
+        <stop offset=".55" stop-color="#BFF3FF"/>
+        <stop offset="1" stop-color="#5FC6E8"/>
+      </linearGradient>
+    </defs>
+    <path d="M12 2.6c5.25 0 9.4 3.6 9.4 8.4s-4.15 8.4-9.4 8.4c-1.05 0-2.05-.15-2.95-.45l-4.05 2.3c-.55.3-1.2-.15-1.1-.75l.75-3.85C3.35 15.4 2.6 13.3 2.6 11c0-4.8 4.15-8.4 9.4-8.4Z" fill="url(#bzg-voice)"/>
+    <path d="M11.05 4.55C6.9 4.9 4.15 7.7 4.15 11c0 1.75.6 3.35 1.75 4.5l.35 1.9 2-.95" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".8" stroke-linecap="round"/>
+    <path d="M8.2 8.5h1.7v5h-1.7zm2.6-2.2h1.7v9.4h-1.7zm2.6 3.3h1.7v2.8h-1.7zm2.6-1.5h1.7v5.8h-1.7z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M20.3 3.3c.24 1 .73 1.5 1.75 1.75-1.02.24-1.51.73-1.75 1.75-.24-1.02-.73-1.51-1.75-1.75 1.02-.25 1.51-.75 1.75-1.75Z" fill="#fff" opacity=".9"/>
+  </symbol>
+  <symbol id="the-rizz" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-rizz" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FBFFD6"/>
+        <stop offset=".38" stop-color="#C6FF1A"/>
+        <stop offset="1" stop-color="#6FA800"/>
+      </linearGradient>
+      <linearGradient id="bzg-rizz2" x1="12" y1="8" x2="12" y2="18" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".95"/>
+        <stop offset="1" stop-color="#fff" stop-opacity=".35"/>
+      </linearGradient>
+    </defs>
+    <path d="M12 1.9 22.1 9.3 18.3 21.2H5.7L1.9 9.3z" fill="url(#bzg-rizz)"/>
+    <path d="M12 1.9 22.1 9.3 12 12.4 1.9 9.3z" fill="url(#bzg-rizz2)" opacity=".55"/>
+    <path d="M3.05 10.15 12 13.15l8.95-3-3.05 9.55H6.1z" fill="var(--bz-ink,#0B0B0B)" opacity=".78"/>
+    <path d="M12 5.2l1.35 2.75 3.05.4-2.25 2.1.6 3.05L12 12.05l-2.75 1.45.6-3.05-2.25-2.1 3.05-.4z" fill="url(#bzg-rizz)"/>
+    <path d="M20.6 1.9c.28 1.15.85 1.72 2 2-1.15.28-1.72.85-2 2-.28-1.15-.85-1.72-2-2 1.15-.28 1.72-.85 2-2Z" fill="#fff" opacity=".92"/>
+  </symbol>
 </svg>

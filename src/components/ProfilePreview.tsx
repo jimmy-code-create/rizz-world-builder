@@ -1,30 +1,37 @@
-import { useState, type ReactNode } from "react";
+import { useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Award,
   BadgeCheck,
   Ban,
   Copy,
   MessageCircle,
   MoreHorizontal,
   PawPrint,
+  Pin,
   UserPlus,
   UserCheck,
 } from "lucide-react";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { bannerToneFor } from "@/components/profile/ProfileCard";
+import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
+import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/Badge";
 import { MarkdownText } from "@/components/MarkdownText";
 import { fetchUserBadges } from "@/lib/badges";
+import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import { toast } from "@/lib/toast";
-import { motion } from "framer-motion";
+import { motion, useDragControls } from "framer-motion";
 
 type PreviewProfile = {
   id: string;
@@ -35,12 +42,15 @@ type PreviewProfile = {
   banner_url: string | null;
   paw_balance: number;
   created_at: string;
+  featured_badge?: string | null;
 };
 
 async function fetchPreview(username: string): Promise<PreviewProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, banner_url, paw_balance, created_at")
+    .select(
+      "id, username, display_name, bio, avatar_url, banner_url, paw_balance, created_at, featured_badge",
+    )
     .eq("username", username)
     .maybeSingle();
   if (error) throw error;
@@ -134,6 +144,9 @@ export function ProfilePreviewDialog({
   const qc = useQueryClient();
   const p = profile.data;
 
+  const isMobile = useIsMobile();
+  const dragControls = useDragControls();
+
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
   const statusText = statusLabel(status);
@@ -145,6 +158,10 @@ export function ProfilePreviewDialog({
     enabled: open && !!p,
     staleTime: 60_000,
   });
+
+  // A profile effect belongs on the preview, like Discord's popout: it is the
+  // place people actually look at someone's banner.
+  const equipped = useEquipped(p?.id);
 
   const following = useQuery({
     queryKey: ["following", user?.id, p?.id],
@@ -215,20 +232,20 @@ export function ProfilePreviewDialog({
   const bannerBg = bannerUrl ? `url(${bannerUrl})` : bannerToneFor(p?.id ?? "");
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
+  // Name-row marks: canonical order, no two awards drawing the same emblem.
+  const markBadges = distinctBadges(canonBadges(earned));
+  const wornSlug = p?.featured_badge ?? null;
   // Verified is a badge, not a profiles column (same rule as the profile page).
   const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        hideClose
-        className="left-0 right-0 top-auto bottom-0 max-h-[86dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-b-none rounded-t-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
-      >
-        <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
+  // Phones drag the sheet down from the banner or the grab handle.
+  const beginSheetDrag = (event: ReactPointerEvent) => {
+    if (!isMobile) return;
+    dragControls.start(event);
+  };
 
-        {/* Drag handle for mobile */}
-        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/20 sm:hidden" aria-hidden />
-
+  const panel = (
+    <>
         {profile.isLoading && (
           <div className="p-4">
             <div className="animate-pulse space-y-4">
@@ -259,18 +276,21 @@ export function ProfilePreviewDialog({
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="max-h-[86dvh] overflow-y-auto"
+            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
           >
-            {/* Banner */}
+            {/* Banner. On phones this doubles as the sheet's drag surface. */}
             <div
-              className="relative h-28 w-full"
+              className="relative h-32 w-full touch-none sm:touch-auto"
               style={{ background: bannerUrl ? `${bannerBg} center/cover` : bannerBg }}
+              onPointerDown={beginSheetDrag}
             >
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
               />
+              {equipped.data?.profile_effect && (
+                <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
+              )}
               {!isOwnProfile && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -327,10 +347,20 @@ export function ProfilePreviewDialog({
                       aria-label="Verified"
                     />
                   )}
-                  {earned.length > 0 && (
+                  {markBadges.length > 0 && (
                     <span className="flex items-center gap-1" aria-label="Badges">
-                      {earned.slice(0, 5).map((badge) => (
-                        <Badge key={badge.slug} slug={badge.slug} size={17} title={badge.name} />
+                      {markBadges.slice(0, 6).map((badge) => (
+                        <span
+                          key={badge.slug}
+                          className={
+                            badge.slug === wornSlug
+                              ? "grid h-[21px] w-[21px] place-items-center rounded-full ring-1 ring-primary/70"
+                              : "grid h-[21px] w-[21px] place-items-center"
+                          }
+                          title={badge.slug === wornSlug ? `${badge.name} · worn` : badge.name}
+                        >
+                          <Badge slug={badge.slug} size={17} title={badge.name} />
+                        </span>
                       ))}
                     </span>
                   )}
@@ -346,12 +376,44 @@ export function ProfilePreviewDialog({
               </div>
 
               {/* Presence row */}
-              <div className="flex items-center gap-1.5 text-[12px] text-foreground/80">
-                <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor }} />
-                <span>{statusText}</span>
+              <div className="flex items-center justify-between gap-2 text-[12px] text-foreground/80">
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor }} />
+                  <span>{statusText}</span>
+                </span>
+                {wornSlug && markBadges.some((badge) => badge.slug === wornSlug) && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    <Pin className="h-2.5 w-2.5" />
+                    {markBadges.find((badge) => badge.slug === wornSlug)?.name}
+                  </span>
+                )}
               </div>
 
               <div className="h-px bg-white/[0.06]" />
+
+              {/* Quick stats: the three numbers people actually came to see. */}
+              <section className="grid grid-cols-3 gap-2" aria-label="Quick stats">
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-primary/70">Paws</p>
+                  <p className="mt-0.5 flex items-center gap-1 text-[13px] font-bold tabular-nums text-primary">
+                    <PawPrint className="h-3 w-3 shrink-0" />
+                    {Number(p.paw_balance ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Badges</p>
+                  <p className="mt-0.5 flex items-center gap-1 text-[13px] font-bold tabular-nums text-foreground">
+                    <Award className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    {earned.length}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    Member Since
+                  </p>
+                  <p className="mt-0.5 text-[13px] font-bold text-foreground">{monthYear(p.created_at)}</p>
+                </div>
+              </section>
 
               {/* ABOUT ME */}
               {p.bio && (
@@ -363,21 +425,6 @@ export function ProfilePreviewDialog({
                   />
                 </section>
               )}
-
-              {/* MEMBER SINCE + Paws */}
-              <section className="flex items-start gap-6">
-                <div>
-                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Member Since</h4>
-                  <p className="mt-1 text-[13px] text-foreground/90">{monthYear(p.created_at)}</p>
-                </div>
-                <div>
-                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Paws</h4>
-                  <p className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-primary">
-                    <PawPrint className="h-3.5 w-3.5" />
-                    {Number(p.paw_balance ?? 0).toLocaleString()}
-                  </p>
-                </div>
-              </section>
 
               {/* Actions */}
               {!isOwnProfile ? (
@@ -415,6 +462,59 @@ export function ProfilePreviewDialog({
             </div>
           </motion.div>
         )}
+    </>
+  );
+
+  // Phones get a real bottom sheet that slides up from the thumb and can be
+  // swiped back down by its handle; the desktop keeps the anchored popout.
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          hideClose
+          // The own spring keyframes below replace the primitive's linear slide,
+          // so the sheet rises like a drawer and settles instead of gliding.
+          className="profile-sheet max-h-[88dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Profile preview for {username}</SheetTitle>
+          </SheetHeader>
+          <motion.div
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.55 }}
+            dragTransition={{ bounceStiffness: 520, bounceDamping: 38 }}
+            onDragEnd={(_, info) => {
+              // Either a deliberate pull or a flick closes the sheet.
+              if (info.offset.y > 120 || info.velocity.y > 700) onOpenChange(false);
+            }}
+            className="flex max-h-[88dvh] flex-col"
+          >
+            <div
+              onPointerDown={beginSheetDrag}
+              className="shrink-0 cursor-grab pb-1.5 pt-2.5 active:cursor-grabbing"
+            >
+              <span className="mx-auto block h-1 w-10 rounded-full bg-white/25" aria-hidden="true" />
+              <span className="sr-only">Drag down to close</span>
+            </div>
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{panel}</div>
+          </motion.div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        hideClose
+        className="gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[340px] sm:max-w-[340px]"
+      >
+        <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
+        <div className="max-h-[86dvh] overflow-y-auto">{panel}</div>
       </DialogContent>
     </Dialog>
   );

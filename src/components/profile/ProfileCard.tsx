@@ -13,7 +13,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AvatarStatusBadge, StatusIcon, StatusPill } from "@/components/presence/StatusDot";
 import { Badge } from "@/components/Badge";
-import { canonBadges, canonicalFor } from "@/lib/badge-set";
+import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -548,7 +548,7 @@ export function ProfileCard({
 
   // Show earned badges in the new 12-badge order, followed by preserved
   // legacy awards while the backend catalog migrates.
-  const computedBadges: CardBadge[] = canonBadges(d.badges).slice(0, 24);
+  const computedBadges: CardBadge[] = distinctBadges(canonBadges(d.badges)).slice(0, 24);
   const badgePreview = computedBadges.slice(0, 5);
   const badgeOverflow = computedBadges.length - badgePreview.length;
   const featuredBadgeMeta = computedBadges.find((badge) => badge.slug === d.featuredBadge) ?? null;
