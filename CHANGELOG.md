@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-10-21 — Profile pass: one gradient everywhere, Main/Games tabs, tappable badges
+
+### One gradient, painted across the whole profile
+- `src/lib/banner.ts` is the single source of truth: sixteen presets plus a
+  custom two-colour sheet with an angle, and one shared `ProfileHeader` for the
+  settings preview, hover card, popup and full profile.
+- The chosen gradient now paints the full profile page behind the banner and
+  content as a darkened theme; uploaded banner images stay independent and still
+  own the 3:1 banner box.
+
+### Motion: fades, not slides
+- The profile preview panel, mobile sheet and activity switch fade and settle
+  with a hair of scale instead of travelling in from the side or bottom. Hover
+  lifts are replaced by scale/brightness and border emphasis, and the tab
+  underline fades rather than sweeping.
+
+### Profile page
+- Name row with the verified seal, up to six tappable badge marks, presence,
+  join date and the header actions (Message / Follow / Edit profile / share and
+  a block menu) sitting beside the name instead of in a separate toolbar.
+- A four-cell stats strip (Posts / Followers / Following / Paws), an About Me
+  card that holds the bio and interests, and stronger Discord-style buttons.
+- Tabs are now **Main · Games · Paws**. Main keeps posts, reels, realms and
+  groups behind a compact activity switcher with crossfade transitions; Games
+  adds a real arcade shelf (nine first-party games, the member's device-local
+  win count, and a straight in to `/games`).
+- Saving your profile in Settings now takes you to your full profile instead of
+  leaving you on the editor.
+
+### Badges you can tap
+- Any badge on the profile name row, the showcase and the preview opens a
+  Discord-style popout: big vector emblem, tier, meaning, earned date, and — for
+  the owner — one tap to wear it beside their name or clear it.
+- The badge chip itself lifts on hover and shows focus rings, so badges are
+  real controls rather than decoration.
+
+### Effects shop
+- Shelf filters for the three slots, an owned-only toggle, a three-step "unlock
+  → wear → shows everywhere" strip, stronger full-width CTAs (Equip, Unlock,
+  Remove), and an "Earn N more Paws" link when the wallet is short.
+
 ## 2026-10-21 — One profile size, clean presence, gradient banners and a real shop
 
 ### One profile, two ways in

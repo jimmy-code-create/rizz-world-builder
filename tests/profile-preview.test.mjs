@@ -29,7 +29,10 @@ const profileCard = readFileSync(
   new URL("../src/components/profile/ProfileCard.tsx", import.meta.url),
   "utf8",
 );
-const profilePage = readFileSync(new URL("../src/routes/_app/u.$username.tsx", import.meta.url), "utf8");
+const profilePage = readFileSync(
+  new URL("../src/routes/_app/u.$username.tsx", import.meta.url),
+  "utf8",
+);
 const profileHeader = readFileSync(
   new URL("../src/components/profile/ProfileHeader.tsx", import.meta.url),
   "utf8",
@@ -44,11 +47,16 @@ await check("the bio renders markdown instead of raw asterisks", async () => {
   );
 });
 
-await check("distinct earned badges sit on the name row", async () => {
+await check("distinct earned badges sit on the name row and are tappable", async () => {
   assert.ok(card.includes("fetchUserBadges"));
   assert.ok(card.includes("distinctBadges(canonBadges(earned))"));
   assert.match(card, /markBadges\.slice\(0, 6\)\.map/);
-  assert.match(card, /<Badge slug=\{badge\.slug\} size=\{17\} title=\{badge\.name\} \/>/);
+  assert.match(
+    card,
+    /<BadgeChip[\s\S]{0,180}?badge=\{badge\}[\s\S]{0,120}?onSelect=\{\(picked\) => setOpenBadge\(picked\)\}/,
+    "each name-row mark opens the badge popout",
+  );
+  assert.ok(card.includes("<BadgeDetailDialog"), "the preview hosts the badge popout");
 });
 
 await check("Discord anatomy: shared banner, avatar, presence dot, sections", async () => {
@@ -63,21 +71,30 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
   assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
 
-  assert.ok(profileHeader.includes("aspectRatio: \"3 / 1\""), "the banner is always 3:1");
+  assert.ok(profileHeader.includes('aspectRatio: "3 / 1"'), "the banner is always 3:1");
   assert.ok(profileHeader.includes("overflow-hidden"), "banner art is clipped");
   assert.ok(profileHeader.includes("<AvatarDecoration"), "the header owns the avatar");
   assert.ok(profileHeader.includes("<VerifiedSeal"), "the header uses the verified seal");
   assert.ok(profileHeader.includes("<StatusDotButton"), "the header owns the presence dot");
-  assert.ok(profileHeader.includes("onPointerDown={onBannerPointerDown}"), "the sheet can drag from the banner");
+  assert.ok(
+    profileHeader.includes("onPointerDown={onBannerPointerDown}"),
+    "the sheet can drag from the banner",
+  );
 });
 
 await check("one avatar treatment across card, preview and full profile", async () => {
   assert.ok(profileCard.includes("<ProfileHeader"), "profile card uses the shared header");
   assert.ok(profilePage.includes("<ProfileHeader"), "full profile uses the shared header");
   assert.ok(profileCard.includes("avatarRing={ringColor}"), "profile card passes its accent");
-  assert.ok(profilePage.includes("avatarRing={profileSurface}"), "full profile rings against its theme");
-  assert.ok(profilePage.includes("background: pageBanner.profileBackground"), "full profile paints the gradient");
-  assert.ok(profileHeader.includes('boxShadow: `0 0 0 2px ${avatarRing}`'), "one accent ring");
+  assert.ok(
+    profilePage.includes("avatarRing={profileSurface}"),
+    "full profile rings against its theme",
+  );
+  assert.ok(
+    profilePage.includes("background: pageBanner.profileBackground"),
+    "full profile paints the gradient",
+  );
+  assert.ok(profileHeader.includes("boxShadow: `0 0 0 2px ${avatarRing}`"), "one accent ring");
   assert.ok(profileHeader.includes('"--avatar-size"'), "the avatar scales from the container");
   assert.ok(card.includes("Profile activity"), "the preview lists the same activity numbers");
   assert.ok(card.includes("/brand/rizz-cat-logo.svg"), "joined date carries the Rizz mark");
@@ -91,8 +108,7 @@ await check("actions: Message with follow, own profile gets a single button", as
   // Discord puts Message/Call above the bio tabs; ours keeps that order so
   // nobody scrolls past a long bio to send a message.
   assert.ok(
-    card.indexOf("Primary actions sit directly under the identity") <
-      card.indexOf("About Me"),
+    card.indexOf("Primary actions sit directly under the identity") < card.indexOf("About Me"),
     "primary actions must precede the bio",
   );
 });

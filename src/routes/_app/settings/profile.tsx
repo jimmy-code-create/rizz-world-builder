@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useI18n, tf } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import { Check, Loader2, Upload, UserRound } from "lucide-react";
+import { Check, Loader2, Save, Upload, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/_app/settings/profile")({
 function ProfileSettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const { t } = useI18n();
+  const nav = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#c9ff3d");
@@ -62,7 +63,9 @@ function ProfileSettingsPage() {
     if (kind === "banner") setBannerUploading(true);
     const ext = file.name.split(".").pop() ?? "png";
     const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
     if (upErr) {
       if (kind === "banner") setBannerUploading(false);
       return toast.error(upErr.message);
@@ -148,7 +151,11 @@ function ProfileSettingsPage() {
     let gradientUnsupported = false;
     if (error && /banner_(gradient|mode)/i.test(error.message)) {
       // Keep the rest of the editor usable until the banner migration lands.
-      const { banner_gradient: _pendingGradient, banner_mode: _pendingMode, ...withoutBanner } = patch;
+      const {
+        banner_gradient: _pendingGradient,
+        banner_mode: _pendingMode,
+        ...withoutBanner
+      } = patch;
       void _pendingGradient;
       void _pendingMode;
       ({ error } = await supabase.from("profiles").update(withoutBanner).eq("id", user.id));
@@ -162,6 +169,9 @@ function ProfileSettingsPage() {
     } else {
       toast.success("Profile saved");
     }
+    // Hand the member straight to the thing they were editing, already painted
+    // with the row the server just accepted.
+    if (profile?.username) nav({ to: "/u/$username", params: { username: profile.username } });
   }
 
   function toggleInterest(interest: string) {
@@ -216,17 +226,25 @@ function ProfileSettingsPage() {
             />
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            This is exactly how the banner, avatar, name row and profile gradient render on your profile.
+            This is exactly how the banner, avatar, name row and profile gradient render on your
+            profile.
           </p>
         </div>
 
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20 ring-2 ring-primary/40">
             <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+              {initial}
+            </AvatarFallback>
           </Avatar>
           <label className="cursor-pointer">
-            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")} />
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")}
+            />
             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 glass-strong px-4 py-2 text-sm font-medium hover:bg-white/5">
               <Upload className="h-4 w-4" /> Upload a photo
             </span>
@@ -235,7 +253,11 @@ function ProfileSettingsPage() {
 
         <div>
           <Label className="text-xs text-muted-foreground">{t("profile_pick_cats")}</Label>
-          <div className="mt-2 grid grid-cols-6 gap-2" role="radiogroup" aria-label={t("profile_choose_cat")}>
+          <div
+            className="mt-2 grid grid-cols-6 gap-2"
+            role="radiogroup"
+            aria-label={t("profile_choose_cat")}
+          >
             {DEFAULT_AVATARS.map((avatar) => {
               const active = profile.avatar_url === avatar.url;
               return (
@@ -250,8 +272,17 @@ function ProfileSettingsPage() {
                     active ? "border-primary shadow-md" : "border-white/10 hover:border-white/30"
                   }`}
                 >
-                  <img src={avatar.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                  {active && <span className="absolute inset-0 grid place-items-center rounded-full bg-black/30 text-white"><Check className="h-4 w-4" /></span>}
+                  <img
+                    src={avatar.url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                  {active && (
+                    <span className="absolute inset-0 grid place-items-center rounded-full bg-black/30 text-white">
+                      <Check className="h-4 w-4" />
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -275,24 +306,39 @@ function ProfileSettingsPage() {
 
         <div>
           <Label className="text-xs text-muted-foreground">{t("profile_username")}</Label>
-          <Input value={profile.username ?? ""} readOnly className="mt-1 border-white/10 bg-transparent text-muted-foreground" />
+          <Input
+            value={profile.username ?? ""}
+            readOnly
+            className="mt-1 border-white/10 bg-transparent text-muted-foreground"
+          />
         </div>
 
         <div>
           <Label className="text-xs text-muted-foreground">{t("profile_display_name")}</Label>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value.slice(0, 40))} className="mt-1 border-white/10 bg-transparent" />
+          <Input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value.slice(0, 40))}
+            className="mt-1 border-white/10 bg-transparent"
+          />
         </div>
 
         <div>
           <Label className="text-xs text-muted-foreground">{t("profile_bio")}</Label>
-          <Textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 240))} rows={3} className="mt-1 resize-none border-white/10 bg-transparent" />
+          <Textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value.slice(0, 240))}
+            rows={3}
+            className="mt-1 resize-none border-white/10 bg-transparent"
+          />
           <p className="mt-1 text-[10px] text-muted-foreground">{240 - bio.length} chars left</p>
         </div>
 
         <div>
           <div className="flex items-center justify-between gap-3">
             <Label className="text-xs text-muted-foreground">{t("profile_interests")}</Label>
-            <span className="text-[11px] tabular-nums text-muted-foreground">{interests.length} / 6 selected</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              {interests.length} / 6 selected
+            </span>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {TUTORIAL_INTERESTS.map(({ id, emoji }) => {
@@ -305,7 +351,9 @@ function ProfileSettingsPage() {
                   disabled={!active && interests.length >= 6}
                   onClick={() => toggleInterest(id)}
                   className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 ${
-                    active ? "border-primary bg-primary/10 text-foreground" : "border-white/10 bg-transparent hover:bg-white/5"
+                    active
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-white/10 bg-transparent hover:bg-white/5"
                   }`}
                 >
                   <CustomEmoji name={emoji} className="h-5 w-5 shrink-0" />
@@ -315,19 +363,31 @@ function ProfileSettingsPage() {
               );
             })}
           </div>
-          <p className="mt-1.5 text-[10px] text-muted-foreground">These show on your public profile and help people find shared interests.</p>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            These show on your public profile and help people find shared interests.
+          </p>
         </div>
 
         <div>
           <Label className="text-xs text-muted-foreground">{t("profile_accent")}</Label>
           <div className="mt-1 flex items-center gap-3">
-            <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-16 cursor-pointer rounded-lg border border-white/10 bg-transparent" />
+            <input
+              type="color"
+              value={accent}
+              onChange={(e) => setAccent(e.target.value)}
+              className="h-10 w-16 cursor-pointer rounded-lg border border-white/10 bg-transparent"
+            />
             <span className="text-sm font-mono">{accent}</span>
           </div>
         </div>
 
-        <Button onClick={save} disabled={saving} className="w-full border-0 bg-primary text-primary-foreground shadow-md">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("profile_save")}
+        <Button
+          onClick={save}
+          disabled={saving}
+          className="h-11 w-full gap-2 border-0 bg-primary text-[14px] font-bold text-primary-foreground shadow-[0_14px_30px_-18px_var(--brand-signal)] transition-transform active:scale-[0.99]"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saving ? "Saving…" : "Save & view profile"}
         </Button>
       </SettingsCard>
     </SettingsSubPage>

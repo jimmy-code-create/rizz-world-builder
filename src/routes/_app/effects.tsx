@@ -91,6 +91,8 @@ function EffectsPage() {
   const [receipt, setReceipt] = useState<EffectOrder | null>(null);
   const [pending, setPending] = useState<ProfileEffect | null>(null);
   const [receipts, setReceipts] = useState<EffectOrder[]>(() => loadStoredReceipts(user?.id));
+  const [slot, setSlot] = useState<"all" | ProfileEffectType>("all");
+  const [ownedOnly, setOwnedOnly] = useState(false);
 
   useEffect(() => {
     setReceipts(loadStoredReceipts(user?.id));
@@ -240,12 +242,20 @@ function EffectsPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">Collection</p>
-              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">{owned.size} / {PROFILE_EFFECTS.length}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">
+                Collection
+              </p>
+              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">
+                {owned.size} / {PROFILE_EFFECTS.length}
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">Worn</p>
-              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">{Object.keys(equipped).length} / {PROFILE_EFFECTS.length}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">
+                Worn
+              </p>
+              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">
+                {Object.keys(equipped).length} / {PROFILE_EFFECTS.length}
+              </p>
             </div>
           </div>
         </div>
@@ -257,12 +267,91 @@ function EffectsPage() {
               style={{ width: `${(owned.size / PROFILE_EFFECTS.length) * 100}%` }}
             />
           </div>
-          <span className="text-[10px] font-semibold tabular-nums text-[var(--brand-paper,#f4f1e7)]">{Math.round((owned.size / PROFILE_EFFECTS.length) * 100)}%</span>
+          <span className="text-[10px] font-semibold tabular-nums text-[var(--brand-paper,#f4f1e7)]">
+            {Math.round((owned.size / PROFILE_EFFECTS.length) * 100)}%
+          </span>
         </div>
       </section>
 
+      {/* Shelf controls: one slot at a time, or your collection only. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Effect slots">
+          {(["all", "avatar_decoration", "profile_effect", "profile_frame"] as const).map(
+            (value) => {
+              const active = slot === value;
+              const label = value === "all" ? "All looks" : SLOT_META[value].label;
+              const count =
+                value === "all"
+                  ? PROFILE_EFFECTS.length
+                  : PROFILE_EFFECTS.filter((e) => e.type === value).length;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setSlot(value)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-signal,#c8ff3d)] ${
+                    active
+                      ? "border-white/20 bg-white/[0.1] text-[var(--brand-paper,#f4f1e7)]"
+                      : "border-[var(--brand-line,rgba(244,241,231,0.13))] text-[var(--brand-paper-dim,#a9a69c)] hover:border-white/25 hover:text-[var(--brand-paper,#f4f1e7)]"
+                  }`}
+                >
+                  {label}
+                  <span
+                    className={`tabular-nums ${active ? "text-[var(--brand-signal,#c8ff3d)]" : "opacity-60"}`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            },
+          )}
+        </div>
+        <button
+          type="button"
+          aria-pressed={ownedOnly}
+          onClick={() => setOwnedOnly((on) => !on)}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-signal,#c8ff3d)] ${
+            ownedOnly
+              ? "border-[var(--brand-signal,#c8ff3d)]/50 bg-[var(--brand-signal,#c8ff3d)]/10 text-[var(--brand-signal,#c8ff3d)]"
+              : "border-[var(--brand-line,rgba(244,241,231,0.13))] text-[var(--brand-paper-dim,#a9a69c)] hover:text-[var(--brand-paper,#f4f1e7)]"
+          }`}
+        >
+          <Check className="h-3 w-3" /> Owned only
+        </button>
+      </div>
+
+      {/* Three taps, spelled out: the shelf's promise in one line. */}
+      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+        {[
+          { step: "1", title: "Unlock with Paws", note: "Server-checked price, no card" },
+          { step: "2", title: "Wear the slot", note: "One look per slot, swap any time" },
+          { step: "3", title: "Shows everywhere", note: "Profile, hover card and preview" },
+        ].map((row) => (
+          <div
+            key={row.step}
+            className="flex items-center gap-2.5 rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] px-3 py-2.5"
+          >
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[var(--brand-signal,#c8ff3d)]/30 bg-[var(--brand-signal,#c8ff3d)]/10 text-[10px] font-bold text-[var(--brand-signal,#c8ff3d)]">
+              {row.step}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[12px] font-bold text-[var(--brand-paper,#f4f1e7)]">
+                {row.title}
+              </span>
+              <span className="block truncate text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                {row.note}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {PROFILE_EFFECTS.map((effect) => {
+          if (slot !== "all" && effect.type !== slot) return null;
+          if (ownedOnly && !owned.has(effect.slug)) return null;
           const worn = equipped[effect.type]?.slug === effect.slug;
           const isOwned = owned.has(effect.slug);
           const busy = pendingSlug === effect.slug;
@@ -271,9 +360,11 @@ function EffectsPage() {
           return (
             <article
               key={effect.slug}
-              className="group flex flex-col overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] transition-colors hover:border-white/20"
+              className="group flex flex-col overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] transition-[border-color,box-shadow] duration-200 hover:border-white/25 hover:shadow-[0_24px_60px_-44px_rgba(0,0,0,0.9)]"
               style={{
-                boxShadow: worn ? `0 0 0 1px ${effect.preview_color}55, 0 18px 48px -32px ${effect.preview_color}` : undefined,
+                boxShadow: worn
+                  ? `0 0 0 1px ${effect.preview_color}55, 0 18px 48px -32px ${effect.preview_color}`
+                  : undefined,
               }}
             >
               <EffectPreview
@@ -328,23 +419,35 @@ function EffectsPage() {
                   ) : worn ? (
                     <Button
                       variant="outline"
-                      className="glass border-white/10"
+                      className="h-10 w-full gap-2 border-white/15 bg-white/[0.04] text-[13px] font-bold text-[var(--brand-paper,#f4f1e7)] hover:bg-white/[0.08]"
                       onClick={() => remove.mutate(effect)}
                       disabled={busy}
                     >
-                      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                      {busy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                       Remove from profile
                     </Button>
                   ) : isOwned ? (
-                    <Button onClick={() => equip.mutate(effect)} disabled={busy}>
-                      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    <Button
+                      onClick={() => equip.mutate(effect)}
+                      disabled={busy}
+                      className="h-10 w-full gap-2 border-0 bg-[var(--brand-signal,#c8ff3d)] text-[13px] font-bold text-[#0b0b0c] shadow-[0_12px_26px_-18px_var(--brand-signal,#c8ff3d)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+                    >
+                      {busy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
                       Equip
                     </Button>
                   ) : (
                     <Button
                       onClick={() => setPending(effect)}
                       disabled={busy || short > 0}
-                      className="gap-2"
+                      className="h-10 w-full gap-2 border-0 bg-[var(--brand-signal,#c8ff3d)] text-[13px] font-bold text-[#0b0b0c] shadow-[0_12px_26px_-18px_var(--brand-signal,#c8ff3d)] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
                     >
                       {busy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -355,17 +458,39 @@ function EffectsPage() {
                     </Button>
                   )}
 
-                  <p className="flex items-center gap-1.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
-                    <Eye className="h-3 w-3" />
-                    {SLOT_META[effect.type].blurb}
-                    {!isOwned && short > 0 ? ` · ${formatNumber(short)} more Paws needed` : ""}
-                  </p>
+                  {short > 0 ? (
+                    <Link
+                      to="/drops"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--brand-line,rgba(244,241,231,0.13))] py-1.5 text-[10.5px] font-semibold text-[var(--brand-paper-dim,#a9a69c)] transition-colors hover:border-[var(--brand-signal,#c8ff3d)]/40 hover:text-[var(--brand-signal,#c8ff3d)]"
+                    >
+                      <Sparkles className="h-3 w-3" /> Earn {formatNumber(short)} more Paws
+                    </Link>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                      <Eye className="h-3 w-3" />
+                      {SLOT_META[effect.type].blurb}
+                    </p>
+                  )}
                 </div>
               </div>
             </article>
           );
         })}
       </div>
+
+      {PROFILE_EFFECTS.filter(
+        (effect) =>
+          (slot === "all" || effect.type === slot) && (!ownedOnly || owned.has(effect.slug)),
+      ).length === 0 && (
+        <div className="rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] p-8 text-center">
+          <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">
+            Nothing in this slot yet
+          </p>
+          <p className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
+            {ownedOnly ? "You don't own a look in this slot yet." : "Try another slot filter."}
+          </p>
+        </div>
+      )}
 
       <p className="mt-5 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
         Every look is transparent vector art, reduced-motion aware, and never covers profile
@@ -379,7 +504,10 @@ function EffectsPage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-paper-dim,#a9a69c)]">
                 Receipts
               </p>
-              <h2 id="recent-orders" className="mt-0.5 font-display text-lg font-bold tracking-tight">
+              <h2
+                id="recent-orders"
+                className="mt-0.5 font-display text-lg font-bold tracking-tight"
+              >
                 Recent orders
               </h2>
             </div>
@@ -401,12 +529,20 @@ function EffectsPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{order.effect.name}</span>
                   <span className="mt-0.5 block truncate text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
-                    {order.id} · {new Date(order.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    {order.id} ·{" "}
+                    {new Date(order.date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-xs font-bold text-[var(--brand-paper,#f4f1e7)]">−{formatNumber(order.amount)}</span>
-                  <span className="block text-[9px] text-[var(--brand-paper-dim,#a9a69c)]">Paws</span>
+                  <span className="block text-xs font-bold text-[var(--brand-paper,#f4f1e7)]">
+                    −{formatNumber(order.amount)}
+                  </span>
+                  <span className="block text-[9px] text-[var(--brand-paper-dim,#a9a69c)]">
+                    Paws
+                  </span>
                 </span>
                 <Download className="h-3.5 w-3.5 shrink-0 text-[var(--brand-paper-dim,#a9a69c)] transition-colors group-hover/order:text-[var(--brand-signal,#c8ff3d)]" />
               </button>
@@ -416,8 +552,14 @@ function EffectsPage() {
       )}
 
       <div className="mt-5">
-        <Link to={profile?.username ? "/u/$username" : "/feed"} params={profile?.username ? { username: profile.username } : undefined}>
-          <Button variant="ghost" className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-[var(--brand-paper,#f4f1e7)]">
+        <Link
+          to={profile?.username ? "/u/$username" : "/feed"}
+          params={profile?.username ? { username: profile.username } : undefined}
+        >
+          <Button
+            variant="ghost"
+            className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-[var(--brand-paper,#f4f1e7)]"
+          >
             <Eye className="mr-2 h-4 w-4" /> View my profile
           </Button>
         </Link>
@@ -437,15 +579,18 @@ function EffectsPage() {
                   Review order
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
-                  Paws come out of your wallet. No card is charged, and the look is
-                  equipped the moment the server confirms.
+                  Paws come out of your wallet. No card is charged, and the look is equipped the
+                  moment the server confirms.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 p-5">
                 <div className="flex items-center gap-3 rounded-2xl border border-[#2a2a2e] bg-[#17171a] p-3">
                   <span
                     className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/10"
-                    style={{ background: `${pending.preview_color}1f`, color: pending.preview_color }}
+                    style={{
+                      background: `${pending.preview_color}1f`,
+                      color: pending.preview_color,
+                    }}
                   >
                     <Sparkles className="h-5 w-5" />
                   </span>
@@ -465,7 +610,10 @@ function EffectsPage() {
                   {[
                     ["Wallet balance", `${formatNumber(balance)} Paws`],
                     ["This order", `−${formatNumber(pending.paw_price)} Paws`],
-                    ["Balance after", `${formatNumber(Math.max(balance - pending.paw_price, 0))} Paws`],
+                    [
+                      "Balance after",
+                      `${formatNumber(Math.max(balance - pending.paw_price, 0))} Paws`,
+                    ],
                     ["Delivery", "Equipped instantly"],
                   ].map(([label, value], index) => (
                     <div
@@ -520,7 +668,8 @@ function EffectsPage() {
                   Order complete
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
-                  {receipt.effect.name} is equipped. Keep the receipt for your records — it downloads as a standalone page.
+                  {receipt.effect.name} is equipped. Keep the receipt for your records — it
+                  downloads as a standalone page.
                 </DialogDescription>
               </DialogHeader>
 
@@ -535,7 +684,9 @@ function EffectsPage() {
                       Paid
                     </span>
                   </div>
-                  <h3 className="mt-4 font-display text-lg font-bold text-[#f2efe6]">{receipt.effect.name}</h3>
+                  <h3 className="mt-4 font-display text-lg font-bold text-[#f2efe6]">
+                    {receipt.effect.name}
+                  </h3>
                   <p className="text-[11px] text-[#a9a69c]">
                     {SLOT_META[receipt.effect.type].label} · {receipt.effect.rarity}
                   </p>
@@ -549,12 +700,20 @@ function EffectsPage() {
                   </dl>
                   <div className="mt-2 flex items-center justify-between rounded-xl border border-[#33420f] bg-[#182007] px-3 py-2.5">
                     <div>
-                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">Total paid</p>
-                      <p className="font-display text-lg font-bold text-[#c9ff3d]">{formatNumber(receipt.amount)} Paws</p>
+                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">
+                        Total paid
+                      </p>
+                      <p className="font-display text-lg font-bold text-[#c9ff3d]">
+                        {formatNumber(receipt.amount)} Paws
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">Balance after</p>
-                      <p className="text-sm font-bold text-[#f2efe6]">{formatNumber(receipt.balanceAfter)}</p>
+                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">
+                        Balance after
+                      </p>
+                      <p className="text-sm font-bold text-[#f2efe6]">
+                        {formatNumber(receipt.balanceAfter)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -607,8 +766,20 @@ function EffectPreview({
 
   if (effect.type === "avatar_decoration") {
     return (
-      <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} avatar decoration preview`}>
-        <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.55) 0.7px, transparent 0.8px)", backgroundSize: "11px 11px" }} />
+      <div
+        className="relative h-48 overflow-hidden rounded-t-3xl"
+        style={wash}
+        role="img"
+        aria-label={`${effect.name} avatar decoration preview`}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,0.55) 0.7px, transparent 0.8px)",
+            backgroundSize: "11px 11px",
+          }}
+        />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--brand-ink-2,#131315)]/75 to-transparent" />
         <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
           <span className="h-1 w-1 rounded-full bg-[#ff3048]" /> Live preview
@@ -630,16 +801,23 @@ function EffectPreview({
 
   if (effect.type === "profile_frame") {
     return (
-      <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile frame preview`}>
+      <div
+        className="relative h-48 overflow-hidden rounded-t-3xl"
+        style={wash}
+        role="img"
+        aria-label={`${effect.name} profile frame preview`}
+      >
         <div className="absolute inset-x-5 bottom-4 top-9 rounded-xl border border-white/10 bg-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]" />
         <DarkMoonFrame slug={effect.slug} />
         <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
           <span className="h-1 w-1 rounded-full bg-[#dfe8ef]" /> Live preview
         </span>
-        <div className="absolute bottom-7 left-7 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:-translate-y-0.5">
+        <div className="absolute bottom-7 left-7 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:scale-[1.02]">
           <Avatar className="h-11 w-11 ring-2 ring-[var(--brand-ink-2,#131315)]">
             <AvatarImage src={avatarUrl ?? undefined} />
-            <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-xs">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-xs">
+              {initial}
+            </AvatarFallback>
           </Avatar>
           <div>
             <p className="text-sm font-bold text-white/90">Your name</p>
@@ -656,15 +834,22 @@ function EffectPreview({
   }
 
   return (
-    <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile effect preview`}>
+    <div
+      className="relative h-48 overflow-hidden rounded-t-3xl"
+      style={wash}
+      role="img"
+      aria-label={`${effect.name} profile effect preview`}
+    >
       <PuppyLoveEffect />
       <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
         <span className="h-1 w-1 rounded-full bg-[var(--brand-signal,#c8ff3d)]" /> Live preview
       </span>
-      <div className="absolute bottom-4 left-5 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:-translate-y-0.5">
+      <div className="absolute bottom-4 left-5 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:scale-[1.02]">
         <Avatar className="h-11 w-11 ring-4 ring-[var(--brand-ink,#0a0a0b)]">
           <AvatarImage src={avatarUrl ?? undefined} />
-          <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-sm">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-sm">
+            {initial}
+          </AvatarFallback>
         </Avatar>
         <div>
           <p className="text-sm font-bold text-white/90">Your banner</p>

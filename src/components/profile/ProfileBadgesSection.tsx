@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Pin } from "lucide-react";
 import type { Badge } from "@/lib/badges";
 import { BadgeChip, BadgeRow } from "@/components/BadgeChip";
+import { BadgeDetailDialog } from "@/components/profile/BadgeDetailDialog";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { canonBadges, MAX_SHOWCASE_BADGES, showcaseBadges } from "@/lib/badge-set";
 import { saveShowcaseBadges } from "@/lib/featured-badge";
@@ -20,6 +21,10 @@ type ProfileBadgesSectionProps = {
   earned: Badge[];
   /** Earned list still loading, so the section never flashes an empty state. */
   loading?: boolean;
+  /** Signed-in member id, so the badge popout can offer the wear action. */
+  viewerId?: string | null;
+  /** Slug worn beside the name, so the popout shows the right state. */
+  featuredSlug?: string | null;
 };
 
 /**
@@ -39,10 +44,13 @@ export function ProfileBadgesSection({
   stored,
   earned,
   loading = false,
+  viewerId = null,
+  featuredSlug = null,
 }: ProfileBadgesSectionProps) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [openBadge, setOpenBadge] = useState<Badge | null>(null);
 
   const equipped = showcaseBadges(stored, earned);
   const equippedSet = new Set(equipped);
@@ -108,7 +116,7 @@ export function ProfileBadgesSection({
       ) : showcase.length ? (
         <div className="flex flex-wrap items-center gap-1">
           {showcase.map((badge) => (
-            <BadgeChip key={badge.id} badge={badge} size="md" />
+            <BadgeChip key={badge.id} badge={badge} size="md" onSelect={setOpenBadge} />
           ))}
         </div>
       ) : isOwner ? (
@@ -129,8 +137,16 @@ export function ProfileBadgesSection({
           )}
         </p>
       ) : (
-        <BadgeRow badges={earned} max={5} />
+        <BadgeRow badges={earned} max={5} onSelect={setOpenBadge} />
       )}
+
+      <BadgeDetailDialog
+        entry={openBadge ? { badge: openBadge } : null}
+        open={!!openBadge}
+        onOpenChange={(open) => !open && setOpenBadge(null)}
+        viewerId={viewerId}
+        featured={!!openBadge && openBadge.slug === featuredSlug}
+      />
 
       {isOwner && editing && (
         <div className="glass mt-2.5 space-y-2.5 rounded-2xl border border-white/10 p-3">

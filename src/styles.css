@@ -1519,23 +1519,23 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   }
 }
 
-/* Profile preview: a drawer that rises from the bottom edge with a short
-   overshoot, then settles. Closing accelerates away so it never feels sticky.
-   The gesture itself lives in ProfilePreview.tsx (drag + spring back). */
+/* Profile preview: fades in at the bottom edge and settles with a hair of
+   scale. No drawer slide — the card is present, not travelling. Closing is a
+   short fade so it never feels sticky. The gesture itself still lives in
+   ProfilePreview.tsx (drag + spring back). */
 @keyframes profile-sheet-in {
-  0% { transform: translateY(100%); }
-  70% { transform: translateY(-4px); }
-  100% { transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes profile-sheet-out {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.99); }
 }
 .profile-sheet[data-state="open"] {
-  animation: profile-sheet-in 400ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+  animation: profile-sheet-in 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 .profile-sheet[data-state="closed"] {
-  animation: profile-sheet-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: profile-sheet-out 140ms ease-in both;
 }
 @media (prefers-reduced-motion: reduce) {
   .profile-sheet[data-state="open"],

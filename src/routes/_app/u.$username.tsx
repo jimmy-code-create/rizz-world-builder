@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/formatters";
@@ -9,12 +9,33 @@ import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
-import { Badge as BadgeMark } from "@/components/Badge";
-import { motion } from "framer-motion";
-import { MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
+import { BadgeChip } from "@/components/BadgeChip";
+import { BadgeDetailDialog } from "@/components/profile/BadgeDetailDialog";
+import { canonBadges, distinctBadges } from "@/lib/badge-set";
+import type { Badge as BadgeType } from "@/lib/badges";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ChevronRight,
+  Film,
+  Gamepad2,
+  Hash,
+  Heart,
+  MessageCircle,
+  MoreHorizontal,
+  PawPrint,
+  Share2,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
 import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
@@ -23,7 +44,10 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
 import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
-import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
+import { TUTORIAL_INTERESTS, type CustomEmojiName } from "@/lib/emoji.js";
+import { BUILTIN_GAMES } from "@/lib/builtin-games";
+import { arcadeWinCount } from "@/lib/games/arcade-record";
+import { cn } from "@/lib/utils";
 import { MarkdownText } from "@/components/MarkdownText";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 
@@ -42,6 +66,18 @@ function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [activity, setActivity] = useState<ActivityTab>("posts");
+  const [openBadge, setOpenBadge] = useState<{
+    badge: BadgeType;
+    awardedAt?: string | null;
+  } | null>(null);
+  // Device-local arcade record; there is no per-account games table, and the
+  // Games tab never pretends otherwise.
+  const [arcadeWins, setArcadeWins] = useState(0);
+
+  useEffect(() => {
+    setArcadeWins(typeof window === "undefined" ? 0 : arcadeWinCount());
+  }, []);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -76,8 +112,14 @@ function ProfilePage() {
     if (!profile) return;
     (async () => {
       const [{ count: fol }, { count: ing }] = await Promise.all([
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", profile.id),
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profile.id),
+        supabase
+          .from("follows")
+          .select("*", { count: "exact", head: true })
+          .eq("following_id", profile.id),
+        supabase
+          .from("follows")
+          .select("*", { count: "exact", head: true })
+          .eq("follower_id", profile.id),
       ]);
       setFollowerCount(fol ?? 0);
       setFollowingCount(ing ?? 0);
@@ -96,7 +138,8 @@ function ProfilePage() {
   // Re-render the moment a custom status expires: realtime only fires on row
   // changes, and an expiry passing is silent.
   const statusExpiresAt =
-    (presenceRow as { custom_status_expires_at?: string | null } | null)?.custom_status_expires_at ?? null;
+    (presenceRow as { custom_status_expires_at?: string | null } | null)
+      ?.custom_status_expires_at ?? null;
   useEffect(() => {
     if (!statusExpiresAt || !profile) return;
     const ms = new Date(statusExpiresAt).getTime() - Date.now();
@@ -183,24 +226,41 @@ function ProfilePage() {
     enabled: !!profile && !!isMe,
   });
 
+  const games = useMemo(() => {
+    return [...BUILTIN_GAMES]
+      .map((game) => ({ game, wins: isMe ? arcadeWinCount(game.id) : 0 }))
+      .sort((a, b) => b.wins - a.wins)
+      .slice(0, 9);
+  }, [isMe]);
+
   const shareProfile = async () => {
     const profileUsername = profile!.username ?? username;
     const url = `${window.location.origin}/u/${profileUsername}`;
-    const shareData = { title: `@${profileUsername} on RIZZ`, text: profile!.bio || `Check out @${profileUsername} on RIZZ`, url };
+    const shareData = {
+      title: `@${profileUsername} on RIZZ`,
+      text: profile!.bio || `Check out @${profileUsername} on RIZZ`,
+      url,
+    };
     try {
       if (navigator.share) await navigator.share(shareData);
       else {
         await navigator.clipboard.writeText(url);
         toast.success("Profile link copied");
       }
-    } catch {}
+    } catch {
+      /* The share sheet was dismissed — nothing to report. */
+    }
   };
 
   const followMut = useMutation({
     mutationFn: async () => {
       if (!user || !profile) return;
       if (isFollowing) {
-        await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profile.id);
+        await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", profile.id);
         setFollowerCount((c) => c - 1);
         setIsFollowing(false);
       } else {
@@ -231,7 +291,9 @@ function ProfilePage() {
       toast.error(error.message || "Couldn't update this block");
     },
     onSuccess: (blocked) => toast.success(blocked ? "User blocked" : "User unblocked"),
-    onSettled: () => { void qc.invalidateQueries({ queryKey: blockStatusKey }); },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: blockStatusKey });
+    },
   });
 
   if (profileQ.isLoading) {
@@ -242,7 +304,11 @@ function ProfilePage() {
       <div className="py-20 text-center">
         <h1 className="font-display text-2xl font-bold">Profile couldn’t load</h1>
         <p className="mt-2 text-sm text-muted-foreground">Check your connection and try again.</p>
-        <Button variant="outline" className="mt-5 glass border-white/10" onClick={() => profileQ.refetch()}>
+        <Button
+          variant="outline"
+          className="mt-5 glass border-white/10"
+          onClick={() => profileQ.refetch()}
+        >
           Try again
         </Button>
       </div>
@@ -262,7 +328,10 @@ function ProfilePage() {
   const featuredBadge = badges.data?.find((b) => b.slug === profile.featured_badge) ?? null;
   const verified = Boolean(badges.data?.some((b) => b.slug === "verified" || b.slug === "no-cap"));
   const profileUsername = profile.username ?? username;
-  const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  const joined = new Date(profile.created_at).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
   // Three independent slots: decoration, banner effect and frame. Each
   // renderer ignores slugs outside the live catalogue, so a stale row can
   // never resurrect a removed overlay.
@@ -278,14 +347,94 @@ function ProfilePage() {
   // With no gradient the header keeps the app surface; with one it melts into
   // the darkened profile theme.
   const profileSurface = pageBanner.profileBackground ? pageBanner.surface : "var(--background)";
+  // Every earned mark can be tapped; the worn one keeps its ring.
+  const nameBadges = distinctBadges(canonBadges(badges.data ?? [])).slice(0, 6);
+
+  const headerActions = (
+    <>
+      {isMe ? (
+        <>
+          <Link to="/settings/profile">
+            <Button className="h-9 border-0 bg-primary px-3.5 text-[12.5px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90">
+              Edit profile
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Share profile"
+            className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+            onClick={() => void shareProfile()}
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+        </>
+      ) : user ? (
+        <>
+          {!blockStatus.data && (
+            <Button
+              className="h-9 gap-1.5 border-0 bg-primary px-3 text-[12.5px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90"
+              onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}
+            >
+              <MessageCircle className="h-4 w-4" /> Message
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => followMut.mutate()}
+            disabled={followMut.isPending}
+            className={cn(
+              "h-9 px-3 text-[12.5px] font-bold",
+              isFollowing
+                ? "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
+                : "border-white/15 bg-transparent text-foreground hover:bg-white/[0.06]",
+            )}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="More profile options"
+                className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => void shareProfile()}>
+                <Share2 className="mr-2 h-4 w-4" /> Share profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => blockMut.mutate(!blockStatus.data)}
+                className={blockStatus.data ? "text-primary" : "text-destructive"}
+              >
+                {blockStatus.data ? "Unblock" : "Block"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ) : (
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Share profile"
+          className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+          onClick={() => void shareProfile()}
+        >
+          <Share2 className="h-4 w-4" />
+        </Button>
+      )}
+    </>
+  );
 
   return (
     <div
       className="relative isolate -mx-3 min-h-[70vh] px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6"
       style={
-        pageBanner.profileBackground
-          ? { background: pageBanner.profileBackground }
-          : undefined
+        pageBanner.profileBackground ? { background: pageBanner.profileBackground } : undefined
       }
     >
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
@@ -313,7 +462,11 @@ function ProfilePage() {
           customStatus={customStatus}
           statusLine={
             <>
-              {!isMe && <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel(presenceStatus)}</p>}
+              {!isMe && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {statusLabel(presenceStatus)}
+                </p>
+              )}
               {customStatus && (customStatus.emoji || customStatus.text) ? (
                 <StatusPill
                   emoji={customStatus.emoji}
@@ -323,17 +476,44 @@ function ProfilePage() {
                   className="mt-1.5"
                 />
               ) : isMe ? (
-                <StatusPill emptyLabel="+ Set status" onActivate={() => setStatusOpen(true)} className="mt-1.5" />
+                <StatusPill
+                  emptyLabel="+ Set status"
+                  onActivate={() => setStatusOpen(true)}
+                  className="mt-1.5"
+                />
               ) : null}
             </>
           }
+          handleExtra={
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <img
+                src="/brand/rizz-cat-logo.svg"
+                alt=""
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0"
+              />
+              Joined {joined}
+            </span>
+          }
           featuredBadge={
-            featuredBadge ? (
-              <span
-                className="inline-flex items-center"
-                aria-label={`Featured badge: ${featuredBadge.name}`}
-              >
-                <BadgeMark slug={featuredBadge.slug} size={24} title={featuredBadge.name} />
+            nameBadges.length > 0 ? (
+              <span className="flex items-center gap-0.5" aria-label="Badges">
+                {nameBadges.map((badge) => (
+                  <span
+                    key={badge.slug}
+                    className={
+                      badge.slug === featuredBadge?.slug
+                        ? "rounded-full ring-1 ring-primary/70"
+                        : undefined
+                    }
+                  >
+                    <BadgeChip
+                      badge={badge}
+                      size="sm"
+                      onSelect={(picked) => setOpenBadge({ badge: picked })}
+                    />
+                  </span>
+                ))}
               </span>
             ) : undefined
           }
@@ -344,254 +524,512 @@ function ProfilePage() {
       </motion.div>
 
       <div className="relative z-20">
-      <div className="mt-4 flex flex-wrap items-center gap-2 px-1 md:px-2">
-        {isMe ? (
-          <>
-            <Button variant="outline" size="sm" className="glass border-white/10" onClick={shareProfile}>
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <Link to="/settings">
-              <Button variant="outline" size="sm" className="glass border-white/10">Edit profile</Button>
-            </Link>
-          </>
-        ) : user ? (
-          <>
-            <Button
-              size="sm"
-              onClick={() => followMut.mutate()}
-              disabled={followMut.isPending}
-              className={isFollowing ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}
-              variant={isFollowing ? "outline" : "default"}
-            >
-              {isFollowing ? "Following" : "Follow"}
-            </Button>
-            {!blockStatus.data && <Button size="sm" variant="outline" className="glass border-white/10" onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}>
-              <MessageCircle className="h-4 w-4" />
-            </Button>}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={blockStatus.isLoading || blockMut.isPending}
-              onClick={() => blockMut.mutate(!blockStatus.data)}
-              className={blockStatus.data ? "border-destructive/30 text-destructive" : "glass border-white/10"}
-            >
-              {blockStatus.data ? "Unblock" : "Block"}
-            </Button>
-            <Button size="sm" variant="outline" className="glass border-white/10" onClick={shareProfile}>
-              <Share2 className="h-4 w-4" />
-            </Button>
-          </>
-        ) : null}
-      </div>
-
-      {profile.bio && (
-        <div className="px-1 md:px-2 mt-3 text-sm leading-relaxed whitespace-pre-wrap">
-          <MarkdownText
-            text={profile.bio}
-            renderPlainText={(plain) =>
-              renderCaptionWithTags(plain).map((p, i) => {
-                if (p.tag) {
-                  return (
-                    <Link key={i} to="/tag/$tag" params={{ tag: p.tag }} className="text-primary hover:underline font-medium">
-                      {p.text}
-                    </Link>
-                  );
-                }
-                if (p.mention) {
-                  return (
-                    <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">
-                      {p.text}
-                    </Link>
-                  );
-                }
-                if (p.url) {
-                  return (
-                    <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">
-                      {p.text}
-                    </a>
-                  );
-                }
-                return <span key={i}>{p.text}</span>;
-              })
-            }
-          />
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2 px-1 md:px-2">
+          {headerActions}
         </div>
-      )}
 
-      {profile.interests?.length > 0 && (
-        <section className="px-1 md:px-2 mt-4" aria-label="Profile interests">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Into</h2>
-          <div className="flex flex-wrap gap-2">
-            {[...new Set(profile.interests)].map((interest) => {
-              const option = TUTORIAL_INTERESTS.find((item) => item.id === interest);
-              return (
-                <span
-                  key={interest}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium"
+        <div className="mt-3 grid grid-cols-4 divide-x divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm">
+          <StatCell label="Posts" value={formatNumber(posts.data?.length ?? 0)} />
+          <StatCell
+            label="Followers"
+            value={formatNumber(followerCount)}
+            onClick={() => setListOpen("followers")}
+          />
+          <StatCell
+            label="Following"
+            value={formatNumber(followingCount)}
+            onClick={() => setListOpen("following")}
+          />
+          <div className="px-3 py-2.5">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+              Paws
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums text-primary">
+              <PawPrint className="h-3 w-3 shrink-0" />
+              {formatNumber(profile.paw_balance ?? 0)}
+            </p>
+          </div>
+        </div>
+
+        {(profile.bio || profile.interests?.length > 0) && (
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+            className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 backdrop-blur-sm"
+            aria-label="About me"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                About me
+              </h2>
+              {isMe && (
+                <Link
+                  to="/settings/profile"
+                  className="text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
                 >
-                  {option && <CustomEmoji name={option.emoji} className="h-4 w-4" />}
-                  {interest}
-                </span>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <ProfileBadgesSection
-        profileId={profile.id}
-        isOwner={Boolean(isMe)}
-        stored={profile.badges}
-        earned={badges.data ?? []}
-        loading={badges.isLoading}
-      />
-
-      <section className="px-1 md:px-2 mt-4" aria-label="Profile activity">
-        <div className="mb-1.5 flex items-center justify-between">
-          <h2 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Activity</h2>
-          <span className="text-[10px] text-muted-foreground">Lifetime</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-          <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>
-          <button onClick={() => setListOpen("followers")} className="hover:underline">
-            <span className="font-bold">{followerCount}</span> <span className="text-muted-foreground">followers</span>
-          </button>
-          <button onClick={() => setListOpen("following")} className="hover:underline">
-            <span className="font-bold">{followingCount}</span> <span className="text-muted-foreground">following</span>
-          </button>
-          <div className="flex items-center gap-1.5 text-primary font-bold sm:ml-auto">
-            <PawPrint className="h-4 w-4" />
-            {formatNumber(profile.paw_balance ?? 0)} <span className="text-muted-foreground">Paws balance</span>
-          </div>
-        </div>
-      </section>
-
-      <div className="px-1 md:px-2 mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <img src="/brand/rizz-cat-logo.svg" alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
-        Joined {joined}
-      </div>
-
-      <Tabs defaultValue="posts" className="mt-4">
-        <TabsList className="glass border border-white/5 w-full justify-start overflow-x-auto rounded-xl p-1">
-          <TabsTrigger value="posts" className="gap-1.5"><Hash className="h-4 w-4" />Posts</TabsTrigger>
-          <TabsTrigger value="reels" className="gap-1.5"><Film className="h-4 w-4" />Reels</TabsTrigger>
-          <TabsTrigger value="realms" className="gap-1.5"><Hash className="h-4 w-4" />Realms</TabsTrigger>
-          <TabsTrigger value="groups" className="gap-1.5"><Users className="h-4 w-4" />Groups</TabsTrigger>
-          <TabsTrigger value="paws" className="gap-1.5"><PawPrint className="h-4 w-4" />Paws</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="posts" className="mt-4 space-y-3">
-          {posts.isLoading ? (
-            <div className="h-40 animate-pulse rounded-2xl glass" />
-          ) : posts.data?.length === 0 ? (
-            <EmptyState label="No posts yet" />
-          ) : (
-            posts.data?.map((p) => <PostCard key={p.id} post={p} />)
-          )}
-        </TabsContent>
-
-        <TabsContent value="reels" className="mt-4">
-          {reelsQ.isLoading ? (
-            <div className="h-40 animate-pulse rounded-2xl glass" />
-          ) : reelsQ.data?.length === 0 ? (
-            <EmptyState label="No reels yet" />
-          ) : (
-            <div className="grid grid-cols-3 gap-1.5 md:gap-2">
-              {reelsQ.data?.map((r) => (
-                <Link key={r.id} to="/reels" className="relative aspect-[9/16] rounded-xl overflow-hidden glass group">
-                  <video src={r.media_url ?? undefined} className="w-full h-full object-cover" muted playsInline preload="metadata" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                    <div className="text-xs flex items-center gap-1"><Heart className="h-3 w-3" />{r.like_count}</div>
-                  </div>
+                  Edit
                 </Link>
-              ))}
+              )}
             </div>
-          )}
-        </TabsContent>
+            {profile.bio ? (
+              <div className="mt-2 text-[14px] leading-relaxed text-foreground/90">
+                <MarkdownText
+                  text={profile.bio}
+                  renderPlainText={(plain) =>
+                    renderCaptionWithTags(plain).map((p, i) => {
+                      if (p.tag) {
+                        return (
+                          <Link
+                            key={i}
+                            to="/tag/$tag"
+                            params={{ tag: p.tag }}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {p.text}
+                          </Link>
+                        );
+                      }
+                      if (p.mention) {
+                        return (
+                          <Link
+                            key={i}
+                            to="/u/$username"
+                            params={{ username: p.mention }}
+                            className="mention-highlight font-medium hover:underline"
+                          >
+                            {p.text}
+                          </Link>
+                        );
+                      }
+                      if (p.url) {
+                        return (
+                          <a
+                            key={i}
+                            href={p.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="break-all text-sky-400 hover:underline"
+                          >
+                            {p.text}
+                          </a>
+                        );
+                      }
+                      return <span key={i}>{p.text}</span>;
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="mt-2 text-[13px] italic text-muted-foreground">
+                No bio yet — tap Edit to introduce yourself.
+              </p>
+            )}
 
-        <TabsContent value="realms" className="mt-4 space-y-2">
-          {realmsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-2xl glass" />
-          ) : realmsQ.data?.length === 0 ? (
-            <EmptyState label="No realms owned" />
-          ) : (
-            realmsQ.data?.map((c) => (
-              <Link key={c.id} to="/r/$slug" params={{ slug: c.slug }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--brand-paper-dim))` }}>
-                    #
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate">{c.name}</div>
-                    {c.topic && <div className="text-xs text-muted-foreground truncate">{c.topic}</div>}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{c.member_count} members</div>
-                </div>
-              </Link>
-            ))
-          )}
-        </TabsContent>
+            {profile.interests?.length > 0 && (
+              <div className="mt-3.5 flex flex-wrap gap-1.5" aria-label="Profile interests">
+                {[...new Set(profile.interests as string[])].map((interest) => {
+                  const option = TUTORIAL_INTERESTS.find((item) => item.id === interest);
+                  return (
+                    <span
+                      key={interest}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[11px] font-semibold text-foreground/90"
+                    >
+                      {option && <CustomEmoji name={option.emoji} className="h-3.5 w-3.5" />}
+                      {interest}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </motion.section>
+        )}
 
-        <TabsContent value="groups" className="mt-4 space-y-2">
-          {groupsQ.isLoading ? (
-            <div className="h-24 animate-pulse rounded-2xl glass" />
-          ) : groupsQ.data?.length === 0 ? (
-            <EmptyState label="Not in any groups yet" />
-          ) : (
-            groupsQ.data?.map((g) => (
-              <Link key={g.id} to="/g/$id" params={{ id: g.id }} className="block glass rounded-xl p-3 min-h-[56px] hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-3">
-                  {g.icon_url ? (
-                    <img src={g.icon_url} width={40} height={40} loading="lazy" decoding="async" className="h-10 w-10 rounded-xl object-cover" alt="" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold" style={{ background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--brand-paper-dim))` }}>
-                      {g.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate">{g.name}</div>
-                    {g.topic && <div className="text-xs text-muted-foreground truncate">{g.topic}</div>}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{g.member_count}</div>
-                </div>
-              </Link>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="paws" className="mt-4">
-          <PawsBreakdown
-            balance={Number(profile.paw_balance ?? 0)}
-            earned={Number(profile.paw_earned ?? profile.paw_balance ?? 0)}
-            ledger={(pawLedger.data ?? []) as PawLedgerRow[]}
-            loading={pawLedger.isLoading}
-            isMe={Boolean(isMe)}
-            accent={accent}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {listOpen && (
-        <FollowListDialog
-          open={!!listOpen}
-          onOpenChange={(v) => !v && setListOpen(null)}
-          userId={profile.id}
-          mode={listOpen}
+        <ProfileBadgesSection
+          profileId={profile.id}
+          isOwner={Boolean(isMe)}
+          stored={profile.badges}
+          earned={badges.data ?? []}
+          loading={badges.isLoading}
+          viewerId={user?.id ?? null}
+          featuredSlug={profile.featured_badge}
         />
-      )}
-      {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
+
+        <Tabs defaultValue="main" className="mt-4">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/[0.07] bg-transparent p-0">
+            {[
+              { value: "main", label: "Main" },
+              { value: "games", label: "Games" },
+              { value: "paws", label: "Paws" },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="relative h-11 rounded-none border-b-2 border-transparent bg-transparent px-4 text-[13px] font-bold text-muted-foreground shadow-none transition-colors after:absolute after:inset-x-3 after:-bottom-[1px] after:h-[2px] after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity after:duration-150 after:content-[''] hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:opacity-100"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="main" className="mt-4">
+            <div
+              className="mb-3 flex flex-wrap items-center gap-1.5"
+              role="tablist"
+              aria-label="Activity"
+            >
+              {(
+                [
+                  { id: "posts", label: "Posts", icon: Hash, count: posts.data?.length ?? null },
+                  { id: "reels", label: "Reels", icon: Film, count: reelsQ.data?.length ?? null },
+                  {
+                    id: "realms",
+                    label: "Realms",
+                    icon: Hash,
+                    count: realmsQ.data?.length ?? null,
+                  },
+                  {
+                    id: "groups",
+                    label: "Groups",
+                    icon: Users,
+                    count: groupsQ.data?.length ?? null,
+                  },
+                ] as const
+              ).map((tab) => {
+                const active = activity === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActivity(tab.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      active
+                        ? "border-white/15 bg-white/[0.09] text-foreground"
+                        : "border-white/[0.06] bg-transparent text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                    )}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                    {tab.count !== null && (
+                      <span className={cn("tabular-nums", active ? "text-primary" : "opacity-70")}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activity}
+                initial={{ opacity: 0, scale: 0.995 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.995 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                {activity === "posts" && (
+                  <div className="space-y-3">
+                    {posts.isLoading ? (
+                      <div className="h-40 animate-pulse rounded-2xl glass" />
+                    ) : posts.data?.length === 0 ? (
+                      <EmptyState
+                        icon={<Hash className="h-5 w-5" />}
+                        label="No posts yet"
+                        hint={
+                          isMe ? "Your first post is one tap away." : "Nothing shared here so far."
+                        }
+                      />
+                    ) : (
+                      posts.data?.map((p) => <PostCard key={p.id} post={p} />)
+                    )}
+                  </div>
+                )}
+
+                {activity === "reels" &&
+                  (reelsQ.isLoading ? (
+                    <div className="h-40 animate-pulse rounded-2xl glass" />
+                  ) : reelsQ.data?.length === 0 ? (
+                    <EmptyState icon={<Film className="h-5 w-5" />} label="No reels yet" />
+                  ) : (
+                    <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+                      {reelsQ.data?.map((r) => (
+                        <Link
+                          key={r.id}
+                          to="/reels"
+                          className="group relative aspect-[9/16] overflow-hidden rounded-xl glass"
+                        >
+                          <video
+                            src={r.media_url ?? undefined}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="flex items-center gap-1 text-xs">
+                              <Heart className="h-3 w-3" />
+                              {r.like_count}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+
+                {activity === "realms" &&
+                  (realmsQ.isLoading ? (
+                    <div className="h-24 animate-pulse rounded-2xl glass" />
+                  ) : realmsQ.data?.length === 0 ? (
+                    <EmptyState icon={<Hash className="h-5 w-5" />} label="No realms owned" />
+                  ) : (
+                    <div className="space-y-2">
+                      {realmsQ.data?.map((c) => (
+                        <Link
+                          key={c.id}
+                          to="/r/$slug"
+                          params={{ slug: c.slug }}
+                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-white/5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-xl font-bold"
+                              style={{
+                                background: `linear-gradient(135deg, ${c.accent_color || accent}, var(--brand-paper-dim))`,
+                              }}
+                            >
+                              #
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold">{c.name}</div>
+                              {c.topic && (
+                                <div className="truncate text-xs text-muted-foreground">
+                                  {c.topic}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {c.member_count} members
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+
+                {activity === "groups" &&
+                  (groupsQ.isLoading ? (
+                    <div className="h-24 animate-pulse rounded-2xl glass" />
+                  ) : groupsQ.data?.length === 0 ? (
+                    <EmptyState
+                      icon={<Users className="h-5 w-5" />}
+                      label="Not in any groups yet"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {groupsQ.data?.map((g) => (
+                        <Link
+                          key={g.id}
+                          to="/g/$id"
+                          params={{ id: g.id }}
+                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-white/5"
+                        >
+                          <div className="flex items-center gap-3">
+                            {g.icon_url ? (
+                              <img
+                                src={g.icon_url}
+                                width={40}
+                                height={40}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-10 w-10 rounded-xl object-cover"
+                                alt=""
+                              />
+                            ) : (
+                              <div
+                                className="flex h-10 w-10 items-center justify-center rounded-xl font-bold"
+                                style={{
+                                  background: `linear-gradient(135deg, ${g.accent_color || accent}, var(--brand-paper-dim))`,
+                                }}
+                              >
+                                {g.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold">{g.name}</div>
+                              {g.topic && (
+                                <div className="truncate text-xs text-muted-foreground">
+                                  {g.topic}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{g.member_count}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+              </motion.div>
+            </AnimatePresence>
+          </TabsContent>
+
+          <TabsContent value="games" className="mt-4">
+            <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[linear-gradient(140deg,rgba(200,255,61,0.1),rgba(19,19,21,0.72)_46%,rgba(17,17,18,0.72))] backdrop-blur-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary/80">
+                    RIZZ arcade
+                  </p>
+                  <h2 className="mt-0.5 font-display text-lg font-bold tracking-tight">
+                    {isMe ? "Your games" : "RIZZ arcade"}
+                  </h2>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                    {isMe
+                      ? "15 first-party games, no install. Your win record lives on this device."
+                      : `Games ${profile.display_name || profileUsername} can play with you inside a voice call — no install, no lobby.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-1.5 text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Wins
+                    </p>
+                    <p className="flex items-center justify-center gap-1 text-sm font-bold tabular-nums text-foreground">
+                      <Trophy className="h-3 w-3 text-primary" /> {isMe ? arcadeWins : "—"}
+                    </p>
+                  </div>
+                  <Link
+                    to="/games"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-[12px] font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <Gamepad2 className="h-4 w-4" /> Open arcade
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid gap-2 px-4 pb-4 sm:grid-cols-2">
+                {games.map(({ game, wins }) => (
+                  <Link
+                    key={game.id}
+                    to="/games"
+                    className="group flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                  >
+                    <span
+                      className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border text-lg"
+                      style={{ borderColor: `${game.accent}40`, background: `${game.accent}16` }}
+                    >
+                      {game.icon.startsWith(":") ? (
+                        <CustomEmoji
+                          name={game.icon.replace(/^:|:$/g, "") as CustomEmojiName}
+                          className="h-5 w-5"
+                        />
+                      ) : (
+                        <span>{game.icon}</span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-[13px] font-bold text-foreground">
+                          {game.name}
+                        </span>
+                        {wins > 0 && (
+                          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                            <Trophy className="h-2.5 w-2.5" /> {wins}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                        {game.hook}
+                      </span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="paws" className="mt-4">
+            <PawsBreakdown
+              balance={Number(profile.paw_balance ?? 0)}
+              earned={Number(profile.paw_earned ?? profile.paw_balance ?? 0)}
+              ledger={(pawLedger.data ?? []) as PawLedgerRow[]}
+              loading={pawLedger.isLoading}
+              isMe={Boolean(isMe)}
+              accent={accent}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <BadgeDetailDialog
+          entry={openBadge}
+          open={!!openBadge}
+          onOpenChange={(next) => !next && setOpenBadge(null)}
+          featured={!!featuredBadge && featuredBadge.slug === openBadge?.badge.slug}
+          viewerId={user?.id ?? null}
+        />
+
+        {listOpen && (
+          <FollowListDialog
+            open={!!listOpen}
+            onOpenChange={(v) => !v && setListOpen(null)}
+            userId={profile.id}
+            mode={listOpen}
+          />
+        )}
+        {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
       </div>
     </div>
   );
 }
 
-function EmptyState({ label }: { label: string }) {
+function StatCell({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+        {label}
+      </p>
+      <p className="mt-0.5 text-sm font-bold tabular-nums text-foreground">{value}</p>
+    </>
+  );
+  if (!onClick) return <div className="px-3 py-2.5">{content}</div>;
   return (
-    <div className="glass rounded-3xl p-10 text-center">
-      <p className="text-sm text-muted-foreground">{label}</p>
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-3 py-2.5 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+    >
+      {content}
+    </button>
+  );
+}
+
+function EmptyState({ label, hint, icon }: { label: string; hint?: string; icon?: ReactNode }) {
+  return (
+    <div className="glass rounded-2xl border border-white/[0.06] p-10 text-center">
+      {icon && (
+        <span className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-muted-foreground">
+          {icon}
+        </span>
+      )}
+      <p className="text-sm font-semibold text-foreground">{label}</p>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
+
+type ActivityTab = "posts" | "reels" | "realms" | "groups";
 
 type PawLedgerRow = {
   id: string;
