@@ -126,6 +126,27 @@
   60% { opacity: 0.55; transform: scale(0.92); }
 }
 
+/* Bokeh breathes behind the pup; strings sway with the head. */
+.plx-bokeh circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: plx-bokeh 9s ease-in-out infinite;
+}
+@keyframes plx-bokeh {
+  0%, 100% { opacity: 0.05; transform: translateY(0) scale(0.96); }
+  50% { opacity: 0.2; transform: translateY(-6px) scale(1.06); }
+}
+
+.plx-strings {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: plx-strings 6.8s ease-in-out infinite;
+}
+@keyframes plx-strings {
+  0%, 100% { transform: rotate(-0.8deg); }
+  50% { transform: rotate(1.4deg); }
+}
+
 /* Off-screen profiles cost nothing. */
 .plx[data-visible="false"] * {
   animation-play-state: paused !important;
@@ -142,13 +163,23 @@
 .plx[data-calm="true"] .plx-spark {
   opacity: 0.45;
 }
+.plx[data-calm="true"] .plx-bokeh circle {
+  opacity: 0.07;
+}
+.plx[data-calm="true"] .plx-strings {
+  transform: rotate(1deg);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .plx * { animation: none !important; }
   .plx-heart { opacity: 0.6; }
   .plx-spark { opacity: 0.45; }
+  .plx-bokeh circle { opacity: 0.07; }
+  .plx-strings { transform: rotate(1deg); }
 }
 
 [data-reduced-motion="true"] .plx * { animation: none !important; }
 [data-reduced-motion="true"] .plx-heart { opacity: 0.6; }
 [data-reduced-motion="true"] .plx-spark { opacity: 0.45; }
+[data-reduced-motion="true"] .plx-bokeh circle { opacity: 0.07; }
+[data-reduced-motion="true"] .plx-strings { transform: rotate(1deg); }

@@ -14,15 +14,16 @@ type UntypedClient = { from: unknown; rpc: unknown };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function untypedFrom(client: UntypedClient): (table: string) => any {
-  return client.from as unknown as (table: string) => any;
+  // Call through the client, never with a detached function: PostgrestClient
+  // keeps its URL/auth on `this`, so `const rpc = client.rpc` loses `this.rest`
+  // and throws "Cannot read properties of undefined (reading 'rest')".
+  return (table: string) => (client.from as any).call(client, table);
 }
 
 export function untypedRpc(
   client: UntypedClient,
 ): (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> {
-  return client.rpc as unknown as (
-    fn: string,
-    args?: Record<string, unknown>,
-  ) => Promise<{ data: any; error: any }>;
+  return (fn: string, args?: Record<string, unknown>) =>
+    (client.rpc as any).call(client, fn, args);
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

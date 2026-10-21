@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-10-21 — Unlock fixed, and every look gains another layer of detail
+
+### Unlocking actually reaches the server
+- The shop called the untyped Supabase helper as a detached function, so
+  `purchase_profile_effect` died before the request left the browser with
+  "Cannot read properties of undefined (reading 'rest')". The helper now calls
+  `from`/`rpc` on the client itself, which fixes unlocks and the same latent
+  failure in the leaderboard, profile-card and badge-sync calls.
+
+### Bloodweb: a second web at the photo edge
+- Added a fine rim web sized to survive a 40px avatar, with capillary forks,
+  ten glowing junction nodes, two hanging drops, and light pulses travelling
+  around the collar. The original outer web and slow breath remain.
+
+### Dark Moon: a colder, deeper night
+- The moon gains crater rims, a shading crescent and a blurred cloud band.
+  Cold stars twinkle, a wide beam sweeps the card, ground mist drifts, ash
+  falls, and the branch grows bark ridges, hanging twigs and leaves. Ravens
+  now bob on individual delays and have feather rows plus a catchlight.
+
+### Puppy Love: a finished hoodie
+- Biscuit gets a ribbed cuff, drawstrings with aglets, a zipper, kangaroo
+  pocket, stitched seams, ear fluff, forehead tufts and cheek highlights.
+  Bokeh breathes behind him and the strings sway with the head.
+
+### The shelf shows the detail
+- Effect previews are 192px tall with a dot-grid stage and a **Live preview**
+  label. Cards gain slot/motion/transparency chips, an **Owned** state, and a
+  tinted outline when a look is worn.
+
 ## 2026-10-21 — Profile previews at Discord scale, an accent glow and a real seal
 
 ### The avatar is lit, not boxed

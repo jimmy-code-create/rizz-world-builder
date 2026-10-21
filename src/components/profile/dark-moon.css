@@ -19,18 +19,6 @@
   animation: dmf-bob 6.5s ease-in-out infinite;
 }
 
-.dmf-raven:nth-of-type(2) {
-  animation-delay: -2.1s;
-}
-
-.dmf-raven:nth-of-type(3) {
-  animation-delay: -4.2s;
-}
-
-.dmf-raven:nth-of-type(4) {
-  animation-delay: -1.2s;
-}
-
 .dmf-rays path {
   animation: dmf-ray 7.5s ease-in-out infinite;
 }
@@ -45,6 +33,25 @@
 
 .dmf-eye {
   animation: dmf-eye 4.2s ease-in-out infinite;
+}
+
+.dmf-star {
+  animation: dmf-star 5.6s ease-in-out infinite;
+}
+
+.dmf-mist {
+  animation: dmf-mist 18s ease-in-out infinite;
+}
+
+.dmf-ash__dot {
+  animation: dmf-ash 8.4s linear infinite;
+  opacity: 0;
+}
+
+.dmf-beam {
+  animation: dmf-beam 13s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
 }
 
 @keyframes dmf-bob {
@@ -81,10 +88,71 @@
   }
 }
 
+@keyframes dmf-star {
+  0%,
+  100% {
+    opacity: 0.24;
+  }
+  44% {
+    opacity: 0.9;
+  }
+  58% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes dmf-mist {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateX(-10px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateX(12px);
+  }
+}
+
+@keyframes dmf-ash {
+  0% {
+    opacity: 0;
+    transform: translate(0, -18px);
+  }
+  18% {
+    opacity: 0.65;
+  }
+  72% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-14px, 92px);
+  }
+}
+
+@keyframes dmf-beam {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(-14px) skewX(-2deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateX(18px) skewX(2deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dmf-raven,
   .dmf-rays path,
-  .dmf-eye {
+  .dmf-eye,
+  .dmf-star,
+  .dmf-mist,
+  .dmf-ash__dot,
+  .dmf-beam {
     animation: none;
+  }
+  .dmf-ash__dot {
+    opacity: 0.35;
   }
 }

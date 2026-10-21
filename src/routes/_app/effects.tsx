@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Eye, Loader2, LockKeyhole, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, Layers3, Loader2, LockKeyhole, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -179,7 +179,10 @@ function EffectsPage() {
           return (
             <article
               key={effect.slug}
-              className="flex flex-col overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)]"
+              className="group flex flex-col overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] transition-colors hover:border-white/20"
+              style={{
+                boxShadow: worn ? `0 0 0 1px ${effect.preview_color}55, 0 18px 48px -32px ${effect.preview_color}` : undefined,
+              }}
             >
               <EffectPreview
                 effect={effect}
@@ -198,16 +201,32 @@ function EffectsPage() {
                       <span style={{ color: RARITY_COLOR[effect.rarity] }}>{effect.rarity}</span>
                     </p>
                   </div>
-                  {worn && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--brand-signal,#c8ff3d)]/50 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-signal,#c8ff3d)]">
+                  {worn ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--brand-signal,#c8ff3d)]/50 bg-[var(--brand-signal,#c8ff3d)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-signal,#c8ff3d)]">
                       <Check className="h-3 w-3" /> Worn
                     </span>
-                  )}
+                  ) : isOwned ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-paper-dim,#a9a69c)]">
+                      <Check className="h-3 w-3" /> Owned
+                    </span>
+                  ) : null}
                 </div>
 
                 <p className="mt-2 text-xs leading-relaxed text-[var(--brand-paper-dim,#a9a69c)]">
                   {effect.description}
                 </p>
+
+                <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Effect details">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                    <Layers3 className="h-2.5 w-2.5" /> {SLOT_META[effect.type].label}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                    <Sparkles className="h-2.5 w-2.5" /> Animated
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                    <Eye className="h-2.5 w-2.5" /> Transparent SVG
+                  </span>
+                </div>
 
                 <div className="mt-auto flex flex-col gap-2 pt-4">
                   {!COSMETICS_ENABLED ? (
@@ -287,11 +306,15 @@ function EffectPreview({
 
   if (effect.type === "avatar_decoration") {
     return (
-      <div className="relative h-44 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} avatar decoration preview`}>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--brand-ink-2,#131315)]/70 to-transparent" />
-        <div className="grid h-full place-items-center pb-3">
-          <div className="relative" style={{ width: 108, height: 108 }}>
-            <Avatar className="relative z-[1] h-[108px] w-[108px] rounded-full ring-4 ring-[var(--brand-ink-2,#131315)]">
+      <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} avatar decoration preview`}>
+        <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.55) 0.7px, transparent 0.8px)", backgroundSize: "11px 11px" }} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--brand-ink-2,#131315)]/75 to-transparent" />
+        <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
+          <span className="h-1 w-1 rounded-full bg-[#ff3048]" /> Live preview
+        </span>
+        <div className="grid h-full place-items-center pb-2 transition-transform duration-500 group-hover:scale-[1.03]">
+          <div className="relative" style={{ width: 120, height: 120 }}>
+            <Avatar className="relative z-[1] h-[120px] w-[120px] rounded-full ring-4 ring-[var(--brand-ink-2,#131315)]">
               <AvatarImage src={avatarUrl ?? undefined} />
               <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-3xl font-semibold text-[var(--brand-paper,#f4f1e7)]">
                 {initial}
@@ -306,34 +329,45 @@ function EffectPreview({
 
   if (effect.type === "profile_frame") {
     return (
-      <div className="relative h-44 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile frame preview`}>
-        <div className="absolute inset-x-5 bottom-5 top-8 rounded-xl border border-white/10 bg-black/30" />
+      <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile frame preview`}>
+        <div className="absolute inset-x-5 bottom-4 top-9 rounded-xl border border-white/10 bg-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]" />
         <DarkMoonFrame slug={effect.slug} />
-        <div className="absolute bottom-8 left-7 z-10 flex items-center gap-2">
-          <Avatar className="h-9 w-9 ring-2 ring-[var(--brand-ink-2,#131315)]">
+        <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
+          <span className="h-1 w-1 rounded-full bg-[#dfe8ef]" /> Live preview
+        </span>
+        <div className="absolute bottom-7 left-7 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:-translate-y-0.5">
+          <Avatar className="h-11 w-11 ring-2 ring-[var(--brand-ink-2,#131315)]">
             <AvatarImage src={avatarUrl ?? undefined} />
             <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-xs">{initial}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-xs font-bold text-white/90">Your name</p>
-            <p className="text-[10px] text-white/50">Framed profile</p>
+            <p className="text-sm font-bold text-white/90">Your name</p>
+            <p className="text-[10px] text-white/50">Framed profile · this month</p>
           </div>
+        </div>
+        <div className="pointer-events-none absolute inset-x-5 bottom-4 z-10 flex gap-1.5 pl-1">
+          <span className="h-1 w-10 rounded-full bg-white/35" />
+          <span className="h-1 w-5 rounded-full bg-white/15" />
+          <span className="h-1 w-7 rounded-full bg-white/10" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative h-44 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile effect preview`}>
+    <div className="relative h-48 overflow-hidden rounded-t-3xl" style={wash} role="img" aria-label={`${effect.name} profile effect preview`}>
       <PuppyLoveEffect />
-      <div className="absolute bottom-4 left-5 z-10 flex items-center gap-2">
-        <Avatar className="h-10 w-10 ring-4 ring-[var(--brand-ink,#0a0a0b)]">
+      <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60 backdrop-blur-sm">
+        <span className="h-1 w-1 rounded-full bg-[var(--brand-signal,#c8ff3d)]" /> Live preview
+      </span>
+      <div className="absolute bottom-4 left-5 z-10 flex items-center gap-2.5 transition-transform duration-500 group-hover:-translate-y-0.5">
+        <Avatar className="h-11 w-11 ring-4 ring-[var(--brand-ink,#0a0a0b)]">
           <AvatarImage src={avatarUrl ?? undefined} />
           <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] text-sm">{initial}</AvatarFallback>
         </Avatar>
         <div>
-          <p className="text-xs font-bold text-white/90">Your banner</p>
-          <p className="text-[10px] text-white/50">{effect.name}</p>
+          <p className="text-sm font-bold text-white/90">Your banner</p>
+          <p className="text-[10px] text-white/55">{effect.name} · animated</p>
         </div>
       </div>
     </div>

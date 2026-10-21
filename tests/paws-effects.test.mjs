@@ -10,6 +10,7 @@
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { untypedFrom, untypedRpc } from "../src/lib/untyped-db.ts";
 
 let passed = 0;
 async function check(name, fn) {
@@ -65,6 +66,25 @@ const tour = readFileSync(
   new URL("../src/components/onboarding/WelcomeTourOverlay.tsx", import.meta.url),
   "utf8",
 );
+const bloodweb = readFileSync(
+  new URL("../src/components/profile/BloodwebDecoration.tsx", import.meta.url),
+  "utf8",
+);
+const darkMoon = readFileSync(
+  new URL("../src/components/profile/DarkMoonFrame.tsx", import.meta.url),
+  "utf8",
+);
+const puppy = readFileSync(
+  new URL("../src/components/profile/PuppyLoveEffect.tsx", import.meta.url),
+  "utf8",
+);
+const effectCss = [
+  "bloodweb.css",
+  "dark-moon.css",
+  "puppy-love.css",
+]
+  .map((file) => readFileSync(new URL(`../src/components/profile/${file}`, import.meta.url), "utf8"))
+  .join("\n");
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 await check("the catalogue is three looks, one per wearable slot", async () => {
@@ -108,6 +128,31 @@ await check("the effects page previews, unlocks and equips each slot", async () 
   assert.ok(effectsLib.includes('supabase.rpc("equip_profile_effect"'));
   assert.ok(effectsLib.includes('supabase.rpc("unequip_profile_effect"'));
   assert.ok(!/from\("user_profile_effects"\)\s*\n?\s*\.upsert/.test(effectsLib));
+});
+
+await check("each look carries layered detail, motion and a reduced-motion still", async () => {
+  assert.ok(bloodweb.includes("pl-bw-rim"), "Bloodweb needs its fine inner web");
+  assert.ok(bloodweb.includes("pl-bw-nodes"), "Bloodweb needs junction nodes");
+  assert.ok(bloodweb.includes("pl-bw-drips"), "Bloodweb needs the hanging drops");
+  assert.ok(darkMoon.includes("dmf-stars"), "Dark Moon needs the cold stars");
+  assert.ok(darkMoon.includes("dmf-mist"), "Dark Moon needs ground mist");
+  assert.ok(darkMoon.includes("dmf-ash"), "Dark Moon needs drifting ash");
+  assert.ok(darkMoon.includes("animationDelay"), "ravens must not bob in lockstep");
+  assert.ok(puppy.includes("plx-bokeh"), "Puppy Love needs background bokeh");
+  assert.ok(puppy.includes("plx-strings"), "Puppy Love needs hoodie strings");
+  assert.ok(puppy.includes('id="plx-cuff"'), "Puppy Love needs the ribbed cuff");
+  assert.ok(effectCss.includes("prefers-reduced-motion: reduce"), "every look needs a still frame");
+  assert.ok(effectCss.includes("pl-bw-flow"), "Bloodweb pulses need CSS");
+  assert.ok(effectCss.includes("dmf-ash"), "Dark Moon ash needs CSS");
+  assert.ok(effectCss.includes("plx-bokeh"), "Puppy bokeh needs CSS");
+});
+
+await check("the shelf labels each preview and its detail chips", async () => {
+  assert.ok(effectsPage.includes("Live preview"));
+  assert.ok(effectsPage.includes("Animated"));
+  assert.ok(effectsPage.includes("Transparent SVG"));
+  assert.ok(effectsPage.includes("Owned"));
+  assert.ok(effectsPage.includes("h-48"), "previews grow to show the extra detail");
 });
 
 await check("the profile wears the frame, decoration, effect and chosen badges", async () => {
@@ -175,6 +220,28 @@ await check("Paws replaces the visible Rizz score", async () => {
   assert.ok(scoreMigration.includes("legacy_rizz_transfer"));
   assert.ok(scoreMigration.includes("paw_earned"));
   assert.ok(scoreMigration.includes("rights_review = false"));
+});
+
+await check("untyped database calls keep the Supabase client receiver", async () => {
+  // PostgrestClient stores its URL/auth on `this`. A detached `rpc` or `from`
+  // made every unlock fail with "Cannot read properties of undefined
+  // (reading 'rest')" before the request was even sent.
+  const client = {
+    rest: { url: "https://example.supabase.co/rest/v1" },
+    rpc(fn, args) {
+      return Promise.resolve({ data: { fn, args, url: this.rest.url }, error: null });
+    },
+    from(table) {
+      return { table, url: this.rest.url };
+    },
+  };
+
+  const rpc = await untypedRpc(client)("purchase_profile_effect", { _slug: "fx-bloodweb" });
+  assert.equal(rpc.error, null);
+  assert.equal(rpc.data.fn, "purchase_profile_effect");
+  assert.equal(rpc.data.args._slug, "fx-bloodweb");
+  assert.equal(rpc.data.url, "https://example.supabase.co/rest/v1");
+  assert.equal(untypedFrom(client)("profile_effects").url, "https://example.supabase.co/rest/v1");
 });
 
 await check("tour describes live Paws instead of a preview", async () => {
