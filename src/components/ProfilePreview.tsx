@@ -6,11 +6,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Phone, MoreHorizontal, Check, UserPlus, UserCheck, Ban, PawPrint } from "lucide-react";
+import {
+  BadgeCheck,
+  Ban,
+  Copy,
+  MessageCircle,
+  MoreHorizontal,
+  PawPrint,
+  UserPlus,
+  UserCheck,
+} from "lucide-react";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { bannerToneFor } from "@/components/profile/ProfileCard";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/Badge";
+import { MarkdownText } from "@/components/MarkdownText";
+import { fetchUserBadges } from "@/lib/badges";
 import { toast } from "@/lib/toast";
 import { motion } from "framer-motion";
 
@@ -22,7 +34,6 @@ type PreviewProfile = {
   avatar_url: string | null;
   banner_url: string | null;
   paw_balance: number;
-  verified: boolean;
   created_at: string;
 };
 
@@ -56,8 +67,23 @@ async function checkBlocked(viewerId: string, userId: string): Promise<boolean> 
   return !!data;
 }
 
+/** Discord's presence colours, used for both the avatar dot and the status row. */
+const STATUS_COLOR: Record<string, string> = {
+  online: "#23a55a",
+  idle: "#f0b232",
+  dnd: "#f23f43",
+  offline: "#80848e",
+};
+
+function monthYear(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 /**
- * Discord-style profile preview with banner, avatar overlay, and action buttons
+ * Discord-style profile preview: banner, overlapping avatar with a presence
+ * dot, name row with the member's badges, ABOUT ME (markdown, like Discord),
+ * MEMBER SINCE, then the actions. The card stays 340px wide on desktop and a
+ * bottom sheet on phones.
  */
 export function ProfilePreviewTrigger({
   username,
@@ -107,17 +133,25 @@ export function ProfilePreviewDialog({
   const nav = useNavigate();
   const qc = useQueryClient();
   const p = profile.data;
-  
+
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
   const statusText = statusLabel(status);
-  
+  const statusColor = STATUS_COLOR[status] ?? STATUS_COLOR.offline;
+
+  const badges = useQuery({
+    queryKey: ["profile-preview-badges", p?.id],
+    queryFn: () => fetchUserBadges(p!.id),
+    enabled: open && !!p,
+    staleTime: 60_000,
+  });
+
   const following = useQuery({
     queryKey: ["following", user?.id, p?.id],
     queryFn: () => checkFollowing(user!.id, p!.id),
     enabled: !!user && !!p && user.id !== p.id,
   });
-  
+
   const blocked = useQuery({
     queryKey: ["blocked", user?.id, p?.id],
     queryFn: () => checkBlocked(user!.id, p!.id),
@@ -168,34 +202,46 @@ export function ProfilePreviewDialog({
     nav({ to: "/u/$username", params: { username: p.username } });
   };
 
+  const copyUsername = async () => {
+    try {
+      await navigator.clipboard.writeText(`@${username}`);
+      toast.success("Username copied");
+    } catch {
+      toast.error("Couldn't copy the username");
+    }
+  };
+
   const bannerUrl = p?.banner_url ?? null;
   const bannerBg = bannerUrl ? `url(${bannerUrl})` : bannerToneFor(p?.id ?? "");
   const isOwnProfile = user?.id === p?.id;
+  const earned = badges.data ?? [];
+  // Verified is a badge, not a profiles column (same rule as the profile page).
+  const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
-        className="left-0 right-0 top-auto bottom-0 max-h-[86dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="left-0 right-0 top-auto bottom-0 max-h-[86dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-b-none rounded-t-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
       >
         <DialogTitle className="sr-only">Profile preview for {username}</DialogTitle>
-        
+
         {/* Drag handle for mobile */}
-        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden />
-        
+        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/20 sm:hidden" aria-hidden />
+
         {profile.isLoading && (
-          <div className="p-6">
+          <div className="p-4">
             <div className="animate-pulse space-y-4">
-              <div className="h-24 w-full rounded-2xl bg-white/5" />
-              <div className="h-20 w-20 mx-auto -mt-12 rounded-full bg-white/10 ring-4 ring-[#141416]" />
-              <div className="space-y-2 pt-4">
-                <div className="h-5 w-32 mx-auto rounded bg-white/5" />
-                <div className="h-4 w-24 mx-auto rounded bg-white/5" />
+              <div className="h-28 w-full rounded-xl bg-white/[0.06]" />
+              <div className="mx-2 -mt-12 h-[88px] w-[88px] rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
+              <div className="space-y-2 pt-2">
+                <div className="h-5 w-32 rounded bg-white/[0.06]" />
+                <div className="h-4 w-24 rounded bg-white/[0.06]" />
               </div>
             </div>
           </div>
         )}
-        
+
         {profile.isError && (
           <div className="p-6 text-center">
             <p className="text-sm text-muted-foreground">Couldn&apos;t load this profile.</p>
@@ -204,140 +250,143 @@ export function ProfilePreviewDialog({
             </Button>
           </div>
         )}
-        
+
         {!profile.isLoading && !profile.isError && !p && (
           <p className="p-6 text-center text-sm text-muted-foreground">That profile is no longer available.</p>
         )}
-        
+
         {p && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-y-auto max-h-[86dvh]"
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="max-h-[86dvh] overflow-y-auto"
           >
             {/* Banner */}
-            <div 
-              className="relative h-24 w-full"
-              style={{
-                background: bannerUrl ? `${bannerBg} center/cover` : bannerBg,
-              }}
+            <div
+              className="relative h-28 w-full"
+              style={{ background: bannerUrl ? `${bannerBg} center/cover` : bannerBg }}
             >
-              {/* More options button */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
+              />
               {!isOwnProfile && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 backdrop-blur-sm grid place-items-center hover:bg-black/80 transition-colors">
+                    <button
+                      type="button"
+                      aria-label="More options"
+                      className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={handleViewProfile}>
-                      View Full Profile
+                    <DropdownMenuItem onClick={handleViewProfile}>View Full Profile</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void copyUsername()}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy username
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => blockMutation.mutate()} className="text-destructive">
-                      <Ban className="h-4 w-4 mr-2" />
+                      <Ban className="mr-2 h-4 w-4" />
                       Block
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
             </div>
-            
-            {/* Avatar overlapping banner */}
-            <div className="px-4 -mt-12">
+
+            {/* Avatar — overlaps the banner, ringed in the card colour like Discord */}
+            <div className="relative -mt-[46px] px-4">
               <div className="relative inline-block">
-                <Avatar className="h-20 w-20 ring-[5px] ring-[#141416] border-2 border-white/10">
+                <Avatar className="h-[88px] w-[88px] rounded-full ring-[6px] ring-[#111214]">
                   <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
-                  <AvatarFallback className="bg-surface-2 text-foreground font-bold text-xl">
+                  <AvatarFallback className="bg-surface-2 text-xl font-bold text-foreground">
                     {p.display_name?.[0] ?? p.username[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {/* Status badge */}
-                {status !== "offline" && (
-                  <span 
-                    className="absolute bottom-0 right-0 h-5 w-5 rounded-full ring-[3px] ring-[#141416]"
-                    style={{
-                      background: status === "online" ? "#22c55e" : 
-                                 status === "idle" ? "#f59e0b" : 
-                                 status === "dnd" ? "#ef4444" : "#6b7280"
-                    }}
-                  />
-                )}
+                <span
+                  aria-hidden
+                  className="absolute bottom-0.5 right-0.5 h-[18px] w-[18px] rounded-full ring-[3px] ring-[#111214]"
+                  style={{ background: statusColor }}
+                />
               </div>
             </div>
-            
-            {/* Profile info */}
-            <div className="px-4 pb-4 pt-3 space-y-3">
-              {/* Name and username */}
-              <div>
-                <h3 className="text-xl font-bold text-foreground flex items-center gap-1.5">
-                  {p.display_name || p.username}
-                  {p.verified && (
-                    <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8.52 3.59c.8-1.39 2.16-1.39 2.96 0l1.07 1.85c.27.47.86.77 1.44.73l2.12-.14c1.55-.1 2.5.98 2.08 2.4l-.56 2.03c-.18.64.01 1.35.46 1.74l1.63 1.4c1.19 1.02 1.19 2.64 0 3.66l-1.63 1.4c-.45.39-.64 1.1-.46 1.74l.56 2.03c.42 1.42-.53 2.5-2.08 2.4l-2.12-.14c-.58-.04-1.17.26-1.44.73l-1.07 1.85c-.8 1.39-2.16 1.39-2.96 0l-1.07-1.85c-.27-.47-.86-.77-1.44-.73l-2.12.14c-1.55.1-2.5-.98-2.08-2.4l.56-2.03c.18-.64-.01-1.35-.46-1.74l-1.63-1.4c-1.19-1.02-1.19-2.64 0-3.66l1.63-1.4c.45-.39.64-1.1.46-1.74l-.56-2.03c-.42-1.42.53-2.5 2.08-2.4l2.12.14c.58.04 1.17-.26 1.44-.73l1.07-1.85zM11 15l-3-3 1.41-1.41L11 12.17l3.59-3.58L16 10l-5 5z"/>
-                    </svg>
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground">@{p.username}</p>
-              </div>
-              
-              {/* Status text */}
-              {status !== "offline" && (
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span 
-                      className="h-2 w-2 rounded-full"
-                      style={{
-                        background: status === "online" ? "#22c55e" : 
-                                   status === "idle" ? "#f59e0b" : 
-                                   status === "dnd" ? "#ef4444" : "#6b7280"
-                      }}
+
+            <div className="space-y-4 px-4 pb-4 pt-2.5">
+              {/* Name row: display name, verified tick, badges — Discord order */}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <h3 className="truncate text-[20px] font-bold leading-6 text-foreground">
+                    {p.display_name || p.username}
+                  </h3>
+                  {verified && (
+                    <BadgeCheck
+                      className="h-[18px] w-[18px] shrink-0 text-primary"
+                      aria-label="Verified"
                     />
-                    <span className="text-muted-foreground capitalize">{statusText}</span>
-                  </div>
+                  )}
+                  {earned.length > 0 && (
+                    <span className="flex items-center gap-1" aria-label="Badges">
+                      {earned.slice(0, 5).map((badge) => (
+                        <Badge key={badge.slug} slug={badge.slug} size={17} title={badge.name} />
+                      ))}
+                    </span>
+                  )}
                 </div>
-              )}
-              
-              {/* Divider */}
-              <div className="h-px bg-white/10" />
-              
-              {/* About section */}
-              {p.bio && (
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">About Me</h4>
-                  <p className="text-sm text-foreground whitespace-pre-wrap line-clamp-3">{p.bio}</p>
-                </div>
-              )}
-              
-              {/* Stats */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Stats</h4>
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="flex items-center gap-1 text-sm font-semibold text-primary">
-                      <PawPrint className="h-3.5 w-3.5" />
-                      {Number(p.paw_balance ?? 0).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Paws balance</p>
-                  </div>
-                  <div className="h-8 w-px bg-white/10" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Member Since</p>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => void copyUsername()}
+                  className="mt-0.5 text-[13px] leading-4 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Copy username"
+                >
+                  @{p.username}
+                </button>
               </div>
-              
-              {/* Action buttons */}
-              {!isOwnProfile && (
-                <div className="flex gap-2 pt-2">
+
+              {/* Presence row */}
+              <div className="flex items-center gap-1.5 text-[12px] text-foreground/80">
+                <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor }} />
+                <span>{statusText}</span>
+              </div>
+
+              <div className="h-px bg-white/[0.06]" />
+
+              {/* ABOUT ME */}
+              {p.bio && (
+                <section>
+                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">About Me</h4>
+                  <MarkdownText
+                    text={p.bio}
+                    className="mt-1.5 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
+                  />
+                </section>
+              )}
+
+              {/* MEMBER SINCE + Paws */}
+              <section className="flex items-start gap-6">
+                <div>
+                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Member Since</h4>
+                  <p className="mt-1 text-[13px] text-foreground/90">{monthYear(p.created_at)}</p>
+                </div>
+                <div>
+                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">Paws</h4>
+                  <p className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-primary">
+                    <PawPrint className="h-3.5 w-3.5" />
+                    {Number(p.paw_balance ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </section>
+
+              {/* Actions */}
+              {!isOwnProfile ? (
+                <div className="flex items-center gap-2 pt-0.5">
                   <Button
                     onClick={handleMessage}
-                    className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                    className="h-9 flex-1 gap-1.5 bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-primary/90"
                   >
-                    <MessageCircle className="h-4 w-4 mr-2" />
+                    <MessageCircle className="h-4 w-4" />
                     Message
                   </Button>
                   {!blocked.data && (
@@ -345,23 +394,20 @@ export function ProfilePreviewDialog({
                       onClick={() => toggleFollow.mutate()}
                       disabled={toggleFollow.isPending}
                       variant="outline"
-                      className="h-10 px-4 border-white/20 hover:bg-white/10"
+                      aria-label={following.data ? "Unfollow" : "Follow"}
+                      title={following.data ? "Unfollow" : "Follow"}
+                      className={`h-9 shrink-0 gap-1.5 border-white/10 px-3 text-[13px] font-semibold ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
                     >
-                      {following.data ? (
-                        <UserCheck className="h-4 w-4" />
-                      ) : (
-                        <UserPlus className="h-4 w-4" />
-                      )}
+                      {following.data ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                      {following.data ? "Following" : "Follow"}
                     </Button>
                   )}
                 </div>
-              )}
-              
-              {isOwnProfile && (
+              ) : (
                 <Button
                   onClick={handleViewProfile}
                   variant="outline"
-                  className="w-full h-10 border-white/20 hover:bg-white/10"
+                  className="h-9 w-full border-white/10 bg-transparent text-[13px] font-semibold text-foreground hover:bg-white/[0.06]"
                 >
                   View Full Profile
                 </Button>
