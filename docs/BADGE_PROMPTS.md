@@ -1,5 +1,12 @@
 # RIZZ badge prompts
 
+> **Status (2026-10-20):** the shipped badges are hand-drawn SVG symbols in
+> `public/badges/badges.svg`. Its header is the current design language — one
+> tier gradient per emblem, engraved rim, ink negative-space glyph, one
+> specular — and it includes the 13th mark (`verified-creator`). The prompts
+> below are a brief for raster alternatives; where they disagree with the
+> sprite, the sprite wins.
+
 Exact prompts for the 12 badges live in `src/lib/badge-set.ts`, written for the
 flat-vector / Discord-legacy look. One prompt per badge, one locked line, one
 negative prompt.

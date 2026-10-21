@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-10-21 — Web Slinger is the only effect, and badges go on your profile
+
+### The four cinematic loops are retired
+- The cosmetics catalogue is back to a single entry: **Web Slinger**
+  (`fx-web-slinger`, mythic profile effect). Sakura Bloom, Arcane Nexus and
+  Sakura Storm are gone from the catalogue, the renderer, the profile header and
+  the effects page, along with the four-loop build/check scripts under
+  `scripts/effects/` and the `public/effects/cinematic/` clips they produced.
+- The effect is drawn as **transparent inline SVG** again: an original masked
+  web-slinger — red-and-blue suit, black web lattice, white lenses — crouched on
+  a strand with both hands slinging. No raster asset, no background, nothing to
+  clip.
+- `ProfileEffect` renders `null` for any slug outside the catalogue, so a stale
+  `profile_effects` row from the old gallery can never resurrect a removed
+  overlay. Avatar decorations and nameplates are trimmed to plain avatars and
+  names, keeping their exact sizes and layout.
+- **Paws stay.** The wallet, bounty rewards, ledger and the Paws tab on the
+  profile are untouched; only the shop catalogue they pointed at is reduced.
+- `npm run test` now runs `tests/web-slinger-effect.test.mjs` (the transparency,
+  single-entry, layering and migration guards) as well as
+  `tests/game-sessions.test.mjs`.
+
+### Badges you choose to wear
+- The profile gains a **Badges** section under the bio. Members press **Equip
+  badges**, pick up to three earned badges, and the row shows for every visitor.
+  The choice persists in `profiles.badges` and display is earned-gated on read,
+  so a hand-edited column can never show an emblem the member does not hold.
+- Equipping before the migration reports a readable "needs the latest database
+  migration" message instead of a PostgREST error, and a silent RLS no-op is no
+  longer reported as a save.
+- `supabase/migrations/20261029000000_web_slinger_only.sql` retires the old
+  catalogue rows and keeps the Web Slinger seeded.
+
 ## 2026-10-21 — Everyone plays their own game in the call
 
 ### One session per person, not one per channel
@@ -131,6 +164,34 @@
   and keeps the notify-me chip while equipping stays closed.
 - The Effects destination in the nav and in Settings no longer carries a
   "soon" badge.
+
+## 2026-10-20 — Equip badges on the profile
+
+### The profile gains a badge section you control
+- The profile page now has a **Badges** section under the bio: members press
+  **Equip badges**, tap up to three earned badges, and the showcase appears
+  there for everyone who visits. The choice persists in `profiles.badges` —
+  the showcase column the profile-card migration introduced, which nothing
+  wrote until now.
+- Display is earned-gated on read (`showcaseBadges` in `badge-set.ts`), so a
+  hand-edited column can never show an emblem the member does not hold, and
+  until something is equipped the section falls back to the full earned row
+  the page already showed — no profile loses badges.
+- Before `20261020010000_profile_card.sql` is applied the section still
+  renders; equipping reports a readable "needs the latest database migration"
+  message instead of a PostgREST error (the same best-effort pattern as
+  featured badges), and a silent RLS no-op is no longer reported as a save.
+
+## 2026-10-20 — Badges redrawn in Discord's language
+
+- The badge sprite (`public/badges/badges.svg`) is redrawn as hand-authored
+  vector emblems in one shared 24-unit language: each emblem has its own
+  silhouette, a two-stop metal, a rim light and an inner shadow, so a row of
+  badges reads as a set rather than clip art.
+- `src/components/BadgeIcon.tsx` slices the sprite, so every surface — profile,
+  feed credits, leaderboard, badge shelf, profile card — draws the same emblem
+  at any size without a second asset. `tests/badge-sprite.test.mjs` guards the
+  sprite ids, the slice map and the shared geometry.
 
 ## 2026-10-20 — Badge names: HypeSquad Bravery and Verified Creator
 

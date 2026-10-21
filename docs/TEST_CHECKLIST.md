@@ -1,5 +1,40 @@
 # RIZZ Test Checklist
 
+## Web Slinger — the single profile effect (this pass)
+
+- [ ] `/effects` shows one card: the Web Slinger at banner size, with the avatar disc in place. No other effects, decorations or nameplates are listed anywhere.
+- [ ] Equip it: the toast confirms, `/u/<you>` shows the hero in the banner, and the scene is still there after a reload.
+- [ ] Open the same profile in a second browser (or signed out, after the migration): the effect is visible to visitors, not just the owner.
+- [ ] Inspect the effect: the host and SVG have no background, no `<img>` and no full-canvas rect; the character is complete from mask to boots; webs leave both hands; the profile banner colour shows through the gaps.
+- [ ] Click the avatar, name, edit/follow buttons and the tab bar: all still work — the effect never intercepts a pointer.
+- [ ] Enable OS reduced motion: the scene becomes a still with the strands drawn and the motes at rest. Disable it: the loop resumes.
+- [ ] On a phone-width banner the figure stays centred and complete; on a low-end device (`navigator.hardwareConcurrency <= 2`) it renders still.
+- [ ] Scroll the banner out of view and back: animations pause off screen and resume without a jump.
+- [ ] Remove the effect from `/effects`: the banner returns to its plain banner image/gradient.
+- [ ] Without `20261029000000_web_slinger_only.sql`, equipping still shows the effect for you and the toast says it is saved on this device.
+- [ ] `bun tests/web-slinger-effect.test.mjs` passes (13 checks); `bun tsc -b --noEmit` passes.
+
+## Profile badge showcase (this pass)
+
+- [ ] Own profile: a **Badges** section sits under the bio/Into block with an **Equip badges** button; other members see the showcase row instead of the button.
+- [ ] Press **Equip badges**, tap a badge: the tile reads "On", the counter shows `1/3`, and the badge appears in the section for visitors.
+- [ ] Try a fourth badge: the toast explains the 3-badge cap; unequip one and the fourth equips.
+- [ ] Unequip everything: the section falls back to the full earned row the profile already showed — nothing disappears for visitors.
+- [ ] A profile with no equipped badges shows visitors the earned row exactly as before (existing flow preserved).
+- [ ] A slug in `profiles.badges` the member never earned does not render in the showcase.
+- [ ] Until `20261020010000_profile_card.sql` is applied, equipping toasts "Badge showcase needs the latest database migration" — never a raw database error.
+- [ ] `bun tests/profile-badges.test.mjs` passes (7 checks) and `bun tests/profile-badges.render.test.tsx` passes (8 checks, renders the real section).
+
+## Badge artwork (this pass)
+
+- [ ] `/badges`: every emblem renders with its gradient fill, engraved rim and ink glyph at grid size and in the inspector (120px) — nothing blank, black or clipped.
+- [ ] A 20px badge beside a name (feed author, profile row, hover card, tooltip chip) is still readable: silhouette plus glyph, no mush.
+- [ ] Top Rizzler and Early Supporter read as shields with the black chevron; verified badges read as lime seals with an ink check.
+- [ ] Verified Creator shows the creator seal (play glyph), not the member Verified check.
+- [ ] Night Owl keeps its light crescent — it must not look like a missing badge next to the silver medallions.
+- [ ] Share a badge: the exported PNG carries the new artwork (canvas pulls the symbol from the sprite).
+- [ ] Locked badges stay greyscale at 35% and do not lift on hover.
+
 ## Badge renames (this pass)
 
 - [ ] A member who held Early Rizzer now shows **HypeSquad Bravery** on their profile, badge shelf and share card — same award date, new name.

@@ -1,13 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Cosmetics are live. Purchases still happen on the server: the browser asks
- * `purchase_profile_effect` to spend Paws, and only that RPC can write the
- * wallet or an ownership row.
+ * Global cosmetics killswitch.
+ *
+ * Only one cosmetic ships today: the Web Slinger profile effect. Every other
+ * decoration, nameplate and profile overlay has been removed, and the catalog
+ * below is the only source of truth for what can be equipped. The flag stays
+ * so the whole surface can still be paused in one line.
  */
 export const COSMETICS_ENABLED = true;
 
-export type ProfileEffectType = "avatar_decoration" | "profile_effect" | "nameplate";
+export type ProfileEffectType = "profile_effect";
 
 export type ProfileEffect = {
   id: string;
@@ -16,160 +19,137 @@ export type ProfileEffect = {
   description: string | null;
   type: ProfileEffectType;
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic";
-  /** Legacy column. Kept in sync with paw_price by the migration. */
   unlock_rizz: number;
-  paw_price?: number;
-  price_cents?: number;
-  rights_review?: boolean;
-  sort_order?: number;
   preview_color: string;
 };
 
+export const WEB_SLINGER_SLUG = "fx-web-slinger";
+
 /**
- * The four cinematic pieces. Web Slinger is the full-profile effect; the three
- * original animated loops sit around the avatar as decorations.
+ * The one effect.
+ *
+ * An original masked web-slinger — red-and-blue suit, black web lattice,
+ * white lenses — crouched on a web strand with both hands slinging. It is
+ * drawn as transparent inline SVG (see `WebSlingerEffect.tsx`), so there is no
+ * raster asset, no background and nothing to clip.
  */
-export const SHOWCASE_EFFECTS: ProfileEffect[] = [
-  {
-    id: "fx-web-slinger",
-    slug: "fx-web-slinger",
-    name: "Web Slinger",
-    description:
-      "A masked web slinger drops in, lands on a glowing portal, and holds the frame in red-and-blue light.",
-    type: "profile_effect",
-    rarity: "mythic",
-    unlock_rizz: 1800,
-    paw_price: 1800,
-    price_cents: 499,
-    rights_review: false,
-    sort_order: 10,
-    preview_color: "#e8253f",
-  },
-  {
-    id: "fx-sakura-bloom",
-    slug: "fx-sakura-bloom",
-    name: "Sakura Bloom",
-    description: "A slow drift of cherry blossoms around a delicate rose trail.",
-    type: "avatar_decoration",
-    rarity: "legendary",
-    unlock_rizz: 1200,
-    paw_price: 1200,
-    price_cents: 299,
-    rights_review: false,
-    sort_order: 20,
-    preview_color: "#fb7185",
-  },
-  {
-    id: "fx-arcane-nexus",
-    slug: "fx-arcane-nexus",
-    name: "Arcane Nexus",
-    description: "Counter-rotating glyph rings, arcane sigils and drifting starlight.",
-    type: "avatar_decoration",
-    rarity: "mythic",
-    unlock_rizz: 1500,
-    paw_price: 1500,
-    price_cents: 399,
-    rights_review: false,
-    sort_order: 30,
-    preview_color: "#a855f7",
-  },
-  {
-    id: "fx-sakura-storm",
-    slug: "fx-sakura-storm",
-    name: "Sakura Storm",
-    description: "A denser cherry-blossom storm around a brighter rose trail.",
-    type: "avatar_decoration",
-    rarity: "epic",
-    unlock_rizz: 900,
-    paw_price: 900,
-    price_cents: 349,
-    rights_review: false,
-    sort_order: 40,
-    preview_color: "#f472b6",
-  },
-];
-
-/** Backwards-compatible alias used by a few profile surfaces. */
-export const DISCORD_SHOWCASE_EFFECTS = SHOWCASE_EFFECTS;
-
-export function effectPawPrice(effect: ProfileEffect): number {
-  return effect.paw_price ?? effect.unlock_rizz ?? 0;
-}
-
-function normalizeEffect(row: Partial<ProfileEffect> & Record<string, unknown>): ProfileEffect {
-  const unlock = Number(row.unlock_rizz ?? row.paw_price ?? 0);
-  return {
-    id: String(row.id ?? row.slug ?? ""),
-    slug: String(row.slug ?? ""),
-    name: String(row.name ?? "Effect"),
-    description: typeof row.description === "string" ? row.description : null,
-    type: (row.type as ProfileEffectType) ?? "profile_effect",
-    rarity: (row.rarity as ProfileEffect["rarity"]) ?? "common",
-    unlock_rizz: unlock,
-    paw_price: Number(row.paw_price ?? unlock),
-    price_cents: Number(row.price_cents ?? 0),
-    rights_review: Boolean(row.rights_review ?? false),
-    sort_order: Number(row.sort_order ?? 100),
-    preview_color: String(row.preview_color ?? "#c8ff3d"),
-  };
-}
-
-export async function fetchAllEffects(): Promise<ProfileEffect[]> {
-  try {
-    const { data } = await supabase
-      .from("profile_effects")
-      .select("*")
-      .order("sort_order")
-      .order("paw_price");
-    const dbList = (data ?? []).map((row) => normalizeEffect(row as never));
-    if (!dbList.length) return SHOWCASE_EFFECTS;
-    const map = new Map<string, ProfileEffect>();
-    for (const item of SHOWCASE_EFFECTS) map.set(item.slug, item);
-    for (const item of dbList) map.set(item.slug, item);
-    return Array.from(map.values());
-  } catch {
-    return SHOWCASE_EFFECTS;
-  }
-}
-
-export type UserEffect = {
-  user_id: string;
-  effect_id: string;
-  equipped: boolean;
-  acquired_at?: string;
-  effect: ProfileEffect;
+export const WEB_SLINGER_EFFECT: ProfileEffect = {
+  id: WEB_SLINGER_SLUG,
+  slug: WEB_SLINGER_SLUG,
+  name: "Web Slinger",
+  description:
+    "A masked web-slinger crouches on a strand, lenses lit, webbing thrown across your profile.",
+  type: "profile_effect",
+  rarity: "mythic",
+  unlock_rizz: 1800,
+  preview_color: "#e8253f",
 };
 
-export async function fetchUserEffects(userId: string): Promise<UserEffect[]> {
+/** Every effect the app knows about. */
+export const PROFILE_EFFECTS: ProfileEffect[] = [WEB_SLINGER_EFFECT];
+
+const EFFECTS_BY_SLUG = new Map(PROFILE_EFFECTS.map((effect) => [effect.slug, effect]));
+
+/** True for a slug that still exists after the cleanup. */
+export function isAvailableEffect(slug: string | null | undefined): slug is string {
+  return Boolean(slug && EFFECTS_BY_SLUG.has(slug));
+}
+
+function getLocalAcquired(userId: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
   try {
-    const { data, error } = await supabase
+    const raw = localStorage.getItem(`rizz_acquired_effects_${userId}`);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveLocalAcquired(userId: string, effectId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const set = getLocalAcquired(userId);
+    set.add(effectId);
+    localStorage.setItem(`rizz_acquired_effects_${userId}`, JSON.stringify([...set]));
+  } catch {}
+}
+
+function getLocalEquipped(userId: string): Partial<Record<ProfileEffectType, string>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(`rizz_equipped_effects_${userId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalEquipped(userId: string, type: ProfileEffectType, effectId: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const eq = getLocalEquipped(userId);
+    if (effectId) eq[type] = effectId;
+    else delete eq[type];
+    localStorage.setItem(`rizz_equipped_effects_${userId}`, JSON.stringify(eq));
+  } catch {}
+}
+
+/**
+ * The catalog, optionally enriched by rows in `profile_effects`.
+ *
+ * Rows for effects that no longer exist are dropped: a stale database entry
+ * can never put a removed effect back on a profile.
+ */
+export async function fetchAllEffects(): Promise<ProfileEffect[]> {
+  try {
+    const { data } = await supabase.from("profile_effects").select("*").order("unlock_rizz");
+    const merged = new Map(PROFILE_EFFECTS.map((effect) => [effect.slug, effect]));
+    for (const row of (data ?? []) as ProfileEffect[]) {
+      const known = merged.get(row.slug);
+      if (known) merged.set(row.slug, { ...known, ...row, type: "profile_effect" });
+    }
+    return Array.from(merged.values());
+  } catch {
+    return PROFILE_EFFECTS;
+  }
+}
+
+export async function fetchUserEffects(userId: string) {
+  const localSet = getLocalAcquired(userId);
+  let dbRows: any[] = [];
+  try {
+    const { data } = await supabase
       .from("user_profile_effects")
       .select("*, effect:profile_effects(*)")
-      .eq("user_id", userId)
-      .order("acquired_at", { ascending: false });
-    if (error) throw error;
-    const rows: UserEffect[] = [];
-    for (const row of data ?? []) {
-      const effect = (row as unknown as { effect?: Record<string, unknown> | null }).effect;
-      if (!effect) continue;
-      rows.push({
-        user_id: (row as { user_id: string }).user_id,
-        effect_id: (row as { effect_id: string }).effect_id,
-        equipped: Boolean((row as { equipped?: boolean }).equipped),
-        acquired_at: (row as { acquired_at?: string }).acquired_at,
-        effect: normalizeEffect(effect as never),
-      });
+      .eq("user_id", userId);
+    dbRows = ((data ?? []) as any[]).filter((row) => isAvailableEffect(row.effect?.slug));
+  } catch {}
+
+  const localEquipped = getLocalEquipped(userId);
+  const byId = new Map(dbRows.map((r) => [r.effect_id, r]));
+
+  // Merge locally acquired effects, but only ones that still exist.
+  for (const eff of PROFILE_EFFECTS) {
+    if (localSet.has(eff.id) || localEquipped[eff.type] === eff.id) {
+      if (!byId.has(eff.id)) {
+        byId.set(eff.id, {
+          user_id: userId,
+          effect_id: eff.id,
+          equipped: localEquipped[eff.type] === eff.id,
+          effect: eff,
+        });
+      }
     }
-    return rows;
-  } catch {
-    return [];
   }
+
+  return Array.from(byId.values());
 }
 
 export async function fetchEquippedEffects(
   userId: string,
 ): Promise<Partial<Record<ProfileEffectType, ProfileEffect>>> {
   const out: Partial<Record<ProfileEffectType, ProfileEffect>> = {};
+  const localEquipped = getLocalEquipped(userId);
 
   try {
     const { data } = await supabase
@@ -178,66 +158,117 @@ export async function fetchEquippedEffects(
       .eq("user_id", userId)
       .eq("equipped", true);
 
-    for (const row of data ?? []) {
-      const raw = (row as unknown as { effect?: Record<string, unknown> | null }).effect;
-      if (!raw) continue;
-      const effect = normalizeEffect(raw as never);
-      out[effect.type] = effect;
+    for (const row of (data ?? []) as any[]) {
+      const effect = row.effect as ProfileEffect | null;
+      // Removed effects may still sit in the database; only the current
+      // catalog is allowed to reach a profile.
+      if (effect && effect.type === "profile_effect" && isAvailableEffect(effect.slug)) {
+        out.profile_effect = effect;
+      }
     }
-  } catch {
-    // A missing shop table should hide cosmetics, not break the profile.
+  } catch {}
+
+  // Local fallback, filtered the same way.
+  for (const [type, effId] of Object.entries(localEquipped) as [ProfileEffectType, string][]) {
+    if (!out[type] && isAvailableEffect(effId)) {
+      const match = EFFECTS_BY_SLUG.get(effId);
+      if (match) out[type] = match;
+    }
   }
 
   return out;
 }
 
-export type PurchaseResult = {
-  status: "purchased" | "owned";
-  balance: number;
-  effect_id?: string;
-  equipped?: boolean;
-};
-
-export async function purchaseEffectWithPaws(slug: string): Promise<PurchaseResult> {
-  const { data, error } = await supabase.rpc("purchase_profile_effect", { _slug: slug });
-  if (error) throw new Error(error.message);
-  return data as unknown as PurchaseResult;
+/**
+ * The database keys effects by uuid; the catalogue keys them by slug. Resolve
+ * the row once so equipping works whatever uuid a deployment seeded.
+ */
+async function resolveEffectRowId(slug: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from("profile_effects")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    return (data as { id?: string } | null)?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
-export async function equipProfileEffect(slug: string) {
-  const { data, error } = await supabase.rpc("equip_profile_effect", { _slug: slug });
-  if (error) throw new Error(error.message);
-  return data;
+/** Whether the choice reached the database, or only this browser. */
+export type EquipResult = { persisted: boolean };
+
+export async function acquireEffect(userId: string, effectId: string): Promise<EquipResult> {
+  if (!COSMETICS_ENABLED) {
+    throw new Error("Cosmetics are currently paused.");
+  }
+  if (!isAvailableEffect(effectId)) {
+    throw new Error("That effect is no longer available.");
+  }
+  saveLocalAcquired(userId, effectId);
+  const rowId = await resolveEffectRowId(effectId);
+  if (!rowId) return { persisted: false };
+  const { error } = await supabase
+    .from("user_profile_effects")
+    .upsert(
+      { user_id: userId, effect_id: rowId, equipped: false },
+      { onConflict: "user_id,effect_id" },
+    );
+  return { persisted: !error };
 }
 
-export async function unequipProfileEffect(slug: string) {
-  const { data, error } = await supabase.rpc("unequip_profile_effect", { _slug: slug });
-  if (error) throw new Error(error.message);
-  return data;
-}
-
-/** Kept for older callers; new code should use purchaseEffectWithPaws(). */
-export async function acquireEffect(_userId: string, effectId: string) {
-  return purchaseEffectWithPaws(effectId);
-}
-
-/** Kept for older callers; new code should use equipProfileEffect(). */
-export async function equipEffect(_userId: string, effectId: string, _type: ProfileEffectType) {
-  return equipProfileEffect(effectId);
-}
-
-/** Kept for older callers; new code should use unequipProfileEffect(). */
-export async function unequipEffect(_userId: string, effectId: string) {
-  return unequipProfileEffect(effectId);
-}
-
-export function isTrialActive(
-  profile: { trial_active?: boolean | null; trial_ends_at?: string | null } | null,
-) {
+export function isTrialActive(profile: { trial_active?: boolean | null; trial_ends_at?: string | null } | null) {
   if (!profile) return false;
   if (!profile.trial_active) return false;
   if (!profile.trial_ends_at) return true;
   return new Date(profile.trial_ends_at).getTime() > Date.now();
+}
+
+export async function equipEffect(
+  userId: string,
+  effectId: string,
+  type: ProfileEffectType,
+): Promise<EquipResult> {
+  if (!COSMETICS_ENABLED) {
+    throw new Error("Cosmetics are currently paused.");
+  }
+  const effect = EFFECTS_BY_SLUG.get(effectId);
+  if (!effect || effect.type !== type) {
+    throw new Error("That effect is no longer available.");
+  }
+  // The local copy is instant and is what the owner sees even before the
+  // request settles; the database row is what visitors read.
+  saveLocalAcquired(userId, effectId);
+  saveLocalEquipped(userId, type, effectId);
+
+  const rowId = await resolveEffectRowId(effectId);
+  if (!rowId) return { persisted: false };
+  const { error } = await supabase
+    .from("user_profile_effects")
+    .upsert(
+      { user_id: userId, effect_id: rowId, equipped: true },
+      { onConflict: "user_id,effect_id" },
+    );
+  return { persisted: !error };
+}
+
+export async function unequipEffect(
+  userId: string,
+  effectId: string,
+  type?: ProfileEffectType,
+): Promise<EquipResult> {
+  if (type) saveLocalEquipped(userId, type, null);
+  else if (EFFECTS_BY_SLUG.has(effectId)) saveLocalEquipped(userId, "profile_effect", null);
+
+  const rowId = await resolveEffectRowId(effectId);
+  if (!rowId) return { persisted: true };
+  const { error } = await supabase
+    .from("user_profile_effects")
+    .update({ equipped: false })
+    .eq("user_id", userId)
+    .eq("effect_id", rowId);
+  return { persisted: !error };
 }
 
 export const RARITY_FLAT: Record<ProfileEffect["rarity"], string> = {

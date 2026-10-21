@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
-import { BadgeRow } from "@/components/BadgeChip";
+import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MessageCircle, Share2, Hash, Users, Film, Heart, PawPrint } from "lucide-react";
@@ -23,7 +23,7 @@ import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/
 import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { SHOWCASE_EFFECTS } from "@/lib/effects";
+
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -45,18 +45,6 @@ function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [previewEffect, setPreviewEffect] = useState<string | null>(null);
-
-  // The effects gallery opens a profile preview in a new tab. The preview is
-  // deliberately opt-in and labelled so nobody mistakes it for an equipped
-  // cosmetic while the cosmetics launch switch is off.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const slug = new URLSearchParams(window.location.search).get("previewEffect");
-    if (slug && SHOWCASE_EFFECTS.some((effect) => effect.slug === slug)) {
-      setPreviewEffect(slug);
-    }
-  }, []);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -278,24 +266,16 @@ function ProfilePage() {
   const profileUsername = profile.username ?? username;
   const initial = (profile.display_name || profileUsername || "?").charAt(0).toUpperCase();
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
-  const previewMeta = previewEffect
-    ? SHOWCASE_EFFECTS.find((effect) => effect.slug === previewEffect) ?? null
-    : null;
-  const previewProfileEffect = previewMeta?.type === "profile_effect" ? previewMeta : null;
-  const previewAvatarEffect = previewMeta?.type === "avatar_decoration" ? previewMeta : null;
-  // Web Slinger is the full-profile effect. The other three cinematic pieces
-  // are worn around the avatar, so they never get the page-wide layer.
-  const shownEffect = previewProfileEffect ?? eq?.profile_effect ?? null;
-  const shownAvatar = previewAvatarEffect ?? eq?.avatar_decoration ?? null;
-  // The cinematic avatar loops extend roughly a third of the avatar size past
-  // the picture. Give them room so the ring does not sit on the display name.
-  const hasCinematicAvatar = Boolean(shownAvatar?.slug?.startsWith("fx-"));
+  // Web Slinger is the only cosmetic left, and it is a full-profile layer: the
+  // component renders nothing for a slug that no longer exists, so a stale row
+  // can never resurrect a removed overlay.
+  const shownEffect = eq?.profile_effect ?? null;
 
   return (
     <div className="relative isolate">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
         <div
-          className={`h-40 md:h-56 rounded-3xl ${hasCinematicAvatar ? "mb-24" : "mb-16"} relative overflow-hidden`}
+          className="h-40 md:h-56 rounded-3xl mb-16 relative overflow-hidden"
           style={{
             background: profile.banner_url
               ? `url(${profile.banner_url}) center/cover`
@@ -303,32 +283,9 @@ function ProfilePage() {
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+          {shownEffect && <ProfileEffectVisual slug={shownEffect.slug} />}
         </div>
       </motion.div>
-
-      {/* The old renderer clipped the cinematic loop to the banner. This layer
-          starts on the banner and continues behind the profile header, then
-          fades into the page so text and tabs stay readable. */}
-      {shownEffect && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[clamp(18rem,42vw,34rem)] overflow-hidden rounded-3xl [mask-image:linear-gradient(to_bottom,#000_0%,#000_54%,transparent_100%)]"
-        >
-          <ProfileEffectVisual
-            slug={shownEffect.slug}
-            accent={shownEffect.preview_color}
-            preview={Boolean(previewProfileEffect)}
-            reducedMotion={Boolean(profile.reduced_motion)}
-            fit="cover"
-          />
-        </div>
-      )}
-
-      {previewMeta && (
-        <span className="absolute right-3 top-3 z-30 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-          <Sparkles className="h-3 w-3" /> Preview
-        </span>
-      )}
 
       <div className="absolute left-4 top-28 z-20 md:left-6 md:top-44">
         <span className="relative inline-flex shrink-0">
@@ -336,10 +293,6 @@ function ProfilePage() {
             src={profile.avatar_url}
             fallback={initial}
             size={96}
-            effectSlug={shownAvatar?.slug}
-            accent={shownAvatar?.preview_color}
-            preview={Boolean(previewAvatarEffect)}
-            reducedMotion={Boolean(profile.reduced_motion)}
             className="ring-4 ring-background rounded-full"
           />
           <AvatarStatusBadge emoji={customStatus?.emoji} />
@@ -362,9 +315,6 @@ function ProfilePage() {
             <h1 className="font-display text-2xl font-bold tracking-tight">
               <Nameplate
                 name={profile.display_name || profileUsername}
-                slug={eq?.nameplate?.slug}
-                accent={eq?.nameplate?.preview_color}
-                variant="badge"
                 className="text-xl md:text-2xl"
               />
             </h1>
@@ -484,11 +434,13 @@ function ProfilePage() {
         </section>
       )}
 
-      {badges.data && badges.data.length > 0 && (
-        <div className="px-1 md:px-2 mt-4">
-          <BadgeRow badges={badges.data} max={5} />
-        </div>
-      )}
+      <ProfileBadgesSection
+        profileId={profile.id}
+        isOwner={Boolean(isMe)}
+        stored={profile.badges}
+        earned={badges.data ?? []}
+        loading={badges.isLoading}
+      />
 
       <div className="px-1 md:px-2 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <div><span className="font-bold">{posts.data?.length ?? 0}</span> <span className="text-muted-foreground">posts</span></div>

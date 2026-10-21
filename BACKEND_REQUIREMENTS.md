@@ -362,6 +362,42 @@ Progress bars are client-side (`src/lib/badge-progress.ts`); the RPCs here are
 the awarding side and the only authority on what is actually earned. Keep the
 two in step when a rule changes.
 
+## 5. Profile badge showcase (`profiles.badges`)
+
+**Why:** the profile page has a badge section where a member equips up to
+three badges for visitors to see. The equipped list is stored in
+`profiles.badges text[]` — the "showcase slugs shown on the card" column
+introduced by `supabase/migrations/20261020010000_profile_card.sql`.
+
+**Frontend expects:** `profiles.badges` readable with `select("*")` on the
+profile row and writable by the owner through the same self-update policy
+`featured_badge` uses. The client only ever offers earned slugs and re-filters
+the stored list against `user_badges` on read (`showcaseBadges` in
+`src/lib/badge-set.ts`), so no new trigger is required: an unearned slug in
+the column never renders.
+
+Until the migration is applied nothing breaks — the section falls back to the
+full earned badge row and equipping reports "Badge showcase needs the latest
+database migration" instead of a raw PostgREST error. The migration file is
+marked "PROPOSED - NOT APPLIED" in its header per the project's ask-first
+rule, so it needs the owner's OK before running; apply it as-is (rerun-safe:
+`ADD COLUMN IF NOT EXISTS`).
+
+## 5. Web Slinger profile effect row
+
+**Why:** the frontend catalogue is keyed by slug, but
+`user_profile_effects.effect_id` is a uuid foreign key to `profile_effects.id`.
+Equipping needs a real catalogue row to point at.
+
+**Frontend expects:** a `profile_effects` row with slug `fx-web-slinger` and
+type `profile_effect`. Apply `supabase/migrations/20261029000000_web_slinger_only.sql`
+as-is. It seeds (or refreshes) that row and deletes the retired cosmetics; the
+delete intentionally cascades their `user_profile_effects` rows, because those
+effects no longer exist anywhere in the app. Until it is applied, equipping
+still works on the owner's device through the existing local fallback, and the
+UI says the effect is not yet shared with visitors instead of throwing a
+PostgREST error.
+
 ## Existing backend features the frontend reuses
 
 - Group joining continues to use the existing `accept_group_invite(_code text)`
@@ -390,3 +426,7 @@ two in step when a rule changes.
    and the unsent placeholder appears for both.
 5. Upload one image to `chat-media` as an authenticated user and confirm a
    second user can display the posted URL.
+6. Apply `20261029000000_web_slinger_only.sql`, equip Web Slinger from
+   `/effects`, and confirm `user_profile_effects` has one equipped row pointing
+   at the `fx-web-slinger` uuid. Open the profile in a second browser: the
+   effect is visible to a visitor. Re-running the migration changes nothing.
