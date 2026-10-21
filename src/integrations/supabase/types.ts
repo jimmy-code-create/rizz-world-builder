@@ -2176,6 +2176,7 @@ export type Database = {
           avatar_url: string | null
           badges: string[]
           banner_url: string | null
+          banner_gradient: string | null
           bio: string | null
           created_at: string
           display_name: string | null
@@ -2202,6 +2203,7 @@ export type Database = {
           avatar_url?: string | null
           badges?: string[]
           banner_url?: string | null
+          banner_gradient?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
@@ -2228,6 +2230,7 @@ export type Database = {
           avatar_url?: string | null
           badges?: string[]
           banner_url?: string | null
+          banner_gradient?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null

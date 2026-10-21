@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-10-21 — One profile size, clean presence, gradient banners and a real shop
+
+### One profile, two ways in
+- The preview sheet and the profile card now share the same proportions:
+  160/176px banner, 96px avatar, 22px name, 400px desktop popout and the same
+  90dvh mobile cap. The preview also gets a visible close button.
+- The presence dot was painting **behind** the photo, leaving a clipped crescent
+  and making Online/DND look broken. It now sits above the avatar everywhere and
+  uses the real Discord shapes (circle, idle moon, DND minus) instead of a flat
+  colour dot. Custom-status badges sit above the photo too.
+
+### Puppy Love fits the banner it is on
+- Biscuit is measured with a ResizeObserver: cards get the full pup at a smaller
+  scale, short shop previews step down again, and wide banners get a top-anchored
+  bust. `xMidYMin` keeps his head in frame instead of cropping it, and the ground
+  shadow scales with him.
+- Every Puppy Love instance now namespaces its SVG gradients and filters with
+  `useId`. Two copies on one page (a feed card plus an open preview) used to
+  resolve `url(#plx-…)` against the first SVG and could flatten or grey out.
+- The preview banner clips its effects, so hearts, bokeh and paws can no longer
+  spill over the name and About Me rows.
+
+### Gradient banners like Discord
+- Profile settings gain a **Banner gradient** picker with seven presets plus
+  None, a live preview and a remove-image action. An uploaded banner still wins;
+  the chosen preset follows the member to previews, cards, the account menu and
+  the full profile.
+- Migration `20261101000000_profile_banner_gradient.sql` adds
+  `profiles.banner_gradient` and teaches `get_profile_card()` to return it,
+  `accent_color` and the featured badge.
+
+### The effects shop is a shop
+- A wallet panel shows Paws, collection progress and how many looks are worn.
+  Cards now carry status pills, detail chips and a shop-style receipt flow.
+- Unlock now opens a **Review order** sheet first: item, slot, rarity, wallet
+  balance, the spend and the balance after. The server confirms the price and
+  the receipt opens only after the Paws transfer succeeds.
+- Every purchase opens an **Order complete** receipt with order id, account,
+  item, slot, rarity, price, balance after and status. Receipts download as a
+  styled standalone HTML page or a plain-text copy, and recent orders stay on
+  the device so they can be opened again.
+
 ## 2026-10-21 — Unlock fixed, and every look gains another layer of detail
 
 ### Unlocking actually reaches the server

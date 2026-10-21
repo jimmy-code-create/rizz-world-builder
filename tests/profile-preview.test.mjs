@@ -50,17 +50,20 @@ await check("distinct earned badges sit on the name row", async () => {
 await check("Discord anatomy: banner, ringed avatar, presence dot, sections", async () => {
   assert.match(
     card,
-    /className="relative h-44 w-full touch-none sm:h-48 sm:touch-auto"/,
-    "banner fills like Discord's profile modal",
+    /className="relative h-40 w-full touch-none overflow-hidden sm:h-44 sm:touch-auto"/,
+    "banner matches the profile card and clips the effect",
   );
   assert.match(
     card,
-    /h-\[104px\] w-\[104px\] rounded-full ring-\[6px\] ring-\[#111214\]/,
-    "large ringed avatar",
+    /h-24 w-24 rounded-full ring-\[6px\] ring-\[#111214\]/,
+    "same 96px avatar as the profile card",
   );
   assert.ok(card.includes("<VerifiedSeal"), "the name row uses the verified seal");
   assert.ok(!card.includes("BadgeCheck"), "no leftover stock tick icon");
-  assert.match(card, /ring-\[3px\] ring-\[#111214\]/, "presence dot ring");
+  assert.ok(card.includes("StatusIcon status={status}"), "presence dot uses the DND/Idle icons");
+  assert.ok(card.includes("z-[3]"), "presence dot paints above the avatar");
+  assert.ok(card.includes("Close profile preview"), "the preview has a visible close control");
+  assert.match(card, /h-\[22px\] w-\[22px\]/, "presence dot fits the 96px avatar");
   assert.ok(card.includes("About Me"));
   assert.ok(card.includes("Member Since"));
   assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
@@ -77,6 +80,8 @@ await check("the accent is a glow around the avatar, never a solid colour hoop",
     "the old saturated ring must not come back",
   );
   assert.ok(profileCard.includes("<VerifiedSeal"), "profile card uses the verified seal");
+  assert.match(profileCard, /h-24 w-24 rounded-full/, "profile card uses the same 96px avatar");
+  assert.match(profileCard, /relative h-40 w-full overflow-hidden sm:h-44/, "profile card banner matches the preview");
   assert.ok(profilePage.includes("<VerifiedSeal"), "the full profile uses the verified seal");
 });
 

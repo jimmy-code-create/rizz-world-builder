@@ -298,7 +298,7 @@ export function AvatarStatusBadge({ emoji, size = 16 }: { emoji?: string | null;
   return (
     <span
       aria-hidden
-      className="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full border border-[#2a2a2e] bg-[#1c1c1f] p-1"
+      className="absolute -bottom-0.5 -left-0.5 z-[2] grid place-items-center rounded-full border border-[#2a2a2e] bg-[#1c1c1f] p-1"
     >
       <PillEmoji emoji={emoji} size={size} />
     </span>
@@ -326,7 +326,7 @@ export function AvatarWithStatus({
     <span className={`relative inline-flex shrink-0 ${className}`} title={label ?? statusLabel(status)}>
       {children}
       <span
-        className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background"
+        className="absolute -bottom-0.5 -right-0.5 z-[2] grid place-items-center rounded-full bg-background"
         style={{ padding: 1.5 }}
       >
         <StatusIcon status={status} size={dotSize} />

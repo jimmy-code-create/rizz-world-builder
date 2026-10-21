@@ -18,9 +18,12 @@ import {
   Pin,
   UserPlus,
   UserCheck,
+  X,
 } from "lucide-react";
+import { StatusIcon } from "@/components/presence/StatusDot";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import { bannerToneFor } from "@/components/profile/ProfileCard";
+import { bannerBackground } from "@/lib/profile-banner";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
@@ -42,6 +45,8 @@ type PreviewProfile = {
   bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  banner_gradient?: string | null;
+  accent_color?: string | null;
   paw_balance: number;
   created_at: string;
   featured_badge?: string | null;
@@ -50,9 +55,8 @@ type PreviewProfile = {
 async function fetchPreview(username: string): Promise<PreviewProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      "id, username, display_name, bio, avatar_url, banner_url, paw_balance, created_at, featured_badge",
-    )
+    // `*` keeps the preview working before the gradient migration lands.
+    .select("*")
     .eq("username", username)
     .maybeSingle();
   if (error) throw error;
@@ -79,14 +83,6 @@ async function checkBlocked(viewerId: string, userId: string): Promise<boolean> 
   return !!data;
 }
 
-/** Discord's presence colours, used for both the avatar dot and the status row. */
-const STATUS_COLOR: Record<string, string> = {
-  online: "#23a55a",
-  idle: "#f0b232",
-  dnd: "#f23f43",
-  offline: "#80848e",
-};
-
 function monthYear(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
@@ -94,8 +90,8 @@ function monthYear(iso: string) {
 /**
  * Discord-style profile preview: banner, overlapping avatar with a presence
  * dot, name row with the member's badges, ABOUT ME (markdown, like Discord),
- * MEMBER SINCE, then the actions. The card stays 340px wide on desktop and a
- * bottom sheet on phones.
+ * MEMBER SINCE, then the actions. It uses the same 400px / 176px / 96px
+ * proportions as the profile card, so opening either surface never jumps.
  */
 export function ProfilePreviewTrigger({
   username,
@@ -152,7 +148,6 @@ export function ProfilePreviewDialog({
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
   const statusText = statusLabel(status);
-  const statusColor = STATUS_COLOR[status] ?? STATUS_COLOR.offline;
 
   const badges = useQuery({
     queryKey: ["profile-preview-badges", p?.id],
@@ -231,7 +226,7 @@ export function ProfilePreviewDialog({
   };
 
   const bannerUrl = p?.banner_url ?? null;
-  const bannerBg = bannerUrl ? `url(${bannerUrl})` : bannerToneFor(p?.id ?? "");
+  const bannerBg = bannerBackground(bannerUrl, p?.banner_gradient, bannerToneFor(p?.id ?? ""));
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
   // Name-row marks: canonical order, no two awards drawing the same emblem.
@@ -251,8 +246,8 @@ export function ProfilePreviewDialog({
         {profile.isLoading && (
           <div className="p-4">
             <div className="animate-pulse space-y-4">
-              <div className="h-44 w-full rounded-xl bg-white/[0.06]" />
-              <div className="mx-2 -mt-16 h-[104px] w-[104px] rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
+              <div className="h-40 w-full rounded-xl bg-white/[0.06] sm:h-44" />
+              <div className="mx-2 -mt-12 h-24 w-24 rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
               <div className="space-y-2 pt-2">
                 <div className="h-5 w-32 rounded bg-white/[0.06]" />
                 <div className="h-4 w-24 rounded bg-white/[0.06]" />
@@ -282,8 +277,8 @@ export function ProfilePreviewDialog({
           >
             {/* Banner. On phones this doubles as the sheet's drag surface. */}
             <div
-              className="relative h-44 w-full touch-none sm:h-48 sm:touch-auto"
-              style={{ background: bannerUrl ? `${bannerBg} center/cover` : bannerBg }}
+              className="relative h-40 w-full touch-none overflow-hidden sm:h-44 sm:touch-auto"
+              style={{ background: bannerBg }}
               onPointerDown={beginSheetDrag}
             >
               <div
@@ -296,36 +291,46 @@ export function ProfilePreviewDialog({
               {equipped.data?.profile_frame && (
                 <ProfileFrame slug={equipped.data.profile_frame.slug} />
               )}
-              {!isOwnProfile && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="More options"
-                      className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={handleViewProfile}>View Full Profile</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => void copyUsername()}>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy username
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => blockMutation.mutate()} className="text-destructive">
-                      <Ban className="mr-2 h-4 w-4" />
-                      Block
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5">
+                {!isOwnProfile && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        className="grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={handleViewProfile}>View Full Profile</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => void copyUsername()}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy username
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => blockMutation.mutate()} className="text-destructive">
+                        <Ban className="mr-2 h-4 w-4" />
+                        Block
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <button
+                  type="button"
+                  aria-label="Close profile preview"
+                  onClick={() => onOpenChange(false)}
+                  className="grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Avatar — overlaps the banner, ringed in the card colour like Discord */}
-            <div className="relative -mt-[56px] px-4">
+            <div className="relative -mt-12 px-4">
               <div className="relative inline-block">
-                <Avatar className="relative z-[1] h-[104px] w-[104px] rounded-full ring-[6px] ring-[#111214]">
+                <Avatar className="relative z-[1] h-24 w-24 rounded-full ring-[6px] ring-[#111214]">
                   <AvatarImage src={p.avatar_url ?? defaultAvatarFor(p.username)} />
                   <AvatarFallback className="bg-surface-2 text-xl font-bold text-foreground">
                     {p.display_name?.[0] ?? p.username[0].toUpperCase()}
@@ -334,9 +339,10 @@ export function ProfilePreviewDialog({
                 <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
                 <span
                   aria-hidden
-                  className="absolute bottom-0.5 right-0.5 h-[18px] w-[18px] rounded-full ring-[3px] ring-[#111214]"
-                  style={{ background: statusColor }}
-                />
+                  className="absolute -bottom-0.5 -right-0.5 z-[3] grid h-[22px] w-[22px] place-items-center rounded-full bg-[#111214]"
+                >
+                  <StatusIcon status={status} size={18} />
+                </span>
               </div>
             </div>
 
@@ -344,7 +350,7 @@ export function ProfilePreviewDialog({
               {/* Name row: display name, verified tick, badges — Discord order */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                  <h3 className="truncate text-[24px] font-bold leading-7 text-foreground">
+                  <h3 className="truncate text-[22px] font-bold leading-7 text-foreground">
                     {p.display_name || p.username}
                   </h3>
                   {verified && (
@@ -381,7 +387,7 @@ export function ProfilePreviewDialog({
               {/* Presence row */}
               <div className="flex items-center justify-between gap-2 text-[12px] text-foreground/80">
                 <span className="flex items-center gap-1.5">
-                  <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: statusColor }} />
+                  <StatusIcon status={status} size={12} />
                   <span>{statusText}</span>
                 </span>
                 {wornSlug && markBadges.some((badge) => badge.slug === wornSlug) && (
@@ -480,7 +486,7 @@ export function ProfilePreviewDialog({
           hideClose
           // The own spring keyframes below replace the primitive's linear slide,
           // so the sheet rises like a drawer and settles instead of gliding.
-          className="profile-sheet max-h-[92dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+          className="profile-sheet max-h-[90dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Profile preview for {username}</SheetTitle>
@@ -496,7 +502,7 @@ export function ProfilePreviewDialog({
               // Either a deliberate pull or a flick closes the sheet.
               if (info.offset.y > 120 || info.velocity.y > 700) onOpenChange(false);
             }}
-            className="flex max-h-[92dvh] flex-col"
+            className="flex max-h-[90dvh] flex-col"
           >
             <div
               onPointerDown={beginSheetDrag}

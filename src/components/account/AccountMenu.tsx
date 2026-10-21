@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { ProfileCardDialog, bannerToneFor, formatCount } from "@/components/profile/ProfileCard";
+import { bannerBackground } from "@/lib/profile-banner";
 import { CustomStatusLine, StatusIcon, AvatarStatusBadge } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
@@ -113,17 +114,18 @@ export function AccountMenu({
     enabled: !!userId,
     staleTime: 60_000,
     queryFn: async () => {
-      const fallback = { bannerUrl: null as string | null, pawBalance: 0, followers: 0, saved: 0, badges: 0 };
+      const fallback = { bannerUrl: null as string | null, bannerGradient: null as string | null, pawBalance: 0, followers: 0, saved: 0, badges: 0 };
       try {
         const [prof, followers, saved, badges] = await Promise.all([
-          supabase.from("profiles").select("banner_url, paw_balance").eq("id", userId!).maybeSingle(),
+          supabase.from("profiles").select("*").eq("id", userId!).maybeSingle(),
           supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", userId!),
           supabase.from("bookmarks").select("id", { count: "exact", head: true }).eq("user_id", userId!),
           supabase.from("user_badges").select("badge_id", { count: "exact", head: true }).eq("user_id", userId!),
         ]);
-        const p = (prof.data ?? null) as { banner_url: string | null; paw_balance: number | null } | null;
+        const p = (prof.data ?? null) as { banner_url: string | null; banner_gradient: string | null; paw_balance: number | null } | null;
         return {
           bannerUrl: p?.banner_url ?? null,
+          bannerGradient: p?.banner_gradient ?? null,
           pawBalance: Number(p?.paw_balance ?? 0),
           followers: followers.count ?? 0,
           saved: saved.count ?? 0,
@@ -346,9 +348,11 @@ export function AccountMenu({
           <span
             className="absolute inset-0"
             style={{
-              background: stats?.bannerUrl
-                ? `url(${stats.bannerUrl}) center/cover`
-                : bannerToneFor(userId ?? username),
+              background: bannerBackground(
+                stats?.bannerUrl,
+                stats?.bannerGradient,
+                bannerToneFor(userId ?? username),
+              ),
             }}
           />
           {/* Same accent wash as the profile card, so the two surfaces match. */}
@@ -374,7 +378,7 @@ export function AccountMenu({
             </Avatar>
             <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} intensity={0.85} />
             <AvatarStatusBadge emoji={custom?.emoji} size={14} />
-            <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[2px]">
+            <span className="absolute -bottom-0.5 -right-0.5 z-10 grid place-items-center rounded-full bg-[#141416] p-[2px]">
               <StatusIcon status={selfPresence.status} size={16} />
             </span>
           </span>

@@ -1,8 +1,28 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Eye, Layers3, Loader2, LockKeyhole, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  Eye,
+  Layers3,
+  Loader2,
+  LockKeyhole,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 import { DarkMoonFrame } from "@/components/profile/DarkMoonFrame";
@@ -19,6 +39,15 @@ import {
 } from "@/lib/effects";
 import { untypedRpc } from "@/lib/untyped-db";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  downloadReceipt,
+  downloadReceiptText,
+  loadStoredReceipts,
+  newOrderId,
+  receiptLines,
+  storeReceipt,
+  type EffectOrder,
+} from "@/lib/effect-receipt";
 import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 
@@ -59,6 +88,13 @@ function EffectsPage() {
   const owned = ownedQ.data ?? new Set<string>();
   const balance = Number(profile?.paw_balance ?? 0);
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();
+  const [receipt, setReceipt] = useState<EffectOrder | null>(null);
+  const [pending, setPending] = useState<ProfileEffect | null>(null);
+  const [receipts, setReceipts] = useState<EffectOrder[]>(() => loadStoredReceipts(user?.id));
+
+  useEffect(() => {
+    setReceipts(loadStoredReceipts(user?.id));
+  }, [user?.id]);
 
   const refreshSlotData = async () => {
     await Promise.all([
@@ -93,12 +129,27 @@ function EffectsPage() {
         _slug: effect.slug,
       });
       if (error) throw error;
-      return data as { status?: string; balance?: number };
+      return (data ?? {}) as { status?: string; balance?: number };
     },
-    onSuccess: async (_result, effect) => {
+    onSuccess: async (result, effect) => {
       await refreshSlotData();
+      setPending(null);
+      if (result.status === "owned") {
+        toast.info(`${effect.name} is already in your collection`);
+        return;
+      }
+      const order: EffectOrder = {
+        id: newOrderId(),
+        date: new Date().toISOString(),
+        account: profile?.username ? `@${profile.username}` : "RIZZ member",
+        effect,
+        amount: effect.paw_price,
+        balanceAfter: Number(result.balance ?? Math.max(balance - effect.paw_price, 0)),
+      };
+      setReceipt(order);
+      if (user?.id) setReceipts(storeReceipt(user.id, order));
       toast.success(`${effect.name} unlocked and equipped`, {
-        description: "It is now live for everyone who visits your profile.",
+        description: "Your receipt is ready to download.",
       });
     },
     onError: (error) => {
@@ -149,13 +200,13 @@ function EffectsPage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-paper-dim,#a9a69c)]">
-            Cosmetics
+            Cosmetics shop
           </p>
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
-            Profile looks
+            Effects shop
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            One look per slot — wear an avatar decoration, a banner effect and a frame together.
+            One look per slot — unlock once, wear it forever.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -168,6 +219,47 @@ function EffectsPage() {
           </span>
         </div>
       </div>
+
+      {/* Shop wallet: balance, collection progress and the two-step promise. */}
+      <section className="relative mb-6 overflow-hidden rounded-3xl border border-[var(--brand-signal,#c8ff3d)]/20 bg-[linear-gradient(135deg,rgba(200,255,61,0.12),rgba(19,19,21,0.92)_48%,#111112)] p-4 sm:p-5">
+        <div className="pointer-events-none absolute -right-14 -top-20 h-56 w-56 rounded-full bg-[var(--brand-signal,#c8ff3d)]/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-paper-dim,#a9a69c)]">
+              Your wallet
+            </p>
+            <p className="mt-0.5 flex items-center gap-2 font-display text-2xl font-bold text-[var(--brand-signal,#c8ff3d)]">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--brand-signal,#c8ff3d)]/15">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              {formatNumber(balance)} Paws
+            </p>
+            <p className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
+              Buy with Paws · no card checkout · receipt after every order.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">Collection</p>
+              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">{owned.size} / {PROFILE_EFFECTS.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-paper-dim,#a9a69c)]">Worn</p>
+              <p className="text-sm font-bold text-[var(--brand-paper,#f4f1e7)]">{Object.keys(equipped).length} / {PROFILE_EFFECTS.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative mt-4 flex items-center gap-2">
+          <span className="text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">Set progress</span>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-[var(--brand-signal,#c8ff3d)] transition-[width] duration-500"
+              style={{ width: `${(owned.size / PROFILE_EFFECTS.length) * 100}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-semibold tabular-nums text-[var(--brand-paper,#f4f1e7)]">{Math.round((owned.size / PROFILE_EFFECTS.length) * 100)}%</span>
+        </div>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {PROFILE_EFFECTS.map((effect) => {
@@ -250,7 +342,7 @@ function EffectsPage() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => purchase.mutate(effect)}
+                      onClick={() => setPending(effect)}
                       disabled={busy || short > 0}
                       className="gap-2"
                     >
@@ -280,6 +372,49 @@ function EffectsPage() {
         controls. Unlocking spends Paws through the server wallet; there is no card checkout.
       </p>
 
+      {receipts.length > 0 && (
+        <section className="mt-8" aria-labelledby="recent-orders">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-paper-dim,#a9a69c)]">
+                Receipts
+              </p>
+              <h2 id="recent-orders" className="mt-0.5 font-display text-lg font-bold tracking-tight">
+                Recent orders
+              </h2>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+              <ShieldCheck className="h-3 w-3" /> Stored on this device
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {receipts.slice(0, 6).map((order) => (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => setReceipt(order)}
+                className="group/order flex min-h-[64px] items-center gap-3 rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-2,#131315)] p-3 text-left transition-colors hover:border-[var(--brand-signal,#c8ff3d)]/35 hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-signal,#c8ff3d)]"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--brand-signal,#c8ff3d)]/25 bg-[var(--brand-signal,#c8ff3d)]/10 text-[var(--brand-signal,#c8ff3d)]">
+                  <ReceiptText className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{order.effect.name}</span>
+                  <span className="mt-0.5 block truncate text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                    {order.id} · {new Date(order.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-xs font-bold text-[var(--brand-paper,#f4f1e7)]">−{formatNumber(order.amount)}</span>
+                  <span className="block text-[9px] text-[var(--brand-paper-dim,#a9a69c)]">Paws</span>
+                </span>
+                <Download className="h-3.5 w-3.5 shrink-0 text-[var(--brand-paper-dim,#a9a69c)] transition-colors group-hover/order:text-[var(--brand-signal,#c8ff3d)]" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="mt-5">
         <Link to={profile?.username ? "/u/$username" : "/feed"} params={profile?.username ? { username: profile.username } : undefined}>
           <Button variant="ghost" className="text-[var(--brand-paper-dim,#a9a69c)] hover:text-[var(--brand-paper,#f4f1e7)]">
@@ -287,6 +422,172 @@ function EffectsPage() {
           </Button>
         </Link>
       </div>
+
+      <Dialog
+        open={!!pending}
+        onOpenChange={(open) => {
+          if (!open && !purchase.isPending) setPending(null);
+        }}
+      >
+        <DialogContent className="max-w-sm gap-0 overflow-hidden border-[#2a2a2e] bg-[#111214] p-0">
+          {pending && (
+            <>
+              <DialogHeader className="border-b border-white/10 p-5 text-left">
+                <DialogTitle className="font-display text-xl font-bold tracking-tight">
+                  Review order
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
+                  Paws come out of your wallet. No card is charged, and the look is
+                  equipped the moment the server confirms.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 p-5">
+                <div className="flex items-center gap-3 rounded-2xl border border-[#2a2a2e] bg-[#17171a] p-3">
+                  <span
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/10"
+                    style={{ background: `${pending.preview_color}1f`, color: pending.preview_color }}
+                  >
+                    <Sparkles className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-[#f2efe6]">{pending.name}</p>
+                    <p className="mt-0.5 text-[11px] text-[#a9a69c]">
+                      {SLOT_META[pending.type].label} ·{" "}
+                      <span style={{ color: RARITY_COLOR[pending.rarity] }}>{pending.rarity}</span>
+                    </p>
+                  </div>
+                  <span className="ml-auto shrink-0 text-sm font-bold text-[#f2efe6]">
+                    {formatNumber(pending.paw_price)} Paws
+                  </span>
+                </div>
+
+                <dl className="divide-y divide-[#232327] rounded-2xl border border-[#2a2a2e] px-3.5 text-[12px]">
+                  {[
+                    ["Wallet balance", `${formatNumber(balance)} Paws`],
+                    ["This order", `−${formatNumber(pending.paw_price)} Paws`],
+                    ["Balance after", `${formatNumber(Math.max(balance - pending.paw_price, 0))} Paws`],
+                    ["Delivery", "Equipped instantly"],
+                  ].map(([label, value], index) => (
+                    <div
+                      key={label}
+                      className={`flex items-center justify-between gap-3 py-2.5 ${index === 2 ? "font-semibold text-[#f2efe6]" : "text-[#a9a69c]"}`}
+                    >
+                      <dt>{label}</dt>
+                      <dd className={index === 2 ? "text-[#c9ff3d]" : "text-[#f2efe6]"}>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <div className="grid gap-2">
+                  <Button
+                    type="button"
+                    className="h-11 gap-2"
+                    disabled={purchase.isPending || balance < pending.paw_price}
+                    onClick={() => purchase.mutate(pending)}
+                  >
+                    {purchase.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LockKeyhole className="h-4 w-4" />
+                    )}
+                    Unlock · {formatNumber(pending.paw_price)} Paws
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 text-[var(--brand-paper-dim,#a9a69c)]"
+                    onClick={() => setPending(null)}
+                    disabled={purchase.isPending}
+                  >
+                    Keep browsing
+                  </Button>
+                </div>
+                <p className="flex items-center justify-center gap-1.5 text-[10px] text-[var(--brand-paper-dim,#a9a69c)]">
+                  <ShieldCheck className="h-3 w-3" /> Price checked by the server · receipt follows
+                </p>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!receipt} onOpenChange={(open) => !open && setReceipt(null)}>
+        <DialogContent className="max-h-[92dvh] max-w-md gap-0 overflow-y-auto border-[#2a2a2e] bg-[#111214] p-0">
+          {receipt && (
+            <>
+              <DialogHeader className="border-b border-white/10 p-5 text-left">
+                <DialogTitle className="font-display text-xl font-bold tracking-tight">
+                  Order complete
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs text-[var(--brand-paper-dim,#a9a69c)]">
+                  {receipt.effect.name} is equipped. Keep the receipt for your records — it downloads as a standalone page.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 p-5">
+                <div className="rounded-2xl border border-[#2a2a2e] bg-[linear-gradient(160deg,#17171a,#101012_62%)] p-4">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#2a2a2e] pb-3">
+                    <span className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.14em] text-[var(--brand-signal,#c8ff3d)]">
+                      <span className="h-2 w-2 rounded-full bg-[var(--brand-signal,#c8ff3d)] shadow-[0_0_10px_var(--brand-signal,#c8ff3d)]" />
+                      RIZZ
+                    </span>
+                    <span className="rounded-full border border-[#3f5d12] bg-[#1b2409] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#d7ff71]">
+                      Paid
+                    </span>
+                  </div>
+                  <h3 className="mt-4 font-display text-lg font-bold text-[#f2efe6]">{receipt.effect.name}</h3>
+                  <p className="text-[11px] text-[#a9a69c]">
+                    {SLOT_META[receipt.effect.type].label} · {receipt.effect.rarity}
+                  </p>
+                  <dl className="mt-3 divide-y divide-[#232327] text-[12px]">
+                    {receiptLines(receipt).map(([label, value]) => (
+                      <div key={label} className="flex items-start justify-between gap-3 py-2">
+                        <dt className="text-[#8e8b83]">{label}</dt>
+                        <dd className="text-right font-semibold text-[#f2efe6]">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className="mt-2 flex items-center justify-between rounded-xl border border-[#33420f] bg-[#182007] px-3 py-2.5">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">Total paid</p>
+                      <p className="font-display text-lg font-bold text-[#c9ff3d]">{formatNumber(receipt.amount)} Paws</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] uppercase tracking-[0.1em] text-[#a9a69c]">Balance after</p>
+                      <p className="text-sm font-bold text-[#f2efe6]">{formatNumber(receipt.balanceAfter)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => downloadReceipt(receipt)}
+                    className="h-11 gap-2 bg-[var(--brand-signal,#c8ff3d)] text-[#0b0b0c] hover:bg-[var(--brand-signal,#c8ff3d)]/90"
+                  >
+                    <Download className="h-4 w-4" /> Download receipt
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => downloadReceiptText(receipt)}
+                    className="h-11 gap-2 border-white/10"
+                  >
+                    <ReceiptText className="h-4 w-4" /> Text copy
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReceipt(null)}
+                  className="w-full text-center text-xs font-medium text-[var(--brand-paper-dim,#a9a69c)] transition-colors hover:text-[var(--brand-paper,#f4f1e7)]"
+                >
+                  Keep shopping
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

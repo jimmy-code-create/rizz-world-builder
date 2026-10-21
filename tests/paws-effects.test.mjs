@@ -11,6 +11,8 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { untypedFrom, untypedRpc } from "../src/lib/untyped-db.ts";
+import { BANNER_GRADIENTS, bannerGradientCss } from "../src/lib/profile-banner.ts";
+import { buildReceiptHtml, buildReceiptText, newOrderId } from "../src/lib/effect-receipt.ts";
 
 let passed = 0;
 async function check(name, fn) {
@@ -78,6 +80,14 @@ const puppy = readFileSync(
   new URL("../src/components/profile/PuppyLoveEffect.tsx", import.meta.url),
   "utf8",
 );
+const profileSettings = readFileSync(
+  new URL("../src/routes/_app/settings/profile.tsx", import.meta.url),
+  "utf8",
+);
+const gradientMigration = readFileSync(
+  new URL("../supabase/migrations/20261101000000_profile_banner_gradient.sql", import.meta.url),
+  "utf8",
+);
 const effectCss = [
   "bloodweb.css",
   "dark-moon.css",
@@ -140,7 +150,11 @@ await check("each look carries layered detail, motion and a reduced-motion still
   assert.ok(darkMoon.includes("animationDelay"), "ravens must not bob in lockstep");
   assert.ok(puppy.includes("plx-bokeh"), "Puppy Love needs background bokeh");
   assert.ok(puppy.includes("plx-strings"), "Puppy Love needs hoodie strings");
-  assert.ok(puppy.includes('id="plx-cuff"'), "Puppy Love needs the ribbed cuff");
+  assert.ok(puppy.includes('fx("cuff")'), "Puppy Love needs the ribbed cuff");
+  assert.ok(puppy.includes("DOG_WIDE"), "Puppy Love needs a wide-banner composition");
+  assert.ok(puppy.includes("DOG_COMPACT"), "Puppy Love needs a short-preview composition");
+  assert.ok(puppy.includes("ResizeObserver"), "the composition follows the banner shape");
+  assert.ok(puppy.includes('preserveAspectRatio="xMidYMin slice"'), "wide banners anchor the pup to the top");
   assert.ok(effectCss.includes("prefers-reduced-motion: reduce"), "every look needs a still frame");
   assert.ok(effectCss.includes("pl-bw-flow"), "Bloodweb pulses need CSS");
   assert.ok(effectCss.includes("dmf-ash"), "Dark Moon ash needs CSS");
@@ -242,6 +256,46 @@ await check("untyped database calls keep the Supabase client receiver", async ()
   assert.equal(rpc.data.args._slug, "fx-bloodweb");
   assert.equal(rpc.data.url, "https://example.supabase.co/rest/v1");
   assert.equal(untypedFrom(client)("profile_effects").url, "https://example.supabase.co/rest/v1");
+});
+
+await check("banner gradients are presets, not uploaded assets", async () => {
+  assert.ok(BANNER_GRADIENTS.length >= 7, "enough gradients for a Discord-style picker");
+  assert.ok(bannerGradientCss("aurora")?.startsWith("linear-gradient("), "a preset resolves to CSS");
+  assert.equal(bannerGradientCss("not-a-preset"), null);
+  assert.ok(gradientMigration.includes("banner_gradient"));
+  assert.ok(gradientMigration.includes("get_profile_card"), "the card RPC carries the gradient");
+  assert.ok(profileSettings.includes("Banner gradient"), "the editor exposes the picker");
+  assert.ok(profileSettings.includes("banner_gradient: gradient"), "saving persists the choice");
+});
+
+await check("an effects purchase produces a downloadable receipt", async () => {
+  const order = {
+    id: newOrderId(1_760_000_000_000),
+    date: "2026-10-21T12:00:00.000Z",
+    account: "@jimmy",
+    effect: {
+      name: "Dark Moon",
+      slug: "fx-dark-moon",
+      type: "profile_frame",
+      rarity: "legendary",
+      paw_price: 1600,
+    },
+    amount: 1600,
+    balanceAfter: 594_400,
+  };
+  assert.match(order.id, /^RZ-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  const html = buildReceiptHtml(order);
+  const text = buildReceiptText(order);
+  assert.ok(html.includes("Dark Moon"));
+  assert.ok(html.includes(order.id));
+  assert.ok(html.includes("1,600 Paws"));
+  assert.ok(html.includes("594,400 Paws"));
+  assert.ok(html.includes("@jimmy"));
+  assert.ok(text.includes("RIZZ · COSMETICS RECEIPT"));
+  assert.ok(text.includes("Total paid"));
+  assert.ok(effectsPage.includes("downloadReceipt"), "the shop offers the download");
+  assert.ok(effectsPage.includes("Recent orders"), "past receipts stay visible");
+  assert.ok(effectsPage.includes("Order complete"), "buying opens the receipt");
 });
 
 await check("tour describes live Paws instead of a preview", async () => {

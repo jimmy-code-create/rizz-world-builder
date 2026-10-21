@@ -25,6 +25,7 @@ import { Nameplate } from "@/components/profile/Nameplate";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
+import { bannerBackground } from "@/lib/profile-banner";
 
 import { useEquipped } from "@/lib/useEquipped";
 import { CustomEmoji } from "@/components/CustomEmoji";
@@ -282,9 +283,11 @@ function ProfilePage() {
         <div
           className="h-40 md:h-56 rounded-3xl mb-16 relative overflow-hidden"
           style={{
-            background: profile.banner_url
-              ? `url(${profile.banner_url}) center/cover`
-              : `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
+            background: bannerBackground(
+              profile.banner_url,
+              profile.banner_gradient,
+              `linear-gradient(135deg, ${accent}, var(--brand-paper-dim))`,
+            ),
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
@@ -303,7 +306,7 @@ function ProfilePage() {
             className="ring-4 ring-background rounded-full"
           />
           <AvatarStatusBadge emoji={customStatus?.emoji} />
-          <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-background p-[3px]">
+          <span className="absolute -bottom-0.5 -right-0.5 z-20 grid place-items-center rounded-full bg-background p-[3px]">
             <StatusDotButton
               userId={profile.id}
               username={profileUsername}

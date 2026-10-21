@@ -21,6 +21,7 @@ import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 import { defaultAvatarFor } from "@/lib/default-avatars";
+import { bannerBackground } from "@/lib/profile-banner";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
@@ -75,6 +76,7 @@ type CardData = {
   displayName: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  bannerGradient: string | null;
   accentColor: string | null;
   bio: string | null;
   pronouns: string | null;
@@ -146,6 +148,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
           displayName: str(p.display_name) ?? str(p.username) ?? "Member",
           avatarUrl: str(p.avatar_url),
           bannerUrl: str(p.banner_url),
+          bannerGradient: str(p.banner_gradient),
           accentColor: str(p.accent_color),
           bio: str(p.bio),
           pronouns: str(p.pronouns),
@@ -195,6 +198,11 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     const { data: accent } = await supabase.from("profiles").select("accent_color").eq("id", userId).maybeSingle();
     accentColor = str((accent as Record<string, unknown> | null)?.accent_color);
   } catch { /* column missing */ }
+  let bannerGradient: string | null = null;
+  try {
+    const { data: gradient } = await supabase.from("profiles").select("banner_gradient").eq("id", userId).maybeSingle();
+    bannerGradient = str((gradient as Record<string, unknown> | null)?.banner_gradient);
+  } catch { /* column missing until the gradient migration lands */ }
   let featuredBadge: string | null = null;
   try {
     const { data: featured } = await supabase
@@ -287,6 +295,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
     displayName: str(p.display_name) ?? str(p.username) ?? "Member",
     avatarUrl: str(p.avatar_url),
     bannerUrl: str(p.banner_url),
+    bannerGradient,
     accentColor,
     bio: str(p.bio),
     pronouns,
@@ -310,7 +319,7 @@ async function fetchCardData(userId: string, viewerId: string | null): Promise<C
 function deletedCard(userId: string): CardData {
   return {
     deleted: true, id: userId, username: "deleted", displayName: "Deleted user",
-    avatarUrl: null, bannerUrl: null, accentColor: null, bio: null, pronouns: null, verified: false,
+    avatarUrl: null, bannerUrl: null, bannerGradient: null, accentColor: null, bio: null, pronouns: null, verified: false,
     createdAt: null, pawBalance: 0, rank: null, followers: 0, following: 0,
     badges: [], featuredBadge: null, mutualPreview: [], mutualTotal: 0, viewerFollows: false,
     blockedByViewer: false, blockedViewer: false, mutedByViewer: false,
@@ -548,7 +557,7 @@ export function ProfileCard({
     );
   }
 
-  const bannerBg = d.bannerUrl ? `url(${d.bannerUrl}) center/cover` : bannerToneFor(userId);
+  const bannerBg = bannerBackground(d.bannerUrl, d.bannerGradient, bannerToneFor(userId));
   const ringColor = d.accentColor ?? accentColorHint ?? "#c8ff3d";
   const joinDate = d.createdAt
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
@@ -616,7 +625,7 @@ export function ProfileCard({
       {/* Banner: the uploaded image (or a muted tone from the id) gets an accent
           wash, a hairline highlight and a long fade, so the card has depth
           without ever flashing a bright block of colour. */}
-      <div className="relative h-[184px] w-full overflow-hidden" style={{ background: bannerBg }}>
+      <div className="relative h-40 w-full overflow-hidden sm:h-44" style={{ background: bannerBg }}>
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden="true"
@@ -677,10 +686,10 @@ export function ProfileCard({
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {/* Avatar overlapping banner, accent halo + presence dot */}
-        <div className="-mt-14 flex items-end justify-between gap-3">
+        <div className="-mt-12 flex items-end justify-between gap-3">
           <span className="relative inline-flex">
             <Avatar
-              className="relative z-[1] h-[96px] w-[96px] rounded-full"
+              className="relative z-[1] h-24 w-24 rounded-full"
               style={{
                 // Accent glow, not an accent ring: a dark separator keeps the
                 // photo crisp, then two soft colour blooms light the backdrop.
@@ -696,10 +705,10 @@ export function ProfileCard({
             <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} />
             <AvatarStatusBadge emoji={customStatus?.emoji} size={18} />
             <span
-              className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full bg-[#141416] p-[3px]"
+              className="absolute -bottom-0.5 -right-0.5 z-[3] grid h-6 w-6 place-items-center rounded-full bg-[#141416] p-[2px]"
               title={status}
             >
-              <StatusIcon status={status} size={22} />
+              <StatusIcon status={status} size={20} />
             </span>
           </span>
           {d.blockedByViewer && (
@@ -724,7 +733,7 @@ export function ProfileCard({
           <>
             {/* Name / handle / pronouns / realm role / status */}
             <div className="mt-2.5 flex items-center gap-2">
-              <h2 className="truncate font-display text-[24px] font-bold leading-tight tracking-tight text-[#f2efe6]">
+              <h2 className="truncate font-display text-[22px] font-bold leading-tight tracking-tight text-[#f2efe6]">
                 {d.displayName}
               </h2>
               {d.verified && <VerifiedSeal size={22} className="mt-0.5" />}

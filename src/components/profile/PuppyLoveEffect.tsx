@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import "./puppy-love.css";
 
@@ -23,6 +23,9 @@ type Props = {
   className?: string;
 };
 
+/** Measure before paint in the browser, without an SSR layout-effect warning. */
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 /** Heart outline, used for the shades, the nose and the floating hearts. */
 function heartPath(cx: number, cy: number, scale = 1) {
   const s = scale;
@@ -44,6 +47,23 @@ const HEARTS = [
   { x: 924, y: 338, scale: 0.42, color: "#ff9aa8", delay: 5.4, duration: 10, drift: 8 },
   { x: 214, y: 320, scale: 0.44, color: "#c9ff3d", delay: 0.8, duration: 11.5, drift: 6 },
 ];
+
+/*
+ * Three compositions, chosen by the banner's real aspect ratio. The card keeps
+ * the full pup inside the cover crop (the right ear used to be sliced off a
+ * 400×176 banner); short previews step down again; wide desktop banners get a
+ * smaller, top-anchored bust. All of them leave the bottom-left clear for the
+ * avatar and status dot.
+ */
+type Composition = "wide" | "card" | "compact";
+const DOG_TALL = "translate(720 0) scale(0.82) translate(-720 0) translate(-80 0)";
+const DOG_WIDE = "translate(720 0) scale(0.68) translate(-720 0) translate(-40 0)";
+const DOG_COMPACT = "translate(720 0) scale(0.7) translate(-720 0) translate(-70 0)";
+const DOG_BY_COMPOSITION: Record<Composition, string> = {
+  wide: DOG_WIDE,
+  card: DOG_TALL,
+  compact: DOG_COMPACT,
+};
 
 const SPARKS = [
   { x: 236, y: 118, scale: 1.15, delay: 0.3 },
@@ -67,6 +87,12 @@ export function PuppyLoveEffect({ className }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const [calm, setCalm] = useState(false);
   const [onScreen, setOnScreen] = useState(true);
+  const [composition, setComposition] = useState<Composition>("card");
+  // Every instance owns its gradient/filter ids. Shared static ids made a second
+  // Puppy Love on the page (feed card + profile preview) point at the first
+  // SVG's paint servers, which is why the look could flatten or grey out.
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const fx = (name: string) => `plx-${name}-${uid}`;
 
   useEffect(() => {
     setCalm(prefersStillFrame());
@@ -88,6 +114,28 @@ export function PuppyLoveEffect({ className }: Props) {
     return () => observer.disconnect();
   }, []);
 
+  // A 400×176 card and a wide desktop banner need different crops. Measuring
+  // before paint avoids a one-frame flash between the compositions. The server
+  // has no layout, so it falls back to useEffect.
+  useIsomorphicLayoutEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+    const measure = () => {
+      const rect = node.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const ratio = rect.width / rect.height;
+      setComposition(ratio > 3.2 ? "wide" : ratio < 2.08 ? "compact" : "card");
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <span
       ref={hostRef}
@@ -99,62 +147,62 @@ export function PuppyLoveEffect({ className }: Props) {
       <svg
         className="plx-svg"
         viewBox="0 0 1100 360"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMin slice"
         role="presentation"
         focusable="false"
       >
         <defs>
-          <linearGradient id="plx-fur" x1="0.25" y1="0" x2="0.7" y2="1">
+          <linearGradient id={fx("fur")} x1="0.25" y1="0" x2="0.7" y2="1">
             <stop offset="0" stopColor="#fff8ea" />
             <stop offset="0.45" stopColor="#f6e2c0" />
             <stop offset="1" stopColor="#d9b183" />
           </linearGradient>
-          <linearGradient id="plx-fur-shade" x1="0" y1="0" x2="0.4" y2="1">
+          <linearGradient id={fx("fur-shade")} x1="0" y1="0" x2="0.4" y2="1">
             <stop offset="0" stopColor="#f2d6ab" />
             <stop offset="1" stopColor="#c99a68" />
           </linearGradient>
-          <linearGradient id="plx-ear" x1="0.2" y1="0" x2="0.8" y2="1">
+          <linearGradient id={fx("ear")} x1="0.2" y1="0" x2="0.8" y2="1">
             <stop offset="0" stopColor="#d3a374" />
             <stop offset="0.6" stopColor="#b07d4d" />
             <stop offset="1" stopColor="#8d5f36" />
           </linearGradient>
-          <linearGradient id="plx-hood" x1="0.2" y1="0" x2="0.8" y2="1">
+          <linearGradient id={fx("hood")} x1="0.2" y1="0" x2="0.8" y2="1">
             <stop offset="0" stopColor="#edffab" />
             <stop offset="0.42" stopColor="#c9ff3d" />
             <stop offset="1" stopColor="#83b600" />
           </linearGradient>
-          <linearGradient id="plx-shade" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={fx("shade")} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#e8ffa0" />
             <stop offset="0.55" stopColor="#b6ef2a" />
             <stop offset="1" stopColor="#6fa800" />
           </linearGradient>
-          <linearGradient id="plx-muzzle" x1="0.3" y1="0" x2="0.7" y2="1">
+          <linearGradient id={fx("muzzle")} x1="0.3" y1="0" x2="0.7" y2="1">
             <stop offset="0" stopColor="#fffcf3" />
             <stop offset="0.7" stopColor="#f3e7d2" />
             <stop offset="1" stopColor="#dfccb0" />
           </linearGradient>
-          <radialGradient id="plx-glow" cx="0.5" cy="0.5" r="0.5">
+          <radialGradient id={fx("glow")} cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stopColor="#c9ff3d" stopOpacity="0.34" />
             <stop offset="0.55" stopColor="#c9ff3d" stopOpacity="0.12" />
             <stop offset="1" stopColor="#c9ff3d" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="plx-shade-glint" cx="0.32" cy="0.26" r="0.7">
+          <radialGradient id={fx("shade-glint")} cx="0.32" cy="0.26" r="0.7">
             <stop offset="0" stopColor="#ffffff" stopOpacity="0.9" />
             <stop offset="0.42" stopColor="#ffffff" stopOpacity="0.16" />
             <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
-          <filter id="plx-soft" x="-30%" y="-30%" width="160%" height="170%">
+          <filter id={fx("soft")} x="-30%" y="-30%" width="160%" height="170%">
             <feDropShadow dx="0" dy="8" stdDeviation="9" floodColor="#2c1a08" floodOpacity="0.35" />
           </filter>
-          <filter id="plx-blur" x="-40%" y="-40%" width="180%" height="180%">
+          <filter id={fx("blur")} x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="16" />
           </filter>
-          <linearGradient id="plx-cuff" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={fx("cuff")} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#efffc4" />
             <stop offset="0.5" stopColor="#b6ef2a" />
             <stop offset="1" stopColor="#6d9e00" />
           </linearGradient>
-          <radialGradient id="plx-ground" cx="0.5" cy="0.5" r="0.5">
+          <radialGradient id={fx("ground")} cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stopColor="#050603" stopOpacity="0.55" />
             <stop offset="0.62" stopColor="#050603" stopOpacity="0.2" />
             <stop offset="1" stopColor="#050603" stopOpacity="0" />
@@ -162,7 +210,7 @@ export function PuppyLoveEffect({ className }: Props) {
         </defs>
 
         {/* Lime afterglow behind the pup; it fades to zero, so the banner shows through. */}
-        <ellipse cx="748" cy="242" rx="420" ry="230" fill="url(#plx-glow)" />
+        <ellipse cx="748" cy="242" rx="420" ry="230" fill={`url(#${fx("glow")})`} />
 
         {/* Soft bokeh and a grounded shadow give the character depth. */}
         <g className="plx-bokeh" fill="#c9ff3d">
@@ -184,10 +232,10 @@ export function PuppyLoveEffect({ className }: Props) {
             />
           ))}
         </g>
-        <ellipse cx="750" cy="354" rx="292" ry="26" fill="url(#plx-ground)" filter="url(#plx-blur)" />
-
+        <g transform={DOG_BY_COMPOSITION[composition]}>
+        <ellipse cx="750" cy="354" rx="292" ry="26" fill={`url(#${fx("ground")})`} filter={`url(#${fx("blur")})`} />
         {/* ---- tail, behind the body ---- */}
-        <g className="plx-tail" filter="url(#plx-soft)">
+        <g className="plx-tail" filter={`url(#${fx("soft")})`}>
           <path
             d="M 938 318 C 998 326 1042 300 1032 268 C 1024 244 1044 226 1064 224"
             fill="none"
@@ -198,7 +246,7 @@ export function PuppyLoveEffect({ className }: Props) {
           <path
             d="M 938 318 C 998 326 1042 300 1032 268 C 1024 244 1044 226 1064 224"
             fill="none"
-            stroke="url(#plx-fur-shade)"
+            stroke={`url(#${fx("fur-shade")})`}
             strokeWidth="30"
             strokeLinecap="round"
           />
@@ -213,10 +261,10 @@ export function PuppyLoveEffect({ className }: Props) {
         </g>
 
         {/* ---- hoodie shoulders and chest ---- */}
-        <g filter="url(#plx-soft)">
+        <g filter={`url(#${fx("soft")})`}>
           <path
             d="M 488 360 C 500 318 552 288 618 276 L 862 276 C 928 288 980 318 992 360 Z"
-            fill="url(#plx-hood)"
+            fill={`url(#${fx("hood")})`}
             stroke="#4d6b00"
             strokeWidth="4"
           />
@@ -301,10 +349,10 @@ export function PuppyLoveEffect({ className }: Props) {
         {/* ---- hood, then ears, then head ---- */}
         <path
           d="M 740 28 C 616 28 546 106 550 198 C 552 264 592 318 654 342 L 826 342 C 888 318 928 264 930 198 C 934 106 864 28 740 28 Z"
-          fill="url(#plx-hood)"
+          fill={`url(#${fx("hood")})`}
           stroke="#4d6b00"
           strokeWidth="5"
-          filter="url(#plx-soft)"
+          filter={`url(#${fx("soft")})`}
         />
         <path
           d="M 740 52 C 634 52 578 120 582 200 C 584 258 618 304 672 326 L 808 326 C 862 304 896 258 898 200 C 902 120 846 52 740 52 Z"
@@ -315,7 +363,7 @@ export function PuppyLoveEffect({ className }: Props) {
         <g className="plx-ear plx-ear--left">
           <path
             d="M 612 108 C 548 98 506 142 508 206 C 510 262 542 300 584 314 C 604 284 598 222 622 176 Z"
-            fill="url(#plx-ear)"
+            fill={`url(#${fx("ear")})`}
             stroke="#5f3d1c"
             strokeWidth="4"
           />
@@ -343,7 +391,7 @@ export function PuppyLoveEffect({ className }: Props) {
         <g className="plx-ear plx-ear--right">
           <path
             d="M 868 108 C 932 98 974 142 972 206 C 970 262 938 300 896 314 C 876 284 882 222 858 176 Z"
-            fill="url(#plx-ear)"
+            fill={`url(#${fx("ear")})`}
             stroke="#5f3d1c"
             strokeWidth="4"
           />
@@ -368,10 +416,10 @@ export function PuppyLoveEffect({ className }: Props) {
           </g>
         </g>
 
-        <g className="plx-head" filter="url(#plx-soft)">
+        <g className="plx-head" filter={`url(#${fx("soft")})`}>
           <path
             d="M 740 60 C 650 60 592 114 592 192 C 592 250 632 290 690 306 C 710 311 770 311 790 306 C 848 290 888 250 888 192 C 888 114 830 60 740 60 Z"
-            fill="url(#plx-fur)"
+            fill={`url(#${fx("fur")})`}
             stroke="#a9794a"
             strokeWidth="4"
           />
@@ -406,7 +454,7 @@ export function PuppyLoveEffect({ className }: Props) {
           </g>
 
           {/* muzzle */}
-          <ellipse cx="740" cy="244" rx="80" ry="52" fill="url(#plx-muzzle)" />
+          <ellipse cx="740" cy="244" rx="80" ry="52" fill={`url(#${fx("muzzle")})`} />
           <ellipse cx="740" cy="258" rx="56" ry="30" fill="#e3cfae" opacity="0.35" />
 
           {/* freckles */}
@@ -450,11 +498,11 @@ export function PuppyLoveEffect({ className }: Props) {
           <g className="plx-shades">
             <path d="M 640 206 L 600 190" stroke="#15130c" strokeWidth="7" strokeLinecap="round" />
             <path d="M 840 206 L 880 190" stroke="#15130c" strokeWidth="7" strokeLinecap="round" />
-            <path d={heartPath(676, 184, 2.15)} fill="url(#plx-shade)" stroke="#15130c" strokeWidth="9" />
-            <path d={heartPath(804, 184, 2.15)} fill="url(#plx-shade)" stroke="#15130c" strokeWidth="9" />
+            <path d={heartPath(676, 184, 2.15)} fill={`url(#${fx("shade")})`} stroke="#15130c" strokeWidth="9" />
+            <path d={heartPath(804, 184, 2.15)} fill={`url(#${fx("shade")})`} stroke="#15130c" strokeWidth="9" />
             <path d="M 718 176 Q 740 168 762 176" fill="none" stroke="#15130c" strokeWidth="8" strokeLinecap="round" />
-            <path d={heartPath(676, 184, 1.45)} fill="url(#plx-shade-glint)" opacity="0.85" />
-            <path d={heartPath(804, 184, 1.45)} fill="url(#plx-shade-glint)" opacity="0.85" />
+            <path d={heartPath(676, 184, 1.45)} fill={`url(#${fx("shade-glint")})`} opacity="0.85" />
+            <path d={heartPath(804, 184, 1.45)} fill={`url(#${fx("shade-glint")})`} opacity="0.85" />
             <path
               d="M 656 170 C 664 162 676 162 682 170"
               fill="none"
@@ -504,17 +552,17 @@ export function PuppyLoveEffect({ className }: Props) {
           <path
             d="M 556 318 C 526 322 506 340 502 360"
             fill="none"
-            stroke="url(#plx-hood)"
+            stroke={`url(#${fx("hood")})`}
             strokeWidth="34"
             strokeLinecap="round"
           />
           {/* Ribbed cuff, then the hand itself. */}
           <g transform="translate(532 326) rotate(-24)">
-            <ellipse cx="0" cy="0" rx="26" ry="17" fill="url(#plx-cuff)" stroke="#4d6b00" strokeWidth="3" />
+            <ellipse cx="0" cy="0" rx="26" ry="17" fill={`url(#${fx("cuff")})`} stroke="#4d6b00" strokeWidth="3" />
             <path d="M -16 -9 V 9 M -9 -13 V 13 M -2 -14 V 14 M 5 -13 V 13 M 12 -10 V 10" stroke="#8cc300" strokeWidth="2" opacity="0.75" />
           </g>
           <g transform="translate(504 336) rotate(-16)">
-            <ellipse cx="0" cy="0" rx="31" ry="25" fill="url(#plx-fur)" stroke="#a9794a" strokeWidth="3.5" />
+            <ellipse cx="0" cy="0" rx="31" ry="25" fill={`url(#${fx("fur")})`} stroke="#a9794a" strokeWidth="3.5" />
             <path d="M -13 8 C -10 2 -8 -2 -8 -8" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
             <path d="M -1 10 C 1 3 2 -2 2 -9" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
             <path d="M 11 9 C 13 3 14 -1 14 -7" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
@@ -524,12 +572,13 @@ export function PuppyLoveEffect({ className }: Props) {
         </g>
 
         <g>
-          <ellipse cx="948" cy="344" rx="36" ry="24" fill="url(#plx-fur)" stroke="#a9794a" strokeWidth="3.5" />
+          <ellipse cx="948" cy="344" rx="36" ry="24" fill={`url(#${fx("fur")})`} stroke="#a9794a" strokeWidth="3.5" />
           <path d="M 930 342 C 934 336 936 330 936 324" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
           <path d="M 945 346 C 948 338 949 332 949 326" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
           <path d="M 960 344 C 962 338 963 332 963 327" stroke="#c99a68" strokeWidth="3" strokeLinecap="round" fill="none" />
           <ellipse cx="946" cy="354" rx="17" ry="8" fill="#e7c69c" opacity="0.5" />
           <path d="M 936 358 C 940 356 944 356 947 358 M 954 358 C 958 356 961 356 963 358" stroke="#c99a68" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.7" />
+        </g>
         </g>
 
         {/* ---- floating hearts and sparks ---- */}

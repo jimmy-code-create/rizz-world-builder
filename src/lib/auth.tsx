@@ -13,6 +13,7 @@ type Profile = {
   paw_balance: number;
   paw_earned?: number;
   accent_color: string | null;
+  banner_gradient?: string | null;
   theme_preset: string | null;
   theme_mode: string | null;
   ui_density: string | null;

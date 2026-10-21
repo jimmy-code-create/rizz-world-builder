@@ -102,7 +102,19 @@ await check("the scene is genuinely transparent and vector-only", async () => {
   );
   assert.ok(!/#0a0a0b|#0e0e10|#05060b|#111214/i.test(effect), "no stage background colours");
   assert.match(effect, /viewBox="0 0 1100 360"/);
-  assert.match(effect, /preserveAspectRatio="xMidYMid slice"/);
+  assert.match(effect, /preserveAspectRatio="xMidYMin slice"/);
+  assert.ok(effect.includes("DOG_WIDE"), "wide banners use the bust composition");
+  assert.ok(effect.includes("ResizeObserver"), "the pup composition follows the banner shape");
+  assert.ok(effect.includes("DOG_COMPACT"), "short previews need their own crop");
+});
+
+await check("each scene namespaces its SVG paint servers", async () => {
+  // Two Puppy Love instances (a feed card plus the opened preview) must not
+  // share gradient/filter ids, or the browser paints from the wrong SVG.
+  assert.match(effect, /useId\(\)/, "the scene must scope its defs per instance");
+  assert.match(effect, /const fx = \(name: string\) => `plx-\$\{name\}-\$\{uid\}`/);
+  assert.ok(!/id="plx-/.test(effect), "a static paint-server id survived");
+  assert.ok(!/url\(#plx-/.test(effect), "a static paint-server reference survived");
 });
 
 await check("Biscuit is an original, complete dog — not a recoloured hero", async () => {
@@ -120,8 +132,8 @@ await check("Biscuit is an original, complete dog — not a recoloured hero", as
     assert.ok(effect.includes(part), `missing character part: ${part}`);
   }
   // The brand reads as a lime-hooded pup with heart shades and a heart nose.
-  assert.match(effect, /id="plx-hood"/);
-  assert.match(effect, /id="plx-shade"/);
+  assert.match(effect, /id=\{fx\("hood"\)\}/);
+  assert.match(effect, /id=\{fx\("shade"\)\}/);
   assert.match(effect, /heartPath\(740, 216, 0\.92\)/, "the nose is a heart");
   assert.match(effect, /heartPath\(676, 184, 2\.15\)/);
   assert.match(effect, /heartPath\(804, 184, 2\.15\)/);
