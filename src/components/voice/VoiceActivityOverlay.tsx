@@ -101,7 +101,9 @@ export function VoiceActivityOverlay({
     <div className="fixed inset-0 z-[135] flex flex-col bg-[#08080a]" style={{ height: "100dvh" }}>
       {/* The game *is* the background; everything else floats over it. */}
       <div ref={stage.ref} className="absolute inset-0">
-        <GameStage entry={entry} players={players} fullscreen className="absolute inset-0" />
+        <div data-rizz-game-surface className="absolute inset-0">
+          <GameStage entry={entry} players={players} fullscreen className="absolute inset-0" />
+        </div>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/75 via-black/25 to-transparent"

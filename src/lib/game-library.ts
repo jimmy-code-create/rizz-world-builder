@@ -26,7 +26,14 @@ export type GameBotState = {
   isPlaying: boolean;
   isPaused: boolean;
   launchedAt: number | null;
+  /** Host user id. Every user may host their own session. */
   launchedBy: string | null;
+  hostName: string | null;
+  sessionId: string | null;
+  /** Optional room / team code the host copied from the game. */
+  roomCode: string | null;
+  /** Optional full invite link — viewers open it instead of the base game URL. */
+  joinUrl: string | null;
 };
 
 export const GAME_BOT_CHANNEL = (channelId: string) => `vc-game-bot:${channelId}`;

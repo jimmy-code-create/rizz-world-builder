@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
 import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
-import { useGameBot } from "@/lib/game-bot";
+import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
+import { GameSessionsBar } from "@/components/voice/GameSessionsBar";
+import type { GameSession } from "@/lib/game-sessions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
 import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusDot";
@@ -175,6 +177,8 @@ export function VoiceCallView() {
     localScreenStream,
     remoteScreenStreams,
     sharingScreen,
+    shareMode,
+    shareCropped,
     sharingIds,
     screenSupported,
     screenError,
@@ -190,15 +194,21 @@ export function VoiceCallView() {
     toggleCamera,
     flipCamera,
     toggleScreenShare,
+    startGameShare,
     leaveCall,
     retry,
   } = useVoiceCallContext();
 
   // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
   const musicBot = useMusicBotInCall();
-  // Shared GAME BOT: the VC tile reflects the live session and launches happen
-  // through the Games menu (overlay plays over the call).
-  const gameBot = useGameBot(call?.channelId);
+  const selfName =
+    participants.find((participant) => participant.user_id === user?.id)?.user?.display_name ||
+    participants.find((participant) => participant.user_id === user?.id)?.user?.username ||
+    "Someone";
+  // Per-user GAME BOT: every person has their own session; the VC shows them
+  // all and any card can join that host's game directly.
+  const gameBot = useGameBot(call?.channelId, true, selfName);
+  const gameOverlay = useGameOverlayUI();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
@@ -207,6 +217,7 @@ export function VoiceCallView() {
   const [musicOpen, setMusicOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
+  const [selectedSharePeerId, setSelectedSharePeerId] = useState<string | null>(null);
   // Immersive = game as the background with the voice dock floating over it.
   // Toggling it off keeps the game open as a side panel (desktop only).
   const [immersive, setImmersive] = useState(true);
@@ -246,10 +257,6 @@ export function VoiceCallView() {
 
   // Game Activities: ephemeral per-room state over realtime (broadcast +
   // presence), so late joiners sync the live game with no database table.
-  const selfName =
-    participants.find((participant) => participant.user_id === user?.id)?.user?.display_name ||
-    participants.find((participant) => participant.user_id === user?.id)?.user?.username ||
-    "Someone";
   const roomActivity = useRoomActivity(call?.roomId ?? null, user ? { id: user.id, name: selfName } : null, panelOpen);
   const playingCount = Object.keys(roomActivity.players).length;
   const prevActivityRef = useRef<RoomActivity | null>(null);
@@ -284,6 +291,30 @@ export function VoiceCallView() {
   const playing = panelOpen && !!roomActivity.activity;
   const gameEntry = roomActivity.activity ? getGame(roomActivity.activity.gameId) : null;
   const liveGame = gameBot.state.activeGame;
+  const myGame = gameBot.mySession;
+  const isGameStreaming = sharingScreen && shareMode === "game";
+  const viewedSession =
+    gameBot.sessionsById[gameBot.viewingHostId ?? ""] ?? myGame ?? null;
+
+  const openGameSession = (session: GameSession) => {
+    const joined = gameBot.join(session.hostId);
+    if (joined) gameOverlay.expand();
+    return joined;
+  };
+  const joinGameSession = (session: GameSession) => {
+    if (!openGameSession(session)) {
+      toast.error("That game just ended", { description: "Pick another game from the call." });
+      return;
+    }
+    toast.success(`Joined ${session.hostName}'s ${session.game.name}`, {
+      description: "You are in their session — the game opened over the call.",
+    });
+  };
+  const streamGameSession = (session: GameSession) => {
+    if (session.hostId !== user?.id) return;
+    if (isGameStreaming) toggleScreenShare();
+    else startGameShare();
+  };
 
   if (!call || !viewOpen) return null;
 
@@ -294,11 +325,25 @@ export function VoiceCallView() {
   // The stage shows one shared screen: mine while I am sharing, otherwise the
   // first peer whose roster flag says they are sharing.
   const sharingParticipants = participants.filter((participant) => sharingIds.includes(participant.user_id));
-  const remoteShare = remoteScreenStreams.find(({ stream }) => stream.getVideoTracks().some((track) => track.readyState === "live")) ?? null;
+  const remoteShares = remoteScreenStreams.filter(({ stream }) =>
+    stream.getVideoTracks().some((track) => track.readyState === "live"),
+  );
+  const selectedRemoteShare =
+    remoteShares.find(({ peerId }) => peerId === selectedSharePeerId) ?? null;
+  const remoteShare = selectedRemoteShare ?? remoteShares[0] ?? null;
   const stageStream = sharingScreen ? localScreenStream : remoteShare?.stream ?? null;
+  const stagePeerId = sharingScreen ? user?.id : remoteShare?.peerId;
+  const stageSession = stagePeerId ? gameBot.sessionsById[stagePeerId] ?? null : null;
+  const stageHasGame = stagePeerId
+    ? !!stageSession ||
+      gameBot.sessions.some((session) =>
+        gameBot.viewersByHost[session.hostId]?.includes(stagePeerId),
+      )
+    : false;
+  const stageIsGame = sharingScreen ? shareMode === "game" : stageHasGame;
   const stageOwner = sharingScreen
     ? "you"
-    : participants.find((participant) => participant.user_id === remoteShare?.peerId)?.user?.username ?? "someone";
+    : participants.find((participant) => participant.user_id === stagePeerId)?.user?.username ?? "someone";
 
   return (
     // A voice call takes over the screen: the tiles, the music bot and the
@@ -382,6 +427,22 @@ export function VoiceCallView() {
           </Button>
         </header>
 
+        <GameSessionsBar
+          sessions={gameBot.sessions}
+          viewersByHost={gameBot.viewersByHost}
+          meId={user?.id}
+          viewingHostId={gameBot.viewingHostId}
+          streamingIds={sharingIds}
+          onOpen={openGameSession}
+          onJoin={joinGameSession}
+          onLeave={(session) => {
+            if (gameBot.viewingHostId !== session.hostId) return;
+            if (isGameStreaming) toggleScreenShare();
+            gameBot.leave();
+          }}
+          onStream={streamGameSession}
+        />
+
         {roomActivity.activity && !panelOpen && (!bannerDismissedAt || roomActivity.activity.startedAt > bannerDismissedAt) && (
           <div className="relative shrink-0 px-3 pt-3 sm:px-4">
             <JoinGameBanner
@@ -400,12 +461,45 @@ export function VoiceCallView() {
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
           <div className="mx-auto flex w-full max-w-6xl items-start gap-3">
             <div className="min-w-0 flex-1">
+          {!sharingScreen && remoteShares.length > 1 && (
+            <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 overflow-x-auto pb-1">
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Streams
+              </span>
+              {remoteShares.map(({ peerId }) => {
+                const owner = participants.find((participant) => participant.user_id === peerId);
+                const session = gameBot.sessionsById[peerId];
+                return (
+                  <button
+                    key={peerId}
+                    type="button"
+                    onClick={() => setSelectedSharePeerId(peerId)}
+                    className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors ${
+                      remoteShare?.peerId === peerId
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MonitorPlay className="h-3.5 w-3.5" />
+                    {session ? `${session.hostName}'s game` : `@${owner?.user?.username ?? "member"}`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {stageStream && (
             <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-primary/40 bg-black shadow-md">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
                 <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary">
                   <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{sharingScreen ? "Your screen" : `Screen shared by @${stageOwner}`}</span>
+                  <span className="truncate">
+                    {sharingScreen
+                      ? isGameStreaming
+                        ? "Your game stream"
+                        : "Your screen"
+                      : `${stageIsGame ? "Game stream" : "Screen"} shared by @${stageOwner}`}
+                  </span>
                 </span>
                 {sharingScreen && (
                   <Button
@@ -414,11 +508,17 @@ export function VoiceCallView() {
                     className="h-7 border-destructive/40 bg-destructive/15 px-2.5 text-xs text-destructive hover:bg-destructive/25"
                     onClick={toggleScreenShare}
                   >
-                    Stop sharing
+                    {isGameStreaming ? "Stop game stream" : "Stop sharing"}
                   </Button>
                 )}
               </div>
               <VideoTile stream={stageStream} />
+              {isGameStreaming && !shareCropped && (
+                <p className="border-t border-white/10 bg-black/60 px-3 py-1.5 text-[10px] text-muted-foreground">
+                  This browser can&apos;t crop the tab automatically. Pick the game tab or window when
+                  the picker opens so only the game is streamed.
+                </p>
+              )}
             </div>
           )}
 
@@ -436,7 +536,18 @@ export function VoiceCallView() {
               const tileRow = presenceMap.rows[participant.user_id] ?? null;
               const tileStatus = publicStatusOf(tileRow, isMe);
               const tileCustom = publicCustomStatus(tileRow, isMe);
-              const playingGame = roomActivity.players[participant.user_id]?.gameName ?? null;
+              const participantSession = gameBot.sessionsById[participant.user_id] ?? null;
+              const participantViewing =
+                participantSession ??
+                gameBot.sessions.find((session) =>
+                  gameBot.viewersByHost[session.hostId]?.includes(participant.user_id),
+                ) ??
+                null;
+              const joinedThisGame = participantSession?.hostId === gameBot.viewingHostId;
+              const playingGame =
+                participantViewing?.game.name ??
+                roomActivity.players[participant.user_id]?.gameName ??
+                null;
 
               return (
                 <div
@@ -494,6 +605,22 @@ export function VoiceCallView() {
                           </span>
                         )
                       )}
+                      {participantSession && !isMe && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            joinedThisGame ? openGameSession(participantSession) : joinGameSession(participantSession)
+                          }
+                          className={`mt-0.5 flex h-8 items-center gap-1 rounded-full px-3 text-[10px] font-bold transition active:scale-95 ${
+                            joinedThisGame
+                              ? "border border-primary/40 bg-primary/15 text-primary"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          <Gamepad2 className="h-3 w-3" />
+                          {joinedThisGame ? "Open game" : "Join game"}
+                        </button>
+                      )}
                     </>
                   )}
 
@@ -519,6 +646,23 @@ export function VoiceCallView() {
                     </div>
                   )}
 
+                  {videoStream && participantSession && !isMe && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        joinedThisGame ? openGameSession(participantSession) : joinGameSession(participantSession)
+                      }
+                      className={`absolute left-2 top-9 z-20 flex h-8 items-center gap-1 rounded-full px-2.5 text-[10px] font-bold shadow-md transition active:scale-95 ${
+                        joinedThisGame
+                          ? "border border-primary/50 bg-black/70 text-primary"
+                          : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      <Gamepad2 className="h-3 w-3" />
+                      {joinedThisGame ? "Open game" : "Join game"}
+                    </button>
+                  )}
+
                   {!videoStream && participant.muted && (
                     <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80" aria-label="Muted">
                       <MicOff className="h-3.5 w-3.5 text-destructive" />
@@ -527,9 +671,10 @@ export function VoiceCallView() {
                   {!videoStream && speaking && (
                     <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">Speaking</span>
                   )}
-                  {sharingIds.includes(participant.user_id) && !sharingScreen && (
+                  {sharingIds.includes(participant.user_id) && (
                     <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-primary/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                      <MonitorPlay className="h-3 w-3" /> Sharing
+                      <MonitorPlay className="h-3 w-3" />
+                      {gameBot.sessionsById[participant.user_id] ? "Game live" : "Sharing"}
                     </span>
                   )}
                   {!isMe && <PeerVolumeControl userId={participant.user_id} username={username} />}
@@ -573,15 +718,20 @@ export function VoiceCallView() {
             {/* GAME BOT: ready-made games that play as an overlay over the call. */}
             <button
               type="button"
-              onClick={() => setGamesOpen(true)}
-              aria-label="Open the Games menu"
+              onClick={() => {
+                if (viewedSession) openGameSession(viewedSession);
+                else setGamesOpen(true);
+              }}
+              aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
               className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
             >
               <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                 {liveGame
                   ? gameBot.state.isPaused
                     ? "Paused"
-                    : "Live"
+                    : gameBot.isHost
+                      ? "Your game"
+                      : "Live"
                   : roomActivity.activity
                     ? "Live"
                     : "In call"}
@@ -603,10 +753,14 @@ export function VoiceCallView() {
                 </AvatarFallback>
               </Avatar>
               <span className="min-w-0 px-1">
-                <span className="block truncate text-xs font-semibold">GAME BOT</span>
+                <span className="block truncate text-xs font-semibold">
+                  {gameBot.isHost ? "YOUR GAME" : "GAME BOT"}
+                </span>
                 <span className="block truncate text-[11px] text-muted-foreground">
                   {liveGame
-                    ? `${liveGame.name} — tap to join`
+                    ? gameBot.isHost
+                      ? `${liveGame.name} — tap to play`
+                      : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
                     : roomActivity.activity
                       ? `${roomActivity.activity.gameName} — tap to join`
                       : "Tap to pick a game"}
@@ -690,6 +844,30 @@ export function VoiceCallView() {
               <span className="text-[10px] font-semibold leading-none">{sharingScreen ? "Stop" : "Share"}</span>
             </button>
 
+            {/* Game stream — only the game surface, never the whole desktop. */}
+            <button
+              type="button"
+              onClick={() => (isGameStreaming ? toggleScreenShare() : startGameShare())}
+              disabled={!screenSupported}
+              title={
+                isGameStreaming
+                  ? "Stop streaming your game"
+                  : "Stream only a game tab or window, never your whole desktop"
+              }
+              aria-label={isGameStreaming ? "Stop game stream" : "Stream only your game"}
+              aria-pressed={isGameStreaming}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
+                isGameStreaming
+                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+                  : "glass border-white/10 text-foreground hover:bg-white/10"
+              }`}
+            >
+              <Radio className="h-5 w-5 mb-0.5" />
+              <span className="text-[10px] font-semibold leading-none">
+                {isGameStreaming ? "Stop" : "Game"}
+              </span>
+            </button>
+
             {/* Camera */}
             <button
               type="button"
@@ -730,7 +908,9 @@ export function VoiceCallView() {
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
             {sharingScreen
-              ? "Sharing your screen"
+              ? isGameStreaming
+                ? "Streaming your game only"
+                : "Sharing your screen"
               : sharingParticipants.length > 0
                 ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
                 : cameraOn

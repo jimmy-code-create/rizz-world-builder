@@ -74,6 +74,10 @@ type VoiceCallContextValue = {
   localScreenStream: MediaStream | null;
   remoteScreenStreams: { peerId: string; stream: MediaStream }[];
   sharingScreen: boolean;
+  /** "game" means the share is cropped to the game, not the desktop. */
+  shareMode: "screen" | "game" | null;
+  /** False when the browser could not crop to the game surface. */
+  shareCropped: boolean;
   sharingIds: string[];
   screenSupported: boolean;
   screenError: string | null;
@@ -90,6 +94,8 @@ type VoiceCallContextValue = {
   toggleCamera: () => void;
   flipCamera: () => void;
   toggleScreenShare: () => void;
+  /** Stream only the mounted game surface, not the desktop. */
+  startGameShare: () => void;
   retry: () => void;
   markPlaybackBlocked: () => void;
 };
@@ -364,6 +370,8 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       localScreenStream: engine.localScreenStream,
       remoteScreenStreams: engine.remoteScreenStreams,
       sharingScreen: engine.sharingScreen,
+      shareMode: engine.shareMode,
+      shareCropped: engine.shareCropped,
       sharingIds,
       screenSupported: engine.screenSupported,
       screenError: engine.screenError,
@@ -384,6 +392,9 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       toggleCamera,
       flipCamera,
       toggleScreenShare,
+      startGameShare: () => {
+        void engineRef.current.startGameShare();
+      },
       retry: () => {
         void engine.retry();
       },
@@ -406,6 +417,8 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       engine.localScreenStream,
       engine.remoteScreenStreams,
       engine.sharingScreen,
+      engine.shareMode,
+      engine.shareCropped,
       engine.screenSupported,
       engine.screenError,
       engine.status,

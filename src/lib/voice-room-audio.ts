@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
 import { updateParticipant } from "@/lib/voice";
 import { loadSoundSettings, SOUND_SETTINGS_EVENT } from "@/lib/sound-settings";
+import { captureGameOnlyStream } from "@/lib/game-capture";
 
 /**
  * Mesh call engine used by the global VoiceCallProvider.
@@ -103,6 +104,9 @@ export function useVoiceCall({
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteScreenStreams, setRemoteScreenStreams] = useState<RemoteStream[]>([]);
   const [sharingScreen, setSharingScreen] = useState(false);
+  /** "game" uses a game-tab/window capture cropped to the game surface. */
+  const [shareMode, setShareMode] = useState<"screen" | "game" | null>(null);
+  const [shareCropped, setShareCropped] = useState(false);
   const [screenError, setScreenError] = useState<string | null>(null);
 
   const peerConnections = useRef(new Map<string, PeerConnection>());
@@ -121,6 +125,7 @@ export function useVoiceCall({
   const startCameraRef = useRef<(nextFacing?: "user" | "environment") => Promise<void>>(async () => {});
   const stopCameraRef = useRef<() => void>(() => {});
   const startScreenRef = useRef<() => Promise<void>>(async () => {});
+  const startGameRef = useRef<() => Promise<void>>(async () => {});
   const stopScreenRef = useRef<() => void>(() => {});
   const retryRef = useRef<() => Promise<void>>(async () => {});
   const analysersRef = useRef(new Map<string, AnalyserEntry>());
@@ -482,14 +487,25 @@ export function useVoiceCall({
       }
     };
 
-    const startScreenShare = async () => {
+    const startShare = async (mode: "screen" | "game") => {
       if (disposed) return;
       if (!navigator.mediaDevices?.getDisplayMedia) {
-        setScreenError("Screen sharing isn't available in this browser.");
+        setScreenError(
+          mode === "game"
+            ? "Game streaming isn't available in this browser."
+            : "Screen sharing isn't available in this browser.",
+        );
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const captured =
+          mode === "game"
+            ? await captureGameOnlyStream()
+            : {
+                stream: await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }),
+                cropped: false,
+              };
+        const stream = captured.stream;
         if (disposed) {
           stream.getTracks().forEach((track) => track.stop());
           return;
@@ -506,19 +522,28 @@ export function useVoiceCall({
         // The browser's own "Stop sharing" bar ends the track.
         track.addEventListener("ended", () => stopScreenRef.current());
         setSharingScreen(true);
+        setShareMode(mode);
+        setShareCropped(mode === "game" ? captured.cropped : false);
         setScreenError(null);
         await syncSharingFlag(true);
       } catch (error) {
         setSharingScreen(false);
+        setShareMode(null);
+        setShareCropped(false);
         const name = error instanceof DOMException ? error.name : "";
         setScreenError(
           name === "NotAllowedError" || name === "AbortError"
-            ? "Screen sharing was cancelled."
-            : "Couldn't share that. Pick a window, tab or screen and try again.",
+            ? mode === "game"
+              ? "Game streaming was cancelled."
+              : "Screen sharing was cancelled."
+            : mode === "game"
+              ? "Couldn't stream the game. Pick a tab or window and try again."
+              : "Couldn't share that. Pick a window, tab or screen and try again.",
         );
       }
     };
-    startScreenRef.current = startScreenShare;
+    startScreenRef.current = () => startShare("screen");
+    startGameRef.current = () => startShare("game");
 
     const stopScreenShare = () => {
       const stream = screenStreamRef.current;
@@ -529,6 +554,8 @@ export function useVoiceCall({
         if (entry.screenSender) void entry.screenSender.replaceTrack(null).catch(() => {});
       }
       setSharingScreen(false);
+      setShareMode(null);
+      setShareCropped(false);
       void syncSharingFlag(false);
     };
     stopScreenRef.current = stopScreenShare;
@@ -663,6 +690,8 @@ export function useVoiceCall({
       setRemoteScreenStreams([]);
       setLocalScreenStream(null);
       setSharingScreen(false);
+      setShareMode(null);
+      setShareCropped(false);
       setSpeakingIds([]);
       setSignalingReady(false);
       setMicReady(false);
@@ -695,6 +724,7 @@ export function useVoiceCall({
 
   const retry = useCallback(() => retryRef.current(), []);
   const startScreenShare = useCallback(() => startScreenRef.current(), []);
+  const startGameShare = useCallback(() => startGameRef.current(), []);
   const stopScreenShare = useCallback(() => stopScreenRef.current(), []);
   const screenSupported =
     typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -712,8 +742,11 @@ export function useVoiceCall({
     localScreenStream,
     remoteScreenStreams,
     sharingScreen,
+    shareMode,
+    shareCropped,
     screenSupported,
     startScreenShare,
+    startGameShare,
     stopScreenShare,
     retry,
     remoteStreams,

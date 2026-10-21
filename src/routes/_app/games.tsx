@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { useAuth } from "@/lib/auth";
 import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
 import { GAME_CATEGORIES, GAME_LIBRARY, type GameEntry } from "@/lib/game-library";
 
@@ -32,12 +33,13 @@ function Logo({ icon, emoji, size = "h-7 w-7", text = "text-base" }: { icon?: st
  * The Games section — ready-made, embeddable titles with real cover art.
  *
  * Games play with voice, like the music bot: while you are in a call, tapping a
- * game launches it into GAME BOT and it opens as an overlay for everyone in the
- * channel (pause / resume / fullscreen / rotate in sync). Outside a call the
- * cards point you to a voice channel first.
+ * game starts your own GAME BOT session. Other people can join it from the VC
+ * or from the in-call list here. Outside a call the cards point you to a voice
+ * channel first.
  */
 function GamesPage() {
   const { call, openView } = useVoiceCallContext();
+  const { user } = useAuth();
   const gameBot = useGameBot(call?.channelId ?? null, !!call?.channelId);
   const overlay = useGameOverlayUI();
   const bot = gameBot.state;
@@ -56,8 +58,8 @@ function GamesPage() {
     }
     gameBot.launch(game);
     overlay.expand();
-    toast.success(`${game.name} launched in GAME BOT`, {
-      description: `An overlay just popped for everyone in ${call?.channelName}.`,
+    toast.success(`Your ${game.name} game is live`, {
+      description: `Everyone in ${call?.channelName} can press Join game on your card — each person gets their own session.`,
     });
   };
 
@@ -102,7 +104,7 @@ function GamesPage() {
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {inCall
-          ? "Tap a game — it launches in GAME BOT and plays as an overlay for everyone in the call."
+          ? "Tap a game to launch your own GAME BOT session. Everyone in the call can join yours without losing their own game."
           : "Games play together in voice. Join a voice channel in a realm, then launch anything here."}
       </p>
 
@@ -111,7 +113,7 @@ function GamesPage() {
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-bold">Start with voice</p>
             <p className="text-xs text-muted-foreground">
-              GAME BOT runs inside the call so everyone lands in the same session — same as MUSIC BOT.
+              GAME BOT runs inside the call. Everyone can launch their own game, and friends press Join game to open yours.
             </p>
           </div>
           <Link
@@ -131,28 +133,35 @@ function GamesPage() {
             <p className="truncate font-display text-sm font-bold">{bot.activeGame.name}</p>
             <p className="text-xs text-muted-foreground">
               <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle ${bot.isPaused ? "bg-amber-300" : "bg-primary"}`} />
-              {bot.isPaused ? "Paused" : "Playing"} · GAME BOT
+              {bot.isPaused ? "Paused" : "Playing"} ·{" "}
+              {gameBot.isHost ? "your game" : `${bot.hostName ?? "someone"}'s game`}
             </p>
           </div>
-          {bot.isPaused ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => gameBot.resume()}
-              className="h-10 shrink-0 gap-1.5 bg-primary font-bold text-primary-foreground"
-            >
-              <Play className="h-4 w-4" /> Resume
-            </Button>
+          {gameBot.isHost ? (
+            bot.isPaused ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => gameBot.resume()}
+                className="h-10 shrink-0 gap-1.5 bg-primary font-bold text-primary-foreground"
+              >
+                <Play className="h-4 w-4" /> Resume
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => gameBot.pause()}
+                className="h-10 shrink-0 gap-1.5 border-primary/30 bg-primary/10 font-bold text-primary"
+              >
+                <Pause className="h-4 w-4" /> Pause
+              </Button>
+            )
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => gameBot.pause()}
-              className="h-10 shrink-0 gap-1.5 border-primary/30 bg-primary/10 font-bold text-primary"
-            >
-              <Pause className="h-4 w-4" /> Pause
-            </Button>
+            <span className="shrink-0 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+              Joined
+            </span>
           )}
           <Button
             type="button"
@@ -162,6 +171,46 @@ function GamesPage() {
           >
             Show
           </Button>
+        </div>
+      )}
+
+      {/* Other people's games — Join game opens their exact session. */}
+      {inCall && gameBot.sessions.some((session) => session.hostId !== user?.id) && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-primary/80">
+            Games in this call
+          </p>
+          {gameBot.sessions
+            .filter((session) => session.hostId !== user?.id)
+            .map((session) => (
+              <div
+                key={session.sessionId}
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+              >
+                <Logo icon={session.game.icon} emoji={session.game.emoji} size="h-10 w-10" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-sm font-bold">
+                    {session.game.name}
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {session.hostName}&apos;s game
+                    {session.roomCode ? ` · room ${session.roomCode}` : ""}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    gameBot.join(session.hostId);
+                    overlay.expand();
+                    toast.success(`Joined ${session.hostName}'s ${session.game.name}`);
+                  }}
+                  className="h-10 shrink-0 gap-1.5 bg-primary px-3 font-bold text-primary-foreground"
+                >
+                  <Play className="h-4 w-4" /> Join game
+                </Button>
+              </div>
+            ))}
         </div>
       )}
 
@@ -198,7 +247,7 @@ function GamesPage() {
 
       {/* Grid */}
       <p className="mb-2 mt-3 text-[11px] font-bold uppercase tracking-wider text-primary/80">
-        {filtered.length} games · {inCall ? "launch in GAME BOT" : "join voice to play"}
+        {filtered.length} games · {inCall ? "launch your own session" : "join voice to play"}
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {filtered.map((g) => {

@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-10-21 — Everyone plays their own game in the call
+
+### One session per person, not one per channel
+- GAME BOT is now a **map of sessions keyed by host** (`src/lib/game-sessions.ts`, pure and DB-free).
+  Jimmy can run Krunker while Bob runs Skribbl, and relaunching only replaces
+  that host's session. Before this, one launch replaced the channel game for
+  everybody.
+- `viewFor` decides what a client shows: the game it explicitly joined, then
+  its own session, then nothing. Only your own launch auto-expands the overlay,
+  so somebody else's game can no longer hijack your screen.
+- Launch/pause/end travel on `vc-game-bot:<channelId>`; who is watching whom
+  travels in Supabase presence. A session id guards delayed broadcasts, so a
+  stale end or an older launch cannot remove or revive a newer session.
+
+### Joining is explicit and never destructive
+- New **Games in call** strip in the VC (`GameSessionsBar.tsx`): one card per
+  host with the game art, viewer count, live/paused state, **Join game**, a
+  Leave that keeps the host playing, and a game-stream toggle on your own card.
+  The Games page and the realm Games menu list other people's sessions the same
+  way.
+- `stopIntent` distinguishes **leave** from **stop**: leaving a joined game
+  never ends the host's game and never deletes your own background session.
+- Hosts can share a **room / team code** and an optional **invite link**. Joiners
+  open the host's full link (safe `http(s)` only, cleared if invalid); the host
+  keeps the base URL, so sharing a link never reloads their own game.
+
+### Streaming only the game
+- `startGameShare()` (`src/lib/game-capture.ts`) asks for a browser tab/window
+  with `displaySurface: "browser"` and `monitorTypeSurfaces: "exclude"`, prefers
+  the current tab, then crops the track to the mounted game surface with Region
+  Capture. Every game surface is marked `data-rizz-game-surface`, and the
+  largest visible one wins.
+- Browsers without Region Capture still stream the tab, and the stage says to
+  pick the game window; stopping a game also stops a game stream instead of
+  leaving a share pointed at an empty surface.
+
+### Checks
+- `tests/game-sessions.test.mjs` (13 checks) locks the session rules, join
+  links and stale-end guard; `tests/game-sessions-bar.render.test.tsx` renders
+  the strip to prove Join game, host controls and the live label. The first is
+  wired into `bun run test`.
+
 ## 2026-10-20 — Cinematic effects: four transparent loops, real previews
 
 - **The old effects catalogue is replaced by four cinematic profile

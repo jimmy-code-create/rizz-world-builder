@@ -73,7 +73,7 @@ export function GamePlayOverlay({ entry, onClose }: { entry: GameEntry; onClose:
           </p>
         )}
 
-        <div className="relative min-h-0 flex-1">
+        <div data-rizz-game-surface className="relative min-h-0 flex-1">
           <GameStage entry={entry} players={1} fullscreen className="absolute inset-0" />
         </div>
       </div>

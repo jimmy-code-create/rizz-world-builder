@@ -176,7 +176,7 @@ export function ActivityPanel({
           </button>
         </div>
 
-        <div className="relative min-h-0 flex-1">
+        <div data-rizz-game-surface className="relative min-h-0 flex-1">
           <GameStage entry={entry} players={players} className="absolute inset-0" />
         </div>
 

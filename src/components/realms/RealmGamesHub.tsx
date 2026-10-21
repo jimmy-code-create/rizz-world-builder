@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { useAuth } from "@/lib/auth";
 import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
 import { GAME_CATEGORIES, GAME_LIBRARY, type GameEntry } from "@/lib/game-library";
 
@@ -35,14 +36,18 @@ function Logo({ icon, emoji, size = "h-7 w-7", text = "text-base" }: { icon?: st
  * The Games menu — one catalog shared by the realm voice bar, the VC view and
  * (via the same GAME BOT store) the Games page.
  *
- * Games play as an overlay while you are in the voice call: tapping one
- * launches it into GAME BOT for the whole channel, it appears over the app for
- * everyone (minimizable, fullscreen, rotatable), and pause / resume / stop stay
- * in sync — exactly like the music bot.
+ * Games play as an overlay while you are in the voice call: tapping one starts
+ * *your* GAME BOT session. Everyone else sees it as a Join game card in the VC
+ * and can open the same game (and invite link) without replacing their own.
  */
 export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }: RealmGamesHubProps) {
   const voice = useVoiceCallContext();
-  const gameBot = useGameBot(roomId, open);
+  const { user } = useAuth();
+  const selfName =
+    voice?.participants.find((participant) => participant.user_id === user?.id)?.user?.display_name ||
+    voice?.participants.find((participant) => participant.user_id === user?.id)?.user?.username ||
+    undefined;
+  const gameBot = useGameBot(roomId, open, selfName);
   const overlay = useGameOverlayUI();
   const bot = gameBot.state;
 
@@ -62,8 +67,8 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
     gameBot.launch(game);
     overlay.expand();
     onOpenChange(false);
-    toast.success(`${game.name} launched in GAME BOT`, {
-      description: `An overlay just popped for everyone in ${roomName ?? "the call"}.`,
+    toast.success(`Your ${game.name} game is live`, {
+      description: `Everyone in ${roomName ?? "the call"} can press Join game on your card — they start their own copy, not yours.`,
     });
   };
 
@@ -102,8 +107,8 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
           </SheetTitle>
           <p className="text-xs text-muted-foreground">
             Ready-made games that play <span className="font-semibold text-primary">as an overlay</span>{" "}
-            in the call — everyone in the channel joins the same GAME BOT session, with pause,
-            resume, fullscreen and rotate.
+            in the call. Every person gets their own GAME BOT session — launch yours, and anyone
+            can press Join game to open it with you.
           </p>
         </SheetHeader>
 
@@ -150,32 +155,42 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
               <div className="mb-3 flex items-center gap-3">
                 <Logo icon={bot.activeGame.icon} emoji={bot.activeGame.emoji} size="h-11 w-11" text="text-xl" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-sm font-bold">{bot.activeGame.name}</p>
+                  <p className="truncate font-display text-sm font-bold">
+                    {bot.activeGame.name}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle ${bot.isPaused ? "bg-amber-300" : "bg-primary"}`} />
-                    {bot.isPaused ? "Paused" : "Playing"} · GAME BOT · {bot.activeGame.players} players
+                    {bot.isPaused ? "Paused" : "Playing"} ·{" "}
+                    {gameBot.isHost ? "your game" : `${bot.hostName ?? "someone"}'s game`} ·{" "}
+                    {bot.activeGame.players} players
                   </p>
                 </div>
-                {bot.isPaused ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    onClick={() => gameBot.resume()}
-                    aria-label="Resume game"
-                    className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
-                  >
-                    <Play className="h-5 w-5" />
-                  </Button>
+                {gameBot.isHost ? (
+                  bot.isPaused ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={() => gameBot.resume()}
+                      aria-label="Resume your game"
+                      className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
+                    >
+                      <Play className="h-5 w-5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={() => gameBot.pause()}
+                      aria-label="Pause your game"
+                      className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
+                    >
+                      <Pause className="h-5 w-5" />
+                    </Button>
+                  )
                 ) : (
-                  <Button
-                    type="button"
-                    size="icon"
-                    onClick={() => gameBot.pause()}
-                    aria-label="Pause game"
-                    className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground"
-                  >
-                    <Pause className="h-5 w-5" />
-                  </Button>
+                  <span className="shrink-0 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                    Joined
+                  </span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -195,15 +210,55 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
                   size="sm"
                   variant="outline"
                   onClick={() => {
+                    if (voice?.sharingScreen && voice.shareMode === "game") voice.toggleScreenShare();
                     gameBot.stop();
-                    toast.success("GAME BOT stopped");
+                    toast.success(gameBot.isHost ? "Your game stopped" : "Left that game");
                   }}
                   className="h-9 flex-1 gap-1.5 border-destructive/30 bg-destructive/10 text-xs text-destructive hover:bg-destructive/20"
                 >
-                  <X className="h-3.5 w-3.5" /> Stop
+                  <X className="h-3.5 w-3.5" /> {gameBot.isHost ? "Stop" : "Leave"}
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Games other people are running right now — one tap joins their session. */}
+        {gameBot.sessions.some((session) => session.hostId !== user?.id) && (
+          <div className="mb-4 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary/80">
+              Games in this call
+            </p>
+            {gameBot.sessions
+              .filter((session) => session.hostId !== user?.id)
+              .map((session) => (
+                <div
+                  key={session.sessionId}
+                  className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2"
+                >
+                  <Logo icon={session.game.icon} emoji={session.game.emoji} size="h-9 w-9" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-bold">{session.game.name}</span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {session.hostName}&apos;s game
+                      {session.roomCode ? ` · room ${session.roomCode}` : ""}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      gameBot.join(session.hostId);
+                      overlay.expand();
+                      onOpenChange(false);
+                      toast.success(`Joined ${session.hostName}'s ${session.game.name}`);
+                    }}
+                    className="h-9 shrink-0 gap-1 bg-primary px-3 text-xs font-bold text-primary-foreground"
+                  >
+                    <Play className="h-3.5 w-3.5" /> Join game
+                  </Button>
+                </div>
+              ))}
           </div>
         )}
 
@@ -240,7 +295,7 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
 
         {/* Grid */}
         <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-primary/80">
-          {filtered.length} games · tap to launch in GAME BOT
+          {filtered.length} games · tap to launch your own session
         </p>
         <div className="grid grid-cols-2 gap-3">
           {filtered.map((g) => {

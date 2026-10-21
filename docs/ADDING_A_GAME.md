@@ -119,7 +119,25 @@ game can scale its bots or hide its hints on a full screen.
 5. The starter (or the voice host) can **End game** for everyone; anyone can
    leave their own copy without ending it for the room.
 
-## 5. Verified defaults
+## 5. GAME BOT sessions (per user)
+
+The gamepad overlay is a second, independent path: `useGameBot`
+(`src/lib/game-bot.ts`) keeps a **session per host** on
+`vc-game-bot:<channelId>`, so two people can play two different games at once.
+
+- `src/lib/game-sessions.ts` holds the rules as pure functions
+  (`upsertSession`, `viewFor`, `stopIntent`, `setSessionRoomCode`,
+  `setSessionJoinUrl`). Keep new rules there and add a case to
+  `tests/game-sessions.test.mjs`.
+- Only your own launch opens the overlay automatically. Everyone else sees your
+  session as a card in the VC's **Games in call** strip (and in `/games`), with
+  **Join game** / **Leave**. Leaving never ends the host's session.
+- Hosts can publish a room/team code and an invite link. Joiners open the
+  host's link; the host keeps the base game URL.
+- Game-only streaming goes through `captureGameOnlyStream()`. Mark any new game
+  surface with `data-rizz-game-surface` so Region Capture can crop to it.
+
+## 6. Verified defaults
 
 The shipped web entries are real, working sites (Jackbox.TV hub, skribbl.io
 room-link, 2048 embed — HTTP 200, no framing headers). Point any entry at a

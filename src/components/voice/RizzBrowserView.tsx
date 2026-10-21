@@ -174,7 +174,10 @@ export function RizzBrowserView({
       </div>
 
       {/* Game area — a size container, so the rotated layer can swap cq units */}
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#0b0b0c] [container-type:size]">
+      <div
+        data-rizz-game-surface
+        className="relative min-h-0 flex-1 overflow-hidden bg-[#0b0b0c] [container-type:size]"
+      >
         <div
           className={
             rotated
