@@ -1,16 +1,17 @@
 import { cn } from "@/lib/utils";
+import { WaterDroplet } from "@/components/profile/WaterDroplet";
 
 /**
  * The five profile badges, drawn inline on one 32-unit hexagon chassis.
  *
  *   main-character  a lit stage: floor, spotlight beam, gold star, sparkles
  *   bounty-hunter   crosshair with a lock-on ring
- *   purify          a water droplet with a mist of smaller drops and a ripple
+ *   purify          a live water droplet of 58 beads on a canvas, over a ripple
  *   verified        filled red seal, cream check, shine sweep
  *   streamer        a microphone with live sound waves
  *
- * Sizes: 16px is static until hover, 24px+ idles, 64px adds an entrance.
- * Only transform/opacity/stroke-dashoffset animate; everything freezes under
+ * Sizes: vector marks are static at 16px until hover and idle at 24px+; the
+ * Purify canvas always runs its 60fps bead flow. Everything freezes under
  * `prefers-reduced-motion`. Artwork never paints outside the hexagon.
  */
 export type GlyphSlug = "main-character" | "bounty-hunter" | "purify" | "verified" | "streamer";
@@ -199,7 +200,8 @@ export function BadgeGlyph({
 
         {slug === "purify" && (
           <>
-            {/* Ripple leaves the base; the small drops form the splash. */}
+            {/* Only the base ripple stays vector: the body itself is 58 beads
+                of water, drawn live on the canvas below. */}
             <ellipse cx="16" cy="23.6" rx="8.6" ry="2.6" fill={meta.accent} opacity="0.1" />
             <circle
               className="bz-anim bz-ripple"
@@ -210,53 +212,6 @@ export function BadgeGlyph({
               stroke={meta.accent}
               strokeWidth="1"
             />
-            <path
-              d="M16 5.4 C16 5.4 9.6 13.2 9.6 18.1 a6.4 6.4 0 0 0 12.8 0 C22.4 13.2 16 5.4 16 5.4 Z"
-              fill={meta.accent}
-              fillOpacity="0.92"
-              stroke="#e6fdff"
-              strokeWidth="0.9"
-              strokeLinejoin="round"
-            />
-            {/* Glass: a lighter core, a dark refraction edge and a specular dot. */}
-            <path
-              d="M16 8.6 C16 8.6 11.3 15 11.3 18.6 a4.7 4.7 0 0 0 9.4 0 C20.7 15 16 8.6 16 8.6 Z"
-              fill="#b9f7ff"
-              opacity="0.38"
-            />
-            <circle cx="13.1" cy="13.6" r="0.85" fill="#ffffff" opacity="0.9" />
-            {/* Glass highlight + inner depth. */}
-            <path
-              d="M12.5 17.4a4.6 4.6 0 0 1 2.2-3.4"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              opacity="0.75"
-            />
-            <path
-              d="M19.6 20.4a4.2 4.2 0 0 1-4.2 3.1"
-              fill="none"
-              stroke="#0b2b33"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
-            {/* Droplet spray: tiny beads around the body. */}
-            <g fill={meta.accent}>
-              <circle className="bz-anim bz-mist" cx="7.6" cy="14.6" r="1.05" />
-              <circle className="bz-anim bz-mist" cx="24.6" cy="13.2" r="0.85" />
-              <circle className="bz-anim bz-mist" cx="6.4" cy="20.6" r="0.75" />
-              <circle className="bz-anim bz-mist" cx="25.4" cy="19.8" r="1" />
-              <circle className="bz-anim bz-mist" cx="11.2" cy="6.6" r="0.7" />
-            </g>
-            <g fill="#e6fdff" opacity="0.85">
-              <circle cx="24.2" cy="9.2" r="0.9" />
-              <path className="bz-sparkle" d="M21.6 5.6l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" />
-            </g>
-            {/* A bead lets go of the tip and drips away. */}
-            <circle className="bz-anim bz-fall" cx="16" cy="25.6" r="0.95" fill={meta.accent} />
-            <polygon className="bz-anim bz-shine" points="8.6,4.6 12,4.6 21.4,27.4 18,27.4" fill="#e6fdff" />
           </>
         )}
 
@@ -339,6 +294,7 @@ export function BadgeGlyph({
           </>
         )}
       </svg>
+      {slug === "purify" && <WaterDroplet accent={meta.accent} />}
     </span>
   );
 }
