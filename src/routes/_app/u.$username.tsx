@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, relativeTime } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
@@ -15,16 +15,16 @@ import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import type { Badge as BadgeType } from "@/lib/badges";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ChevronRight,
+  Award,
   Film,
-  Gamepad2,
   Hash,
   Heart,
   MessageCircle,
   MoreHorizontal,
   PawPrint,
   Share2,
-  Trophy,
+  Smile,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -44,9 +44,7 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { useEquipped } from "@/lib/useEquipped";
 import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
-import { TUTORIAL_INTERESTS, type CustomEmojiName } from "@/lib/emoji.js";
-import { BUILTIN_GAMES } from "@/lib/builtin-games";
-import { arcadeWinCount } from "@/lib/games/arcade-record";
+import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 import { cn } from "@/lib/utils";
 import { MarkdownText } from "@/components/MarkdownText";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -71,13 +69,6 @@ function ProfilePage() {
     badge: BadgeType;
     awardedAt?: string | null;
   } | null>(null);
-  // Device-local arcade record; there is no per-account games table, and the
-  // Games tab never pretends otherwise.
-  const [arcadeWins, setArcadeWins] = useState(0);
-
-  useEffect(() => {
-    setArcadeWins(typeof window === "undefined" ? 0 : arcadeWinCount());
-  }, []);
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -185,7 +176,7 @@ function ProfilePage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("realms")
-        .select("id,name,slug,topic,accent_color,member_count,icon_url")
+        .select("id,name,slug,topic,accent_color,member_count,icon_url,created_at")
         .eq("owner_id", profile!.id)
         .order("member_count", { ascending: false });
       return data ?? [];
@@ -196,18 +187,22 @@ function ProfilePage() {
   const groupsQ = useQuery({
     queryKey: ["user-groups", profile?.id],
     queryFn: async () => {
-      const { data: mem } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", profile!.id);
-      const ids = (mem ?? []).map((m) => m.group_id);
-      if (!ids.length) return [];
-      const { data } = await supabase
-        .from("groups")
-        .select("id,name,slug,topic,accent_color,member_count,icon_url")
-        .in("id", ids)
-        .order("member_count", { ascending: false });
-      return data ?? [];
+    const { data: mem } = await supabase
+      .from("group_members")
+      .select("group_id, joined_at")
+      .eq("user_id", profile!.id);
+    const ids = (mem ?? []).map((m) => m.group_id);
+    if (!ids.length) return [];
+    const joinedAt = new Map((mem ?? []).map((m) => [m.group_id, m.joined_at]));
+    const { data } = await supabase
+      .from("groups")
+      .select("id,name,slug,topic,accent_color,member_count,icon_url")
+      .in("id", ids)
+      .order("member_count", { ascending: false });
+    return (data ?? []).map((group) => ({
+      ...group,
+      joined_at: joinedAt.get(group.id) ?? null,
+    }));
     },
     enabled: !!profile,
   });
@@ -226,12 +221,69 @@ function ProfilePage() {
     enabled: !!profile && !!isMe,
   });
 
-  const games = useMemo(() => {
-    return [...BUILTIN_GAMES]
-      .map((game) => ({ game, wins: isMe ? arcadeWinCount(game.id) : 0 }))
-      .sort((a, b) => b.wins - a.wins)
-      .slice(0, 9);
-  }, [isMe]);
+  // Lifetime activity: the numbers the Activity tab shows. Likes, comments and
+  // reactions are the ones received on this member's posts, so they come
+  // straight off rows the profile already loads — no extra round trips.
+  const lifetime = useMemo(() => {
+    const list = posts.data ?? [];
+    const sum = (key: "like_count" | "comment_count" | "reaction_count") =>
+      list.reduce((total, post) => total + (Number(post[key]) || 0), 0);
+    return [
+      { id: "posts", label: "Posts", value: list.length, icon: Hash },
+      { id: "likes", label: "Likes", value: sum("like_count"), icon: Heart },
+      { id: "comments", label: "Comments", value: sum("comment_count"), icon: MessageCircle },
+      { id: "reactions", label: "Reactions", value: sum("reaction_count"), icon: Smile },
+      { id: "followers", label: "Followers", value: followerCount, icon: Users },
+      { id: "following", label: "Following", value: followingCount, icon: UserPlus },
+      { id: "badges", label: "Badges", value: badges.data?.length ?? 0, icon: Award },
+      { id: "paws", label: "Paws", value: Number(profile?.paw_balance ?? 0), icon: PawPrint },
+    ];
+  }, [posts.data, followerCount, followingCount, badges.data, profile?.paw_balance]);
+
+  // Recent activity: posts, reels, realms they made and communities they joined,
+  // newest first.
+  const recentActivity = useMemo(() => {
+    const items: {
+      id: string;
+      kind: "post" | "reel" | "realm" | "group";
+      title: string;
+      detail?: string;
+      at: string;
+    }[] = [];
+    for (const post of posts.data ?? []) {
+      const detail = post.caption?.replace(/\s+/g, " ").trim();
+      items.push({
+        id: `post-${post.id}`,
+        kind: post.media_type === "video" ? "reel" : "post",
+        title: post.media_type === "video" ? "Posted a reel" : "Shared a post",
+        detail: detail ? (detail.length > 72 ? `${detail.slice(0, 71)}…` : detail) : undefined,
+        at: post.created_at,
+      });
+    }
+    for (const realm of realmsQ.data ?? []) {
+      items.push({
+        id: `realm-${realm.id}`,
+        kind: "realm",
+        title: "Created a realm",
+        detail: realm.name,
+        at: realm.created_at,
+      });
+    }
+    for (const group of groupsQ.data ?? []) {
+      if (!group.joined_at) continue;
+      items.push({
+        id: `group-${group.id}`,
+        kind: "group",
+        title: "Joined a community",
+        detail: group.name,
+        at: group.joined_at,
+      });
+    }
+    return items
+      .filter((item) => !Number.isNaN(new Date(item.at).getTime()))
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 8);
+  }, [posts.data, realmsQ.data, groupsQ.data]);
 
   const shareProfile = async () => {
     const profileUsername = profile!.username ?? username;
@@ -659,7 +711,7 @@ function ProfilePage() {
           <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/[0.07] bg-transparent p-0">
             {[
               { value: "main", label: "Main" },
-              { value: "games", label: "Games" },
+              { value: "activity", label: "Activity" },
               { value: "paws", label: "Paws" },
             ].map((tab) => (
               <TabsTrigger
@@ -876,80 +928,93 @@ function ProfilePage() {
             </AnimatePresence>
           </TabsContent>
 
-          <TabsContent value="games" className="mt-4">
-            <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[linear-gradient(140deg,rgba(200,255,61,0.1),rgba(19,19,21,0.72)_46%,rgba(17,17,18,0.72))] backdrop-blur-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary/80">
-                    RIZZ arcade
-                  </p>
-                  <h2 className="mt-0.5 font-display text-lg font-bold tracking-tight">
-                    {isMe ? "Your games" : "RIZZ arcade"}
-                  </h2>
-                  <p className="mt-0.5 text-[12px] text-muted-foreground">
-                    {isMe
-                      ? "15 first-party games, no install. Your win record lives on this device."
-                      : `Games ${profile.display_name || profileUsername} can play with you inside a voice call — no install, no lobby.`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-1.5 text-center">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                      Wins
+          <TabsContent value="activity" className="mt-4">
+            <section
+              aria-label="Lifetime activity"
+              className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Lifetime activity
+                </h2>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                  All time
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {lifetime.map(({ id, label, value, icon: Icon }) => (
+                  <div
+                    key={id}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"
+                  >
+                    <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-muted-foreground">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <p className="mt-2 font-display text-lg font-bold leading-none tabular-nums text-foreground">
+                      {formatNumber(value)}
                     </p>
-                    <p className="flex items-center justify-center gap-1 text-sm font-bold tabular-nums text-foreground">
-                      <Trophy className="h-3 w-3 text-primary" /> {isMe ? arcadeWins : "—"}
+                    <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {label}
                     </p>
                   </div>
-                  <Link
-                    to="/games"
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-[12px] font-bold text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <Gamepad2 className="h-4 w-4" /> Open arcade
-                  </Link>
-                </div>
-              </div>
-
-              <div className="grid gap-2 px-4 pb-4 sm:grid-cols-2">
-                {games.map(({ game, wins }) => (
-                  <Link
-                    key={game.id}
-                    to="/games"
-                    className="group flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 transition-colors hover:border-white/20 hover:bg-white/[0.05]"
-                  >
-                    <span
-                      className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border text-lg"
-                      style={{ borderColor: `${game.accent}40`, background: `${game.accent}16` }}
-                    >
-                      {game.icon.startsWith(":") ? (
-                        <CustomEmoji
-                          name={game.icon.replace(/^:|:$/g, "") as CustomEmojiName}
-                          className="h-5 w-5"
-                        />
-                      ) : (
-                        <span>{game.icon}</span>
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-bold text-foreground">
-                          {game.name}
-                        </span>
-                        {wins > 0 && (
-                          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
-                            <Trophy className="h-2.5 w-2.5" /> {wins}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                        {game.hook}
-                      </span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
-                  </Link>
                 ))}
               </div>
-            </div>
+            </section>
+
+            <section
+              aria-label="Recent activity"
+              className="mt-3 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Recent activity
+                </h2>
+                {recentActivity.length > 0 && (
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                    Latest {relativeTime(recentActivity[0].at).text}
+                  </span>
+                )}
+              </div>
+              {recentActivity.length === 0 ? (
+                <p className="px-4 py-4 text-[13px] text-muted-foreground">
+                  {isMe
+                    ? "Nothing yet — your first post starts the trail."
+                    : "No public activity yet."}
+                </p>
+              ) : (
+                <ul className="mt-1 divide-y divide-white/[0.05]">
+                  {recentActivity.map((item) => {
+                    const Icon =
+                      item.kind === "reel" ? Film : item.kind === "group" ? Users : Hash;
+                    const when = relativeTime(item.at);
+                    return (
+                      <li key={item.id} className="flex items-center gap-3 px-4 py-3">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground">
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium text-foreground">
+                            {item.title}
+                          </span>
+                          {item.detail && (
+                            <span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground">
+                              {item.detail}
+                            </span>
+                          )}
+                        </span>
+                        <time
+                          dateTime={item.at}
+                          title={when.fullDate}
+                          className="shrink-0 text-[11px] tabular-nums text-muted-foreground"
+                        >
+                          {when.text}
+                        </time>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           </TabsContent>
 
           <TabsContent value="paws" className="mt-4">

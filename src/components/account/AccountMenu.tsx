@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bookmark, Check, ChevronDown, ChevronRight, HelpCircle, Link2, LogOut, Medal,
-  Pencil, Settings, Smile, Sparkles, Trophy, User as UserIcon, UserPlus, X,
+  Pencil, Settings, Smile, Trophy, User as UserIcon, UserPlus, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -31,7 +31,6 @@ import { useEquipped } from "@/lib/useEquipped";
 import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
 import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
-import { startWelcomeTour } from "@/lib/onboarding";
 
 type ShellProfile = {
   username: string | null;
@@ -346,13 +345,6 @@ export function AccountMenu({
   // device there; the columns get headings and a hairline divider instead.
   const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-[#2a2a2e]" /> : null;
 
-  const startTour = () => {
-    setOpen(false);
-    resetSub();
-    nav({ to: "/feed" });
-    window.setTimeout(startWelcomeTour, 80);
-  };
-
   const sectionLabel = (label: string) => (
     <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
       {label}
@@ -621,7 +613,6 @@ export function AccountMenu({
         {!isMobile && <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />}
         {destRow("/settings", undefined, Settings, "Settings")}
         {actionRow("help", HelpCircle, "Help & feedback", () => closeThen(() => setHelpOpen(true)))}
-        {actionRow("replay-tour", Sparkles, "Welcome tour", startTour)}
       </div>
 
       {/* Group 4: sign out, pinned to the bottom of the panel */}
@@ -798,19 +789,6 @@ export function AccountMenu({
               </span>
               Bots & developer tools
             </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setHelpOpen(false);
-                startTour();
-              }}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
-            >
-              <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </span>
-              Replay the welcome tour
-            </button>
             <Link
               to="/settings/account"
               onClick={() => setHelpOpen(false)}

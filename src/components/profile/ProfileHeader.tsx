@@ -59,6 +59,11 @@ export type ProfileHeaderProps = {
   /** Accent ring for an avatar with no decoration; false hides it. */
   avatarRing?: string | false | null;
   /**
+   * Soft accent halo for an avatar with no decoration — a glow rather than a
+   * hard ring. Kept quiet enough to sit over a banner photo.
+   */
+  avatarGlow?: string | false | null;
+  /**
    * Background behind the name row; also the status-dot cutout. Defaults to
    * the dark tone derived from the profile gradient, so every surface agrees.
    */
@@ -89,6 +94,7 @@ export function ProfileHeader({
   onBannerPointerDown,
   featuredBadge,
   avatarRing,
+  avatarGlow,
   surface,
   gutter,
   className,
@@ -184,9 +190,20 @@ export function ProfileHeader({
             style={{
               width: "var(--avatar-size)",
               height: "var(--avatar-size)",
-              marginLeft: "calc(var(--avatar-size) * 0.1 + 8px)",
+              // Flush left with the name row and the cards below; the small
+              // offset only keeps a decoration's overhang on screen.
+              marginLeft: "calc(var(--avatar-size) * 0.08)",
             }}
           >
+            {avatarGlow && !avatarDecoration?.slug && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-0 rounded-full"
+                style={{
+                  boxShadow: `0 0 22px 2px color-mix(in srgb, ${avatarGlow} 45%, transparent), 0 0 64px 12px color-mix(in srgb, ${avatarGlow} 18%, transparent)`,
+                }}
+              />
+            )}
             <AvatarDecoration
               src={avatarSrc}
               fallback={initial}

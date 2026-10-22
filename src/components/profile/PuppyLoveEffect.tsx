@@ -56,9 +56,12 @@ const HEARTS = [
  * avatar and status dot.
  */
 type Composition = "wide" | "card" | "compact";
-const DOG_TALL = "translate(720 0) scale(0.82) translate(-720 0) translate(-80 0)";
+// Anchoring the card crop to the banner's bottom edge plants Biscuit's paws on
+// the frame instead of leaving him floating mid-banner on the short preview
+// card. Wide desktop banners keep the top-anchored bust.
+const DOG_TALL = "translate(720 360) scale(0.82) translate(-720 -360) translate(-80 0)";
 const DOG_WIDE = "translate(720 0) scale(0.68) translate(-720 0) translate(-40 0)";
-const DOG_COMPACT = "translate(720 0) scale(0.7) translate(-720 0) translate(-70 0)";
+const DOG_COMPACT = "translate(720 360) scale(0.7) translate(-720 -360) translate(-70 0)";
 const DOG_BY_COMPOSITION: Record<Composition, string> = {
   wide: DOG_WIDE,
   card: DOG_TALL,

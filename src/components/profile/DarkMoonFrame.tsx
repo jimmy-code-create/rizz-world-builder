@@ -100,7 +100,10 @@ export function DarkMoonFrame({
           ))}
         </g>
 
-        {/* Moon, low and half-hidden by the branch. */}
+        {/* Moon: nudged down so the disc sits fully inside the banner even on
+            the short preview card, where the top couple of pixels used to be
+            sliced off. */}
+        <g transform="translate(0 20)">
         <circle cx="148" cy="86" r="172" fill={`url(#${uid}-moonhaze)`} />
         <circle cx="148" cy="86" r="104" fill={`url(#${uid}-moon)`} opacity="0.94" />
         <circle cx="148" cy="86" r="104" fill={`url(#${uid}-moon-shade)`} />
@@ -129,6 +132,7 @@ export function DarkMoonFrame({
           opacity="0.16"
           filter={`url(#${uid}-blur)`}
         />
+        </g>
 
         {/* Falling light. */}
         <g className="dmf-rays" fill={`url(#${uid}-ray)`}>

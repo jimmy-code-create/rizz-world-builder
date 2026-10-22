@@ -199,6 +199,13 @@ function ProfileSettingsPage() {
     reducedMotion: Boolean(profile.reduced_motion),
   };
   const previewBanner = getBanner(previewUser);
+  // Same line the full profile carries beside the handle, so the preview never
+  // hides the joined month the member is checking.
+  const joinedDate = profile.created_at ? new Date(profile.created_at) : null;
+  const joined =
+    joinedDate && !Number.isNaN(joinedDate.getTime())
+      ? joinedDate.toLocaleDateString(undefined, { month: "short", year: "numeric" })
+      : null;
 
   return (
     <SettingsSubPage
@@ -223,6 +230,19 @@ function ProfileSettingsPage() {
               status="offline"
               surface={previewBanner.surface}
               gutter="16px"
+              handleExtra={
+                joined ? (
+                  <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                    <img
+                      src="/brand/rizz-cat-logo.svg"
+                      alt=""
+                      aria-hidden
+                      className="h-3.5 w-3.5 shrink-0"
+                    />
+                    Joined {joined}
+                  </span>
+                ) : undefined
+              }
             />
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">

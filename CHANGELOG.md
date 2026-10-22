@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-10-22 — Profile Activity tab and effects that fit the card
+
+### Activity replaces the games rail
+- The profile's middle tab is now **Activity**. It keeps the lifetime counters
+  (Posts, Likes, Comments, Reactions, Followers, Following, Badges, Paws) — all
+  read from rows the page already loads, so no extra round trips — and lists
+  the newest posts, reels, realms and communities with relative timestamps.
+- The first-party arcade shelf is gone from the profile; `/games` still hosts
+  the whole arcade, and the in-call game strip is untouched.
+
+### Settings: back, joined date, no tour row
+- The Settings hub has a back control in its header (history back, falling
+  back to the feed), matching the chevron every sub-page already had.
+- The live profile preview now carries `Joined Oct 2026` beside `@handle`,
+  with the Rizz mark, exactly like the full profile. `profiles.created_at` is
+  now part of the auth profile type so any surface can read it.
+- The welcome tour is first-run only. The replay event, `startWelcomeTour`,
+  the Settings row and both account-menu entries are gone; the host starts the
+  coach marks only while `tutorial_seen` is false and never reopens them after
+  the single completion write.
+
+### Preview card: a glow, not a ring
+- The preview avatar no longer draws a hard accent ring. `ProfileHeader` takes
+  an `avatarGlow` colour and paints a two-stop accent halo (22px at 45%, 64px
+  at 18%) behind the photo — quiet enough for a banner photo, still readable.
+  The full profile keeps no halo; an equipped avatar decoration replaces it.
+- The avatar is aligned to the left edge of the header gutter (only an 8%
+  overhang allowance remains) on every profile surface, instead of being
+  pushed right by a `10% + 8px` inset.
+
+### Effects that fit the preview card
+- Every surface (preview sheet, hover card, settings preview, full profile)
+  renders the same `ProfileHeader`, so an equipped Puppy Love, Bloodweb or
+  Dark Moon shows on all of them — `tests/profile-effects.render.test.tsx`
+  now renders all three slots together and locks that wiring.
+- Dark Moon's moon sits fully inside the banner now (it used to lose its top
+  edge on the short card) and Puppy Love's card crop is anchored to the banner
+  floor, so Biscuit stands on the frame instead of floating mid-banner.
+- No profile card is downloadable: the download action and renderer are gone.
+
 ## 2026-10-21 — Profile pass: one gradient everywhere, Main/Games tabs, tappable badges
 
 ### One gradient, painted across the whole profile

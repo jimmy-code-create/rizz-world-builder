@@ -13,7 +13,7 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding, settings, accountMenu, feed, postCard] =
+const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding, settings, accountMenu, feed, postCard, settingsProfile] =
   await Promise.all([
     read("src/routes/login.tsx"),
     read("src/routes/signup.tsx"),
@@ -28,6 +28,7 @@ const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding,
     read("src/components/account/AccountMenu.tsx"),
     read("src/routes/_app/feed.tsx"),
     read("src/components/PostCard.tsx"),
+    read("src/routes/_app/settings/profile.tsx"),
   ]);
 
 let passed = 0;
@@ -136,16 +137,23 @@ await check("welcome is still a personal greeting", async () => {
   assert.match(overlay, /`Hi \$\{firstName\} — I'm Rizzy\.`/);
 });
 
-await check("replay starts over the feed from Settings and the account menu", async () => {
-  assert.match(onboarding, /export const WELCOME_TOUR_EVENT = "rizz:welcome-tour"/);
-  assert.match(onboarding, /export function startWelcomeTour\(\)/);
-  assert.match(host, /window\.addEventListener\(WELCOME_TOUR_EVENT, onReplay\)/);
-  assert.match(settings, /startWelcomeTour/);
-  assert.match(accountMenu, /startWelcomeTour/);
-  assert.match(accountMenu, /nav\(\{ to: "\/feed" \}\)/);
-  for (const source of [settings, accountMenu]) {
-    assert.ok(!source.includes("search={{ replay: true }}"), "a link still opens the retired tour route");
-  }
+await check("the tour is first-run only — no manual replay survives", async () => {
+  assert.ok(!onboarding.includes("WELCOME_TOUR_EVENT"), "the replay event must be gone");
+  assert.ok(!onboarding.includes("startWelcomeTour"), "the replay entry point must be gone");
+  assert.ok(!host.includes("WELCOME_TOUR_EVENT"), "the host must not listen for a replay");
+  assert.ok(!host.includes("addEventListener"), "nothing can re-open the tour by hand");
+  assert.ok(!settings.includes("Welcome tour"), "Settings must not offer the tour");
+  assert.ok(!accountMenu.includes("Welcome tour"), "the account menu must not offer the tour");
+  assert.ok(!accountMenu.includes("Replay the welcome tour"));
+  assert.match(host, /if \(profile\.tutorial_seen\) return;/, "only new members start it");
+  assert.match(host, /path !== "\/feed"/, "it still opens over the real feed");
+});
+
+await check("Settings has a way back and previews the joined date", async () => {
+  assert.match(settings, /aria-label="Back"/, "the settings hub needs a back control");
+  assert.match(settingsProfile, /handleExtra=/, "the live preview prints the handle row detail");
+  assert.match(settingsProfile, /Joined \{joined\}/, "the joined month sits beside the handle");
+  assert.ok(settingsProfile.includes("/brand/rizz-cat-logo.svg"), "the joined date carries the mark");
 });
 
 console.log(`\n${passed} checks passed.`);

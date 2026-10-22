@@ -2,11 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   Bell,
+  ChevronLeft,
   ChevronRight,
   Palette,
   Shield,
   Sliders,
-  Sparkles,
   UserCog,
   UserRound,
   Volume2,
@@ -20,7 +20,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { statusLabel, useSelfPresence } from "@/lib/presence";
-import { startWelcomeTour } from "@/lib/onboarding";
 
 export const Route = createFileRoute("/_app/settings/")({
   head: () => ({ meta: [{ title: "Settings · RIZZ" }] }),
@@ -71,7 +70,20 @@ function SettingsHubPage() {
 
   return (
     <div className="max-w-xl space-y-4">
-      <h1 className="font-display text-xl sm:text-2xl font-bold">{t("settings")}</h1>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
+            else nav({ to: "/feed" });
+          }}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <h1 className="font-display text-xl sm:text-2xl font-bold">{t("settings")}</h1>
+      </div>
 
       <Link
         to="/settings/profile"
@@ -136,26 +148,6 @@ function SettingsHubPage() {
           </Link>
         ))}
       </nav>
-
-      <button
-        type="button"
-        onClick={() => {
-          nav({ to: "/feed" });
-          window.setTimeout(startWelcomeTour, 80);
-        }}
-        className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-2.5 text-left transition-colors hover:bg-primary/[0.08]"
-      >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <Sparkles className="h-4.5 w-4.5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold leading-tight">Welcome tour</span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            Rizzy points out the real controls on your feed
-          </span>
-        </span>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </button>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
     </div>

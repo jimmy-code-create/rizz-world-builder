@@ -120,7 +120,7 @@ export function WelcomeTourOverlay({
       {
         id: "done",
         title: "That's the tour.",
-        body: "You're set. Go post something, find your people, and make this place yours. Replay these coach marks any time from Settings → Welcome tour.",
+        body: "You're set. Go post something, find your people, and make this place yours.",
         pose: "celebrate",
       },
     ],

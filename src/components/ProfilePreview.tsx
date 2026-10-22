@@ -432,7 +432,7 @@ export function ProfilePreviewDialog({
                 </button>
               </>
             }
-            avatarRing={p.accent_color}
+            avatarGlow={p.accent_color}
             surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
             gutter="16px"
             onBannerPointerDown={beginSheetDrag}

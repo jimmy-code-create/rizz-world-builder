@@ -12,7 +12,8 @@ export function getPostAuthPath(profile: OnboardingProfile): "/claim" | "/tutori
 /**
  * A pending welcome tour. The flag lives in sessionStorage so a refresh in the
  * middle of onboarding brings the overlay back, while a finished tour never
- * flashes for an existing member.
+ * flashes for an existing member. The tour is first-run only — there is no
+ * manual replay entry.
  */
 const TOUR_PENDING_PREFIX = "rizz:tour-pending:";
 
@@ -31,17 +32,6 @@ export function hasTourPending(userId: string): boolean {
   } catch {
     return false;
   }
-}
-
-/**
- * The tour lives over the real feed, not on its own page. Any surface can ask
- * the shell to start it: replay from Settings or the account menu, or the
- * first-run handoff after the profile steps.
- */
-export const WELCOME_TOUR_EVENT = "rizz:welcome-tour";
-
-export function startWelcomeTour() {
-  window.dispatchEvent(new Event(WELCOME_TOUR_EVENT));
 }
 
 /** The one place these keys are spelled out: login, signup and the join pages

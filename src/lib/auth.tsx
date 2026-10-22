@@ -11,6 +11,8 @@ type Profile = {
   banner_mode: string | null;
   banner_gradient: unknown;
   updated_at?: string | null;
+  /** profiles.created_at — the joined date every profile surface prints. */
+  created_at?: string | null;
   bio: string | null;
   rizz_score: number;
   paw_balance: number;
