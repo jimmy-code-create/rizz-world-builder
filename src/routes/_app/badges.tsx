@@ -3,7 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
+import {
+  PROFILE_BADGE_LINEUP,
+  fetchAllBadges,
+  fetchUserBadgesWithDates,
+  type Badge,
+} from "@/lib/badges";
 import { PURIFY_BADGE, usePurify } from "@/lib/purify";
 import { fetchBadgeProgress } from "@/lib/badge-progress";
 import { awardRizz, RIZZ_RULES } from "@/lib/rizz";
@@ -26,7 +31,15 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/badges")({
-  head: () => ({ meta: [{ title: "Badges · RIZZ" }] }),
+  head: () => ({
+    meta: [{ title: "Badge Showcase · RIZZ" }],
+    links: [
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap",
+      },
+    ],
+  }),
   component: BadgesPage,
 });
 
@@ -117,7 +130,8 @@ export function BadgesPage() {
   // real user_badges rows; a catalog entry is never treated as an earned award.
   const purify = usePurify();
   const catalog = useMemo<Badge[]>(() => {
-    const marks = BADGE_SET.map((entry) => {
+    // The shelf is the five profile marks — no thirteen-card wall.
+    const marks = BADGE_SET.filter((entry) => PROFILE_BADGE_LINEUP.includes(entry.slug)).map((entry) => {
       const stored = (all.data ?? []).find((row) => row.slug === entry.slug);
       return {
         id: stored?.id ?? `catalog:${entry.slug}`,
@@ -157,9 +171,9 @@ export function BadgesPage() {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
 
-  const totalCount = BADGE_SET.length;
+  const totalCount = catalog.length;
   const ownedCount = catalog.filter((badge) => owned.has(badge.slug)).length;
-  const progressPct = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
+  const progressPct = totalCount > 0 ? Math.min(100, Math.round((ownedCount / totalCount) * 100)) : 0;
 
   // Rarity breakdown for the header strip: how many of each tier you hold.
   const rarityRows = useMemo(() => {
@@ -252,7 +266,7 @@ export function BadgesPage() {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="badges-page w-full space-y-6">
       {/* Header: collection metrics, progress and a rarity strip, so the page
           reads like a collector's shelf instead of a plain grid. */}
       <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-white/10 p-6">
@@ -384,7 +398,7 @@ export function BadgesPage() {
           {/* Badges Grid. Each card is a small display case: the tier colour
               washes the top edge, the emblem sits on a tinted pedestal, and the
               state (worn / locked / progress) never hides the artwork. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="bz-grid grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {filteredBadges.map((b) => {
               const hasIt = owned.has(b.slug);
               const isSelected = active?.slug === b.slug;
@@ -473,16 +487,18 @@ export function BadgesPage() {
                       <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
                         <div
                           className="h-full rounded-full transition-[width] duration-500"
-                          style={{ width: `${progress.pct}%`, backgroundColor: b.color }}
+                          style={{ width: `${Math.min(100, progress.pct)}%`, backgroundColor: b.color }}
                         />
                       </div>
                       <p className="mt-1 flex items-baseline justify-between text-[9.5px] font-semibold">
                         <span style={{ color: b.color }}>
-                          {progress.current}
+                          {Math.min(progress.current, progress.target)}
                           <span className="text-muted-foreground"> / {progress.target}</span>
                         </span>
                         <span className="font-normal text-muted-foreground">
-                          {progress.target - progress.current} to go
+                          {progress.current >= progress.target
+                            ? "Completed"
+                            : `${progress.target - progress.current} to go`}
                         </span>
                       </p>
                     </div>
@@ -587,18 +603,19 @@ export function BadgesPage() {
                   <div className="pt-0.5">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-semibold text-primary">
-                        {activeProgress.current} / {activeProgress.target}
+                        {Math.min(activeProgress.current, activeProgress.target)} /{" "}
+                        {activeProgress.target}
                       </span>
-                      {activeProgress.current < activeProgress.target && (
-                        <span className="text-muted-foreground">
-                          {activeProgress.target - activeProgress.current} to go
-                        </span>
-                      )}
+                      <span className="text-muted-foreground">
+                        {activeProgress.current >= activeProgress.target
+                          ? "Completed"
+                          : `${activeProgress.target - activeProgress.current} to go`}
+                      </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${activeProgress.pct}%` }}
+                        style={{ width: `${Math.min(100, activeProgress.pct)}%` }}
                       />
                     </div>
                   </div>
@@ -803,9 +820,9 @@ export function BadgesPage() {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setGrantSlug(dbBadge.slug)}
-                  className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+                  className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f] ${
                     selected
-                      ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
+                      ? "border-[#ff2d3f] bg-[#ff2d3f]/15 text-[#ff2d3f]"
                       : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -833,7 +850,7 @@ export function BadgesPage() {
               type="button"
               disabled={granting || !grantUser.trim()}
               onClick={() => void awardBadge()}
-              className="h-11 rounded-full bg-[#c8ff3d] px-5 text-sm font-bold text-[#0b0b0c] hover:bg-[#c8ff3d]/90 disabled:opacity-50"
+              className="h-11 rounded-full bg-[#ff2d3f] px-5 text-sm font-bold text-white hover:bg-[#ff2d3f]/90 disabled:opacity-50"
             >
               {granting ? "Awarding…" : "Award"}
             </Button>

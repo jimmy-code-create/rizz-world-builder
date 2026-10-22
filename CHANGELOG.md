@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-22 — Inline badge glyphs and a five-mark showcase
+
+### One SVG per badge
+- `BadgeGlyph` draws Main Character, Bounty, Purify, Verified and Streamer as
+  inline 32×32 hexagons with their own accent and loop. `Badge` routes those
+  five slugs to it; legacy slugs keep the sprite. 16px is static until hover,
+  24px+ idle, 64px adds a one-time entrance; all motion is transform/opacity/
+  dashoffset and freezes under `prefers-reduced-motion`.
+
+### Showcase page
+- The shelf is the five profile marks, not thirteen; counts and the progress
+  bar measure that list. Progress is clamped (`Math.min(current, target)`,
+  width capped at 100) and reads **Completed** instead of a negative number.
+- The page is wrapped in `.badges-page`: warm ink surfaces, cream type,
+  Bricolage/DM Sans, a red accent, and scoped rules that replace the lime chips,
+  borders and Award button. Cards fade up in a 40ms stagger.
+
 ## 2026-10-22 — Five marks, live counters, Rizzy sells Purify
 
 ### The profile badge lineup is fixed

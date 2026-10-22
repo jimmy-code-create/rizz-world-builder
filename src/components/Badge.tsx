@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { canonicalFor } from "@/lib/badge-set";
+import { BadgeGlyph, isBadgeGlyph } from "@/components/profile/BadgeGlyph";
 
 /**
  * Vector badge system.
@@ -90,6 +91,11 @@ export function Badge({ slug, size = 20, locked = false, title, className, style
   const spriteReady = useBadgeSpriteReady();
   const symbol = canonicalFor(slug)?.symbol ?? slug;
   const px = Math.max(12, Math.round(size));
+  // The five profile marks are inline SVG with their own loops; every legacy
+  // slug keeps using the shared sprite.
+  if (isBadgeGlyph(slug)) {
+    return <BadgeGlyph slug={slug} size={px} locked={locked} title={title} className={className} />;
+  }
   return (
     <span
       className={cn("badge", locked && "badge--locked", className)}

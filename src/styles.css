@@ -704,6 +704,186 @@
   padding: 0;
   min-width: 0;
 }
+/* ── Badge Showcase page ─────────────────────────────────────────────────────
+   Scoped to .badges-page so nothing leaks into the rest of the app. Warm ink,
+   cream type, vivid red accent — no lime on this page. */
+.badges-page {
+  --bz-bg: #0b0b0c;
+  --bz-surface: #141415;
+  --bz-surface-2: #1b1b1d;
+  --bz-border: rgba(255, 255, 255, 0.08);
+  --bz-text: #f4ecdd;
+  --bz-muted: #9b948a;
+  --bz-accent: #ff2d3f;
+  color: var(--bz-text);
+  font-family: "DM Sans", var(--font-sans, system-ui), sans-serif;
+}
+.badges-page h1,
+.badges-page h2,
+.badges-page h3,
+.badges-page .font-display {
+  font-family: "Bricolage Grotesque", var(--font-display, system-ui), sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+.badges-page .glass {
+  background: var(--bz-surface);
+  border-color: var(--bz-border);
+}
+.badges-page .text-primary { color: var(--bz-accent); }
+.badges-page .bg-primary { background: var(--bz-accent); color: #fff; }
+.badges-page .bg-primary\/10,
+.badges-page .bg-primary\/15 { background: color-mix(in srgb, var(--bz-accent) 12%, transparent); }
+.badges-page .border-primary\/25,
+.badges-page .border-primary\/30,
+.badges-page .border-primary\/50 { border-color: color-mix(in srgb, var(--bz-accent) 32%, transparent); }
+.badges-page .ring-primary,
+.badges-page .focus-visible\:ring-primary:focus-visible {
+  --tw-ring-color: color-mix(in srgb, var(--bz-accent) 60%, transparent);
+}
+.badges-page ::selection { background: var(--bz-accent); color: #fff; }
+
+/* Cards fade up in reading order; only transform/opacity, eight at a time. */
+.badges-page .bz-grid > * { animation: bz-card-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.badges-page .bz-grid > *:nth-child(1) { animation-delay: 0ms; }
+.badges-page .bz-grid > *:nth-child(2) { animation-delay: 40ms; }
+.badges-page .bz-grid > *:nth-child(3) { animation-delay: 80ms; }
+.badges-page .bz-grid > *:nth-child(4) { animation-delay: 120ms; }
+.badges-page .bz-grid > *:nth-child(5) { animation-delay: 160ms; }
+.badges-page .bz-grid > *:nth-child(6) { animation-delay: 200ms; }
+.badges-page .bz-grid > *:nth-child(7) { animation-delay: 240ms; }
+.badges-page .bz-grid > *:nth-child(8) { animation-delay: 280ms; }
+.badges-page .bz-grid > *:nth-child(n + 9) { animation-delay: 0ms; }
+@keyframes bz-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badges-page .bz-grid > * { animation: none; }
+}
+
+/* ── Badge glyphs ────────────────────────────────────────────────────────────
+   Five inline marks (Main Character, Bounty, Purify, Verified, Streamer).
+   Every animated node pivots around itself; only transform, opacity and
+   stroke-dashoffset move, and 16px renders stay still until hover. */
+.bz-glyph {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+.bz-glyph svg { display: block; overflow: visible; }
+.bz-glyph--locked svg { opacity: 0.4; filter: grayscale(1); }
+.bz-glyph .bz-anim,
+.bz-glyph .bz-star,
+.bz-glyph .bz-rotor,
+.bz-glyph .bz-dot,
+.bz-glyph .bz-drops {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.bz-glyph .bz-anim {
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-iteration-count: infinite;
+  animation-duration: var(--bz-dur, 3s);
+}
+.bz-glyph[data-size="sm"] .bz-anim { animation: none; }
+.bz-glyph[data-size="xl"] { animation: bz-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Main Character */
+.bz-glyph .bz-cone { animation-name: bz-cone; animation-duration: 4s; }
+.bz-glyph .bz-shine { animation-name: bz-sweep; animation-duration: var(--bz-dur, 4s); opacity: 0; }
+/* Bounty */
+.bz-glyph .bz-lock { animation-name: bz-lock; animation-duration: 3s; }
+.bz-glyph .bz-rotor { transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+/* Purify */
+.bz-glyph .bz-ripple { animation-name: bz-ripple; animation-duration: 3.5s; }
+.bz-glyph .bz-sparkle { animation-name: bz-twinkle; animation-duration: 3.5s; }
+.bz-glyph .bz-drops { opacity: 0; }
+/* Verified */
+.bz-glyph .bz-check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: bz-draw;
+  animation-duration: 5s;
+}
+/* Streamer */
+.bz-glyph .bz-pulse { animation-name: bz-pulse; animation-duration: 2s; }
+.bz-glyph .bz-arc { animation-name: bz-arc-in; animation-duration: 2s; opacity: 0.25; }
+.bz-glyph .bz-arc-1 { animation-delay: 0s; }
+.bz-glyph .bz-arc-2 { animation-delay: 0s; }
+.bz-glyph .bz-arc-3 { animation-delay: 0.18s; }
+.bz-glyph .bz-arc-4 { animation-delay: 0.18s; }
+
+@keyframes bz-cone {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+@keyframes bz-sweep {
+  0% { transform: translateX(-14px) rotate(18deg); opacity: 0; }
+  8% { opacity: 0.55; }
+  24% { transform: translateX(16px) rotate(18deg); opacity: 0; }
+  100% { transform: translateX(16px) rotate(18deg); opacity: 0; }
+}
+@keyframes bz-lock {
+  0%, 12% { transform: scale(1.6); opacity: 0; }
+  18% { transform: scale(1.08); opacity: 0.9; }
+  22% { transform: scale(1); opacity: 1; }
+  30% { opacity: 0.5; }
+  36%, 100% { transform: scale(1); opacity: 0; }
+}
+@keyframes bz-ripple {
+  0% { transform: scale(0.4); opacity: 0.5; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes bz-twinkle {
+  0%, 100% { transform: scale(0.6); opacity: 0.4; }
+  50% { transform: scale(1); opacity: 1; }
+}
+@keyframes bz-draw {
+  0% { stroke-dashoffset: 1; }
+  10% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes bz-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+@keyframes bz-arc-in {
+  0%, 10% { opacity: 0.2; }
+  45%, 100% { opacity: 1; }
+}
+@keyframes bz-enter {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Hover: one small, deliberate reaction per mark. */
+@media (hover: hover) {
+  .bz-glyph:hover .bz-star {
+    transform: scale(1.18) rotate(6deg);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bz-glyph:hover .bz-rotor { transform: rotate(90deg); }
+  .bz-glyph:hover .bz-dot { animation: bz-pulse 900ms ease-in-out infinite; }
+  .bz-glyph:hover .bz-check { animation: bz-draw 500ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .bz-glyph:hover .bz-arc { animation-duration: 1s; }
+  .bz-glyph:hover .bz-drops { opacity: 1; transition: opacity 180ms ease-out; }
+  .bz-glyph:hover .bz-ripple { animation-duration: 1.6s; }
+  .bz-glyph:hover .bz-cone { animation-duration: 2s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bz-glyph,
+  .bz-glyph * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* Animated badges (Purify + worn marks). One aura and seven motes per badge,
    all transform/opacity only — a name row never repaints while they drift. */
 .badge-aura {
