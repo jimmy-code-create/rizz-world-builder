@@ -159,7 +159,23 @@ export function BadgeGlyph({
               stroke={meta.accent}
               strokeWidth="1.2"
             />
+            <circle cx="16" cy="16" r="9.4" fill={meta.accent} fillOpacity="0.09" stroke={meta.accent} strokeOpacity="0.4" strokeWidth="0.8" />
             <circle cx="16" cy="16" r="7.4" fill="none" stroke={meta.accent} strokeWidth="1.6" />
+            <circle cx="16" cy="16" r="5.6" fill="none" stroke={meta.accent} strokeWidth="0.6" opacity="0.45" />
+            <path
+              d="M10.6 11.4a7.6 7.6 0 0 1 4.4-2.4"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              opacity="0.55"
+            />
+            <g fill={meta.accent} opacity="0.85">
+              <circle cx="16" cy="9.4" r="0.55" />
+              <circle cx="22.6" cy="16" r="0.55" />
+              <circle cx="16" cy="22.6" r="0.55" />
+              <circle cx="9.4" cy="16" r="0.55" />
+            </g>
             <g className="bz-rotor" stroke={meta.accent} strokeWidth="1.8" strokeLinecap="round">
               <line x1="16" y1="6" x2="16" y2="10" />
               <line x1="16" y1="22" x2="16" y2="26" />
@@ -173,10 +189,11 @@ export function BadgeGlyph({
               fill="none"
               stroke={meta.accent}
               strokeWidth="0.8"
-              strokeDasharray="1.4 1.8"
-              opacity="0.65"
+              strokeDasharray="1.2 2.1"
+              opacity="0.6"
             />
-            <circle className="bz-dot" cx="16" cy="16" r="2" fill={meta.accent} />
+            <circle className="bz-dot" cx="16" cy="16" r="2.2" fill={meta.accent} />
+            <circle cx="16" cy="16" r="0.75" fill="#0a0a0a" opacity="0.5" />
           </>
         )}
 
@@ -201,6 +218,13 @@ export function BadgeGlyph({
               strokeWidth="0.9"
               strokeLinejoin="round"
             />
+            {/* Glass: a lighter core, a dark refraction edge and a specular dot. */}
+            <path
+              d="M16 8.6 C16 8.6 11.3 15 11.3 18.6 a4.7 4.7 0 0 0 9.4 0 C20.7 15 16 8.6 16 8.6 Z"
+              fill="#b9f7ff"
+              opacity="0.38"
+            />
+            <circle cx="13.1" cy="13.6" r="0.85" fill="#ffffff" opacity="0.9" />
             {/* Glass highlight + inner depth. */}
             <path
               d="M12.5 17.4a4.6 4.6 0 0 1 2.2-3.4"
@@ -238,13 +262,25 @@ export function BadgeGlyph({
 
         {slug === "verified" && (
           <>
-            <circle
-              cx="16"
-              cy="16"
-              r="10.6"
+            <circle cx="16" cy="16" r="11.3" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+            <circle cx="16" cy="16" r="10.4" fill="none" stroke="rgba(0,0,0,0.28)" strokeWidth="1.4" />
+            <circle cx="16" cy="16" r="9.2" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.6" />
+            <g fill="rgba(255,244,224,0.55)">
+              <circle cx="16" cy="6.6" r="0.5" />
+              <circle cx="24" cy="11.4" r="0.5" />
+              <circle cx="24" cy="20.6" r="0.5" />
+              <circle cx="16" cy="25.4" r="0.5" />
+              <circle cx="8" cy="20.6" r="0.5" />
+              <circle cx="8" cy="11.4" r="0.5" />
+            </g>
+            <path
+              d="M10 17.1 L14.4 21.7 L22.4 12.3"
               fill="none"
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth="0.8"
+              stroke="#7a0a12"
+              strokeWidth="3.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.45"
             />
             <path
               className="bz-anim bz-check"
