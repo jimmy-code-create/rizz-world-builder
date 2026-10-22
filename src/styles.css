@@ -814,6 +814,7 @@
 /* Purify */
 .bz-glyph .bz-ripple { animation-name: bz-ripple; animation-duration: 3.5s; }
 .bz-glyph .bz-sparkle { animation-name: bz-twinkle; animation-duration: 3.5s; }
+.bz-glyph .bz-mist { animation-name: bz-mist; animation-duration: 3.5s; }
 .bz-glyph .bz-drops { opacity: 0; }
 /* Verified */
 .bz-glyph .bz-check {
@@ -851,6 +852,10 @@
   0% { transform: scale(0.4); opacity: 0.5; }
   70% { transform: scale(1.6); opacity: 0; }
   100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes bz-mist {
+  0%, 100% { transform: translateY(0) scale(0.9); opacity: 0.45; }
+  50% { transform: translateY(-3px) scale(1); opacity: 1; }
 }
 @keyframes bz-twinkle {
   0%, 100% { transform: scale(0.6); opacity: 0.4; }
