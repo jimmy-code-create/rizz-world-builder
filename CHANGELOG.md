@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-22 — Five marks, live counters, Rizzy sells Purify
+
+### The profile badge lineup is fixed
+- A profile shows five marks at most, in one order: **Verified, Streamer,
+  Purify, Bounty Hunter, Main Character**. Everything else a member owns lives
+  only on `/badges`.
+- `streamer` is a real catalog badge now — a purple mic disc in the sprite,
+  its own `BADGE_SET` entry — so it can be earned, drawn and counted.
+- All five name-row marks use `AnimatedBadge` (aura + seven motes) and every
+  mark is a button into `/badges`.
+
+### Activity numbers are doors
+- Posts opens the Activity tab and scrolls to it; Followers/Following open
+  their lists; Badges opens the gallery; Paws opens `/drops`. The four-cell
+  strip and the lifetime grid now share the same `openActivity()` map.
+
+### Purify is introduced by Rizzy
+- The `/purify` page opens with a Rizzy card that explains the tier in the
+  mascot's voice, so the upgrade is introduced instead of discovered.
+- `20261103000000_purify_gift.sql` gifts a year of Purify to the `jimmy` demo
+  account and fixes the guard so migrations (where `auth.role()` is null) can
+  still write the entitlement while signed-in clients cannot.
+
 ## 2026-10-22 — Badges: a shelf, a limit and a living mark
 
 ### Badges are links, not popouts

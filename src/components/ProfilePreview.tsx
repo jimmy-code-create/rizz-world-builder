@@ -27,11 +27,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BadgeChip } from "@/components/BadgeChip";
 import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
 import { MarkdownText } from "@/components/MarkdownText";
-import { fetchUserBadges } from "@/lib/badges";
-import { PURIFY_BADGE, usePurify, withPurifyBadge } from "@/lib/purify";
+import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
+import { usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import { toast } from "@/lib/toast";
 import { motion, useDragControls } from "framer-motion";
@@ -279,11 +278,10 @@ export function ProfilePreviewDialog({
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
   // Name-row marks: canonical order, no two awards drawing the same emblem.
-  // Five marks maximum, Purify first: the subscriber badge is never the one
-  // that falls off the row.
-  const markBadges = withPurifyBadge(distinctBadges(canonBadges(earned)), purify.active).slice(
-    0,
-    5,
+  // Only the five profile marks survive, in a fixed order; Purify is injected
+  // for subscribers so the subscriber badge always has its slot.
+  const markBadges = profileBadgeLineup(
+    withPurifyBadge(distinctBadges(canonBadges(earned)), purify.active),
   );
   const wornSlug = p?.featured_badge ?? null;
   // Verified is a badge, not a profiles column (same rule as the profile page).
@@ -376,27 +374,19 @@ export function ProfilePreviewDialog({
             }
             featuredBadge={
               markBadges.length > 0 ? (
-                <span className="flex items-center gap-0.5" aria-label="Badges">
-                  {markBadges.map((badge) =>
-                    badge.slug === PURIFY_BADGE.slug ? (
-                      <AnimatedBadge key={badge.slug} badge={badge} size={20} />
-                    ) : (
-                      <span
-                        key={badge.slug}
-                        className={
-                          badge.slug === wornSlug
-                            ? "rounded-full ring-1 ring-primary/70"
-                            : undefined
-                        }
-                      >
-                        <BadgeChip
-                          badge={badge}
-                          size="sm"
-                          onSelect={() => nav({ to: "/badges" })}
-                        />
-                      </span>
-                    ),
-                  )}
+                <span className="flex items-center gap-0.5" aria-label="Badges">                  {markBadges.map((badge) => (
+                    <button
+                      key={badge.slug}
+                      type="button"
+                      onClick={() => nav({ to: "/badges" })}
+                      aria-label={`${badge.name} badge — open the badge gallery`}
+                      className={`rounded-full transition-transform active:scale-95 ${
+                        badge.slug === wornSlug ? "ring-1 ring-primary/70" : ""
+                      }`}
+                    >
+                      <AnimatedBadge badge={badge} size={20} />
+                    </button>
+                  ))}
                 </span>
               ) : undefined
             }

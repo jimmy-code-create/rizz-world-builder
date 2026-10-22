@@ -9,9 +9,9 @@ import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
-import { BadgeChip } from "@/components/BadgeChip";
 import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
-import { PURIFY_BADGE, usePurify, withPurifyBadge } from "@/lib/purify";
+import { profileBadgeLineup } from "@/lib/badges";
+import { usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import type { Badge as BadgeType } from "@/lib/badges";
 import { AnimatePresence, motion } from "framer-motion";
@@ -235,6 +235,24 @@ function ProfilePage() {
     ];
   }, [posts.data, followerCount, followingCount, badges.data, profile?.paw_balance]);
 
+  /** Every activity number is a door: followers lists, the gallery, the Paws page. */
+  const openActivity = (id: string) => {
+    if (id === "followers" || id === "following") {
+      setListOpen(id);
+      return;
+    }
+    if (id === "badges") {
+      nav({ to: "/badges" });
+      return;
+    }
+    if (id === "paws") {
+      nav({ to: "/drops" });
+      return;
+    }
+    setActivity("posts");
+    document.getElementById("activity-grid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   // Recent activity: posts, reels, realms they made and communities they joined,
   // newest first.
   const recentActivity = useMemo(() => {
@@ -389,11 +407,11 @@ function ProfilePage() {
   // the darkened profile theme.
   const profileSurface = pageBanner.profileBackground ? pageBanner.surface : "var(--background)";
   // Every earned mark can be tapped; the worn one keeps its ring.
-  // Five marks maximum, Purify first — the subscriber badge always has a slot.
-  const nameBadges = withPurifyBadge(
-    distinctBadges(canonBadges(badges.data ?? [])),
-    purify.active,
-  ).slice(0, 5);
+  // Only the five profile marks survive, in a fixed order; Purify is injected
+  // for subscribers so the subscriber badge always has its slot.
+  const nameBadges = profileBadgeLineup(
+    withPurifyBadge(distinctBadges(canonBadges(badges.data ?? [])), purify.active),
+  );
 
   const headerActions = (
     <>
@@ -538,22 +556,19 @@ function ProfilePage() {
           featuredBadge={
             nameBadges.length > 0 ? (
               <span className="flex items-center gap-0.5" aria-label="Badges">
-                {nameBadges.map((badge) =>
-                  badge.slug === PURIFY_BADGE.slug ? (
-                    <AnimatedBadge key={badge.slug} badge={badge} size={20} />
-                  ) : (
-                    <span
-                      key={badge.slug}
-                      className={
-                        badge.slug === featuredBadge?.slug
-                          ? "rounded-full ring-1 ring-primary/70"
-                          : undefined
-                      }
-                    >
-                      <BadgeChip badge={badge} size="sm" onSelect={() => nav({ to: "/badges" })} />
-                    </span>
-                  ),
-                )}
+                {nameBadges.map((badge) => (
+                  <button
+                    key={badge.slug}
+                    type="button"
+                    onClick={() => nav({ to: "/badges" })}
+                    aria-label={`${badge.name} badge — open the badge gallery`}
+                    className={`rounded-full transition-transform active:scale-95 ${
+                      badge.slug === featuredBadge?.slug ? "ring-1 ring-primary/70" : ""
+                    }`}
+                  >
+                    <AnimatedBadge badge={badge} size={20} />
+                  </button>
+                ))}
               </span>
             ) : undefined
           }
@@ -569,7 +584,11 @@ function ProfilePage() {
         </div>
 
         <div className="mt-3 grid grid-cols-4 divide-x divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm">
-          <StatCell label="Posts" value={formatNumber(posts.data?.length ?? 0)} />
+          <StatCell
+            label="Posts"
+            value={formatNumber(posts.data?.length ?? 0)}
+            onClick={() => openActivity("posts")}
+          />
           <StatCell
             label="Followers"
             value={formatNumber(followerCount)}
@@ -580,7 +599,11 @@ function ProfilePage() {
             value={formatNumber(followingCount)}
             onClick={() => setListOpen("following")}
           />
-          <div className="px-3 py-2.5">
+          <button
+            type="button"
+            onClick={() => nav({ to: "/drops" })}
+            className="px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          >
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
               Paws
             </p>
@@ -588,7 +611,7 @@ function ProfilePage() {
               <PawPrint className="h-3 w-3 shrink-0" />
               {formatNumber(profile.paw_balance ?? 0)}
             </p>
-          </div>
+          </button>
         </div>
 
         {(profile.bio || profile.interests?.length > 0) && (
@@ -929,11 +952,13 @@ function ProfilePage() {
                   All time
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div id="activity-grid" className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {lifetime.map(({ id, label, value, icon: Icon }) => (
-                  <div
+                  <button
                     key={id}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"
+                    type="button"
+                    onClick={() => openActivity(id)}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-left transition-colors hover:border-white/15 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-muted-foreground">
                       <Icon className="h-3.5 w-3.5" />
@@ -944,7 +969,7 @@ function ProfilePage() {
                     <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       {label}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>

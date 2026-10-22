@@ -264,6 +264,22 @@
     <path d="M12 5.2l1.35 2.75 3.05.4-2.25 2.1.6 3.05L12 12.05l-2.75 1.45.6-3.05-2.25-2.1 3.05-.4z" fill="url(#bzg-rizz)"/>
     <path d="M20.6 1.9c.28 1.15.85 1.72 2 2-1.15.28-1.72.85-2 2-.28-1.15-.85-1.72-2-2 1.15-.28 1.72-.85 2-2Z" fill="#fff" opacity=".92"/>
   </symbol>
+  <!-- Streamer: the voice-room host. A purple disc with a mic cut out. -->
+  <symbol id="streamer" viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="bzg-streamer" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e2d4ff"/>
+        <stop offset="0.5" stop-color="#a855f7"/>
+        <stop offset="1" stop-color="#4c1d95"/>
+      </linearGradient>
+    </defs>
+    <circle cx="12" cy="12" r="10.4" fill="url(#bzg-streamer)"/>
+    <rect x="9.1" y="5.2" width="5.8" height="8.4" rx="2.9" fill="#170c2b"/>
+    <path d="M7.2 12.1a4.8 4.8 0 0 0 9.6 0" fill="none" stroke="#170c2b" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M12 16.9v2.1" stroke="#170c2b" stroke-width="1.7" stroke-linecap="round"/>
+    <circle cx="9.4" cy="7" r="1" fill="#f7f0ff" opacity="0.9"/>
+  </symbol>
+
   <!-- Purify: the subscriber mark. A lime star with the glyph cut out in ink,
        matching the medallion family. Its particles are drawn by AnimatedBadge. -->
   <symbol id="purify" viewBox="0 0 24 24">

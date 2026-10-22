@@ -62,6 +62,17 @@ function PurifyPage() {
         Settings
       </Link>
 
+      {/* Rizzy sells it: the mascot introduces Purify in the app instead of
+          leaving members to discover a paywall on their own. */}
+      <section className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/[0.06] p-3.5">
+        <img src="/brand/rizz-cat-logo.svg" alt="Rizzy" className="h-10 w-10 shrink-0" />
+        <p className="text-xs leading-relaxed text-foreground/90">
+          <span className="font-semibold text-primary">Rizzy:</span> Purify is the one upgrade
+          I would buy myself — gradients, banner photos, GIFs and big uploads, all for a dollar.
+          {active ? " You already have it. Thank you for keeping the lights on." : " Cancel anytime."}
+        </p>
+      </section>
+
       <section className="glass relative overflow-hidden rounded-3xl border border-white/5 p-6 text-center">
         <span
           aria-hidden

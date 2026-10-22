@@ -154,6 +154,16 @@ export const BADGE_SET: CanonicalBadge[] = [
     glow: LIME,
   },
   {
+    slug: "streamer",
+    name: "Streamer",
+    flavor: "Live in voice, hosting the room.",
+    icon: ":cat_mic:",
+    symbol: "streamer",
+    art: "/badges/badges.svg#streamer",
+    tier: "rare",
+    glow: "#a855f7",
+  },
+  {
     slug: "bounty-hunter",
     criteria: { kind: "bounties_claimed", target: 1 },
     name: "Bounty Hunter",

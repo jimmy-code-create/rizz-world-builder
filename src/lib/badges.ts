@@ -11,6 +11,26 @@ export type Badge = {
   rarity: "common" | "rare" | "epic" | "legendary" | "mythic";
 };
 
+/**
+ * A profile carries five marks at most, in this fixed order. Anything else a
+ * member owns lives only on /badges, which keeps the name row readable.
+ */
+export const PROFILE_BADGE_LINEUP = [
+  "verified",
+  "streamer",
+  "purify",
+  "bounty-hunter",
+  "main-character",
+];
+
+export function profileBadgeLineup(badges: Badge[]): Badge[] {
+  const rank = new Map(PROFILE_BADGE_LINEUP.map((slug, index) => [slug, index]));
+  return badges
+    .filter((badge) => rank.has(badge.slug))
+    .sort((a, b) => (rank.get(a.slug) ?? 99) - (rank.get(b.slug) ?? 99))
+    .slice(0, PROFILE_BADGE_LINEUP.length);
+}
+
 function presentBadge(badge: Badge): Badge {
   const canonical = canonicalFor(badge.slug);
   return canonical
