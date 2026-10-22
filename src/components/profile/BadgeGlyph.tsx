@@ -230,6 +230,9 @@ export function BadgeGlyph({
               <circle cx="24.2" cy="9.2" r="0.9" />
               <path className="bz-sparkle" d="M21.6 5.6l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" />
             </g>
+            {/* A bead lets go of the tip and drips away. */}
+            <circle className="bz-anim bz-fall" cx="16" cy="25.6" r="0.95" fill={meta.accent} />
+            <polygon className="bz-anim bz-shine" points="8.6,4.6 12,4.6 21.4,27.4 18,27.4" fill="#e6fdff" />
           </>
         )}
 
@@ -290,6 +293,13 @@ export function BadgeGlyph({
               <path className="bz-anim bz-arc bz-arc-4" d="M25.4 6.4a13.4 13.4 0 0 1 0 18.4" opacity="0.7" />
             </g>
             <circle cx="23.4" cy="7.4" r="1.5" fill="#ff2d3f" />
+            {/* Voice level bars breathe under the mic while it speaks. */}
+            <g fill={meta.accent}>
+              <rect className="bz-anim bz-eq bz-eq-1" x="12.4" y="24.2" width="1.1" height="4" rx="0.55" />
+              <rect className="bz-anim bz-eq bz-eq-2" x="15.45" y="24.2" width="1.1" height="4" rx="0.55" />
+              <rect className="bz-anim bz-eq bz-eq-3" x="18.5" y="24.2" width="1.1" height="4" rx="0.55" />
+            </g>
+            <polygon className="bz-anim bz-shine" points="8.2,4.6 11.6,4.6 20.6,27.4 17.2,27.4" fill="#c9a2ff" />
           </>
         )}
       </svg>

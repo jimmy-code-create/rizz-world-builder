@@ -815,6 +815,15 @@
 .bz-glyph .bz-ripple { animation-name: bz-ripple; animation-duration: 3.5s; }
 .bz-glyph .bz-sparkle { animation-name: bz-twinkle; animation-duration: 3.5s; }
 .bz-glyph .bz-mist { animation-name: bz-mist; animation-duration: 3.5s; }
+.bz-glyph .bz-fall { animation-name: bz-fall; animation-duration: 3.5s; }
+.bz-glyph .bz-eq {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation-name: bz-eq;
+  animation-duration: 0.9s;
+}
+.bz-glyph .bz-eq-2 { animation-delay: 0.14s; }
+.bz-glyph .bz-eq-3 { animation-delay: 0.28s; }
 .bz-glyph .bz-drops { opacity: 0; }
 /* Verified */
 .bz-glyph .bz-check {
@@ -832,8 +841,18 @@
 .bz-glyph .bz-arc-4 { animation-delay: 0.18s; }
 
 @keyframes bz-cone {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 0.13; transform: rotate(-2.4deg); }
+  50% { opacity: 0.26; transform: rotate(2.4deg); }
+}
+@keyframes bz-fall {
+  0% { transform: translateY(-1px) scale(0.7); opacity: 0; }
+  18% { opacity: 0.9; }
+  70% { transform: translateY(2.4px) scale(1); opacity: 0.75; }
+  100% { transform: translateY(4px) scale(0.55); opacity: 0; }
+}
+@keyframes bz-eq {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.6; }
+  50% { transform: scaleY(1); opacity: 1; }
 }
 @keyframes bz-sweep {
   0% { transform: translateX(-14px) rotate(18deg); opacity: 0; }
