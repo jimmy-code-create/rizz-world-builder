@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Pin } from "lucide-react";
 import type { Badge } from "@/lib/badges";
 import { BadgeChip, BadgeRow } from "@/components/BadgeChip";
-import { BadgeDetailDialog } from "@/components/profile/BadgeDetailDialog";
+import { useNavigate } from "@tanstack/react-router";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { canonBadges, MAX_SHOWCASE_BADGES, showcaseBadges } from "@/lib/badge-set";
 import { saveShowcaseBadges } from "@/lib/featured-badge";
@@ -50,7 +50,9 @@ export function ProfileBadgesSection({
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [openBadge, setOpenBadge] = useState<Badge | null>(null);
+  const nav = useNavigate();
+  // A badge is a link, not a popout: the whole shelf lives on /badges.
+  const openBadgesPage = () => nav({ to: "/badges" });
 
   const equipped = showcaseBadges(stored, earned);
   const equippedSet = new Set(equipped);
@@ -116,7 +118,7 @@ export function ProfileBadgesSection({
       ) : showcase.length ? (
         <div className="flex flex-wrap items-center gap-1">
           {showcase.map((badge) => (
-            <BadgeChip key={badge.id} badge={badge} size="md" onSelect={setOpenBadge} />
+            <BadgeChip key={badge.id} badge={badge} size="md" onSelect={openBadgesPage} />
           ))}
         </div>
       ) : isOwner ? (
@@ -137,16 +139,8 @@ export function ProfileBadgesSection({
           )}
         </p>
       ) : (
-        <BadgeRow badges={earned} max={5} onSelect={setOpenBadge} />
+        <BadgeRow badges={earned} max={5} onSelect={openBadgesPage} />
       )}
-
-      <BadgeDetailDialog
-        entry={openBadge ? { badge: openBadge } : null}
-        open={!!openBadge}
-        onOpenChange={(open) => !open && setOpenBadge(null)}
-        viewerId={viewerId}
-        featured={!!openBadge && openBadge.slug === featuredSlug}
-      />
 
       {isOwner && editing && (
         <div className="glass mt-2.5 space-y-2.5 rounded-2xl border border-white/10 p-3">

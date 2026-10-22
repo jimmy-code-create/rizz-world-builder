@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { StatusPill } from "@/components/presence/StatusDot";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { Badge } from "@/components/Badge";
+import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
+import { PURIFY_BADGE, usePurify } from "@/lib/purify";
 import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { MarkdownText } from "@/components/MarkdownText";
@@ -345,6 +347,7 @@ export function ProfileCard({
   onEditStatus?: () => void;
 }) {
   const { user: me } = useAuth();
+  const purify = usePurify();
   const nav = useNavigate();
   const qc = useQueryClient();
   const [bioExpanded, setBioExpanded] = useState(false);
@@ -657,7 +660,9 @@ export function ProfileCard({
           ) : undefined
         }
         featuredBadge={
-          featuredBadgeMeta ? (
+          purify.active ? (
+            <AnimatedBadge badge={PURIFY_BADGE} size={24} />
+          ) : featuredBadgeMeta ? (
             <Badge
               slug={featuredBadgeMeta.slug}
               size={24}

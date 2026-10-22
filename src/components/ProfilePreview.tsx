@@ -28,9 +28,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BadgeChip } from "@/components/BadgeChip";
-import { BadgeDetailDialog } from "@/components/profile/BadgeDetailDialog";
+import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
 import { MarkdownText } from "@/components/MarkdownText";
-import { fetchUserBadges, type Badge } from "@/lib/badges";
+import { fetchUserBadges } from "@/lib/badges";
+import { PURIFY_BADGE, usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import { toast } from "@/lib/toast";
 import { motion, useDragControls } from "framer-motion";
@@ -186,7 +187,7 @@ export function ProfilePreviewDialog({
 
   const isMobile = useIsMobile();
   const dragControls = useDragControls();
-  const [openBadge, setOpenBadge] = useState<Badge | null>(null);
+  const purify = usePurify();
 
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
@@ -278,7 +279,12 @@ export function ProfilePreviewDialog({
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
   // Name-row marks: canonical order, no two awards drawing the same emblem.
-  const markBadges = distinctBadges(canonBadges(earned));
+  // Five marks maximum, Purify first: the subscriber badge is never the one
+  // that falls off the row.
+  const markBadges = withPurifyBadge(distinctBadges(canonBadges(earned)), purify.active).slice(
+    0,
+    5,
+  );
   const wornSlug = p?.featured_badge ?? null;
   // Verified is a badge, not a profiles column (same rule as the profile page).
   const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
@@ -371,20 +377,26 @@ export function ProfilePreviewDialog({
             featuredBadge={
               markBadges.length > 0 ? (
                 <span className="flex items-center gap-0.5" aria-label="Badges">
-                  {markBadges.slice(0, 6).map((badge) => (
-                    <span
-                      key={badge.slug}
-                      className={
-                        badge.slug === wornSlug ? "rounded-full ring-1 ring-primary/70" : undefined
-                      }
-                    >
-                      <BadgeChip
-                        badge={badge}
-                        size="sm"
-                        onSelect={(picked) => setOpenBadge(picked)}
-                      />
-                    </span>
-                  ))}
+                  {markBadges.map((badge) =>
+                    badge.slug === PURIFY_BADGE.slug ? (
+                      <AnimatedBadge key={badge.slug} badge={badge} size={20} />
+                    ) : (
+                      <span
+                        key={badge.slug}
+                        className={
+                          badge.slug === wornSlug
+                            ? "rounded-full ring-1 ring-primary/70"
+                            : undefined
+                        }
+                      >
+                        <BadgeChip
+                          badge={badge}
+                          size="sm"
+                          onSelect={() => nav({ to: "/badges" })}
+                        />
+                      </span>
+                    ),
+                  )}
                 </span>
               ) : undefined
             }
@@ -557,14 +569,6 @@ export function ProfilePreviewDialog({
           </div>
         </motion.div>
       )}
-
-      <BadgeDetailDialog
-        entry={openBadge ? { badge: openBadge } : null}
-        open={!!openBadge}
-        onOpenChange={(next) => !next && setOpenBadge(null)}
-        featured={!!openBadge && openBadge.slug === wornSlug}
-        viewerId={user?.id ?? null}
-      />
     </>
   );
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-22 — Badges: a shelf, a limit and a living mark
+
+### Badges are links, not popouts
+- `BadgeDetailDialog` is deleted. A badge on the full profile, the preview card,
+  the hover card or the Badges section now navigates to `/badges`; that removes
+  the mobile popout that opened half off-screen.
+
+### Five marks, Purify first
+- Profile name rows cap at five badges (`withPurifyBadge(...).slice(0, 5)`), and
+  a Pure member's mark is prepended, so the subscriber badge is never the one
+  that gets cut.
+- The Purify star is a real sprite symbol (`#purify`) added to
+  `public/badges/badges.svg`; it is not a `badges` row, so it can never be
+  awarded by hand or kept after a subscription ends. The badge page shows it
+  only to an active subscriber.
+
+### Genuine particle motion
+- `AnimatedBadge` draws seven motes and a soft aura around the mark on one CSS
+  timeline. Only `transform` and `opacity` animate, with `will-change` on the
+  motes, so five badges cost the compositor and never repaint the name row.
+- `prefers-reduced-motion` freezes the motes; nothing shakes or bounces.
+
 ## 2026-10-22 — Purify: the $1/month tier
 
 ### One entitlement, written by Stripe only

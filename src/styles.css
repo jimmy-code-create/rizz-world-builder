@@ -704,6 +704,50 @@
   padding: 0;
   min-width: 0;
 }
+/* Animated badges (Purify + worn marks). One aura and seven motes per badge,
+   all transform/opacity only — a name row never repaints while they drift. */
+.badge-aura {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.badge-aura--live::after {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 40%, transparent), transparent 68%);
+  opacity: 0.55;
+  animation: badge-aura-pulse 3.2s ease-in-out infinite;
+}
+.badge-mote {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+  opacity: 0;
+  animation: badge-mote 2.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes badge-aura-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.94); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+@keyframes badge-mote {
+  0% { transform: translate3d(0, 2px, 0) scale(0.6); opacity: 0; }
+  25% { opacity: 0.9; }
+  70% { opacity: 0.35; }
+  100% { transform: translate3d(3px, -10px, 0) scale(0.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge-mote { animation: none; opacity: 0.35; transform: none; }
+  .badge-aura--live::after { animation: none; opacity: 0.45; }
+}
+
 /* A photo with a line of text: the photo owns the frame, the caption sits under
    it on the page background instead of inside the green outgoing bubble. Same
    width as the media so the two edges line up. */

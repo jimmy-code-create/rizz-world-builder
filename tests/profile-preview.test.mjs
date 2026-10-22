@@ -50,13 +50,14 @@ await check("the bio renders markdown instead of raw asterisks", async () => {
 await check("distinct earned badges sit on the name row and are tappable", async () => {
   assert.ok(card.includes("fetchUserBadges"));
   assert.ok(card.includes("distinctBadges(canonBadges(earned))"));
-  assert.match(card, /markBadges\.slice\(0, 6\)\.map/);
+  assert.match(card, /withPurifyBadge\(distinctBadges\(canonBadges\(earned\)\), purify\.active\)\.slice\(\s*0,\s*5,?\s*\)/);
   assert.match(
     card,
-    /<BadgeChip[\s\S]{0,180}?badge=\{badge\}[\s\S]{0,120}?onSelect=\{\(picked\) => setOpenBadge\(picked\)\}/,
-    "each name-row mark opens the badge popout",
+    /<BadgeChip[\s\S]{0,180}?onSelect=\{\(\) => nav\(\{ to: "\/badges" \}\)\}/,
+    "a tapped badge links to the badge gallery",
   );
-  assert.ok(card.includes("<BadgeDetailDialog"), "the preview hosts the badge popout");
+  assert.ok(!card.includes("BadgeDetailDialog"), "the cut-off popout is gone; badges navigate");
+  assert.ok(card.includes("AnimatedBadge"), "the subscriber mark carries particles");
 });
 
 await check("Discord anatomy: shared banner, avatar, presence dot, sections", async () => {

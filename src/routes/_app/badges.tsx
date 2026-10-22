@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllBadges, fetchUserBadgesWithDates, type Badge } from "@/lib/badges";
+import { PURIFY_BADGE, usePurify } from "@/lib/purify";
 import { fetchBadgeProgress } from "@/lib/badge-progress";
 import { awardRizz, RIZZ_RULES } from "@/lib/rizz";
 import {
@@ -114,23 +115,28 @@ export function BadgesPage() {
   // The catalog is frontend metadata so the complete 12-badge collection stays
   // visible even before the backend seed is deployed. Ownership comes only from
   // real user_badges rows; a catalog entry is never treated as an earned award.
-  const catalog = useMemo<Badge[]>(
-    () =>
-      BADGE_SET.map((entry) => {
-        const stored = (all.data ?? []).find((row) => row.slug === entry.slug);
-        return {
-          id: stored?.id ?? `catalog:${entry.slug}`,
-          slug: entry.slug,
-          name: entry.name,
-          description: entry.flavor,
-          icon: stored?.icon ?? entry.icon,
-          color: entry.glow,
-          rarity: entry.tier,
-        };
-      }),
-    [all.data],
+  const purify = usePurify();
+  const catalog = useMemo<Badge[]>(() => {
+    const marks = BADGE_SET.map((entry) => {
+      const stored = (all.data ?? []).find((row) => row.slug === entry.slug);
+      return {
+        id: stored?.id ?? `catalog:${entry.slug}`,
+        slug: entry.slug,
+        name: entry.name,
+        description: entry.flavor,
+        icon: stored?.icon ?? entry.icon,
+        color: entry.glow,
+        rarity: entry.tier,
+      };
+    });
+    // The subscriber mark is not a `badges` row: it exists while the
+    // entitlement does, so the shelf shows it only to a Pure member.
+    return purify.active ? [PURIFY_BADGE, ...marks] : marks;
+  }, [all.data, purify.active]);
+  const owned = useMemo(
+    () => new Set([...(mine.data ?? []).map((r) => r.badge.slug), ...(purify.active ? [PURIFY_BADGE.slug] : [])]),
+    [mine.data, purify.active],
   );
-  const owned = useMemo(() => new Set((mine.data ?? []).map((r) => r.badge.slug)), [mine.data]);
   const awardedAtFor = useMemo(
     () => new Map((mine.data ?? []).map((r) => [r.badge.slug, r.awardedAt])),
     [mine.data],

@@ -10,7 +10,8 @@ import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
 import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
 import { BadgeChip } from "@/components/BadgeChip";
-import { BadgeDetailDialog } from "@/components/profile/BadgeDetailDialog";
+import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
+import { PURIFY_BADGE, usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import type { Badge as BadgeType } from "@/lib/badges";
 import { AnimatePresence, motion } from "framer-motion";
@@ -64,10 +65,7 @@ function ProfilePage() {
   const [listOpen, setListOpen] = useState<null | "followers" | "following">(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityTab>("posts");
-  const [openBadge, setOpenBadge] = useState<{
-    badge: BadgeType;
-    awardedAt?: string | null;
-  } | null>(null);
+  const purify = usePurify();
 
   const profileQ = useQuery({
     queryKey: ["profile", username],
@@ -391,7 +389,11 @@ function ProfilePage() {
   // the darkened profile theme.
   const profileSurface = pageBanner.profileBackground ? pageBanner.surface : "var(--background)";
   // Every earned mark can be tapped; the worn one keeps its ring.
-  const nameBadges = distinctBadges(canonBadges(badges.data ?? [])).slice(0, 6);
+  // Five marks maximum, Purify first — the subscriber badge always has a slot.
+  const nameBadges = withPurifyBadge(
+    distinctBadges(canonBadges(badges.data ?? [])),
+    purify.active,
+  ).slice(0, 5);
 
   const headerActions = (
     <>
@@ -536,22 +538,22 @@ function ProfilePage() {
           featuredBadge={
             nameBadges.length > 0 ? (
               <span className="flex items-center gap-0.5" aria-label="Badges">
-                {nameBadges.map((badge) => (
-                  <span
-                    key={badge.slug}
-                    className={
-                      badge.slug === featuredBadge?.slug
-                        ? "rounded-full ring-1 ring-primary/70"
-                        : undefined
-                    }
-                  >
-                    <BadgeChip
-                      badge={badge}
-                      size="sm"
-                      onSelect={(picked) => setOpenBadge({ badge: picked })}
-                    />
-                  </span>
-                ))}
+                {nameBadges.map((badge) =>
+                  badge.slug === PURIFY_BADGE.slug ? (
+                    <AnimatedBadge key={badge.slug} badge={badge} size={20} />
+                  ) : (
+                    <span
+                      key={badge.slug}
+                      className={
+                        badge.slug === featuredBadge?.slug
+                          ? "rounded-full ring-1 ring-primary/70"
+                          : undefined
+                      }
+                    >
+                      <BadgeChip badge={badge} size="sm" onSelect={() => nav({ to: "/badges" })} />
+                    </span>
+                  ),
+                )}
               </span>
             ) : undefined
           }
@@ -1015,13 +1017,7 @@ function ProfilePage() {
           </TabsContent>
         </Tabs>
 
-        <BadgeDetailDialog
-          entry={openBadge}
-          open={!!openBadge}
-          onOpenChange={(next) => !next && setOpenBadge(null)}
-          featured={!!featuredBadge && featuredBadge.slug === openBadge?.badge.slug}
-          viewerId={user?.id ?? null}
-        />
+
 
         {listOpen && (
           <FollowListDialog

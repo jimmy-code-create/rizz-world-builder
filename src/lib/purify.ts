@@ -1,3 +1,4 @@
+import type { Badge } from "@/lib/badges";
 import { useAuth } from "@/lib/auth";
 
 /**
@@ -44,7 +45,31 @@ export const PURIFY_BENEFITS: { title: string; detail: string }[] = [
   },
 ];
 
+/**
+ * The subscriber mark itself. It is not a `badges` row: it exists only while the
+ * entitlement does, so it can never be awarded or kept after a subscription
+ * ends. `AnimatedBadge` draws its particles.
+ */
+export const PURIFY_BADGE: Badge = {
+  id: "badge:purify",
+  slug: "purify",
+  name: "Purify",
+  description: "Purified. A live particle badge that only subscribers carry.",
+  icon: "purify",
+  color: "#c9ff3d",
+  rarity: "mythic",
+};
+
 export type PurifySource = { purify_until?: string | null } | null | undefined;
+
+/**
+ * Put Purify in front of the badges a profile shows. Call it with the capped
+ * list so the subscriber mark is never the badge that gets sliced off.
+ */
+export function withPurifyBadge(badges: Badge[], active: boolean): Badge[] {
+  if (!active) return badges;
+  return [PURIFY_BADGE, ...badges.filter((badge) => badge.slug !== PURIFY_BADGE.slug)];
+}
 
 /** True while the paid period is still running. */
 export function isPurifyActive(profile: PurifySource): boolean {
