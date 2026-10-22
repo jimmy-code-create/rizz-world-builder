@@ -31,6 +31,8 @@ type Bead = {
   r: number;
   phase: number;
   alpha: number;
+  /** Free beads travel a closed ellipse around the body instead of drifting. */
+  orbit?: { cx: number; cy: number; rx: number; ry: number; speed: number; start: number };
 };
 
 /** Half-width of the teardrop at a given y, in the 32-unit viewBox. */
@@ -88,9 +90,30 @@ const BODY: Bead[] = (() => {
 })();
 
 const ORBIT: Bead[] = [
-  { x: 24.6, y: 12.4, r: 0.85, phase: 0.4, alpha: 0.9 },
-  { x: 8.1, y: 19.4, r: 0.78, phase: 2.1, alpha: 0.85 },
-  { x: 22.2, y: 22.1, r: 0.7, phase: 4.3, alpha: 0.8 },
+  {
+    x: 0,
+    y: 0,
+    r: 0.86,
+    phase: 0.4,
+    alpha: 0.92,
+    orbit: { cx: 16, cy: 15.6, rx: 8.1, ry: 5.4, speed: 0.42, start: 0.4 },
+  },
+  {
+    x: 0,
+    y: 0,
+    r: 0.76,
+    phase: 2.1,
+    alpha: 0.86,
+    orbit: { cx: 16, cy: 17.4, rx: 6.9, ry: 5.2, speed: -0.31, start: 2.6 },
+  },
+  {
+    x: 0,
+    y: 0,
+    r: 0.7,
+    phase: 4.3,
+    alpha: 0.8,
+    orbit: { cx: 16, cy: 20.4, rx: 7.2, ry: 3.2, speed: 0.55, start: 4.4 },
+  },
 ] as Bead[];
 
 /** One pre-rendered bead sprite, keyed by accent so themes never share pixels. */
@@ -163,12 +186,24 @@ export function WaterDroplet({ accent = "#2ec9e8", className }: { accent?: strin
       }
     };
 
-    const wave = (b: Bead, time: number, breath: number) => {
-      const sway = Math.sin(time * 1.15 + b.y * 0.62 + b.phase) * 0.17;
-      const lift = Math.cos(time * 0.94 + b.x * 0.58 + b.phase * 0.7) * 0.13;
+    const wave = (b: Bead, time: number, sx: number, sy: number) => {
+      if (b.orbit) {
+        const a = b.orbit.start + time * b.orbit.speed;
+        return {
+          x: b.orbit.cx + Math.cos(a) * b.orbit.rx,
+          y: b.orbit.cy + Math.sin(a) * b.orbit.ry,
+          depth: Math.sin(a),
+        };
+      }
+      // A travelling surface wave: beads near the same height move together,
+      // so the body reads as one skin rather than 54 independent dots.
+      const phase = time * 1.2 + b.phase;
+      const sway = Math.sin(phase + b.y * 0.55) * 0.16;
+      const lift = Math.cos(phase * 0.86 + b.x * 0.5) * 0.12;
       return {
-        x: CENTER_X + (b.x - CENTER_X + sway) * breath,
-        y: CIRCLE_Y + (b.y - CIRCLE_Y + lift) * breath,
+        x: CENTER_X + (b.x - CENTER_X + sway) * sx,
+        y: CIRCLE_Y + (b.y - CIRCLE_Y + lift) * sy,
+        depth: Math.sin(phase * 0.7 + b.x * 0.4),
       };
     };
 
@@ -179,7 +214,10 @@ export function WaterDroplet({ accent = "#2ec9e8", className }: { accent?: strin
       ctx.setTransform(unit, 0, 0, unit, 0, 0);
       ctx.imageSmoothingQuality = "high";
 
-      const breath = 1 + Math.sin(time * 1.05) * 0.012;
+      // Volume-preserving breathing: wide means short, never both at once.
+      const pulse = Math.sin(time * 1.05);
+      const sx = 1 + pulse * 0.014;
+      const sy = 1 - pulse * 0.014;
 
       // Water behind the beads: gaps read as depth, never as the ink chassis.
       const body = ctx.createRadialGradient(13.4, 12.6, 1.2, 16, 21, 12.6);
@@ -188,7 +226,7 @@ export function WaterDroplet({ accent = "#2ec9e8", className }: { accent?: strin
       body.addColorStop(1, "rgba(4,44,58,0.42)");
       ctx.save();
       ctx.translate(CENTER_X, CIRCLE_Y);
-      ctx.scale(breath, breath);
+      ctx.scale(sx, sy);
       ctx.translate(-CENTER_X, -CIRCLE_Y);
       ctx.beginPath();
       ctx.moveTo(CENTER_X, APEX_Y + 0.4);
@@ -201,33 +239,76 @@ export function WaterDroplet({ accent = "#2ec9e8", className }: { accent?: strin
       ctx.restore();
 
       // Back-to-front so the front beads sit on top of the body's far side.
+      // Orbiting beads use their ellipse depth: behind the body on the far half,
+      // in front on the near half, so they genuinely circle it.
       const beads = [...BODY, ...ORBIT]
         .map((b) => {
-          const p = wave(b, time, breath);
-          return { b, x: p.x, y: p.y };
+          const p = wave(b, time, sx, sy);
+          return { b, x: p.x, y: p.y, depth: p.depth };
         })
-        .sort((a, b) => a.y - b.y);
+        .sort((a, b) => {
+          const az = a.b.orbit ? (a.depth > 0 ? 1 : -1) : 0;
+          const bz = b.b.orbit ? (b.depth > 0 ? 1 : -1) : 0;
+          return az - bz || a.y - b.y;
+        });
 
       for (const { b, x, y } of beads) {
-        const r = b.r * (1 + Math.sin(time * 1.6 + b.phase) * 0.03);
-        ctx.globalAlpha = b.alpha;
+        const r = b.r * (1 + Math.sin(time * 1.6 + b.phase) * 0.035);
+        ctx.globalAlpha = b.alpha * (b.orbit ? 0.88 + 0.12 * Math.sin(time * 1.6 + b.phase) : 1);
         ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
       }
 
-      // A bead gathers at the bottom pole, then lets go on a 4.6s cycle.
-      const cycle = ((time % 4.6) + 4.6) % 4.6;
-      const tipX = CENTER_X + Math.sin(time * 1.4) * 0.1;
-      const pole = CIRCLE_Y + CIRCLE_R * 0.86;
-      if (cycle < 1.5) {
-        const grow = 0.42 + Math.min(1, cycle / 1.5) * 0.34;
-        ctx.globalAlpha = 0.92;
-        ctx.drawImage(sprite, tipX - grow, pole - grow + 0.2, grow * 2, grow * 2);
+      // A bead gathers at the bottom pole, stretches, lets go, and lands: 5.2s.
+      const CYCLE = 5.2;
+      const cycle = ((time % CYCLE) + CYCLE) % CYCLE;
+      const poleY = CIRCLE_Y + CIRCLE_R * 0.88;
+      const poleX = CENTER_X + Math.sin(time * 1.4) * 0.08;
+
+      if (cycle < 1.6) {
+        // Hanging: the bead swells and sags on a thinning neck.
+        const k = cycle / 1.6;
+        const eased = 1 - Math.pow(1 - k, 2.2);
+        const drop = 0.4 + eased * 0.42;
+        const sag = eased * 0.22;
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = "rgba(190,246,255,0.85)";
+        ctx.lineWidth = 0.3 * (1 - eased) + 0.08;
+        ctx.beginPath();
+        ctx.moveTo(poleX, poleY - 1.2);
+        ctx.lineTo(poleX, poleY + sag - drop * 0.4);
+        ctx.stroke();
+        ctx.globalAlpha = 0.94;
+        ctx.drawImage(sprite, poleX - drop, poleY + sag - drop, drop * 2, drop * 2);
+      } else if (cycle < 3.9) {
+        // Falling under gravity, stretched along the direction of travel, with
+        // two smaller beads shedding behind it.
+        const p = (cycle - 1.6) / 2.3;
+        const fall = 3.05 * p * p;
+        const y = poleY + fall;
+        const stretch = 1 + 0.42 * (1 - p) * (1 - p);
+        const r = 0.8 - p * 0.12;
+        ctx.globalAlpha = Math.max(0, 0.92 * (1 - p * p * p));
+        ctx.save();
+        ctx.translate(poleX, y);
+        ctx.scale(1 / Math.sqrt(stretch), stretch);
+        ctx.drawImage(sprite, -r, -r, r * 2, r * 2);
+        ctx.restore();
+        for (let i = 1; i <= 2; i++) {
+          const trail = Math.max(0, fall - i * 0.85 - 0.3);
+          ctx.globalAlpha = Math.max(0, 0.45 * (1 - p) * (1 - i * 0.25));
+          const tr = 0.26 - i * 0.06;
+          ctx.drawImage(sprite, poleX - tr, poleY + trail - tr, tr * 2, tr * 2);
+        }
       } else {
-        const p = (cycle - 1.5) / 3.1;
-        const fall = p * p * 2.9;
-        const scale = 0.74 - p * 0.26;
-        ctx.globalAlpha = Math.max(0, 0.85 * (1 - p * p));
-        ctx.drawImage(sprite, tipX - scale, pole - scale + fall, scale * 2, scale * 2);
+        // Landed: a flattened ring opens where the bead struck the base.
+        const p = (cycle - 3.9) / (CYCLE - 3.9);
+        const ring = 0.5 + p * 3.2;
+        ctx.globalAlpha = (1 - p) * 0.5;
+        ctx.strokeStyle = "rgba(196,247,255,0.9)";
+        ctx.lineWidth = 0.34;
+        ctx.beginPath();
+        ctx.ellipse(poleX, poleY + 3.0, ring, ring * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
       // Surface speculars: fixed to the light, drifting a hair with the body.
@@ -243,7 +324,7 @@ export function WaterDroplet({ accent = "#2ec9e8", className }: { accent?: strin
       ctx.fill();
 
       // Refracted rim along the lower-right edge: light bending through water.
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.42 + Math.sin(time * 1.05) * 0.08;
       ctx.strokeStyle = "rgba(196,247,255,0.85)";
       ctx.lineWidth = 0.5;
       ctx.beginPath();
