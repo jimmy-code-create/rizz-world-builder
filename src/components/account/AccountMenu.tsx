@@ -27,10 +27,6 @@ import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { PRESENCE_STATUSES, statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { useEquipped } from "@/lib/useEquipped";
-import { ProfileEffect as ProfileEffectVisual } from "@/components/profile/ProfileEffect";
-import { ProfileFrame } from "@/components/profile/ProfileFrame";
-import { BloodwebDecoration } from "@/components/profile/BloodwebDecoration";
 
 type ShellProfile = {
   username: string | null;
@@ -88,9 +84,6 @@ export function AccountMenu({
   const nav = useNavigate();
   const isMobile = useIsMobile();
   const selfPresence = useSelfPresence();
-  // The equipped profile effect rides along on the menu header, so a member
-  // who is wearing Puppy Love sees it here too, not only on their profile.
-  const equipped = useEquipped(user?.id);
   const [open, setOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [statusExpanded, setStatusExpanded] = useState(false);
@@ -372,12 +365,6 @@ export function AccountMenu({
             className="absolute inset-0"
             style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
           />
-          {equipped.data?.profile_effect && (
-            <ProfileEffectVisual slug={equipped.data.profile_effect.slug} />
-          )}
-          {equipped.data?.profile_frame && (
-            <ProfileFrame slug={equipped.data.profile_frame.slug} />
-          )}
           <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
         </span>
         <span className="flex items-center gap-3 px-3">
@@ -388,7 +375,6 @@ export function AccountMenu({
                 {initial}
               </AvatarFallback>
             </Avatar>
-            <BloodwebDecoration slug={equipped.data?.avatar_decoration?.slug} intensity={0.85} />
             <AvatarStatusBadge emoji={custom?.emoji} size={14} />
             <span className="absolute -bottom-0.5 -right-0.5 z-10 grid place-items-center rounded-full bg-[#141416] p-[2px]">
               <StatusIcon status={selfPresence.status} size={16} />

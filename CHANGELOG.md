@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-10-22 — Effects retired, clean DM photos, shared popout motion
+
+### The effects shelf is gone
+- Deleted the whole cosmetic system: the `/effects` store, the four effect
+  renderers and their CSS, `effect-registry`, `effects`, `useEquipped` and the
+  receipt helper. The More sheet, command palette, voice commands, settings hub,
+  `/drops` and the profile "Use Paws" button no longer point at it.
+- One shared `ProfileHeader` still paints every surface (settings preview, card,
+  preview sheet, full profile); it now renders the plain avatar instead of an
+  equipped decoration. `IncomingCallRinger` uses the same plain avatar.
+- `20261101000000_retire_effects.sql` clears `profile_effects`; owners cascade
+  with it, so no profile can keep wearing a retired overlay. The tables and the
+  Paws ledger stay for history.
+
+### DM photos own their frame
+- A photo in a DM no longer sits inside the green outgoing bubble. Any message
+  with an attachment uses `message-bubble--media` (no gradient, border, shadow
+  or padding), and its caption renders under the photo in `.chat-media-caption`
+  — same width as the image, normal line height, emoji at text size.
+
+### Popouts open like one object
+- The desktop profile preview and the badge detail card share `.popout-card`:
+  a 220ms rise-and-settle open and a 150ms close, collapsing to 1ms under
+  `prefers-reduced-motion`. Phones keep the existing spring sheet.
+
+## 2026-10-22 — Profile editor in parts
+
+### One part per screen
+- `/settings/profile` is no longer one long form. It opens a hub with the live
+  preview and three rows — **Photo, name & bio**, **Banner & glow**, and
+  **Interests** — each showing what is currently set (display name, banner
+  preset, `3 / 6`).
+- Tapping a row opens that part on its own screen (`?part=identity|banner|interests`),
+  with a back link to the hub, so the back button and a shared URL both work.
+- Saving is per part: name/bio, glow colour and interests each write only their
+  own columns instead of one button rewriting the whole profile. Banner photo
+  and gradient still apply the moment they are tapped, as before.
+
 ## 2026-10-22 — Profile Activity tab and effects that fit the card
 
 ### Activity replaces the games rail

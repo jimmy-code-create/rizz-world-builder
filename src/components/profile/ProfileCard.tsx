@@ -16,7 +16,6 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { Badge } from "@/components/Badge";
 import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
-import { useEquipped } from "@/lib/useEquipped";
 import { MarkdownText } from "@/components/MarkdownText";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
@@ -408,9 +407,6 @@ export function ProfileCard({
   });
   // Same realtime presence store as the profile page.
   const presenceRow = usePresence(userId);
-  // The equipped effect follows the member onto every card surface: leaderboard,
-  // realm previews and the menu header, not just the full profile page.
-  const equipped = useEquipped(userId);
   const status = presenceRow ? publicStatusOf(presenceRow, !!isSelf) : "offline";
   const customStatus = presenceRow ? publicCustomStatus(presenceRow, !!isSelf) : null;
 
@@ -625,7 +621,6 @@ export function ProfileCard({
           verified: d.verified,
           reducedMotion: d.reducedMotion,
         }}
-        effects={equipped.data}
         status={status}
         statusIsSelf={Boolean(isSelf)}
         customStatus={customStatus}

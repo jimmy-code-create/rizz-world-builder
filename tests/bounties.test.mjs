@@ -75,10 +75,9 @@ await check("quests drive promotion with existing flows only", async () => {
   assert.ok(!drops.includes("quest_completions") && !drops.includes("awardQuest"));
 });
 
-await check("Paws can be spent on effects and the Paws guide stays reachable", async () => {
-  assert.ok(drops.includes("Spend your Paws"));
-  assert.ok(drops.includes("Open Effects"));
-  assert.ok(drops.includes('to="/effects"'));
+await check("the retired effects shelf is gone and the Paws guide stays reachable", async () => {
+  assert.ok(!drops.includes("Open Effects"), "no effects shelf link survives");
+  assert.ok(!drops.includes('to="/effects"'), "no route to the retired shelf");
   assert.ok(drops.includes("Top Paws"));
   assert.ok(drops.includes("search={{ earn: true }}"));
   assert.ok(board.includes("validateSearch"));

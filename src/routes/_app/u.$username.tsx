@@ -41,7 +41,6 @@ import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
-import { useEquipped } from "@/lib/useEquipped";
 import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -86,8 +85,6 @@ function ProfilePage() {
 
   const profile = profileQ.data;
   const isMe = profile && user?.id === profile.id;
-  const equippedQ = useEquipped(profile?.id);
-  const eq = equippedQ.data;
   // Presence for this profile: invisible accounts read as offline to others.
   const presenceRow = usePresence(profile?.id);
   const presenceStatus = publicStatusOf(presenceRow, Boolean(isMe));
@@ -384,12 +381,6 @@ function ProfilePage() {
     month: "short",
     year: "numeric",
   });
-  // Three independent slots: decoration, banner effect and frame. Each
-  // renderer ignores slugs outside the live catalogue, so a stale row can
-  // never resurrect a removed overlay.
-  const shownEffect = eq?.profile_effect ?? null;
-  const shownDecoration = eq?.avatar_decoration ?? null;
-  const shownFrame = eq?.profile_frame ?? null;
   const pageBanner = getBanner({
     banner_url: profile.banner_url,
     banner_mode: profile.banner_mode,
@@ -503,11 +494,6 @@ function ProfilePage() {
             accentColor: profile.accent_color,
             verified,
             reducedMotion: Boolean(profile.reduced_motion),
-          }}
-          effects={{
-            profile_effect: shownEffect,
-            avatar_decoration: shownDecoration,
-            profile_frame: shownFrame,
           }}
           status={presenceStatus}
           statusIsSelf={Boolean(isMe)}
@@ -1202,14 +1188,6 @@ export function PawsBreakdown({
         >
           <PawPrint className="h-4 w-4" /> Earn Paws
         </Link>
-        {isMe && (
-          <Link
-            to="/effects"
-            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/10 px-4 text-sm font-bold"
-          >
-            Use Paws
-          </Link>
-        )}
       </div>
     </div>
   );

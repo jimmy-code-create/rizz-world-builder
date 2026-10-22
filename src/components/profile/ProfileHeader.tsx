@@ -1,19 +1,12 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarStatusBadge, StatusDotButton } from "@/components/presence/StatusDot";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { ProfileEffect } from "@/components/profile/ProfileEffect";
-import { ProfileFrame } from "@/components/profile/ProfileFrame";
 import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 import { getBanner } from "@/lib/banner";
-import { getBannerEffectSpec, getFrameSpec } from "@/lib/effect-registry";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import type { PublicPresence } from "@/lib/presence";
 import { cn } from "@/lib/utils";
-
-type EffectVisual = {
-  slug?: string | null;
-} | null;
 
 export type ProfileHeaderUser = {
   id?: string | null;
@@ -29,15 +22,8 @@ export type ProfileHeaderUser = {
   reducedMotion?: boolean;
 };
 
-export type ProfileHeaderEffects = {
-  profile_effect?: EffectVisual;
-  avatar_decoration?: EffectVisual;
-  profile_frame?: EffectVisual;
-} | null;
-
 export type ProfileHeaderProps = {
   user: ProfileHeaderUser | null | undefined;
-  effects?: ProfileHeaderEffects;
   status?: PublicPresence;
   /** Pass false for a surface that should not show a dot yet. */
   statusEnabled?: boolean;
@@ -56,11 +42,11 @@ export type ProfileHeaderProps = {
   onBannerPointerDown?: (event: ReactPointerEvent) => void;
   /** Featured badge node beside the verified tick. */
   featuredBadge?: ReactNode;
-  /** Accent ring for an avatar with no decoration; false hides it. */
+  /** Accent ring around the avatar; false hides it. */
   avatarRing?: string | false | null;
   /**
-   * Soft accent halo for an avatar with no decoration — a glow rather than a
-   * hard ring. Kept quiet enough to sit over a banner photo.
+   * Soft accent halo behind the avatar — a glow rather than a hard ring. Kept
+   * quiet enough to sit over a banner photo.
    */
   avatarGlow?: string | false | null;
   /**
@@ -76,13 +62,11 @@ export type ProfileHeaderProps = {
 /**
  * ONE profile header for the settings preview, card, popup and full profile.
  *
- * The container owns the proportions; the banner is always 3:1, the avatar is
- * a percentage of the container, and the effect layer is clipped inside the
- * banner so it can never reach the name row or stats.
+ * The container owns the proportions; the banner is always 3:1 and the avatar
+ * is a percentage of the container, so every surface keeps the same anatomy.
  */
 export function ProfileHeader({
   user,
-  effects,
   status = "offline",
   statusEnabled = true,
   statusIsSelf = false,
@@ -107,11 +91,6 @@ export function ProfileHeader({
   const avatarSrc = user.avatarUrl ?? defaultAvatarFor(username);
   const banner = getBanner(user);
   const headerSurface = surface ?? banner.surface;
-  const profileEffect = effects?.profile_effect ?? null;
-  const avatarDecoration = effects?.avatar_decoration ?? null;
-  const profileFrame = effects?.profile_frame ?? null;
-  const effectSpec = getBannerEffectSpec(profileEffect?.slug);
-  const frameSpec = getFrameSpec(profileFrame?.slug);
 
   return (
     <div
@@ -131,37 +110,7 @@ export function ProfileHeader({
         style={{ aspectRatio: "3 / 1", background: banner.background }}
         onPointerDown={onBannerPointerDown}
       >
-        {/* 2. Effect: clipped to the banner, above the scrim so it stays vivid. */}
-        {effectSpec && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-[22] overflow-hidden"
-            style={{
-              height: `${effectSpec.maxHeightPct}%`,
-              width: "100%",
-              top: effectSpec.anchor === "center" ? "50%" : 0,
-              transform: effectSpec.anchor === "center" ? "translateY(-50%)" : undefined,
-              opacity: effectSpec.opacity,
-              maskImage: "linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%)",
-            }}
-          >
-            <ProfileEffect slug={profileEffect?.slug} className="absolute inset-0" />
-          </div>
-        )}
-
-        {/* 2b. Frame: same banner box, above the scrim, below the avatar/name. */}
-        {frameSpec && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-[25] overflow-hidden"
-            style={{ opacity: frameSpec.opacity }}
-          >
-            <ProfileFrame slug={profileFrame?.slug} />
-          </div>
-        )}
-
-        {/* 3. Soft scrim for the avatar/name overlap. */}
+        {/* 2. Soft scrim for the avatar/name overlap. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-1/2"
@@ -171,7 +120,7 @@ export function ProfileHeader({
           }}
         />
 
-        {/* Buttons always sit above the effect and remain tappable. */}
+        {/* Buttons always sit above the banner and remain tappable. */}
         {overlayActions && (
           <div className="absolute right-2.5 top-2.5 z-40 flex items-center gap-1.5">
             {overlayActions}
@@ -195,7 +144,7 @@ export function ProfileHeader({
               marginLeft: "calc(var(--avatar-size) * 0.08)",
             }}
           >
-            {avatarGlow && !avatarDecoration?.slug && (
+            {avatarGlow && (
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 z-0 rounded-full"
@@ -204,13 +153,13 @@ export function ProfileHeader({
                 }}
               />
             )}
-            <AvatarDecoration
-              src={avatarSrc}
-              fallback={initial}
-              size="var(--avatar-size)"
-              decorationSlug={avatarDecoration?.slug}
-            />
-            {avatarRing && !avatarDecoration?.slug && (
+            <Avatar className="relative z-[1] h-full w-full">
+              <AvatarImage src={avatarSrc} />
+              <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
+            {avatarRing && (
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 z-30 rounded-full"

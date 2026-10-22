@@ -53,7 +53,6 @@ export const VOICE_COMMANDS: VoiceCommand[] = [
   { id: "open:dms", path: "/dms", keywords: ["dm", "dms", "chat", "chats", "message", "messages", "inbox"], speak: "Chat khol raha hu" },
   { id: "open:stories", path: "/chat-stories", keywords: ["story", "stories", "chat story", "chat stories", "story section"], speak: "Stories khol raha hu" },
   { id: "open:bookmarks", path: "/bookmarks", keywords: ["bookmark", "bookmarks", "saved", "save kia hua"], speak: "Saved posts khol raha hu" },
-  { id: "open:effects", path: "/effects", keywords: ["effect", "effects", "effects section"], speak: "Effects khol raha hu" },
   { id: "open:badges", path: "/badges", keywords: ["badge", "badges", "badges section"], speak: "Badges khol raha hu" },
   { id: "open:leaderboard", path: "/leaderboard", keywords: ["leaderboard", "top", "ranking", "rank"], speak: "Leaderboard khol raha hu" },
   { id: "open:notifications", path: "/notifications", keywords: ["notification", "notifications", "bell", "alerts"], speak: "Notifications khol raha hu" },

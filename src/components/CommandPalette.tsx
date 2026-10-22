@@ -31,7 +31,6 @@ const PAGES = [
   { to: "/leaderboard", label: "Leaderboard", icon: Flame },
   { to: "/notifications", label: "Inbox", icon: Bell },
   { to: "/bots", label: "Bots", icon: Bot },
-  { to: "/effects", label: "Effects", icon: Palette },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

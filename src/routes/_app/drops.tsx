@@ -246,12 +246,6 @@ function DropsPage() {
             Every successful bounty claim pays {BOUNTY_PAW_REWARD} Paws.
           </p>
         </div>
-        <Link
-          to="/effects"
-          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          Use Paws
-        </Link>
       </div>
 
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
@@ -346,18 +340,12 @@ function DropsPage() {
 
       <div className="glass rounded-3xl p-5 mt-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
-          <h2 className="font-display text-lg font-bold">Spend your Paws</h2>
+          <h2 className="font-display text-lg font-bold">Paws leaderboard</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Unlock a full-profile effect or an avatar decoration.
+            See who is stacking the most Paws this week.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          <Link
-            to="/effects"
-            className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Sparkles className="h-4 w-4" /> Open Effects
-          </Link>
           <Link
             to="/leaderboard"
             search={{ earn: true }}

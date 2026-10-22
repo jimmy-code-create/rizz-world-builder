@@ -1049,16 +1049,22 @@ function DMPage() {
                   ]}
                 >
                   <div
-                    className={`chat-bubble message-bubble px-4 py-2 rounded-2xl text-left select-none touch-manipulation ${
+                    className={`chat-bubble message-bubble rounded-2xl text-left select-none touch-manipulation ${
+                      hasText && !m.attachment_url ? "px-4 py-2" : ""
+                    } ${
                       deliveryStatus ? "opacity-60" : ""
                     } ${
+                      // A photo always owns the frame: never paint the green outgoing
+                      // bubble (or its border) behind someone's picture.
                       deletedAt
                         ? "message-bubble--unsent"
-                        : hasText
-                          ? mine
-                            ? "message-bubble--outgoing"
-                            : "message-bubble--incoming"
-                          : "message-bubble--media"
+                        : m.attachment_url
+                          ? "message-bubble--media"
+                          : hasText
+                            ? mine
+                              ? "message-bubble--outgoing"
+                              : "message-bubble--incoming"
+                            : "message-bubble--media"
                     }`}
                     style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                   >
@@ -1076,11 +1082,11 @@ function DMPage() {
                       <ChatMessageMedia
                         src={m.attachment_url}
                         alt="Image shared in chat"
-                        className={hasText ? "mb-2" : ""}
+                        className={hasText ? "mb-1" : ""}
                       />
                     )}
                     {deletedAt ? "This message was unsent" : !hasText ? null : (
-                      <>
+                      <div className={m.attachment_url ? "chat-media-caption" : "contents"}>
                         {renderGifSegments(rest).map((seg, si) =>
                           seg.isGif || seg.isSticker
                             ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
@@ -1104,7 +1110,7 @@ function DMPage() {
                               />
                             )
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 </MessageActionMenu>

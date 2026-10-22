@@ -87,7 +87,7 @@ export function BadgeDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[380px] gap-0 overflow-hidden rounded-2xl border-white/[0.08] bg-[#111214] p-0">
+      <DialogContent className="popout-card w-[calc(100vw-1.5rem)] max-w-[380px] gap-0 overflow-hidden rounded-2xl border-white/[0.08] bg-[#111214] p-0">
         <DialogTitle className="sr-only">{badge.name}</DialogTitle>
         <DialogDescription className="sr-only">
           {badge.name}, a {tone.label.toLowerCase()} badge.

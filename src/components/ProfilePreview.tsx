@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { getBanner } from "@/lib/banner";
-import { useEquipped } from "@/lib/useEquipped";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
 import {
   DropdownMenu,
@@ -200,9 +199,8 @@ export function ProfilePreviewDialog({
     staleTime: 60_000,
   });
 
-  // The preview carries the same equipped effects as the full profile, so the
+  // The preview carries the same identity as the full profile, so the
   // popout never shows a different banner treatment than the page behind it.
-  const equipped = useEquipped(p?.id);
 
   const following = useQuery({
     queryKey: ["following", user?.id, p?.id],
@@ -356,7 +354,6 @@ export function ProfilePreviewDialog({
               verified,
               reducedMotion: Boolean(p.reduced_motion),
             }}
-            effects={equipped.data}
             status={status}
             statusIsSelf={isOwnProfile}
             customStatus={null}
@@ -625,7 +622,7 @@ export function ProfilePreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
-        className="gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
+        className="popout-card gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
         style={
           previewBanner?.profileBackground
             ? { background: previewBanner.profileBackground }

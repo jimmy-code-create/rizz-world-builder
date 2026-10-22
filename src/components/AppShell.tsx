@@ -120,7 +120,6 @@ const destinations = {
   "/badges": { labelKey: "badges", icon: Trophy },
   "/settings": { labelKey: "settings", icon: Settings },
   "/settings/appearance": { labelKey: "theme", icon: Palette },
-  "/effects": { labelKey: "effects", icon: Palette },
 } as const;
 
 type DestKey = keyof typeof destinations;
@@ -136,7 +135,6 @@ const moreGroups: Array<{
     titleKey: "create",
     items: [
       { kind: "action", action: "new-post" },
-      { kind: "dest", key: "/effects" },
     ],
   },
   {

@@ -63,7 +63,8 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
   assert.ok(card.includes("<ProfileHeader"), "the preview renders the shared header");
   assert.ok(card.includes("bannerMode: p.banner_mode"), "the preview honours banner_mode");
   assert.ok(card.includes("bannerGradient: p.banner_gradient"), "the preview honours the gradient");
-  assert.ok(card.includes("effects={equipped.data}"), "the preview wears the equipped looks");
+  assert.ok(!card.includes("effects="), "the effects shelf is retired, so the header carries none");
+  assert.ok(!card.includes("useEquipped"), "the preview no longer queries equipped cosmetics");
   assert.ok(card.includes("Close profile preview"), "the preview has a visible close control");
   assert.ok(card.includes("About Me"));
   assert.ok(card.includes("Member Since"));
@@ -73,7 +74,7 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
 
   assert.ok(profileHeader.includes('aspectRatio: "3 / 1"'), "the banner is always 3:1");
   assert.ok(profileHeader.includes("overflow-hidden"), "banner art is clipped");
-  assert.ok(profileHeader.includes("<AvatarDecoration"), "the header owns the avatar");
+  assert.ok(profileHeader.includes("<AvatarImage src={avatarSrc}"), "the header owns the avatar");
   assert.ok(profileHeader.includes("<VerifiedSeal"), "the header uses the verified seal");
   assert.ok(profileHeader.includes("<StatusDotButton"), "the header owns the presence dot");
   assert.ok(

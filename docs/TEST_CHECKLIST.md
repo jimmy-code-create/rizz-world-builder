@@ -1,19 +1,12 @@
 # RIZZ Test Checklist
 
-## Puppy Love — the single profile effect (this pass)
+## Effects retired (this pass)
 
-- [ ] `/effects` shows one card: Biscuit at banner size, with the avatar disc in place. No other effects, decorations or nameplates are listed anywhere, and nothing spider-shaped survives anywhere in the app.
-- [ ] Equip it: the toast confirms, `/u/<you>` shows the pup in the banner, and he is still there after a reload.
-- [ ] Open the same profile in a second browser (or signed out, after `20261030000000_puppy_love_effect.sql`): the effect is visible to visitors, not just the owner.
-- [ ] Inspect the scene: no `<img>`, no full-canvas rect, no stage background; the pup is complete from ears to paws, the hearts float out and fade, and the banner colour shows through.
-- [ ] The heart-shaped shades, heart nose and chest paw crest are all visible at phone banner width and still legible at 340px.
-- [ ] Click the avatar, name, edit/follow buttons and the tab bar: all still work — the effect never intercepts a pointer.
-- [ ] Enable OS reduced motion: the scene becomes a still (head, ears, tail, paw, hearts at rest). Disable it: the loop resumes.
-- [ ] On a low-end device (`navigator.hardwareConcurrency <= 2`) it renders still.
-- [ ] Scroll the banner out of view and back: animations pause off screen and resume without a jump.
-- [ ] Remove the effect from `/effects`: the banner returns to its plain banner image/gradient.
-- [ ] Apply `20261030000000_puppy_love_effect.sql`: the Web Slinger row is renamed to `fx-puppy-love` (an owner keeps it equipped), every other effect row is gone, and `rights_review` is false.
-- [ ] `bun tests/puppy-love-effect.test.mjs` passes; `bun tsc -b --noEmit` passes.
+- [ ] `/effects` no longer exists; the route falls through to the app's not-found screen instead of a blank page.
+- [ ] The More sheet, command palette, settings hub, `/drops` and the effects voice command no longer mention effects, and no link points at `/effects`.
+- [ ] Every profile surface (settings preview, profile card, preview sheet, full profile, account menu) renders the banner and avatar with no overlay, frame or decoration.
+- [ ] Apply `20261101000000_retire_effects.sql`: `profile_effects` is empty, `user_profile_effects` cascaded away, and a member who had an effect equipped sees a plain banner.
+- [ ] `bun tsc -b --noEmit` passes and the suite in `package.json` no longer references a deleted test file.
 
 ## Profile badge showcase (this pass)
 

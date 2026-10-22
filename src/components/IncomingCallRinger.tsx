@@ -4,7 +4,7 @@ import { Phone, PhoneOff, Video as VideoIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { AvatarDecoration } from "@/components/profile/AvatarDecoration";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { isSelfDoNotDisturb } from "@/lib/presence";
 import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
@@ -119,11 +119,12 @@ export function IncomingCallRinger() {
           className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-md"
         >
           <div className="glass-strong rounded-3xl border border-white/10 p-3 flex items-center gap-3 shadow-2xl">
-            <AvatarDecoration
-              src={call.fromAvatar}
-              fallback={(call.fromUsername ?? "?").charAt(0).toUpperCase()}
-              size={48}
-            />
+            <Avatar className="h-12 w-12 shrink-0">
+              <AvatarImage src={call.fromAvatar ?? undefined} />
+              <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+                {(call.fromUsername ?? "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-bold truncate">
                 <Nameplate name={call.fromDisplayName || call.fromUsername || "Someone"} />

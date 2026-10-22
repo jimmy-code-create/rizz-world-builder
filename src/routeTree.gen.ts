@@ -24,7 +24,6 @@ import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDrawPartyRouteImport } from './routes/_app/draw-party'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
-import { Route as AppEffectsRouteImport } from './routes/_app/effects'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
 import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppGamesRouteImport } from './routes/_app/games'
@@ -137,11 +136,6 @@ const AppDrawPartyRoute = AppDrawPartyRouteImport.update({
 const AppDropsRoute = AppDropsRouteImport.update({
   id: '/drops',
   path: '/drops',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEffectsRoute = AppEffectsRouteImport.update({
-  id: '/effects',
-  path: '/effects',
   getParentRoute: () => AppRoute,
 } as any)
 const AppExploreRoute = AppExploreRouteImport.update({
@@ -357,7 +351,6 @@ export interface FileRoutesByFullPath {
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
-  '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/games': typeof AppGamesRoute
@@ -412,7 +405,6 @@ export interface FileRoutesByTo {
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
-  '/effects': typeof AppEffectsRoute
   '/explore': typeof AppExploreRoute
   '/feed': typeof AppFeedRoute
   '/games': typeof AppGamesRoute
@@ -470,7 +462,6 @@ export interface FileRoutesById {
   '/_app/dms': typeof AppDmsRoute
   '/_app/draw-party': typeof AppDrawPartyRoute
   '/_app/drops': typeof AppDropsRoute
-  '/_app/effects': typeof AppEffectsRoute
   '/_app/explore': typeof AppExploreRoute
   '/_app/feed': typeof AppFeedRoute
   '/_app/games': typeof AppGamesRoute
@@ -528,7 +519,6 @@ export interface FileRouteTypes {
     | '/dms'
     | '/draw-party'
     | '/drops'
-    | '/effects'
     | '/explore'
     | '/feed'
     | '/games'
@@ -583,7 +573,6 @@ export interface FileRouteTypes {
     | '/dms'
     | '/draw-party'
     | '/drops'
-    | '/effects'
     | '/explore'
     | '/feed'
     | '/games'
@@ -640,7 +629,6 @@ export interface FileRouteTypes {
     | '/_app/dms'
     | '/_app/draw-party'
     | '/_app/drops'
-    | '/_app/effects'
     | '/_app/explore'
     | '/_app/feed'
     | '/_app/games'
@@ -808,13 +796,6 @@ declare module '@tanstack/react-router' {
       path: '/drops'
       fullPath: '/drops'
       preLoaderRoute: typeof AppDropsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/effects': {
-      id: '/_app/effects'
-      path: '/effects'
-      fullPath: '/effects'
-      preLoaderRoute: typeof AppEffectsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/explore': {
@@ -1114,7 +1095,6 @@ interface AppRouteChildren {
   AppDmsRoute: typeof AppDmsRoute
   AppDrawPartyRoute: typeof AppDrawPartyRoute
   AppDropsRoute: typeof AppDropsRoute
-  AppEffectsRoute: typeof AppEffectsRoute
   AppExploreRoute: typeof AppExploreRoute
   AppFeedRoute: typeof AppFeedRoute
   AppGamesRoute: typeof AppGamesRoute
@@ -1150,7 +1130,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppDmsRoute: AppDmsRoute,
   AppDrawPartyRoute: AppDrawPartyRoute,
   AppDropsRoute: AppDropsRoute,
-  AppEffectsRoute: AppEffectsRoute,
   AppExploreRoute: AppExploreRoute,
   AppFeedRoute: AppFeedRoute,
   AppGamesRoute: AppGamesRoute,
