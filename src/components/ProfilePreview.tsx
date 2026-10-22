@@ -546,7 +546,7 @@ export function ProfilePreviewDialog({
                   </p>
                 </div>
                 <div className="rounded-xl py-2">
-                  <p className="flex items-center justify-center gap-1 truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">
+                  <p className="flex items-center justify-center gap-1 truncate font-display text-base font-bold tabular-nums text-[#ff2d3f]">
                     <PawPrint className="h-3.5 w-3.5 shrink-0" />
                     {activityCount(p.paw_balance)}
                   </p>
@@ -572,7 +572,7 @@ export function ProfilePreviewDialog({
           hideClose
           // The own spring keyframes below replace the primitive's linear slide,
           // so the sheet rises like a drawer and settles instead of gliding.
-          className="profile-sheet max-h-[90dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#111214] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+          className="profile-sheet max-h-[90dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#0b0b0c] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
           style={
             previewBanner?.profileBackground
               ? { background: previewBanner.profileBackground }

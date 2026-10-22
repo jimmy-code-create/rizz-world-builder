@@ -228,11 +228,11 @@ export function AccountMenu({
 
   const custom = selfPresence.customStatus;
   const rowCls =
-    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]";
+    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]";
 
   const countChip = (value: number) =>
     value > 0 ? (
-      <span className="ml-auto shrink-0 rounded-full bg-[#c8ff3d]/15 px-2 py-0.5 text-[11px] font-bold text-[#c8ff3d]">
+      <span className="ml-auto shrink-0 rounded-full bg-[#ff2d3f]/15 px-2 py-0.5 text-[11px] font-bold text-[#ff2d3f]">
         {formatCount(value)}
       </span>
     ) : null;
@@ -306,7 +306,7 @@ export function AccountMenu({
     opts?: { danger?: boolean; ariaLabel?: string },
   ) => {
     const cls = opts?.danger
-      ? "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#ff5d5d] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+      ? "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#ff5d5d] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
       : rowCls;
     if (isMobile) {
       return (
@@ -351,7 +351,7 @@ export function AccountMenu({
         type="button"
         onClick={openCard}
         aria-label={`Open your profile card, @${username}`}
-        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
       >
         <span className="relative block h-28 w-full overflow-hidden md:h-40" aria-hidden>
           <span
@@ -399,7 +399,7 @@ export function AccountMenu({
           ) : (
             <>
               <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#c8ff3d]">{formatCount(stats?.pawBalance ?? 0)}</span>
+                <span className="font-mono text-sm font-bold text-[#ff2d3f]">{formatCount(stats?.pawBalance ?? 0)}</span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paws</span>
               </span>
               <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
@@ -463,7 +463,7 @@ export function AccountMenu({
                     });
                     setStatusExpanded(false);
                   }}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
                 >
                   <StatusIcon status={entry.value} size={18} />
                   <span className="min-w-0 flex-1">
@@ -472,16 +472,16 @@ export function AccountMenu({
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">{entry.hint}</span>
                   </span>
-                  {selected && <Check className="h-4 w-4 shrink-0 text-[#c8ff3d]" aria-label="Selected" />}
+                  {selected && <Check className="h-4 w-4 shrink-0 text-[#ff2d3f]" aria-label="Selected" />}
                 </button>
               );
             })}
             <button
               type="button"
               onClick={openStatusSheet}
-              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
             >
-              <Smile className="h-4 w-4 shrink-0 text-[#c8ff3d]" aria-hidden />
+              <Smile className="h-4 w-4 shrink-0 text-[#ff2d3f]" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-sm text-[#f2efe6]">
                 {custom && (custom.emoji || custom.text)
                   ? `${custom.emoji ?? ""} ${custom.text ?? ""}`.trim()
@@ -565,7 +565,7 @@ export function AccountMenu({
                   disabled={isCurrent}
                   onClick={() => void doSwitchAccount(entry)}
                   aria-label={isCurrent ? `${entry.username}, current account` : `Switch to ${entry.username}`}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage src={entry.avatarUrl ?? undefined} />
@@ -578,7 +578,7 @@ export function AccountMenu({
                     <span className="block truncate text-xs text-muted-foreground">@{entry.username}</span>
                   </span>
                   {isCurrent && (
-                    <span className="shrink-0 rounded-full bg-[#c8ff3d]/15 px-2 py-0.5 text-[11px] font-bold text-[#c8ff3d]">
+                    <span className="shrink-0 rounded-full bg-[#ff2d3f]/15 px-2 py-0.5 text-[11px] font-bold text-[#ff2d3f]">
                       Current
                     </span>
                   )}
@@ -588,7 +588,7 @@ export function AccountMenu({
             <button
               type="button"
               onClick={() => void doSwitchAccount()}
-              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
             >
               {rowIcon(UserPlus)}
               Add account
@@ -612,14 +612,14 @@ export function AccountMenu({
               <button
                 type="button"
                 onClick={() => void doSignOut()}
-                className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-[#ff5d5d] transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-[#ff5d5d] transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
               >
                 Sign out
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmSignOut(false)}
-                className="min-h-11 rounded-lg bg-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-lg bg-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
               >
                 Cancel
               </button>
@@ -689,7 +689,7 @@ export function AccountMenu({
           >
             <SheetContent
               side="bottom"
-              className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#141416] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+              className="account-sheet max-h-[85dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#141416] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
             >
               <SheetTitle className="sr-only">Your account</SheetTitle>
               <div

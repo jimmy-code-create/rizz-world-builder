@@ -1784,6 +1784,71 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   }
 }
 
+/* ── Account sheet + profile preview sheet ───────────────────────────────────
+   Calm surfaces, cream type, one red accent. Scoped to the two sheets so the
+   rest of the app keeps its palette. */
+.account-sheet,
+.profile-sheet {
+  --s-bg: #0b0b0c;
+  --s-surface: #141415;
+  --s-surface-2: #1b1b1d;
+  --s-border: rgba(255, 255, 255, 0.08);
+  --s-text: #f4ecdd;
+  --s-muted: #9b948a;
+  --s-accent: #ff2d3f;
+  color: var(--s-text);
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+}
+.account-sheet { background: var(--s-bg) !important; }
+.account-sheet h1,
+.account-sheet h2,
+.account-sheet h3,
+.account-sheet .font-display,
+.profile-sheet h1,
+.profile-sheet h2,
+.profile-sheet .font-display {
+  font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.account-sheet .text-primary,
+.profile-sheet .text-primary { color: var(--s-accent); }
+.account-sheet .bg-primary,
+.profile-sheet .bg-primary { background: var(--s-accent); color: #fff; }
+.account-sheet .border-primary\/25,
+.account-sheet .border-primary\/30,
+.profile-sheet .border-primary\/25,
+.profile-sheet .border-primary\/30 {
+  border-color: color-mix(in srgb, var(--s-accent) 30%, transparent);
+}
+
+/* Motion: 260ms up, 180ms down, transform/opacity only. */
+@keyframes sheet-rise {
+  from { transform: translateY(28px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes sheet-fall {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(20px); opacity: 0; }
+}
+.account-sheet[data-state="open"],
+.profile-sheet[data-state="open"] {
+  animation: sheet-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.account-sheet[data-state="closed"],
+.profile-sheet[data-state="closed"] {
+  animation: sheet-fall 180ms ease-in both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-sheet[data-state="open"],
+  .account-sheet[data-state="closed"],
+  .profile-sheet[data-state="open"],
+  .profile-sheet[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}
+
 /* Desktop popouts — the profile preview and the badge detail card — share one
    motion: a short rise-and-settle instead of the generic 200ms fade, so both
    read as the same object opening rather than two different dialogs. */
