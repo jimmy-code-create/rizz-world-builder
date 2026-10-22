@@ -31,6 +31,7 @@ import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppPulseRouteImport } from './routes/_app/pulse'
+import { Route as AppPurifyRouteImport } from './routes/_app/purify'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
 import { Route as ApiBotRouteImport } from './routes/api.bot'
@@ -61,6 +62,8 @@ import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
 import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
+import { Route as ApiPurifyCheckoutRouteImport } from './routes/api.purify.checkout'
+import { Route as ApiPurifyWebhookRouteImport } from './routes/api.purify.webhook'
 import { Route as AppRSlugSettingsRouteImport } from './routes/_app/r.$slug_.settings'
 import { Route as ApiBotWebhookBotIdSecretRouteImport } from './routes/api.bot-webhook.$botId.$secret'
 
@@ -171,6 +174,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
 const AppPulseRoute = AppPulseRouteImport.update({
   id: '/pulse',
   path: '/pulse',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPurifyRoute = AppPurifyRouteImport.update({
+  id: '/purify',
+  path: '/purify',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRealmsRoute = AppRealmsRouteImport.update({
@@ -324,6 +332,16 @@ const ApiLinkPreviewImageRoute = ApiLinkPreviewImageRouteImport.update({
   path: '/image',
   getParentRoute: () => ApiLinkPreviewRoute,
 } as any)
+const ApiPurifyCheckoutRoute = ApiPurifyCheckoutRouteImport.update({
+  id: '/api/purify/checkout',
+  path: '/api/purify/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPurifyWebhookRoute = ApiPurifyWebhookRouteImport.update({
+  id: '/api/purify/webhook',
+  path: '/api/purify/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRSlugSettingsRoute = AppRSlugSettingsRouteImport.update({
   id: '/r/$slug_/settings',
   path: '/r/$slug/settings',
@@ -358,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/pulse': typeof AppPulseRoute
+  '/purify': typeof AppPurifyRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -386,6 +405,8 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
+  '/api/purify/webhook': typeof ApiPurifyWebhookRoute
   '/bots/': typeof AppBotsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
@@ -412,6 +433,7 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof AppLeaderboardRoute
   '/notifications': typeof AppNotificationsRoute
   '/pulse': typeof AppPulseRoute
+  '/purify': typeof AppPurifyRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -440,6 +462,8 @@ export interface FileRoutesByTo {
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
+  '/api/purify/webhook': typeof ApiPurifyWebhookRoute
   '/bots': typeof AppBotsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
@@ -469,6 +493,7 @@ export interface FileRoutesById {
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/pulse': typeof AppPulseRoute
+  '/_app/purify': typeof AppPurifyRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
   '/api/bot': typeof ApiBotRouteWithChildren
@@ -497,6 +522,8 @@ export interface FileRoutesById {
   '/_app/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
+  '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
+  '/api/purify/webhook': typeof ApiPurifyWebhookRoute
   '/_app/bots/': typeof AppBotsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/r/$slug_/settings': typeof AppRSlugSettingsRoute
@@ -526,6 +553,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/notifications'
     | '/pulse'
+    | '/purify'
     | '/realms'
     | '/reels'
     | '/api/bot'
@@ -554,6 +582,8 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/api/purify/checkout'
+    | '/api/purify/webhook'
     | '/bots/'
     | '/settings/'
     | '/r/$slug/settings'
@@ -580,6 +610,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/notifications'
     | '/pulse'
+    | '/purify'
     | '/realms'
     | '/reels'
     | '/api/bot'
@@ -608,6 +639,8 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/api/purify/checkout'
+    | '/api/purify/webhook'
     | '/bots'
     | '/settings'
     | '/r/$slug/settings'
@@ -636,6 +669,7 @@ export interface FileRouteTypes {
     | '/_app/leaderboard'
     | '/_app/notifications'
     | '/_app/pulse'
+    | '/_app/purify'
     | '/_app/realms'
     | '/_app/reels'
     | '/api/bot'
@@ -664,6 +698,8 @@ export interface FileRouteTypes {
     | '/_app/u/$username'
     | '/api/bot/command'
     | '/api/link-preview/image'
+    | '/api/purify/checkout'
+    | '/api/purify/webhook'
     | '/_app/bots/'
     | '/_app/settings/'
     | '/_app/r/$slug_/settings'
@@ -688,6 +724,8 @@ export interface RootRouteChildren {
   EmbedDrawPartyRoute: typeof EmbedDrawPartyRoute
   JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiPurifyCheckoutRoute: typeof ApiPurifyCheckoutRoute
+  ApiPurifyWebhookRoute: typeof ApiPurifyWebhookRoute
   ApiBotWebhookBotIdSecretRoute: typeof ApiBotWebhookBotIdSecretRoute
 }
 
@@ -845,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/pulse'
       fullPath: '/pulse'
       preLoaderRoute: typeof AppPulseRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/purify': {
+      id: '/_app/purify'
+      path: '/purify'
+      fullPath: '/purify'
+      preLoaderRoute: typeof AppPurifyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/realms': {
@@ -1057,6 +1102,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLinkPreviewImageRouteImport
       parentRoute: typeof ApiLinkPreviewRoute
     }
+    '/api/purify/checkout': {
+      id: '/api/purify/checkout'
+      path: '/api/purify/checkout'
+      fullPath: '/api/purify/checkout'
+      preLoaderRoute: typeof ApiPurifyCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/purify/webhook': {
+      id: '/api/purify/webhook'
+      path: '/api/purify/webhook'
+      fullPath: '/api/purify/webhook'
+      preLoaderRoute: typeof ApiPurifyWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/r/$slug_/settings': {
       id: '/_app/r/$slug_/settings'
       path: '/r/$slug/settings'
@@ -1102,6 +1161,7 @@ interface AppRouteChildren {
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPulseRoute: typeof AppPulseRoute
+  AppPurifyRoute: typeof AppPurifyRoute
   AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
   AppCallUserIdRoute: typeof AppCallUserIdRoute
@@ -1137,6 +1197,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPulseRoute: AppPulseRoute,
+  AppPurifyRoute: AppPurifyRoute,
   AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
   AppCallUserIdRoute: AppCallUserIdRoute,
@@ -1200,6 +1261,8 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedDrawPartyRoute: EmbedDrawPartyRoute,
   JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiPurifyCheckoutRoute: ApiPurifyCheckoutRoute,
+  ApiPurifyWebhookRoute: ApiPurifyWebhookRoute,
   ApiBotWebhookBotIdSecretRoute: ApiBotWebhookBotIdSecretRoute,
 }
 export const routeTree = rootRouteImport

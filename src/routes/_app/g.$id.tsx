@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/lib/toast";
+import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
@@ -212,8 +213,11 @@ function GroupRoom() {
       toast.error("Choose an image file.");
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("Images must be smaller than 15 MB before compression.");
+    const uploadLimit = chatUploadLimitBytes(profile);
+    if (file.size > uploadLimit) {
+      toast.error(
+        `Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`,
+      );
       return;
     }
     setImageFile(file);

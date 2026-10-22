@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-10-22 — Purify: the $1/month tier
+
+### One entitlement, written by Stripe only
+- `profiles.purify_until` is the whole entitlement: Pure while the timestamp is
+  in the future. `stripe_customer_id` / `stripe_subscription_id` let a webhook
+  find the member. A `BEFORE UPDATE` trigger copies the old values back whenever
+  the writer is not `service_role`, so a member can never grant themselves
+  Purify from the client.
+- `src/lib/purify.ts` owns the price, the benefits, the 10 MB/50 MB chat caps
+  and `usePurify()`. Enforcement sits behind `VITE_PURIFY_ENFORCED`: the gates
+  ship now, the app stays free until billing is connected, and nothing shrinks
+  before then (the legacy 15 MB chat cap is kept).
+
+### Checkout and webhook
+- `POST /api/purify/checkout` opens a Stripe subscription Checkout session for
+  `$1 / month` (REST + fetch, no SDK in the server bundle) and returns 503 with
+  a readable message until `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` exist.
+- `POST /api/purify/webhook` verifies `stripe-signature` over the raw body with
+  Web Crypto (5-minute tolerance), then grants or clears `purify_until` from
+  `checkout.session.completed`, `invoice.paid` and subscription status events.
+
+### What Purify unlocks
+- Profile gradients and banner photo uploads ask for Purify; clearing a gradient
+  or removing a banner stays free, and existing banners/gradients are kept.
+- GIFs are a Purify feature inside the shared `GifPicker` (emoji and stickers
+  stay free); chat images go from 10 MB free to 50 MB with Purify.
+- `/purify` is the only billing page: price, five benefits, active-until line
+  and the checkout button. Settings links to it.
+
 ## 2026-10-22 — Effects retired, clean DM photos, shared popout motion
 
 ### The effects shelf is gone

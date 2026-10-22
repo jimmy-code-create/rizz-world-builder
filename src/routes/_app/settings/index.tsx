@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import {
   Bell,
   ChevronLeft,
+  Crown,
   ChevronRight,
   Palette,
   Shield,
@@ -34,7 +35,8 @@ type SettingsSection = {
     | "/settings/preferences"
     | "/settings/voice"
     | "/settings/blocked"
-    | "/settings/account";
+    | "/settings/account"
+    | "/purify";
   label: string;
   description: string;
   icon: LucideIcon;
@@ -51,6 +53,12 @@ function SettingsHubPage() {
   // Built per render (not module scope) so labels follow the live language.
   const SECTIONS: SettingsSection[] = [
     { to: "/settings/profile", label: t("profile"), description: t("settings_profile_desc"), icon: UserRound },
+    {
+      to: "/purify",
+      label: "Purify",
+      description: "$1 / month · gradients, banner photos, GIFs",
+      icon: Crown,
+    },
     { to: "/settings/appearance", label: t("appearance"), description: t("settings_appearance_desc"), icon: Palette },
     { to: "/settings/notifications", label: t("notifications"), description: t("settings_notifications_desc"), icon: Bell },
     { to: "/settings/voice", label: t("settings_voice_label"), description: t("settings_voice_desc"), icon: Volume2 },

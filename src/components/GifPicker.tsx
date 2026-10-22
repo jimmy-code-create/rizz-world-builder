@@ -3,7 +3,9 @@ import { Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
+import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
 
 type GifResult = {
   id: string;
@@ -193,6 +195,8 @@ const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
 const TOP_EMOJIS = EMOJIS.slice(0, 12);
 
 export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
+  // GIFs are a Purify feature; emoji and stickers stay free for everyone.
+  const { allowed } = usePurify();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PickerTab>("emoji");
@@ -449,7 +453,23 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           </div>
         )}
 
-        {tab === "gifs" && (
+        {tab === "gifs" && !allowed && (
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
+            <Sparkles className="mx-auto mb-2 h-6 w-6 text-primary" />
+            <p className="text-sm font-semibold">GIFs come with Purify</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Emoji and sticker packs stay free. Unlock GIFs for {PURIFY_PRICE_LABEL}.
+            </p>
+            <Link
+              to="/purify"
+              className="mt-3 inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+            >
+              Get Purify
+            </Link>
+          </div>
+        )}
+
+        {tab === "gifs" && allowed && (
           <>
             {!apiKey ? (
               <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">

@@ -26,6 +26,8 @@ type Profile = {
   trial_ends_at: string | null;
   tutorial_seen: boolean;
   interests: string[];
+  /** Purify entitlement end; written only by the Stripe webhook. */
+  purify_until?: string | null;
 };
 
 type AuthCtx = {

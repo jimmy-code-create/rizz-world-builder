@@ -1,5 +1,15 @@
 # RIZZ Test Checklist
 
+## Purify (this pass)
+
+- [ ] Apply `20261102000000_purify.sql`: `profiles` gains `purify_until`, `stripe_customer_id`, `stripe_subscription_id`; updating `purify_until` from the app leaves the old value in place.
+- [ ] Without Stripe keys: `/purify` loads and the button reports "Purify billing isn't connected yet"; `POST /api/purify/checkout` returns 401 signed out and 503 signed in.
+- [ ] `POST /api/purify/webhook` with no `stripe-signature` returns 400 once the keys exist; `stripe trigger checkout.session.completed` grants a month and `/purify` shows the active date.
+- [ ] With `VITE_PURIFY_ENFORCED=1` and no subscription: changing a gradient or uploading a banner routes to `/purify`; clearing the gradient and removing the banner still work.
+- [ ] The GIF tab shows the Purify card while emoji and stickers stay usable; DMs and groups reject images over 10 MB.
+- [ ] With Purify active: gradients and banner photos save, GIFs appear, and a 40 MB chat image is accepted.
+- [ ] `bun tests/purify.test.mjs` passes and `bun tsc -b --noEmit` passes.
+
 ## Effects retired (this pass)
 
 - [ ] `/effects` no longer exists; the route falls through to the app's not-found screen instead of a blank page.

@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Save,
+  Sparkles,
   Upload,
   UserRound,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import {
   type BannerGradient,
   type BannerMode,
 } from "@/lib/banner";
+import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
 
 /**
  * The profile editor is deliberately split into parts.
@@ -103,6 +105,7 @@ function ProfileSettingsPage() {
   const { t } = useI18n();
   const nav = useNavigate();
   const { part } = Route.useSearch();
+  const purify = usePurify();
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#c9ff3d");
@@ -130,8 +133,17 @@ function ProfileSettingsPage() {
     nav({ to: "/settings/profile", search: { part: next } });
   }
 
+  /** Gradients and banner photos are Purify features; nothing already saved is removed. */
+  function requirePurify(feature: string): boolean {
+    if (purify.allowed) return true;
+    toast.info(`${feature} comes with Purify.`);
+    nav({ to: "/purify" });
+    return false;
+  }
+
   async function uploadAvatar(file: File, kind: "avatar" | "banner") {
     if (!user) return;
+    if (kind === "banner" && !requirePurify("Banner photos")) return;
     if (kind === "banner") setBannerUploading(true);
     const ext = file.name.split(".").pop() ?? "png";
     const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
@@ -177,6 +189,7 @@ function ProfileSettingsPage() {
   }
 
   function changeBannerGradient(next: BannerGradient) {
+    if (!requirePurify("Profile gradients")) return;
     // The image and the full-profile gradient are independent. Keep the old
     // banner_mode column coherent for clients that have not updated yet.
     const nextMode: BannerMode = profile?.banner_url ? "image" : "gradient";
@@ -434,6 +447,17 @@ function ProfileSettingsPage() {
         icon={<ImageIcon className="h-5 w-5" />}
       >
         <SettingsCard className="space-y-5">
+          {!purify.allowed && (
+            <Link
+              to="/purify"
+              className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-xs font-semibold text-primary"
+            >
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Gradients and banner photos come with Purify — {PURIFY_PRICE_LABEL}.
+              </span>
+            </Link>
+          )}
           <div>
             <Label className="text-xs text-muted-foreground">{t("profile_banner")}</Label>
             <div className="mt-2">

@@ -13,6 +13,7 @@ import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, 
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
+import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -597,8 +598,11 @@ function DMPage() {
       toast.error("Choose an image file.");
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("Images must be smaller than 15 MB before compression.");
+    const uploadLimit = chatUploadLimitBytes(profile);
+    if (file.size > uploadLimit) {
+      toast.error(
+        `Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`,
+      );
       return;
     }
     const preview = URL.createObjectURL(file);
