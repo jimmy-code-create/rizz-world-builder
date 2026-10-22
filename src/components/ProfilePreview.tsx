@@ -374,7 +374,7 @@ export function ProfilePreviewDialog({
             }
             featuredBadge={
               markBadges.length > 0 ? (
-                <span className="flex items-center gap-0.5" aria-label="Badges">                  {markBadges.map((badge) => (
+                <span className="flex items-center gap-1" aria-label="Badges">                  {markBadges.map((badge) => (
                     <button
                       key={badge.slug}
                       type="button"

@@ -774,7 +774,20 @@
   flex: 0 0 auto;
   line-height: 0;
 }
-.bz-glyph svg { display: block; overflow: visible; }
+.bz-glyph svg { display: block; overflow: hidden; }
+
+/* Sprite badges sit in the same flex slot as the inline glyphs, so the name
+   row centres every mark the same way. `line-height: 0` removes the inline
+   baseline gap that used to push the row down. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  vertical-align: middle;
+  flex: none;
+}
+.badge > svg { display: block; }
 .bz-glyph--locked svg { opacity: 0.4; filter: grayscale(1); }
 .bz-glyph .bz-anim,
 .bz-glyph .bz-star,
@@ -884,24 +897,6 @@
   }
 }
 
-/* Animated badges (Purify + worn marks). One aura and seven motes per badge,
-   all transform/opacity only — a name row never repaints while they drift. */
-.badge-aura {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-.badge-aura--live::after {
-  content: "";
-  position: absolute;
-  inset: -22%;
-  border-radius: 9999px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 40%, transparent), transparent 68%);
-  opacity: 0.55;
-  animation: badge-aura-pulse 3.2s ease-in-out infinite;
-}
 .badge-mote {
   position: absolute;
   width: 2px;

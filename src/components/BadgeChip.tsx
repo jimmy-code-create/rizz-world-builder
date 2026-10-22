@@ -36,7 +36,7 @@ export function BadgeChip({
                 onSelect(badge);
               }}
               aria-label={`${name} badge — open details`}
-              className="group/badge inline-flex shrink-0 items-center justify-center rounded-md p-0.5 transition-[transform,filter] duration-150 hover:scale-110 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-100"
+              className="group/badge inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-transform duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-100"
             >
               {mark}
             </button>

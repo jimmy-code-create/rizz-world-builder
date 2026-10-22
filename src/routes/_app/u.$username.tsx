@@ -555,7 +555,7 @@ function ProfilePage() {
           }
           featuredBadge={
             nameBadges.length > 0 ? (
-              <span className="flex items-center gap-0.5" aria-label="Badges">
+              <span className="flex items-center gap-1" aria-label="Badges">
                 {nameBadges.map((badge) => (
                   <button
                     key={badge.slug}
