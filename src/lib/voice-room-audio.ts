@@ -3,7 +3,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { getRoomIceConfiguration } from "@/lib/webrtc";
 import { updateParticipant } from "@/lib/voice";
 import { loadSoundSettings, SOUND_SETTINGS_EVENT } from "@/lib/sound-settings";
-import { captureGameOnlyStream } from "@/lib/game-capture";
+import {
+  canvasCaptureSupported,
+  captureGameCanvasStream,
+  captureGameOnlyStream,
+} from "@/lib/game-capture";
+
+/**
+ * Ask for the whole screen / a window / a tab.
+ *
+ * Browsers reject unknown or unsupported frame-rate hints outright, so the
+ * first request is a preference and the second is the plainest one that can
+ * still produce a picture. Without this fallback a share could fail before the
+ * picker even opened.
+ */
+async function captureDisplayStream(): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 30, max: 60 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false,
+    });
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name !== "TypeError" && name !== "OverconstrainedError" && name !== "NotSupportedError") {
+      throw error;
+    }
+    return await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+  }
+}
+
+function displayCaptureSupported(): boolean {
+  return typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
+}
 
 /**
  * Mesh call engine used by the global VoiceCallProvider.
@@ -331,11 +362,22 @@ export function useVoiceCall({
         const isScreen =
           event.track.kind === "video" && videoTransceivers.indexOf(event.transceiver) >= 1;
         if (isScreen) {
+          // The screen transceiver exists in every call, so a track arrives
+          // muted even when nobody is sharing. Publishing it then painted a
+          // permanent black "share" over the call for everyone. Only a track
+          // with a live, unmuted picture is a share.
           const stream = new MediaStream([event.track]);
-          setRemoteScreenStreams((current) => [
-            ...current.filter((item) => item.peerId !== peerId),
-            { peerId, stream },
-          ]);
+          const publish = () => {
+            const live = event.track.readyState === "live" && !event.track.muted;
+            setRemoteScreenStreams((current) => {
+              const rest = current.filter((item) => item.peerId !== peerId);
+              return live ? [...rest, { peerId, stream }] : rest;
+            });
+          };
+          publish();
+          for (const eventName of ["mute", "unmute", "ended"] as const) {
+            event.track.addEventListener(eventName, publish);
+          }
           return;
         }
         setRemoteStreams((currentStreams) => {
@@ -489,22 +531,28 @@ export function useVoiceCall({
 
     const startShare = async (mode: "screen" | "game") => {
       if (disposed) return;
-      if (!navigator.mediaDevices?.getDisplayMedia) {
-        setScreenError(
-          mode === "game"
-            ? "Game streaming isn't available in this browser."
-            : "Screen sharing isn't available in this browser.",
-        );
+      if (!displayCaptureSupported() && !canvasCaptureSupported()) {
+        setScreenError("This browser can't capture a screen. Use desktop Chrome, Edge or Safari.");
         return;
       }
       try {
         const captured =
           mode === "game"
             ? await captureGameOnlyStream()
-            : {
-                stream: await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }),
-                cropped: false,
-              };
+            : displayCaptureSupported()
+              ? { stream: await captureDisplayStream(), cropped: false }
+              : // Phones have no Screen Capture API, but the built-in game canvas
+                // can still be captured — that keeps streaming useful there.
+                (() => {
+                  const canvasStream = captureGameCanvasStream();
+                  if (!canvasStream) {
+                    throw new DOMException(
+                      "This browser can't share your screen. Open an arcade game and tap Game to stream it instead.",
+                      "NotSupportedError",
+                    );
+                  }
+                  return { stream: canvasStream, cropped: true };
+                })();
         const stream = captured.stream;
         if (disposed) {
           stream.getTracks().forEach((track) => track.stop());
@@ -536,9 +584,11 @@ export function useVoiceCall({
             ? mode === "game"
               ? "Game streaming was cancelled."
               : "Screen sharing was cancelled."
-            : mode === "game"
-              ? "Couldn't stream the game. Pick a tab or window and try again."
-              : "Couldn't share that. Pick a window, tab or screen and try again.",
+            : error instanceof Error && error.message
+              ? error.message
+              : mode === "game"
+                ? "Couldn't stream the game. Pick a tab or window and try again."
+                : "Couldn't share that. Pick a window, tab or screen and try again.",
         );
       }
     };
@@ -726,8 +776,10 @@ export function useVoiceCall({
   const startScreenShare = useCallback(() => startScreenRef.current(), []);
   const startGameShare = useCallback(() => startGameRef.current(), []);
   const stopScreenShare = useCallback(() => stopScreenRef.current(), []);
+  // Enabled when either capture path can work: a desktop screen/window capture
+  // or a built-in game canvas, which is all a phone can stream.
   const screenSupported =
-    typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
+    typeof navigator !== "undefined" && (displayCaptureSupported() || canvasCaptureSupported());
 
   return {
     status,

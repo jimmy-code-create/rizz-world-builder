@@ -56,15 +56,65 @@ export function findGameSurface(): HTMLElement | null {
 }
 
 /**
+ * The canvas a built-in game draws into, if one is on screen.
+ *
+ * Built-in games are real React surfaces (canvas), not iframes, so they can be
+ * captured straight from the element — no browser screen-capture permission and
+ * no picker. That is the only way game streaming can work on phones, where the
+ * Screen Capture API does not exist.
+ */
+export function findGameCanvas(): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  // Only inside a marked game surface: a stray decorative canvas elsewhere on
+  // the page must never be mistaken for the game and streamed.
+  const surface = findGameSurface();
+  if (!surface) return null;
+  for (const canvas of surface.querySelectorAll<HTMLCanvasElement>("canvas")) {
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width < 32 || canvas.height < 32) continue;
+    if (rect.width < 32 || rect.height < 32) continue;
+    return canvas;
+  }
+  return null;
+}
+
+export function canvasCaptureSupported(): boolean {
+  return (
+    typeof HTMLCanvasElement !== "undefined" &&
+    typeof HTMLCanvasElement.prototype.captureStream === "function"
+  );
+}
+
+/** A live canvas capture of the built-in game, or null when there is none. */
+export function captureGameCanvasStream(fps = 30): MediaStream | null {
+  if (!canvasCaptureSupported()) return null;
+  const canvas = findGameCanvas();
+  if (!canvas) return null;
+  try {
+    return canvas.captureStream(fps);
+  } catch (error) {
+    console.debug("[game-capture] canvas capture unavailable", error);
+    return null;
+  }
+}
+
+/**
  * Capture the game surface. Throws when the browser cannot capture at all;
- * otherwise resolves with the stream and whether Region Capture cropped it.
+ * otherwise resolves with the stream and whether it was cropped to the game.
  */
 export async function captureGameOnlyStream(): Promise<{
   stream: MediaStream;
   cropped: boolean;
 }> {
+  // 1. A built-in game is already a canvas: capture it directly. Works on
+  //    phones, never prompts, and cannot include the RIZZ chrome.
+  const canvasStream = captureGameCanvasStream();
+  if (canvasStream) return { stream: canvasStream, cropped: true };
+
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-    throw new Error("Game streaming isn't available in this browser.");
+    throw new Error(
+      "This browser can't capture a game tab. On a phone, open an arcade game and tap Game — those stream natively.",
+    );
   }
 
   const options: GameDisplayOptions = {

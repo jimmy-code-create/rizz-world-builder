@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-23 — Screen share that connects, rounds that keep running
+
+### Screen share
+- The screen transceiver is negotiated in every call, so a muted video track
+  arrives even when nobody is sharing. The stage counted that as a share and
+  painted a black window over the call for everyone; only a live, unmuted track
+  is published now, and `mute`/`unmute`/`ended` re-evaluate it.
+- Capture retries with plain constraints when a browser rejects the frame-rate
+  hints, and failure messages carry the browser's own explanation.
+- Built-in games are canvases, so they stream through `canvas.captureStream`:
+  no picker, no permission, and it works on phones, where the Screen Capture
+  API does not exist. `Share` on a phone also falls back to the mounted game,
+  and a browser with no capture path says so in one sentence.
+
+### Rounds keep running
+- The call view stays mounted when minimized — invisible, scroll unlocked — so
+  the in-call game, shared screens and the participant grid survive leaving the
+  call and browsing the feed. Portalled sheets close on the way out.
+- The game overlay drops to its pill when the call view closes and stays laid
+  out rather than `display:none`, so a canvas game keeps its size and its
+  frames keep flowing in the background.
+
 ## 2026-10-22 — Inline badge glyphs and a five-mark showcase
 
 ### One SVG per badge

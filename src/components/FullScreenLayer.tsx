@@ -9,16 +9,28 @@ import { createPortal } from "react-dom";
  * mobile bottom nav and top header. Portalling to body fixes that and also
  * locks background scroll while open.
  */
-export function FullScreenLayer({ open, children }: { open: boolean; children: ReactNode }) {
+export function FullScreenLayer({
+  open,
+  lockScroll = true,
+  children,
+}: {
+  open: boolean;
+  /**
+   * Set false for a layer that stays mounted but hidden (the voice call keeps
+   * its games alive while you browse): it must not freeze the page behind it.
+   */
+  lockScroll?: boolean;
+  children: ReactNode;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!open || typeof document === "undefined") return;
+    if (!open || !lockScroll || typeof document === "undefined") return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  }, [open, lockScroll]);
 
   if (!mounted || !open) return null;
   return createPortal(children, document.body);

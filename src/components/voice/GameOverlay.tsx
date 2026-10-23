@@ -42,6 +42,7 @@ export function GameOverlayHost() {
   const gameBot = useGameBot(channelId, true, selfName);
   const { state: bot, pause, resume, stop } = gameBot;
   const overlay = useGameOverlayUI();
+  const minimizeOverlay = overlay.minimize;
   const isHost = gameBot.isHost;
   const [codeOpen, setCodeOpen] = useState(false);
   const [codeDraft, setCodeDraft] = useState(bot.roomCode ?? "");
@@ -64,6 +65,12 @@ export function GameOverlayHost() {
     setLinkDraft(bot.joinUrl ?? "");
     setCodeOpen(false);
   }, [bot.sessionId, bot.roomCode, bot.joinUrl]);
+
+  // Leaving the call view must not end the round: the game keeps running in
+  // the background and the pill brings it back with a tap.
+  useEffect(() => {
+    if (!voice.viewOpen) minimizeOverlay();
+  }, [voice.viewOpen, minimizeOverlay]);
 
   /** Stopping a game must not leave a stream pointed at an empty surface. */
   const finishSession = () => {
@@ -124,12 +131,15 @@ export function GameOverlayHost() {
         </div>
       )}
 
-      {/* Expanded stage stays mounted (hidden when minimized) so the game
-          session survives minimize / expand. */}
+      {/* Expanded stage stays mounted (invisible when minimized) so the game
+          session survives minimize / expand. It stays *laid out* rather than
+          display:none, so a canvas game keeps its real size and its frames
+          keep flowing while you browse the app. */}
       <div
         className={`fixed inset-0 z-[150] bg-[#0b0714] ${
-          overlay.minimized ? "hidden" : "flex flex-col"
+          overlay.minimized ? "invisible pointer-events-none" : "flex flex-col"
         }`}
+        aria-hidden={overlay.minimized}
       >
       {/* GAME BOT header — lime, RIZZ type, voice controls kept reachable */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-primary/20 px-3 py-2.5 sm:px-4">

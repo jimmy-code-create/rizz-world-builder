@@ -231,6 +231,18 @@ export function VoiceCallView() {
   const qc = useQueryClient();
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
 
+  // The view stays mounted while minimized so games and streams keep running
+  // in the background, but its sheets portal to <body> and would stay on top
+  // of the app — close them when the call is put away.
+  useEffect(() => {
+    if (viewOpen) return;
+    setChatOpen(false);
+    setSettingsOpen(false);
+    setMusicOpen(false);
+    setGamesOpen(false);
+    setConfirmLeaveOpen(false);
+  }, [viewOpen]);
+
   const handleLeaveClick = () => {
     if (call?.isHost && participants.length > 1) {
       setConfirmLeaveOpen(true);
@@ -316,7 +328,7 @@ export function VoiceCallView() {
     else startGameShare();
   };
 
-  if (!call || !viewOpen) return null;
+  if (!call) return null;
 
   const videosByPeer = new Map(
     remoteStreams.map(({ peerId, stream }) => [peerId, stream.getVideoTracks().some((track) => track.readyState === "live") ? stream : null]),
@@ -325,8 +337,10 @@ export function VoiceCallView() {
   // The stage shows one shared screen: mine while I am sharing, otherwise the
   // first peer whose roster flag says they are sharing.
   const sharingParticipants = participants.filter((participant) => sharingIds.includes(participant.user_id));
+  // A track that exists but is muted is the always-negotiated screen
+  // transceiver with nobody sharing on it — never a picture.
   const remoteShares = remoteScreenStreams.filter(({ stream }) =>
-    stream.getVideoTracks().some((track) => track.readyState === "live"),
+    stream.getVideoTracks().some((track) => track.readyState === "live" && !track.muted),
   );
   const selectedRemoteShare =
     remoteShares.find(({ peerId }) => peerId === selectedSharePeerId) ?? null;
@@ -349,9 +363,15 @@ export function VoiceCallView() {
     // A voice call takes over the screen: the tiles, the music bot and the
     // controls get the whole viewport, and the minimize button drops back to the
     // chat without ending the call.
-    <FullScreenLayer open>
+    <FullScreenLayer open lockScroll={viewOpen}>
+      {/* Minimized = still mounted (the game, the streams and the grid keep
+          their state, and the game keeps running) but out of sight, so
+          browsing the feed never stops a round. */}
       <div
-        className="fixed inset-0 z-[130] flex flex-col bg-[#0b0714] text-foreground"
+        className={`fixed inset-0 z-[130] flex flex-col bg-[#0b0714] text-foreground ${
+          viewOpen ? "" : "invisible pointer-events-none"
+        }`}
+        aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
         <div
