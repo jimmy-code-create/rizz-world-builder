@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Clock,
   Pin,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -92,6 +93,7 @@ const sideTabs = [
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },
   { to: "/badges", label: "badges", icon: Trophy },
+  { to: "/shop", label: "effects", icon: Sparkles },
   { to: "/leaderboard", label: "leaderboard", icon: Trophy },
   { to: "/games", label: "games", icon: Gamepad2 },
   { to: "/bots", label: "bots", icon: Bot },
@@ -118,6 +120,7 @@ const destinations = {
   "/notifications": { labelKey: "inbox", icon: Bell },
   "/bookmarks": { labelKey: "saved", icon: Bookmark },
   "/badges": { labelKey: "badges", icon: Trophy },
+  "/shop": { labelKey: "effects", icon: Sparkles },
   "/settings": { labelKey: "settings", icon: Settings },
   "/settings/appearance": { labelKey: "theme", icon: Palette },
 } as const;
@@ -161,6 +164,7 @@ const moreGroups: Array<{
       { kind: "dest", key: "/notifications" },
       { kind: "dest", key: "/bookmarks" },
       { kind: "dest", key: "/badges" },
+      { kind: "dest", key: "/shop" },
       { kind: "dest", key: "/settings" },
       { kind: "dest", key: "/settings/appearance" },
     ],

@@ -41,6 +41,7 @@ import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { useWornEffects } from "@/lib/effects";
 import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
 import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
@@ -150,6 +151,9 @@ function ProfilePage() {
     queryFn: () => fetchUserBadges(profile!.id),
     enabled: !!profile,
   });
+
+  // Cosmetics this member wears: every visitor sees the same frame and scene.
+  const wornEffects = useWornEffects(profile?.id);
 
   const reelsQ = useQuery({
     queryKey: ["user-reels", profile?.id],
@@ -558,6 +562,8 @@ function ProfilePage() {
             ) : undefined
           }
           avatarRing={profileSurface}
+          avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
+          profileEffect={wornEffects.data?.profile_effect?.slug ?? null}
           surface={profileSurface}
           gutter="clamp(4px, 1.2vw, 8px)"
         />

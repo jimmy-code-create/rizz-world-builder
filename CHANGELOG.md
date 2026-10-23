@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-10-23 — The effects shop: chubby frames and silk profile scenes
+
+### Two shelves, priced in Paws
+- `/shop` is back with exactly two categories: **avatar decorations** (a frame
+  around the photo) and **profile effects** (a scene over the banner). Cards are
+  live art with rarity, price, owned and worn states; the wallet sits in the
+  header with a link to earn Paws from bounties.
+- Unlocking, wearing and removing all go through the existing server RPCs
+  (`purchase_profile_effect`, `equip_profile_effect`,
+  `unequip_profile_effect`), so the wallet and the one-per-category rule stay
+  server-side. The browser still never writes `user_profile_effects`.
+
+### Art drawn in the app, on transparency
+- **Chubby Cloud** is a single scalloped cream ring with blush cheeks and lime
+  sparkles; **Chubby Paws** pads six fat paws around the rim; **Chubby Bloom**
+  circles plump hearts with tiny leaves. All three are inline SVG with no plate
+  and no bitmap, so they sit directly on the banner.
+- **Web Slinger** and **Silk Veil** stretch sagging corner webs over the banner
+  with a small spider swaying on a thread. Motion is transform/opacity only and
+  stops for `prefers-reduced-motion` or the profile's reduced-motion setting.
+
+### Preview, then wear it
+- Tapping a card opens the effect on the member's own 3:1 banner, avatar and
+  name using the real `ProfileHeader`, so the preview is the finished look.
+- Worn cosmetics render on the full profile and in the feed's profile preview
+  sheet — visitors see exactly what the member equipped.
+- The new migration seeds the catalogue and clears the old rights-review hold;
+  apply it to Supabase for the shelves to populate.
+
 ## 2026-10-23 — One badge tray, and a preview that opens on the cover
 
 ### The sheet starts with the banner

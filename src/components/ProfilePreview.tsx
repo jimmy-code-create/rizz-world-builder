@@ -33,6 +33,7 @@ import {
 import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
 import { MarkdownText } from "@/components/MarkdownText";
 import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
+import { useWornEffects } from "@/lib/effects";
 import { usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import { toast } from "@/lib/toast";
@@ -202,6 +203,9 @@ export function ProfilePreviewDialog({
     enabled: open && !!p,
     staleTime: 60_000,
   });
+
+  // The preview wears the same cosmetics as the full profile behind it.
+  const wornEffects = useWornEffects(p?.id);
 
   // The preview carries the same identity as the full profile, so the
   // popout never shows a different banner treatment than the page behind it.
@@ -418,6 +422,8 @@ export function ProfilePreviewDialog({
               </>
             }
             avatarGlow={false}
+            avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
+            profileEffect={wornEffects.data?.profile_effect?.slug ?? null}
             surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
             gutter="14px"
             compact

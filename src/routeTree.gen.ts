@@ -34,6 +34,7 @@ import { Route as AppPulseRouteImport } from './routes/_app/pulse'
 import { Route as AppPurifyRouteImport } from './routes/_app/purify'
 import { Route as AppRealmsRouteImport } from './routes/_app/realms'
 import { Route as AppReelsRouteImport } from './routes/_app/reels'
+import { Route as AppShopRouteImport } from './routes/_app/shop'
 import { Route as ApiBotRouteImport } from './routes/api.bot'
 import { Route as ApiChatstorySpeechRouteImport } from './routes/api.chatstory-speech'
 import { Route as ApiLinkPreviewRouteImport } from './routes/api.link-preview'
@@ -189,6 +190,11 @@ const AppRealmsRoute = AppRealmsRouteImport.update({
 const AppReelsRoute = AppReelsRouteImport.update({
   id: '/reels',
   path: '/reels',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppShopRoute = AppShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiBotRoute = ApiBotRouteImport.update({
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/purify': typeof AppPurifyRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/shop': typeof AppShopRoute
   '/api/bot': typeof ApiBotRouteWithChildren
   '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
@@ -436,6 +443,7 @@ export interface FileRoutesByTo {
   '/purify': typeof AppPurifyRoute
   '/realms': typeof AppRealmsRoute
   '/reels': typeof AppReelsRoute
+  '/shop': typeof AppShopRoute
   '/api/bot': typeof ApiBotRouteWithChildren
   '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/_app/purify': typeof AppPurifyRoute
   '/_app/realms': typeof AppRealmsRoute
   '/_app/reels': typeof AppReelsRoute
+  '/_app/shop': typeof AppShopRoute
   '/api/bot': typeof ApiBotRouteWithChildren
   '/api/chatstory-speech': typeof ApiChatstorySpeechRoute
   '/api/link-preview': typeof ApiLinkPreviewRouteWithChildren
@@ -556,6 +565,7 @@ export interface FileRouteTypes {
     | '/purify'
     | '/realms'
     | '/reels'
+    | '/shop'
     | '/api/bot'
     | '/api/chatstory-speech'
     | '/api/link-preview'
@@ -613,6 +623,7 @@ export interface FileRouteTypes {
     | '/purify'
     | '/realms'
     | '/reels'
+    | '/shop'
     | '/api/bot'
     | '/api/chatstory-speech'
     | '/api/link-preview'
@@ -672,6 +683,7 @@ export interface FileRouteTypes {
     | '/_app/purify'
     | '/_app/realms'
     | '/_app/reels'
+    | '/_app/shop'
     | '/api/bot'
     | '/api/chatstory-speech'
     | '/api/link-preview'
@@ -904,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/reels'
       fullPath: '/reels'
       preLoaderRoute: typeof AppReelsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/shop': {
+      id: '/_app/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof AppShopRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/bot': {
@@ -1164,6 +1183,7 @@ interface AppRouteChildren {
   AppPurifyRoute: typeof AppPurifyRoute
   AppRealmsRoute: typeof AppRealmsRoute
   AppReelsRoute: typeof AppReelsRoute
+  AppShopRoute: typeof AppShopRoute
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
@@ -1200,6 +1220,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPurifyRoute: AppPurifyRoute,
   AppRealmsRoute: AppRealmsRoute,
   AppReelsRoute: AppReelsRoute,
+  AppShopRoute: AppShopRoute,
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,

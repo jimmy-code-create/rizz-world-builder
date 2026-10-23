@@ -1,0 +1,148 @@
+/*
+ * Effects shop animation.
+ *
+ * Everything here is transform/opacity only so the loops stay on the compositor
+ * and never re-layout the profile. Every rule stops for visitors and members who
+ * ask for reduced motion: the shop still renders the static art, it just doesn't
+ * move.
+ */
+
+.fx-chubby {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: fx-chubby-breathe 7s ease-in-out infinite;
+}
+
+.fx-chubby-sparkle {
+  transform-box: view-box;
+  transform-origin: 70px 70px;
+  animation: fx-chubby-twinkle 3.4s ease-in-out infinite;
+}
+
+.fx-chubby-paw {
+  transform-box: view-box;
+  transform-origin: 70px 70px;
+  animation: fx-chubby-wiggle 3.9s ease-in-out infinite;
+}
+
+.fx-chubby-heart {
+  transform-box: view-box;
+  transform-origin: 70px 70px;
+  animation: fx-chubby-beat 4.2s ease-in-out infinite;
+}
+
+.fx-web {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.fx-web-spider {
+  transform-box: view-box;
+  transform-origin: 176px 0px;
+  animation: fx-web-sway 6.4s ease-in-out infinite;
+}
+
+.fx-web-mote {
+  transform-box: view-box;
+  animation: fx-web-drift 7.5s linear infinite;
+}
+
+.fx-web-glint {
+  animation: fx-web-glint 5.2s ease-in-out infinite;
+}
+
+@keyframes fx-chubby-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.028);
+  }
+}
+
+@keyframes fx-chubby-twinkle {
+  0%,
+  100% {
+    transform: scale(0.82) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08) rotate(45deg);
+    opacity: 1;
+  }
+}
+
+@keyframes fx-chubby-wiggle {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes fx-chubby-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.09);
+  }
+  60% {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes fx-web-sway {
+  0%,
+  100% {
+    transform: rotate(-3.2deg);
+  }
+  50% {
+    transform: rotate(3.2deg);
+  }
+}
+
+@keyframes fx-web-drift {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(52px);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-web-glint {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.46;
+  }
+}
+
+/* A member can switch effects off for themselves, and the OS setting applies to
+   everyone else. Both land on the same "draw it, don't move it" state. */
+.fx-static,
+.fx-static * {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-chubby,
+  .fx-chubby *,
+  .fx-web,
+  .fx-web * {
+    animation: none !important;
+  }
+}

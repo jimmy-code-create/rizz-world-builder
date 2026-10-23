@@ -1,5 +1,6 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarDecorationArt, ProfileEffectArt } from "@/components/effects/registry";
 import { AvatarStatusBadge, StatusDotButton } from "@/components/presence/StatusDot";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { getBanner } from "@/lib/banner";
@@ -41,6 +42,10 @@ export type ProfileHeaderProps = {
   onBannerPointerDown?: (event: ReactPointerEvent) => void;
   /** The badge line beside the name (see BadgeLine): one non-wrapping row. */
   featuredBadge?: ReactNode;
+  /** Worn avatar decoration slug — a frame drawn on transparency around the photo. */
+  avatarDecoration?: string | null;
+  /** Worn profile effect slug — a silk scene drawn over the banner and identity. */
+  profileEffect?: string | null;
   /** Accent ring around the avatar; false hides it. */
   avatarRing?: string | false | null;
   /**
@@ -81,6 +86,8 @@ export function ProfileHeader({
   overlayActions,
   onBannerPointerDown,
   featuredBadge,
+  avatarDecoration,
+  profileEffect,
   avatarRing,
   avatarGlow,
   surface,
@@ -133,6 +140,24 @@ export function ProfileHeader({
         )}
       </div>
 
+      {/* Profile effect: the scene is anchored to the banner box (3:1, exactly
+          like the cover) so the corner webs never drift off a narrow or wide
+          header. It paints over the banner but under the identity row, and the
+          silk below the fold spills out of the box without covering the name. */}
+      {profileEffect && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 z-20"
+          style={{ height: "calc(100cqw / 3)" }}
+        >
+          <ProfileEffectArt
+            slug={profileEffect}
+            animated={!user.reducedMotion}
+            className="overflow-visible"
+          />
+        </div>
+      )}
+
       <div className="relative z-30" style={{ paddingInline: "var(--header-gutter)" }}>
         {/* Avatar overlaps the banner; the gutter keeps the small collar off the edge. */}
         <div
@@ -149,6 +174,13 @@ export function ProfileHeader({
               marginLeft: "calc(var(--avatar-size) * 0.08)",
             }}
           >
+            {avatarDecoration && (
+              <AvatarDecorationArt
+                slug={avatarDecoration}
+                animated={!user.reducedMotion}
+                className="z-[2]"
+              />
+            )}
             {avatarGlow && (
               <span
                 aria-hidden
