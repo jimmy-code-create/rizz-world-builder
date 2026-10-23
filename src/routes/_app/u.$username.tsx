@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/PostCard";
 import { fetchUserPosts } from "@/lib/posts";
 import { fetchUserBadges } from "@/lib/badges";
-import { ProfileBadgesSection } from "@/components/profile/ProfileBadgesSection";
-import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
+import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
 import { profileBadgeLineup } from "@/lib/badges";
 import { usePurify, withPurifyBadge } from "@/lib/purify";
 import { canonBadges, distinctBadges } from "@/lib/badge-set";
@@ -390,7 +389,7 @@ function ProfilePage() {
 
   const accent = profile.accent_color || "var(--brand-signal)";
   // Only a badge this member actually earned can sit beside their name.
-  const featuredBadge = badges.data?.find((b) => b.slug === profile.featured_badge) ?? null;
+  const wornSlug = profile.featured_badge ?? null;
   const verified = Boolean(badges.data?.some((b) => b.slug === "verified" || b.slug === "no-cap"));
   const profileUsername = profile.username ?? username;
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, {
@@ -555,21 +554,7 @@ function ProfilePage() {
           }
           featuredBadge={
             nameBadges.length > 0 ? (
-              <span className="flex items-center gap-1" aria-label="Badges">
-                {nameBadges.map((badge) => (
-                  <button
-                    key={badge.slug}
-                    type="button"
-                    onClick={() => nav({ to: "/badges" })}
-                    aria-label={`${badge.name} badge — open the badge gallery`}
-                    className={`rounded-full transition-transform active:scale-95 ${
-                      badge.slug === featuredBadge?.slug ? "ring-1 ring-primary/70" : ""
-                    }`}
-                  >
-                    <AnimatedBadge badge={badge} size={20} />
-                  </button>
-                ))}
-              </span>
+              <BadgeLine badges={nameBadges} wornSlug={wornSlug} size={20} />
             ) : undefined
           }
           avatarRing={profileSurface}
@@ -707,16 +692,6 @@ function ProfilePage() {
             )}
           </motion.section>
         )}
-
-        <ProfileBadgesSection
-          profileId={profile.id}
-          isOwner={Boolean(isMe)}
-          stored={profile.badges}
-          earned={badges.data ?? []}
-          loading={badges.isLoading}
-          viewerId={user?.id ?? null}
-          featuredSlug={profile.featured_badge}
-        />
 
         <Tabs defaultValue="main" className="mt-4">
           <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/[0.07] bg-transparent p-0">

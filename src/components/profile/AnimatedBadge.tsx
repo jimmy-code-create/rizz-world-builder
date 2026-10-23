@@ -2,9 +2,9 @@ import { Badge as BadgeMark } from "@/components/Badge";
 import type { Badge } from "@/lib/badges";
 
 /**
- * A profile mark. The five real badges draw their own inline SVG (hexagon,
- * accent, custom loop — see BadgeGlyph); this wrapper exists so profile rows
- * share one call site and keeps the badge name on the accessible tooltip.
+ * A profile mark. The five real badges draw their own inline emblem art (see
+ * BadgeGlyph); this wrapper exists so profile call sites stay readable and the
+ * badge name lands on the accessible tooltip.
  */
 export function AnimatedBadge({
   badge,

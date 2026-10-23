@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AtSign, Ban, ChevronRight, Flag, Link2, MessageCircle, MoreHorizontal,
-  Pencil, Phone, Pin, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
+  Pencil, Phone, Trophy, UserCheck, UserPlus, VolumeX, Volume2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -352,7 +352,6 @@ export function ProfileCard({
   const qc = useQueryClient();
   const [bioExpanded, setBioExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [badgesOpen, setBadgesOpen] = useState(false);
   const [listMode, setListMode] = useState<null | "followers" | "following">(null);
   const dragStart = useRef<number | null>(null);
 
@@ -544,11 +543,9 @@ export function ProfileCard({
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  // Show earned badges in the new 12-badge order, followed by preserved
-  // legacy awards while the backend catalog migrates.
+  // The card shows only the badge worn beside the name; the full collection
+  // lives on the profile page and the badge gallery.
   const computedBadges: CardBadge[] = distinctBadges(canonBadges(d.badges)).slice(0, 24);
-  const badgePreview = computedBadges.slice(0, 5);
-  const badgeOverflow = computedBadges.length - badgePreview.length;
   const featuredBadgeMeta = computedBadges.find((badge) => badge.slug === d.featuredBadge) ?? null;
 
   const realmRoleValue = realmRow.data?.role ?? realmRole ?? null;
@@ -734,34 +731,6 @@ export function ProfileCard({
           </div>
         ) : (
           <>
-            {/* Canonical transparent badge art; the sheet shows the full award details. */}
-            {computedBadges.length > 0 && (
-              <div className="mt-2.5 flex items-center gap-1.5" aria-label={`${computedBadges.length} badges`}>
-                {badgePreview.map((badge) => (
-                  <button
-                    key={badge.slug}
-                    type="button"
-                    onClick={() => setBadgesOpen(true)}
-                    title={canonicalFor(badge.slug)?.name ?? badge.name}
-                    aria-label={canonicalFor(badge.slug)?.name ?? badge.name}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                  >
-                    <Badge slug={badge.slug} size={28} />
-                  </button>
-                ))}
-                {badgeOverflow > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setBadgesOpen(true)}
-                    aria-label={`See all ${computedBadges.length} badges`}
-                    className="h-11 shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-bold text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                  >
-                    +{badgeOverflow}
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Inner panel: the bio, then the two dates people actually look for.
                 The realm role lives up by the handle so it is not repeated here. */}
             <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
@@ -920,59 +889,6 @@ export function ProfileCard({
           </>
         )}
       </div>
-
-      {/* Badges sheet: icon, name, description, the day it was earned */}
-      <Dialog open={badgesOpen} onOpenChange={setBadgesOpen}>
-        <DialogContent
-          hideClose
-          className="left-0 right-0 top-auto bottom-0 max-h-[76dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
-        >
-          <DialogTitle className="sr-only">Badges</DialogTitle>
-          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden="true" />
-          <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-base font-bold text-[#f2efe6]">Badges ({computedBadges.length})</h3>
-              <CloseButton aria-label="Close badges" onClick={() => setBadgesOpen(false)} />
-            </div>
-            <ul className="mt-2 space-y-2">
-              {computedBadges.map((badge) => {
-                const canon = canonicalFor(badge.slug);
-                return (
-                <li key={badge.slug} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04]">
-                    <Badge slug={badge.slug} size={28} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#f2efe6]">
-                      {canon?.name ?? badge.name}
-                      {badge.slug === d.featuredBadge && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[#c8ff3d]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c8ff3d]">
-                          <Pin className="h-2.5 w-2.5" /> Worn
-                        </span>
-                      )}
-                      {canon && (
-                        <span
-                          className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                          style={{ borderColor: `${canon.glow}55`, color: canon.glow }}
-                        >
-                          {canon.tier}
-                        </span>
-                      )}
-                    </p>
-                    {badge.description && <p className="mt-0.5 text-xs text-muted-foreground">{badge.description}</p>}
-                    {badge.earnedAt && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        Earned {new Date(badge.earnedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
-                      </p>
-                    )}
-                  </div>
-                </li>
-                );
-              })}
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Followers / following sheet */}
       <Dialog open={listMode !== null} onOpenChange={(open) => { if (!open) setListMode(null); }}>

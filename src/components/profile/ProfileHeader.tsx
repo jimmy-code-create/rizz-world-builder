@@ -2,7 +2,6 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarStatusBadge, StatusDotButton } from "@/components/presence/StatusDot";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { VerifiedSeal } from "@/components/profile/VerifiedSeal";
 import { getBanner } from "@/lib/banner";
 import { defaultAvatarFor } from "@/lib/default-avatars";
 import type { PublicPresence } from "@/lib/presence";
@@ -40,7 +39,7 @@ export type ProfileHeaderProps = {
   overlayActions?: ReactNode;
   /** Starts a sheet drag when a phone pulls down on the banner. */
   onBannerPointerDown?: (event: ReactPointerEvent) => void;
-  /** Featured badge node beside the verified tick. */
+  /** The badge line beside the name (see BadgeLine): one non-wrapping row. */
   featuredBadge?: ReactNode;
   /** Accent ring around the avatar; false hides it. */
   avatarRing?: string | false | null;
@@ -56,6 +55,11 @@ export type ProfileHeaderProps = {
   surface?: string;
   /** Inline page gutter (matches the content below the header). */
   gutter?: string;
+  /**
+   * Tighter banner/avatar/name rhythm for the profile preview sheet, where a
+   * compact header leaves more room for the bio and activity below.
+   */
+  compact?: boolean;
   className?: string;
 };
 
@@ -81,6 +85,7 @@ export function ProfileHeader({
   avatarGlow,
   surface,
   gutter,
+  compact = false,
   className,
 }: ProfileHeaderProps) {
   if (!user) return null;
@@ -98,7 +103,7 @@ export function ProfileHeader({
       style={
         {
           containerType: "inline-size",
-          "--avatar-size": "clamp(60px, 20cqw, 116px)",
+          "--avatar-size": compact ? "clamp(52px, 16cqw, 84px)" : "clamp(60px, 20cqw, 116px)",
           "--header-gutter": gutter ?? "clamp(12px, 2.6cqw, 24px)",
           "--header-bg": headerSurface,
         } as CSSProperties
@@ -107,7 +112,7 @@ export function ProfileHeader({
       {/* 1. Banner photo. The box never changes height, even when empty. */}
       <div
         className="relative w-full touch-none overflow-hidden rounded-3xl bg-[#141416] sm:touch-auto"
-        style={{ aspectRatio: "3 / 1", background: banner.background }}
+        style={{ aspectRatio: compact ? "3.4 / 1" : "3 / 1", background: banner.background }}
         onPointerDown={onBannerPointerDown}
       >
         {/* 2. Soft scrim for the avatar/name overlap. */}
@@ -191,19 +196,26 @@ export function ProfileHeader({
               </span>
             )}
           </div>
-          <span className="min-w-0" />
         </div>
 
-        {/* 4. Name row: 10% of the avatar + 8px away from the ring. */}
-        <div style={{ marginTop: "calc(var(--avatar-size) * 0.1 + 8px)" }}>
+        {/* 4. Name row: just clear of the avatar in the compact preview, and a
+               little more breathing room on the roomy profile surfaces. */}
+        <div
+          style={{
+            marginTop: compact
+              ? "calc(var(--avatar-size) * 0.02 + 5px)"
+              : "calc(var(--avatar-size) * 0.1 + 8px)",
+          }}
+        >
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
                 <h1 className="min-w-0 truncate font-display text-[clamp(20px,5.4cqw,28px)] font-bold leading-tight tracking-tight text-[#f2efe6]">
                   <Nameplate name={displayName} className="block truncate" />
                 </h1>
-                {user.verified && <VerifiedSeal size={22} className="mb-0.5" />}
-                {featuredBadge && <span className="shrink-0">{featuredBadge}</span>}
+                {featuredBadge && (
+                  <span className="flex shrink-0 items-center">{featuredBadge}</span>
+                )}
               </div>
               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
                 <p className="truncate text-sm text-muted-foreground">@{username}</p>

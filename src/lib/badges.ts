@@ -18,8 +18,8 @@ export type Badge = {
 export const PROFILE_BADGE_LINEUP = [
   "verified",
   "streamer",
-  "purify",
   "bounty-hunter",
+  "purify",
   "main-character",
 ];
 

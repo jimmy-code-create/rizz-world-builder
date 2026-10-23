@@ -24,6 +24,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { ProfileBadgesSection } from "../src/components/profile/ProfileBadgesSection.tsx";
+import { BadgeLine } from "../src/components/profile/BadgeInfoPopover.tsx";
 import type { Badge } from "../src/lib/badges.ts";
 
 const mk = (slug: string, name: string, rarity: Badge["rarity"] = "rare"): Badge => ({
@@ -153,6 +154,24 @@ await check("owner with no badges at all links to the gallery (router branch)", 
     `empty state copy must render — got: ${html.slice(0, 300) || "(empty string)"}`,
   );
   assert.ok(html.includes('href="/badges"'), "the link must point at the badge gallery");
+});
+
+await check("the name-row badge line renders every mark on one nowrap row", () => {
+  const lineup = [
+    mk("verified", "Verified"),
+    mk("streamer", "Streamer"),
+    mk("bounty-hunter", "Bounty"),
+    mk("purify", "Purify"),
+    mk("main-character", "Main Character"),
+  ];
+  const html = renderToStaticMarkup(createElement(BadgeLine, { badges: lineup, size: 20 }));
+  assert.equal(
+    (html.match(/badge — details/g) ?? []).length,
+    lineup.length,
+    "each earned mark is a tappable button",
+  );
+  assert.ok(html.includes("flex-nowrap"), "the marks never wrap onto a second row");
+  assert.ok(!html.includes("rounded-full border"), "no plate or pedestal behind the mark");
 });
 
 console.log(`\n${passed} checks passed.`);

@@ -72,17 +72,17 @@ await check("the column that stores the showcase exists in the migration", async
   );
 });
 
-await check("the profile route renders the section with the stored column", async () => {
-  assert.ok(route.includes("<ProfileBadgesSection"), "route must mount the section");
+await check("the profile route keeps every mark on the name row", async () => {
   assert.ok(
-    route.includes("stored={profile.badges}"),
-    "route must pass the stored profiles.badges slugs",
+    route.includes("BadgeLine badges={nameBadges}"),
+    "the name row must render the earned badges",
   );
-  assert.ok(route.includes("earned={badges.data ?? []}"), "route must pass the earned badges");
   assert.ok(
-    !route.includes("<BadgeRow badges={badges.data}"),
-    "the bare badge row must be replaced by the section",
+    route.includes("wornSlug={wornSlug}"),
+    "the worn badge must be marked on the name row",
   );
+  assert.ok(!route.includes("<ProfileBadgesSection"), "the extra badge shelf must not render");
+  assert.ok(!route.includes("stored={profile.badges}"), "no second badge row under the bio");
 });
 
 await check("the section offers the equip control and writes it back", async () => {

@@ -54,12 +54,17 @@ await check("distinct earned badges sit on the name row and are tappable", async
     card.includes("profileBadgeLineup(") && card.includes("withPurifyBadge("),
     "the five-mark lineup decides what the name row shows",
   );
+  assert.ok(card.includes("BadgeLine badges={markBadges}"), "the name row renders the badge line");
+  assert.ok(card.includes("wornSlug={wornSlug}"), "the worn mark is called out");
   assert.ok(
-    card.includes('nav({ to: "/badges" })'),
-    "a tapped badge links to the badge gallery",
+    !card.includes('nav({ to: "/badges" })'),
+    "tapping a badge shows its story instead of leaving the profile",
   );
-  assert.ok(card.includes("<AnimatedBadge"), "every profile mark uses the particle renderer");
-  assert.ok(!card.includes("BadgeDetailDialog"), "the cut-off popout is gone; badges navigate");
+  assert.ok(
+    card.includes('from "@/components/profile/BadgeInfoPopover"'),
+    "the badge line owns the tap-for-info behaviour",
+  );
+  assert.ok(!card.includes("BadgeDetailDialog"), "the cut-off popout is gone");
 });
 
 await check("Discord anatomy: shared banner, avatar, presence dot, sections", async () => {
@@ -70,20 +75,36 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
   assert.ok(!card.includes("useEquipped"), "the preview no longer queries equipped cosmetics");
   assert.ok(card.includes("Close profile preview"), "the preview has a visible close control");
   assert.ok(card.includes("About Me"));
-  assert.ok(card.includes("Member Since"));
+  assert.ok(card.includes("UserRound"), "About Me carries a profile icon");
+  assert.ok(card.includes("Member since"), "member since is its own compact row");
+  assert.ok(card.includes("Calendar"), "the member-since row carries a calendar icon");
+  assert.ok(!card.includes('className="h-px bg-white'), "no divider eating header space");
   assert.ok(card.includes("profile-sheet"), "phones use the swipe-down sheet");
   assert.ok(card.includes("dragTransition"), "the sheet springs back instead of snapping");
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
 
-  assert.ok(profileHeader.includes('aspectRatio: "3 / 1"'), "the banner is always 3:1");
+  assert.ok(
+    profileHeader.includes('aspectRatio: compact ? "3.4 / 1" : "3 / 1"'),
+    "the banner keeps its wide ratio, a little shorter in the compact preview",
+  );
   assert.ok(profileHeader.includes("overflow-hidden"), "banner art is clipped");
   assert.ok(profileHeader.includes("<AvatarImage src={avatarSrc}"), "the header owns the avatar");
-  assert.ok(profileHeader.includes("<VerifiedSeal"), "the header uses the verified seal");
+  assert.ok(
+    !profileHeader.includes("<VerifiedSeal"),
+    "verification is the Verified badge itself, not a second seal",
+  );
+  assert.ok(profileHeader.includes("flex-nowrap"), "the name row never wraps its badges");
   assert.ok(profileHeader.includes("<StatusDotButton"), "the header owns the presence dot");
   assert.ok(
     profileHeader.includes("onPointerDown={onBannerPointerDown}"),
     "the sheet can drag from the banner",
   );
+});
+
+await check("the hover card keeps badges on the name row, with no badge sheet", async () => {
+  assert.ok(profileCard.includes("featuredBadge={"), "the worn badge still sits beside the name");
+  assert.ok(!profileCard.includes("Badges ({computedBadges.length})"), "the badge sheet is gone");
+  assert.ok(!profileCard.includes("badgePreview"), "no separate badge row on the card");
 });
 
 await check("one avatar treatment across card, preview and full profile", async () => {
@@ -101,7 +122,17 @@ await check("one avatar treatment across card, preview and full profile", async 
   assert.ok(profileHeader.includes("boxShadow: `0 0 0 2px ${avatarRing}`"), "one accent ring");
   assert.ok(profileHeader.includes('"--avatar-size"'), "the avatar scales from the container");
   assert.ok(card.includes("Profile activity"), "the preview lists the same activity numbers");
-  assert.ok(card.includes("/brand/rizz-cat-logo.svg"), "joined date carries the Rizz mark");
+});
+
+await check("preview is compact, scroll-safe and keeps every action", async () => {
+  assert.ok(card.includes("compact"), "the preview asks for the compact header");
+  assert.ok(card.includes("avatarGlow={false}"), "no glowing halo around the avatar");
+  assert.ok(card.includes("grid-cols-4 divide-x"), "four evenly divided activity columns");
+  assert.ok(card.includes("overflow-y-auto"), "the sheet body scrolls when content grows");
+  assert.ok(card.includes("overscroll-contain"), "the feed must not scroll with the sheet");
+  assert.ok(card.includes("safe-area-inset-bottom"), "the sheet respects the bottom inset");
+  assert.ok(card.includes("View Full Profile"), "the full profile button survives the redesign");
+  assert.ok(card.includes("handleMessage") && card.includes("toggleFollow.mutate"), "message/follow still work");
 });
 
 await check("actions: Message with follow, own profile gets a single button", async () => {

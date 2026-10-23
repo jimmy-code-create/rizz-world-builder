@@ -743,29 +743,11 @@
 }
 .badges-page ::selection { background: var(--bz-accent); color: #fff; }
 
-/* Cards fade up in reading order; only transform/opacity, eight at a time. */
-.badges-page .bz-grid > * { animation: bz-card-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.badges-page .bz-grid > *:nth-child(1) { animation-delay: 0ms; }
-.badges-page .bz-grid > *:nth-child(2) { animation-delay: 40ms; }
-.badges-page .bz-grid > *:nth-child(3) { animation-delay: 80ms; }
-.badges-page .bz-grid > *:nth-child(4) { animation-delay: 120ms; }
-.badges-page .bz-grid > *:nth-child(5) { animation-delay: 160ms; }
-.badges-page .bz-grid > *:nth-child(6) { animation-delay: 200ms; }
-.badges-page .bz-grid > *:nth-child(7) { animation-delay: 240ms; }
-.badges-page .bz-grid > *:nth-child(8) { animation-delay: 280ms; }
-.badges-page .bz-grid > *:nth-child(n + 9) { animation-delay: 0ms; }
-@keyframes bz-card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .badges-page .bz-grid > * { animation: none; }
-}
 
 /* ── Badge glyphs ────────────────────────────────────────────────────────────
    Five inline marks (Main Character, Bounty, Purify, Verified, Streamer).
-   Every animated node pivots around itself; only transform, opacity and
-   stroke-dashoffset move, and 16px renders stay still until hover. */
+   The artwork is static emblem geometry on a transparent field: no shine
+   sweep, no glow, no idle motion. Only the locked state dims it. */
 .bz-glyph {
   position: relative;
   display: inline-flex;
@@ -788,155 +770,7 @@
   flex: none;
 }
 .badge > svg { display: block; }
-.bz-glyph--locked svg,
-.bz-glyph--locked .bz-water { opacity: 0.4; filter: grayscale(1); }
-/* The Purify body is a live canvas; it sits over the chassis, never steals input. */
-.bz-glyph .bz-water { position: absolute; inset: 0; display: block; pointer-events: none; }
-.bz-glyph .bz-anim,
-.bz-glyph .bz-star,
-.bz-glyph .bz-rotor,
-.bz-glyph .bz-dot,
-.bz-glyph .bz-drops {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-.bz-glyph .bz-anim {
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  animation-iteration-count: infinite;
-  animation-duration: var(--bz-dur, 3s);
-}
-.bz-glyph[data-size="sm"] .bz-anim { animation: none; }
-.bz-glyph[data-size="xl"] { animation: bz-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-
-/* Main Character */
-.bz-glyph .bz-cone { animation-name: bz-cone; animation-duration: 4s; }
-.bz-glyph .bz-sparkle { animation-name: bz-twinkle; animation-duration: 3.5s; }
-.bz-glyph .bz-shine { animation-name: bz-sweep; animation-duration: var(--bz-dur, 4s); opacity: 0; }
-/* Bounty */
-.bz-glyph .bz-lock { animation-name: bz-lock; animation-duration: 3s; }
-.bz-glyph .bz-rotor { transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1); }
-/* Purify */
-.bz-glyph .bz-ripple { animation-name: bz-ripple; animation-duration: 3.5s; }
-.bz-glyph .bz-eq {
-  transform-box: fill-box;
-  transform-origin: bottom center;
-  animation-name: bz-eq;
-  animation-duration: 0.9s;
-}
-.bz-glyph .bz-eq-2 { animation-delay: 0.14s; }
-.bz-glyph .bz-eq-3 { animation-delay: 0.28s; }
-.bz-glyph .bz-drops { opacity: 0; }
-/* Verified */
-.bz-glyph .bz-check {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation-name: bz-draw;
-  animation-duration: 5s;
-}
-/* Streamer */
-.bz-glyph .bz-pulse { animation-name: bz-pulse; animation-duration: 2s; }
-.bz-glyph .bz-arc { animation-name: bz-arc-in; animation-duration: 2s; opacity: 0.25; }
-.bz-glyph .bz-arc-1 { animation-delay: 0s; }
-.bz-glyph .bz-arc-2 { animation-delay: 0s; }
-.bz-glyph .bz-arc-3 { animation-delay: 0.18s; }
-.bz-glyph .bz-arc-4 { animation-delay: 0.18s; }
-
-@keyframes bz-cone {
-  0%, 100% { opacity: 0.13; transform: rotate(-2.4deg); }
-  50% { opacity: 0.26; transform: rotate(2.4deg); }
-}
-@keyframes bz-eq {
-  0%, 100% { transform: scaleY(0.35); opacity: 0.6; }
-  50% { transform: scaleY(1); opacity: 1; }
-}
-@keyframes bz-sweep {
-  0% { transform: translateX(-14px) rotate(18deg); opacity: 0; }
-  8% { opacity: 0.55; }
-  24% { transform: translateX(16px) rotate(18deg); opacity: 0; }
-  100% { transform: translateX(16px) rotate(18deg); opacity: 0; }
-}
-@keyframes bz-lock {
-  0%, 12% { transform: scale(1.6); opacity: 0; }
-  18% { transform: scale(1.08); opacity: 0.9; }
-  22% { transform: scale(1); opacity: 1; }
-  30% { opacity: 0.5; }
-  36%, 100% { transform: scale(1); opacity: 0; }
-}
-@keyframes bz-ripple {
-  0% { transform: scale(0.4); opacity: 0.5; }
-  70% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
-@keyframes bz-twinkle {
-  0%, 100% { transform: scale(0.6); opacity: 0.4; }
-  50% { transform: scale(1); opacity: 1; }
-}
-@keyframes bz-draw {
-  0% { stroke-dashoffset: 1; }
-  10% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes bz-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-}
-@keyframes bz-arc-in {
-  0%, 10% { opacity: 0.2; }
-  45%, 100% { opacity: 1; }
-}
-@keyframes bz-enter {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* Hover: one small, deliberate reaction per mark. */
-@media (hover: hover) {
-  .bz-glyph:hover .bz-star {
-    transform: scale(1.18) rotate(6deg);
-    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .bz-glyph:hover .bz-rotor { transform: rotate(90deg); }
-  .bz-glyph:hover .bz-dot { animation: bz-pulse 900ms ease-in-out infinite; }
-  .bz-glyph:hover .bz-check { animation: bz-draw 500ms cubic-bezier(0.22, 1, 0.36, 1); }
-  .bz-glyph:hover .bz-arc { animation-duration: 1s; }
-  .bz-glyph:hover .bz-drops { opacity: 1; transition: opacity 180ms ease-out; }
-  .bz-glyph:hover .bz-ripple { animation-duration: 1.6s; }
-  .bz-glyph:hover .bz-cone { animation-duration: 2s; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bz-glyph,
-  .bz-glyph * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-.badge-mote {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  border-radius: 9999px;
-  background: var(--primary);
-  box-shadow: 0 0 6px var(--primary);
-  opacity: 0;
-  animation: badge-mote 2.4s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-@keyframes badge-aura-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(0.94); }
-  50% { opacity: 0.7; transform: scale(1.05); }
-}
-@keyframes badge-mote {
-  0% { transform: translate3d(0, 2px, 0) scale(0.6); opacity: 0; }
-  25% { opacity: 0.9; }
-  70% { opacity: 0.35; }
-  100% { transform: translate3d(3px, -10px, 0) scale(0.2); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .badge-mote { animation: none; opacity: 0.35; transform: none; }
-  .badge-aura--live::after { animation: none; opacity: 0.45; }
-}
+.bz-glyph--locked svg { opacity: 0.35; filter: grayscale(1); }
 
 /* A photo with a line of text: the photo owns the frame, the caption sits under
    it on the page background instead of inside the green outgoing bubble. Same
@@ -2156,8 +1990,8 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 [data-reduced-motion="true"] .status-bubble-float { animation: none !important; }
 
 /* Vector badges: one sprite file, flat marks, no containers of their own.
-   These rules only handle sizing, the 150ms hover lift and locked states;
-   the artwork itself is pure SVG symbol geometry. */
+   These rules only handle sizing and the locked state — no hover lift, no
+   ring behind the mark. The artwork is pure SVG geometry. */
 :root {
   --bz-ink: #0b0b0b;
   --bz-base: #161616;
@@ -2170,54 +2004,16 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
   align-items: center;
   justify-content: center;
   flex: none;
-  transform-origin: center;
-  transition: transform 150ms ease;
   -webkit-user-drag: none;
   user-select: none;
 }
 .badge > svg {
   display: block;
 }
-.badge:hover,
-.badge:focus-visible,
-.badge:active {
-  transform: scale(1.08);
-}
 /* Locked badges read as earned-so-far: quiet and colourless. */
 .badge--locked {
   opacity: 0.35;
   filter: grayscale(1);
-}
-.badge--locked:hover,
-.badge--locked:focus-visible,
-.badge--locked:active {
-  transform: none;
-}
-/* The one piece of chrome allowed at showcase size: a soft ring behind the mark. */
-.badge-display {
-  display: grid;
-  place-items: center;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--bz-base);
-  padding: 4px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .badge {
-    transition: none !important;
-  }
-  .badge:hover,
-  .badge:focus-visible,
-  .badge:active {
-    transform: none;
-  }
-}
-[data-reduced-motion="true"] .badge {
-  transition: none !important;
-}
-[data-reduced-motion="true"] .badge:hover,
-[data-reduced-motion="true"] .badge:active {
-  transform: none;
 }
 
 /* Game cards: covers drift slowly so the shelf feels alive (real gameplay

@@ -1,51 +1,46 @@
 import { cn } from "@/lib/utils";
-import { WaterDroplet } from "@/components/profile/WaterDroplet";
 
 /**
- * The five profile badges, drawn inline on one 32-unit hexagon chassis.
+ * The five profile badges, drawn as self-contained emblems on a transparent
+ * 32-unit field — no chassis plate, no shine sweep, no animation.
  *
- *   main-character  a lit stage: floor, spotlight beam, gold star, sparkles
- *   bounty-hunter   crosshair with a lock-on ring
- *   purify          a live water droplet of 58 beads on a canvas, over a ripple
- *   verified        filled red seal, cream check, shine sweep
- *   streamer        a microphone with live sound waves
+ *   verified        a scalloped blue seal around a bold check
+ *   streamer        a dark squircle with a voice glyph, wrapped in a violet arc
+ *   bounty-hunter   a black reticle disc with a masked sharp in a fedora
+ *   purify          a violet ring holding a droplet and two sparkles
+ *   main-character  a gold star standing in a spotlight
  *
- * Sizes: vector marks are static at 16px until hover and idle at 24px+; the
- * Purify canvas always runs its 60fps bead flow. Everything freezes under
- * `prefers-reduced-motion`. Artwork never paints outside the hexagon.
+ * Every mark fills its own 32 grid, so a 20px name-row chip and a 120px
+ * showcase render the identical geometry. Colour is part of the artwork: the
+ * marks do not tint with the theme.
  */
 export type GlyphSlug = "main-character" | "bounty-hunter" | "purify" | "verified" | "streamer";
 
-const META: Record<GlyphSlug, { name: string; blurb: string; accent: string; dur: string }> = {
+const META: Record<GlyphSlug, { name: string; blurb: string; accent: string }> = {
   "main-character": {
     name: "Main Character",
     blurb: "the story runs through you.",
     accent: "#ffc933",
-    dur: "5s",
   },
   "bounty-hunter": {
     name: "Bounty",
     blurb: "first to the claim.",
-    accent: "#ff5a1f",
-    dur: "4s",
+    accent: "#8b5cf6",
   },
   purify: {
     name: "Purify",
     blurb: "gradients, GIFs and bigger uploads.",
-    accent: "#2ec9e8",
-    dur: "3.5s",
+    accent: "#7c3aed",
   },
   verified: {
     name: "Verified",
     blurb: "identity confirmed.",
-    accent: "#d4121f",
-    dur: "6s",
+    accent: "#2f7bff",
   },
   streamer: {
     name: "Streamer",
     blurb: "live in voice.",
     accent: "#8a4dff",
-    dur: "2.4s",
   },
 };
 
@@ -59,7 +54,13 @@ export function badgeGlyphMeta(slug: GlyphSlug) {
   return META[slug];
 }
 
-const HEX = "16,2 28,9 28,23 16,30 4,23 4,9";
+/* Scalloped seal: eight outward arcs on a 12.3 radius, cut by a plain 9.9
+   circle (even-odd), so the ring reads as a wavy frame at 20px. */
+const VERIFIED_SEAL =
+  "M16 3.7A5.4 5.4 0 0 1 24.7 7.3A5.4 5.4 0 0 1 28.3 16A5.4 5.4 0 0 1 24.7 24.7" +
+  "A5.4 5.4 0 0 1 16 28.3A5.4 5.4 0 0 1 7.3 24.7A5.4 5.4 0 0 1 3.7 16A5.4 5.4 0 0 1 7.3 7.3" +
+  "A5.4 5.4 0 0 1 16 3.7Z " +
+  "M16 6.1a9.9 9.9 0 1 0 0 19.8a9.9 9.9 0 1 0 0-19.8Z";
 
 export function BadgeGlyph({
   slug,
@@ -76,225 +77,282 @@ export function BadgeGlyph({
 }) {
   const meta = META[slug];
   const px = Math.max(14, Math.round(size));
-  const tier = px <= 16 ? "sm" : px >= 64 ? "xl" : "md";
   const label = title ?? `${meta.name} — ${meta.blurb}`;
-  const official = slug === "verified";
 
   return (
     <span
       className={cn("bz-glyph", locked && "bz-glyph--locked", className)}
-      data-size={tier}
       data-badge={slug}
-      style={{
-        width: px,
-        height: px,
-        ["--bz-accent" as string]: meta.accent,
-        ["--bz-dur" as string]: meta.dur,
-      }}
+      style={{ width: px, height: px }}
       role="img"
       aria-label={label}
       title={label}
     >
       <svg viewBox="0 0 32 32" width={px} height={px} focusable="false" aria-hidden="true">
-        {/* Chassis: ink for four marks, official red for Verified. */}
-        <polygon
-          points={HEX}
-          fill={official ? "#d4121f" : "#0a0a0a"}
-          stroke={official ? "#ffb0b8" : meta.accent}
-          strokeWidth={official ? 2.2 : 1.5}
-          strokeLinejoin="round"
-        />
-        <polygon
-          points="16,5.4 25.7,11 25.7,21 16,26.6 6.3,21 6.3,11"
-          fill={meta.accent}
-          opacity={official ? 0.14 : 0.1}
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth="0.7"
-        />
-
-        {slug === "main-character" && (
-          <>
-            {/* Stage floor + beam, then the star standing in it. */}
-            <ellipse cx="16" cy="26" rx="10.5" ry="2.2" fill="#000" opacity="0.55" />
-            <polygon className="bz-anim bz-cone" points="13,3.4 19,3.4 25,24.6 7,24.6" fill={meta.accent} />
-            <ellipse
-              cx="16"
-              cy="24.4"
-              rx="7.4"
-              ry="1.7"
-              fill={meta.accent}
-              opacity="0.28"
-            />
-            <polygon
-              className="bz-star"
-              points="16,8.6 18.1,13.8 23.6,14.3 19.4,17.8 20.6,23.2 16,20.4 11.4,23.2 12.6,17.8 8.4,14.3 13.9,13.8"
-              fill={meta.accent}
-              stroke="#fff3c4"
-              strokeWidth="0.9"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M13.8 15.9l1.2-2.4 1.1 2.1"
-              fill="none"
-              stroke="#fffbe6"
-              strokeWidth="0.7"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
-            <g fill="#fff3c4" opacity="0.9">
-              <path className="bz-sparkle" d="M24.4 7.2l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z" />
-              <circle cx="8.2" cy="21.4" r="0.7" />
-            </g>
-            <polygon className="bz-anim bz-shine" points="9,5 12,5 20,27 17,27" fill="#fff" />
-          </>
-        )}
-
-        {slug === "bounty-hunter" && (
-          <>
-            <circle
-              className="bz-anim bz-lock"
-              cx="16"
-              cy="16"
-              r="11"
-              fill="none"
-              stroke={meta.accent}
-              strokeWidth="1.2"
-            />
-            <circle cx="16" cy="16" r="9.4" fill={meta.accent} fillOpacity="0.09" stroke={meta.accent} strokeOpacity="0.4" strokeWidth="0.8" />
-            <circle cx="16" cy="16" r="7.4" fill="none" stroke={meta.accent} strokeWidth="1.6" />
-            <circle cx="16" cy="16" r="5.6" fill="none" stroke={meta.accent} strokeWidth="0.6" opacity="0.45" />
-            <path
-              d="M10.6 11.4a7.6 7.6 0 0 1 4.4-2.4"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              opacity="0.55"
-            />
-            <g fill={meta.accent} opacity="0.85">
-              <circle cx="16" cy="9.4" r="0.55" />
-              <circle cx="22.6" cy="16" r="0.55" />
-              <circle cx="16" cy="22.6" r="0.55" />
-              <circle cx="9.4" cy="16" r="0.55" />
-            </g>
-            <g className="bz-rotor" stroke={meta.accent} strokeWidth="1.8" strokeLinecap="round">
-              <line x1="16" y1="6" x2="16" y2="10" />
-              <line x1="16" y1="22" x2="16" y2="26" />
-              <line x1="6" y1="16" x2="10" y2="16" />
-              <line x1="22" y1="16" x2="26" y2="16" />
-            </g>
-            <circle
-              cx="16"
-              cy="16"
-              r="3.6"
-              fill="none"
-              stroke={meta.accent}
-              strokeWidth="0.8"
-              strokeDasharray="1.2 2.1"
-              opacity="0.6"
-            />
-            <circle className="bz-dot" cx="16" cy="16" r="2.2" fill={meta.accent} />
-            <circle cx="16" cy="16" r="0.75" fill="#0a0a0a" opacity="0.5" />
-          </>
-        )}
-
-        {slug === "purify" && (
-          <>
-            {/* Only the base ripple stays vector: the body itself is 58 beads
-                of water, drawn live on the canvas below. */}
-            <ellipse cx="16" cy="23.6" rx="8.6" ry="2.6" fill={meta.accent} opacity="0.1" />
-            <circle
-              className="bz-anim bz-ripple"
-              cx="16"
-              cy="23"
-              r="5.4"
-              fill="none"
-              stroke={meta.accent}
-              strokeWidth="1"
-            />
-          </>
-        )}
+        <defs>
+          <linearGradient
+            id="bza-seal"
+            x1="7"
+            y1="4"
+            x2="25"
+            y2="28"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#7fe4ff" />
+            <stop offset="0.45" stopColor="#2f8bff" />
+            <stop offset="1" stopColor="#1423c9" />
+          </linearGradient>
+          <linearGradient
+            id="bza-check"
+            x1="10"
+            y1="11"
+            x2="22"
+            y2="21"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#9df0ff" />
+            <stop offset="0.55" stopColor="#4aa8ff" />
+            <stop offset="1" stopColor="#1d3ff0" />
+          </linearGradient>
+          <linearGradient id="bza-arc" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#f4efff" />
+            <stop offset="0.45" stopColor="#b79bff" />
+            <stop offset="1" stopColor="#6d2cf0" />
+          </linearGradient>
+          <linearGradient
+            id="bza-violet"
+            x1="4"
+            y1="3"
+            x2="28"
+            y2="29"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#c9a8ff" />
+            <stop offset="0.5" stopColor="#9a63ff" />
+            <stop offset="1" stopColor="#6a1fe0" />
+          </linearGradient>
+          <linearGradient
+            id="bza-hat"
+            x1="11"
+            y1="7"
+            x2="21"
+            y2="16"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#ffffff" />
+            <stop offset="0.6" stopColor="#dcd6ea" />
+            <stop offset="1" stopColor="#a79fbd" />
+          </linearGradient>
+          <linearGradient
+            id="bza-drop"
+            x1="16"
+            y1="8"
+            x2="16"
+            y2="26"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#ffffff" />
+            <stop offset="0.55" stopColor="#eaf0ff" />
+            <stop offset="1" stopColor="#b9c8ea" />
+          </linearGradient>
+          <linearGradient
+            id="bza-gold"
+            x1="16"
+            y1="7"
+            x2="16"
+            y2="24"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#ffe98a" />
+            <stop offset="0.55" stopColor="#ffc933" />
+            <stop offset="1" stopColor="#e79a00" />
+          </linearGradient>
+          <linearGradient
+            id="bza-beam"
+            x1="16"
+            y1="3"
+            x2="16"
+            y2="25"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#ffd75e" stopOpacity="0.5" />
+            <stop offset="1" stopColor="#ffd75e" stopOpacity="0" />
+          </linearGradient>
+        </defs>
 
         {slug === "verified" && (
           <>
-            <circle cx="16" cy="16" r="11.3" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-            <circle cx="16" cy="16" r="10.4" fill="none" stroke="rgba(0,0,0,0.28)" strokeWidth="1.4" />
-            <circle cx="16" cy="16" r="9.2" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.6" />
-            <g fill="rgba(255,244,224,0.55)">
-              <circle cx="16" cy="6.6" r="0.5" />
-              <circle cx="24" cy="11.4" r="0.5" />
-              <circle cx="24" cy="20.6" r="0.5" />
-              <circle cx="16" cy="25.4" r="0.5" />
-              <circle cx="8" cy="20.6" r="0.5" />
-              <circle cx="8" cy="11.4" r="0.5" />
-            </g>
+            <path d={VERIFIED_SEAL} fill="url(#bza-seal)" fillRule="evenodd" />
             <path
-              d="M10 17.1 L14.4 21.7 L22.4 12.3"
+              d="M9.9 16.5 14.2 20.8 22.6 10.9"
               fill="none"
-              stroke="#7a0a12"
-              strokeWidth="3.2"
+              stroke="#0c2a9c"
+              strokeOpacity="0.4"
+              strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity="0.45"
+              transform="translate(.4 .5)"
             />
             <path
-              className="bz-anim bz-check"
-              d="M10 16.4 L14.4 21 L22.4 11.6"
+              d="M9.9 16.5 14.2 20.8 22.6 10.9"
               fill="none"
-              stroke="#fff4e0"
-              strokeWidth="3.2"
+              stroke="url(#bza-check)"
+              strokeWidth="3.3"
               strokeLinecap="round"
               strokeLinejoin="round"
-              pathLength={1}
             />
-            <polygon className="bz-anim bz-shine" points="8,4.6 11.6,4.6 20,27.4 16.4,27.4" fill="#fff" />
+            <path
+              d="M11 15.6 14.2 18.9"
+              fill="none"
+              stroke="#e6fbff"
+              strokeOpacity="0.75"
+              strokeWidth="0.7"
+              strokeLinecap="round"
+            />
           </>
         )}
 
         {slug === "streamer" && (
           <>
-            <circle className="bz-anim bz-pulse" cx="16" cy="14.4" r="9.4" fill={meta.accent} opacity="0.16" />
-            {/* Microphone: capsule, grille, stem and base. */}
-            <rect x="13.1" y="5.4" width="5.8" height="9.6" rx="2.9" fill={meta.accent} />
-            <g stroke="#170c2b" strokeWidth="0.75" opacity="0.85">
-              <line x1="13.6" y1="8" x2="18.4" y2="8" />
-              <line x1="13.6" y1="10" x2="18.4" y2="10" />
-              <line x1="13.6" y1="12" x2="18.4" y2="12" />
+            <circle cx="16" cy="16" r="13" fill="none" stroke="url(#bza-arc)" strokeWidth="2.5" />
+            <rect x="6.4" y="6.4" width="19.2" height="19.2" rx="5.9" fill="#131118" />
+            <circle cx="16" cy="16" r="2.15" fill="#f5f3fa" />
+            <g fill="none" stroke="#f5f3fa" strokeWidth="1.9" strokeLinecap="round">
+              <path d="M13.5 12.6a4.7 4.7 0 0 0 0 6.8" />
+              <path d="M18.5 12.6a4.7 4.7 0 0 1 0 6.8" />
+              <path d="M10.7 10.6a7.5 7.5 0 0 0 0 10.8" />
+              <path d="M21.3 10.6a7.5 7.5 0 0 1 0 10.8" />
             </g>
-            <path
-              d="M11.6 13.6a4.4 4.4 0 0 0 8.8 0"
+          </>
+        )}
+
+        {slug === "bounty-hunter" && (
+          <>
+            <circle cx="16" cy="16" r="14.6" fill="#0b0a10" />
+            <circle
+              cx="16"
+              cy="16"
+              r="14.6"
               fill="none"
-              stroke={meta.accent}
+              stroke="url(#bza-violet)"
               strokeWidth="1.5"
+            />
+            <circle
+              cx="16"
+              cy="16"
+              r="10.4"
+              fill="none"
+              stroke="#a78bfa"
+              strokeWidth="0.9"
+              opacity="0.8"
+            />
+            <g fill="#a78bfa">
+              <rect x="15.15" y="1.9" width="1.7" height="3.6" rx="0.85" />
+              <rect x="15.15" y="26.5" width="1.7" height="3.6" rx="0.85" />
+              <rect x="1.9" y="15.15" width="3.6" height="1.7" rx="0.85" />
+              <rect x="26.5" y="15.15" width="3.6" height="1.7" rx="0.85" />
+            </g>
+            {/* Fedora: brim, crown, band. */}
+            <path
+              d="M6.8 15.2c2.4-1.2 5.6-1.9 9.2-1.9s6.8.7 9.2 1.9c.7.4.6 1.4-.2 1.7-2.8 1-5.8 1.4-9 1.4s-6.2-.4-9-1.4c-.8-.3-.9-1.3-.2-1.7Z"
+              fill="url(#bza-hat)"
+            />
+            <path
+              d="M11.3 14.7c-.3-2.4-.4-4.7.5-6.2.5-.9 1.3-1.4 2.2-1.6a10 10 0 0 1 4 0c.9.2 1.7.7 2.2 1.6.9 1.5.8 3.8.5 6.2-1.5.2-3.1.4-4.7.4s-3.2-.2-4.7-.4Z"
+              fill="url(#bza-hat)"
+            />
+            <path d="M11.3 13.2h9.4l-.15 1.5c-1.5.2-3 .3-4.55.3s-3.05-.1-4.55-.3Z" fill="#231c33" />
+            {/* Mask: pale jaw wedge, dark eye band, two lit slits. */}
+            <path d="M12.3 17.5h7.4c-.25 3-1.6 4.9-3.7 6-2.1-1.1-3.45-3-3.7-6Z" fill="#efeaf9" />
+            <path
+              d="M12.3 17.5h7.4l-.18 1.85c-1.1.55-2.3.85-3.52.85s-2.42-.3-3.52-.85Z"
+              fill="#171020"
+            />
+            <path d="M13.5 18.3l1.7.25-1.4.85z" fill="#ffffff" />
+            <path d="M18.5 18.3l-1.7.25 1.4.85z" fill="#ffffff" />
+            <path d="M16 20.4l1.1 1.5-1.1 1-1.1-1z" fill="#171020" opacity="0.55" />
+          </>
+        )}
+
+        {slug === "purify" && (
+          <>
+            <circle
+              cx="16"
+              cy="16"
+              r="13.4"
+              fill="none"
+              stroke="url(#bza-violet)"
+              strokeWidth="2.5"
+            />
+            <circle
+              cx="16"
+              cy="16"
+              r="11.6"
+              fill="none"
+              stroke="#8b5cf6"
+              strokeOpacity="0.32"
+              strokeWidth="0.7"
+            />
+            <path
+              d="M11.6 23.2c-1.6-.5-3-1.7-3.6-3.3 1.7.2 3.1 1.3 3.6 3.3Z"
+              fill="#eef3ff"
+              opacity="0.9"
+            />
+            <path
+              d="M20.4 23.2c1.6-.5 3-1.7 3.6-3.3-1.7.2-3.1 1.3-3.6 3.3Z"
+              fill="#eef3ff"
+              opacity="0.9"
+            />
+            <path
+              d="M16 7.6c0 0-6.2 7.4-6.2 11.6a6.2 6.2 0 0 0 12.4 0C22.2 15 16 7.6 16 7.6Z"
+              fill="url(#bza-drop)"
+            />
+            <path
+              d="M13 18.8a3.3 3.3 0 0 0 2.3 4.9"
+              fill="none"
+              stroke="#ffffff"
+              strokeOpacity="0.85"
+              strokeWidth="0.9"
               strokeLinecap="round"
             />
-            <path d="M16 18.4v3.4" stroke={meta.accent} strokeWidth="1.5" strokeLinecap="round" />
             <path
-              d="M12.8 23.4a3.6 3.6 0 0 0 6.4 0"
-              fill="none"
-              stroke={meta.accent}
-              strokeWidth="1.5"
-              strokeLinecap="round"
+              d="M16 12.6c0 0-3.4 4.2-3.4 6.6a3.4 3.4 0 0 0 6.8 0c0-2.4-3.4-6.6-3.4-6.6Z"
+              fill="#dfe8ff"
+              opacity="0.7"
             />
-            {/* Live signal: two arcs each side, timed inner-first. */}
-            <g fill="none" stroke={meta.accent} strokeWidth="1.5" strokeLinecap="round">
-              <path className="bz-anim bz-arc bz-arc-1" d="M9.6 9.6a9 9 0 0 0 0 12" />
-              <path className="bz-anim bz-arc bz-arc-2" d="M22.4 9.6a9 9 0 0 1 0 12" />
-              <path className="bz-anim bz-arc bz-arc-3" d="M6.6 6.4a13.4 13.4 0 0 0 0 18.4" opacity="0.7" />
-              <path className="bz-anim bz-arc bz-arc-4" d="M25.4 6.4a13.4 13.4 0 0 1 0 18.4" opacity="0.7" />
-            </g>
-            <circle cx="23.4" cy="7.4" r="1.5" fill="#ff2d3f" />
-            {/* Voice level bars breathe under the mic while it speaks. */}
-            <g fill={meta.accent}>
-              <rect className="bz-anim bz-eq bz-eq-1" x="12.4" y="24.2" width="1.1" height="4" rx="0.55" />
-              <rect className="bz-anim bz-eq bz-eq-2" x="15.45" y="24.2" width="1.1" height="4" rx="0.55" />
-              <rect className="bz-anim bz-eq bz-eq-3" x="18.5" y="24.2" width="1.1" height="4" rx="0.55" />
-            </g>
-            <polygon className="bz-anim bz-shine" points="8.2,4.6 11.6,4.6 20.6,27.4 17.2,27.4" fill="#c9a2ff" />
+            <path
+              d="M10.2 11.6l.7 1.95 1.95.7-1.95.7-.7 1.95-.7-1.95-1.95-.7 1.95-.7z"
+              fill="url(#bza-violet)"
+            />
+            <path
+              d="M21.9 14.3l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z"
+              fill="url(#bza-violet)"
+            />
+          </>
+        )}
+
+        {slug === "main-character" && (
+          <>
+            <polygon points="11.4,1.6 20.6,1.6 27.2,26.4 4.8,26.4" fill="url(#bza-beam)" />
+            <ellipse cx="16" cy="27.4" rx="9.6" ry="1.7" fill="#ffc933" opacity="0.22" />
+            <polygon
+              points="16,2.7 19.57,11.66 29.02,12.44 21.9,18.48 23.9,27.78 16,22.98 8.1,27.78 10.1,18.48 2.98,12.44 12.43,11.66"
+              fill="url(#bza-gold)"
+              stroke="#fff0b8"
+              strokeWidth="0.8"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M13.4 12.4l1.9-3.6 1.8 3.2"
+              fill="none"
+              stroke="#fffbe6"
+              strokeWidth="0.65"
+              strokeLinecap="round"
+              opacity="0.9"
+            />
           </>
         )}
       </svg>
-      {slug === "purify" && <WaterDroplet accent={meta.accent} />}
     </span>
   );
 }

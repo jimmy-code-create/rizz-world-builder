@@ -395,10 +395,10 @@ export function BadgesPage() {
             </div>
           </div>
 
-          {/* Badges Grid. Each card is a small display case: the tier colour
-              washes the top edge, the emblem sits on a tinted pedestal, and the
-              state (worn / locked / progress) never hides the artwork. */}
-          <div className="bz-grid grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {/* Badges Grid. The emblem sits straight on the card — no pedestal,
+              no tier wash, no motion. The state (worn / locked / progress) is
+              the only thing around it. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {filteredBadges.map((b) => {
               const hasIt = owned.has(b.slug);
               const isSelected = active?.slug === b.slug;
@@ -411,23 +411,14 @@ export function BadgesPage() {
                   type="button"
                   onClick={() => setSelectedBadge(b)}
                   aria-pressed={isSelected}
-                  className={`group relative flex flex-col overflow-hidden rounded-2xl border p-3 text-left transition-[transform,border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  className={`group relative flex flex-col overflow-hidden rounded-2xl border p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isSelected
                       ? "border-primary/60 bg-primary/[0.07]"
                       : hasIt
-                        ? "border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
-                        : "border-white/[0.07] bg-white/[0.015] hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.03]"
+                        ? "border-white/10 bg-white/[0.03] hover:border-white/20"
+                        : "border-white/[0.07] bg-white/[0.015] hover:border-white/15"
                   }`}
                 >
-                  {/* Tier wash keeps twelve cards from looking like twelve clones. */}
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-80 transition-opacity group-hover:opacity-100"
-                    style={{
-                      background: `radial-gradient(120% 100% at 50% 0%, ${b.color}${hasIt ? "26" : "12"}, transparent 72%)`,
-                    }}
-                  />
-
                   <div className="relative flex items-center justify-between gap-2">
                     <span
                       className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground"
@@ -459,18 +450,8 @@ export function BadgesPage() {
                     )}
                   </div>
 
-                  <div className="relative mt-1 grid place-items-center py-2">
-                    <span
-                      className="badge-display relative grid h-[76px] w-[76px] place-items-center rounded-full border"
-                      style={{
-                        borderColor: hasIt ? `${b.color}3d` : "rgba(255,255,255,0.08)",
-                        background: `radial-gradient(circle at 50% 34%, ${
-                          hasIt ? `${b.color}1f` : "rgba(255,255,255,0.04)"
-                        }, transparent 72%)`,
-                      }}
-                    >
-                      <BadgeMark slug={b.slug} size={60} locked={!hasIt} title={b.name} />
-                    </span>
+                  <div className="relative mt-1 grid h-[80px] place-items-center">
+                    <BadgeMark slug={b.slug} size={64} locked={!hasIt} title={b.name} />
                   </div>
 
                   <div className="relative min-w-0 w-full text-center">
@@ -534,23 +515,13 @@ export function BadgesPage() {
               {/* Art panel, Discord sheet style: the mark big and alone on a soft
                   pedestal, an uppercase title, then state + rarity on one line. */}
               <div className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] py-8">
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 50% 36%, rgba(255,255,255,0.075), transparent 62%)",
-                  }}
-                  aria-hidden="true"
-                />
                 <div className="relative flex flex-col items-center gap-4 text-center">
-                  <span className="badge-display relative">
-                    <BadgeMark
-                      slug={active.slug}
-                      size={120}
-                      locked={!isActiveOwned}
-                      title={active.name}
-                    />
-                  </span>
+                  <BadgeMark
+                    slug={active.slug}
+                    size={120}
+                    locked={!isActiveOwned}
+                    title={active.name}
+                  />
                   <div className="px-5">
                     <h2 className="font-display text-xl font-extrabold uppercase leading-tight tracking-[0.09em] text-foreground">
                       {active.name}

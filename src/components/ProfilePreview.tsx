@@ -9,13 +9,16 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import {
   Ban,
+  Calendar,
   Copy,
+  Hash,
   MessageCircle,
   MoreHorizontal,
   PawPrint,
-  Pin,
   UserPlus,
   UserCheck,
+  UserRound,
+  Users,
   X,
 } from "lucide-react";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
@@ -27,7 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AnimatedBadge } from "@/components/profile/AnimatedBadge";
+import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
 import { MarkdownText } from "@/components/MarkdownText";
 import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
 import { usePurify, withPurifyBadge } from "@/lib/purify";
@@ -129,11 +132,12 @@ function activityCount(value: number | undefined) {
 }
 
 /**
- * Discord-style profile preview: banner, overlapping avatar with a presence
- * dot, name row with the member's badges, ABOUT ME (markdown, like Discord),
- * MEMBER SINCE with the Rizz mark, and the same Activity numbers as the full
- * profile. It uses the same 400px / 176px / 96px proportions as the profile
- * card, so opening either surface never jumps.
+ * Discord-style profile preview: a compact banner, an overlapping avatar with
+ * its presence dot, the name with every equipped badge on one row, the handle
+ * and status, the full-profile button, ABOUT ME (markdown) with its icon, a
+ * separate member-since row, and the same four Activity numbers as the full
+ * profile. The header runs in `compact` mode so the feed sheet reclaims the
+ * vertical space the old avatar/name gap wasted.
  */
 export function ProfilePreviewTrigger({
   username,
@@ -306,13 +310,15 @@ export function ProfilePreviewDialog({
   const panel = (
     <>
       {profile.isLoading && (
-        <div className="p-4">
-          <div className="animate-pulse space-y-4">
-            <div className="h-40 w-full rounded-xl bg-white/[0.06] sm:h-44" />
-            <div className="mx-2 -mt-12 h-24 w-24 rounded-full bg-white/10 ring-[6px] ring-[#111214]" />
-            <div className="space-y-2 pt-2">
+        <div className="p-3.5">
+          <div className="animate-pulse">
+            <div className="h-28 w-full rounded-2xl bg-white/[0.06]" />
+            <div className="-mt-10 ml-1 h-20 w-20 rounded-full bg-white/10 ring-[5px] ring-[#111214]" />
+            <div className="mt-3 space-y-2">
               <div className="h-5 w-32 rounded bg-white/[0.06]" />
-              <div className="h-4 w-24 rounded bg-white/[0.06]" />
+              <div className="h-3.5 w-24 rounded bg-white/[0.06]" />
+              <div className="mt-4 h-14 w-full rounded-2xl bg-white/[0.04]" />
+              <div className="h-20 w-full rounded-2xl bg-white/[0.04]" />
             </div>
           </div>
         </div>
@@ -361,33 +367,10 @@ export function ProfilePreviewDialog({
             status={status}
             statusIsSelf={isOwnProfile}
             customStatus={null}
-            statusLine={
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>{statusText}</span>
-                {wornSlug && markBadges.some((badge) => badge.slug === wornSlug) && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    <Pin className="h-2.5 w-2.5" />
-                    {markBadges.find((badge) => badge.slug === wornSlug)?.name}
-                  </span>
-                )}
-              </p>
-            }
+            statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
             featuredBadge={
               markBadges.length > 0 ? (
-                <span className="flex items-center gap-1" aria-label="Badges">                  {markBadges.map((badge) => (
-                    <button
-                      key={badge.slug}
-                      type="button"
-                      onClick={() => nav({ to: "/badges" })}
-                      aria-label={`${badge.name} badge — open the badge gallery`}
-                      className={`rounded-full transition-transform active:scale-95 ${
-                        badge.slug === wornSlug ? "ring-1 ring-primary/70" : ""
-                      }`}
-                    >
-                      <AnimatedBadge badge={badge} size={20} />
-                    </button>
-                  ))}
-                </span>
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={20} />
               ) : undefined
             }
             overlayActions={
@@ -431,23 +414,22 @@ export function ProfilePreviewDialog({
                 </button>
               </>
             }
-            avatarGlow={p.accent_color}
+            avatarGlow={false}
             surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
-            gutter="16px"
+            gutter="14px"
+            compact
             onBannerPointerDown={beginSheetDrag}
           />
 
           {/* Profile info — same anatomy as the card and full profile. */}
-          <div className="space-y-3 px-4 pb-4 pt-3">
-            <div className="h-px bg-white/[0.06]" />
-
+          <div className="space-y-2.5 px-3.5 pb-4 pt-2.5">
             {/* Primary actions sit directly under the identity, like Discord's
                   profile menu — no scrolling past the bio to message someone. */}
-            {!isOwnProfile ? (
-              <div className="flex items-center gap-2 pt-0.5">
+            {!isOwnProfile && (
+              <div className="flex items-center gap-2">
                 <Button
                   onClick={handleMessage}
-                  className="h-10 flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90"
+                  className="h-11 flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90 active:bg-primary/85"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Message
@@ -459,7 +441,7 @@ export function ProfilePreviewDialog({
                     variant="outline"
                     aria-label={following.data ? "Unfollow" : "Follow"}
                     title={following.data ? "Unfollow" : "Follow"}
-                    className={`h-10 shrink-0 gap-1.5 border-white/15 px-3 text-[13px] font-bold ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
+                    className={`h-11 shrink-0 gap-1.5 border-white/15 px-3 text-[13px] font-bold transition-colors active:bg-white/[0.1] ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
                   >
                     {following.data ? (
                       <UserCheck className="h-4 w-4" />
@@ -470,90 +452,103 @@ export function ProfilePreviewDialog({
                   </Button>
                 )}
               </div>
-            ) : (
-              <Button
-                onClick={handleViewProfile}
-                variant="outline"
-                className="h-10 w-full border-white/15 bg-transparent text-[13px] font-bold text-foreground hover:bg-white/[0.06]"
-              >
-                View Full Profile
-              </Button>
             )}
 
+            <Button
+              onClick={handleViewProfile}
+              variant="outline"
+              className="h-11 w-full border-white/15 bg-white/[0.02] text-[13px] font-bold text-foreground transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+            >
+              View Full Profile
+            </Button>
+
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-              {p.bio ? (
-                <>
-                  <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">
-                    About Me
-                  </h4>
-                  <MarkdownText
-                    text={p.bio}
-                    className="mt-1.5 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
-                  />
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No bio yet.</p>
-              )}
-              <div className="mt-3 flex items-center gap-2 border-t border-white/[0.07] pt-3">
-                <img
-                  src="/brand/rizz-cat-logo.svg"
-                  alt=""
-                  aria-hidden
-                  className="h-4 w-4 shrink-0"
+              <div className="flex items-center gap-1.5">
+                <UserRound
+                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
                 />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Member Since
-                  </p>
-                  <p className="mt-0.5 truncate text-sm font-medium text-[#f2efe6]">
-                    {monthYear(p.created_at)}
-                  </p>
-                </div>
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                  About Me
+                </h4>
               </div>
+              {p.bio ? (
+                <MarkdownText
+                  text={p.bio}
+                  className="mt-2 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
+                />
+              ) : (
+                <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">No bio yet.</p>
+              )}
             </section>
+
+            {/* Member since: one compact, clearly separate row. */}
+            <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="min-w-0 truncate text-[12px] text-muted-foreground">
+                Member since{" "}
+                <span className="font-semibold text-foreground">{monthYear(p.created_at)}</span>
+              </p>
+            </div>
 
             {/* Activity: the same four numbers the full profile shows. */}
             <section aria-label="Profile activity">
-              <div className="mb-1.5 flex items-center justify-between">
-                <h4 className="text-[12px] font-bold uppercase tracking-wide text-foreground">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                   Activity
                 </h4>
                 <span className="text-[10px] text-muted-foreground">Lifetime</span>
               </div>
-              <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
-                <div className="rounded-xl py-2">
-                  <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
-                    {activityCount(p.post_count)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Posts
-                  </p>
-                </div>
-                <div className="rounded-xl py-2">
-                  <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
-                    {activityCount(p.follower_count)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Followers
-                  </p>
-                </div>
-                <div className="rounded-xl py-2">
-                  <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
-                    {activityCount(p.following_count)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Following
-                  </p>
-                </div>
-                <div className="rounded-xl py-2">
-                  <p className="flex items-center justify-center gap-1 truncate font-display text-base font-bold tabular-nums text-[#ff2d3f]">
-                    <PawPrint className="h-3.5 w-3.5 shrink-0" />
-                    {activityCount(p.paw_balance)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Paws
-                  </p>
-                </div>
+              <div className="grid grid-cols-4 divide-x divide-white/[0.06] rounded-2xl border border-white/10 bg-white/[0.035] py-2.5 text-center">
+                {(
+                  [
+                    { id: "posts", label: "Posts", value: p.post_count, Icon: Hash, accent: false },
+                    {
+                      id: "followers",
+                      label: "Followers",
+                      value: p.follower_count,
+                      Icon: Users,
+                      accent: false,
+                    },
+                    {
+                      id: "following",
+                      label: "Following",
+                      value: p.following_count,
+                      Icon: UserPlus,
+                      accent: false,
+                    },
+                    {
+                      id: "paws",
+                      label: "Paws",
+                      value: p.paw_balance,
+                      Icon: PawPrint,
+                      accent: true,
+                    },
+                  ] as const
+                ).map(({ id, label, value, Icon, accent }) => (
+                  <div key={id} className="min-w-0 px-1">
+                    <Icon
+                      className={
+                        accent
+                          ? "mx-auto h-3 w-3 text-[#ff2d3f]"
+                          : "mx-auto h-3 w-3 text-muted-foreground/80"
+                      }
+                      aria-hidden="true"
+                    />
+                    <p
+                      className={
+                        accent
+                          ? "mt-1 truncate font-display text-[15px] font-bold leading-none tabular-nums text-[#ff2d3f]"
+                          : "mt-1 truncate font-display text-[15px] font-bold leading-none tabular-nums text-foreground"
+                      }
+                    >
+                      {activityCount(value)}
+                    </p>
+                    <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                      {label}
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
           </div>
