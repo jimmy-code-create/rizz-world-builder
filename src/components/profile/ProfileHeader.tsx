@@ -1,6 +1,11 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AvatarDecorationArt, ProfileEffectArt } from "@/components/effects/registry";
+import {
+  AvatarDecorationArt,
+  ProfileEffectArt,
+  artKind,
+  isPageProfileEffect,
+} from "@/components/effects/registry";
 import { AvatarStatusBadge, StatusDotButton } from "@/components/presence/StatusDot";
 import { Nameplate } from "@/components/profile/Nameplate";
 import { getBanner } from "@/lib/banner";
@@ -144,7 +149,7 @@ export function ProfileHeader({
           like the cover) so the corner webs never drift off a narrow or wide
           header. It paints over the banner but under the identity row, and the
           silk below the fold spills out of the box without covering the name. */}
-      {profileEffect && (
+      {profileEffect && !isPageProfileEffect(profileEffect) && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 z-20"
@@ -178,7 +183,10 @@ export function ProfileHeader({
               <AvatarDecorationArt
                 slug={avatarDecoration}
                 animated={!user.reducedMotion}
-                className="z-[2]"
+                // Vector rings sit on top of the photo edge. A cut-out frame is
+                // drawn behind it instead, so the avatar masks the frame's inner
+                // edge cleanly and never covers the face.
+                className={artKind(avatarDecoration) === "avatar-image" ? "z-0" : "z-[2]"}
               />
             )}
             {avatarGlow && (

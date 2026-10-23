@@ -14,12 +14,14 @@ import {
   AvatarDecorationArt,
   ProfileEffectArt,
   hasEffectArt,
+  isPageProfileEffect,
 } from "@/components/effects/registry";
 import {
   EFFECT_CATEGORIES,
   RARITY_LABEL,
   RARITY_TINT,
   equipEffect,
+  formatCardPrice,
   invalidateEffects,
   purchaseEffect,
   unequipEffect,
@@ -210,9 +212,16 @@ function ShopPage() {
                                 Owned
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#ff2d3f]">
-                                <PawPrint className="h-3 w-3" />
-                                {formatNumber(effect.paw_price)}
+                              <span className="flex flex-col items-end gap-0.5">
+                                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#ff2d3f]">
+                                  <PawPrint className="h-3 w-3" />
+                                  {formatNumber(effect.paw_price)}
+                                </span>
+                                {effect.price_cents > 0 && (
+                                  <span className="text-[10.5px] font-semibold text-muted-foreground">
+                                    {formatCardPrice(effect.price_cents)}
+                                  </span>
+                                )}
                               </span>
                             )}
                           </span>
@@ -271,9 +280,16 @@ function ShopPage() {
                   <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {state(staged).owned ? "In your collection" : "Price"}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[13px] font-bold text-[#ff2d3f]">
-                    <PawPrint className="h-3.5 w-3.5" />
-                    {formatNumber(staged.paw_price)}
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[13px] font-bold text-[#ff2d3f]">
+                      <PawPrint className="h-3.5 w-3.5" />
+                      {formatNumber(staged.paw_price)}
+                    </span>
+                    {staged.price_cents > 0 && (
+                      <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                        {formatCardPrice(staged.price_cents)} card
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -312,6 +328,11 @@ function ShopPage() {
                   )}
                 </div>
 
+                {!state(staged).owned && staged.price_cents > 0 && (
+                  <p className="text-center text-[11px] text-muted-foreground">
+                    Card checkout opens soon — Paws unlock it today.
+                  </p>
+                )}
                 <p className="text-center text-[11px] text-muted-foreground">
                   This is a live preview on your own banner — nothing is saved until you unlock.
                 </p>
@@ -339,13 +360,15 @@ function EffectThumb({
       {effect.type === "avatar_decoration" ? (
         <div className="absolute inset-0 grid place-items-center">
           <span className="relative block h-14 w-14 rounded-full">
+            {/* Behind the photo, exactly like the header, so a frame's inner
+                edge is masked by the avatar instead of covering the face. */}
+            <AvatarDecorationArt slug={effect.slug} className="z-0" />
             <img
               src={avatarSrc}
               alt=""
               aria-hidden="true"
-              className="h-full w-full rounded-full object-cover"
+              className="relative z-[1] h-full w-full rounded-full object-cover"
             />
-            <AvatarDecorationArt slug={effect.slug} />
           </span>
         </div>
       ) : (
@@ -354,7 +377,7 @@ function EffectThumb({
             className="absolute inset-x-0 top-0 h-[62%]"
             style={{ background: bannerBackground }}
           />
-          <ProfileEffectArt slug={effect.slug} />
+          <ProfileEffectArt slug={effect.slug} animated={false} />
           <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3">
             <img
               src={avatarSrc}
@@ -439,6 +462,13 @@ function PreviewStage({
           ))}
         </div>
       </div>
+
+      {/* Video effects wash over the whole card, exactly like the full profile. */}
+      {isPageProfileEffect(effect.slug) && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
+          <ProfileEffectArt slug={effect.slug} intensity="page" />
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,9 @@ dist-ssr
 
 # TypeScript build info written by `tsc -b`
 *.tsbuildinfo
+
+# Local art working files (source clips, frame grabs, render proofs)
+.scratch/
 .env
 .env.*
 !.env.example

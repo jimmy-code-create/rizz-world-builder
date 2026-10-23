@@ -23,6 +23,8 @@ export type Effect = {
   type: EffectType;
   rarity: EffectRarity;
   paw_price: number;
+  /** Optional card price in cents (e.g. 199 = $1.99). 0 means Paws only. */
+  price_cents: number;
   preview_color: string;
   sort_order: number;
 };
@@ -47,7 +49,12 @@ export const EFFECT_CATEGORIES: readonly EffectCategory[] = [
 ] as const;
 
 export const EFFECT_COLUMNS =
-  "id, slug, name, description, type, rarity, paw_price, preview_color, sort_order";
+  "id, slug, name, description, type, rarity, paw_price, price_cents, preview_color, sort_order";
+
+/** 199 → "$1.99". */
+export function formatCardPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
 export const RARITY_LABEL: Record<EffectRarity, string> = {
   common: "Common",
@@ -75,6 +82,7 @@ function presentEffect(row: Record<string, unknown>): Effect {
     type: row.type as EffectType,
     rarity: (row.rarity as EffectRarity) ?? "common",
     paw_price: Number(row.paw_price ?? 0),
+    price_cents: Number(row.price_cents ?? 0),
     preview_color: (row.preview_color as string) ?? "#f4f1e7",
     sort_order: Number(row.sort_order ?? 0),
   };

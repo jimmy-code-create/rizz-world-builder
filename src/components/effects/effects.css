@@ -37,6 +37,24 @@
   height: 100%;
 }
 
+/* The ivory frame breathes rather than spins: a photo frame that rotates reads
+   as a sticker, and this one should read as jewellery. Only scale is animated —
+   centring stays on Tailwind's `translate` utilities, so the two never fight. */
+.fx-frame-drift {
+  animation: fx-frame-breathe 7.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes fx-frame-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.018);
+  }
+}
+
 .fx-web-spider {
   transform-box: view-box;
   transform-origin: 176px 0px;
@@ -142,7 +160,8 @@
   .fx-chubby,
   .fx-chubby *,
   .fx-web,
-  .fx-web * {
+  .fx-web *,
+  .fx-frame-drift {
     animation: none !important;
   }
 }

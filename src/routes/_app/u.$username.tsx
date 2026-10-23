@@ -41,6 +41,7 @@ import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { useWornEffects } from "@/lib/effects";
 import { getBanner } from "@/lib/banner";
 import { CustomEmoji } from "@/components/CustomEmoji";
@@ -154,6 +155,10 @@ function ProfilePage() {
 
   // Cosmetics this member wears: every visitor sees the same frame and scene.
   const wornEffects = useWornEffects(profile?.id);
+  const wornProfileEffect = wornEffects.data?.profile_effect?.slug ?? null;
+  // A full-profile effect is a page wash, not a banner ornament: it is drawn
+  // over the whole column (banner, cards and all) instead of inside the header.
+  const pageEffect = isPageProfileEffect(wornProfileEffect) ? wornProfileEffect : null;
 
   const reelsQ = useQuery({
     queryKey: ["user-reels", profile?.id],
@@ -563,7 +568,7 @@ function ProfilePage() {
           }
           avatarRing={profileSurface}
           avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
-          profileEffect={wornEffects.data?.profile_effect?.slug ?? null}
+          profileEffect={wornProfileEffect}
           surface={profileSurface}
           gutter="clamp(4px, 1.2vw, 8px)"
         />
@@ -1035,6 +1040,21 @@ function ProfilePage() {
         )}
         {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
       </div>
+
+      {/* Full-profile decorative wash. It sits above the column but never takes a
+          tap: petals over the whole profile, not just the cover. */}
+      {pageEffect && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
+        >
+          <ProfileEffectArt
+            slug={pageEffect}
+            animated={!profile.reduced_motion}
+            intensity="page"
+          />
+        </div>
+      )}
     </div>
   );
 }

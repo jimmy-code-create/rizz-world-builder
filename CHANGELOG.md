@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-23 — Two premium pieces: Petal Bloom and Ivory Filigree
+
+### Petal Bloom — a full-profile decoration
+- The petal clip runs behind the profile header, cards and buttons as a
+  screen-blended wash: the clip's black plate vanishes in the blend, so no alpha
+  channel or heavy overlay is needed on mobile. Page intensity is 72% of the
+  banner wash, which keeps text at full contrast.
+- It is muted, looping, inline-playing and `pointer-events-none`, so every tap
+  still lands on the profile underneath. `prefers-reduced-motion` — and the
+  member's own reduced-motion setting — swaps it for a still poster.
+- One decoder per page: the header skips page-wide effects, and the overlay is
+  mounted once on the profile route.
+
+### Ivory Filigree — a cut-out avatar frame
+- The frame was traced off the clip into a transparent RGBA PNG (no white
+  plate), scaled to 1.5× the avatar so its square opening lands just inside the
+  photo edge. It is drawn *behind* the avatar, so the photo masks the frame's
+  inner edge instead of the ornament covering the face.
+- A slow drift keeps it alive; reduced motion freezes it.
+
+### Both cost 2,099 Paws or $1.99 on card
+- Seeded through `purchase_profile_effect`, so the price, the wallet and the
+  one-per-category rule all stay server-side. The shop card shows the Paws price
+  with the card price beside it and opens the real profile for a preview.
+
 ## 2026-10-23 — The effects shop: chubby frames and silk profile scenes
 
 ### Two shelves, priced in Paws
