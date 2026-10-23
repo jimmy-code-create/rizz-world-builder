@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-23 — One badge tray, and a preview that opens on the cover
+
+### The sheet starts with the banner
+- The phone preview no longer has a black grab-handle strip between the sheet
+  edge and the cover: the banner meets the rounded top edge and a small capsule
+  grabber floats over it. The banner itself stays draggable, as before.
+- The compact header now uses the same 3:1 cover as every other surface, so the
+  preview reads as a taller card instead of a cropped strip.
+
+### Badges read as one object
+- `BadgeLine` grew a `tray` variant: a rounded, hairline-bordered row. The
+  preview's five marks moved out of the display-name row and into that tray on
+  the handle row — one row, 26px marks instead of 20px specks.
+- The full profile's name-row marks go up to 24px for the same legibility.
+
+### Archive removed
+- The `/badges` "Classic RIZZ badges" archive card is gone. Those awards still
+  live in the catalog grid and keep their own detail panel, so nothing is lost.
+
 ## 2026-10-23 — Screen share that connects, rounds that keep running
 
 ### Screen share

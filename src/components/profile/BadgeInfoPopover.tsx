@@ -70,15 +70,29 @@ export function BadgeLine({
   wornSlug = null,
   size = 20,
   label = "Badges",
+  tray = false,
 }: {
   badges: Badge[];
   wornSlug?: string | null;
   size?: number;
   label?: ReactNode;
+  /**
+   * Draws the row as one soft tray instead of loose marks. The preview sheet
+   * uses it so five bigger badges read as a single object beside the handle.
+   */
+  tray?: boolean;
 }) {
   if (!badges.length) return null;
   return (
-    <span className="flex flex-nowrap items-center gap-1" aria-label={String(label)}>
+    <span
+      className={cn(
+        "flex flex-nowrap items-center",
+        tray
+          ? "gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.055] px-2 py-1"
+          : "gap-1",
+      )}
+      aria-label={String(label)}
+    >
       {badges.map((badge) => (
         <BadgeInfoPopover
           key={badge.slug}

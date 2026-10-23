@@ -686,61 +686,6 @@ export function BadgesPage() {
         </aside>
       </div>
 
-      {legacyEarned.length > 0 && (
-        <section
-          className="glass rounded-3xl border border-white/10 p-5 sm:p-6"
-          aria-labelledby="legacy-badges-title"
-        >
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Archive
-              </p>
-              <h2
-                id="legacy-badges-title"
-                className="mt-1 font-display text-lg font-bold text-foreground"
-              >
-                Classic RIZZ badges
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Your original awards are kept and shareable.
-              </p>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold text-muted-foreground">
-              {legacyEarned.length} preserved
-            </span>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {legacyEarned.map(({ badge }) => (
-              <button
-                key={badge.slug}
-                type="button"
-                onClick={() => setSelectedBadge(badge)}
-                aria-label={`Share ${canonicalFor(badge.slug)?.name ?? badge.name}`}
-                className="group flex min-h-12 items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <BadgeMark slug={badge.slug} size={32} />
-                <span className="text-left">
-                  <span className="block text-xs font-semibold text-foreground">
-                    {canonicalFor(badge.slug)?.name ?? badge.name}
-                  </span>
-                  <span className="block text-[10px] text-muted-foreground">
-                    Earned{" "}
-                    {awardedAtFor.get(badge.slug)
-                      ? new Date(awardedAtFor.get(badge.slug)!).toLocaleDateString([], {
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "in the classic set"}
-                  </span>
-                </span>
-                <Share2 className="ml-1 h-3.5 w-3.5 text-muted-foreground transition group-hover:text-primary" />
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
       {adminCheck.data === true && (
         <div className="glass rounded-3xl p-5 border border-white/10 space-y-4">
           <div>

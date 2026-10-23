@@ -112,7 +112,7 @@ export function ProfileHeader({
       {/* 1. Banner photo. The box never changes height, even when empty. */}
       <div
         className="relative w-full touch-none overflow-hidden rounded-3xl bg-[#141416] sm:touch-auto"
-        style={{ aspectRatio: compact ? "3.4 / 1" : "3 / 1", background: banner.background }}
+        style={{ aspectRatio: "3 / 1", background: banner.background }}
         onPointerDown={onBannerPointerDown}
       >
         {/* 2. Soft scrim for the avatar/name overlap. */}

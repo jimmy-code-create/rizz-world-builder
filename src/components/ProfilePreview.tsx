@@ -368,9 +368,12 @@ export function ProfilePreviewDialog({
             statusIsSelf={isOwnProfile}
             customStatus={null}
             statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
-            featuredBadge={
+            handleExtra={
+              // One tray, one row, bigger marks: the badges read as a single
+              // object beside the handle instead of loose specks after the
+              // display name (which no longer fights them for width).
               markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={20} />
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={26} tray />
               ) : undefined
             }
             overlayActions={
@@ -567,7 +570,7 @@ export function ProfilePreviewDialog({
           hideClose
           // The own spring keyframes below replace the primitive's linear slide,
           // so the sheet rises like a drawer and settles instead of gliding.
-          className="profile-sheet max-h-[90dvh] gap-0 rounded-t-3xl border-white/[0.06] bg-[#0b0b0c] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+          className="profile-sheet max-h-[92dvh] gap-0 overflow-hidden rounded-t-3xl border-0 bg-[#0b0b0c] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
           style={
             previewBanner?.profileBackground
               ? { background: previewBanner.profileBackground }
@@ -588,16 +591,21 @@ export function ProfilePreviewDialog({
               // Either a deliberate pull or a flick closes the sheet.
               if (info.offset.y > 120 || info.velocity.y > 700) onOpenChange(false);
             }}
-            className="flex max-h-[90dvh] flex-col"
+            className="relative flex max-h-[92dvh] flex-col"
           >
+            {/* The sheet opens straight on the banner — no black handle strip
+                above it. The grab pill floats over the cover and the banner
+                itself stays draggable. */}
             <div
               onPointerDown={beginSheetDrag}
-              className="shrink-0 cursor-grab pb-1.5 pt-2.5 active:cursor-grabbing"
+              className="absolute left-1/2 top-0 z-50 -translate-x-1/2 cursor-grab px-4 pb-4 pt-2 active:cursor-grabbing"
             >
               <span
-                className="mx-auto block h-1 w-10 rounded-full bg-white/25"
+                className="flex h-4 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm"
                 aria-hidden="true"
-              />
+              >
+                <span className="block h-1 w-6 rounded-full bg-white/80" />
+              </span>
               <span className="sr-only">Drag down to close</span>
             </div>
             <div className="min-h-0 overflow-y-auto overscroll-contain">{panel}</div>

@@ -84,8 +84,8 @@ await check("Discord anatomy: shared banner, avatar, presence dot, sections", as
   assert.ok(card.includes("bg-[#111214]"), "the card uses Discord's popout colour");
 
   assert.ok(
-    profileHeader.includes('aspectRatio: compact ? "3.4 / 1" : "3 / 1"'),
-    "the banner keeps its wide ratio, a little shorter in the compact preview",
+    profileHeader.includes('aspectRatio: "3 / 1"'),
+    "the banner keeps one wide ratio on every surface",
   );
   assert.ok(profileHeader.includes("overflow-hidden"), "banner art is clipped");
   assert.ok(profileHeader.includes("<AvatarImage src={avatarSrc}"), "the header owns the avatar");
