@@ -55,6 +55,13 @@
   }
 }
 
+/* Profile page: the scene plays its entrance once per open, then holds still.
+   An endless sway under the tab bar reads as a stray animation, not a trophy. */
+.fx-once,
+.fx-once * {
+  animation-iteration-count: 1 !important;
+}
+
 .fx-web-spider {
   transform-box: view-box;
   transform-origin: 176px 0px;

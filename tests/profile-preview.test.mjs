@@ -148,4 +148,54 @@ await check("actions: Message with follow, own profile gets a single button", as
   );
 });
 
+await check("the sheet drags as one surface, so no bare theme strip can open up", async () => {
+  // The tinted surface used to sit on the static Radix box while only the
+  // content translated, which exposed a tall empty gradient band above the
+  // cover on every pull. The card itself is the dragged layer now.
+  assert.ok(
+    card.includes("overflow-visible border-0 bg-transparent p-0 shadow-none"),
+    "the Radix box paints nothing of its own",
+  );
+  const dragged = card.slice(card.indexOf("if (isMobile)"), card.indexOf("<Dialog open={open}"));
+  assert.ok(dragged.includes("rounded-t-3xl bg-[#0b0b0c]"), "the dragged layer owns the radius");
+  assert.ok(dragged.includes("safe-area-inset-bottom"), "and the safe-area padding");
+  assert.ok(
+    dragged.includes("background: previewBanner.profileBackground"),
+    "the theme tint travels with the card",
+  );
+  assert.ok(card.includes("setDismissing(true)"), "a past-threshold swipe keeps moving instead of snapping back");
+  assert.ok(card.includes("onAnimationComplete"), "and closes once the card is off screen");
+});
+
+await check("one sheet animation, and the panel does not re-scale on load", async () => {
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const opens = styles.match(/\.profile-sheet\[data-state="open"\]\s*\{/g) ?? [];
+  assert.equal(opens.length, 1, "a second keyframe set only overrode the first");
+  assert.match(styles, /\.account-sheet\[data-state="open"\]\s*\{\s*animation: sheet-rise/);
+  assert.ok(!card.includes("scale: 0.985"), "the arriving profile must not shrink the cover");
+});
+
+await check("the skeleton reserves the finished height", async () => {
+  assert.ok(card.includes("aspect-[3/1]"), "the placeholder cover keeps the real ratio");
+  const skeleton = card.slice(card.indexOf("profile.isLoading"), card.indexOf("profile.isError"));
+  assert.ok(skeleton.includes("h-11"), "action rows are reserved");
+  assert.ok(skeleton.includes("h-24"), "bio and activity blocks are reserved");
+  assert.ok(skeleton.includes("ring-[#111214]"), "the avatar overlaps its cover here too");
+});
+
+await check("a cover is never transparent while its photo decodes", async () => {
+  const banner = readFileSync(new URL("../src/lib/banner.ts", import.meta.url), "utf8");
+  assert.ok(
+    banner.includes('#141416 url('),
+    "image banners keep an opaque base — without it the sheet tint showed through",
+  );
+});
+
+await check("a nested avatar never opens a second preview sheet", async () => {
+  assert.ok(card.includes('data-profile-preview-trigger=""'), "the trigger marks its subtree");
+  const avatar = readFileSync(new URL("../src/components/ui/avatar.tsx", import.meta.url), "utf8");
+  assert.ok(avatar.includes("[data-profile-preview-trigger]"), "the avatar checks for an owning trigger");
+  assert.ok(avatar.includes("username && !insideTrigger"), "and leaves the preview to that trigger");
+});
+
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

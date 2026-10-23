@@ -466,7 +466,7 @@ function PreviewStage({
       {/* Video effects wash over the whole card, exactly like the full profile. */}
       {isPageProfileEffect(effect.slug) && (
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
-          <ProfileEffectArt slug={effect.slug} intensity="page" />
+          <ProfileEffectArt slug={effect.slug} once />
         </div>
       )}
     </div>

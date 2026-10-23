@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-10-23 — Profile effects stop at the tab line, with real transparency
+
+### The hero clip
+- The worn scene used to spill past the banner across the stats, bio and tab
+  bar, and a full-profile wash tinted the whole timeline. The profile now wraps
+  its header, stats, bio and tab rule in one clipped hero: the scene and the
+  wash end on the same line as the profile gradient, and nothing paints over
+  the posts below.
+- The scene box keeps its banner anchor, so the avatar/name block still sits
+  above it, while the wash sits at the hero's backdrop layer and never takes a
+  tap.
+
+### The plate is gone, not faded
+- Petal Bloom is re-rendered with a real alpha channel (VP9/WebM keyed from its
+  luminance) and a transparent PNG poster, so the clip composites as itself:
+  no `mix-blend-mode: screen`, no 30% opacity, and no dark rectangle where the
+  plate used to be. It sits inside the hero clip on the profile, and the feed's
+  preview sheet now carries it too.
+- The compact profile card (realms, leaderboards, hover) wears the same avatar
+  decoration and profile effect as the full profile; it previously dropped
+  both.
+
+### One pass per visit
+- The scene's silk sway and the wash play once when the profile opens, then
+  hold still (`fx-once`) instead of looping forever under the tab bar.
+
+## 2026-10-23 — Profile preview sheet: one surface, one height, one cover
+
+### The empty gradient band above the cover
+- The sheet's tinted surface lived on the static Radix box while only the
+  content was draggable, so every pull slid the cover down and left a tall
+  empty band of the profile's gradient above it. The radius, safe-area padding
+  and theme tint now live on the dragged card itself: the whole sheet moves as
+  one object and nothing can separate from its own background.
+- A swipe past the threshold keeps travelling from the finger's last position
+  and closes when it is off screen, instead of snapping to 0 and then playing a
+  second, unrelated close animation.
+
+### The jump when the profile arrived
+- The loading skeleton now mirrors the finished anatomy (3:1 cover, overlapping
+  avatar, identity, both action rows, bio block, member-since row, activity),
+  so the sheet keeps its height while the profile row loads.
+- The panel no longer scales from 0.985 on arrival — only the sheet itself
+  fades and settles once, so the cover never nudges after the sheet is open.
+
+### One motion, one cover
+- `styles.css` had two `.profile-sheet` open/close keyframe sets; the later one
+  silently overrode the other. The preview keeps its documented fade-and-settle
+  and the account sheet keeps its rise.
+- Image banners now paint on an opaque base colour. The `background` shorthand
+  had reset background-color, so a cover that was still decoding — or failed —
+  showed the sheet's tinted theme through it, which read as the cover swapping
+  images. The banner URL is still derived only from the selected profile; there
+  is no rotation, and neither render path calls randomness.
+- An avatar nested inside a row that already owns a preview no longer opens a
+  second sheet on top of it; the row's trigger owns the one preview.
+
 ## 2026-10-23 — Two premium pieces: Petal Bloom and Ivory Filigree
 
 ### Petal Bloom — a full-profile decoration

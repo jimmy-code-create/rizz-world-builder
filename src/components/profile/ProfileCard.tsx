@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
 import { getBanner } from "@/lib/banner";
 import { useAuth } from "@/lib/auth";
+import { useWornEffects } from "@/lib/effects";
 
 /** Legacy shape (realm chat passes these); userId is the only required field. */
 export type ProfileCardUser = {
@@ -362,6 +363,9 @@ export function ProfileCard({
     enabled: !!userId,
     staleTime: 30_000,
   });
+  // The compact card wears the same cosmetics as the full profile; tapping a
+  // name in a realm or a leaderboard should not strip the member's effect.
+  const worn = useWornEffects(userId);
   // When the card knows which realm it was opened from, resolve the real
   // membership row (role + join date); otherwise fall back to the hint.
   const realmRow = useQuery({
@@ -668,6 +672,9 @@ export function ProfileCard({
           ) : undefined
         }
         avatarRing={ringColor}
+        avatarDecoration={worn.data?.avatar_decoration?.slug ?? null}
+        profileEffect={worn.data?.profile_effect?.slug ?? null}
+        effectOnce
         overlayActions={
           <>
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

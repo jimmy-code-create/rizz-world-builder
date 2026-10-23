@@ -68,11 +68,13 @@ await check("the drawn frame is a transparent cutout, not a plate", async () => 
   assert.ok(png.length > 60_000, "the frame carries enough resolution to scale");
 });
 
-await check("the profile clip is screened, low-opacity and muted", async () => {
+await check("the profile clip carries real alpha instead of a blend and opacity", async () => {
   assert.match(registry, /kind: "profile-video"/);
-  assert.match(registry, /mixBlendMode: "screen"/);
-  assert.match(registry, /art\.opacity \* 0\.72/);
-  for (const attr of ["autoPlay", "muted", "loop", "playsInline", "poster=", "disablePictureInPicture"]) {
+  assert.ok(!registry.includes("mixBlendMode"), "no screen blend is needed once the plate is gone");
+  assert.ok(!/opacity\s*:/.test(registry), "the wash is not dimmed any more");
+  assert.match(registry, /fx-petal-bloom\.webm/);
+  assert.match(registry, /loop=\{!once\}/, "the profile plays it once; cards stay still");
+  for (const attr of ["autoPlay", "muted", "playsInline", "poster=", "disablePictureInPicture"]) {
     assert.ok(registry.includes(attr), `the video must keep ${attr}`);
   }
   assert.ok(
@@ -80,9 +82,13 @@ await check("the profile clip is screened, low-opacity and muted", async () => {
     "reduced motion and shop cards fall back to the poster",
   );
 
-  const mp4 = statSync(file("public/effects/fx-petal-bloom.mp4")).size;
-  assert.ok(mp4 > 200_000 && mp4 < 2_000_000, `clip is ${mp4} bytes — must stay light`);
-  assert.ok(statSync(file("public/effects/fx-petal-bloom-poster.jpg")).size > 10_000);
+  const webm = readFileSync(file("public/effects/fx-petal-bloom.webm"));
+  assert.equal(webm.toString("hex", 0, 4), "1a45dfa3", "EBML magic = WebM container");
+  assert.ok(webm.length > 200_000 && webm.length < 1_600_000, `clip is ${webm.length} bytes`);
+
+  const poster = readFileSync(file("public/effects/fx-petal-bloom-poster.png"));
+  assert.equal(poster.toString("ascii", 1, 4), "PNG");
+  assert.equal(poster[25], 6, "PNG colour type 6 = RGBA, so the still has no background");
 });
 
 await check("both premium pieces cost 2,099 Paws or $1.99", async () => {
@@ -105,13 +111,16 @@ await check("the scene sits over the banner but under the identity row", async (
   );
 });
 
-await check("full-profile effects wash over the whole column", async () => {
+await check("full-profile effects stop on the same line as the gradient", async () => {
   assert.ok(profilePage.includes("isPageProfileEffect(wornProfileEffect)"));
-  assert.match(profilePage, /<ProfileEffectArt[\s\S]{0,140}intensity="page"/);
-  assert.ok(
-    profilePage.includes("pointer-events-none absolute inset-0 z-30"),
-    "the wash ignores taps and covers the column",
-  );
+  // The hero clip wraps the header, stats, bio and the tab rule; the wash and
+  // the tab bar end together, so nothing paints over the feed below.
+  assert.ok(profilePage.includes('className="relative overflow-hidden"'), "the hero is a clip");
+  const hero = profilePage.slice(profilePage.indexOf('<div className="relative overflow-hidden"'));
+  const heroEnd = hero.indexOf("<TabsContent value=\"main\"");
+  assert.ok(hero.indexOf("{pageEffect && (") > 0, "the wash renders inside the clip");
+  assert.ok(hero.indexOf("{pageEffect && (") < heroEnd, "and before the tab content starts");
+  assert.ok(profilePage.includes("effectOnce"), "the profile plays its entrance once");
   assert.ok(shop.includes("isPageProfileEffect(effect.slug)"), "the shop preview shows the wash too");
 });
 
@@ -163,18 +172,33 @@ await check("the ivory frame stays behind the photo and never covers it", async 
   );
 });
 
-await check("the clip plays before it has fully downloaded", async () => {
-  const buf = readFileSync(file("public/effects/fx-petal-bloom.mp4"));
-  const moov = buf.indexOf("moov");
-  const mdat = buf.indexOf("mdat");
-  assert.ok(moov > 0 && mdat > moov, "moov must precede mdat (faststart)");
-  assert.ok(!buf.includes("soun"), "the loop carries no audio track");
+await check("the keyed clip stays inside the mobile budget", async () => {
+  const webm = statSync(file("public/effects/fx-petal-bloom.webm")).size;
+  assert.ok(webm < 1_600_000, `clip is ${webm} bytes — the alpha pass must not double it`);
+  assert.ok(!readFileSync(file("public/effects/fx-petal-bloom.webm")).includes("soun"), "no audio");
 });
 
 await check("the loops stop for reduced motion", async () => {
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.fx-static,\s*\.fx-static \*\s*\{\s*animation: none !important;/);
   assert.match(header, /animated=\{!user\.reducedMotion\}/);
+});
+
+await check("the small profile cards wear the same effects", async () => {
+  assert.ok(
+    preview.includes("isPageProfileEffect(wornEffects.data?.profile_effect?.slug)"),
+    "the feed preview shows the full-profile decoration too",
+  );
+  const profileCardSource = read("src/components/profile/ProfileCard.tsx");
+  assert.ok(profileCardSource.includes("useWornEffects(userId)"), "the compact card asks for cosmetics");
+  assert.ok(profileCardSource.includes("avatarDecoration={worn.data?.avatar_decoration?.slug"));
+  assert.ok(profileCardSource.includes("profileEffect={worn.data?.profile_effect?.slug"));
+});
+
+await check("the scene plays once per open", async () => {
+  assert.match(css, /\.fx-once,\s*\n?\.fx-once \*\s*\{\s*animation-iteration-count: 1/);
+  assert.ok(web.includes('once && "fx-once"'), "the silk settles instead of looping");
+  assert.ok(header.includes("once={effectOnce}"), "the header accepts the one-shot flag");
 });
 
 console.log(`\n${passed} checks passed.`);

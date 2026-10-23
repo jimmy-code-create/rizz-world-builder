@@ -508,7 +508,13 @@ function ProfilePage() {
         pageBanner.profileBackground ? { background: pageBanner.profileBackground } : undefined
       }
     >
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
+      <Tabs defaultValue="main">
+        {/* The hero clip. The profile gradient, the worn scene and the tab rule
+            all end on this line: a scene can no longer drift behind the posts,
+            and a full-profile wash stops at the tab bar instead of tinting the
+            whole timeline. */}
+        <div className="relative overflow-hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
         <ProfileHeader
           user={{
             id: profile.id,
@@ -569,12 +575,13 @@ function ProfilePage() {
           avatarRing={profileSurface}
           avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
           profileEffect={wornProfileEffect}
+          effectOnce
           surface={profileSurface}
           gutter="clamp(4px, 1.2vw, 8px)"
         />
-      </motion.div>
+          </motion.div>
 
-      <div className="relative z-20">
+          <div className="relative z-20">
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2 px-1 md:px-2">
           {headerActions}
         </div>
@@ -704,7 +711,7 @@ function ProfilePage() {
           </motion.section>
         )}
 
-        <Tabs defaultValue="main" className="mt-4">
+          <div className="relative z-20 mt-4">
           <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/[0.07] bg-transparent p-0">
             {[
               { value: "main", label: "Main" },
@@ -719,9 +726,25 @@ function ProfilePage() {
                 {tab.label}
               </TabsTrigger>
             ))}
-          </TabsList>
+            </TabsList>
+          </div>
+          </div>
 
-          <TabsContent value="main" className="mt-4">
+        {pageEffect && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+          >
+            <ProfileEffectArt
+              slug={pageEffect}
+              animated={!profile.reduced_motion}
+              once
+            />
+          </div>
+        )}
+        </div>
+
+        <TabsContent value="main" className="mt-4">
             <div
               className="mb-3 flex flex-wrap items-center gap-1.5"
               role="tablist"
@@ -1026,9 +1049,7 @@ function ProfilePage() {
               accent={accent}
             />
           </TabsContent>
-        </Tabs>
-
-
+      </Tabs>
 
         {listOpen && (
           <FollowListDialog
@@ -1039,22 +1060,6 @@ function ProfilePage() {
           />
         )}
         {isMe && <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />}
-      </div>
-
-      {/* Full-profile decorative wash. It sits above the column but never takes a
-          tap: petals over the whole profile, not just the cover. */}
-      {pageEffect && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
-        >
-          <ProfileEffectArt
-            slug={pageEffect}
-            animated={!profile.reduced_motion}
-            intensity="page"
-          />
-        </div>
-      )}
     </div>
   );
 }

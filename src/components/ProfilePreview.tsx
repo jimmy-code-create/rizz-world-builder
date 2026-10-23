@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
+import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { MarkdownText } from "@/components/MarkdownText";
 import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
 import { useWornEffects } from "@/lib/effects";
@@ -155,6 +156,9 @@ export function ProfilePreviewTrigger({
     <>
       <button
         type="button"
+        // Marks this subtree as already owning a preview, so a nested avatar
+        // never opens a second sheet over this one.
+        data-profile-preview-trigger=""
         className={className ?? "text-left"}
         onClick={(event) => {
           event.preventDefault();
@@ -191,6 +195,10 @@ export function ProfilePreviewDialog({
 
   const isMobile = useIsMobile();
   const dragControls = useDragControls();
+  // A swipe past the threshold must not snap back to 0 and then play a second,
+  // unrelated close animation — the card keeps travelling from the finger's
+  // last position and only then unmounts.
+  const [dismissing, setDismissing] = useState(false);
   const purify = usePurify();
 
   const presence = usePresence(p?.id ?? "");
@@ -314,16 +322,21 @@ export function ProfilePreviewDialog({
   const panel = (
     <>
       {profile.isLoading && (
-        <div className="p-3.5">
-          <div className="animate-pulse">
-            <div className="h-28 w-full rounded-2xl bg-white/[0.06]" />
-            <div className="-mt-10 ml-1 h-20 w-20 rounded-full bg-white/10 ring-[5px] ring-[#111214]" />
-            <div className="mt-3 space-y-2">
-              <div className="h-5 w-32 rounded bg-white/[0.06]" />
-              <div className="h-3.5 w-24 rounded bg-white/[0.06]" />
-              <div className="mt-4 h-14 w-full rounded-2xl bg-white/[0.04]" />
-              <div className="h-20 w-full rounded-2xl bg-white/[0.04]" />
-            </div>
+        // The skeleton mirrors the finished anatomy (3:1 cover, overlapping
+        // avatar, identity, two actions, bio block, member since, activity) so
+        // the sheet keeps one height while the row arrives instead of growing
+        // upward under the thumb.
+        <div className="animate-pulse" aria-hidden="true">
+          <div className="aspect-[3/1] w-full bg-white/[0.06]" />
+          <div className="px-3.5 pb-4 pt-2.5">
+            <div className="-mt-9 ml-1 h-16 w-16 rounded-full bg-white/10 ring-[5px] ring-[#111214]" />
+            <div className="mt-2 h-5 w-32 rounded bg-white/[0.06]" />
+            <div className="mt-2 h-3.5 w-24 rounded bg-white/[0.06]" />
+            <div className="mt-3 h-11 w-full rounded-xl bg-white/[0.05]" />
+            <div className="mt-2 h-11 w-full rounded-xl bg-white/[0.05]" />
+            <div className="mt-2 h-24 w-full rounded-2xl bg-white/[0.04]" />
+            <div className="mt-2 h-10 w-full rounded-2xl bg-white/[0.03]" />
+            <div className="mt-2 h-24 w-full rounded-2xl bg-white/[0.04]" />
           </div>
         </div>
       )}
@@ -350,9 +363,12 @@ export function ProfilePreviewDialog({
 
       {p && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.985 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          // A fade only. Scaling the panel pulled the cover and the name in a
+          // few pixels the moment the row arrived, which read as the sheet
+          // settling twice.
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
         >
           <ProfileHeader
             user={{
@@ -424,6 +440,7 @@ export function ProfilePreviewDialog({
             avatarGlow={false}
             avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
             profileEffect={wornEffects.data?.profile_effect?.slug ?? null}
+            effectOnce
             surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
             gutter="14px"
             compact
@@ -574,14 +591,11 @@ export function ProfilePreviewDialog({
         <SheetContent
           side="bottom"
           hideClose
-          // The own spring keyframes below replace the primitive's linear slide,
-          // so the sheet rises like a drawer and settles instead of gliding.
-          className="profile-sheet max-h-[92dvh] gap-0 overflow-hidden rounded-t-3xl border-0 bg-[#0b0b0c] p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
-          style={
-            previewBanner?.profileBackground
-              ? { background: previewBanner.profileBackground }
-              : undefined
-          }
+          // The card is the dragged layer below, not this box: the tinted
+          // surface, the cover and the content move as one object. When the
+          // background lived on the (static) Radix box, every pull translated
+          // only the content and exposed a bare strip of theme above the cover.
+          className="profile-sheet max-h-[92dvh] gap-0 overflow-visible border-0 bg-transparent p-0 shadow-none"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Profile preview for {username}</SheetTitle>
@@ -594,10 +608,24 @@ export function ProfilePreviewDialog({
             dragElastic={{ top: 0, bottom: 0.55 }}
             dragTransition={{ bounceStiffness: 520, bounceDamping: 38 }}
             onDragEnd={(_, info) => {
-              // Either a deliberate pull or a flick closes the sheet.
-              if (info.offset.y > 120 || info.velocity.y > 700) onOpenChange(false);
+              // Either a deliberate pull or a flick closes the sheet. Handing
+              // the rest of the travel to the same motion value keeps the card
+              // moving one way, instead of spring-back then fade-out.
+              if (info.offset.y > 120 || info.velocity.y > 700) setDismissing(true);
             }}
-            className="relative flex max-h-[92dvh] flex-col"
+            animate={dismissing ? { y: 900, opacity: 0 } : undefined}
+            transition={dismissing ? { duration: 0.18, ease: "easeIn" } : undefined}
+            onAnimationComplete={() => {
+              if (!dismissing) return;
+              setDismissing(false);
+              onOpenChange(false);
+            }}
+            className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-[#0b0b0c] pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+            style={
+              previewBanner?.profileBackground
+                ? { background: previewBanner.profileBackground }
+                : undefined
+            }
           >
             {/* The sheet opens straight on the banner — no black handle strip
                 above it. The grab pill floats over the cover and the banner
@@ -615,6 +643,19 @@ export function ProfilePreviewDialog({
               <span className="sr-only">Drag down to close</span>
             </div>
             <div className="min-h-0 overflow-y-auto overscroll-contain">{panel}</div>
+
+            {/* The same full-profile decoration, played once on the small
+                preview. The card's own radius and overflow clip it, so it can
+                never spill onto the feed behind the sheet. */}
+            {isPageProfileEffect(wornEffects.data?.profile_effect?.slug) && (
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
+                <ProfileEffectArt
+                  slug={wornEffects.data?.profile_effect?.slug}
+                  animated={!p?.reduced_motion}
+                  once
+                />
+              </div>
+            )}
           </motion.div>
         </SheetContent>
       </Sheet>

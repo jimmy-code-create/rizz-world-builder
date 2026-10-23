@@ -89,11 +89,14 @@ export function WebProfileEffect({
   variant,
   className,
   animated = true,
+  once = false,
 }: {
   variant: WebVariant;
   className?: string;
   /** Static art (no loops) for reduced-motion members. */
   animated?: boolean;
+  /** Let the silk settle after one entrance instead of looping forever. */
+  once?: boolean;
 }) {
   const veil = variant === "veil";
   const accent = veil ? PAPER : SIGNAL;
@@ -122,7 +125,11 @@ export function WebProfileEffect({
     <svg
       viewBox="0 0 320 240"
       preserveAspectRatio="xMidYMin slice"
-      className={cn("fx-web pointer-events-none absolute inset-0 h-full w-full", className)}
+      className={cn(
+        "fx-web pointer-events-none absolute inset-0 h-full w-full",
+        once && "fx-once",
+        className,
+      )}
       aria-hidden="true"
       focusable="false"
     >

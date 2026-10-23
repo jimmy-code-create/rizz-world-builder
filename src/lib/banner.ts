@@ -232,8 +232,12 @@ export function getBanner(user: unknown): BannerSource {
       imageUrl: url,
       gradient,
       // Anchor to the top so faces stay in frame when a wide photo is cropped
-      // into the 3:1 banner.
-      background: `url("${url.replace(/"/g, '\\"')}") center top / cover no-repeat`,
+      // into the 3:1 banner. The colour in front of the image is load-bearing:
+      // the shorthand resets background-color, so without it a cover that is
+      // still decoding (or fails) showed whatever the container held — on the
+      // preview sheet that was the profile's tinted theme, an empty colour
+      // block where the photo belongs.
+      background: `#141416 url("${url.replace(/"/g, '\\"')}") center top / cover no-repeat`,
       profileBackground: theme.background,
       surface: theme.surface,
       key: `image:${url}:${gradient ? `${gradient.c1}:${gradient.c2}:${gradient.angle}` : "plain"}`,

@@ -282,14 +282,24 @@ export function InteractiveAvatar({
       didLongPress.current = false;
       return;
     }
+    // Rows like a search result already wrap the whole card in a preview
+    // trigger. Opening a second sheet from the avatar stacked two modals over
+    // the feed — the top one came from a different element with its own state,
+    // which read as the sheet jumping and swapping covers. The row owns the
+    // preview; the avatar only keeps its own when nothing else does.
+    const insideTrigger = !!(e.currentTarget as HTMLElement | null)?.closest?.(
+      "[data-profile-preview-trigger]",
+    );
     // One tap: story if they posted one, otherwise the full photo.
     if (onStoryClick) {
       onStoryClick();
+      if (insideTrigger) e.stopPropagation();
     } else if (src) {
       setPhotoOpen(true);
+      if (insideTrigger) e.stopPropagation();
     } else if (onClick) {
       onClick(e);
-    } else if (username) {
+    } else if (username && !insideTrigger) {
       setProfileSheetOpen(true);
     }
   };

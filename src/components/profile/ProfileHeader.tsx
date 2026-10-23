@@ -51,6 +51,8 @@ export type ProfileHeaderProps = {
   avatarDecoration?: string | null;
   /** Worn profile effect slug — a silk scene drawn over the banner and identity. */
   profileEffect?: string | null;
+  /** Play the effect's entrance once per open instead of looping. */
+  effectOnce?: boolean;
   /** Accent ring around the avatar; false hides it. */
   avatarRing?: string | false | null;
   /**
@@ -93,6 +95,7 @@ export function ProfileHeader({
   featuredBadge,
   avatarDecoration,
   profileEffect,
+  effectOnce,
   avatarRing,
   avatarGlow,
   surface,
@@ -158,6 +161,7 @@ export function ProfileHeader({
           <ProfileEffectArt
             slug={profileEffect}
             animated={!user.reducedMotion}
+            once={effectOnce}
             className="overflow-visible"
           />
         </div>

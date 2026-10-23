@@ -20,7 +20,7 @@ type EffectArt =
   | { kind: "avatar"; variant: ChubbyVariant }
   | { kind: "profile"; variant: WebVariant }
   | { kind: "avatar-image"; src: string; scale: number }
-  | { kind: "profile-video"; src: string; poster: string; opacity: number };
+  | { kind: "profile-video"; src: string; poster: string };
 
 export const EFFECT_ART: Record<string, EffectArt> = {
   "fx-chubby-cloud": { kind: "avatar", variant: "cloud" },
@@ -37,11 +37,12 @@ export const EFFECT_ART: Record<string, EffectArt> = {
   },
   "fx-petal-bloom": {
     kind: "profile-video",
-    src: "/effects/fx-petal-bloom.mp4",
-    poster: "/effects/fx-petal-bloom-poster.jpg",
-    // Screen blend drops the clip's black plate; the opacity keeps it a wash of
-    // petals over the page instead of a video laid on top of the text.
-    opacity: 0.42,
+    src: "/effects/fx-petal-bloom.webm",
+    poster: "/effects/fx-petal-bloom-poster.png",
+    // The render is keyed to a real alpha channel (VP9/WebM) at encode time, so
+    // the petals composite as themselves: no black plate to screen out, no
+    // opacity lowering them, and the transparent PNG poster matches the first
+    // frames while the clip loads.
   },
 };
 
@@ -103,24 +104,22 @@ export function AvatarDecorationArt({
 export function ProfileEffectArt({
   slug,
   animated = true,
+  once = false,
   className,
-  intensity = "banner",
 }: {
   slug: string | null | undefined;
   animated?: boolean;
+  /** Play the entrance a single time per open instead of looping forever. */
+  once?: boolean;
   className?: string;
-  /** "page" is the quieter wash used across the whole profile page. */
-  intensity?: "banner" | "page";
 }) {
   const art = slug ? EFFECT_ART[slug] : undefined;
   if (!art) return null;
 
   if (art.kind === "profile-video") {
-    const opacity = intensity === "page" ? art.opacity * 0.72 : art.opacity;
-    const style = { mixBlendMode: "screen" as const, opacity };
-
     // A still is enough when motion is unwelcome, and it keeps the shop cards
-    // from decoding a clip per tile.
+    // from decoding a clip per tile. The poster is transparent, so it reads as
+    // art rather than a dark rectangle.
     if (!animated) {
       return (
         <img
@@ -129,7 +128,6 @@ export function ProfileEffectArt({
           aria-hidden="true"
           draggable={false}
           className={cn("pointer-events-none absolute inset-0 h-full w-full object-cover", className)}
-          style={style}
         />
       );
     }
@@ -138,20 +136,26 @@ export function ProfileEffectArt({
       <video
         autoPlay
         muted
-        loop
+        loop={!once}
         playsInline
         preload="metadata"
         poster={art.poster}
         aria-hidden="true"
         disablePictureInPicture
         className={cn("pointer-events-none absolute inset-0 h-full w-full object-cover", className)}
-        style={style}
       >
-        <source src={art.src} type="video/mp4" />
+        <source src={art.src} type="video/webm; codecs=vp9" />
       </video>
     );
   }
 
   if (art.kind !== "profile") return null;
-  return <WebProfileEffect variant={art.variant} animated={animated} className={className} />;
+  return (
+    <WebProfileEffect
+      variant={art.variant}
+      animated={animated}
+      once={once}
+      className={className}
+    />
+  );
 }
