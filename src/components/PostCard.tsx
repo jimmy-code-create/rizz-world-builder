@@ -1101,7 +1101,7 @@ function AuthorNameLink({ post }: { post: any }) {
       >
         <Nameplate name={name} />
       </ProfilePreviewTrigger>
-      {!!post.author?.badges?.length && <BadgeRow badges={post.author.badges} max={3} size="sm" />}
+      {!!post.author?.badges?.length && <BadgeRow badges={post.author.badges} max={4} size="sm" />}
     </div>
   );
 }

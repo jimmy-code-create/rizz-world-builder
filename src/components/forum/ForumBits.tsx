@@ -159,7 +159,7 @@ export function AuthorLine({
       </div>
       {badges.length > 0 ? (
         <div className="ml-1 shrink-0">
-          <BadgeRow badges={badges} max={3} size="sm" />
+          <BadgeRow badges={badges} max={4} size="sm" />
         </div>
       ) : null}
       {trailing ? <div className="ml-auto shrink-0">{trailing}</div> : null}

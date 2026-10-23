@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-23 — Four name-row marks, and a frame that clears the name
+
+### The frame no longer covers the display name
+- Ivory Filigree is drawn at 1.5× the avatar box. The header only reserved the
+  photo's height, so the frame's lower edge sat on top of the display name in
+  the preview sheet and on the profile page. The identity block now reserves
+  the frame's real overhang (`--avatar-overhang`), which is 0 for vector rings
+  and 25% of the avatar when a cut-out frame is worn — so the name clears the
+  art without adding space for members who wear nothing.
+
+### One row, four marks, no plate
+- The badge line beside a name is now exactly four marks — Verified, Streamer,
+  Bounty Hunter and Purify — in that order. The `/badges` shelf already reads
+  the same list, so Main Character, Voice of the Realms and the RIZZ Team mark
+  cannot come back even though old `user_badges` rows still exist.
+- Feed and forum name rows now read that lineup too, instead of rendering every
+  earned award and a "+N" overflow chip. A post can show all four marks without
+  a second row.
+- The preview sheet's badges lose the rounded tray: plain marks under the
+  handle, like Discord, instead of a floating pill beside it.
+
 ## 2026-10-23 — Profile effects stop at the tab line, with real transparency
 
 ### The hero clip

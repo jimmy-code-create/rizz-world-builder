@@ -130,7 +130,7 @@ export function BadgesPage() {
   // real user_badges rows; a catalog entry is never treated as an earned award.
   const purify = usePurify();
   const catalog = useMemo<Badge[]>(() => {
-    // The shelf is the five profile marks — no thirteen-card wall.
+    // The shelf is the four name-row marks — no thirteen-card wall.
     const marks = BADGE_SET.filter((entry) => PROFILE_BADGE_LINEUP.includes(entry.slug)).map((entry) => {
       const stored = (all.data ?? []).find((row) => row.slug === entry.slug);
       return {

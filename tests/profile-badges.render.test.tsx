@@ -25,6 +25,7 @@ import {
 } from "@tanstack/react-router";
 import { ProfileBadgesSection } from "../src/components/profile/ProfileBadgesSection.tsx";
 import { BadgeLine } from "../src/components/profile/BadgeInfoPopover.tsx";
+import { BadgeRow } from "../src/components/BadgeChip.tsx";
 import type { Badge } from "../src/lib/badges.ts";
 
 const mk = (slug: string, name: string, rarity: Badge["rarity"] = "rare"): Badge => ({
@@ -37,11 +38,14 @@ const mk = (slug: string, name: string, rarity: Badge["rarity"] = "rare"): Badge
   rarity,
 });
 
+// The inventory-backed name-row marks. Purify is a live entitlement rather
+// than a `badges` row, so it is injected by the name rows and is not listed
+// here. Achievement badges (rookie, meme lord, …) live on /badges and must
+// never render beside a name.
 const earned: Badge[] = [
-  mk("rookie", "Rookie", "common"),
-  mk("og", "OG", "legendary"),
-  mk("rising-star", "Rising Star", "epic"),
-  mk("meme-lord", "Meme Lord", "rare"),
+  mk("verified", "Verified", "rare"),
+  mk("streamer", "Streamer", "rare"),
+  mk("bounty-hunter", "Bounty Hunter", "epic"),
 ];
 
 type SectionProps = {
@@ -63,9 +67,9 @@ function renderSection(props: SectionProps): string {
   );
 }
 
-/** One "class=\"badge\"" per rendered badge chip. */
+/** One mark per chip: sprite awards carry `.badge`, glyph marks `data-badge`. */
 function chips(html: string): number {
-  return (html.match(/class="badge"/g) ?? []).length;
+  return (html.match(/class="badge"/g) ?? []).length + (html.match(/data-badge="/g) ?? []).length;
 }
 
 let passed = 0;
@@ -82,14 +86,14 @@ async function check(name: string, fn: () => void | Promise<void>) {
 }
 
 await check("visitor sees exactly the equipped showcase, not the equip control", () => {
-  const html = renderSection({ isOwner: false, stored: ["og", "rookie"], earned });
+  const html = renderSection({ isOwner: false, stored: ["verified", "streamer"], earned });
   assert.equal(chips(html), 2, "two equipped badges render two chips");
   assert.ok(html.includes('aria-label="Profile badges"'), "section must be labelled");
   assert.ok(!html.includes("Equip badges"), "visitors never see the owner control");
 });
 
 await check("a stored slug the member never earned does not render", () => {
-  const html = renderSection({ isOwner: false, stored: ["not-earned", "og"], earned });
+  const html = renderSection({ isOwner: false, stored: ["not-earned", "streamer"], earned });
   assert.equal(chips(html), 1, "only the earned slug survives the sanitizer");
 });
 
@@ -107,7 +111,7 @@ await check("owner with nothing equipped gets the equip control and the invitati
 });
 
 await check("owner with an equipped set shows it and offers to change it", () => {
-  const html = renderSection({ isOwner: true, stored: ["rising-star"], earned });
+  const html = renderSection({ isOwner: true, stored: ["streamer"], earned });
   assert.equal(chips(html), 1);
   assert.ok(html.includes("Change badges"), "equipped state offers changing instead");
 });
@@ -162,7 +166,6 @@ await check("the name-row badge line renders every mark on one nowrap row", () =
     mk("streamer", "Streamer"),
     mk("bounty-hunter", "Bounty"),
     mk("purify", "Purify"),
-    mk("main-character", "Main Character"),
   ];
   const html = renderToStaticMarkup(createElement(BadgeLine, { badges: lineup, size: 20 }));
   assert.equal(
@@ -172,6 +175,19 @@ await check("the name-row badge line renders every mark on one nowrap row", () =
   );
   assert.ok(html.includes("flex-nowrap"), "the marks never wrap onto a second row");
   assert.ok(!html.includes("rounded-full border"), "no plate or pedestal behind the mark");
+});
+
+await check("feed rows drop retired marks even when the award still exists", () => {
+  const retired = [
+    ...earned,
+    mk("main-character", "Main Character"),
+    mk("founder", "RIZZ Team"),
+    mk("voice-of-realm", "Voice of the Realms"),
+  ];
+  const html = renderToStaticMarkup(createElement(BadgeRow, { badges: retired, max: 4, size: "sm" }));
+  assert.equal(chips(html), 3, "only the name-row marks render");
+  assert.ok(!html.includes("Main Character"), "a retired mark never reaches the name row");
+  assert.ok(!html.includes("RIZZ Team"), "the team mark never reaches the name row");
 });
 
 console.log(`\n${passed} checks passed.`);

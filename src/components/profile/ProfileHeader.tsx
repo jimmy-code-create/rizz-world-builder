@@ -111,6 +111,11 @@ export function ProfileHeader({
   const avatarSrc = user.avatarUrl ?? defaultAvatarFor(username);
   const banner = getBanner(user);
   const headerSurface = surface ?? banner.surface;
+  // A cut-out frame (Ivory Filigree) is drawn at 1.5× the avatar box, so 25%
+  // of that box hangs past the photo on every side. The identity block has to
+  // reserve the bottom overhang: without it the frame's lower edge paints on
+  // top of the display name.
+  const frameDecoration = artKind(avatarDecoration) === "avatar-image";
 
   return (
     <div
@@ -119,6 +124,7 @@ export function ProfileHeader({
         {
           containerType: "inline-size",
           "--avatar-size": compact ? "clamp(52px, 16cqw, 84px)" : "clamp(60px, 20cqw, 116px)",
+          "--avatar-overhang": frameDecoration ? "calc(var(--avatar-size) * 0.25)" : "0px",
           "--header-gutter": gutter ?? "clamp(12px, 2.6cqw, 24px)",
           "--header-bg": headerSurface,
         } as CSSProperties
@@ -246,9 +252,13 @@ export function ProfileHeader({
                little more breathing room on the roomy profile surfaces. */}
         <div
           style={{
+            // The overhang term is 0 for vector rings (they hug the photo) and
+            // the frame's true 25% reach when a cut-out frame is worn, so the
+            // name clears the art on every surface without growing the header
+            // for everybody else.
             marginTop: compact
-              ? "calc(var(--avatar-size) * 0.02 + 5px)"
-              : "calc(var(--avatar-size) * 0.1 + 8px)",
+              ? "calc(var(--avatar-size) * 0.02 + 5px + var(--avatar-overhang))"
+              : "calc(var(--avatar-size) * 0.1 + 8px + var(--avatar-overhang))",
           }}
         >
           <div className="flex min-w-0 items-start justify-between gap-3">

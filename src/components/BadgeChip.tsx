@@ -1,4 +1,4 @@
-import type { Badge } from "@/lib/badges";
+import { profileBadgeLineup, type Badge } from "@/lib/badges";
 import { canonBadges, canonicalFor } from "@/lib/badge-set";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -65,7 +65,11 @@ export function BadgeChip({
   );
 }
 
-/** Profile + hover-card rows show set badges only, in canonical order. */
+/**
+ * Profile, feed and forum rows show the four name-row marks only, in canonical
+ * order. The wider collection (achievements, legacy awards) stays on /badges,
+ * so an old award never crowds a name with a mark the product retired.
+ */
 export function BadgeRow({
   badges,
   max = 3,
@@ -77,7 +81,7 @@ export function BadgeRow({
   size?: "sm" | "md" | "lg";
   onSelect?: (badge: Badge) => void;
 }) {
-  const orderedBadges = canonBadges(badges);
+  const orderedBadges = profileBadgeLineup(canonBadges(badges));
   const shown = orderedBadges.slice(0, max);
   const extra = orderedBadges.length - shown.length;
   if (!shown.length) return null;

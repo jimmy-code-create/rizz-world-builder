@@ -294,7 +294,7 @@ export function ProfilePreviewDialog({
   const isOwnProfile = user?.id === p?.id;
   const earned = badges.data ?? [];
   // Name-row marks: canonical order, no two awards drawing the same emblem.
-  // Only the five profile marks survive, in a fixed order; Purify is injected
+  // Only the four profile marks survive, in a fixed order; Purify is injected
   // for subscribers so the subscriber badge always has its slot.
   const markBadges = profileBadgeLineup(
     withPurifyBadge(distinctBadges(canonBadges(earned)), purify.active),
@@ -389,11 +389,11 @@ export function ProfilePreviewDialog({
             customStatus={null}
             statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
             handleExtra={
-              // One tray, one row, bigger marks: the badges read as a single
-              // object beside the handle instead of loose specks after the
-              // display name (which no longer fights them for width).
+              // Plain marks in one row, like Discord: no pill or plate behind
+              // them, so the badges read as part of the identity rather than a
+              // floating chip beside the handle.
               markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={26} tray />
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={24} />
               ) : undefined
             }
             overlayActions={

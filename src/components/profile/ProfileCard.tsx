@@ -24,6 +24,7 @@ import { untypedRpc } from "@/lib/untyped-db";
 import { getBanner } from "@/lib/banner";
 import { useAuth } from "@/lib/auth";
 import { useWornEffects } from "@/lib/effects";
+import { profileBadgeLineup } from "@/lib/badges";
 
 /** Legacy shape (realm chat passes these); userId is the only required field. */
 export type ProfileCardUser = {
@@ -547,9 +548,9 @@ export function ProfileCard({
     ? new Date(d.createdAt).toLocaleDateString([], { month: "long", year: "numeric" })
     : null;
 
-  // The card shows only the badge worn beside the name; the full collection
-  // lives on the profile page and the badge gallery.
-  const computedBadges: CardBadge[] = distinctBadges(canonBadges(d.badges)).slice(0, 24);
+  // The card shows only the badge worn beside the name, and only when it is
+  // one of the four name-row marks; the full collection lives on /badges.
+  const computedBadges: CardBadge[] = profileBadgeLineup(distinctBadges(canonBadges(d.badges)));
   const featuredBadgeMeta = computedBadges.find((badge) => badge.slug === d.featuredBadge) ?? null;
 
   const realmRoleValue = realmRow.data?.role ?? realmRole ?? null;
