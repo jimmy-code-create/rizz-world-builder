@@ -451,7 +451,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-strong border-white/10">
+          <DropdownMenuContent align="end" className="glass-strong border-border">
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
               <LinkIcon className="mr-2 h-4 w-4" /> Copy link
             </DropdownMenuItem>
@@ -604,7 +604,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
 
       {post.media_url && !mediaFailed && (
         <div
-          className="post-media-frame relative mb-2 max-h-[min(48dvh,390px)] overflow-hidden bg-black/50"
+          className="post-media-frame relative mb-2 max-h-[min(48dvh,390px)] overflow-hidden bg-muted/60"
           onClick={
             externalVideo?.ok
               ? undefined
@@ -623,7 +623,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
+            <div className="relative w-full overflow-hidden flex items-center justify-center bg-muted/40">
               {!imageLoaded && (
                 <div
                   className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px]"
@@ -690,14 +690,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             }}
             aria-label="View all reactions"
             title="View all reactions"
-            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors shrink-0"
+            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-border hover:bg-muted/70 transition-colors shrink-0"
           >
             <Users className="h-3 w-3" />
           </button>
         </div>
       )}
 
-      <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-white/5 mt-1">
+      <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-border/70 mt-1">
         <Button
           variant="ghost"
           size="sm"
@@ -729,7 +729,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,#2a2a2e)] rounded-xl shadow-xl">
+          <PopoverContent className="w-auto p-2 bg-popover text-popover-foreground border border-border rounded-xl shadow-xl">
             <div className="flex gap-1">
               {QUICK_EMOJIS.map((e) => (
                 <button
@@ -737,7 +737,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   type="button"
                   onClick={() => toggleReaction(e)}
                   aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 hover:bg-white/10 active:scale-95"
+                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 hover:bg-muted active:scale-95"
                 >
                   {e}
                 </button>
@@ -771,7 +771,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </AnimatePresence>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong border-border">
           <DialogTitle className="font-display">Report this post</DialogTitle>
           <DialogDescription>Tell us what's wrong. Our team will review.</DialogDescription>
           <div className="grid grid-cols-2 gap-2 pt-2">
@@ -779,7 +779,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <button
                 key={r}
                 onClick={() => setReportReason(r)}
-                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/5"}`}
+                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-primary bg-primary/15" : "border-border hover:bg-muted/60"}`}
               >
                 {r}
               </button>
@@ -793,10 +793,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong border-border">
           <DialogTitle className="font-display">Edit caption</DialogTitle>
           <DialogDescription>Refine your post — the original media stays the same.</DialogDescription>
-          <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="bg-transparent border-white/10" />
+          <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="bg-transparent border-border" />
           <p className="text-[10px] text-muted-foreground text-right">{caption.length}/2000</p>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
@@ -846,7 +846,7 @@ function CommentsThread({ postId }: { postId: string }) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="border-t border-white/5 bg-black/20 overflow-hidden"
+      className="border-t border-border bg-muted/40 overflow-hidden"
     >
       <div className="px-4 py-3 max-h-72 overflow-y-auto space-y-3">
         {comments.isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
@@ -860,7 +860,7 @@ function CommentsThread({ postId }: { postId: string }) {
           return (
             <div
               key={c.id}
-              className={cn("flex gap-2 text-sm", depth > 0 && "border-l border-white/10 pl-2")}
+              className={cn("flex gap-2 text-sm", depth > 0 && "border-l border-border pl-2")}
               style={depth > 0 ? { marginLeft: commentIndent(depth) } : undefined}
             >
               <Avatar className="h-7 w-7 shrink-0">
@@ -913,7 +913,7 @@ function CommentsThread({ postId }: { postId: string }) {
         })}
       </div>
       {user && (
-        <div className="border-t border-white/5">
+        <div className="border-t border-border">
           {replyTo && (
             <div className="flex items-center justify-between px-3 pt-2 text-[11px] text-muted-foreground">
               <span>Replying to @{replyTo.username}</span>
@@ -935,7 +935,7 @@ function CommentsThread({ postId }: { postId: string }) {
               value={body}
               onChange={(e) => setBody(e.target.value.slice(0, 500))}
               placeholder={replyTo ? "Write a reply…" : "Add a comment…"}
-              className="bg-transparent border-white/10 h-9"
+              className="bg-transparent border-border h-9"
             />
             <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 h-9 w-9">
               <Send className="h-4 w-4" />

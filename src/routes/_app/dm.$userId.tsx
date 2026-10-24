@@ -1008,7 +1008,9 @@ function DMPage() {
                   preview={{
                     author: mine ? "You" : (other.data?.display_name || other.data?.username || "User"),
                     time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-                    body: m.body,
+                    // A photo-only message has no text to preview; say what it
+                    // is instead of "No text" for something already on screen.
+                    body: hasText ? rest : m.attachment_url ? "Photo" : m.body,
                     avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
                   }}
                   actions={[

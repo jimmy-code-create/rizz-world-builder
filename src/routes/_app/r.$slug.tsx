@@ -147,7 +147,7 @@ import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
 import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
 import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
-import { Gamepad2, Music as MusicIcon } from "lucide-react";
+import { Gamepad2 } from "lucide-react";
 import {
   RealmProfilePreviewDialog,
   type RealmProfilePreviewUser,
@@ -272,6 +272,7 @@ function RealmPage() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  const [gameBotOpen, setGameBotOpen] = useState(false);
   const [realmGamesOpen, setRealmGamesOpen] = useState(false);
   const [realmMusicOpen, setRealmMusicOpen] = useState(false);
 
@@ -378,6 +379,17 @@ function RealmPage() {
   const selectRoom = (roomId: string) => {
     setActiveRoomId(roomId);
     void nav({ to: "/r/$slug", params: { slug }, search: { room: roomId }, replace: true });
+  };
+
+  /** Steps out of the voice stage back to the realm's first text channel. */
+  const backToChannels = () => {
+    const target = (rooms.data ?? []).find((room) => room.kind !== "voice");
+    if (target) {
+      selectRoom(target.id);
+      return;
+    }
+    setActiveRoomId(null);
+    void nav({ to: "/r/$slug", params: { slug }, search: {}, replace: true });
   };
 
   useEffect(() => {
@@ -1477,94 +1489,45 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="chat-bar shrink-0 border-b border-white/5 px-4 py-3">
-          {/* ONE compact voice bar. The in-call controls (mic, leave) live in the
-              single global VoiceCallBar below, so this row never repeats a
-              "Return to call" button or a second call bar. */}
-          <div className="flex items-center gap-3">
-            <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <Mic className="h-5 w-5" />
-              {activeChannelPeople.length > 0 && (
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-400" />
-              )}
-            </div>
+        <div className="chat-bar shrink-0 border-b border-border px-4 py-3">
+          <div className="flex items-start gap-2.5">
+            <button
+              type="button"
+              onClick={backToChannels}
+              aria-label="Back to channels"
+              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Volume2 className="h-5 w-5" />
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-sm font-bold">
-                {activeRoom.name || "Voice channel"}
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                Voice channel
               </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                {activeChannelPeople.length > 0
-                  ? `${activeChannelPeople.length} in call`
-                  : "No one is here yet"}
+              <h2 className="line-clamp-2 break-words font-display text-[17px] font-bold leading-[1.2]">
+                {activeRoom.name || "Voice channel"}
+              </h2>
+              {/* The member count lives only here — the stage below shows who
+                  is in the room instead of repeating the number. */}
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                {activeChannelPeople.length > 0 ? (
+                  <>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {activeChannelPeople.length} in call
+                  </>
+                ) : (
+                  "No one is here yet"
+                )}
               </p>
             </div>
-            {activeChannelPeople.length > 0 && (
-              <span className="flex shrink-0 -space-x-2">
-                {activeChannelPeople.slice(0, 4).map((person) => (
-                  <Avatar key={person.user_id} className="h-7 w-7 ring-2 ring-background">
-                    <AvatarImage src={person.user?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-                      {(person.user?.display_name || person.user?.username || "?")
-                        .charAt(0)
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
+            {activeRoom.mods_only && !canModerate && (
+              <span className="mt-1 flex shrink-0 items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                <Lock className="h-3 w-3" /> Mods only
               </span>
             )}
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => setRealmGamesOpen(true)}
-              className="glass h-11 w-11 shrink-0 border-white/10"
-              title="Games"
-            >
-              <Gamepad2 className="h-5 w-5" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => setRealmMusicOpen(true)}
-              className="glass h-11 w-11 shrink-0 border-white/10"
-              title="Music"
-            >
-              <MusicIcon className="h-5 w-5" />
-            </Button>
-            {activeRoom.mods_only && !canModerate ? (
-              <Button
-                type="button"
-                disabled
-                className="min-h-11 shrink-0 gap-2 glass border-white/10"
-              >
-                <Lock className="h-4 w-4" /> Mods only
-              </Button>
-            ) : activeCall?.channelId === activeRoom.id ? (
-              <Button
-                type="button"
-                onClick={() => openCallView()}
-                className="min-h-10 px-3.5 shrink-0 gap-1.5 border border-primary/50 bg-primary/20 text-primary hover:bg-primary/30 font-semibold text-xs shadow-md"
-              >
-                <Mic className="h-3.5 w-3.5" /> Open call
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                disabled={joiningVoice}
-                onClick={() =>
-                  joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
-                }
-                className="min-h-11 shrink-0 gap-2 border-0 bg-primary text-primary-foreground shadow-md"
-              >
-                <Mic className="h-4 w-4" /> {joiningVoice ? "Joining…" : "Join voice"}
-              </Button>
-            )}
           </div>
-
-          {/* MUSIC BOT is a voice-channel feature: its queue is keyed to this
-              room, and a voice channel has no composer, so `/play` lives here. */}
-          <VoiceChannelMusic realmId={c.id} roomId={activeRoom.id} />
         </div>
       )}
 
@@ -1612,53 +1575,145 @@ function RealmPage() {
         />
       )}
 
-      {/* Dedicated Voice Stage when voice room is open without text chat active */}
+      {/* Voice lobby: who is already here, one big join button, and the bots
+          docked above the safe area. */}
       {activeRoom?.kind === "voice" && !showVoiceChat && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none">
-          <div className="relative mb-5">
-            <div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
-            <div className="relative h-20 w-20 rounded-3xl bg-primary/10 border-2 border-primary/40 grid place-items-center text-primary shadow-[0_0_24px_rgba(200,255,61,0.2)]">
-              <Mic className="h-9 w-9" />
+        <div className="flex min-h-0 flex-1 flex-col select-none">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-6 text-center">
+            {activeChannelPeople.length > 0 ? (
+              <div className="w-full max-w-md">
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Already in the call
+                </p>
+                <div className="flex flex-wrap items-start justify-center gap-x-5 gap-y-4">
+                  {activeChannelPeople.map((person) => {
+                    const personName =
+                      person.user?.display_name || person.user?.username || "member";
+                    return (
+                      <button
+                        key={person.user_id}
+                        type="button"
+                        onClick={() => void openMemberCard(person.user_id)}
+                        aria-label={`View ${personName}'s profile`}
+                        className="flex w-16 flex-col items-center gap-1.5 rounded-xl transition active:scale-95"
+                      >
+                        <span className="relative">
+                          <Avatar className="h-14 w-14 ring-2 ring-primary/40">
+                            <AvatarImage src={person.user?.avatar_url ?? undefined} />
+                            <AvatarFallback className="bg-primary/20 text-sm font-bold text-primary">
+                              {personName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-400" />
+                        </span>
+                        <span className="max-w-full truncate text-[11px] font-medium text-foreground">
+                          @{person.user?.username ?? "member"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="relative mb-4">
+                  <div className="absolute -inset-3 rounded-full bg-primary/15 blur-xl" />
+                  <div className="relative grid h-16 w-16 place-items-center rounded-3xl border border-primary/30 bg-primary/10 text-primary">
+                    <Volume2 className="h-7 w-7" />
+                  </div>
+                </div>
+                <p className="font-display text-lg font-bold">It&apos;s quiet in here</p>
+                <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                  Be the first one in — everyone in the realm will see you here.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-6 w-full max-w-md space-y-2.5">
+              {activeCall?.channelId === activeRoom.id ? (
+                <Button
+                  type="button"
+                  onClick={() => openCallView()}
+                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-[0_18px_40px_-18px_var(--brand-signal)] hover:bg-primary/90"
+                >
+                  <Mic className="h-5 w-5" /> Open Voice Call
+                </Button>
+              ) : activeRoom.mods_only && !canModerate ? (
+                <Button
+                  type="button"
+                  disabled
+                  className="h-14 w-full gap-2 rounded-2xl bg-primary/30 text-base font-bold text-primary-foreground"
+                >
+                  <Lock className="h-5 w-5" /> Mods only
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={joiningVoice}
+                  onClick={() =>
+                    joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
+                  }
+                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-[0_18px_40px_-18px_var(--brand-signal)] hover:bg-primary/90 active:scale-[0.99]"
+                >
+                  <Mic className="h-5 w-5" />
+                  {joiningVoice ? "Connecting…" : "Join Voice Channel"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowVoiceChat(true)}
+                className="h-12 w-full gap-2 rounded-2xl border-border bg-card text-sm font-semibold text-foreground hover:bg-muted/60"
+              >
+                <MessageSquare className="h-4 w-4" /> Open VC Text Chat
+              </Button>
             </div>
           </div>
-          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            {activeRoom.name}
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            {activeChannelPeople.length > 0
-              ? `${activeChannelPeople.length} connected in voice`
-              : "Voice channel is currently empty — jump in and start the vibe!"}
-          </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {activeCall?.channelId === activeRoom.id ? (
-              <Button
-                size="lg"
-                onClick={() => openCallView()}
-                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
-              >
-                <Mic className="h-4 w-4" /> Open Voice Call
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                disabled={joiningVoice}
-                onClick={() =>
-                  joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
-                }
-                className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
-              >
-                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join Voice Channel"}
-              </Button>
-            )}
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => setShowVoiceChat(true)}
-              className="h-11 px-4 gap-2 glass border-white/10 hover:bg-white/10 text-xs"
-            >
-              <MessageSquare className="h-4 w-4" /> Open VC Text Chat
-            </Button>
+          {/* Bots dock: slim cards at the bottom, above the safe area. */}
+          <div className="shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+            <div className="no-scrollbar mx-auto flex max-h-[55dvh] w-full max-w-md flex-col gap-2 overflow-y-auto">
+              <VoiceChannelMusic realmId={c.id} roomId={activeRoom.id} />
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <button
+                  type="button"
+                  onClick={() => setGameBotOpen((value) => !value)}
+                  aria-expanded={gameBotOpen}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+                    <Gamepad2 className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-primary">
+                      Game bot
+                    </span>
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      Party games, right in the call
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      gameBotOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {gameBotOpen && (
+                  <div className="border-t border-border px-3 py-3">
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      Pick a game and everyone in the call can play it together.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => setRealmGamesOpen(true)}
+                      className="mt-2.5 h-11 w-full gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Gamepad2 className="h-4 w-4" /> Pick game
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1670,7 +1725,7 @@ function RealmPage() {
         >
           {media.viewer}
           {activeRoom?.kind === "voice" && showVoiceChat && (
-            <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+            <div className="mb-3 flex items-center justify-between rounded-2xl border border-border bg-card p-2.5">
               <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
                 <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat · {activeRoom.name}
               </span>
@@ -1768,6 +1823,23 @@ function RealmPage() {
                 hour: "numeric",
                 minute: "2-digit",
               });
+              const messageEmbeds = (m.embeds ?? null) as EmbedData[] | null;
+              const primaryEmbed = messageEmbeds?.[0] ?? null;
+              // A bot card has no text body — the long-press menu previews the
+              // embed's title and line instead of "No text".
+              const botCard = isBot && !!primaryEmbed;
+              const previewBody = (m.body ?? "").trim()
+                ? m.body
+                : primaryEmbed
+                  ? [primaryEmbed.title, primaryEmbed.description]
+                      .filter(Boolean)
+                      .join(" — ")
+                  : m.attachment_url
+                    ? "Photo"
+                    : null;
+              const waved = Boolean(
+                user && reactions.reactorsFor(m.id, "👋").includes(user.id),
+              );
               // "@user pinned a message" reads as a system line, not a bubble.
               if ((m as { system?: boolean }).system) {
                 return <SystemLine key={m.id} text={m.body} />;
@@ -1924,7 +1996,7 @@ function RealmPage() {
                         // and its trigger enforce it again server-side.
                         // A message that has not been saved yet has no id to react to.
                         reactionBar={
-                          canAddReactions && !String(m.id).startsWith("pending-")
+                          !botCard && canAddReactions && !String(m.id).startsWith("pending-")
                             ? {
                                 onPick: (emoji) => {
                                   void reactions.toggle(m.id, emoji);
@@ -1941,10 +2013,28 @@ function RealmPage() {
                         preview={{
                           author: authorName,
                           time: messageTime,
-                          body: m.body,
+                          body: previewBody,
                           avatarUrl: authorAvatar,
+                          embed: primaryEmbed
+                            ? {
+                                title: primaryEmbed.title,
+                                description: primaryEmbed.description,
+                                imageUrl: primaryEmbed.thumbnail?.url ?? null,
+                              }
+                            : null,
                         }}
-                        actions={[
+                        actions={botCard ? [
+                          {
+                            label: "Reply",
+                            icon: MessagesSquare,
+                            onSelect: () =>
+                              setThreadRoot({
+                                id: m.id,
+                                body: m.body ?? "",
+                                author: isBot ? (botRow?.name ?? "Bot") : authorName,
+                              }),
+                          },
+                        ] : [
                           {
                             label: "View message",
                             icon: Maximize2,
@@ -2186,7 +2276,9 @@ function RealmPage() {
                         button ("👋 Say hi") waves at the message and opens
                         the member's profile card. */}
                           <EmbedList
-                            embeds={(m.embeds ?? null) as EmbedData[] | null}
+                            embeds={messageEmbeds}
+                            botName={isBot ? authorName : undefined}
+                            actionDone={waved}
                             onAction={(button) => {
                               if (button.action !== "wave" || !m.id) return;
                               void reactions.toggle(m.id, "👋");
@@ -2220,6 +2312,7 @@ function RealmPage() {
                         messageId={m.id}
                         groups={reactions.groupsFor(m.id)}
                         reactorsFor={reactions.reactorsFor}
+                        spacing={primaryEmbed ? "below" : "overlap"}
                         // Realm messages all sit on the left of an avatar-padded column,
                         // so the chips follow the bubble's own left edge.
                         align="left"

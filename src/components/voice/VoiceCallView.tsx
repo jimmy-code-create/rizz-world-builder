@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Sliders, MessageSquare, X, Send, Headphones, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -230,6 +230,20 @@ export function VoiceCallView() {
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
+  const peopleCount = participants.length + (musicBot.enabled ? 1 : 0);
+  const connected = !error && /^connected/i.test(status);
+  // A spinner that never stops is worse than no spinner: after this long,
+  // say so and offer the same Retry the error state uses.
+  const [connectTimedOut, setConnectTimedOut] = useState(false);
+  useEffect(() => {
+    if (connected || error) {
+      setConnectTimedOut(false);
+      return;
+    }
+    setConnectTimedOut(false);
+    const timer = window.setTimeout(() => setConnectTimedOut(true), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [connected, error, status]);
 
   // The view stays mounted while minimized so games and streams keep running
   // in the background, but its sheets portal to <body> and would stay on top
@@ -358,6 +372,16 @@ export function VoiceCallView() {
   const stageOwner = sharingScreen
     ? "you"
     : participants.find((participant) => participant.user_id === stagePeerId)?.user?.username ?? "someone";
+  // The grid changes shape with the call: one person gets a portrait tile,
+  // two stay side by side, five or six use a third column. Fewer people never
+  // leave two tiny tiles stranded in a wall of empty space.
+  const tileCount = participants.length;
+  const playerGridClass =
+    tileCount <= 1
+      ? "max-w-md grid-cols-1"
+      : tileCount <= 4
+        ? "max-w-2xl grid-cols-2"
+        : "max-w-3xl grid-cols-2 sm:grid-cols-3";
 
   return (
     // A voice call takes over the screen: the tiles, the music bot and the
@@ -379,72 +403,78 @@ export function VoiceCallView() {
           className="pointer-events-none absolute inset-0"
           style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(201,255,61,0.14), transparent 65%)" }}
         />
-        <header className="relative flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Voice channel</p>
-            <h1 className="truncate font-display text-lg font-bold leading-tight">{call.channelName}</h1>
-            <p role={error ? "alert" : undefined} className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}>
-              {!error && <Wifi className="h-3 w-3" />}
-              {error ??
-                `${status} · ${participants.length + (musicBot.enabled ? 1 : 0)} ${
-                  participants.length + (musicBot.enabled ? 1 : 0) === 1 ? "person" : "people"
-                }`}
-            </p>
-          </div>
-          {error && (
-            <Button variant="outline" size="sm" className="glass border-white/10" onClick={retry}>
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
+        <header className="relative shrink-0 border-b border-white/5 px-4 pb-3 pt-4">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Voice channel</p>
+              {/* Two lines, never a fragment: a long channel name stays readable. */}
+              <h1 className="mt-0.5 line-clamp-2 break-words font-display text-[19px] font-bold leading-[1.15]">
+                {call.channelName}
+              </h1>
+              <div
+                role={error ? "alert" : "status"}
+                className={`mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {error ? (
+                  <span>{error}</span>
+                ) : connected ? (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(201,255,61,0.9)]" />
+                    <span className="font-semibold text-foreground/90">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <span>{connectTimedOut ? "Still connecting…" : "Connecting…"}</span>
+                  </>
+                )}
+                <span aria-hidden className="text-muted-foreground/40">·</span>
+                <span>{peopleCount} {peopleCount === 1 ? "person" : "people"}</span>
+                {(error || connectTimedOut) && (
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Retry
+                  </button>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Minimize call"
+              className="glass h-10 w-10 shrink-0 rounded-xl border-white/10"
+              onClick={closeView}
+            >
+              <ChevronDown className="h-5 w-5" />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Open VC text chat"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${chatOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setChatOpen((v) => !v)}
-            title="VC Text Chat"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Games menu"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${gamesOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setGamesOpen(true)}
-            title="Games"
-          >
-            <Gamepad2 className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Music"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${musicOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setMusicOpen(true)}
-            title="Music"
-          >
-            <Music className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Voice settings"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${settingsOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setSettingsOpen(true)}
-            title="Voice Settings"
-          >
-            <Sliders className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Minimize call"
-            className="glass h-11 w-11 shrink-0 border-white/10"
-            onClick={closeView}
-          >
-            <ChevronDown className="h-5 w-5" />
-          </Button>
+          </div>
+
+          <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-0.5">
+            {[
+              { key: "chat", label: "Chat", icon: MessageSquare, active: chatOpen, onClick: () => setChatOpen((v) => !v) },
+              { key: "games", label: "Games", icon: Gamepad2, active: gamesOpen, onClick: () => setGamesOpen(true) },
+              { key: "music", label: "Music", icon: Music, active: musicOpen, onClick: () => setMusicOpen(true) },
+              { key: "settings", label: "Settings", icon: Sliders, active: settingsOpen, onClick: () => setSettingsOpen(true) },
+            ].map(({ key, label, icon: Icon, active, onClick }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={onClick}
+                aria-pressed={active}
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors active:scale-95 ${
+                  active
+                    ? "border-primary/40 bg-primary/15 text-primary"
+                    : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </header>
 
         <GameSessionsBar
@@ -479,8 +509,8 @@ export function VoiceCallView() {
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
-          <div className="mx-auto flex w-full max-w-6xl items-start gap-3">
-            <div className="min-w-0 flex-1">
+          <div className="mx-auto flex min-h-full w-full max-w-6xl items-center gap-3">
+            <div className="min-w-0 flex-1 space-y-3">
           {!sharingScreen && remoteShares.length > 1 && (
             <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 overflow-x-auto pb-1">
               <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -542,7 +572,7 @@ export function VoiceCallView() {
             </div>
           )}
 
-          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <div className={`mx-auto grid w-full gap-3 ${playerGridClass}`}>
             {participants.map((participant) => {
               const isMe = participant.user_id === user?.id;
               const speaking = speakingIds.includes(participant.user_id) && !participant.muted;
@@ -572,9 +602,11 @@ export function VoiceCallView() {
               return (
                 <div
                   key={participant.user_id}
-                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-all duration-200 ${
+                  className={`relative flex ${
+                    tileCount <= 2 ? "aspect-[4/5] sm:aspect-square" : "aspect-square"
+                  } flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-14 transition-all duration-200 ${
                     speaking
-                      ? "border-primary bg-primary/10 shadow-[0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(200,255,61,0.35)]"
+                      ? "border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(201,255,61,0.45),0_0_28px_-6px_rgba(201,255,61,0.45)]"
                       : "border-white/10 glass"
                   }`}
                 >
@@ -584,9 +616,9 @@ export function VoiceCallView() {
                     <>
                       <div className="relative">
                         <Avatar
-                          className={`h-16 w-16 transition-all duration-200 ${
+                          className={`h-20 w-20 border-2 border-white/10 transition-all duration-200 sm:h-24 sm:w-24 ${
                             speaking
-                              ? "ring-4 ring-primary ring-offset-2 ring-offset-[#0b0714] shadow-[0_0_18px_rgba(200,255,61,0.65)]"
+                              ? "border-transparent ring-2 ring-primary shadow-[0_0_0_5px_rgba(201,255,61,0.18),0_0_26px_rgba(201,255,61,0.5)]"
                               : ""
                           }`}
                         >
@@ -602,6 +634,15 @@ export function VoiceCallView() {
                             size={16}
                           />
                         </span>
+                        {participant.muted && (
+                          <span
+                            aria-label="Muted"
+                            title="Muted"
+                            className="absolute -bottom-1 -left-1 z-20 grid h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#0b0714]/95 text-destructive shadow-sm"
+                          >
+                            <MicOff className="h-3 w-3" />
+                          </span>
+                        )}
                         {speaking && (
                           <span
                             aria-hidden="true"
@@ -609,21 +650,20 @@ export function VoiceCallView() {
                           />
                         )}
                       </div>
-                      <p className="max-w-full truncate text-xs font-semibold">
-                        @{username}
-                        {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
-                      </p>
-                      {playingGame ? (
-                        <span className="max-w-full truncate text-[11px] font-semibold text-[#c8ff3d]">
-                          Playing {playingGame}
+                      {(playingGame || (tileCustom && (tileCustom.emoji || tileCustom.text))) &&
+                        !(participantSession && !isMe) && (
+                        <span className="pointer-events-none absolute inset-x-4 bottom-[3.5rem] flex justify-center">
+                          {playingGame ? (
+                            <span className="max-w-full truncate text-[10px] font-semibold text-[#c8ff3d]">
+                              Playing {playingGame}
+                            </span>
+                          ) : (
+                            <CustomStatusLine
+                              status={tileCustom!}
+                              className="max-w-full truncate text-center text-[10px] text-muted-foreground"
+                            />
+                          )}
                         </span>
-                      ) : (
-                        tileCustom &&
-                        (tileCustom.emoji || tileCustom.text) && (
-                          <span className="max-w-full">
-                            <CustomStatusLine status={tileCustom} className="-mt-1 truncate text-[11px]" />
-                          </span>
-                        )
                       )}
                       {participantSession && !isMe && (
                         <button
@@ -631,9 +671,9 @@ export function VoiceCallView() {
                           onClick={() =>
                             joinedThisGame ? openGameSession(participantSession) : joinGameSession(participantSession)
                           }
-                          className={`mt-0.5 flex h-8 items-center gap-1 rounded-full px-3 text-[10px] font-bold transition active:scale-95 ${
+                          className={`absolute inset-x-0 bottom-[3.1rem] z-20 mx-auto flex h-7 w-fit items-center gap-1 rounded-full px-2.5 text-[10px] font-bold shadow-sm transition active:scale-95 ${
                             joinedThisGame
-                              ? "border border-primary/40 bg-primary/15 text-primary"
+                              ? "border border-primary/40 bg-black/70 text-primary"
                               : "bg-primary text-primary-foreground"
                           }`}
                         >
@@ -641,6 +681,12 @@ export function VoiceCallView() {
                           {joinedThisGame ? "Open game" : "Join game"}
                         </button>
                       )}
+                      <span className="pointer-events-none absolute inset-x-2 bottom-2.5 flex justify-center">
+                        <span className="max-w-full truncate rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[11px] font-semibold text-white/90 shadow-sm backdrop-blur-sm">
+                          @{username}
+                          {isMe && <span className="ml-1 text-white/45">(you)</span>}
+                        </span>
+                      </span>
                     </>
                   )}
 
@@ -683,11 +729,6 @@ export function VoiceCallView() {
                     </button>
                   )}
 
-                  {!videoStream && participant.muted && (
-                    <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80" aria-label="Muted">
-                      <MicOff className="h-3.5 w-3.5 text-destructive" />
-                    </span>
-                  )}
                   {!videoStream && speaking && (
                     <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">Speaking</span>
                   )}
@@ -702,91 +743,81 @@ export function VoiceCallView() {
               );
             })}
 
-            {musicBot.enabled && (
+            </div>
+
+            {/* Bot strip: compact entries under the people grid. Music and game
+                are helpers, not people, so they never take a people-sized tile
+                and never push the grid into empty space. */}
+            <div
+              className={`mx-auto mt-3 grid w-full max-w-2xl gap-2 ${
+                musicBot.enabled ? "grid-cols-2" : "grid-cols-1"
+              }`}
+            >
+              {musicBot.enabled && (
+                <button
+                  type="button"
+                  onClick={() => setMusicOpen(true)}
+                  aria-label="Open music controls"
+                  className="flex min-w-0 items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] px-2.5 py-2.5 text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-emerald-500/20 text-emerald-100">
+                    {musicBot.track?.artwork_url ? (
+                      <img src={musicBot.track.artwork_url} alt="" className="h-9 w-9 object-cover" />
+                    ) : (
+                      <Music className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-emerald-200">
+                      Music bot
+                    </span>
+                    <span className="block truncate text-[10.5px] text-muted-foreground">
+                      {musicBot.track
+                        ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
+                        : "Nothing queued"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-bold text-emerald-200">
+                    {musicBot.track && !musicBot.blocked ? (musicBot.singing ? "Singing" : "Open") : "Play"}
+                  </span>
+                </button>
+              )}
+
+              {/* GAME BOT: ready-made games that play as an overlay over the call. */}
               <button
                 type="button"
-                onClick={() => setMusicOpen(true)}
-                aria-label="Open music controls"
-                className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                onClick={() => {
+                  if (viewedSession) openGameSession(viewedSession);
+                  else setGamesOpen(true);
+                }}
+                aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
+                className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/30 bg-primary/[0.06] px-2.5 py-2.5 text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
               >
-                <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
-                  {!musicBot.track
-                    ? "In call"
-                    : musicBot.blocked
-                      ? "Tap to play"
-                      : musicBot.singing
-                        ? "Singing"
-                        : "Paused"}
+                <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/20 text-primary">
+                  {liveGame ? (
+                    <img src={liveGame.icon} alt="" className="h-9 w-9 object-cover" />
+                  ) : (
+                    <Gamepad2 className="h-4 w-4" aria-hidden="true" />
+                  )}
                 </span>
-                <Avatar className={`h-16 w-16 ${musicBot.singing ? "ring-2 ring-emerald-400" : ""}`}>
-                  <AvatarImage src={musicBot.track?.artwork_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-emerald-500/25 text-emerald-100">
-                    <Music className="h-6 w-6" aria-hidden="true" />
-                  </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 px-1">
-                  <span className="block truncate text-xs font-semibold">MUSIC BOT</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {musicBot.track
-                      ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
-                      : "Nothing queued — tap for music"}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-primary">
+                    {gameBot.isHost ? "Your game" : "Game bot"}
+                  </span>
+                  <span className="block truncate text-[10.5px] text-muted-foreground">
+                    {liveGame
+                      ? gameBot.isHost
+                        ? liveGame.name
+                        : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
+                      : roomActivity.activity
+                        ? roomActivity.activity.gameName
+                        : "No game picked yet"}
                   </span>
                 </span>
+                <span className="shrink-0 rounded-full bg-primary/15 px-2 py-1 text-[10px] font-bold text-primary">
+                  {liveGame ? (gameBot.isHost ? "Open" : "Join") : "Pick game"}
+                </span>
               </button>
-            )}
-
-            {/* GAME BOT: ready-made games that play as an overlay over the call. */}
-            <button
-              type="button"
-              onClick={() => {
-                if (viewedSession) openGameSession(viewedSession);
-                else setGamesOpen(true);
-              }}
-              aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
-              className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-            >
-              <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                {liveGame
-                  ? gameBot.state.isPaused
-                    ? "Paused"
-                    : gameBot.isHost
-                      ? "Your game"
-                      : "Live"
-                  : roomActivity.activity
-                    ? "Live"
-                    : "In call"}
-              </span>
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="bg-primary/25 text-primary">
-                  {liveGame ? (
-                    <img
-                      src={liveGame.icon}
-                      alt=""
-                      className="h-16 w-16 rounded-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <Gamepad2 className="h-6 w-6" aria-hidden="true" />
-                  )}
-                </AvatarFallback>
-              </Avatar>
-              <span className="min-w-0 px-1">
-                <span className="block truncate text-xs font-semibold">
-                  {gameBot.isHost ? "YOUR GAME" : "GAME BOT"}
-                </span>
-                <span className="block truncate text-[11px] text-muted-foreground">
-                  {liveGame
-                    ? gameBot.isHost
-                      ? `${liveGame.name} — tap to play`
-                      : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
-                    : roomActivity.activity
-                      ? `${roomActivity.activity.gameName} — tap to join`
-                      : "Tap to pick a game"}
-                </span>
-              </span>
-            </button>
             </div>
             </div>
             {playing && !isMobileView && !immersive && roomActivity.activity && (
@@ -807,13 +838,16 @@ export function VoiceCallView() {
           </div>
         </div>
 
-        {/* Music section: full now-playing + queue + transport live in the
-            music sheet now; the tile above is just an icon entry point. */}
+        {/* Full now-playing + queue + transport live in the music sheet; the
+            bot strip above is just the entry point. */}
         <div
           className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
-          <div className="mx-auto flex max-w-lg items-center justify-between sm:justify-center gap-1.5 sm:gap-3">
+          {/* Controls scroll sideways; Leave is its own pinned button so it can
+              never be pushed off the edge of a narrow phone. */}
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
+            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [&>button]:shrink-0">
             {/* Mute */}
             <button
               type="button"
@@ -864,6 +898,22 @@ export function VoiceCallView() {
               <span className="text-[10px] font-semibold leading-none">{sharingScreen ? "Stop" : "Share"}</span>
             </button>
 
+            {/* Camera */}
+            <button
+              type="button"
+              onClick={toggleCamera}
+              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
+              aria-pressed={cameraOn}
+              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
+                cameraOn
+                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+                  : "glass border-white/10 text-foreground hover:bg-white/10"
+              }`}
+            >
+              {cameraOn ? <Video className="h-5 w-5 mb-0.5" /> : <VideoOff className="h-5 w-5 mb-0.5" />}
+              <span className="text-[10px] font-semibold leading-none">Camera</span>
+            </button>
+
             {/* Game stream — only the game surface, never the whole desktop. */}
             <button
               type="button"
@@ -888,22 +938,6 @@ export function VoiceCallView() {
               </span>
             </button>
 
-            {/* Camera */}
-            <button
-              type="button"
-              onClick={toggleCamera}
-              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-              aria-pressed={cameraOn}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                cameraOn
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {cameraOn ? <Video className="h-5 w-5 mb-0.5" /> : <VideoOff className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">Camera</span>
-            </button>
-
             {/* Settings */}
             <button
               type="button"
@@ -914,13 +948,14 @@ export function VoiceCallView() {
               <Sliders className="h-5 w-5 mb-0.5 text-primary" />
               <span className="text-[10px] font-semibold leading-none">Settings</span>
             </button>
+          </div>
 
-            {/* Leave */}
+            {/* Leave — pinned outside the scroller, always reachable. */}
             <Button
               variant="outline"
               aria-label="Leave call"
               onClick={handleLeaveClick}
-              className="min-h-[50px] rounded-2xl border-destructive/40 bg-destructive/15 px-4 sm:px-6 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
+              className="min-h-[50px] shrink-0 rounded-2xl border-destructive/40 bg-destructive/15 px-3.5 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
             >
               <PhoneOff className="h-5 w-5" />
               <span>Leave</span>

@@ -24,7 +24,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { ProfileBadgesSection } from "../src/components/profile/ProfileBadgesSection.tsx";
-import { BadgeLine } from "../src/components/profile/BadgeInfoPopover.tsx";
+import { BadgeLine, ProfileBadgeChips } from "../src/components/profile/BadgeInfoPopover.tsx";
 import { BadgeRow } from "../src/components/BadgeChip.tsx";
 import type { Badge } from "../src/lib/badges.ts";
 
@@ -174,7 +174,37 @@ await check("the name-row badge line renders every mark on one nowrap row", () =
     "each earned mark is a tappable button",
   );
   assert.ok(html.includes("flex-nowrap"), "the marks never wrap onto a second row");
-  assert.ok(!html.includes("rounded-full border"), "no plate or pedestal behind the mark");
+  assert.ok(html.includes("rounded-full border"), "the page keeps its single soft tray");
+});
+
+await check("the profile sheet gives each mark its own chip and name tooltip", () => {
+  const lineup = [
+    mk("verified", "Verified"),
+    mk("streamer", "Streamer"),
+    mk("bounty-hunter", "Bounty Hunter"),
+    mk("purify", "Purify"),
+  ];
+  const html = renderToStaticMarkup(createElement(ProfileBadgeChips, { badges: lineup }));
+  assert.equal(chips(html), lineup.length, "one icon per mark");
+  assert.equal(
+    (html.match(/h-8 w-8/g) ?? []).length,
+    lineup.length,
+    "every mark gets its own 32px circle",
+  );
+  assert.equal(
+    (html.match(/border-white\/20/g) ?? []).length,
+    lineup.length,
+    "the same brighter hairline on every chip",
+  );
+  assert.ok(!html.includes("bg-white/[0.055]"), "no shared tray behind the marks");
+  assert.ok(!html.includes("— details"), "the sheet opens the short name tooltip");
+  for (const badge of lineup) {
+    assert.ok(
+      html.includes(`aria-label="${badge.name} badge"`),
+      `${badge.slug} must be announced by name`,
+    );
+  }
+  assert.ok(html.includes("flex-wrap"), "the row wraps instead of clipping");
 });
 
 await check("feed rows drop retired marks even when the award still exists", () => {

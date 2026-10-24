@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import {
+  AtSign,
   Ban,
   Calendar,
   Copy,
@@ -30,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
+import { ProfileBadgeChips } from "@/components/profile/BadgeInfoPopover";
 import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { MarkdownText } from "@/components/MarkdownText";
 import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
@@ -177,10 +178,13 @@ export function ProfilePreviewDialog({
   username,
   open,
   onOpenChange,
+  onMention,
 }: {
   username: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Realm chat uses the same sheet and adds an "insert @mention" action. */
+  onMention?: (username: string) => void;
 }) {
   const profile = useQuery({
     queryKey: ["profile-preview", username],
@@ -299,7 +303,6 @@ export function ProfilePreviewDialog({
   const markBadges = profileBadgeLineup(
     withPurifyBadge(distinctBadges(canonBadges(earned)), purify.active),
   );
-  const wornSlug = p?.featured_badge ?? null;
   // Verified is a badge, not a profiles column (same rule as the profile page).
   const verified = earned.some((badge) => badge.slug === "verified" || badge.slug === "no-cap");
   const previewBanner = p
@@ -388,11 +391,10 @@ export function ProfilePreviewDialog({
             statusIsSelf={isOwnProfile}
             customStatus={null}
             statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
-            handleExtra={
-              // Keep the badges together in one compact, non-wrapping tray.
-              markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} />
-              ) : undefined
+            // The marks get their own row under the @handle instead of sharing
+            // that line (and crowding the status text below it).
+            handleBadges={
+              markBadges.length > 0 ? <ProfileBadgeChips badges={markBadges} /> : undefined
             }
             overlayActions={
               <>
@@ -473,6 +475,20 @@ export function ProfilePreviewDialog({
                       <UserPlus className="h-4 w-4" />
                     )}
                     {following.data ? "Following" : "Follow"}
+                  </Button>
+                )}
+                {onMention && (
+                  <Button
+                    onClick={() => {
+                      onMention(p.username);
+                      onOpenChange(false);
+                    }}
+                    variant="outline"
+                    aria-label={`Mention @${p.username}`}
+                    title="Mention in chat"
+                    className="h-11 w-11 shrink-0 border-border px-0"
+                  >
+                    <AtSign className="h-4 w-4" />
                   </Button>
                 )}
               </div>

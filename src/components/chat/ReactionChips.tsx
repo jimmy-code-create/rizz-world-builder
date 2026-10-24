@@ -357,6 +357,7 @@ export function ReactionChips({
   align = "left",
   canReact = true,
   hidden = false,
+  spacing = "overlap",
   pulse = null,
   onToggle,
 }: {
@@ -369,6 +370,12 @@ export function ReactionChips({
   canReact?: boolean;
   /** Unsent or deleted messages never show or accept reactions. */
   hidden?: boolean;
+  /**
+   * `overlap` tucks the row under a chat bubble (-6px). A card message (bot
+   * embeds, welcome cards) uses `below`: the chips sit under the card with a
+   * real gap instead of covering its bottom edge.
+   */
+  spacing?: "overlap" | "below";
   pulse?: ReactionPulse | null;
   onToggle: (emoji: string) => Promise<boolean>;
 }) {
@@ -393,7 +400,7 @@ export function ReactionChips({
         data-testid={`reaction-row-${messageId}`}
         className={`relative z-10 flex flex-wrap items-center gap-1 ${
           align === "right" ? "justify-end" : "justify-start"
-        } ${hasChips ? "-mt-1.5 min-h-[18px]" : "h-0"}`}
+        } ${hasChips ? (spacing === "below" ? "mt-2 min-h-[18px]" : "-mt-1.5 min-h-[18px]") : "h-0"}`}
       >
         <AnimatePresence initial={false}>
           {visible.map((group) => (

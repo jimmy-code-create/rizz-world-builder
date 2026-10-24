@@ -1402,10 +1402,13 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   content-visibility: auto;
   contain-intrinsic-size: auto 420px;
   contain: layout paint;
-  /* One flat surface, one hairline border. No tinted corner gradients. */
+  /* One flat surface, one hairline border. No tinted corner gradients. The
+     surface follows the page theme: an ink card in the dark modes, a warm
+     white card in Paper mode. */
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--brand-ink-2);
+  background: var(--card);
+  color: var(--card-foreground);
   box-shadow: var(--shadow-line);
   transition:
     transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
@@ -1416,21 +1419,18 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .feed-post-card:focus-visible {
   outline: none;
 }
-/* A feed card is an ink surface in every mode: its background is the fixed
-   --brand-ink-2 above, so it can't inherit the page's text palette. In Paper
-   mode --foreground flips to ink and the display name and caption used to
-   render black-on-black (only the muted handle stayed visible). Re-declare the
-   ink palette *inside* the card so the name, caption, handle and footer stay
-   light, tags stay lime, while the paper "Suggested for you" panel beside it
-   keeps its dark text. */
+/* Paper mode: the card goes light with the rest of the page, so lime must not
+   be used for text on it. Keep the lime accent for fills (hearts, mentions) and
+   give the mention chip ink text so it clears AA on the white surface. */
 [data-mode="light"] .feed-post-card {
-  color: var(--brand-paper);
-  --foreground: var(--brand-paper);
-  --muted-foreground: var(--brand-paper-dim);
   --primary: var(--brand-signal);
   --primary-foreground: var(--brand-signal-ink);
-  --border: color-mix(in srgb, var(--brand-paper) 13%, transparent);
-  --ring: var(--brand-signal);
+  /* A soft paper shadow instead of the dark-mode inset highlight. */
+  box-shadow: 0 1px 2px rgb(21 21 26 / 0.06), 0 10px 28px -22px rgb(21 21 26 / 0.3);
+}
+[data-mode="light"] .feed-post-card .mention-highlight {
+  color: var(--brand-signal-ink);
+  background-color: color-mix(in srgb, var(--brand-signal) 88%, transparent);
 }
 .rizz-claim-cat {
   display: inline-grid;
@@ -1476,11 +1476,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 }
 /* Focus-within removed: only explicit keyboard :focus-visible rings on controls may show */
 .post-media-frame {
-  border-block: 1px solid var(--brand-line);
+  border-block: 1px solid var(--border);
 }
 .feed-post-card > footer {
-  background: var(--brand-ink-2);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-paper) 5%, transparent);
+  background: var(--card);
+  box-shadow: inset 0 1px 0 var(--border);
 }
 .feed-post-card > footer > button {
   height: 2rem;
@@ -1491,7 +1491,7 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     color 160ms ease,
     transform 160ms ease;
 }  .feed-post-card > footer > button:hover {
-  background-color: color-mix(in srgb, var(--brand-paper) 7%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
   color: var(--foreground);
 }
 .feed-post-card > footer > button:active {
@@ -1500,8 +1500,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .feed-post-card:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--brand-paper) 24%, transparent);
+    border-color: color-mix(in srgb, var(--foreground) 24%, transparent);
     box-shadow: var(--shadow-2);
+  }
+  [data-mode="light"] .feed-post-card:hover {
+    box-shadow: 0 12px 30px -20px rgb(21 21 26 / 0.34);
   }
 }
 @media (prefers-reduced-motion: reduce) {

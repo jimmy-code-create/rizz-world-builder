@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronDown,
   ListMusic,
   Loader2,
   Music,
@@ -43,6 +44,8 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"play" | "skip" | "stop" | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The lobby keeps the bots slim: the panel opens under its own header.
+  const [expanded, setExpanded] = useState(false);
   // Per-listener playback preferences: the bot plays the queue in order, these
   // only shape what *you* hear in the panel.
   const [loop, setLoop] = useState(false);
@@ -121,40 +124,48 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
   );
 
   return (
-    <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-      <div className="flex items-center gap-2">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
           <Music className="h-4 w-4" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-bold uppercase tracking-wider text-primary">
             Music bot
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-px text-[9px] font-semibold normal-case tracking-normal text-primary">
-              voice only
-            </span>
-          </p>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {canUse
-              ? tracks.length === 0
-                ? "Nothing queued — paste a YouTube, Apple or audio link below."
-                : `${tracks.length} song${tracks.length === 1 ? "" : "s"} in this channel's queue`
-              : bot
-                ? "MUSIC BOT is switched off for this realm"
-                : "Add MUSIC BOT to this realm to play music here"}
-          </p>
-        </div>
-        {canUse && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
-            onClick={() => setSheetOpen(true)}
-          >
-            <ListMusic className="h-3.5 w-3.5" /> Queue
-          </Button>
-        )}
-      </div>
+          </span>
+          <span className="block truncate text-[11px] text-muted-foreground">
+            {!canUse
+              ? bot
+                ? "Switched off for this realm"
+                : "Not in this realm yet"
+              : tracks.length === 0
+                ? "Nothing queued"
+                : current
+                  ? `${current.title}${current.artist ? ` · ${current.artist}` : ""}`
+                  : `${tracks.length} song${tracks.length === 1 ? "" : "s"} queued`}
+          </span>
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="space-y-3 border-t border-border px-3 py-3">
+          {!canUse && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {bot
+                ? "MUSIC BOT is switched off for this realm. An owner or moderator can turn it back on."
+                : "Add MUSIC BOT to this realm to queue music in a voice channel."}
+            </p>
+          )}
 
       {canUse && current && (
         <>
@@ -188,7 +199,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
               size="sm"
               disabled={busy !== null}
               onClick={() => void run("skip")}
-              className="h-9 shrink-0 gap-1.5 border-white/10 bg-white/5 text-xs"
+              className="h-9 shrink-0 gap-1.5 border-border bg-muted/40 text-xs"
             >
               {busy === "skip" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SkipForward className="h-3.5 w-3.5" />}
               Skip
@@ -254,7 +265,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
               {orderedUpcoming.slice(0, 5).map((track, index) => (
                 <li
                   key={track.id}
-                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-2 py-1.5"
                 >
                   <span className="w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-muted-foreground">
                     {index + 2}
@@ -262,7 +273,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
                   {track.artwork_url ? (
                     <img src={track.artwork_url} alt="" loading="lazy" className="h-7 w-7 shrink-0 rounded-md object-cover" />
                   ) : (
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-white/5">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-muted">
                       <Music className="h-3.5 w-3.5 text-muted-foreground" />
                     </span>
                   )}
@@ -284,7 +295,7 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
       )}
 
       {canUse && (
-        <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void submit(event)}>
+        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void submit(event)}>
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -292,17 +303,35 @@ export function VoiceChannelMusic({ realmId, roomId }: { realmId: string; roomId
             aria-label="Queue a song with the music bot"
             maxLength={200}
             disabled={busy === "play"}
-            className="glass h-11 border-white/10"
+            className="h-11 border-border bg-background"
           />
           <Button
             type="submit"
             disabled={!query.trim() || busy === "play"}
-            className="h-12 shrink-0 border-0 bg-primary text-primary-foreground sm:h-11 sm:w-auto"
+            className={`h-11 shrink-0 rounded-xl border-0 font-bold transition-colors ${
+              query.trim() && busy !== "play"
+                ? "bg-primary text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90"
+                : "bg-primary/25 text-primary-foreground/70"
+            }`}
           >
             {busy === "play" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music className="h-4 w-4" />}
             Play
           </Button>
         </form>
+      )}
+
+          {canUse && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 w-full gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={() => setSheetOpen(true)}
+            >
+              <ListMusic className="h-3.5 w-3.5" /> Open the full queue
+            </Button>
+          )}
+        </div>
       )}
 
       <MusicSheet open={sheetOpen} onOpenChange={setSheetOpen} realmId={realmId} roomId={roomId} />

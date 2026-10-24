@@ -470,6 +470,15 @@ function GroupRoom() {
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                     align={mine ? "right" : "left"}
                     reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
+                    // Without a preview the sheet opened as a bare list and lost
+                    // the message it belonged to. Media counts as content, so it
+                    // never reads as "No text".
+                    preview={{
+                      author: mine ? "You" : (m.author?.display_name || m.author?.username || "User"),
+                      time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+                      body: hasText ? m.body : m.attachment_url ? "Photo" : m.body,
+                      avatarUrl: m.author?.avatar_url ?? null,
+                    }}
                     onDoubleTap={() => {
                       burstOverMessage(m.id, DOUBLE_TAP_REACTION);
                       reactionHaptic();

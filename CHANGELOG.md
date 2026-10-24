@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-10-24 — Theme-aware feed, one voice lobby, shared profile sheet
+
+- Post cards now follow the app theme: `--card` / `--card-foreground` /
+  `--border` instead of the fixed ink surface, so Paper mode gets a warm white
+  card with ink text and a soft paper shadow while the dark modes keep their
+  ink card. Lime stays for mentions and the liked heart; on a light card the
+  mention chip flips to ink-on-lime so it keeps AA contrast. Footer actions,
+  media frames, quote blocks, comment boxes and the emoji popover use the
+  theme's muted icon/text and border tokens too.
+- The trending rail, composer, stories strip and the reel composer's theme
+  surfaces use the same card/border/muted tokens instead of white-on-white
+  hairlines.
+- The voice lobby is one screen: a back arrow, the full channel name over two
+  lines, a single `1 in call` line, the people already in the call as avatar
+  circles (with a real empty state), one full-width glowing **Join Voice
+  Channel** button and a full-width **Open VC Text Chat** under it. The small
+  header join button is gone.
+- Music and Game bots are slim cards docked above the safe area: Music expands
+  to its queue and input with a Play button that is bright only when there is
+  text; Game expands to a **Pick game** action.
+- Realm chat opens the same profile sheet as the feed, with an extra mention
+  action, instead of its own separate card.
+
+## 2026-10-24 — Welcome cards, long-press menus and the voice room
+
+- Bot embeds always fill the chat column: a 5px accent bar with a soft glow on
+  a lighter card, a small bot mark + `WELCOME` label above a 17px title, the new
+  member's avatar (or their initial) pinned right, a full-width lime `Say hi`
+  that disables after one tap, and a muted `Member #… · date` footer. Reaction
+  chips now sit under the card with a real gap instead of overlapping it.
+- The long-press menu previews the card it belongs to (title + first line)
+  instead of "No text", and a bot card only offers Reply plus the sheet's X.
+  Photo-only messages in DMs and groups preview "Photo" too, and groups finally
+  show the author/time/body header the other chats already had.
+- The voice screen: the channel name wraps to two lines, status shows
+  Connected or a spinner that times out with Retry, the people grid owns the
+  screen, the mic badge lives on the avatar, and Music/Game are compact cards in
+  a strip under the grid with Play/Pick game actions. The control row scrolls
+  sideways while Leave stays pinned to the right.
+
+## 2026-10-24 — Profile-sheet badges become their own chip row
+
+- The preview sheet no longer draws one dim tray beside `@handle`. Every mark
+  is its own 32px circle with the same brighter hairline, soft white wash and
+  24px icon box, so a green and a violet mark read as one set over the
+  sheet's banner/effect background.
+- The chips moved out of the handle row and onto their own line under the
+  identity block (`ProfileHeader.handleBadges`), so the name, `@handle`, the
+  status line and the marks each have room. The row wraps instead of clipping.
+- Tapping (or long-pressing) a chip opens a one-line tooltip with just the
+  badge's name instead of the full details card.
+
 ## 2026-10-24 — The trending rail reads as a feed card
 
 - The rail between the composer and "LATEST DROPS" is now an ink card of its

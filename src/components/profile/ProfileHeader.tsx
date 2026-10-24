@@ -39,6 +39,12 @@ export type ProfileHeaderProps = {
   statusLine?: ReactNode;
   /** Extra handle-row detail (pronouns, realm role, …). */
   handleExtra?: ReactNode;
+  /**
+   * Badge marks on their own row under the handle (see ProfileBadgeChips).
+   * Kept out of the handle row so the @name, the marks and the status line each
+   * get a line of their own.
+   */
+  handleBadges?: ReactNode;
   /** Name-row trailing actions (Share / Edit profile / Follow …). */
   actions?: ReactNode;
   /** Banner-corner actions ("…" and close). */
@@ -89,6 +95,7 @@ export function ProfileHeader({
   customStatus,
   statusLine,
   handleExtra,
+  handleBadges,
   actions,
   overlayActions,
   onBannerPointerDown,
@@ -275,6 +282,11 @@ export function ProfileHeader({
                 <p className="truncate text-sm text-muted-foreground">@{username}</p>
                 {handleExtra}
               </div>
+              {handleBadges && (
+                <div className="mt-2 mb-1.5 flex min-w-0 max-w-full items-center">
+                  {handleBadges}
+                </div>
+              )}
               {statusLine}
             </div>
             {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

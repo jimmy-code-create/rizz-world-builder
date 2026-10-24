@@ -36,6 +36,8 @@ export type MessageActionPreview = {
   time?: string;
   body?: string | null;
   avatarUrl?: string | null;
+  /** Cards (welcome embeds) preview their real title + line, never "No text". */
+  embed?: { title?: string | null; description?: string | null; imageUrl?: string | null } | null;
 };
 
 export type MessageActionMenuProps = {
@@ -99,9 +101,22 @@ export function MessageActionMenu({
   // Actions are the default view. Reactions mount only after the emoji button
   // is tapped, which keeps opening the menu cheap and the sheet short.
   const [view, setView] = useState<"actions" | "reactions">("actions");
+  // Swipe-down on the phone sheet. Dragging the grab handle moves the sheet
+  // with the finger; past the threshold it dismisses like Discord's.
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragOrigin = useRef<number | null>(null);
+  const dragOffsetRef = useRef(0);
+  const setDrag = (next: number) => {
+    dragOffsetRef.current = next;
+    setDragOffset(next);
+  };
 
   useEffect(() => {
-    if (!open) setView("actions");
+    if (!open) {
+      setView("actions");
+      dragOrigin.current = null;
+      setDrag(0);
+    }
   }, [open]);
 
   const clearPress = () => {
@@ -218,9 +233,34 @@ export function MessageActionMenu({
             <span className="shrink-0 text-[11px] font-normal text-[#949ba4]">{preview.time}</span>
           )}
         </p>
-        <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
-          {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
-        </p>
+        {preview.embed && (preview.embed.title || preview.embed.description) ? (
+          <div className="mt-1 flex items-start gap-2 rounded-lg border border-white/[0.07] bg-white/[0.04] p-2">
+            <div className="min-w-0 flex-1">
+              {preview.embed.title && (
+                <p className="truncate text-[12.5px] font-bold leading-[17px] text-[#f2efe6]">
+                  {preview.embed.title}
+                </p>
+              )}
+              {preview.embed.description && (
+                <p className="line-clamp-2 break-words text-[12px] leading-[16px] text-[#b5bac1]">
+                  {preview.embed.description}
+                </p>
+              )}
+            </div>
+            {preview.embed.imageUrl && (
+              <img
+                src={preview.embed.imageUrl}
+                alt=""
+                loading="lazy"
+                className="h-9 w-9 shrink-0 rounded-md object-cover"
+              />
+            )}
+          </div>
+        ) : (
+          <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
+            {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center">{reactionButton}</div>
     </div>
@@ -343,12 +383,38 @@ export function MessageActionMenu({
           <SheetContent
             side="bottom"
             className="action-sheet z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            style={dragOffset ? { transform: `translateY(${dragOffset}px)`, transition: "none" } : undefined}
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
               <SheetTitle>Message actions</SheetTitle>
             </SheetHeader>
-            <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-white/20" />
+            <div
+              role="presentation"
+              aria-label="Drag down to close"
+              className="mx-auto mb-2 flex h-7 w-full cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+              onPointerDown={(event) => {
+                if (!event.isPrimary) return;
+                dragOrigin.current = event.clientY;
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event) => {
+                if (dragOrigin.current === null) return;
+                setDrag(Math.max(0, event.clientY - dragOrigin.current));
+              }}
+              onPointerUp={() => {
+                const close = dragOffsetRef.current > 72;
+                dragOrigin.current = null;
+                setDrag(0);
+                if (close) onOpenChange(false);
+              }}
+              onPointerCancel={() => {
+                dragOrigin.current = null;
+                setDrag(0);
+              }}
+            >
+              <span aria-hidden className="block h-1 w-10 rounded-full bg-white/20" />
+            </div>
             {showingReactions ? (
               reactionsView
             ) : (

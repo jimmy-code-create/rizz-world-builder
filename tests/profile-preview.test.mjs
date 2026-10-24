@@ -47,15 +47,22 @@ await check("the bio renders markdown instead of raw asterisks", async () => {
   );
 });
 
-await check("distinct earned badges sit on the name row and are tappable", async () => {
+await check("distinct earned badges get their own row and are tappable", async () => {
   assert.ok(card.includes("fetchUserBadges"));
   assert.ok(card.includes("distinctBadges(canonBadges(earned))"));
   assert.ok(
     card.includes("profileBadgeLineup(") && card.includes("withPurifyBadge("),
-    "the five-mark lineup decides what the name row shows",
+    "the five-mark lineup decides what the sheet shows",
   );
-  assert.ok(card.includes("BadgeLine badges={markBadges}"), "the name row renders the badge line");
-  assert.ok(card.includes("wornSlug={wornSlug}"), "the worn mark is called out");
+  assert.ok(
+    card.includes("ProfileBadgeChips badges={markBadges}"),
+    "every mark renders as its own chip",
+  );
+  assert.ok(
+    card.includes("handleBadges={"),
+    "the chips sit on their own row under the handle, not in it",
+  );
+  assert.ok(!card.includes("handleExtra={"), "the handle row is not crowded by the marks");
   assert.ok(
     !card.includes('nav({ to: "/badges" })'),
     "tapping a badge shows its story instead of leaving the profile",

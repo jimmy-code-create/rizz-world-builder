@@ -820,7 +820,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
             value={body}
             onChange={(e) => setBody(e.target.value.slice(0, 500))}
             placeholder="Add a comment…"
-            className="glass border-white/10"
+            className="glass border-border"
           />
           <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
             {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -926,12 +926,12 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
-        className="glass-strong border-white/10 md:max-w-3xl p-0 overflow-hidden flex flex-col
+        className="glass-strong border-border md:max-w-3xl p-0 overflow-hidden flex flex-col
           max-md:top-0 max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:translate-x-0 max-md:translate-y-0
           max-md:max-w-none max-md:w-screen max-md:h-[100dvh] max-md:rounded-none md:max-h-[90dvh]"
       >
         <div
-          className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0"
+          className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0"
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           <DialogTitle className="text-base font-black">Create reel</DialogTitle>
@@ -1017,7 +1017,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   value={sourceLink}
                   onChange={(e) => setSourceLink(e.target.value)}
                   placeholder="Paste a YouTube video link"
-                  className="glass border-white/10"
+                  className="glass border-border"
                   aria-describedby="reel-source-help reel-source-status"
                 />
                 <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform !== "youtube")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
@@ -1042,7 +1042,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
               </div>
             )}
             <Tabs key={sourceMode} defaultValue="caption">
-              <TabsList className="w-full glass border border-white/10">
+              <TabsList className="w-full glass border border-border">
                 <TabsTrigger value="caption" className="flex-1"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption</TabsTrigger>
                 {sourceMode === "upload" && <>
                   <TabsTrigger value="song" className="flex-1"><Music2 className="h-3.5 w-3.5 mr-1" /> Song</TabsTrigger>
@@ -1055,7 +1055,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   value={caption}
                   onChange={(e) => setCaption(e.target.value.slice(0, 500))}
                   placeholder="Describe your reel… use #hashtags and @mentions"
-                  className="glass border-white/10 min-h-[110px] resize-none"
+                  className="glass border-border min-h-[110px] resize-none"
                 />
                 <p className="text-xs text-muted-foreground text-right">{500 - caption.length} left</p>
                 {sourceMode === "upload" && <div>
@@ -1064,7 +1064,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                     value={overlay}
                     onChange={(e) => setOverlay(e.target.value.slice(0, 60))}
                     placeholder="POV: it's Friday"
-                    className="glass border-white/10"
+                    className="glass border-border"
                   />
                 </div>}
               </TabsContent>
@@ -1074,16 +1074,16 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   value={songQuery}
                   onChange={(e) => setSongQuery(e.target.value)}
                   placeholder="Search songs, artists, moods…"
-                  className="glass border-white/10"
+                  className="glass border-border"
                 />
                 <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                   <button
                     onClick={() => setSong(null)}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                      song === null ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
+                      song === null ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted/60"
                     }`}
                   >
-                    <div className="h-10 w-10 rounded-lg bg-white/10 grid place-items-center"><Music2 className="h-4 w-4" /></div>
+                    <div className="h-10 w-10 rounded-lg bg-muted grid place-items-center"><Music2 className="h-4 w-4" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold">Original audio</p>
                       <p className="text-xs opacity-70">Use the sound from your clip</p>
@@ -1095,7 +1095,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                       key={s.id}
                       onClick={() => setSong(s.id)}
                       className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                        song === s.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
+                        song === s.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted/60"
                       }`}
                     >
                       <div className="h-10 w-10 rounded-lg bg-primary/20 grid place-items-center text-base">🎵</div>
@@ -1134,7 +1134,7 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
         </div>
 
         <div
-          className="flex items-center justify-between gap-2 px-5 py-3 border-t border-white/10 shrink-0"
+          className="flex items-center justify-between gap-2 px-5 py-3 border-t border-border shrink-0"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
            <Button variant="ghost" onClick={reset} disabled={(!file && !sourceLink) || mut.isPending}>Reset</Button>

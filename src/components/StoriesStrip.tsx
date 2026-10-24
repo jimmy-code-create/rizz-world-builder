@@ -273,8 +273,8 @@ export function StoriesStrip() {
                   myStories.length > 0
                     ? myHasUnseen
                       ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_12px_rgba(220,39,67,0.35)]"
-                      : "border-2 border-white/25"
-                    : "border-2 border-dashed border-white/20 hover:border-primary/60"
+                      : "border-2 border-border"
+                    : "border-2 border-dashed border-border hover:border-primary/60"
                 }`}
                 aria-label={myStories.length > 0 ? "View your story" : "Add to your story"}
               >
@@ -306,8 +306,8 @@ export function StoriesStrip() {
           {loading &&
             [0, 1, 2].map((index) => (
               <div key={index} className="flex shrink-0 flex-col items-center gap-1.5">
-                <div className="h-16 w-16 animate-pulse rounded-full bg-white/10" />
-                <div className="h-2.5 w-12 animate-pulse rounded-full bg-white/10" />
+                <div className="h-16 w-16 animate-pulse rounded-full bg-muted" />
+                <div className="h-2.5 w-12 animate-pulse rounded-full bg-muted" />
               </div>
             ))}
 
@@ -331,7 +331,7 @@ export function StoriesStrip() {
                   className={`relative h-16 w-16 rounded-full p-[2.5px] ${
                     unseen
                       ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_14px_rgba(220,39,67,0.3)]"
-                      : "border-2 border-white/20"
+                      : "border-2 border-border"
                   }`}
                 >
                   <Avatar className="h-full w-full ring-2 ring-background">
