@@ -1489,45 +1489,32 @@ function RealmPage() {
       )}
 
       {activeRoom?.kind === "voice" && (
-        <div className="chat-bar shrink-0 border-b border-border px-4 py-3">
-          <div className="flex items-start gap-2.5">
-            <button
-              type="button"
-              onClick={backToChannels}
-              aria-label="Back to channels"
-              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-              <Volume2 className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                Voice channel
-              </p>
-              <h2 className="line-clamp-2 break-words font-display text-[17px] font-bold leading-[1.2]">
-                {activeRoom.name || "Voice channel"}
-              </h2>
-              {/* The member count lives only here — the stage below shows who
-                  is in the room instead of repeating the number. */}
-              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                {activeChannelPeople.length > 0 ? (
-                  <>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    {activeChannelPeople.length} in call
-                  </>
-                ) : (
-                  "No one is here yet"
-                )}
-              </p>
-            </div>
-            {activeRoom.mods_only && !canModerate && (
-              <span className="mt-1 flex shrink-0 items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
-                <Lock className="h-3 w-3" /> Mods only
-              </span>
+        <div className="chat-bar flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+          <button
+            type="button"
+            onClick={backToChannels}
+            aria-label="Back to channels"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          {/* The channel name already sits in the tab strip above; this bar
+              carries only the live count so the lobby starts higher up. */}
+          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-muted-foreground">
+            {activeChannelPeople.length > 0 ? (
+              <>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                <span className="truncate">{activeChannelPeople.length} in call</span>
+              </>
+            ) : (
+              <span className="truncate">No one is here yet</span>
             )}
-          </div>
+          </p>
+          {activeRoom.mods_only && !canModerate && (
+            <span className="flex shrink-0 items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+              <Lock className="h-3 w-3" /> Mods only
+            </span>
+          )}
         </div>
       )}
 
@@ -1579,7 +1566,7 @@ function RealmPage() {
           docked above the safe area. */}
       {activeRoom?.kind === "voice" && !showVoiceChat && (
         <div className="flex min-h-0 flex-1 flex-col select-none">
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-6 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto overscroll-contain px-5 pb-5 pt-4 text-center">
             {activeChannelPeople.length > 0 ? (
               <div className="w-full max-w-md">
                 <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -2277,7 +2264,6 @@ function RealmPage() {
                         the member's profile card. */}
                           <EmbedList
                             embeds={messageEmbeds}
-                            botName={isBot ? authorName : undefined}
                             actionDone={waved}
                             onAction={(button) => {
                               if (button.action !== "wave" || !m.id) return;
@@ -2451,6 +2437,7 @@ function RealmPage() {
           )}
           <div className="mx-auto flex w-full max-w-3xl gap-2">
             <GifPicker
+              triggerClassName="h-11 w-11 rounded-xl border border-white/10 hover:bg-white/5"
               onSelect={(marker) =>
                 setBody((current) => `${current}${current ? " " : ""}${marker}`)
               }

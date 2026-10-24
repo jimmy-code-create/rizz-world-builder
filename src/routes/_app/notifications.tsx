@@ -21,7 +21,9 @@ import { toast } from "@/lib/toast";
 import { useI18n, formatRelativeTime, formatFullDate } from "@/lib/i18n";
 import { RizzCat } from "@/components/RizzCat";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchCommentTargets, isGenericTitle } from "@/lib/notifications";
+import { dmThreadsKey, fetchDmThreads, watchDmThreads, type DmThread } from "@/lib/dm-threads";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · RIZZ" }] }),
@@ -49,13 +51,20 @@ function forumTarget(n: any): { slug: string; room: string; post: string } | nul
   return { slug: data.realm_slug, room: data.room_id, post: data.post_id };
 }
 
+function dmPreview(thread: DmThread) {
+  const body = (thread.last.body ?? "").replace(/\s+/g, " ").trim();
+  if (body) return body;
+  if (thread.last.attachment_url) return "Photo";
+  return "New message";
+}
+
 function NotificationsPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow" | "mention">(
-    "all",
-  );
+  const [tab, setTab] = useState<
+    "all" | "unread" | "messages" | "like" | "comment" | "follow" | "mention"
+  >("all");
   const items = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -69,6 +78,26 @@ function NotificationsPage() {
     },
     enabled: !!user,
   });
+
+  // DM threads live beside the bell so a missed toast is never a missed person:
+  // same query key as the messages page, refreshed by the same realtime rows.
+  const threads = useQuery({
+    queryKey: dmThreadsKey(user?.id),
+    queryFn: async (): Promise<DmThread[]> => {
+      if (!user) return [];
+      return fetchDmThreads(user.id);
+    },
+    enabled: !!user,
+    retry: false,
+  });
+  useEffect(() => {
+    if (!user) return;
+    return watchDmThreads(user.id, () => {
+      void qc.invalidateQueries({ queryKey: dmThreadsKey(user.id) });
+      void qc.invalidateQueries({ queryKey: ["unread-dms", user.id] });
+    });
+  }, [user, qc]);
+  const unreadMessages = (threads.data ?? []).reduce((total, thread) => total + thread.unread, 0);
 
   useEffect(() => {
     if (!user) return;
@@ -87,6 +116,17 @@ function NotificationsPage() {
 
   const markAll = async () => {
     if (!user) return;
+    if (tab === "messages") {
+      await supabase
+        .from("direct_messages")
+        .update({ read: true })
+        .eq("recipient_id", user.id)
+        .eq("read", false);
+      qc.invalidateQueries({ queryKey: dmThreadsKey(user.id) });
+      qc.invalidateQueries({ queryKey: ["unread-dms", user.id] });
+      toast.success("All caught up");
+      return;
+    }
     await supabase
       .from("notifications")
       .update({ read: true })
@@ -105,6 +145,7 @@ function NotificationsPage() {
   }, [items.data, tab]);
 
   const unreadCount = (items.data ?? []).filter((n: any) => !n.read).length;
+  const unreadForTab = tab === "messages" ? unreadMessages : unreadCount;
 
   // The trigger behind a "commented on your post" notification only writes the
   // label "New Comment", so the comment itself is recovered here and the row
@@ -121,13 +162,13 @@ function NotificationsPage() {
       <div className="flex items-end justify-between gap-3 mb-1">
         <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
           <Bell className="h-7 w-7 text-primary" /> {t("notifications")}
-          {unreadCount > 0 && (
+          {unreadForTab > 0 && (
             <span className="text-xs font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-              {unreadCount}
+              {unreadForTab}
             </span>
           )}
         </h1>
-        {unreadCount > 0 && (
+        {unreadForTab > 0 && (
           <Button onClick={markAll} size="sm" variant="ghost" className="text-xs gap-1.5">
             <CheckCheck className="h-3.5 w-3.5" /> {t("mark_all_read")}
           </Button>
@@ -136,9 +177,17 @@ function NotificationsPage() {
       <p className="text-sm text-muted-foreground mb-4">{t("notif_subtitle")}</p>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
-        <TabsList className="glass border border-white/5">
+        <TabsList className="glass max-w-full justify-start overflow-x-auto border border-border no-scrollbar">
           <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
           <TabsTrigger value="unread">{t("tab_unread")}</TabsTrigger>
+          <TabsTrigger value="messages" className="gap-1.5">
+            Messages
+            {unreadMessages > 0 && (
+              <span className="grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {unreadMessages}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="like">{t("tab_likes")}</TabsTrigger>
           <TabsTrigger value="comment">{t("tab_comments")}</TabsTrigger>
           <TabsTrigger value="follow">{t("tab_follows")}</TabsTrigger>
@@ -146,7 +195,69 @@ function NotificationsPage() {
         </TabsList>
       </Tabs>
 
-      <div className="space-y-2">
+      {tab === "messages" && (
+        <div className="space-y-2">
+          {(threads.data ?? []).map((thread) => {
+            const name = thread.other.display_name || thread.other.username || "Rizz user";
+            return (
+              <Link
+                key={thread.other.id}
+                to="/dm/$userId"
+                params={{ userId: thread.other.id }}
+                className={`glass flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-colors hover:border-primary/40 ${
+                  thread.unread ? "border-primary/40 bg-card" : "border-border"
+                }`}
+              >
+                <div className="relative shrink-0">
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage src={thread.other.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-primary/15 text-sm font-bold text-primary">
+                      {name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {thread.unread > 0 && (
+                    <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
+                      {thread.unread}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-baseline gap-1.5">
+                    <span className="truncate text-sm font-semibold">{name}</span>
+                    {thread.other.username && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        @{thread.other.username}
+                      </span>
+                    )}
+                    <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                      {formatRelativeTime(thread.last.created_at)}
+                    </span>
+                  </p>
+                  <p
+                    className={`mt-0.5 truncate text-xs ${
+                      thread.unread ? "font-medium text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {thread.last.sender_id === user?.id ? "You: " : ""}
+                    {dmPreview(thread)}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+          {threads.isLoading && <p className="text-xs text-muted-foreground">Loading messages…</p>}
+          {!threads.isLoading && (threads.data ?? []).length === 0 && (
+            <div className="glass rounded-3xl p-8 text-center">
+              <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
+              <p className="text-sm text-muted-foreground">
+                No messages yet. Say hi from someone's profile and it will show up here.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={tab === "messages" ? "hidden" : "space-y-2"}>
         {filtered.map((n: any) => {
           const Icon = ICON[n.type] ?? Bell;
           const target = forumTarget(n);
@@ -245,7 +356,7 @@ function NotificationsPage() {
         })}
       </div>
 
-      {filtered.length === 0 && (
+      {tab !== "messages" && filtered.length === 0 && (
         <div className="glass rounded-3xl p-8 text-center">
           <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
           <p className="text-sm text-muted-foreground">

@@ -54,6 +54,7 @@ import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
 import { WelcomeTourHost } from "@/components/onboarding/WelcomeTourHost";
+import { DmNotificationHost } from "@/components/notifications/DmNotificationHost";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
@@ -541,6 +542,9 @@ export function AppShell() {
 
       {/* Global voice call bar */}
       <VoiceCallBar />
+
+      {/* Discord-style cards for new DMs, anywhere in the app. */}
+      <DmNotificationHost />
 
       {/* First-run + replay coach marks, over the real feed. */}
       <WelcomeTourHost />

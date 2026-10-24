@@ -230,7 +230,8 @@ export function VoiceCallView() {
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
-  const peopleCount = participants.length + (musicBot.enabled ? 1 : 0);
+  // Real people only: the music/game bots are helpers, not callers.
+  const peopleCount = participants.length;
   const connected = !error && /^connected/i.test(status);
   // A spinner that never stops is worse than no spinner: after this long,
   // say so and offer the same Retry the error state uses.
@@ -441,6 +442,18 @@ export function VoiceCallView() {
                 )}
               </div>
             </div>
+            {/* The strip under the header is gone; VC chat stays one tap away
+                so removing the chips does not cost the feature. */}
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={chatOpen ? "Close VC text chat" : "Open VC text chat"}
+              aria-pressed={chatOpen}
+              className="glass h-10 w-10 shrink-0 rounded-xl border-white/10"
+              onClick={() => setChatOpen((value) => !value)}
+            >
+              <MessageSquare className="h-5 w-5" />
+            </Button>
             <Button
               variant="outline"
               size="icon"
@@ -450,30 +463,6 @@ export function VoiceCallView() {
             >
               <ChevronDown className="h-5 w-5" />
             </Button>
-          </div>
-
-          <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-0.5">
-            {[
-              { key: "chat", label: "Chat", icon: MessageSquare, active: chatOpen, onClick: () => setChatOpen((v) => !v) },
-              { key: "games", label: "Games", icon: Gamepad2, active: gamesOpen, onClick: () => setGamesOpen(true) },
-              { key: "music", label: "Music", icon: Music, active: musicOpen, onClick: () => setMusicOpen(true) },
-              { key: "settings", label: "Settings", icon: Sliders, active: settingsOpen, onClick: () => setSettingsOpen(true) },
-            ].map(({ key, label, icon: Icon, active, onClick }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={onClick}
-                aria-pressed={active}
-                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors active:scale-95 ${
-                  active
-                    ? "border-primary/40 bg-primary/15 text-primary"
-                    : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
           </div>
         </header>
 
@@ -508,8 +497,8 @@ export function VoiceCallView() {
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
-          <div className="mx-auto flex min-h-full w-full max-w-6xl items-center gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2 sm:px-4">
+          <div className="mx-auto flex w-full max-w-6xl items-start gap-3">
             <div className="min-w-0 flex-1 space-y-3">
           {!sharingScreen && remoteShares.length > 1 && (
             <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 overflow-x-auto pb-1">
@@ -602,9 +591,7 @@ export function VoiceCallView() {
               return (
                 <div
                   key={participant.user_id}
-                  className={`relative flex ${
-                    tileCount <= 2 ? "aspect-[4/5] sm:aspect-square" : "aspect-square"
-                  } flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-14 transition-all duration-200 ${
+                  className={`relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-10 transition-all duration-200 ${
                     speaking
                       ? "border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(201,255,61,0.45),0_0_28px_-6px_rgba(201,255,61,0.45)]"
                       : "border-white/10 glass"
@@ -616,7 +603,7 @@ export function VoiceCallView() {
                     <>
                       <div className="relative">
                         <Avatar
-                          className={`h-20 w-20 border-2 border-white/10 transition-all duration-200 sm:h-24 sm:w-24 ${
+                          className={`h-14 w-14 border-2 border-white/10 transition-all duration-200 sm:h-16 sm:w-16 ${
                             speaking
                               ? "border-transparent ring-2 ring-primary shadow-[0_0_0_5px_rgba(201,255,61,0.18),0_0_26px_rgba(201,255,61,0.5)]"
                               : ""
@@ -771,7 +758,7 @@ export function VoiceCallView() {
                     <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-emerald-200">
                       Music bot
                     </span>
-                    <span className="block truncate text-[10.5px] text-muted-foreground">
+                    <span className="block line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">
                       {musicBot.track
                         ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
                         : "Nothing queued"}
@@ -804,7 +791,7 @@ export function VoiceCallView() {
                   <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-primary">
                     {gameBot.isHost ? "Your game" : "Game bot"}
                   </span>
-                  <span className="block truncate text-[10.5px] text-muted-foreground">
+                  <span className="block line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">
                     {liveGame
                       ? gameBot.isHost
                         ? liveGame.name
@@ -847,7 +834,15 @@ export function VoiceCallView() {
           {/* Controls scroll sideways; Leave is its own pinned button so it can
               never be pushed off the edge of a narrow phone. */}
           <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
-            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [&>button]:shrink-0">
+            {/* The control strip fades at its right edge, so a narrow phone shows
+                that there is more instead of chopping "Settings" in half. */}
+            <div
+              className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-5 [&>button]:shrink-0"
+              style={{
+                maskImage: "linear-gradient(to right, #000 calc(100% - 1.25rem), transparent)",
+                WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 1.25rem), transparent)",
+              }}
+            >
             {/* Mute */}
             <button
               type="button"

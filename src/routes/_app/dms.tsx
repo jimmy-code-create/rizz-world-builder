@@ -29,6 +29,7 @@ import { squareImageFile } from "@/lib/image-square";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, usePresenceMap } from "@/lib/presence";
 import { RizzCat } from "@/components/RizzCat";
+import { dmThreadsKey, fetchDmThreads, type DmThread } from "@/lib/dm-threads";
 
 export const Route = createFileRoute("/_app/dms")({
   head: () => ({ meta: [{ title: "Messages · RIZZ" }] }),
@@ -37,16 +38,7 @@ export const Route = createFileRoute("/_app/dms")({
 
 const DOUBLE_TAP_MS = 280;
 
-type Thread = {
-  other: {
-    id: string;
-    username: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-  };
-  last: { body: string | null; created_at: string };
-  unread: number;
-};
+type Thread = DmThread;
 
 /** Chats deleted on this device are remembered here. */
 const HIDDEN_DMS_KEY = "rizz:hidden-dms";
@@ -150,7 +142,7 @@ function DMsPage() {
       /* storage off — the messages are still deleted */
     }
     setRowMenu(null);
-    await qc.invalidateQueries({ queryKey: ["dm-threads", user.id] });
+    await qc.invalidateQueries({ queryKey: dmThreadsKey(user.id) });
     toast.success("Chat deleted");
   };
   const [selecting, setSelecting] = useState(false);
@@ -168,29 +160,10 @@ function DMsPage() {
   const lastTap = useRef<{ id: string; at: number } | null>(null);
 
   const threads = useQuery({
-    queryKey: ["dm-threads", user?.id],
+    queryKey: dmThreadsKey(user?.id),
     queryFn: async (): Promise<Thread[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("direct_messages")
-        .select(
-          "*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)",
-        )
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      // group by other party
-      const map = new Map<string, Thread>();
-      for (const m of data ?? []) {
-        const other = m.sender_id === user.id ? m.recipient : m.sender;
-        if (!other) continue;
-        const e = map.get(other.id);
-        const isUnread = m.recipient_id === user.id && !m.read;
-        if (!e) map.set(other.id, { other, last: m, unread: isUnread ? 1 : 0 });
-        else if (isUnread) e.unread += 1;
-      }
-      return Array.from(map.values());
+      return fetchDmThreads(user.id);
     },
     enabled: !!user,
     retry: false,
@@ -210,7 +183,7 @@ function DMsPage() {
   // message actually lands. Two channels because each only filters one column.
   useEffect(() => {
     if (!user) return;
-    const refresh = () => qc.invalidateQueries({ queryKey: ["dm-threads", user.id] });
+    const refresh = () => qc.invalidateQueries({ queryKey: dmThreadsKey(user.id) });
     const asSender = supabase
       .channel(`dm-threads-sent-${user.id}`)
       .on(

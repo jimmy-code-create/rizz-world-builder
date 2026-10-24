@@ -615,7 +615,10 @@ function GroupRoom() {
             </div>
           )}
           <div className="flex gap-2">
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
+          <GifPicker
+            triggerClassName="h-11 w-11"
+            onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))}
+          />
           <input
             ref={imageInputRef}
             type="file"
@@ -630,7 +633,7 @@ function GroupRoom() {
             variant="ghost"
             size="icon"
             aria-label="Attach a photo"
-            className="shrink-0 text-muted-foreground"
+            className="h-11 w-11 shrink-0 text-muted-foreground"
           >
             <ImagePlus className="h-5 w-5" />
           </Button>

@@ -29,6 +29,16 @@ function publicEnv(name: string) {
   return (import.meta.env as Record<string, string | undefined>)[name];
 }
 
+/**
+ * Whether this build has a usable Web Push key. Settings use it to offer the
+ * in-app + desktop alert experience instead of a push toggle that can only
+ * fail, so nobody is told push is on when it cannot be delivered.
+ */
+export const webPushConfigured = (() => {
+  const key = publicEnv("VITE_VAPID_PUBLIC_KEY");
+  return Boolean(key && !key.startsWith("REPLACE_"));
+})();
+
 export async function enablePushNotifications(userId: string) {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     throw new Error("This browser does not support web push notifications.");

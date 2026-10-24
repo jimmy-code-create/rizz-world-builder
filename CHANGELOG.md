@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-10-24 — Polish pass: greeting cards, in-call grid, voice lobby
+
+- Greeting/bot cards are flat again: a 1px border and the 4px lime bar, no
+  outer glow, and the inner `WELCOME` label is gone so the card starts with its
+  title. The member thumbnail is a 56px round avatar (round initial fallback),
+  and both buttons are content-width 40px pills — solid lime `Say hi`, dark
+  `Said hi` with a lime check once tapped. Reaction chips lost their glow too.
+- Chat composers give the emoji picker, custom-emoji and attach buttons one
+  44px slot each with an 8px gap, so nothing overlaps or clips.
+- In-call: people tiles are 4:3 and start right under the header, two columns up
+  to four people (then a third on wide screens, scrolling for more), the count
+  is real participants (bots excluded), the avatar fits the shorter tile, and
+  the Chat/Games/Music/Settings chip row is replaced by a small chat button next
+  to the collapse arrow. Bot cards wrap their second line, and the control strip
+  fades at the right edge while Leave stays pinned.
+- Voice lobby: a single slim bar (back arrow + live `N in call`), the duplicate
+  channel header is gone, and `Already in the call` + Join sit directly under
+  it instead of being vertically centered.
+
+## 2026-10-24 — Discord-style DM notifications
+
+- New DMs raise a Discord-style card anywhere in the app: avatar, name, handle,
+  a two-line preview, a ping and an **Open conversation** action. Cards stack up
+  to three, consecutive messages from one person refresh their card with a
+  `N new` count instead of piling up, and the card never appears for the
+  conversation already open on screen. Clicking one navigates straight to
+  `/dm/<user>`.
+- With the tab hidden, the same event raises a system notification (service
+  worker on Android, constructor fallback on desktop) that focuses RIZZ and
+  opens the conversation. Settings → Notifications gained a **Desktop alerts**
+  card with grant and test actions.
+- The notification inbox has a **Messages** tab: every DM thread with an unread
+  count, latest preview, "You:" prefix for your own last line, and relative
+  time, reading the same `["dm-threads", user.id]` cache as `/dms` and the
+  desktop rail. Mark-all-read clears DMs while that tab is open.
+- The inbox, its tabs and the push settings now use the theme's card/border
+  tokens, and push settings explain plainly when this server has no VAPID key
+  instead of offering a button that can only fail.
+
 ## 2026-10-24 — Theme-aware feed, one voice lobby, shared profile sheet
 
 - Post cards now follow the app theme: `--card` / `--card-foreground` /

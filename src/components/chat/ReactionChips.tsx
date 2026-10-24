@@ -109,20 +109,16 @@ function ReactionChip({
   const pressTimer = useRef<number | null>(null);
   const longPressed = useRef(false);
   const [failed, setFailed] = useState(false);
-  const [glowing, setGlowing] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const peek = useReactorPeek(peekTarget ?? null);
 
   useEffect(() => {
     if (!pulse || pulse.emoji !== emoji) return;
     if (pulse.kind === "remote") {
-      // Someone else reacted to my message: a small pop and a light glow, no
-      // burst, so it never pulls attention away from what I'm reading. The glow
-      // is a one-off style swap, not an animated shadow.
-      setGlowing(true);
-      const timer = window.setTimeout(() => setGlowing(false), 460);
+      // Someone else reacted to my message: a small pop, no burst and no glow,
+      // so it never pulls attention away from what I'm reading.
       void controls.start({ scale: [1, 1.14, 1], transition: { duration: 0.42, ease: "easeOut" } });
-      return () => window.clearTimeout(timer);
+      return;
     }
     void controls.start({ scale: [0.6, 1.15, 1], transition: { type: "spring", stiffness: 620, damping: 18 } });
   }, [pulse?.nonce, pulse?.emoji, pulse?.kind, controls, emoji]);
@@ -220,13 +216,6 @@ function ReactionChip({
           ? "border-primary/60 bg-primary/20 text-foreground"
           : "border-white/12 bg-[#0c0812]/70 text-foreground/90"
       }`}
-      style={{
-        boxShadow: glowing
-          ? "0 0 0 2px var(--brand-signal), 0 2px 12px -2px var(--brand-signal)"
-          : mine
-            ? "0 2px 10px -4px var(--brand-signal)"
-            : "0 2px 8px -4px rgba(0,0,0,0.6)",
-      }}
     >
       <span className="text-[13px]" aria-hidden="true">
         {(() => {
@@ -437,7 +426,6 @@ export function ReactionChips({
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
               className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-white/12 bg-[#0c0812]/70 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              style={{ boxShadow: "0 2px 8px -4px rgba(0,0,0,0.6)" }}
             >
               +{overflow}
             </motion.button>

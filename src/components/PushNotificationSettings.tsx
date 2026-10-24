@@ -13,6 +13,7 @@ import {
   enablePushNotifications,
   saveNotificationPrefs,
   sendTestPush,
+  webPushConfigured,
   type NotificationPrefs,
 } from "@/lib/push";
 import { toast } from "@/lib/toast";
@@ -86,7 +87,7 @@ export function PushNotificationSettings() {
   const setupMissing = prefsQuery.isError || subscriptionQuery.isError;
 
   return (
-    <section className="glass rounded-3xl border border-white/5 p-5 space-y-5">
+    <section className="space-y-5 rounded-3xl border border-border bg-card p-5">
       <div className="flex items-start gap-3">
         <Bell className="mt-0.5 h-5 w-5 text-primary" />
         <div className="min-w-0 flex-1">
@@ -97,8 +98,14 @@ export function PushNotificationSettings() {
         </div>
       </div>
 
-      {!supported ? (
-        <p className="rounded-xl border border-white/10 p-3 text-sm text-muted-foreground">
+      {!webPushConfigured ? (
+        <p className="rounded-xl border border-border p-3 text-xs leading-relaxed text-muted-foreground">
+          Background push is not set up on this server yet, so notifications arrive as in-app
+          cards and desktop alerts while RIZZ is open. Preferences below are saved and will apply
+          automatically once push is enabled.
+        </p>
+      ) : !supported ? (
+        <p className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
           {t("push_unsupported")}
         </p>
       ) : (
@@ -107,7 +114,7 @@ export function PushNotificationSettings() {
             <>
               <Button
                 variant="outline"
-                className="glass border-white/10"
+                className="border-border"
                 disabled={busy !== null}
                 onClick={() => void withBusy("disable", () => disablePushNotifications(user.id))}
               >
@@ -116,7 +123,7 @@ export function PushNotificationSettings() {
               </Button>
               <Button
                 variant="outline"
-                className="glass border-white/10"
+                className="border-border"
                 disabled={busy !== null}
                 onClick={() => void withBusy("test", sendTestPush)}
               >
@@ -138,14 +145,14 @@ export function PushNotificationSettings() {
         </div>
       )}
 
-      {setupMissing && (
-        <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-100">
-          Notification tables are not available yet. Apply <code>10_push.sql</code> in Lovable and configure the Worker before enabling push.
+      {setupMissing && webPushConfigured && (
+        <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-500">
+          Notification tables are not available yet, so preferences cannot load on this server.
         </p>
       )}
 
       {prefs && !prefsQuery.isError && (
-        <div className="space-y-4 border-t border-white/10 pt-4">
+        <div className="space-y-4 border-t border-border pt-4">
           <PrefRow label="Direct messages" checked={prefs.dms} onChange={(dms) => void patchPrefs({ dms })} />
           <PrefRow label="Calls" checked={prefs.calls} onChange={(calls) => void patchPrefs({ calls })} />
           <PrefRow label="Group mentions" checked={prefs.group_mentions} onChange={(group_mentions) => void patchPrefs({ group_mentions })} />
@@ -156,7 +163,7 @@ export function PushNotificationSettings() {
                 type="time"
                 value={prefs.quiet_start?.slice(0, 5) ?? ""}
                 onChange={(event) => void patchPrefs({ quiet_start: event.target.value ? `${event.target.value}:00` : null })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -165,7 +172,7 @@ export function PushNotificationSettings() {
                 type="time"
                 value={prefs.quiet_end?.slice(0, 5) ?? ""}
                 onChange={(event) => void patchPrefs({ quiet_end: event.target.value ? `${event.target.value}:00` : null })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -176,7 +183,7 @@ export function PushNotificationSettings() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">{t("push_muted_convos")}</Label>
               {prefs.muted_conversations.map((conversationId) => (
-                <div key={conversationId} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2">
+                <div key={conversationId} className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
                   <span className="min-w-0 flex-1 truncate text-xs">{conversationId}</span>
                   <button
                     type="button"

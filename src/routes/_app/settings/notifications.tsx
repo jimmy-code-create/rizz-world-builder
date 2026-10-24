@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DesktopAlertsSetting } from "@/components/DesktopAlertsSetting";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 import { SettingsSubPage } from "@/components/settings/SettingsSubPage";
 
@@ -17,7 +18,10 @@ function NotificationsSettingsPage() {
       description={t("notif_page_desc")}
       icon={<Bell className="h-5 w-5" />}
     >
-      <PushNotificationSettings />
+      <div className="space-y-4">
+        <DesktopAlertsSetting />
+        <PushNotificationSettings />
+      </div>
     </SettingsSubPage>
   );
 }

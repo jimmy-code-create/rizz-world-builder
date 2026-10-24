@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { MessageCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { dmThreadsKey, fetchDmThreads, type DmThread } from "@/lib/dm-threads";
 
 /**
  * Desktop two-pane messages: the conversation list beside the open chat.
@@ -12,12 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
  * React Query serves both from one cache entry and the list never disagrees with
  * the mobile page. Hidden below `lg` (the phone layout keeps its own list page).
  */
-type Thread = {
-  other: { id: string; username: string | null; display_name: string | null; avatar_url: string | null };
-  last: { body: string | null; attachment_url: string | null; created_at: string; sender_id: string };
-  unread: number;
-};
-
 function timeLabel(iso: string) {
   const date = new Date(iso);
   const now = new Date();
@@ -31,38 +25,10 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
   const { user } = useAuth();
 
   const threads = useQuery({
-    queryKey: ["dm-threads", user?.id],
-    queryFn: async (): Promise<Thread[]> => {
+    queryKey: dmThreadsKey(user?.id),
+    queryFn: async (): Promise<DmThread[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("direct_messages")
-        .select("*, sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id,username,display_name,avatar_url)")
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      const map = new Map<string, Thread>();
-      for (const message of data ?? []) {
-        const other = message.sender_id === user.id ? message.recipient : message.sender;
-        if (!other) continue;
-        const existing = map.get(other.id);
-        const isUnread = message.recipient_id === user.id && !message.read;
-        if (!existing) {
-          map.set(other.id, {
-            other,
-            last: {
-              body: message.body,
-              attachment_url: message.attachment_url,
-              created_at: message.created_at,
-              sender_id: message.sender_id,
-            },
-            unread: isUnread ? 1 : 0,
-          });
-        } else if (isUnread) {
-          existing.unread += 1;
-        }
-      }
-      return Array.from(map.values());
+      return fetchDmThreads(user.id);
     },
     enabled: !!user,
     retry: false,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot as BotIcon } from "lucide-react";
+import { Check } from "lucide-react";
 import { isHttpsUrl, type EmbedButton, type EmbedData } from "@/lib/embeds";
 import { cn } from "@/lib/utils";
 
@@ -44,21 +44,18 @@ function SafeLink({ href, children, className = "" }: { href: string; children: 
  * everything, links are https-only, images lazy-load.
  *
  * The card always fills the message column (never shrinks to its text), keeps
- * a thick accent bar with a soft glow so it reads as a card even on a phone,
- * and — for the bot greeting cards — shows the bot's mark above the title and
- * the new member's avatar (or their initial) on the right.
+ * a flat 1px border and a 4px accent bar — no glow, so a stack of cards stays
+ * quiet — and, for the bot greeting cards, shows the new member's round avatar
+ * (or their initial) on the right.
  */
 export function Embed({
   embed,
   onAction,
-  botName,
   actionDone = false,
 }: {
   embed: EmbedData;
   /** Wired by chat rows; previews simply render the button inert. */
   onAction?: (button: EmbedButton) => void;
-  /** The posting bot's name — renders the small "WELCOME" header above the title. */
-  botName?: string | null;
   /** The current member already waved at this card: keep the button disabled. */
   actionDone?: boolean;
 }) {
@@ -83,21 +80,10 @@ export function Embed({
   return (
     <article
       className="w-full overflow-hidden rounded-2xl border border-white/10 bg-[#1d1e24]"
-      style={{
-        borderLeft: `5px solid ${color}`,
-        boxShadow: `-1px 0 0 0 ${color}, 0 0 26px -12px ${color}`, 
-      }}
+      style={{ borderLeft: `4px solid ${color}` }}
     >
       <div className="flex min-w-0 items-start gap-3 p-3.5">
         <div className="min-w-0 flex-1">
-          {botName && !embed.author && (
-            <p className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#c8ff3d]">
-              <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[5px] bg-[#c8ff3d]/15">
-                <BotIcon className="h-2.5 w-2.5" aria-hidden="true" strokeWidth={2.4} />
-              </span>
-              <span className="truncate">{botName}</span>
-            </p>
-          )}
           {embed.author && (embed.author.name || embed.author.icon_url) && (
             <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#f2efe6]">
               {embed.author.icon_url && isHttpsUrl(embed.author.icon_url) && (
@@ -118,7 +104,7 @@ export function Embed({
             </p>
           )}
           {embed.title && (
-            <p className={cn("text-[17px] font-bold leading-snug text-[#f5f2e9]", (botName || embed.author) ? "mt-1.5" : "")}>
+            <p className={cn("text-[17px] font-bold leading-snug text-[#f5f2e9]", embed.author ? "mt-1.5" : "")}>
               {embed.url ? (
                 <SafeLink href={embed.url} className="hover:underline">
                   {embed.title}
@@ -163,9 +149,15 @@ export function Embed({
                 setLocalDone(true);
                 onAction?.(embed.button!);
               }}
-              className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#c8ff3d] text-[13px] font-bold text-[#0a0a0b] transition-all hover:brightness-105 active:scale-[0.99] active:bg-[#b7ea2f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d] disabled:cursor-default disabled:bg-[#c8ff3d]/20 disabled:text-[#c8ff3d]/70 disabled:active:scale-100"
+              className={cn(
+                "mt-3 inline-flex h-10 w-auto items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d] disabled:cursor-default disabled:active:scale-100",
+                done
+                  ? "border border-[#c8ff3d]/25 bg-white/[0.06] text-[#c8ff3d]"
+                  : "border border-transparent bg-[#c8ff3d] text-[#0a0a0b] hover:brightness-105 active:scale-[0.99] active:bg-[#b7ea2f]",
+              )}
             >
-              {done ? "Said hi 👋" : embed.button.label || "Say hi"}
+              {done && <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />}
+              {done ? (welcomeCard ? "Said hi" : embed.button.label || "Done") : embed.button.label || "Say hi"}
             </button>
           )}
           {(embed.footer?.text || embed.timestamp) && (
@@ -189,13 +181,16 @@ export function Embed({
               src={thumbUrl!}
               alt=""
               loading="lazy"
-              className="h-[72px] w-[72px] shrink-0 rounded-xl border border-white/10 object-cover"
+              className={cn(
+                "shrink-0 border border-white/10 object-cover",
+                welcomeCard ? "h-14 w-14 rounded-full" : "h-[72px] w-[72px] rounded-xl",
+              )}
               onError={() => setThumbOk(false)}
             />
           ) : (
             <span
               aria-hidden="true"
-              className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-xl border border-[#c8ff3d]/30 bg-[#c8ff3d]/10 text-xl font-bold text-[#c8ff3d]"
+              className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[#c8ff3d]/30 bg-[#c8ff3d]/10 text-lg font-bold text-[#c8ff3d]"
             >
               {memberInitial}
             </span>
@@ -219,14 +214,11 @@ export function Embed({
 export function EmbedList({
   embeds,
   onAction,
-  botName,
   actionDone,
 }: {
   embeds: EmbedData[] | null | undefined;
   /** Called for card buttons — chat tails wire the wave + profile open. */
   onAction?: (button: EmbedButton, embed: EmbedData) => void;
-  /** Name of the posting bot, drawn as the card's small header. */
-  botName?: string | null;
   /** The viewer already pressed this card's action. */
   actionDone?: boolean;
 }) {
@@ -237,7 +229,6 @@ export function EmbedList({
         <Embed
           key={i}
           embed={embed}
-          botName={botName}
           actionDone={actionDone}
           onAction={onAction ? (button) => onAction(button, embed) : undefined}
         />

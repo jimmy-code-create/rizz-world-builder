@@ -194,7 +194,14 @@ const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
 /** The quick-pick row above the sections. */
 const TOP_EMOJIS = EMOJIS.slice(0, 12);
 
-export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
+export function GifPicker({
+  onSelect,
+  triggerClassName = "",
+}: {
+  onSelect: (marker: string) => void;
+  /** Composer-specific trigger slot (every chat gives it a 44px square). */
+  triggerClassName?: string;
+}) {
   // GIFs are a Purify feature; emoji and stickers stay free for everyone.
   const { allowed } = usePurify();
   const { t } = useI18n();
@@ -304,7 +311,7 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
           size="icon"
           aria-label={t("emoji_picker")}
           title={t("emoji_picker")}
-          className="shrink-0 text-primary"
+          className={`shrink-0 text-primary ${triggerClassName}`}
         >
           <Smile className="h-5 w-5" />
         </Button>

@@ -1211,7 +1211,10 @@ function DMPage() {
             </div>
           )}
           <div className="flex gap-2">
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
+          <GifPicker
+            triggerClassName="h-11 w-11"
+            onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)}
+          />
           <input
             ref={imageInputRef}
             type="file"
@@ -1225,7 +1228,7 @@ function DMPage() {
             variant="ghost"
             size="icon"
             aria-label="Attach an image"
-            className="shrink-0 text-muted-foreground"
+            className="h-11 w-11 shrink-0 text-muted-foreground"
           >
             <ImagePlus className="h-5 w-5" />
           </Button>
