@@ -744,20 +744,6 @@
 .badges-page ::selection { background: var(--bz-accent); color: #fff; }
 
 
-/* ── Badge glyphs ────────────────────────────────────────────────────────────
-   Five inline marks (Main Character, Bounty, Purify, Verified, Streamer).
-   The artwork is static emblem geometry on a transparent field: no shine
-   sweep, no glow, no idle motion. Only the locked state dims it. */
-.bz-glyph {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  line-height: 0;
-}
-.bz-glyph svg { display: block; overflow: hidden; }
-
 /* Sprite badges sit in the same flex slot as the inline glyphs, so the name
    row centres every mark the same way. `line-height: 0` removes the inline
    baseline gap that used to push the row down. */
@@ -770,8 +756,6 @@
   flex: none;
 }
 .badge > svg { display: block; }
-.bz-glyph--locked svg { opacity: 0.35; filter: grayscale(1); }
-
 /* A photo with a line of text: the photo owns the frame, the caption sits under
    it on the page background instead of inside the green outgoing bubble. Same
    width as the media so the two edges line up. */

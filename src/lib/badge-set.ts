@@ -190,7 +190,7 @@ export const BADGE_SET: CanonicalBadge[] = [
     // No bar on purpose: "early" means joining in RIZZ's first 30 days, which
     // has no per-member counter — account age is a different (and wrong) rule.
     // The server awards it from the first account's join date instead.
-    name: "Early Supporter",
+    name: "Early Member",
     flavor: "Your account joined in RIZZ's first 30 days.",
     icon: ":cat_love:",
     symbol: "og",
@@ -207,7 +207,7 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     name: "HypeSquad Bravery",
     flavor: "First in, no hesitation. Joined RIZZ in the first wave.",
     icon: ":cat_hype:",
-    // A bolt, so it never collides with Early Supporter's shield.
+    // A bolt, so it never collides with Early Member's shield.
     symbol: "hypesquad-bravery",
     art: "/badges/badges.svg#hypesquad-bravery",
     tier: "legendary",
