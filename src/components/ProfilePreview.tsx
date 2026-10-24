@@ -391,7 +391,7 @@ export function ProfilePreviewDialog({
             handleExtra={
               // Keep the badges together in one compact, non-wrapping tray.
               markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={20} />
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} />
               ) : undefined
             }
             overlayActions={

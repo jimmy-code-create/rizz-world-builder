@@ -569,7 +569,7 @@ function ProfilePage() {
           }
           featuredBadge={
             nameBadges.length > 0 ? (
-              <BadgeLine badges={nameBadges} wornSlug={wornSlug} size={20} />
+              <BadgeLine badges={nameBadges} wornSlug={wornSlug} />
             ) : undefined
           }
           avatarRing={profileSurface}

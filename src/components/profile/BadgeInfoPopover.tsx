@@ -68,13 +68,11 @@ export function BadgeInfoPopover({
 export function BadgeLine({
   badges,
   wornSlug = null,
-  size = 20,
   label = "Badges",
   tray = true,
 }: {
   badges: Badge[];
   wornSlug?: string | null;
-  size?: number;
   label?: ReactNode;
   /**
    * Draws the row as one soft tray instead of loose marks. The preview sheet
@@ -98,7 +96,7 @@ export function BadgeLine({
         <BadgeInfoPopover
           key={badge.slug}
           badge={badge}
-          size={size}
+          size={20}
           worn={badge.slug === wornSlug}
         />
       ))}
