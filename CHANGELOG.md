@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-24 — Feed cards keep their ink text in Paper mode
+
+### The unreadable card
+- `.feed-post-card` paints itself with the fixed ink token (`--brand-ink-2`) in
+  every mode, but it inherited the page's text palette. In Paper mode that
+  palette flips to `#15151a`, so the display name and caption rendered at
+  1.02:1 against the card — black on black — while the muted handle stayed
+  visible.
+- The card now re-declares the ink palette for its own subtree when the page is
+  in Paper mode (`--foreground`, `--muted-foreground`, `--primary` and the
+  hairline border), so its name, caption, handle, footer and tag links read
+  exactly as they do in dark mode (16.4:1 for body text) and lime mentions are
+  unchanged. The rule is scoped to the card, so paper surfaces such as
+  "Suggested for you" keep their dark text, and dark/AMOLED modes are untouched.
+
 ## 2026-10-23 — Four name-row marks, and a frame that clears the name
 
 ### The frame no longer covers the display name

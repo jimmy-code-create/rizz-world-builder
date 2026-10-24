@@ -1416,6 +1416,22 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .feed-post-card:focus-visible {
   outline: none;
 }
+/* A feed card is an ink surface in every mode: its background is the fixed
+   --brand-ink-2 above, so it can't inherit the page's text palette. In Paper
+   mode --foreground flips to ink and the display name and caption used to
+   render black-on-black (only the muted handle stayed visible). Re-declare the
+   ink palette *inside* the card so the name, caption, handle and footer stay
+   light, tags stay lime, while the paper "Suggested for you" panel beside it
+   keeps its dark text. */
+[data-mode="light"] .feed-post-card {
+  color: var(--brand-paper);
+  --foreground: var(--brand-paper);
+  --muted-foreground: var(--brand-paper-dim);
+  --primary: var(--brand-signal);
+  --primary-foreground: var(--brand-signal-ink);
+  --border: color-mix(in srgb, var(--brand-paper) 13%, transparent);
+  --ring: var(--brand-signal);
+}
 .rizz-claim-cat {
   display: inline-grid;
   width: 1.35rem;
