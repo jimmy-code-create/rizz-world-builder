@@ -389,11 +389,9 @@ export function ProfilePreviewDialog({
             customStatus={null}
             statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
             handleExtra={
-              // Plain marks in one row, like Discord: no pill or plate behind
-              // them, so the badges read as part of the identity rather than a
-              // floating chip beside the handle.
+              // Keep the badges together in one compact, non-wrapping tray.
               markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={24} />
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} size={20} />
               ) : undefined
             }
             overlayActions={

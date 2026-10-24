@@ -2,6 +2,7 @@ import { profileBadgeLineup, type Badge } from "@/lib/badges";
 import { canonBadges, canonicalFor } from "@/lib/badge-set";
 import { Badge as BadgeMark } from "@/components/Badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 /**
  * Badge chips carry no container of their own: the vector mark sits directly
@@ -75,18 +76,30 @@ export function BadgeRow({
   max = 3,
   size = "md",
   onSelect,
+  tray = false,
 }: {
   badges: Badge[];
   max?: number;
   size?: "sm" | "md" | "lg";
   onSelect?: (badge: Badge) => void;
+  /** Wraps a profile's badges in a single Discord-style capsule. */
+  tray?: boolean;
 }) {
   const orderedBadges = profileBadgeLineup(canonBadges(badges));
   const shown = orderedBadges.slice(0, max);
   const extra = orderedBadges.length - shown.length;
   if (!shown.length) return null;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-1">
+    <div
+      className={cn(
+        "inline-flex max-w-full shrink-0 items-center gap-1",
+        tray
+          ? "w-max flex-nowrap whitespace-nowrap rounded-full border border-white/[0.07] bg-white/[0.055] px-1.5 py-0.5"
+          : "flex-wrap",
+      )}
+      role={tray ? "group" : undefined}
+      aria-label={tray ? "Badges" : undefined}
+    >
       {shown.map((b) => (
         <BadgeChip key={b.id} badge={b} size={size} onSelect={onSelect} />
       ))}

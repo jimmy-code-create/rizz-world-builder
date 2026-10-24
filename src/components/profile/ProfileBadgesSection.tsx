@@ -116,7 +116,11 @@ export function ProfileBadgesSection({
       {loading ? (
         <div className="h-8 w-48 animate-pulse rounded-full bg-white/5" aria-hidden="true" />
       ) : showcase.length ? (
-        <div className="flex flex-wrap items-center gap-1">
+        <div
+          className="inline-flex max-w-full shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap rounded-full border border-white/[0.07] bg-white/[0.055] px-1.5 py-0.5"
+          role="group"
+          aria-label="Showcased badges"
+        >
           {showcase.map((badge) => (
             <BadgeChip key={badge.id} badge={badge} size="md" onSelect={openBadgesPage} />
           ))}
@@ -139,7 +143,7 @@ export function ProfileBadgesSection({
           )}
         </p>
       ) : (
-        <BadgeRow badges={earned} max={5} onSelect={openBadgesPage} />
+        <BadgeRow badges={earned} max={5} onSelect={openBadgesPage} tray />
       )}
 
       {isOwner && editing && (

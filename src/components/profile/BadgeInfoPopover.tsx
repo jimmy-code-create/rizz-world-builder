@@ -70,7 +70,7 @@ export function BadgeLine({
   wornSlug = null,
   size = 20,
   label = "Badges",
-  tray = false,
+  tray = true,
 }: {
   badges: Badge[];
   wornSlug?: string | null;
@@ -86,11 +86,12 @@ export function BadgeLine({
   return (
     <span
       className={cn(
-        "flex flex-nowrap items-center",
+        "inline-flex w-max max-w-full shrink-0 flex-nowrap items-center whitespace-nowrap",
         tray
-          ? "gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.055] px-2 py-1"
+          ? "gap-1 rounded-full border border-white/[0.07] bg-white/[0.055] px-1.5 py-0.5"
           : "gap-1",
       )}
+      role="group"
       aria-label={String(label)}
     >
       {badges.map((badge) => (
