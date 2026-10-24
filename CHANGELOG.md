@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-24 — The trending rail reads as a feed card
+
+- The rail between the composer and "LATEST DROPS" is now an ink card of its
+  own (`--brand-ink-2`, same as a post) with taller padding and extra space
+  above and below, so it no longer hugs either neighbour.
+- "Trending" and its icon are lime and set as a small uppercase section label;
+  the chips sit on one non-wrapping row that scrolls sideways. Each chip is a
+  fixed-height pill with a subtle border, lime `#`, paper-white tag name and a
+  small muted count badge on the right (compact numbers via `formatCount`).
+
 ## 2026-10-24 — Feed cards keep their ink text in Paper mode
 
 ### The unreadable card
