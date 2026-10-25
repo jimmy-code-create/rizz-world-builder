@@ -296,6 +296,16 @@ export function AppShell() {
 
   const counts = useUnreadCounts();
 
+  // Discord-style tab title: "(3) RIZZ" while anything is unread, back to the
+  // route's own title once it is clear. The base title is captured before the
+  // first overwrite so navigation keeps working.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const total = (counts.notifications ?? 0) + (counts.messages ?? 0);
+    const base = document.title.replace(/^\(\d+\+?\)\s*/, "");
+    document.title = total > 0 ? `(${total > 99 ? "99+" : total}) ${base}` : base;
+  }, [counts.notifications, counts.messages]);
+
   const lastUnread = useRef<number | null>(null);
   const notificationCount = counts.loaded ? counts.notifications : null;
   useEffect(() => {

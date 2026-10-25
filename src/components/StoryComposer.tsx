@@ -724,7 +724,13 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       const { data: pub } = supabase.storage.from("stories").getPublicUrl(path);
       // A written caption wins; otherwise the first text overlay becomes one, so
       // stories created before the caption field still read the same.
-      const captionText = caption.trim() || overlays.find((o) => o.kind === "text")?.value?.trim() || null;
+      // Normalise to NFC so Hindi/Arabic/CJK text is stored as the same code
+      // points the keyboard produced — decomposed input used to round-trip
+      // through the canvas as missing glyphs.
+      const captionText =
+        caption.trim().normalize("NFC") ||
+        overlays.find((o) => o.kind === "text")?.value?.trim().normalize("NFC") ||
+        null;
       const visibility = AUDIENCE_OPTIONS.find((option) => option.id === audience)!.visibility;
       const base = {
         author_id: user.id,

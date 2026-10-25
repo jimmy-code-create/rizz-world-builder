@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-10-25 — deepseek-master: flat chrome, bot lobbies, share sheet
+
+- **No more chrome glow.** Voice room/call washes, connected-dot and speaking
+  halos, the account-menu accent wash, the profile Message-button shadow and the
+  lobby Join halo are gone; the story ring is flat lime (unseen) or gray (seen).
+  Nameplate/badge art and media scrims stay as content.
+- **Unicode text renders.** `--font-sans`, `--font-display` and every canvas
+  stack (story text, badge share) now end in Noto Sans / Devanagari / Arabic /
+  JP / SC / KR plus platform emoji, and story captions are stored NFC.
+- **One Button.** `primary`, `secondary`, `ghost`, `danger` (outline) and
+  `destructive` (fill) at 36/44/52 with a 12px radius; legacy names keep their
+  old look.
+- **Voice:** single status pill (Connecting / Connected / Reconnecting with
+  Retry / Failed), count = real participants, bottom bar is Mute, Deafen,
+  Camera, Activities, Leave, and Share / game stream / chat / invite / settings
+  moved into a More sheet. Music and Game share one `BotCard`, and picking a
+  game opens a shared **lobby** (`status`, Start, N players) instead of
+  launching immediately.
+- **Chat:** welcome greetings are 56px system rows ("bro joined Rizz", ghost
+  Say hi → Waved); GIFs render frameless with a badge, a skeleton and a retry
+  state; a DM story reply shows a quoted story card (`QuoteBlock`).
+- **Profile:** handle line is `@handle · presence`; Member since moved into
+  About; the action row is full-width 44px controls; the empty-bio prompt is
+  owner-only.
+- **Sharing:** one `ShareSheet` for posts and reels — search people, send to up
+  to five DMs with a note, copy the link or hand off to the OS sheet.
+- **Notifications:** the tab title shows `(N) RIZZ` while anything is unread;
+  `supabase/migrations/pending_push.sql` documents the push tables.
+
 ## 2026-10-24 — Polish pass: greeting cards, in-call grid, voice lobby
 
 - Greeting/bot cards are flat again: a 1px border and the 4px lime bar, no

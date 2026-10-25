@@ -16,6 +16,7 @@ import { renderGifSegments } from "@/lib/gif-content";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ShareSheet } from "@/components/share/ShareSheet";
 import { CloseButton } from "@/components/ui/close-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -273,6 +274,7 @@ function ReelItem({
   const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
@@ -444,10 +446,9 @@ function ReelItem({
   }
 
   const remix = () => toast.success("Remix template saved to your drafts ✨");
-  const share = () => {
-    navigator.clipboard.writeText(window.location.origin + "/u/" + post.author?.username);
-    toast.success("Link copied");
-  };
+  // Same ShareSheet as posts: DM up to five people, copy, or OS share.
+  const share = () => setShareOpen(true);
+  const reelUrl = `${window.location.origin}/p/${post.id}`;
 
   return (
       <section data-reel-index={reelIndex} className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}>
@@ -528,6 +529,13 @@ function ReelItem({
             </div>
           </div>
           <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+          <ShareSheet
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            url={reelUrl}
+            title={`@${post.author?.username ?? "someone"} on RIZZ`}
+            text={post.caption ?? null}
+          />
         </>
       ) : (
         <>

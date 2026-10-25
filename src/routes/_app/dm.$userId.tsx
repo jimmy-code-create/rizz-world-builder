@@ -43,7 +43,8 @@ import { callTopic, findJoinedChannel, subscribeSafely } from "@/lib/realtime";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderCaptionWithTags } from "@/lib/hashtags";
-import { renderGifSegments } from "@/lib/gif-content";
+import { parseMediaOnly, renderGifSegments } from "@/lib/gif-content";
+import { StoryReplyCard } from "@/components/chat/StoryReplyCard";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 
@@ -905,6 +906,9 @@ function DMPage() {
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
             const hasText = !!(rest && rest.trim());
+            // A GIF/sticker with no words is media, so it must not sit inside a
+            // lime (or dark) text bubble with its own padding.
+            const gifOnly = !(m as CachedDirectMessage).deleted_at && !m.attachment_url && !!parseMediaOnly(rest);
             const previous = filteredMsgs[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -1056,7 +1060,7 @@ function DMPage() {
                 >
                   <div
                     className={`chat-bubble message-bubble rounded-2xl text-left select-none touch-manipulation ${
-                      hasText && !m.attachment_url ? "px-4 py-2" : ""
+                      hasText && !m.attachment_url && !gifOnly ? "px-4 py-2" : ""
                     } ${
                       deliveryStatus ? "opacity-60" : ""
                     } ${
@@ -1066,14 +1070,19 @@ function DMPage() {
                         ? "message-bubble--unsent"
                         : m.attachment_url
                           ? "message-bubble--media"
-                          : hasText
-                            ? mine
-                              ? "message-bubble--outgoing"
-                              : "message-bubble--incoming"
-                            : "message-bubble--media"
+                          : gifOnly
+                            ? ""
+                            : hasText
+                              ? mine
+                                ? "message-bubble--outgoing"
+                                : "message-bubble--incoming"
+                              : "message-bubble--media"
                     }`}
                     style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                   >
+                    {m.story_id && !deletedAt && (
+                      <StoryReplyCard storyId={m.story_id} mine={mine} className="mb-1" />
+                    )}
                     {quote && (
                       <span
                         role="button"

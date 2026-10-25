@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Sliders, MessageSquare, X, Send, Headphones, Loader2 } from "lucide-react";
+import { ChevronDown, Ellipsis, Gamepad2, Grid3x3, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Sliders, MessageSquare, UserPlus, X, Send, Headphones, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -23,6 +23,7 @@ import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
 import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
 import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
 import { GameSessionsBar } from "@/components/voice/GameSessionsBar";
+import { BotCard } from "@/components/bots/BotCard";
 import type { GameSession } from "@/lib/game-sessions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { publicCustomStatus, publicStatusOf, usePresenceMap } from "@/lib/presence";
@@ -212,6 +213,7 @@ export function VoiceCallView() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
@@ -252,6 +254,7 @@ export function VoiceCallView() {
   useEffect(() => {
     if (viewOpen) return;
     setChatOpen(false);
+    setMoreOpen(false);
     setSettingsOpen(false);
     setMusicOpen(false);
     setGamesOpen(false);
@@ -322,6 +325,8 @@ export function VoiceCallView() {
   const isGameStreaming = sharingScreen && shareMode === "game";
   const viewedSession =
     gameBot.sessionsById[gameBot.viewingHostId ?? ""] ?? myGame ?? null;
+  // People in the viewed game, host included — the card's status line.
+  const gamePlayers = (gameBot.viewersByHost[gameBot.viewingHostId ?? ""] ?? []).length;
 
   const openGameSession = (session: GameSession) => {
     const joined = gameBot.join(session.hostId);
@@ -407,25 +412,37 @@ export function VoiceCallView() {
               <h1 className="mt-0.5 line-clamp-2 break-words font-display text-[19px] font-bold leading-[1.15]">
                 {call.channelName}
               </h1>
-              <div
-                role={error ? "alert" : "status"}
-                className={`mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}
-              >
-                {error ? (
-                  <span>{error}</span>
-                ) : connected ? (
-                  <>
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    <span className="font-semibold text-foreground/90">Connected</span>
-                  </>
-                ) : (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    <span>{connectTimedOut ? "Still connecting…" : "Connecting…"}</span>
-                  </>
-                )}
-                <span aria-hidden className="text-muted-foreground/40">·</span>
-                <span>{peopleCount} {peopleCount === 1 ? "person" : "people"}</span>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                {/* One status pill: Connecting → Connected, or Reconnecting/Failed
+                    after a drop, with Retry appearing only once it has stalled. */}
+                <span
+                  role={error ? "alert" : "status"}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                    error
+                      ? "border-destructive/40 bg-destructive/10 text-destructive"
+                      : connected
+                        ? "border-primary/35 bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground"
+                  }`}
+                >
+                  {error ? (
+                    <>
+                      <span className="h-1.5 w-1.5 rounded-full bg-destructive" /> Failed
+                    </>
+                  ) : connected ? (
+                    <>
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Connected
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {connectTimedOut ? "Reconnecting…" : "Connecting…"}
+                    </>
+                  )}
+                </span>
+                <span className="text-muted-foreground">
+                  {peopleCount} {peopleCount === 1 ? "person" : "people"}
+                </span>
                 {(error || connectTimedOut) && (
                   <button
                     type="button"
@@ -437,17 +454,16 @@ export function VoiceCallView() {
                 )}
               </div>
             </div>
-            {/* The strip under the header is gone; VC chat stays one tap away
-                so removing the chips does not cost the feature. */}
+            {/* Header keeps only the status and two controls: More (chat, share,
+                settings, invite) and minimize. Duplicated chips are gone. */}
             <Button
               variant="outline"
               size="icon"
-              aria-label={chatOpen ? "Close VC text chat" : "Open VC text chat"}
-              aria-pressed={chatOpen}
+              aria-label="More call options"
               className="glass h-10 w-10 shrink-0 rounded-xl border-white/10"
-              onClick={() => setChatOpen((value) => !value)}
+              onClick={() => setMoreOpen(true)}
             >
-              <MessageSquare className="h-5 w-5" />
+              <Ellipsis className="h-5 w-5" />
             </Button>
             <Button
               variant="outline"
@@ -587,9 +603,7 @@ export function VoiceCallView() {
                 <div
                   key={participant.user_id}
                   className={`relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-10 transition-all duration-200 ${
-                    speaking
-                      ? "border-primary/70 bg-primary/[0.08]"
-                      : "border-white/10 glass"
+                    speaking ? "border-primary/70" : "border-white/10 glass"
                   }`}
                 >
                   {videoStream ? (
@@ -734,70 +748,73 @@ export function VoiceCallView() {
               }`}
             >
               {musicBot.enabled && (
-                <button
-                  type="button"
-                  onClick={() => setMusicOpen(true)}
-                  aria-label="Open music controls"
-                  className="flex min-w-0 items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] px-2.5 py-2.5 text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-emerald-500/20 text-emerald-100">
-                    {musicBot.track?.artwork_url ? (
+                <BotCard
+                  tone="music"
+                  icon={
+                    musicBot.track?.artwork_url ? (
                       <img src={musicBot.track.artwork_url} alt="" className="h-9 w-9 object-cover" />
                     ) : (
                       <Music className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-emerald-200">
-                      Music bot
-                    </span>
-                    <span className="block line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">
-                      {musicBot.track
-                        ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
-                        : "Nothing queued"}
-                    </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-bold text-emerald-200">
-                    {musicBot.track && !musicBot.blocked ? (musicBot.singing ? "Singing" : "Open") : "Play"}
-                  </span>
-                </button>
+                    )
+                  }
+                  title="Music bot"
+                  status={
+                    musicBot.track
+                      ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
+                      : "Nothing queued"
+                  }
+                  action={{
+                    label: musicBot.track && !musicBot.blocked ? (musicBot.singing ? "Singing" : "Open") : "Play",
+                    onClick: () => setMusicOpen(true),
+                    disabled: musicBot.singing,
+                    primary: !musicBot.track || musicBot.blocked,
+                  }}
+                  expanded={false}
+                  onToggle={() => setMusicOpen(true)}
+                />
               )}
 
-              {/* GAME BOT: ready-made games that play as an overlay over the call. */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (viewedSession) openGameSession(viewedSession);
-                  else setGamesOpen(true);
-                }}
-                aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
-                className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/30 bg-primary/[0.06] px-2.5 py-2.5 text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/20 text-primary">
-                  {liveGame ? (
+              {/* GAME BOT: same BotCard as music, with a shared session state. */}
+              <BotCard
+                icon={
+                  liveGame ? (
                     <img src={liveGame.icon} alt="" className="h-9 w-9 object-cover" />
                   ) : (
                     <Gamepad2 className="h-4 w-4" aria-hidden="true" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[10.5px] font-bold uppercase tracking-wider text-primary">
-                    {gameBot.isHost ? "Your game" : "Game bot"}
-                  </span>
-                  <span className="block line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">
-                    {liveGame
-                      ? gameBot.isHost
-                        ? liveGame.name
-                        : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
-                      : roomActivity.activity
-                        ? roomActivity.activity.gameName
-                        : "No game picked yet"}
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-full bg-primary/15 px-2 py-1 text-[10px] font-bold text-primary">
-                  {liveGame ? (gameBot.isHost ? "Open" : "Join") : "Pick game"}
-                </span>
-              </button>
+                  )
+                }
+                title={gameBot.isHost ? "Your game" : "Game bot"}
+                status={
+                  viewedSession
+                    ? `${viewedSession.game.name} · ${viewedSession.status}${
+                        gamePlayers > 1 ? ` · ${gamePlayers} players` : ""
+                      }`
+                    : roomActivity.activity
+                      ? `${roomActivity.activity.gameName} · live`
+                      : "No game picked"
+                }
+                action={{
+                  label: viewedSession
+                    ? gameBot.isHost
+                      ? viewedSession.status === "lobby"
+                        ? "Start"
+                        : "Open"
+                      : "Join"
+                    : "Pick game",
+                  onClick: () => {
+                    if (viewedSession && gameBot.isHost && viewedSession.status === "lobby") {
+                      gameBot.startGame();
+                    } else if (viewedSession) {
+                      openGameSession(viewedSession);
+                    } else {
+                      setGamesOpen(true);
+                    }
+                  },
+                  primary: !viewedSession,
+                }}
+                expanded={false}
+                onToggle={() => setGamesOpen(true)}
+              />
             </div>
             </div>
             {playing && !isMobileView && !immersive && roomActivity.activity && (
@@ -868,24 +885,6 @@ export function VoiceCallView() {
               <span className="text-[10px] font-semibold leading-none">{deafened ? "Undeafen" : "Deafen"}</span>
             </button>
 
-            {/* Share Screen */}
-            <button
-              type="button"
-              onClick={toggleScreenShare}
-              disabled={!screenSupported}
-              title={screenSupported ? undefined : "Screen sharing isn't available in this browser."}
-              aria-label={sharingScreen ? "Stop sharing screen" : "Share screen"}
-              aria-pressed={sharingScreen}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
-                sharingScreen
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {sharingScreen ? <ScreenShareOff className="h-5 w-5 mb-0.5" /> : <ScreenShare className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{sharingScreen ? "Stop" : "Share"}</span>
-            </button>
-
             {/* Camera */}
             <button
               type="button"
@@ -902,39 +901,19 @@ export function VoiceCallView() {
               <span className="text-[10px] font-semibold leading-none">Camera</span>
             </button>
 
-            {/* Game stream — only the game surface, never the whole desktop. */}
+            {/* Activities — the shared Games hub, replacing the old header chip. */}
             <button
               type="button"
-              onClick={() => (isGameStreaming ? toggleScreenShare() : startGameShare())}
-              disabled={!screenSupported}
-              title={
-                isGameStreaming
-                  ? "Stop streaming your game"
-                  : "Stream only a game tab or window, never your whole desktop"
-              }
-              aria-label={isGameStreaming ? "Stop game stream" : "Stream only your game"}
-              aria-pressed={isGameStreaming}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
-                isGameStreaming
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
+              onClick={() => setGamesOpen(true)}
+              aria-label="Open activities and games"
+              className={`flex min-h-[56px] min-w-[56px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
+                roomActivity.activity
+                  ? "bg-primary text-primary-foreground hover:brightness-105"
                   : "glass border-white/10 text-foreground hover:bg-white/10"
               }`}
             >
-              <Radio className="h-5 w-5 mb-0.5" />
-              <span className="text-[10px] font-semibold leading-none">
-                {isGameStreaming ? "Stop" : "Game"}
-              </span>
-            </button>
-
-            {/* Settings */}
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Voice settings"
-              className="glass border-white/10 text-foreground hover:bg-white/10 flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95"
-            >
-              <Sliders className="h-5 w-5 mb-0.5 text-primary" />
-              <span className="text-[10px] font-semibold leading-none">Settings</span>
+              <Grid3x3 className="mb-0.5 h-5 w-5" />
+              <span className="text-[10px] font-semibold leading-none">Activities</span>
             </button>
           </div>
 
@@ -943,7 +922,7 @@ export function VoiceCallView() {
               variant="outline"
               aria-label="Leave call"
               onClick={handleLeaveClick}
-              className="min-h-[50px] shrink-0 rounded-2xl border-destructive/40 bg-destructive/15 px-3.5 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
+              className="min-h-[56px] shrink-0 rounded-2xl border-destructive/40 bg-destructive/15 px-3.5 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 active:scale-95"
             >
               <PhoneOff className="h-5 w-5" />
               <span>Leave</span>
@@ -1038,6 +1017,80 @@ export function VoiceCallView() {
             onEnd={() => void handleEndGame()}
           />
         )}
+
+        {/* More — chat, share, invite and voice settings live here so the
+            control bar stays five controls wide on a 360px phone. */}
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent
+            side="bottom"
+            className="glass-strong rounded-t-3xl border-white/10 p-4"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          >
+            <SheetHeader className="mb-3 text-left">
+              <SheetTitle className="font-display text-sm font-bold">Call options</SheetTitle>
+            </SheetHeader>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="secondary"
+                className="h-12 justify-start gap-2 rounded-xl text-[13px]"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setChatOpen(true);
+                }}
+              >
+                <MessageSquare className="h-4 w-4 text-primary" /> Text chat
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-12 justify-start gap-2 rounded-xl text-[13px]"
+                disabled={!screenSupported}
+                onClick={() => {
+                  setMoreOpen(false);
+                  toggleScreenShare();
+                }}
+              >
+                {sharingScreen ? <ScreenShareOff className="h-4 w-4 text-primary" /> : <ScreenShare className="h-4 w-4 text-primary" />}
+                {sharingScreen ? "Stop sharing" : "Share screen"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-12 justify-start gap-2 rounded-xl text-[13px]"
+                disabled={!screenSupported}
+                onClick={() => {
+                  setMoreOpen(false);
+                  if (isGameStreaming) toggleScreenShare();
+                  else startGameShare();
+                }}
+              >
+                <Radio className="h-4 w-4 text-primary" />
+                {isGameStreaming ? "Stop game stream" : "Stream a game"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-12 justify-start gap-2 rounded-xl text-[13px]"
+                onClick={() => {
+                  setMoreOpen(false);
+                  void navigator.clipboard
+                    ?.writeText(window.location.href)
+                    .then(() => toast.success("Call link copied"))
+                    .catch(() => toast.error("Couldn't copy the link"));
+                }}
+              >
+                <UserPlus className="h-4 w-4 text-primary" /> Invite
+              </Button>
+              <Button
+                variant="secondary"
+                className="col-span-2 h-12 justify-start gap-2 rounded-xl text-[13px]"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setSettingsOpen(true);
+                }}
+              >
+                <Sliders className="h-4 w-4 text-primary" /> Voice settings
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>

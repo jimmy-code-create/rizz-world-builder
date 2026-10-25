@@ -77,6 +77,77 @@ export function Embed({
   const showFallbackThumb = welcomeCard && !showThumb && !!memberInitial;
   const done = actionDone || localDone;
 
+  /**
+   * P3: bot greetings are system rows, not 430px billboards.
+   *
+   * The welcome embed used to be a full card with a title, description, avatar
+   * block and footer — one join could fill the channel. It is now a single
+   * 56px row (avatar, "name joined realm", one ghost Wave button) so ten joins
+   * read as a short list. The wave action is unchanged and still idempotent.
+   */
+  if (welcomeCard) {
+    const joinedName =
+      (embed.description ?? "").replace(/\s*just joined.*$/i, "").trim() ||
+      embed.author?.name ||
+      "A new member";
+    const realmName = (embed.title ?? "")
+      .replace(/^Welcome to\s*/i, "")
+      .replace(/!$/, "")
+      .trim();
+    return (
+      <div className="flex min-h-[56px] w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card px-2.5 py-2">
+        <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-secondary">
+          {showThumb ? (
+            <img src={thumbUrl} alt="" loading="lazy" className="h-8 w-8 object-cover" />
+          ) : (
+            <span
+              className="grid h-8 w-8 place-items-center text-[12px] font-bold text-primary"
+              aria-hidden="true"
+            >
+              {memberInitial || "?"}
+            </span>
+          )}
+        </span>
+        <p className="min-w-0 flex-1 text-[13px] leading-snug text-foreground">
+          <span className="font-semibold">{joinedName}</span>
+          {realmName ? (
+            <>
+              {" joined "}
+              <span className="font-semibold">{realmName}</span>
+            </>
+          ) : (
+            " joined"
+          )}
+        </p>
+        <button
+          type="button"
+          disabled={done}
+          aria-pressed={done}
+          onClick={(event) => {
+            event.stopPropagation();
+            setLocalDone(true);
+            onAction?.(embed.button!);
+          }}
+          className={cn(
+            "inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default",
+            done
+              ? "border border-border bg-secondary/60 text-muted-foreground"
+              : "border border-border bg-secondary text-foreground hover:bg-secondary/80",
+          )}
+        >
+          {done ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-primary" strokeWidth={3} aria-hidden="true" />
+              Waved
+            </>
+          ) : (
+            embed.button?.label?.replace(/^\S+\s*/, "") || "Say hi"
+          )}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <article
       className="w-full overflow-hidden rounded-2xl border border-white/10 bg-[#1d1e24]"

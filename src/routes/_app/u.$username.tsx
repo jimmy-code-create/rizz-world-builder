@@ -16,6 +16,7 @@ import type { Badge as BadgeType } from "@/lib/badges";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Award,
+  CalendarDays,
   Film,
   Hash,
   Heart,
@@ -426,7 +427,7 @@ function ProfilePage() {
       {isMe ? (
         <>
           <Link to="/settings/profile">
-            <Button className="h-9 border-0 bg-primary px-3.5 text-[12.5px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90">
+            <Button className="h-11 flex-1 rounded-xl border-0 bg-primary px-4 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90">
               Edit profile
             </Button>
           </Link>
@@ -434,7 +435,7 @@ function ProfilePage() {
             variant="outline"
             size="icon"
             aria-label="Share profile"
-            className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+            className="h-11 w-11 rounded-xl border-border bg-secondary hover:bg-secondary/80"
             onClick={() => void shareProfile()}
           >
             <Share2 className="h-4 w-4" />
@@ -444,7 +445,7 @@ function ProfilePage() {
         <>
           {!blockStatus.data && (
             <Button
-              className="h-9 gap-1.5 border-0 bg-primary px-3 text-[12.5px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90"
+              className="h-11 flex-1 gap-1.5 rounded-xl border-0 bg-primary px-4 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90"
               onClick={() => nav({ to: "/dm/$userId", params: { userId: profile.id } })}
             >
               <MessageCircle className="h-4 w-4" /> Message
@@ -455,10 +456,10 @@ function ProfilePage() {
             onClick={() => followMut.mutate()}
             disabled={followMut.isPending}
             className={cn(
-              "h-9 px-3 text-[12.5px] font-bold",
+              "h-11 rounded-xl px-4 text-[13px] font-semibold",
               isFollowing
-                ? "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
-                : "border-white/15 bg-transparent text-foreground hover:bg-white/[0.06]",
+                ? "border-border bg-secondary text-foreground hover:bg-secondary/80"
+                : "border-border bg-transparent text-foreground hover:bg-secondary/60",
             )}
           >
             {isFollowing ? "Following" : "Follow"}
@@ -469,7 +470,7 @@ function ProfilePage() {
                 variant="outline"
                 size="icon"
                 aria-label="More profile options"
-                className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                className="h-11 w-11 rounded-xl border-border bg-secondary hover:bg-secondary/80"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -492,7 +493,7 @@ function ProfilePage() {
           variant="outline"
           size="icon"
           aria-label="Share profile"
-          className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+          className="h-11 w-11 rounded-xl border-border bg-secondary hover:bg-secondary/80"
           onClick={() => void shareProfile()}
         >
           <Share2 className="h-4 w-4" />
@@ -534,11 +535,6 @@ function ProfilePage() {
           customStatus={customStatus}
           statusLine={
             <>
-              {!isMe && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {statusLabel(presenceStatus)}
-                </p>
-              )}
               {customStatus && (customStatus.emoji || customStatus.text) ? (
                 <StatusPill
                   emoji={customStatus.emoji}
@@ -557,14 +553,23 @@ function ProfilePage() {
             </>
           }
           handleExtra={
+            // The handle line carries the handle and the presence label only —
+            // "Member since …" moved into the About card below.
             <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              <img
-                src="/brand/rizz-cat-logo.svg"
-                alt=""
-                aria-hidden
-                className="h-3.5 w-3.5 shrink-0"
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  presenceStatus === "online"
+                    ? "bg-emerald-400"
+                    : presenceStatus === "idle"
+                      ? "bg-amber-400"
+                      : presenceStatus === "dnd"
+                        ? "bg-destructive"
+                        : "bg-muted-foreground/50",
+                )}
               />
-              Joined {joined}
+              {statusLabel(presenceStatus)}
             </span>
           }
           featuredBadge={
@@ -582,7 +587,7 @@ function ProfilePage() {
           </motion.div>
 
           <div className="relative z-20">
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-2 px-1 md:px-2">
+        <div className="mt-3 flex w-full items-center gap-2 px-1 md:px-2">
           {headerActions}
         </div>
 
@@ -617,7 +622,7 @@ function ProfilePage() {
           </button>
         </div>
 
-        {(profile.bio || profile.interests?.length > 0) && (
+        {(isMe || profile.bio || profile.interests?.length > 0) && (
           <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -686,11 +691,11 @@ function ProfilePage() {
                   }
                 />
               </div>
-            ) : (
+            ) : isMe ? (
               <p className="mt-2 text-[13px] italic text-muted-foreground">
                 No bio yet — tap Edit to introduce yourself.
               </p>
-            )}
+            ) : null}
 
             {profile.interests?.length > 0 && (
               <div className="mt-3.5 flex flex-wrap gap-1.5" aria-label="Profile interests">
@@ -708,6 +713,12 @@ function ProfilePage() {
                 })}
               </div>
             )}
+
+            {/* Member since lives here, not on the handle line. */}
+            <div className="mt-3.5 flex items-center gap-2 border-t border-white/[0.06] pt-3 text-[12px] text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Member since {joined}
+            </div>
           </motion.section>
         )}
 

@@ -172,8 +172,140 @@ sentence-case labels, shared components over ad-hoc copies.
   currency is **Paws**, never "Rizz" on a balance; brand copy stays RIZZ.
 - Checks: `bun tsc -b --noEmit` clean.
 
+## P2 — voice channel + Game Bot (done)
+
+- **Status pill:** `VoiceCallView` header now shows one pill — Connecting → Connected,
+  Reconnecting… after 12 s with a Retry action, or Failed (alert) with Retry. The count is
+  `participants.length`, so bots/music never inflate "N people".
+- **Controls:** header keeps More + minimize only. Bottom bar = Mute, Deafen, Camera, Activities,
+  Leave (Leave pinned, red outline, never in the scroller). Share screen, game stream, text chat,
+  invite (copies the call link) and voice settings moved into a **More** sheet. Header chips stay
+  removed. Labels are 10px inside ≥56px targets and never truncate (the strip scrolls with an edge
+  fade).
+- **Tiles:** 4:3, two columns up to four people, directly under the header; speaking tile is a lime
+  border + ring only (no background wash, no glow); muted mic badge on the avatar; name pill at the
+  bottom.
+- **BotCard** (`src/components/bots/BotCard.tsx`): one shared card for Music Bot and Game Bot — 36px
+  icon, title, one 2-line status, one action button, chevron. Music shows track/"Nothing queued" and
+  a Play/Open action; Game shows `Game · lobby · 2 players` style status and Start/Join/Pick game.
+- **Game lobby:** `GameSession` gained `status: lobby | playing | finished` (normalised for older
+  broadcasts), `openLobby()` / `startGame()` added, and `RealmGamesHub` now opens a **lobby** instead
+  of dropping everyone straight into a game. Status travels on the same `vc-game-bot:<channel>`
+  broadcast, so it survives reconnect and late joiners see it. Unit-tested in
+  `tests/game-sessions.test.mjs`.
+- **Cut (per cut list):** the compact invite card in VC text chat, built-in Tic-Tac-Toe / RPS, and
+  host-moderated move validation — invitations are the card's Join/Start actions for now.
+
+## P3 — bot messages + composer (partial)
+
+- Welcome/greeting embeds now render as a **56px system row** (`src/components/chat/Embed.tsx`):
+  32px round avatar (initial fallback), "**name** joined **realm**", one ghost **Say hi** button that
+  becomes a muted **Waved** with a check and disables after one tap. No card frame, no glow, no
+  "WELCOME" label.
+- BOT tag already used a filled `surface-2` chip (`BotBadge` + `.bot-tag`), left as is.
+- **Cut:** join grouping into one row per 10 minutes (needs a message-list aggregation pass) and the
+  single shared `Composer` across realm/DM/group/comments. The overlapping composer icons were
+  already fixed to 44px slots in the previous pass; a full Composer refactor stayed out of scope to
+  avoid regressing four send paths.
+
+## P4 — profile page layout (done)
+
+- Handle line is `@handle · {presence}` only — no join date, with a presence dot; "Member since
+  Oct 2026" moved into the About card as its last row with a calendar icon.
+- Action row is full width at 360/1280: Message = primary, flex 1; Follow/Following = secondary;
+  "…" = 44px square. Own profile: Edit profile (primary, flex 1) + Share. Heights are 44px and the
+  lime button shadows are gone.
+- "No bio yet — tap Edit…" renders only on your own profile; others get nothing there.
+- Stats stay four equal columns with dividers; Paws uses the paw icon and formatted numbers.
+- Page background still uses the profile's own background — the tint is inside the header box, the
+  timeline below is solid `bg`.
+
+## P5 — story viewer + reply card (partial)
+
+- **"?????"**: no server-side mangling exists; the cause is glyph coverage. Fixed at the root: every
+  UI and canvas font stack now ends with Noto Sans / Devanagari / Arabic / JP / SC / KR + emoji
+  families, and story captions are normalised to **NFC** before insert (`StoryComposer`). If a stored
+  caption is already `?????`, that row's text is unrecoverable — see `BLOCKED.md`.
+- **Story reply card:** new shared `QuoteBlock` + `StoryReplyCard`; a DM whose `story_id` is set now
+  renders a 48×80 story thumbnail, a muted "Replied to your story" (or "their story" for the sender)
+  label and a lime rail, replacing the plain bubble top. Tapping opens the media while it is live,
+  otherwise it says the story expired. No schema change needed — `direct_messages.story_id` already
+  existed and `StoriesStrip` already wrote it.
+- Unseen/seen story rings are now lime / gray (no Instagram gradient, no glow).
+- **Cut:** the full Instagram gesture rebuild (70/30 tap zones, swipe between people, progress-bar
+  rewrite, floating reaction row, viewers sheet). The existing viewer keeps its timer, likes,
+  reactions and reply bar.
+
+## P6 — story editor (already met, no new work)
+
+- Direct move + template photo slots already exist in `StoryComposer`: pointer drag on the stage,
+  dragging with a selected slot fills it, double-tap a filled slot to replace, dashed empty slots
+  open the file picker (`accept="image/*"`). **Cut:** pinch/rotate, snap guides, drag-to-trash and the
+  Camera/Gallery chooser sheet — the native picker covers both on phones.
+
+## P7 — GIFs and media in chat (done)
+
+- `GifContent` is now the one media renderer for DMs, groups, realm chat and comments: a media-only
+  message renders with **no bubble**, `max-w-[min(72vw,280px)]`, 16px radius, 1px border, a **GIF**
+  badge, a dominant skeleton while loading and a "Couldn't load GIF. Retry" state. Stickers stay
+  frameless and smaller.
+- `parseMediaOnly()` in `src/lib/gif-content.ts` detects the marker-only case; the DM bubble now skips
+  its lime frame and padding for it (`dm.$userId.tsx`), so a sent GIF is media, not text.
+- **Cut:** IntersectionObserver playback limits/fullscreen viewer/forward actions. The empty "__"
+  bubble came from GIF markers that fail the regex or a media-less body; those now fall through to the
+  retry card instead of a blank line.
+
+## P8 — replies, mentions (partial)
+
+- Reply already round-trips through `direct_messages.reply_to` + the `↪` body prefix, and the sent
+  message shows a quote rail above the bubble (tapping jumps to the original).
+- New shared `QuoteBlock` is now the single quotation component for replies and story replies.
+- **Cut (per cut list):** forward picker, forward-to-realms, swipe-to-reply, settings-level mention
+  preferences. Mentions in DMs/groups keep using the existing `MentionAutocomplete`.
+
+## P9 — sharing (done, DM + link)
+
+- One `ShareSheet` (`src/components/share/ShareSheet.tsx`) used by posts and reels: search people,
+  multi-select up to 5, optional note, Send (one `direct_messages` row per target), Copy link, and
+  "Share via…" (OS sheet, clipboard fallback).
+- **Cut:** realm-channel targets (needs a postable-channel picker and channel-message share cards),
+  share-to-your-story, Save/Report rows.
+
+## P10 — notifications (in-app done, push pending SQL)
+
+- Document title now shows `(3) RIZZ` while anything is unread (notifications + DMs), restoring the
+  route title when clear.
+- The Discord-style in-app banner, sound, desktop alerts, prefs and inbox Messages tab all landed in
+  the previous pass and are unchanged.
+- Push schema is now also a real migration file: `supabase/migrations/pending_push.sql`
+  (`push_subscriptions`, `notification_prefs`, RLS + grants, idempotent). Delivery (`private.send_push`,
+  DM/call triggers, Cloudflare Worker at `/push`) already exists in `backend-sql/10_push.sql`. Nothing
+  is sent until `private.push_config` (worker_url + shared_secret) and the VAPID keys are set — see
+  `BLOCKED.md`.
+- **Cut:** per-realm notification levels and the iOS "Add to Home Screen" card.
+
+## P11 — final audit (done)
+
+- Re-ran the glow grep: remaining hits are content art (nameplates, badges, story particles, game
+  canvases, media scrims) plus a handful of feature-specific focus rings (`shadow-[0_0_0_1px_var(...)]`),
+  which are 1px outlines, not glows. Every chrome glow named in P1 is gone.
+- Checked layout constraints by reading code: action rows and control bars use flex with `flex-1`,
+  `min-w-0` and 44px/56px targets at 360px; the call control strip scrolls with a mask; the bot cards
+  clamp to two lines; modals cap at `92dvh`.
+- `prefers-reduced-motion`: existing global rules in `styles.css` plus the components that added
+  animation this pass (status spinner, BotCard chevron) use CSS transitions only, so the global
+  reduced-motion rule covers them.
+- Checks: `bun tsc -b --noEmit` clean; `bun run test` green (16 suites, game-session lobby checks
+  added). `bun run build` still cannot finish in this sandbox (killed at chunk rendering, see P0).
+
+## Pending SQL
+
+- `supabase/migrations/pending_push.sql` — idempotent copy of the live push tables (apply with
+  `backend-sql/10_push.sql` for the send function + triggers).
+- Nothing else is pending: story replies and GIFs use existing columns.
+
 ## Next
-- P2: voice channel + Game Bot (lobby state, BotCard, one control bar).
+- Open PR `deepseek-master → main` (do not merge) and hand over the 10-step test checklist.
 
 ---
 

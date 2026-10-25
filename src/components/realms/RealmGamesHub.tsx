@@ -64,11 +64,13 @@ export function RealmGamesHub({ open, onOpenChange, realmId, roomId, roomName }:
       });
       return;
     }
-    gameBot.launch(game);
+    // Picking a game opens a lobby, not a solo launch: everyone can join and
+    // the host presses Start (or End) from the same shared card.
+    gameBot.openLobby(game);
     overlay.expand();
     onOpenChange(false);
-    toast.success(`Your ${game.name} game is live`, {
-      description: `Everyone in ${roomName ?? "the call"} can press Join game on your card — they start their own copy, not yours.`,
+    toast.success(`${game.name} lobby is open`, {
+      description: `Everyone in ${roomName ?? "the call"} sees your card and can join. Press Start when you're ready.`,
     });
   };
 

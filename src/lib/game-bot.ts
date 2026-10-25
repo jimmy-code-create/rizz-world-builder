@@ -9,9 +9,11 @@ import {
   mySession as findMySession,
   removeSession,
   sessionList,
+  normalizeStatus,
   setSessionJoinUrl,
   setSessionPaused,
   setSessionRoomCode,
+  setSessionStatus,
   stopIntent,
   upsertSession,
   viewFor,
@@ -127,6 +129,8 @@ function normalizeSession(raw: unknown): GameSession | null {
     game: game as GameEntry,
     startedAt: value.startedAt,
     paused: !!value.paused,
+    // Older broadcasts predate the lobby; they are already playing.
+    status: normalizeStatus(value.status),
     roomCode: typeof value.roomCode === "string" && value.roomCode ? value.roomCode : null,
     joinUrl:
       typeof value.joinUrl === "string" && isSafeJoinUrl(value.joinUrl)
@@ -302,6 +306,7 @@ function launch(game: GameEntry): GameSession | null {
     game,
     startedAt: Date.now(),
     paused: false,
+    status: "playing",
     roomCode: null,
     joinUrl: null,
   };
@@ -311,6 +316,44 @@ function launch(game: GameEntry): GameSession | null {
   trackPresence();
   broadcastSession(session);
   return session;
+}
+
+/**
+ * Open a game in its lobby instead of dropping everyone into it: the host can
+ * change the pick and start it when enough people pressed Join. This is the
+ * same session shape as `launch`, only the shared status differs.
+ */
+function openLobby(game: GameEntry): GameSession | null {
+  if (!meId) return null;
+  const session: GameSession = {
+    sessionId: makeSessionId(),
+    hostId: meId,
+    hostName: meName,
+    game,
+    startedAt: Date.now(),
+    paused: false,
+    status: "lobby",
+    roomCode: null,
+    joinUrl: null,
+  };
+  sessions = upsertSession(sessions, session);
+  viewingHostId = meId;
+  endedSessions.delete(session.sessionId);
+  emit();
+  trackPresence();
+  broadcastSession(session);
+  return session;
+}
+
+/** Host only: move my own lobby to playing (everyone sees it immediately). */
+function startGame() {
+  if (!meId || viewingHostId !== meId) return;
+  const updated = setSessionStatus(sessions, meId, "playing");
+  const mine = updated[meId];
+  if (!mine) return;
+  sessions = updated;
+  emit();
+  broadcastSession(mine);
 }
 
 function join(hostId: string): boolean {
@@ -410,6 +453,8 @@ export function useGameBot(
   const current = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const start = useCallback((game: GameEntry) => launch(game), []);
+  const lobby = useCallback((game: GameEntry) => openLobby(game), []);
+  const begin = useCallback(() => startGame(), []);
   const joinSession = useCallback((hostId: string) => join(hostId), []);
   const leaveSession = useCallback(() => leave(), []);
   const stopSession = useCallback(() => stop(), []);
@@ -421,6 +466,8 @@ export function useGameBot(
   return {
     ...current,
     launch: start,
+    openLobby: lobby,
+    startGame: begin,
     join: joinSession,
     leave: leaveSession,
     stop: stopSession,

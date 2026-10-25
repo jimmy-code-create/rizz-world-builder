@@ -20,6 +20,12 @@ export type GameSession = {
   game: GameEntry;
   startedAt: number;
   paused: boolean;
+  /**
+   * A session has a small, shared lifecycle: `lobby` while people gather,
+   * `playing` once the host starts (this is what every launcher did before),
+   * `finished` after the host ends it. Late joiners see the same state.
+   */
+  status: GameSessionStatus;
   /** Optional room / team code the host can paste from the game itself. */
   roomCode: string | null;
   /** Optional full invite link; viewers open this instead of the base URL. */
@@ -27,6 +33,13 @@ export type GameSession = {
 };
 
 export type GameSessionMap = Record<string, GameSession>;
+
+export type GameSessionStatus = "lobby" | "playing" | "finished";
+
+/** Unknown/missing statuses from older clients are treated as already playing. */
+export function normalizeStatus(value: unknown): GameSessionStatus {
+  return value === "lobby" || value === "finished" ? value : "playing";
+}
 
 /** Never let a host-supplied "invite link" become javascript:/data:. */
 export function isSafeJoinUrl(url: string | null | undefined): url is string {
@@ -131,6 +144,17 @@ export function setSessionPaused(
   const current = sessions[hostId];
   if (!current) return sessions;
   return { ...sessions, [hostId]: { ...current, paused } };
+}
+
+/** Host-only lifecycle change; everyone watching sees it on the next broadcast. */
+export function setSessionStatus(
+  sessions: GameSessionMap,
+  hostId: string,
+  status: GameSessionStatus,
+): GameSessionMap {
+  const current = sessions[hostId];
+  if (!current) return sessions;
+  return { ...sessions, [hostId]: { ...current, status } };
 }
 
 /** Invite link: only http(s), trimmed, or cleared. */

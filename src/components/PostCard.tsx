@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
+import { ShareSheet } from "@/components/share/ShareSheet";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
@@ -351,13 +352,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   // The permalink for a single post, so a link can point at the post itself
   // and not just the profile it happens to sit on.
   const postUrl = typeof window !== "undefined" ? `${window.location.origin}/p/${post.id}` : "";
-  const sharePost = async () => {
-    if (typeof navigator !== "undefined" && (navigator as any).share) {
-      try { await (navigator as any).share({ title: `@${post.author?.username} on RIZZ`, text: post.caption ?? "", url: postUrl }); return; } catch {}
-    }
-    navigator.clipboard.writeText(postUrl);
-    toast.success("Link copied");
-  };
+  // The shared ShareSheet replaces the old one-tap OS sheet: it can send the
+  // post straight to up to five DMs in the same step, or still hand off to the
+  // OS share sheet / clipboard.
+  const [shareOpen, setShareOpen] = useState(false);
+  const sharePost = () => setShareOpen(true);
 
   // Tapping the photo (not the caption) opens the full-screen viewer.
   const media = useMediaViewer();
@@ -769,6 +768,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       <AnimatePresence>
         {showComments && <CommentsThread postId={post.id} />}
       </AnimatePresence>
+
+      <ShareSheet
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        url={postUrl}
+        title={`@${post.author?.username ?? "someone"} on RIZZ`}
+        text={post.caption ?? null}
+      />
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="glass-strong border-border">

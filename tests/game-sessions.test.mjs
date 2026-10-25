@@ -12,11 +12,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   makeSessionId,
+  normalizeStatus,
   removeSession,
   sessionList,
   setSessionJoinUrl,
   setSessionPaused,
   setSessionRoomCode,
+  setSessionStatus,
   stopIntent,
   upsertSession,
   viewFor,
@@ -156,5 +158,17 @@ assert.ok(
   "the initial snapshot must be built after the state it reads",
 );
 console.log("ok - the store's initial snapshot is declared after the state it reads");
+
+// Lobby lifecycle: picking a game opens a shared lobby, Start flips it to
+// playing for everyone, and unknown statuses from older clients are safe.
+const lobby = upsertSession({}, { ...jimmy, status: "lobby" });
+assert.equal(lobby.jimmy.status, "lobby");
+const started = setSessionStatus(lobby, "jimmy", "playing");
+assert.equal(started.jimmy.status, "playing");
+assert.equal(lobby.jimmy.status, "lobby", "the previous map must stay immutable");
+assert.equal(normalizeStatus(undefined), "playing");
+assert.equal(normalizeStatus("nonsense"), "playing");
+assert.equal(normalizeStatus("lobby"), "lobby");
+console.log("ok - a picked game is a lobby until the host starts it");
 
 console.log("\nAll game session checks passed.");
