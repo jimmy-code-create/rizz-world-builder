@@ -564,3 +564,25 @@ ACCEPT
 - PASS — bot cards are full-width stacked rows with 15px titles and no “Singing” pseudo-button.
 - PASS — solid background, no cyan/purple tint, no glow on the new controls.
 - PASS — no audio/connection code touched; `bun tsc -b --noEmit` and `bun run test` pass. Build still OOMs in this sandbox at chunk rendering (unchanged, environmental).
+
+### Phase 35: Reaction chips were unreadable, and the picker was a teaser
+
+- **Why the chip looked odd:** the 32px chip still carried the old chat tuck (`-mt-1.5`), so it
+  overlapped the bubble's bottom corner, and its fill was the translucent `--overlay-hover`
+  (7% paper). Sitting over a lime bubble that mixture read as a muddy olive smear with a lime edge —
+  the chip and the message merged into one shape.
+- **Fix:** the fill is now opaque `var(--secondary)`; the reacted chip is
+  `color-mix(primary 16%, secondary)` with a full 1px lime border and lime count, so it stays lime
+  but never bleeds into the message behind it. Hover is a brightness step (flat, no glow), press is
+  still `scale(.97)`. `overlap` spacing is now a 4px gap (`mt-1`) instead of `-6px`; cards keep 8px.
+  The `+N` overflow chip and the 32px add-reaction square use the same opaque fill.
+- **Full emoji sheet:** every reaction picker now renders the complete set from the new
+  `src/components/emoji/standard-emojis.ts` (216 Unicode emoji, platform font) instead of the
+  24-item `MORE_REACTIONS` teaser: recents → six quick → cat emoji → full 8-column grid, scrolling
+  inside `max-h` with `overscroll-contain` so the chat behind never moves. `RealmEmojiPicker` imports
+  the same list (its duplicate local copy is gone); the long-press `chat/ReactionPicker` shows the
+  full grid too. `MORE_REACTIONS` stays in `lib/reactions` for any other caller.
+- **Checks:** `bun tsc -b --noEmit` clean, `bun run test` all suites pass (the action-sheet contract
+  now asserts the full grid), `bunx vite build` builds 2876 modules. `bun run build` still dies in
+  the nitro step (SIGKILL / 180s cap) — environmental, unchanged.
+

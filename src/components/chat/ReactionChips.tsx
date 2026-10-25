@@ -47,7 +47,7 @@ export function ReactionChips({
   canReact?: boolean;
   /** Unsent or deleted messages never show or accept reactions. */
   hidden?: boolean;
-  /** `overlap` tucks the row under a bubble; cards use `below`. */
+  /** `overlap` is a tight 4px gap under a bubble; cards use `below` (8px). */
   spacing?: "overlap" | "below";
   pulse?: ReactionPulse | null;
   onToggle: (emoji: string) => Promise<boolean>;

@@ -76,13 +76,14 @@ await check("reactions are a smiley on the message, not an expanded tray", async
 
 await check("the reaction picker is compact but complete", async () => {
   assert.ok(picker.includes("QUICK_REACTIONS"));
-  assert.ok(picker.includes("MORE_REACTIONS"));
+  assert.ok(picker.includes("STANDARD_EMOJIS"), "the wider grid is the full emoji set, not a 24-item teaser");
   assert.ok(picker.includes("CAT_EMOJI_MANIFEST"), "custom cat emoji stay available");
   assert.ok(picker.includes("ArrowLeft"), "there is a way back to the actions");
   assert.ok(picker.includes('aria-label="Back to message actions"'));
   assert.ok(picker.includes("bg-[#2b2d31]"), "Discord's reaction tray colour");
   assert.ok(picker.includes("min-h-[44px]"), "quick reactions keep 44px targets");
-  assert.ok(picker.includes("max-h-40"), "the wider emoji grid scrolls instead of growing forever");
+  assert.ok(picker.includes("max-h-56"), "the wider emoji grid scrolls instead of growing forever");
+  assert.ok(picker.includes("overscroll-contain"), "scrolling the emoji grid never scrolls the chat behind it");
 });
 
 await check("the action sheet rises quickly but still respects reduced motion", async () => {

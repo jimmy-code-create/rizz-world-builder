@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SmilePlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CatEmojiPicker } from "@/components/emoji/CatEmojiPicker";
+import { STANDARD_EMOJIS } from "@/components/emoji/standard-emojis";
 import { ReactionGlyph, ReactorsSheet } from "@/components/reactions/ReactorsSheet";
 import { useAuth } from "@/lib/auth";
 import {
@@ -19,7 +20,6 @@ import {
   reactionSourceKey,
   sortReactionGroups,
   QUICK_REACTIONS,
-  MORE_REACTIONS,
   type ReactionItemSource,
 } from "@/lib/reactions";
 
@@ -124,7 +124,7 @@ export function ReactionPicker({ onPick }: { onPick: (emoji: string) => void }) 
       </div>
 
       <div className="mt-2 grid grid-cols-8 gap-1 border-t border-border pt-2">
-        {MORE_REACTIONS.map((emoji) => (
+        {STANDARD_EMOJIS.map((emoji) => (
           <button
             key={`more-${emoji}`}
             type="button"
@@ -272,8 +272,11 @@ export function ReactionRow({
   // The row only exists once someone reacted.
   if (!sorted.length) return null;
 
+  // Chat rows used to tuck the 24px chip 6px into the bubble. The chip is 32px
+  // now, so overlapping it read as a smear across the bubble's corner: every
+  // spacing value keeps the row fully below the message.
   const spacingClass =
-    spacing === "overlap" ? "-mt-1.5" : spacing === "below" ? "mt-2" : "mt-1.5";
+    spacing === "overlap" ? "mt-1" : spacing === "below" ? "mt-2" : "mt-1.5";
 
   return (
     <>
@@ -310,7 +313,7 @@ export function ReactionRow({
             type="button"
             onClick={() => setExpanded(true)}
             aria-label={`Show ${overflow} more reaction${overflow === 1 ? "" : "s"}`}
-            className="relative inline-flex h-8 shrink-0 select-none items-center rounded-lg border border-transparent bg-[var(--overlay-hover)] px-2 text-sm font-semibold tabular-nums text-muted-foreground transition-colors hover:bg-[var(--overlay-active)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-['']"
+            className="relative inline-flex h-8 shrink-0 select-none items-center rounded-lg border border-transparent bg-[var(--secondary)] px-2 text-sm font-semibold tabular-nums text-muted-foreground transition-colors hover:brightness-125 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-['']"
           >
             +{overflow}
           </button>
@@ -323,7 +326,7 @@ export function ReactionRow({
               aria-label="Add reaction"
               title="Add reaction"
               onClick={(event) => event.stopPropagation()}
-              className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--overlay-hover)] text-muted-foreground transition-colors hover:bg-[var(--overlay-active)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-0 after:content-['']"
+              className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--secondary)] text-muted-foreground transition-colors hover:brightness-125 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-0 after:content-['']"
             >
               <SmilePlus className="h-[18px] w-[18px]" aria-hidden />
             </button>
@@ -493,20 +496,18 @@ function ReactionChip({
       aria-disabled={disabled || pending}
       aria-label={`${reactionShortcode(emoji)} ${count}`}
       data-source={source.kind}
-      style={
-        mine
-          ? {
-              background: "var(--overlay-selected)",
-              borderColor: "color-mix(in srgb, var(--primary) 45%, transparent)",
-              color: "var(--primary)",
-            }
-          : undefined
-      }
-      className={`relative inline-flex h-8 shrink-0 select-none items-center gap-1.5 rounded-lg px-2 leading-none transition-colors active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] ${
-        mine
-          ? "border"
-          : "border border-transparent bg-[var(--overlay-hover)] text-foreground hover:bg-[var(--overlay-active)]"
-      } ${failed ? "reaction-shake" : ""} ${bump ? "reaction-bump" : ""}`}
+      // Opaque fills: a translucent overlay picked up the lime bubble behind it,
+      // so a chip on your own message looked washed-out olive instead of a chip.
+      style={{
+        background: mine
+          ? "color-mix(in srgb, var(--primary) 16%, var(--secondary))"
+          : "var(--secondary)",
+        borderColor: mine ? "var(--primary)" : "transparent",
+        color: mine ? "var(--primary)" : "var(--foreground)",
+      }}
+      className={`relative inline-flex h-8 shrink-0 select-none items-center gap-1.5 rounded-lg border px-2 leading-none transition-[filter,transform] hover:brightness-125 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] ${
+        failed ? "reaction-shake" : ""
+      } ${bump ? "reaction-bump" : ""}`}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         longPressed.current = false;

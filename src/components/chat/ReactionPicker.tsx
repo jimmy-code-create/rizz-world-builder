@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
-import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
+import { QUICK_REACTIONS } from "@/lib/reactions";
+import { STANDARD_EMOJIS } from "@/components/emoji/standard-emojis";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { CAT_EMOJI_MANIFEST, catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 import { cn } from "@/lib/utils";
@@ -67,8 +68,8 @@ export function ReactionPicker({
       </div>
 
       {showMore && (
-        <div className="mt-1.5 grid max-h-40 grid-cols-8 gap-0.5 overflow-y-auto rounded-lg border border-white/[0.06] bg-[#2b2d31] p-1">
-          {MORE_REACTIONS.map((emoji) => (
+        <div className="mt-1.5 grid max-h-56 grid-cols-8 gap-0.5 overflow-y-auto overscroll-contain rounded-lg border border-white/[0.06] bg-[#2b2d31] p-1">
+          {STANDARD_EMOJIS.map((emoji) => (
             <button
               key={emoji}
               type="button"
