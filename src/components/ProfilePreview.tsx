@@ -455,7 +455,7 @@ export function ProfilePreviewDialog({
               <div className="flex items-center gap-2">
                 <Button
                   onClick={handleMessage}
-                  className="h-11 flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground shadow-[0_10px_24px_-16px_var(--brand-signal)] hover:bg-primary/90 active:bg-primary/85"
+                  className="h-11 flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground hover:bg-primary/90 active:bg-primary/85"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Message
@@ -499,7 +499,7 @@ export function ProfilePreviewDialog({
               variant="outline"
               className="h-11 w-full border-white/15 bg-white/[0.02] text-[13px] font-bold text-foreground transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
             >
-              View Full Profile
+              View full profile
             </Button>
 
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">

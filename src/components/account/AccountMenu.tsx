@@ -360,11 +360,6 @@ export function AccountMenu({
               background: menuBanner.background,
             }}
           />
-          {/* Same accent wash as the profile card, so the two surfaces match. */}
-          <span
-            className="absolute inset-0"
-            style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
-          />
           <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
         </span>
         <span className="flex items-center gap-3 px-3">

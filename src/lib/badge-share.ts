@@ -24,8 +24,11 @@ const CREAM = "#f4f3ee";
 const MUTED = "#a0a1a8";
 const INK = "#080a0e";
 const LIME = "#c8ff3d";
-const DISPLAY = '"Bricolage Grotesque", sans-serif';
-const SANS = '"Instrument Sans", sans-serif';
+// Same glyph fallbacks as the app: a display name or handle can be non-Latin.
+const UNICODE_FALLBACK =
+  '"Noto Sans", "Noto Sans Devanagari", "Noto Sans Arabic", "Noto Sans JP", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"';
+const DISPLAY = `"Bricolage Grotesque", ${UNICODE_FALLBACK}, sans-serif`;
+const SANS = `"Instrument Sans", ${UNICODE_FALLBACK}, sans-serif`;
 
 function loadImage(src: string, crossOrigin?: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

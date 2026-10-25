@@ -642,7 +642,6 @@ function CallPage() {
       className="fixed inset-0 z-[120] flex flex-col overscroll-none bg-background text-foreground"
       style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(60% 50% at 50% 30%, rgba(201,255,61,0.22), transparent 60%)" }} />
 
       {/* Remote video fills when available */}
       {cam || remoteHasVideo ? (

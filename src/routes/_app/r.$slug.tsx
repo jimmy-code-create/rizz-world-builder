@@ -1604,7 +1604,6 @@ function RealmPage() {
             ) : (
               <div className="flex flex-col items-center">
                 <div className="relative mb-4">
-                  <div className="absolute -inset-3 rounded-full bg-primary/15 blur-xl" />
                   <div className="relative grid h-16 w-16 place-items-center rounded-3xl border border-primary/30 bg-primary/10 text-primary">
                     <Volume2 className="h-7 w-7" />
                   </div>
@@ -1621,7 +1620,7 @@ function RealmPage() {
                 <Button
                   type="button"
                   onClick={() => openCallView()}
-                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-[0_18px_40px_-18px_var(--brand-signal)] hover:bg-primary/90"
+                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
                 >
                   <Mic className="h-5 w-5" /> Open Voice Call
                 </Button>
@@ -1640,7 +1639,7 @@ function RealmPage() {
                   onClick={() =>
                     joinChannel({ id: activeRoom.id, realmId: c.id, name: activeRoom.name })
                   }
-                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-[0_18px_40px_-18px_var(--brand-signal)] hover:bg-primary/90 active:scale-[0.99]"
+                  className="h-14 w-full gap-2 rounded-2xl bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90 active:scale-[0.99]"
                 >
                   <Mic className="h-5 w-5" />
                   {joiningVoice ? "Connecting…" : "Join Voice Channel"}

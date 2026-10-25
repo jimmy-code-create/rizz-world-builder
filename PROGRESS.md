@@ -148,8 +148,32 @@ sentence-case labels, shared components over ad-hoc copies.
 - The push backend already exists (Worker + DB triggers in `backend-sql/10_push.sql`), so P10 is a
   client + settings + migration-file job, not a new service.
 
+## P1 — glows, tokens, buttons, fonts (done)
+
+- **Glow grep** (`box-shadow|drop-shadow|text-shadow|filter: blur|radial-gradient|linear-gradient`)
+  hit 137 lines in: ExternalVideoEmbed, StoriesStrip, StoryComposer, AccountMenu,
+  GroupInviteMessageCard, ReactionBurst, ChatStoryPlayer, effects/registry, ForumHero, MusicPlayer,
+  welcome-tour.css, PollBlock, BannerGradientPicker, ProfileHeader, VerifiedSeal, PostReactionsSheet,
+  rizz-coach-view.css, VoiceCallView, lib/banner, lib/chat-wallpaper, lib/story-creator/content,
+  lib/story-generation, call.$userId, purify, r.$slug, reels, u.$username, styles.css.
+  Removed every chrome glow: voice room header wash, connected-dot glow, speaking-tile double glow,
+  call screen wash, account-menu accent wash, profile Message-button lime shadow, lobby Join/Open
+  button lime shadows + blurred halo, story heart glow, story ring Instagram gradient, DM presence dot
+  glow, "View Full Profile" casing. Remaining `linear-gradient`/`text-shadow` hits are *content* —
+  nameplate/badge art, story particles, code-drawn effects, media scrims — and stay by design.
+- **Fonts:** `--font-sans` / `--font-display` now end in a shared `--font-unicode-fallback`
+  (Noto Sans / Devanagari / Arabic / JP / SC / KR + platform emoji), and every canvas stack
+  (`RIZZ_*`, poster, serif, round) plus the badge-share canvas do the same.
+- **Buttons:** one `Button` with `primary` (lime/ink), `secondary` (surface + 1px border), `ghost`,
+  `danger` (red outline) and `destructive` (red fill, confirm dialogs only); heights 36 (`default`),
+  44 (`md`) and 52 (`lg`), radius 12, weight 600. Legacy variant names keep their old look.
+- **Currency:** the product already labels spendable currency **Paws** everywhere it is a stat
+  (`Paws` in profile stats, preview, drops, badge progress); "RIZZ" is the brand/score name. Decision:
+  currency is **Paws**, never "Rizz" on a balance; brand copy stays RIZZ.
+- Checks: `bun tsc -b --noEmit` clean.
+
 ## Next
-- P1 (glow/tokens/buttons/fonts + one currency name), after the user says "next".
+- P2: voice channel + Game Bot (lobby state, BotCard, one control bar).
 
 ---
 

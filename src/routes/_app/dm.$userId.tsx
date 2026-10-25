@@ -796,7 +796,7 @@ function DMPage() {
           <p className="font-bold truncate flex items-center gap-1.5">
             {other.data?.display_name || other.data?.username}
             {peerStatus !== "offline" && (
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
             )}
           </p>
           {peerCustom && (

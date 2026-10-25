@@ -272,7 +272,7 @@ export function StoriesStrip() {
                 className={`relative h-16 w-16 rounded-full p-[2.5px] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                   myStories.length > 0
                     ? myHasUnseen
-                      ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_12px_rgba(220,39,67,0.35)]"
+                      ? "bg-primary"
                       : "border-2 border-border"
                     : "border-2 border-dashed border-border hover:border-primary/60"
                 }`}
@@ -330,7 +330,7 @@ export function StoriesStrip() {
                 <div
                   className={`relative h-16 w-16 rounded-full p-[2.5px] ${
                     unseen
-                      ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_14px_rgba(220,39,67,0.3)]"
+                      ? "bg-primary"
                       : "border-2 border-border"
                   }`}
                 >
@@ -775,7 +775,7 @@ function StoryViewer({
                     className="pointer-events-none absolute grid place-items-center"
                     aria-hidden="true"
                   >
-                    <Heart className="h-24 w-24 fill-primary text-primary drop-shadow-[0_0_24px_rgba(255,65,150,0.65)]" />
+                    <Heart className="h-24 w-24 fill-primary text-primary" />
                   </motion.span>
                 )}
               </AnimatePresence>

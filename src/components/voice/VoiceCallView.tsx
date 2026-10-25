@@ -399,11 +399,6 @@ export function VoiceCallView() {
         aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(201,255,61,0.14), transparent 65%)" }}
-        />
         <header className="relative shrink-0 border-b border-white/5 px-4 pb-3 pt-4">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
@@ -420,7 +415,7 @@ export function VoiceCallView() {
                   <span>{error}</span>
                 ) : connected ? (
                   <>
-                    <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(201,255,61,0.9)]" />
+                    <span className="h-2 w-2 rounded-full bg-primary" />
                     <span className="font-semibold text-foreground/90">Connected</span>
                   </>
                 ) : (
@@ -593,7 +588,7 @@ export function VoiceCallView() {
                   key={participant.user_id}
                   className={`relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-10 transition-all duration-200 ${
                     speaking
-                      ? "border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(201,255,61,0.45),0_0_28px_-6px_rgba(201,255,61,0.45)]"
+                      ? "border-primary/70 bg-primary/[0.08]"
                       : "border-white/10 glass"
                   }`}
                 >
@@ -604,9 +599,7 @@ export function VoiceCallView() {
                       <div className="relative">
                         <Avatar
                           className={`h-14 w-14 border-2 border-white/10 transition-all duration-200 sm:h-16 sm:w-16 ${
-                            speaking
-                              ? "border-transparent ring-2 ring-primary shadow-[0_0_0_5px_rgba(201,255,61,0.18),0_0_26px_rgba(201,255,61,0.5)]"
-                              : ""
+                          speaking ? "border-transparent ring-2 ring-primary" : ""
                           }`}
                         >
                           <AvatarImage src={participant.user?.avatar_url ?? undefined} />

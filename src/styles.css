@@ -57,8 +57,16 @@
   --color-rizz-glow: transparent;
   /* Display: Bricolage Grotesque — editorial and slightly awkward on purpose.
      Text: Instrument Sans. Fallbacks are plain system faces, never Inter. */
-  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, ui-sans-serif, sans-serif;
-  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Glyph fallbacks are part of the law: our display/text faces cover Latin
+     only, so every stack ends with real Noto families for Devanagari, Arabic,
+     CJK and emoji. Without them a Hindi or Japanese story renders as tofu. */
+  --font-unicode-fallback: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Arabic",
+    "Noto Sans JP", "Noto Sans SC", "Noto Sans KR", "Apple Color Emoji",
+    "Segoe UI Emoji", "Noto Color Emoji";
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, ui-sans-serif,
+    var(--font-unicode-fallback), sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    var(--font-unicode-fallback), sans-serif;
 }
 
 :root {

@@ -8,10 +8,20 @@
 /* Fonts: match RIZZ (Bricolage Grotesque display, Instrument Sans body) */
 /* ------------------------------------------------------------------ */
 
-export const RIZZ_DISPLAY = `"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif`;
-export const RIZZ_SANS = `"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif`;
-export const RIZZ_MONO = `ui-monospace, "Cascadia Mono", Menlo, monospace`;
-export const RIZZ_HAND = `"Segoe Print", "Bradley Hand", cursive`;
+/**
+ * Glyph fallbacks for canvas text.
+ *
+ * A story typed in Hindi, Arabic, Japanese or emoji used to fall through to a
+ * font with no glyphs at all — the rasterized media then read as tofu, or as
+ * literal "?????" in some system fonts. Every stack below therefore ends with
+ * real Noto families plus the platform emoji faces, exactly like `--font-sans`.
+ */
+export const UNICODE_FALLBACK = `"Noto Sans", "Noto Sans Devanagari", "Noto Sans Arabic", "Noto Sans JP", "Noto Sans SC", "Noto Sans KR", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
+
+export const RIZZ_DISPLAY = `"Bricolage Grotesque", "Helvetica Neue", Arial, ${UNICODE_FALLBACK}, sans-serif`;
+export const RIZZ_SANS = `"Instrument Sans", system-ui, -apple-system, "Segoe UI", ${UNICODE_FALLBACK}, sans-serif`;
+export const RIZZ_MONO = `ui-monospace, "Cascadia Mono", Menlo, ${UNICODE_FALLBACK}, monospace`;
+export const RIZZ_HAND = `"Segoe Print", "Bradley Hand", ${UNICODE_FALLBACK}, cursive`;
 
 export type FontId =
   | "rizz-display"
@@ -32,10 +42,18 @@ export const FONTS: Array<{ id: FontId; label: string; stack: string }> = [
   {
     id: "poster-condensed",
     label: "Poster",
-    stack: `"Arial Narrow", "Helvetica Neue", Arial, sans-serif`,
+    stack: `"Arial Narrow", "Helvetica Neue", Arial, ${UNICODE_FALLBACK}, sans-serif`,
   },
-  { id: "serif-quote", label: "Quote Serif", stack: `Georgia, "Times New Roman", serif` },
-  { id: "round-soft", label: "Round Soft", stack: `"Comic Sans MS", "Chalkboard SE", sans-serif` },
+  {
+    id: "serif-quote",
+    label: "Quote Serif",
+    stack: `Georgia, "Times New Roman", ${UNICODE_FALLBACK}, serif`,
+  },
+  {
+    id: "round-soft",
+    label: "Round Soft",
+    stack: `"Comic Sans MS", "Chalkboard SE", ${UNICODE_FALLBACK}, cursive`,
+  },
 ];
 
 export function fontStack(id: FontId): string {

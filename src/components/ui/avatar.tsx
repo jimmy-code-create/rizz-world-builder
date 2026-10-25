@@ -99,7 +99,7 @@ export function UserAvatar({
         className={cn(
           "relative flex h-full w-full shrink-0 overflow-hidden rounded-full",
           storyStatus === "unseen"
-            ? "p-[2.5px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-[0_0_10px_rgba(220,39,67,0.3)]"
+            ? "p-[2.5px] bg-primary"
             : storyStatus === "seen"
               ? "p-[2px] border border-white/20"
               : ""
