@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Ellipsis, Gamepad2, Grid3x3, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Sliders, MessageSquare, UserPlus, X, Send, Headphones, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AudioLines, ChevronDown, Ellipsis, Gamepad2, MicOff, Music, MonitorPlay, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Volume2, VolumeX, Sliders, MessageSquare, UserPlus, X, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
@@ -31,6 +31,10 @@ import { CustomStatusLine, StatusDotButton } from "@/components/presence/StatusD
 import { ActivityPanel, JoinGameBanner } from "@/components/voice/ActivityPanel";
 import { VoiceActivityOverlay } from "@/components/voice/VoiceActivityOverlay";
 import { VideoTile } from "@/components/voice/VideoTile";
+import { VoiceControlBar } from "@/components/voice/VoiceControlBar";
+import { computeVoiceLayout, voiceParticipantLabel } from "@/lib/voice-layout";
+import { useThrottledValue } from "@/hooks/use-throttled-value";
+import { useViewportWidth } from "@/hooks/use-viewport";
 import { getGame, useRoomActivity, type RoomActivity } from "@/lib/activities";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -172,7 +176,7 @@ export function VoiceCallView() {
     viewOpen,
     closeView,
     participants,
-    speakingIds,
+    speakingIds: speakingIdsRaw,
     remoteStreams,
     localCameraStream,
     localScreenStream,
@@ -234,6 +238,51 @@ export function VoiceCallView() {
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
   // Real people only: the music/game bots are helpers, not callers.
   const peopleCount = participants.length;
+  const viewportWidth = useViewportWidth();
+  // Audio levels arrive many times a second. Cap them at 10 Hz before they
+  // touch React, then derive the set once per update: a busy room no longer
+  // re-renders every tile on every analyser tick.
+  const speakingKey = useThrottledValue(speakingIdsRaw.join(","), 100);
+  const speakingIds = useMemo(() => (speakingKey ? speakingKey.split(",") : []), [speakingKey]);
+  const layout = useMemo(
+    () =>
+      computeVoiceLayout({
+        count: participants.length,
+        width: viewportWidth,
+        hasVideo: cameraOn || remoteStreams.length > 0,
+      }),
+    [participants.length, viewportWidth, cameraOn, remoteStreams.length],
+  );
+
+  // Desktop shortcuts: M mute, D deafen, V camera. Never while typing.
+  useEffect(() => {
+    if (!viewOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT"
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "m") {
+        event.preventDefault();
+        toggleMute();
+      } else if (key === "d") {
+        event.preventDefault();
+        toggleDeafen();
+      } else if (key === "v") {
+        event.preventDefault();
+        toggleCamera();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [viewOpen, toggleMute, toggleDeafen, toggleCamera]);
   const connected = !error && /^connected/i.test(status);
   // A spinner that never stops is worse than no spinner: after this long,
   // say so and offer the same Retry the error state uses.
@@ -381,13 +430,14 @@ export function VoiceCallView() {
   // The grid changes shape with the call: one person gets a portrait tile,
   // two stay side by side, five or six use a third column. Fewer people never
   // leave two tiny tiles stranded in a wall of empty space.
-  const tileCount = participants.length;
   const playerGridClass =
-    tileCount <= 1
-      ? "max-w-md grid-cols-1"
-      : tileCount <= 4
-        ? "max-w-2xl grid-cols-2"
-        : "max-w-3xl grid-cols-2 sm:grid-cols-3";
+    layout.tier === "solo"
+      ? "max-w-sm grid-cols-1"
+      : layout.tier === "pair"
+        ? "max-w-md grid-cols-1"
+        : layout.tier === "quad"
+          ? "max-w-2xl grid-cols-2"
+          : "max-w-3xl grid-cols-2 sm:grid-cols-3";
 
   return (
     // A voice call takes over the screen: the tiles, the music bot and the
@@ -398,81 +448,73 @@ export function VoiceCallView() {
           their state, and the game keeps running) but out of sight, so
           browsing the feed never stops a round. */}
       <div
-        className={`fixed inset-0 z-[130] flex flex-col bg-[#0b0714] text-foreground ${
+        className={`fixed inset-0 z-[130] flex flex-col bg-background text-foreground ${
           viewOpen ? "" : "invisible pointer-events-none"
         }`}
         aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
-        <header className="relative shrink-0 border-b border-white/5 px-4 pb-3 pt-4">
-          <div className="flex items-start gap-2">
+        <header className="flex h-14 shrink-0 items-center border-b border-border px-3">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Voice channel</p>
-              {/* Two lines, never a fragment: a long channel name stays readable. */}
-              <h1 className="mt-0.5 line-clamp-2 break-words font-display text-[19px] font-bold leading-[1.15]">
+              <h1 className="truncate text-[17px] font-semibold leading-tight">
                 {call.channelName}
               </h1>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                {/* One status pill: Connecting → Connected, or Reconnecting/Failed
-                    after a drop, with Retry appearing only once it has stalled. */}
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 <span
                   role={error ? "alert" : "status"}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                    error
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : connected
-                        ? "border-primary/35 bg-primary/10 text-primary"
-                        : "border-border bg-card text-muted-foreground"
-                  }`}
+                  className="inline-flex items-center gap-1.5"
                 >
-                  {error ? (
-                    <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-destructive" /> Failed
-                    </>
-                  ) : connected ? (
-                    <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Connected
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {connectTimedOut ? "Reconnecting…" : "Connecting…"}
-                    </>
-                  )}
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 rounded-full ${
+                      error
+                        ? "bg-destructive"
+                        : connected
+                          ? "bg-primary"
+                          : "bg-[#f5b932] motion-safe:animate-pulse"
+                    }`}
+                  />
+                  {error ? "Failed" : connected ? "Connected" : connectTimedOut ? "Reconnecting" : "Connecting"}
                 </span>
-                <span className="text-muted-foreground">
+                <span aria-hidden>·</span>
+                <span>
                   {peopleCount} {peopleCount === 1 ? "person" : "people"}
                 </span>
+                {speakingIds.length > 0 && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="text-foreground/80">{speakingIds.length} speaking</span>
+                  </>
+                )}
                 {(error || connectTimedOut) && (
                   <button
                     type="button"
                     onClick={retry}
-                    className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
+                    className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-button)] px-2 text-xs font-semibold text-primary hover:bg-[var(--overlay-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <RefreshCw className="h-3 w-3" /> Retry
                   </button>
                 )}
               </div>
             </div>
-            {/* Header keeps only the status and two controls: More (chat, share,
-                settings, invite) and minimize. Duplicated chips are gone. */}
             <Button
-              variant="outline"
-              size="icon"
-              aria-label="More call options"
-              className="glass h-10 w-10 shrink-0 rounded-xl border-white/10"
-              onClick={() => setMoreOpen(true)}
-            >
-              <Ellipsis className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               aria-label="Minimize call"
-              className="glass h-10 w-10 shrink-0 rounded-xl border-white/10"
+              className="h-10 w-10 shrink-0 rounded-full"
               onClick={closeView}
             >
               <ChevronDown className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="More call options"
+              className="h-10 w-10 shrink-0 rounded-full"
+              onClick={() => setMoreOpen(true)}
+            >
+              <Ellipsis className="h-5 w-5" />
             </Button>
           </div>
         </header>
@@ -602,9 +644,17 @@ export function VoiceCallView() {
               return (
                 <div
                   key={participant.user_id}
-                  className={`relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-3xl border p-3 pb-10 transition-all duration-200 ${
-                    speaking ? "border-primary/70" : "border-white/10 glass"
-                  }`}
+                  role="group"
+                  aria-label={voiceParticipantLabel({
+                    name: participant.user?.display_name || username,
+                    speaking,
+                    muted: participant.muted,
+                    video: !!videoStream,
+                  })}
+                  style={{ maxHeight: layout.tileMaxHeight }}
+                  className={`relative flex min-h-[140px] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border bg-surface-2 p-3 pb-10 transition-[border-color] duration-150 ${
+                    videoStream ? "aspect-video" : ""
+                  } ${speaking ? "border-primary" : "border-border"}`}
                 >
                   {videoStream ? (
                     <VideoTile stream={videoStream} />
@@ -612,14 +662,15 @@ export function VoiceCallView() {
                     <>
                       <div className="relative">
                         <Avatar
-                          className={`h-14 w-14 border-2 border-white/10 transition-all duration-200 sm:h-16 sm:w-16 ${
-                          speaking ? "border-transparent ring-2 ring-primary" : ""
+                          style={{ width: layout.avatarSize, height: layout.avatarSize }}
+                          className={`border-2 transition-[box-shadow] duration-150 ${
+                            speaking ? "border-transparent ring-[3px] ring-primary" : "border-border"
                           }`}
                         >
                           <AvatarImage src={participant.user?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
                         </Avatar>
-                        <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-[#0b0714] p-[2px]">
+                        <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-background p-[2px]">
                           <StatusDotButton
                             userId={participant.user_id}
                             username={username}
@@ -632,16 +683,10 @@ export function VoiceCallView() {
                           <span
                             aria-label="Muted"
                             title="Muted"
-                            className="absolute -bottom-1 -left-1 z-20 grid h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#0b0714]/95 text-destructive shadow-sm"
+                            className="absolute -bottom-1 -left-1 z-20 grid h-6 w-6 place-items-center rounded-full border border-border bg-background text-destructive"
                           >
                             <MicOff className="h-3 w-3" />
                           </span>
-                        )}
-                        {speaking && (
-                          <span
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -inset-1 rounded-full animate-ping bg-primary/30"
-                          />
                         )}
                       </div>
                       {(playingGame || (tileCustom && (tileCustom.emoji || tileCustom.text))) &&
@@ -742,19 +787,14 @@ export function VoiceCallView() {
             {/* Bot strip: compact entries under the people grid. Music and game
                 are helpers, not people, so they never take a people-sized tile
                 and never push the grid into empty space. */}
-            <div
-              className={`mx-auto mt-3 grid w-full max-w-2xl gap-2 ${
-                musicBot.enabled ? "grid-cols-2" : "grid-cols-1"
-              }`}
-            >
+            <div className="mx-auto mt-3 grid w-full max-w-2xl grid-cols-1 gap-3">
               {musicBot.enabled && (
                 <BotCard
-                  tone="music"
                   icon={
                     musicBot.track?.artwork_url ? (
-                      <img src={musicBot.track.artwork_url} alt="" className="h-9 w-9 object-cover" />
+                      <img src={musicBot.track.artwork_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <Music className="h-4 w-4" aria-hidden="true" />
+                      <Music className="h-5 w-5" aria-hidden="true" />
                     )
                   }
                   title="Music bot"
@@ -764,11 +804,15 @@ export function VoiceCallView() {
                       : "Nothing queued"
                   }
                   action={{
-                    label: musicBot.track && !musicBot.blocked ? (musicBot.singing ? "Singing" : "Open") : "Play",
+                    label: musicBot.track && !musicBot.blocked ? "Open" : "Play",
                     onClick: () => setMusicOpen(true),
-                    disabled: musicBot.singing,
                     primary: !musicBot.track || musicBot.blocked,
                   }}
+                  trailing={
+                    musicBot.singing ? (
+                      <AudioLines className="h-4 w-4" role="img" aria-label="Playing" />
+                    ) : undefined
+                  }
                   expanded={false}
                   onToggle={() => setMusicOpen(true)}
                 />
@@ -778,9 +822,9 @@ export function VoiceCallView() {
               <BotCard
                 icon={
                   liveGame ? (
-                    <img src={liveGame.icon} alt="" className="h-9 w-9 object-cover" />
+                    <img src={liveGame.icon} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <Gamepad2 className="h-4 w-4" aria-hidden="true" />
+                    <Gamepad2 className="h-5 w-5" aria-hidden="true" />
                   )
                 }
                 title={gameBot.isHost ? "Your game" : "Game bot"}
@@ -835,112 +879,34 @@ export function VoiceCallView() {
           </div>
         </div>
 
-        {/* Full now-playing + queue + transport live in the music sheet; the
-            bot strip above is just the entry point. */}
-        <div
-          className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
-        >
-          {/* Controls scroll sideways; Leave is its own pinned button so it can
-              never be pushed off the edge of a narrow phone. */}
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
-            {/* The control strip fades at its right edge, so a narrow phone shows
-                that there is more instead of chopping "Settings" in half. */}
-            <div
-              className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-5 [&>button]:shrink-0"
-              style={{
-                maskImage: "linear-gradient(to right, #000 calc(100% - 1.25rem), transparent)",
-                WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 1.25rem), transparent)",
-              }}
-            >
-            {/* Mute */}
-            <button
-              type="button"
-              onClick={toggleMute}
-              aria-label={muted ? "Unmute microphone" : "Mute microphone"}
-              aria-pressed={!muted}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                muted
-                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
-                  : "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-              }`}
-            >
-              {muted ? <MicOff className="h-5 w-5 mb-0.5" /> : <Mic className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{muted ? "Unmute" : "Mute"}</span>
-            </button>
-
-            {/* Deafen */}
-            <button
-              type="button"
-              onClick={toggleDeafen}
-              aria-label={deafened ? "Undeafen incoming audio" : "Deafen incoming audio"}
-              aria-pressed={deafened}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                deafened
-                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {deafened ? <VolumeX className="h-5 w-5 mb-0.5 text-destructive" /> : <Headphones className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{deafened ? "Undeafen" : "Deafen"}</span>
-            </button>
-
-            {/* Camera */}
-            <button
-              type="button"
-              onClick={toggleCamera}
-              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-              aria-pressed={cameraOn}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                cameraOn
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {cameraOn ? <Video className="h-5 w-5 mb-0.5" /> : <VideoOff className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">Camera</span>
-            </button>
-
-            {/* Activities — the shared Games hub, replacing the old header chip. */}
-            <button
-              type="button"
-              onClick={() => setGamesOpen(true)}
-              aria-label="Open activities and games"
-              className={`flex min-h-[56px] min-w-[56px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                roomActivity.activity
-                  ? "bg-primary text-primary-foreground hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              <Grid3x3 className="mb-0.5 h-5 w-5" />
-              <span className="text-[10px] font-semibold leading-none">Activities</span>
-            </button>
-          </div>
-
-            {/* Leave — pinned outside the scroller, always reachable. */}
-            <Button
-              variant="outline"
-              aria-label="Leave call"
-              onClick={handleLeaveClick}
-              className="min-h-[56px] shrink-0 rounded-2xl border-destructive/40 bg-destructive/15 px-3.5 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 active:scale-95"
-            >
-              <PhoneOff className="h-5 w-5" />
-              <span>Leave</span>
-            </Button>
-          </div>
-          <p className="mt-2 text-center text-[10px] text-muted-foreground">
-            {sharingScreen
-              ? isGameStreaming
-                ? "Streaming your game only"
-                : "Sharing your screen"
-              : sharingParticipants.length > 0
-                ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
-                : cameraOn
-                  ? `Camera on · ${facing === "user" ? "front" : "back"}`
-                  : "Camera off · mic " + (muted ? "muted" : "live")}
-          </p>
-          {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
-        </div>
+        {/* One row of circles with the labels underneath. The old caption line
+            ("Camera off · mic live") lives on as an aria-live announcement. */}
+        <VoiceControlBar
+          muted={muted}
+          deafened={deafened}
+          cameraOn={cameraOn}
+          cameraReady={cameraReady}
+          activityRunning={!!roomActivity.activity}
+          announcement={
+            screenError
+              ? screenError
+              : sharingScreen
+                ? isGameStreaming
+                  ? "Streaming your game only"
+                  : "Sharing your screen"
+                : sharingParticipants.length > 0
+                  ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
+                  : cameraOn
+                    ? `Camera on, ${facing === "user" ? "front" : "back"} camera`
+                    : `Camera off, ${muted || deafened ? "microphone muted" : "microphone live"}`
+          }
+          onToggleMute={toggleMute}
+          onToggleDeafen={toggleDeafen}
+          onToggleCamera={toggleCamera}
+          onOpenActivities={() => setGamesOpen(true)}
+          onOpenMore={() => setMoreOpen(true)}
+          onLeave={handleLeaveClick}
+        />
 
         {/* Voice Settings Sheet */}
         <VoiceSettingsSheet

@@ -540,3 +540,27 @@ sentence-case labels, shared components over ad-hoc copies.
 - PASS — no tooltip on touch; chips call `stopPropagation`, so a tap never opens the post or thread.
 - PASS — `bun tsc -b --noEmit` and `bun run test` (incl. the new reaction test).
 - FAIL (environment) — `bun run build` transforms all 491 modules then is SIGKILLed during “rendering chunks” in this sandbox (same OOM as previous sessions, unrelated to the diff). CI/Render is the first real bundle check.
+
+### Phase 33: The route crash, finally named
+
+- Root cause of “Cannot read properties of undefined (reading 'toLowerCase')” on `/feed`, `/r/…` and DMs: `parseMediaOnly` called `String.match` with the **global** GIF marker regex. With `/g`, `match()` returns full matches and **no capture groups**, so `match[1]` was `undefined` and `.toLowerCase()` threw. Any message or post whose body was exactly one `![gif](…)` / `![sticker](…)` marker replaced the page with the error boundary (stack: `GifContent-*.js`).
+- Fix: a separate anchored, non-global `MEDIA_ONLY_PATTERN` for the media-only check; `renderGifSegments` skips rows without groups. `tests/gif-content.test.mjs` (11 checks) covers the exact body. Shipped in `b25a7fa`.
+
+### Phase 34: Voice — unified controls (in-call)
+
+- Source of the purple tint: the call screen root was `bg-[#0b0714]`; now solid `var(--background)`. Mute-badge cutout follows the same token.
+- Header is 56px: channel name 17/600, one muted line with a status dot (lime connected, amber pulsing connecting/reconnecting under `motion-safe`, red failed), the real people count, “N speaking”, and Retry only after 10s/failure. Minimize + More are 40px round IconButtons.
+- New `VoiceControlBar` (`src/components/voice/VoiceControlBar.tsx`): perfect circles with 12/500 labels underneath, one per action (Mute, Deafen, Camera, Activities, More, 16px gap, Leave). 56px, 52px under 380px, 48px under 340px via `--vc-circle`; 12px labels never truncate. Mute is **neutral while live** and red only when muted; deafen also reads as muted on the mic; camera and an active activity are the only lime tints. `aria-pressed` + live `aria-label`, `navigator.vibrate(10)` on toggle, .94 press under motion-safe, disabled 40% with a reason tooltip. M/D/V shortcuts while the view is open.
+- The “Camera off · mic live” caption is gone; it survives as the bar’s `aria-live` status.
+- `BotCard` is shared and restyled: 64px row, 40px tile (radius 8), 15/600 title, 13px status on two lines, 36px action at `--radius-button`, 40px chevron. Music/game cards stack full-width; “Singing” is replaced by an equalizer glyph only while playing.
+- Participant grid now comes from `computeVoiceLayout()` (`src/lib/voice-layout.ts`, 54 test combinations at 320/390/1280 with and without video): solo (≤220px, 96px avatar), pair (stacked, ≤180px), quad (2×2), grid (3 cols, 64px avatar), stage at 10+ with an audience column count and virtualization flag for 25+. The lone-tile “giant empty tile” is capped, the lime halo `animate-ping` is gone, and the speaking ring is a 3px lime ring.
+- Lag: `speakingIds` is throttled to 10 Hz (`useThrottledValue`) and derived once per tick with `useMemo`, so a busy analyser no longer re-renders the 1,100-line call view per audio frame. `BotCard` and `VoiceControlBar` are memoized; `useViewportWidth` only re-renders on resize.
+- **Not done in this pass** (second prompt): pre-join screen in `routes/_app/r.$slug.tsx` (still Title Case + lime glow), stage/audience tiles themselves, `ProfilePeek`, people sheet with search, `/dev/voice-crowd`, long-press gestures, per-person volume in the peek, moderation actions. The layout function already returns everything those need.
+
+ACCEPT
+- PASS — all call controls are equal circles with labels outside; Mute neutral when live, red when muted; no lime Mute.
+- PASS (in-call) — no pill text buttons in `VoiceControlBar`/header; labels sentence case. The pre-join screen in `r.$slug.tsx` still has its old pills (pending).
+- FAIL (pending) — adaptive grid sizes are wired from the layout tiers, but the stage/audience split and virtualization are not rendered yet.
+- PASS — bot cards are full-width stacked rows with 15px titles and no “Singing” pseudo-button.
+- PASS — solid background, no cyan/purple tint, no glow on the new controls.
+- PASS — no audio/connection code touched; `bun tsc -b --noEmit` and `bun run test` pass. Build still OOMs in this sandbox at chunk rendering (unchanged, environmental).

@@ -102,6 +102,9 @@
   --gutter-mobile: 12px;
   --gutter-desktop: 16px;
   --space-gutter: clamp(12px, 3vw, 16px);
+
+  /* Shape law: text buttons are 12px rounded rectangles, never pills. */
+  --radius-button: 12px;
   --space-section: clamp(3rem, 7vw, 6rem);
   --space-stack: 1rem;
   --card-padding: 12px;
@@ -2080,3 +2083,77 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 [data-reduced-motion="true"] .reaction-count-roll,
 [data-reduced-motion="true"] .reaction-bump,
 [data-reduced-motion="true"] .reaction-shake { animation: none !important; }
+
+/* Voice call controls: perfect circles with the label underneath, outside the
+   shape. One number (--vc-circle) restyles the whole row. */
+.voice-controls {
+  --vc-circle: 56px;
+  --vc-icon: 24px;
+  background: var(--background);
+}
+@media (max-width: 379px) {
+  .voice-controls { --vc-circle: 52px; --vc-icon: 22px; }
+}
+@media (max-width: 339px) {
+  .voice-controls { --vc-circle: 48px; --vc-icon: 20px; }
+}
+.voice-control-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: var(--vc-circle);
+  border-radius: 14px;
+  background: none;
+}
+.voice-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--vc-circle);
+  height: var(--vc-circle);
+  border-radius: 999px;
+  background: var(--overlay-hover);
+  color: var(--foreground);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+.voice-control > svg {
+  width: var(--vc-icon);
+  height: var(--vc-icon);
+}
+.voice-control-item:hover .voice-control { background: var(--overlay-active); }
+.voice-control-item:active .voice-control { transform: scale(0.94); }
+.voice-control-item:disabled .voice-control { opacity: 0.4; }
+.voice-control[data-tone="lime"] {
+  background: var(--overlay-selected);
+  color: var(--primary);
+}
+.voice-control[data-tone="danger"] {
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+  color: var(--destructive);
+}
+.voice-control-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.voice-control-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+.voice-control-item:focus-visible .voice-control {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-control { transition: none; }
+  .voice-control-item:active .voice-control { transform: none; }
+}
+[data-reduced-motion="true"] .voice-control-item:active .voice-control { transform: none; }
