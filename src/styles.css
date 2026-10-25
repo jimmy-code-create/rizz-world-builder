@@ -157,6 +157,12 @@
   --surface-bar: rgb(10 10 11 / 0.94);
   --surface-bubble: rgb(19 19 21 / 0.96);
 
+  /* Interaction layers. Flat fills only — a hover/press state is never a glow,
+     and a selected control is the signal colour at 14%, not a flood. */
+  --overlay-hover: color-mix(in srgb, var(--brand-paper) 7%, transparent);
+  --overlay-active: color-mix(in srgb, var(--brand-paper) 12%, transparent);
+  --overlay-selected: color-mix(in srgb, var(--brand-signal) 14%, transparent);
+
   /* Chat rhythm. Every spacing value a message uses lives here, so the whole
      list can be re-tuned from one place — Discord's numbers: ~3px between two
      lines from the same person, ~18px between groups from different people. */
@@ -2041,3 +2047,36 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 }
 [data-reduced-motion="true"] .game-cover-drift { animation: none !important; }
 
+
+/* Reaction row: one shared chip everywhere (feed, comments, chat, DMs).
+   Motion is small and optional; the count never reflows the row. */
+@keyframes reaction-count-roll {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.reaction-count-roll { animation: reaction-count-roll 150ms ease-out; }
+
+@keyframes reaction-bump {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.reaction-bump { animation: reaction-bump 320ms ease-out; }
+
+@keyframes reaction-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+.reaction-shake { animation: reaction-shake 280ms ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-count-roll,
+  .reaction-bump,
+  .reaction-shake { animation: none !important; }
+}
+[data-reduced-motion="true"] .reaction-count-roll,
+[data-reduced-motion="true"] .reaction-bump,
+[data-reduced-motion="true"] .reaction-shake { animation: none !important; }

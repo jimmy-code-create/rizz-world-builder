@@ -13,7 +13,6 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
-import { ReactorPeekProvider } from "@/components/reactions/ReactorPeek";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -240,10 +239,7 @@ function RootComponent() {
         <ThemeProvider>
           {/* Owns the live voice call so it survives navigation between pages. */}
           <VoiceCallProvider>
-            {/* One shared reactor peek for every reaction chip in the app. */}
-            <ReactorPeekProvider>
-              <Outlet />
-            </ReactorPeekProvider>
+            <Outlet />
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
           </VoiceCallProvider>

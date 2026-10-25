@@ -2,10 +2,11 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock } from "lucide-react";
 import { ShareSheet } from "@/components/share/ShareSheet";
 import { BadgeRow } from "@/components/BadgeChip";
-import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
+import { ReactionPicker, ReactionRow } from "@/components/reactions/ReactionRow";
+import { reactionSourceKey } from "@/lib/reactions";
 import { cn, formatCount } from "@/lib/utils";
 import { commentDepths as commentDepthsFor, commentIndent } from "@/lib/comment-tree";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
@@ -50,9 +51,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate";
 import { loadPrefs } from "@/lib/prefs";
-import { PostReactionsSheet } from "@/components/reactions/PostReactionsSheet";
 
-const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
 
 const HIDDEN_KEY = "rizz:hidden-posts";
@@ -129,10 +128,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     staleTime: 30_000,
   });
 
-  const grouped = (reactions.data ?? []).reduce<Record<string, { count: number; mine: boolean }>>(
+  const grouped = (reactions.data ?? []).reduce<
+    Record<string, { count: number; mine: boolean; firstAt?: string }>
+  >(
     (acc, r) => {
       const e = r.emoji;
-      if (!acc[e]) acc[e] = { count: 0, mine: false };
+      if (!acc[e]) acc[e] = { count: 0, mine: false, firstAt: r.created_at ?? undefined };
       acc[e].count++;
       if (r.user_id === user?.id) acc[e].mine = true;
       return acc;
@@ -193,7 +194,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       const previous = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(queryKey) ?? [];
       const next = mine
         ? previous.filter((reaction) => reaction.emoji !== emoji || reaction.user_id !== user?.id)
-        : [...previous, { emoji, user_id: user?.id ?? "" }];
+        : [...previous, { emoji, user_id: user?.id ?? "", created_at: new Date().toISOString() }];
       qc.setQueryData(queryKey, next);
       return { queryKey, previous };
     },
@@ -233,14 +234,20 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       toast.error(e.message);
     },
   });
-  const toggleReaction = (emoji: string) => {
+  /** Returns false when the write failed, so the chip can shake and roll back. */
+  const toggleReaction = async (emoji: string): Promise<boolean> => {
     if (!user) {
       toast.error("Sign in to react");
-      return;
+      return false;
     }
     const current = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(["reactions", post.id]) ?? reactions.data ?? [];
     const mine = current.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id);
-    reactMut.mutate({ emoji, mine });
+    try {
+      await reactMut.mutateAsync({ emoji, mine });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const accent = post.author?.accent_color || "var(--brand-signal)";
@@ -258,13 +265,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [reactPickerOpen, setReactPickerOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [editOpen, setEditOpen] = useState(false);
   const [caption, setCaption] = useState(post.caption ?? "");
   const [mediaFailed, setMediaFailed] = useState(false);
-  const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
-  const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -480,6 +486,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 <Download className="mr-2 h-4 w-4" /> Download media
               </DropdownMenuItem>
             )}
+            {post.reaction_count > 0 && (
+              <DropdownMenuItem
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("rizz:open-reactors", {
+                      detail: { key: reactionSourceKey({ kind: "post", id: post.id }) },
+                    }),
+                  )
+                }
+              >
+                <Smile className="mr-2 h-4 w-4" /> See reactions
+              </DropdownMenuItem>
+            )}
             {isMine ? (
               <>
                 <DropdownMenuItem onClick={() => pinMut.mutate()}>
@@ -662,39 +681,18 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      {Object.keys(grouped).length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
-          {Object.entries(grouped).map(([emoji, { count, mine }]) => (
-            <ReactionChipButton
-              key={emoji}
-              emoji={emoji}
-              count={count}
-              mine={mine}
-              // Remove works end to end: the peek's "Remove" button calls the
-              // same toggle the chip itself uses (one source of truth).
-              target={{
-                emoji,
-                count,
-                source: { kind: "post", id: post.id },
-                ...(mine && user ? { remove: () => toggleReaction(emoji) } : {}),
-              }}
-              onToggle={() => toggleReaction(emoji)}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              setInitialReactionTab("all");
-              setReactionsSheetOpen(true);
-            }}
-            aria-label="View all reactions"
-            title="View all reactions"
-            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-border hover:bg-muted/70 transition-colors shrink-0"
-          >
-            <Users className="h-3 w-3" />
-          </button>
-        </div>
-      )}
+      <ReactionRow
+        className="px-3 pb-2"
+        source={{ kind: "post", id: post.id }}
+        groups={Object.entries(grouped).map(([emoji, group]) => ({
+          emoji,
+          count: group.count,
+          mine: group.mine,
+          firstAt: group.firstAt,
+        }))}
+        canReact={!!user}
+        onToggle={(emoji) => toggleReaction(emoji)}
+      />
 
       <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-border/70 mt-1">
         <Button
@@ -722,26 +720,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
         <PostCommentsButton postId={post.id} />
-        <Popover>
+        <Popover open={reactPickerOpen} onOpenChange={setReactPickerOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1" aria-label="React to post">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1" aria-label="Add reaction">
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 bg-popover text-popover-foreground border border-border rounded-xl shadow-xl">
-            <div className="flex gap-1">
-              {QUICK_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => toggleReaction(e)}
-                  aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 hover:bg-muted active:scale-95"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+          <PopoverContent className="w-[min(20rem,calc(100vw-2rem))] p-2 bg-popover text-popover-foreground border border-border rounded-xl shadow-[var(--shadow-2)]">
+            <ReactionPicker
+              onPick={(emoji) => {
+                setReactPickerOpen(false);
+                void toggleReaction(emoji);
+              }}
+            />
           </PopoverContent>
         </Popover>
         <div className="flex-1" />
@@ -812,12 +803,6 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </DialogContent>
       </Dialog>
 
-      <PostReactionsSheet
-        postId={post.id}
-        open={reactionsSheetOpen}
-        onOpenChange={setReactionsSheetOpen}
-        initialEmoji={initialReactionTab}
-      />
     </motion.article>
   );
 }
@@ -954,7 +939,7 @@ function CommentsThread({ postId }: { postId: string }) {
   );
 }
 
-type CommentReaction = { emoji: string; user_id: string };
+type CommentReaction = { emoji: string; user_id: string; created_at?: string | null };
 type CommentInteractions = { reactions: CommentReaction[]; likes: string[] };
 
 function CommentInteractions({ commentId }: { commentId: string }) {
@@ -966,7 +951,7 @@ function CommentInteractions({ commentId }: { commentId: string }) {
     enabled: !!user,
     queryFn: async (): Promise<CommentInteractions> => {
       const [reactionResult, likeResult] = await Promise.all([
-        (supabase.from as any)("comment_reactions").select("emoji,user_id").eq("comment_id", commentId),
+        (supabase.from as any)("comment_reactions").select("emoji,user_id,created_at").eq("comment_id", commentId),
         (supabase.from as any)("comment_likes").select("user_id").eq("comment_id", commentId),
       ]);
       if (reactionResult.error) throw reactionResult.error;
@@ -979,8 +964,10 @@ function CommentInteractions({ commentId }: { commentId: string }) {
     staleTime: 10_000,
   });
   const current = interactions.data ?? { reactions: [], likes: [] };
-  const grouped = current.reactions.reduce<Record<string, { count: number; mine: boolean }>>((result, reaction) => {
-    result[reaction.emoji] ??= { count: 0, mine: false };
+  const grouped = current.reactions.reduce<
+    Record<string, { count: number; mine: boolean; firstAt?: string }>
+  >((result, reaction) => {
+    result[reaction.emoji] ??= { count: 0, mine: false, firstAt: reaction.created_at ?? undefined };
     result[reaction.emoji].count += 1;
     result[reaction.emoji].mine ||= reaction.user_id === user?.id;
     return result;
@@ -1065,23 +1052,23 @@ function CommentInteractions({ commentId }: { commentId: string }) {
       >
         ♥ {current.likes.length || ""}
       </button>
-      {["❤️", "😂", "🔥"].map((emoji) => (
-        <ReactionChipButton
-          key={emoji}
-          emoji={emoji}
-          count={grouped[emoji]?.count ?? 0}
-          mine={grouped[emoji]?.mine ?? false}
-          target={{
-            emoji,
-            count: grouped[emoji]?.count ?? 0,
-            source: { kind: "comment", id: commentId },
-            ...(grouped[emoji]?.mine ? { remove: () => react.mutate(emoji) } : {}),
-          }}
-          onToggle={() => react.mutate(emoji)}
-          className="h-5 gap-1 px-1.5 text-[10px]"
-          title={`React ${emoji}`}
-        />
-      ))}
+      <ReactionRow
+        source={{ kind: "comment", id: commentId }}
+        groups={Object.entries(grouped).map(([emoji, group]) => ({
+          emoji,
+          count: group.count,
+          mine: group.mine,
+          firstAt: group.firstAt,
+        }))}
+        onToggle={async (emoji) => {
+          try {
+            await react.mutateAsync(emoji);
+            return true;
+          } catch {
+            return false;
+          }
+        }}
+      />
     </div>
   );
 }

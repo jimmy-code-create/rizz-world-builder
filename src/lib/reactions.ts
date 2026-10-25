@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBlocked } from "@/lib/social";
 
 /**
  * Chat reactions for DMs, realm chat and group chat.
@@ -118,6 +119,108 @@ export function groupReactionRows(rows: ReactionRow[], messageId: string, userId
   }
   return [...grouped.values()].sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji));
 }
+
+/** Every surface that can show reactions, keyed the same way everywhere. */
+export type ReactionItemSource =
+  | { kind: "post"; id: string }
+  | { kind: "comment"; id: string }
+  | { kind: "message"; id: string; scope: ReactionScope };
+
+export type ReactorPerson = {
+  userId: string;
+  emoji: string;
+  name: string;
+  username: string | null;
+  avatarUrl: string | null;
+  createdAt: string | null;
+};
+
+export function reactionSourceKey(source: ReactionItemSource): string {
+  return source.kind === "message"
+    ? `message:${source.scope}:${source.id}`
+    : `${source.kind}:${source.id}`;
+}
+
+export function reactionSourceTable(source: ReactionItemSource) {
+  if (source.kind === "post") return { table: "post_reactions", column: "post_id", type: null };
+  if (source.kind === "comment") return { table: "comment_reactions", column: "comment_id", type: null };
+  return {
+    table: source.scope === "dm" ? "dm_reactions" : "message_reactions",
+    column: "message_id",
+    type: source.scope === "dm" ? null : source.scope,
+  };
+}
+
+/**
+ * Everyone who reacted to one item, with profiles already resolved.
+ *
+ * One request per open sheet/tooltip: the blocking filter and the profile join
+ * happen here instead of once per row, so nothing is fetched in a loop.
+ */
+export async function fetchItemReactors(
+  source: ReactionItemSource,
+  options: { emoji?: string | null; viewerId?: string | null; limit?: number } = {},
+): Promise<ReactorPerson[]> {
+  const { table, column, type } = reactionSourceTable(source);
+  let query = (supabase.from as any)(table)
+    .select("emoji, user_id, created_at")
+    .eq(column, source.id)
+    .order("created_at", { ascending: true })
+    .limit(options.limit ?? 300);
+  if (type) query = query.eq("message_type", type);
+  if (options.emoji) query = query.eq("emoji", options.emoji);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []) as { emoji: string; user_id: string; created_at: string | null }[];
+  if (!rows.length) return [];
+
+  const blocked = options.viewerId ? await fetchBlocked(options.viewerId) : [];
+  const blockedIds = new Set(blocked.map((row: { blocked_id: string }) => row.blocked_id));
+  const visible = rows.filter((row) => row.user_id && !blockedIds.has(row.user_id));
+  if (!visible.length) return [];
+
+  const ids = [...new Set(visible.map((row) => row.user_id))];
+  const { data: people, error: peopleError } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .in("id", ids);
+  if (peopleError) throw peopleError;
+
+  const byId = new Map(
+    (
+      (people ?? []) as {
+        id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+      }[]
+    ).map((person) => [person.id, person]),
+  );
+
+  // Me first, then the order people reacted in.
+  return visible
+    .map((row) => {
+      const person = byId.get(row.user_id);
+      return {
+        userId: row.user_id,
+        emoji: row.emoji,
+        name: person?.display_name || person?.username || "Someone",
+        username: person?.username ?? null,
+        avatarUrl: person?.avatar_url ?? null,
+        createdAt: row.created_at,
+      };
+    })
+    .sort((a, b) => {
+      if (options.viewerId) {
+        if (a.userId === options.viewerId) return -1;
+        if (b.userId === options.viewerId) return 1;
+      }
+      return (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
+    });
+}
+
+export { describeReactors, sortReactionGroups } from "@/lib/reaction-text";
 
 export async function fetchReactorProfiles(userIds: string[]) {
   if (!userIds.length) return [];

@@ -508,3 +508,35 @@ sentence-case labels, shared components over ad-hoc copies.
 - [x] 6-week feature roadmap with 17 major features across engagement, monetization, growth, creator tools, and advanced features (`FEATURE_ROADMAP.md`) - **DONE**
 - [ ] Integration: Replace inline StoryViewer reactions with new StoryReactions component - **PENDING**
 - [ ] Integration: Add haptic feedback throughout app (buttons, sends, reactions, voice, story transitions) - **PENDING**
+
+### Phase 32: Reactions everywhere — one row + one reactor sheet
+
+**Where reactions render (before this pass)**
+- Feed posts and profile posts: `PostCard` → `ReactionChipButton` chips, a ghost `Users` circle that opened `PostReactionsSheet`, and a hover/focus peek from `ReactorPeekProvider`.
+- Post comments: `PostCard` → `CommentInteractions` → three hard-coded `ReactionChipButton` chips (❤️ 😂 🔥), counts only for emoji that existed.
+- Realm chat: `routes/_app/r.$slug.tsx` → `ReactionChips` (chat copy + its own inline sheet).
+- Group chat: `routes/_app/g.$id.tsx` → `ReactionChips`.
+- DMs: `routes/_app/dm.$userId.tsx` (thread + composer area, two call sites) → `ReactionChips`.
+- Story replies: arrive as DM messages, so `ReactionChips`.
+- Forum thread replies: no reactions rendered at all (nothing to unify).
+
+**Built**
+- `src/components/reactions/ReactionRow.tsx` — THE chip row: 32px chips (44px hit area), emoji 20 / count 14·600·tabular, lime tint + 1px lime border only when mine, hover only on fine pointers, pressed scale .97 (off under reduced motion), count roll 150ms, inline shake on failure, separate 32x32 `Add reaction` square, recents → quick → cat emojis → full grid picker (shared as `ReactionPicker`), 12 chips then `+N`, hover/focus tooltip with `:shortcode:` + “jimmy, ana and 3 others reacted”, 450ms long-press / right-click / `rizz:open-reactors` → sheet.
+- `src/components/reactions/ReactorsSheet.tsx` — one sheet for every surface: bottom sheet ≤70dvh with drag handle on phones, 360px dialog on desktop, one close button, sticky `All` + per-emoji tabs (lime tint + lime text), 52px rows (avatar 36, name + @handle, emoji on All), “You / Tap to remove” with a 5s Undo, skeletons, 30-row pages, empty state, realtime refresh, blocked users filtered, profiles joined in one request.
+- `src/lib/reaction-text.ts` — pure `describeReactors` + `sortReactionGroups` (unit-tested in `tests/reactions-text.test.mjs`).
+- `src/lib/reactions.ts` — `ReactionItemSource` (`post` | `comment` | `message:dm|realm|group`), `fetchItemReactors` (one query + one profile join + block filter) and `reactionSourceKey`.
+- `ReactionChips` is now a thin adapter over `ReactionRow` (chat permissions + haptic stay), so the three chat routes needed no edits.
+- Deleted after the migration: `ReactionChipButton.tsx`, `ReactorPeek.tsx` (+ its root provider), `PostReactionsSheet.tsx`.
+- Tokens added to `src/styles.css`: `--overlay-hover`, `--overlay-active`, `--overlay-selected`, plus the three reduced-motion-safe reaction keyframes.
+
+**Data**
+- No new SQL. `post_reactions`, `comment_reactions`, `message_reactions` and `dm_reactions` are all readable by the client, so the tooltip/sheet can list reactors for every type. No `supabase/migrations/pending_reactors.sql` was needed.
+
+**ACCEPT**
+- PASS — same look in feed, profile, comments, realm chat, group chat and DMs: all render `ReactionRow`. (Forum thread replies have no reactions today.)
+- PASS — selected chip = lime border + 14% tint; add button is a separate 32x32 square.
+- PASS — tap toggles through the existing RPC (post/comment/chat); a `pending` set ignores repeat taps; failures roll back and shake.
+- PASS — tooltip only on `(hover: hover) and (pointer: fine)`, dismissed on leave/scroll/resize/Esc/outside press; long-press (450ms, 8px cancel), right-click and “…” > See reactions open the sheet; one close button (primitive), tabs, 52px rows, “You / Tap to remove”.
+- PASS — no tooltip on touch; chips call `stopPropagation`, so a tap never opens the post or thread.
+- PASS — `bun tsc -b --noEmit` and `bun run test` (incl. the new reaction test).
+- FAIL (environment) — `bun run build` transforms all 491 modules then is SIGKILLed during “rendering chunks” in this sandbox (same OOM as previous sessions, unrelated to the diff). CI/Render is the first real bundle check.

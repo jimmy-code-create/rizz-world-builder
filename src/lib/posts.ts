@@ -315,7 +315,7 @@ export async function removeReaction(postId: string, userId: string, emoji: stri
 export async function fetchReactions(postId: string) {
   const { data, error } = await supabase
     .from("post_reactions")
-    .select("emoji, user_id")
+    .select("emoji, user_id, created_at")
     .eq("post_id", postId);
   if (error) throw error;
   return data ?? [];
