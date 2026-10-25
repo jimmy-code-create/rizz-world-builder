@@ -1,4 +1,159 @@
-# RIZZ Progress & Implementation Checklist
+# RIZZ — master prompt run (branch `deepseek-master`)
+
+Started from `main` @ `4dad3dd`. **Never push to `main`.** Work phase by phase; one commit
+`pN.M: message` per task, pushed to `origin deepseek-master`.
+
+Rules in force: one phase at a time (stop after P0 until told "next"), smallest change that
+works, no new packages, no screenshots/browser (code reading + tsc + tests + build), no
+destructive DB work — pending SQL goes in `supabase/migrations/pending_<name>.sql`, no glows,
+sentence-case labels, shared components over ad-hoc copies.
+
+## Phase status
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| P0 | Audit (no edits) | **DONE** — findings below |
+| P1 | Glow/tokens/buttons/fonts, currency name | not started |
+| P2 | Voice channel + Game Bot (Music-Bot-style) | not started |
+| P3 | Welcome bot compact rows + one Composer | not started |
+| P4 | Profile page layout | not started |
+| P5 | Story viewer ("?????" + story_reply card) | not started |
+| P6 | Story editor (direct manipulation, photo slots) | not started |
+| P7 | GIFs and media in chat (no frame, no empty bubble) | not started |
+| P8 | Replies, highlight, forward, mentions | not started |
+| P9 | One ShareSheet | not started |
+| P10 | Notifications (in-app + Web Push) | not started |
+| P11 | Final audit + PR | not started |
+
+## Baseline checks (P0)
+
+- `bun tsc -b --noEmit` → **0 errors**.
+- `bun run test` → **all 16 pure suites pass**.
+- `bun run build` → **could not run in this sandbox**: killed by the container after ~170 s at
+  "rendering chunks" (SIGKILL, memory/timeout), not a compile error. tsc is the type gate here;
+  re-check the build when a phase changes imports, and treat a local failure as environmental
+  until proven otherwise.
+
+## P0 audit — findings
+
+### 1. Voice
+- Provider: `src/components/voice/VoiceCallProvider.tsx` — React context (`useVoiceCallContext`)
+  wrapping the engine `useVoiceCall` in `src/lib/voice-room-audio.ts`. Call identity is the local
+  `ActiveCall` (`roomId`, `realmId`, `channelId`, `channelName`, `isHost`); who is in a call is read
+  from `voice_rooms` / `voice_participants` (`useRealmVoiceChannels`, 20 s poll + realtime). Media
+  is a P2P WebRTC mesh with Supabase Realtime signaling; TURN from `/api/turn-credentials`.
+- Music Bot: queue is DB-backed (`music_queue`, per `realm_id` + `realm_room_id`) with realtime
+  invalidation (`src/lib/music.ts`); `/play` resolves server-side in `src/routes/api.bot.command.ts`
+  + `src/lib/music-resolve.ts` + `src/lib/music-sources.ts`; the audio element is owned by
+  `src/components/voice/MusicBotInCall.tsx` inside the provider, UI in `MusicSheet` / `MusicPlayer`.
+  State survives reconnect because the DB is authoritative.
+- Game Bot: `src/lib/game-bot.ts` — a Realtime **broadcast + presence** store on
+  `vc-game-bot:<channelId>`; sessions are client-only (`src/lib/game-sessions.ts`, no table); the
+  overlay is `src/components/voice/GameOverlay.tsx`; catalog in `src/lib/game-library.ts`,
+  `src/data/games.json` and 15 built-in canvas games (`src/components/games/*`).
+- "Pick game" today (`src/routes/_app/r.$slug.tsx` ~1698 and `VoiceCallView` ~805): it opens the
+  realm Games sheet (`src/components/realms/RealmGamesHub.tsx`); picking a game calls
+  `gameBot.launch(game)`, which immediately sets *my* session and broadcasts it. There is no lobby
+  state, no `game_id/host_id/players/status`, no invite card in the VC text chat and no
+  "paste invite link" step — only `roomCode` / `joinUrl` after launch. P2 builds that state; it is
+  new work, not a repair.
+
+### 2. Welcome bot
+- Created server-side: `supabase/migrations/20261022010000_bot_embed_templates.sql` →
+  `public.welcome_new_realm_member()` (trigger on `realm_members`) builds the embed (title, member
+  avatar thumbnail, "just joined, say hi!", wave button, footer `Member #n`) and inserts the bot
+  message with `bot_id`; per-realm templates live in `bot_templates`.
+- Rendered: `src/components/chat/Embed.tsx` (`Embed` / `EmbedList`) in `src/routes/_app/r.$slug.tsx`
+  (wave + profile open wired there). Editor: `src/components/bots/BuiltinBotEmbeds.tsx`.
+
+### 3. Stories
+- Viewer: `src/components/StoriesStrip.tsx` → `StoryViewer` (one component; 5 s timer, view rows,
+  `story_likes`, `story_reactions`, caption with mentions, "Reply to their inbox…" which inserts a
+  `direct_messages` row with `story_id`).
+- Editor: `src/components/StoryComposer.tsx` (1080×1920 canvas, free-floating overlays,
+  `paintLiveTexts` / `paintStyledText`, exports JPEG or WebM).
+- Tables: `stories` (`media_url`, `media_type`, `caption`, `visibility`, `hidden_from`,
+  `like_count`, `view_count`, `expires_at`), `story_views`, `story_reactions`, `story_likes`,
+  `story_highlights` / `story_highlight_items`.
+- Text storage: **there is no story text column** beyond `stories.caption`; typed overlay text is
+  rasterized into the uploaded image/video. Replies are plain `direct_messages` rows (`story_id`
+  set) — no message `type`/`metadata`, so the P5 `story_reply` card needs either those columns
+  (pending SQL) or the plain-text fallback.
+- "?????": nothing in the repo strips non-ASCII (no `[^\x20-\x7E]` sanitizer, no NFC write, no
+  ASCII conversion on the story path), so the leading cause is **fonts**: `--font-sans` /
+  `--font-display` (`src/styles.css:61`) and the canvas families `fontFor()` → `fontStack()`
+  (`src/lib/story-creator/content.ts:12`) list only Instrument Sans / Bricolage Grotesque / system
+  faces — no Noto Sans, no Devanagari/CJK and no emoji fallback. To confirm in P5 by reading one
+  real `stories.caption` (needs DB access — see `BLOCKED.md`).
+
+### 4. DMs
+- `direct_messages` columns: `body`, `attachment_url`, `audio_url`, `duration_ms`, `story_id`,
+  `reply_to`, `deleted_at`, `read`. No `type`, no `metadata` jsonb, no forwarded flag.
+- `reply_to` is written (`src/routes/_app/dm.$userId.tsx:487,545`) but nothing renders a quote
+  above the bubble — there is no QuoteBlock component yet.
+- GIFs/stickers are **inline markdown markers inside `body`**
+  (`![gif](https://media.giphy…)`, `![sticker](/stickers/…)`), parsed by `src/lib/gif-content.ts`
+  and drawn inline by `src/components/GifContent.tsx` (an `<img>` inside the text bubble — hence
+  the framed GIF, and the leftover empty line when a marker does not match the regex).
+- No share cards anywhere (reels/posts/stories).
+- Composer is bespoke per surface: realm `r.$slug.tsx`, DM `dm.$userId.tsx`, group `g.$id.tsx`,
+  comments `src/components/PostCommentsSheet.tsx`.
+
+### 5. Notifications
+- Tables: `notifications` (type/actor_id/post_id/data/read), `notification_prefs`
+  (dms, calls, group_mentions, quiet_start/end, muted_conversations), `push_subscriptions`
+  (endpoint, p256dh, auth, platform, last_used_at). They exist in
+  `src/integrations/supabase/types.ts`, but their SQL lives only in `backend-sql/10_push.sql` —
+  **not** in `supabase/migrations/`, so a fresh database would not get them.
+- Service worker: `public/service-worker.js` — notification-only (`push` + `notificationclick`, no
+  `fetch` handler), registered from `src/routes/__root.tsx` at `/service-worker.js`, scope `/`.
+- Client push: `src/lib/push.ts` (`VITE_VAPID_PUBLIC_KEY`, subscribe/unsubscribe/prefs; degrades
+  when the key is missing), `src/lib/desktop-notifications.ts`, `src/components/PushNotificationSettings.tsx`,
+  `src/components/DesktopAlertsSetting.tsx`; in-app banner `src/components/notifications/DmNotificationHost.tsx`
+  + `src/lib/dm-threads.ts` + `src/lib/notification-sound.ts`.
+- Server push: `worker/src/index.ts` (Cloudflare Worker, `POST /push`, VAPID, drops 404/410
+  endpoints) and `private.send_push` + `push_new_direct_message` / call triggers in
+  `backend-sql/10_push.sql` — the DM trigger already honours prefs, quiet hours, blocks and mute.
+- Settings screen: `src/routes/_app/settings/notifications.tsx` (Desktop alerts + Push cards).
+
+### 6. Shared components that already exist
+- Yes: `Button` (`src/components/ui/button.tsx`, cva; variants default/destructive/outline/
+  secondary/ghost/link — no 36/44/52 heights, no "primary"/"danger" names), `IconButton`,
+  `CloseButton`, `Avatar` (+ `InteractiveAvatar`), `Sheet`, `Drawer`, `ResponsiveOverlay`,
+  `ActionMenu` (48 px menu rows), `GlassToast` + `toast()`, `Skeleton`, `SegmentedControl`,
+  `IconTile`, `MentionAutocomplete`, `MediaFrame`.
+- Missing (ad-hoc copies today, P3/P7/P9 must create one each): `MediaMessage`, `QuoteBlock`,
+  `ShareSheet`, `BotCard`, and a shared `Composer`.
+
+### 7. Hosting (Render)
+- Not a static site: TanStack Start + Nitro SSR. `render.yaml` builds with
+  `npm install --legacy-peer-deps && npm run build` and starts `npm run preview` →
+  `node render-server.mjs` (PORT from env, 0.0.0.0).
+- `render-server.mjs` serves real files from `.output/public` (fallback `dist/client`) before the
+  SSR handler, with `.js` → `application/javascript`; everything else goes to Nitro, whose unknown
+  routes return the router 404 — there is **no SPA catch-all rewrite**, so a root `/sw.js` would not
+  be swallowed. Today the worker is only at `/service-worker.js` (P10 either keeps that path or adds
+  `public/sw.js`).
+
+### Repo note (applies to every find clause)
+- A stale duplicate of the app lives in `rizz-world-builder/` (older `src/`, `styles.css`,
+  migrations). Every grep in these prompts matches twice; **only edit the root `src/`, `supabase/`,
+  `tests/`, `public/`** — never `rizz-world-builder/**`.
+
+## Decisions taken
+- Build/verify gates are `bun tsc -b --noEmit` + `bun run test`; `bun run build` is attempted once
+  per phase but is not a blocker while the sandbox OOMs on it.
+- The service worker keeps its current path `/service-worker.js` unless P10 finds a reason to move
+  it; Render has no SPA rewrite, so the path is honest either way.
+- The push backend already exists (Worker + DB triggers in `backend-sql/10_push.sql`), so P10 is a
+  client + settings + migration-file job, not a new service.
+
+## Next
+- P1 (glow/tokens/buttons/fonts + one currency name), after the user says "next".
+
+---
+
+# Earlier work log (kept for history)
 
 ## Stack Overview
 - **Framework**: TanStack Start (Nitro server + Vite 6) with React 19 & Tailwind CSS v4
