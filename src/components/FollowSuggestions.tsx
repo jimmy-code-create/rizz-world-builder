@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/lib/toast";
+import { normalizeInterests } from "@/lib/profile-interests";
 
 export function FollowSuggestions() {
   const { user, profile } = useAuth();
@@ -14,7 +15,9 @@ export function FollowSuggestions() {
   const qc = useQueryClient();
 
   const { data } = useQuery({
-    queryKey: ["follow-suggestions", user?.id, profile?.interests.join(",")],
+    // Never call array methods on the raw column: a null entry used to crash
+    // the whole feed route from this line.
+    queryKey: ["follow-suggestions", user?.id, normalizeInterests(profile?.interests).join(",")],
     enabled: !!user,
     queryFn: async () => {
       const { data: following } = await supabase
@@ -29,12 +32,12 @@ export function FollowSuggestions() {
         .order("paw_balance", { ascending: false })
         .not("username", "is", null)
         .limit(40);
-      const interests = new Set((profile?.interests ?? []).map((item) => item.toLowerCase()));
+      const interests = new Set(normalizeInterests(profile?.interests));
       return (profs ?? [])
         .map((person) => ({
           ...person,
-          interestScore: (person.interests ?? []).reduce(
-            (score, interest) => score + (interests.has(interest.toLowerCase()) ? 1 : 0),
+          interestScore: normalizeInterests(person.interests).reduce(
+            (score, interest) => score + (interests.has(interest) ? 1 : 0),
             0,
           ),
         }))

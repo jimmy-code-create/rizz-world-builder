@@ -31,6 +31,7 @@ import {
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { normalizeInterests } from "@/lib/profile-interests";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -699,7 +700,7 @@ function ProfilePage() {
 
             {profile.interests?.length > 0 && (
               <div className="mt-3.5 flex flex-wrap gap-1.5" aria-label="Profile interests">
-                {[...new Set(profile.interests as string[])].map((interest) => {
+                {normalizeInterests(profile.interests).map((interest) => {
                   const option = TUTORIAL_INTERESTS.find((item) => item.id === interest);
                   return (
                     <span
