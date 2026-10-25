@@ -15,6 +15,7 @@ import { TrendingTagsRail } from "@/components/TrendingTagsRail";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { FeedSideDiscussion } from "@/components/FeedSideDiscussion";
 import { RizzCat } from "@/components/RizzCat";
+import { SectionBoundary } from "@/components/ui/section-boundary";
 import { formatNumber } from "@/lib/formatters";
 import { useI18n, tp } from "@/lib/i18n";
 import type { FeedPost } from "@/lib/posts";
@@ -153,14 +154,20 @@ function FeedPage() {
 
         <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
         <div data-tour="stories" className="scroll-mt-24">
-          <StoriesStrip />
+          <SectionBoundary label="Stories">
+            <StoriesStrip />
+          </SectionBoundary>
         </div>
 
         <div id="feed-composer" data-tour="composer" className="scroll-mt-24">
-          <PostComposer />
+          <SectionBoundary label="Composer">
+            <PostComposer />
+          </SectionBoundary>
         </div>
 
-        <TrendingTagsRail />
+        <SectionBoundary label="Trending tags">
+          <TrendingTagsRail />
+        </SectionBoundary>
 
         <SectionHeading title={t("latest_drops")} tooltip={t("drops_subtitle")} />
 
@@ -195,8 +202,14 @@ function FeedPage() {
               className="list-item-rise"
               style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
             >
-              <PostCard post={p} liked={likes.data?.has(p.id)} />
-              {i === 2 && <div className="xl:hidden"><FollowSuggestions /></div>}
+              <SectionBoundary label="Post">
+                <PostCard post={p} liked={likes.data?.has(p.id)} />
+              </SectionBoundary>
+              {i === 2 && (
+                <SectionBoundary label="Suggested people">
+                  <div className="xl:hidden"><FollowSuggestions /></div>
+                </SectionBoundary>
+              )}
             </div>
           ))}
         </div>
@@ -229,10 +242,12 @@ function FeedPage() {
 
       {/* Desktop Discussion and Community Rail */}
       <aside className="hidden xl:block xl:col-span-4 min-w-0 sticky top-6">
-        <FeedSideDiscussion
-          activePost={activeSidePost}
-          onClose={() => setActiveSidePost(null)}
-        />
+        <SectionBoundary label="Discussion">
+          <FeedSideDiscussion
+            activePost={activeSidePost}
+            onClose={() => setActiveSidePost(null)}
+          />
+        </SectionBoundary>
       </aside>
     </div>
   );

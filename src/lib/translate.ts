@@ -62,6 +62,9 @@ const MULTI_DICTIONARY: Record<string, Record<string, string>> = {
 };
 
 export function detectSourceLang(text: string): string {
+  // Called from post/poll rendering with whatever the row holds; a null body
+  // used to throw "reading 'toLowerCase'" and take the route down.
+  if (typeof text !== "string" || !text) return "en";
   // Check Devanagari script (Hindi)
   if (/[\u0900-\u097F]/.test(text)) return "hi";
   // Check Japanese characters (Hiragana / Katakana / Kanji)

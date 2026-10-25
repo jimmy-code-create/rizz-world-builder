@@ -20,6 +20,16 @@ function AppErrorComponent({ error, reset }: { error: unknown; reset: () => void
       <p className="mt-1 text-sm text-muted-foreground max-w-sm">
         {errorMessage || "Something unexpected happened. Try reloading."}
       </p>
+      {error instanceof Error && error.stack && (
+        <details open className="mt-3 w-full max-w-sm text-left">
+          <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
+            Details
+          </summary>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface-2 p-2 text-[10px] leading-snug text-muted-foreground">
+            {error.stack}
+          </pre>
+        </details>
+      )}
       <div className="mt-4 flex gap-2">
         <button
           type="button"

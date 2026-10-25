@@ -44,6 +44,8 @@ export type CaptionPart = {
  * angle brackets. Rendering never adds whitespace between parts.
  */
 export function renderCaptionWithTags(caption: string): CaptionPart[] {
+  // A null body (or a partial row) must render as nothing, not throw.
+  if (typeof caption !== "string" || !caption) return [];
   const parts: CaptionPart[] = [];
   // Order matters: URLs first, then mention tokens, mentions, then hashtags.
   const re = /(https?:\/\/[^\s]+)|<@([0-9a-fA-F-]{36})>|@([a-zA-Z0-9_]{2,32})|#([a-zA-Z0-9_]{2,32})/g;

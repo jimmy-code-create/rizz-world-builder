@@ -9,6 +9,7 @@ const MEDIA_MARKER_PATTERN =
 export function parseMediaOnly(
   text: string,
 ): { src: string; kind: "gif" | "sticker" } | null {
+  if (typeof text !== "string") return null;
   const trimmed = text.trim();
   const match = trimmed.match(MEDIA_MARKER_PATTERN);
   if (!match || match[0] !== trimmed) return null;
@@ -16,6 +17,7 @@ export function parseMediaOnly(
 }
 
 export function renderGifSegments(text: string) {
+  if (typeof text !== "string" || !text) return [];
   const segments: {
     isGif: boolean;
     isSticker: boolean;
