@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
 import { AccountMenu } from "@/components/account/AccountMenu";
+import { BadgesMark } from "@/components/BadgesMark";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -95,7 +96,7 @@ const sideTabs = [
   { to: "/dms", label: "messages", icon: MessageCircle },
   { to: "/chat-stories", label: "chat_stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "saved", icon: Bookmark },
-  { to: "/badges", label: "badges", icon: Trophy },
+  { to: "/badges", label: "badges", icon: BadgesMark },
   { to: "/shop", label: "effects", icon: Sparkles },
   { to: "/leaderboard", label: "leaderboard", icon: Trophy },
   { to: "/games", label: "games", icon: Gamepad2 },
@@ -122,7 +123,7 @@ const destinations = {
   "/leaderboard": { labelKey: "leaderboard", icon: Trophy },
   "/notifications": { labelKey: "inbox", icon: Bell },
   "/bookmarks": { labelKey: "saved", icon: Bookmark },
-  "/badges": { labelKey: "badges", icon: Trophy },
+  "/badges": { labelKey: "badges", icon: BadgesMark },
   "/shop": { labelKey: "effects", icon: Sparkles },
   "/settings": { labelKey: "settings", icon: Settings },
   "/settings/appearance": { labelKey: "theme", icon: Palette },

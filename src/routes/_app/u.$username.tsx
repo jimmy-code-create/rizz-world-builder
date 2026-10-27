@@ -15,7 +15,6 @@ import { canonBadges, distinctBadges } from "@/lib/badge-set";
 import type { Badge as BadgeType } from "@/lib/badges";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Award,
   Film,
   Hash,
   Heart,
@@ -27,6 +26,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { BadgesMark } from "@/components/BadgesMark";
 import { toast } from "@/lib/toast";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -242,7 +242,7 @@ function ProfilePage() {
       { id: "reactions", label: "Reactions", value: sum("reaction_count"), icon: Smile },
       { id: "followers", label: "Followers", value: followerCount, icon: Users },
       { id: "following", label: "Following", value: followingCount, icon: UserPlus },
-      { id: "badges", label: "Badges", value: badges.data?.length ?? 0, icon: Award },
+      { id: "badges", label: "Badges", value: badges.data?.length ?? 0, icon: BadgesMark },
       { id: "paws", label: "Paws", value: Number(profile?.paw_balance ?? 0), icon: PawPrint },
     ];
   }, [posts.data, followerCount, followingCount, badges.data, profile?.paw_balance]);

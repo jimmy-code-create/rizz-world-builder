@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Bookmark, Check, ChevronDown, ChevronRight, HelpCircle, Link2, LogOut, Medal,
+  Bookmark, Check, ChevronDown, ChevronRight, HelpCircle, Link2, LogOut,
   Pencil, Settings, Smile, Trophy, User as UserIcon, UserPlus, X,
 } from "lucide-react";
+import { BadgesMark } from "@/components/BadgesMark";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
@@ -20,6 +21,10 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
+
+// A row icon only ever receives a className, so the menu takes any glyph — the
+// drawn Badges mark sits beside lucide icons in the same column.
+type MenuIcon = ComponentType<{ className?: string }>;
 import { ProfileCardDialog, formatCount } from "@/components/profile/ProfileCard";
 import { getBanner } from "@/lib/banner";
 import { CustomStatusLine, StatusIcon, AvatarStatusBadge } from "@/components/presence/StatusDot";
@@ -239,7 +244,7 @@ export function AccountMenu({
 
   // One icon treatment for every row: a 28px tile keeps the menu on a grid, and
   // lets the sign-out row read red without a separate branch for the markup.
-  const rowIcon = (Icon: typeof Bookmark, danger = false) => (
+  const rowIcon = (Icon: MenuIcon, danger = false) => (
     <span
       aria-hidden
       className={cn(
@@ -253,7 +258,7 @@ export function AccountMenu({
     </span>
   );
 
-  const linkInner = (Icon: typeof Bookmark, label: string, count?: number) => (
+  const linkInner = (Icon: MenuIcon, label: string, count?: number) => (
     <>
       {rowIcon(Icon)}
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
@@ -265,7 +270,7 @@ export function AccountMenu({
   const destRow = (
     to: string,
     params: Record<string, string> | undefined,
-    Icon: typeof Bookmark,
+    Icon: MenuIcon,
     label: string,
     count?: number,
     countLabel?: string,
@@ -526,7 +531,7 @@ export function AccountMenu({
         {destRow("/u/$username", { username }, UserIcon, "View profile")}
         {destRow("/settings/profile", undefined, Pencil, "Edit profile")}
         {destRow("/bookmarks", undefined, Bookmark, "Saved", stats?.saved ?? 0, "posts")}
-        {destRow("/badges", undefined, Medal, "Badges", stats?.badges ?? 0, "badges")}
+        {destRow("/badges", undefined, BadgesMark, "Badges", stats?.badges ?? 0, "badges")}
         {destRow("/leaderboard", undefined, Trophy, "Leaderboard")}
       </div>
 

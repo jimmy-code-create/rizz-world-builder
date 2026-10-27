@@ -21,8 +21,9 @@ import {
 } from "@/lib/badge-set";
 import { useI18n, tf } from "@/lib/i18n";
 import { Badge as BadgeMark } from "@/components/Badge";
+import { BadgesMark } from "@/components/BadgesMark";
 import { buildBadgeSharePng, shareBadgePng } from "@/lib/badge-share";
-import { Award, Lock, CheckCircle2, Search, Trophy, Share2, Pin, ShieldCheck } from "lucide-react";
+import { Lock, CheckCircle2, Search, Share2, Pin, ShieldCheck } from "lucide-react";
 import { setFeaturedBadge, useFeaturedBadge } from "@/lib/featured-badge";
 import { formatNumber } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -274,7 +275,7 @@ export function BadgesPage() {
           <div>
             <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-                <Award className="h-6 w-6" />
+                <BadgesMark className="h-6 w-6" />
               </span>
               {t("badge_showcase")}
             </h1>
@@ -502,7 +503,7 @@ export function BadgesPage() {
             <div className="glass-strong rounded-3xl p-6 border border-white/10 space-y-5 shadow-2xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-primary" />
+                  <BadgesMark className="h-4 w-4 text-primary" />
                   <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">
                     Badge Inspector
                   </span>

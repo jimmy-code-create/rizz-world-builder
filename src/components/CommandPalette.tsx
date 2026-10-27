@@ -5,8 +5,9 @@ import {
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Activity, Bot, Home, Compass, Bell, MessageCircle, Hash, Coins, Bookmark, Trophy, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText, Gamepad2, Palette,
+  Activity, Bot, Home, Compass, Bell, MessageCircle, Hash, Coins, Bookmark, Users, Film, Settings, User as UserIcon, Flame, LogOut, Copy, MessageSquareText, Gamepad2, Palette,
 } from "lucide-react";
+import { BadgesMark } from "@/components/BadgesMark";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/ui/avatar";
 import { formatNumber } from "@/lib/formatters";
@@ -27,7 +28,7 @@ const PAGES = [
   { to: "/dms", label: "Messages", icon: MessageCircle },
   { to: "/chat-stories", label: "Chat Stories", icon: MessageSquareText },
   { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/badges", label: "Badges", icon: Trophy },
+  { to: "/badges", label: "Badges", icon: BadgesMark },
   { to: "/leaderboard", label: "Leaderboard", icon: Flame },
   { to: "/notifications", label: "Inbox", icon: Bell },
   { to: "/bots", label: "Bots", icon: Bot },
