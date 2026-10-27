@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, ChevronLeft, Crown, Loader2, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, Crown, Loader2, Play, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { PURIFY_BENEFITS, PURIFY_PRICE_LABEL, isPurifyEnforced, usePurify } from "@/lib/purify";
+import { PurifyIntro, shouldAutoPlayPurifyIntro } from "@/components/purify/PurifyIntro";
 
 export const Route = createFileRoute("/_app/purify")({
   head: () => ({ meta: [{ title: "Purify · RIZZ" }] }),
@@ -29,6 +30,9 @@ function PurifyPage() {
   const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const endsOn = formatUntil(until);
+  // The animation introduces the page once per visit; the chip below replays it
+  // on request, so nobody has to sit through it twice.
+  const [introOpen, setIntroOpen] = useState(() => shouldAutoPlayPurifyIntro());
 
   async function startCheckout() {
     if (starting) return;
@@ -54,6 +58,8 @@ function PurifyPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
+      {introOpen && <PurifyIntro open onClose={() => setIntroOpen(false)} />}
+
       <Link
         to="/settings"
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -92,6 +98,15 @@ function PurifyPage() {
           </p>
 
           <p className="mt-4 font-display text-2xl font-bold text-primary">{PURIFY_PRICE_LABEL}</p>
+
+          <button
+            type="button"
+            onClick={() => setIntroOpen(true)}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Play className="h-3.5 w-3.5 fill-current" />
+            Watch the intro
+          </button>
 
           <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold">
             {active ? (

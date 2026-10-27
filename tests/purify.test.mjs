@@ -124,6 +124,21 @@ await check("chat uploads use 10 MB free and 50 MB with Purify", () => {
   }
 });
 
+await check("the introduction plays once and can always be skipped", () => {
+  const intro = read("src/components/purify/PurifyIntro.tsx");
+  assert.match(intro, /PURIFY_INTRO_SRC = "\/purify\/purify-intro\.mp4"/);
+  assert.ok(exists("public/purify/purify-intro.mp4"), "the animation ships with the app");
+  assert.match(page, /<PurifyIntro open onClose=/);
+  assert.match(page, /shouldAutoPlayPurifyIntro\(\)/);
+  // Once per visit, never twice, and never over a member's motion preference.
+  assert.match(intro, /sessionStorage\.getItem\(INTRO_SEEN_KEY\)/);
+  assert.match(intro, /prefers-reduced-motion: reduce/);
+  // Muted autoplay is the only autoplay browsers allow; sound is opt-in.
+  assert.match(intro, /muted\n/);
+  assert.match(intro, /onClick=\{finish\}/);
+  assert.match(intro, /Tap anywhere to skip/);
+});
+
 await check("Settings links to the one billing page", () => {
   assert.match(settingsHub, /to: "\/purify"/);
   assert.match(settingsHub, /Purify/);
