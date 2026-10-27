@@ -39,6 +39,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { MessageRow } from "@/components/chat/MessageRow";
+import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
 import { withoutShareLinks } from "@/lib/share-links";
 
@@ -484,7 +485,10 @@ function GroupRoom() {
             const hasText = !!bodyText.trim();
             const mediaOnly = isOnlyMediaMarker(bodyText);
             const previous = visibleMessages[index - 1];
-            const startsGroup = !previous ||
+            // A new calendar day opens a group and a divider, exactly like realm
+            // chat: the five-minute burst rule must not swallow midnight.
+            const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
+            const startsGroup = newDay ||
               previous.author_id !== m.author_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
             // Discord-style mention highlight: a message that names me (or the
@@ -498,6 +502,7 @@ function GroupRoom() {
             );
             return (
               <Fragment key={m.id}>
+              {newDay && <DateSeparator date={m.created_at} />}
               <MessageRow
                 id={String(m.id)}
                 author={{

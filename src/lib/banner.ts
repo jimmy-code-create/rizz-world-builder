@@ -132,9 +132,24 @@ function mixHex(from: string, to: string, toWeight: number): string {
 const DEFAULT_PROFILE_SURFACE = "#141416";
 
 /**
+ * How tall the colour band runs before the wash becomes a flat tint. A profile
+ * page is thousands of pixels tall; a gradient stretched over all of it reached
+ * near-black by the first post, which read as "the gradient stops below the
+ * tab bar". Banding it and holding the colour underneath keeps the profile
+ * tinted from the banner to the last post.
+ */
+const PROFILE_WASH_BAND = "820px";
+
+/**
  * The profile-wide theme. Discord tints the whole profile with the banner's
  * colours, then darkens it enough for white text to stay readable. The raw
  * gradient is only shown in the picker swatches; this version is the surface.
+ *
+ * Two layers: the diagonal colour band (top of the page) plus a scrim for text
+ * contrast, and then a solid tint of the same colour as the page background for
+ * everything below the band. Every surface that paints this — the full profile,
+ * the preview sheet, the editor and the profile card — gets the same look, and
+ * a page that is shorter than the band simply shows the whole gradient.
  */
 export function profileThemeFor(gradient: BannerGradient | null): {
   background: string | null;
@@ -143,8 +158,9 @@ export function profileThemeFor(gradient: BannerGradient | null): {
   if (!gradient) return { background: null, surface: DEFAULT_PROFILE_SURFACE };
   return {
     background: [
-      "linear-gradient(180deg, rgba(8,8,10,0.40) 0%, rgba(8,8,10,0.70) 48%, rgba(8,8,10,0.90) 100%)",
-      `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2})`,
+      `linear-gradient(180deg, rgba(8,8,10,0.34) 0%, rgba(8,8,10,0.56) 55%, rgba(8,8,10,0.72) 100%) 0 0 / 100% ${PROFILE_WASH_BAND} no-repeat`,
+      `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2}) 0 0 / 100% ${PROFILE_WASH_BAND} no-repeat`,
+      mixHex(gradient.c2, "#0b0b0c", 0.7),
     ].join(", "),
     // The presence-dot cutout and banner scrim need one solid colour. Use a
     // heavily darkened accent so it melts into the bottom of the page theme.

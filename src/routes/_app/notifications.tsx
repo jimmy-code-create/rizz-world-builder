@@ -3,14 +3,19 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+  AtSign,
+  Ban,
   Bell,
+  CheckCheck,
+  Coins,
+  Hand,
   Hash,
   Heart,
   MessageCircle,
   MessagesSquare,
   Smile,
-  CheckCheck,
-  AtSign,
+  Undo2,
+  Upload,
   UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +43,34 @@ const ICON: Record<string, any> = {
   // Forum notifications: a reply to your thread, or a new post in a tag you follow.
   forum_reply: MessagesSquare,
   forum_tag: Hash,
+  // Bounties: one icon per event, so the inbox reads at a glance.
+  bounty_taken: Hand,
+  bounty_released: Undo2,
+  bounty_submitted: Upload,
+  bounty_paid: Coins,
+  bounty_rejected: Undo2,
+  bounty_cancelled: Ban,
+};
+
+/**
+ * One sentence per notification type. The map is exhaustive on purpose and is
+ * checked against the database's writers by the bounty test suite: a type that
+ * is missing here silently renders as "reacted to your post".
+ */
+const NOTIF_COPY: Record<string, string> = {
+  like: "notif_liked",
+  comment: "notif_commented",
+  follow: "notif_followed",
+  mention: "notif_mentioned",
+  forum_reply: "notif_forum_reply",
+  forum_tag: "notif_forum_tag",
+  reaction: "notif_reacted",
+  bounty_taken: "notif_bounty_taken",
+  bounty_released: "notif_bounty_released",
+  bounty_submitted: "notif_bounty_submitted",
+  bounty_paid: "notif_bounty_paid",
+  bounty_rejected: "notif_bounty_rejected",
+  bounty_cancelled: "notif_bounty_cancelled",
 };
 
 /**
@@ -311,19 +344,7 @@ function NotificationsPage() {
                     ) : (
                       <span className="font-bold">@someone</span>
                     )}{" "}
-                    {n.type === "like"
-                      ? t("notif_liked")
-                      : n.type === "comment"
-                        ? t("notif_commented")
-                        : n.type === "follow"
-                          ? t("notif_followed")
-                          : n.type === "mention"
-                            ? t("notif_mentioned")
-                            : n.type === "forum_reply"
-                              ? t("notif_forum_reply")
-                              : n.type === "forum_tag"
-                                ? t("notif_forum_tag")
-                                : t("notif_reacted")}
+                    {t(NOTIF_COPY[n.type] ?? "notif_reacted")}
                     {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") &&
                       n.body && (
                         <span className="block text-xs text-muted-foreground truncate mt-0.5">
@@ -395,6 +416,12 @@ function NotificationsPage() {
                     search={{ comment: comment.commentId }}
                     className={shell}
                   >
+                    {inner}
+                  </Link>
+                ) : typeof n.type === "string" && n.type.startsWith("bounty") ? (
+                  // Every bounty event happens on one board, so they all land
+                  // there — the card for this bounty is the next move anyway.
+                  <Link to="/drops" className={shell}>
                     {inner}
                   </Link>
                 ) : n.post_id ? (

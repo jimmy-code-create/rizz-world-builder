@@ -22,6 +22,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
@@ -929,7 +930,10 @@ function DMPage() {
             const hasText = !!restText.trim();
             const mediaOnly = isOnlyMediaMarker(restText);
             const previous = filteredMsgs[index - 1];
-            const startsGroup = !previous ||
+            // A new calendar day always opens a group (and a divider) — the
+            // five-minute burst rule must not swallow midnight.
+            const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
+            const startsGroup = newDay ||
               previous.sender_id !== m.sender_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
             const inviteUrl = rest?.match(/(?:https?:\/\/[^\s]+)?\/join\/[a-z0-9_-]+/i)?.[0];
@@ -952,7 +956,8 @@ function DMPage() {
                   : []),
               ];
               return (
-                <div key={m.id} className="space-y-1">
+                <div key={m.id} className="chat-message-slot space-y-1">
+                  {newDay && <DateSeparator date={m.created_at} />}
                   {knockCards?.map((knock) => (
                     <KnockThreadCard
                       key={knock.id}
@@ -999,7 +1004,8 @@ function DMPage() {
             }
             const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
-              <div key={m.id} className="space-y-1">
+              <div key={m.id} className="chat-message-slot space-y-1">
+              {newDay && <DateSeparator date={m.created_at} />}
               {knockCards?.map((knock) => (
                 <KnockThreadCard
                   key={knock.id}

@@ -1,24 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Coins,
-  Plus,
-  Timer,
-  Loader2,
-  Sparkles,
-  Users,
-  Share2,
-  Megaphone,
   Check,
+  Coins,
+  Hand,
+  Megaphone,
   PawPrint,
+  Plus,
+  Share2,
+  ShieldCheck,
+  Users,
 } from "lucide-react";
+import { formatNumber } from "@/lib/formatters";
+import { toast } from "@/lib/toast";
+import { BountyCard } from "@/components/bounties/BountyCard";
+import { PostBountyDialog } from "@/components/bounties/PostBountyDialog";
+import {
+  bountiesNeedingYou,
+  isEscrowBounty,
+  settleExpiredBounties,
+  useBountySubmissions,
+  viewerRole,
+  type BountyRow,
+} from "@/lib/bounties";
 
 /**
  * The quest emblem: a squared tile rather than a round chip.
@@ -67,10 +76,6 @@ function QuestEmblem({
 /** The one button recipe for the bounty page: square corners, 40px tall. */
 const ACTION_BUTTON =
   "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 text-xs font-bold text-foreground transition-colors hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
-import { motion } from "framer-motion";
-import { formatNumber } from "@/lib/formatters";
-import { fixCommonTypos, hasKnownTypo } from "@/lib/text-fix";
-import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_app/drops")({
   head: () => ({ meta: [{ title: "Bounties · RIZZ" }] }),
@@ -94,8 +99,8 @@ type Quest = {
 
 /**
  * Promo challenges stay device-tracked. The economy itself is server-side:
- * every successful bounty claim pays Paws through `claim_bounty`, and Paws are
- * the score shown across profiles and the leaderboard.
+ * claiming an open call pays Paws through `claim_bounty`, and an escrowed
+ * bounty pays its prize through `review_bounty_submission`.
  */
 const BOUNTY_PAW_REWARD = 25;
 
@@ -147,10 +152,14 @@ const QUESTS: Quest[] = [
   },
 ];
 
+/** Finished bounties stay on the board for a few days as receipts. */
+const BOARD_LOOKBACK_DAYS = 3;
+
 function DropsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const qc = useQueryClient();
   const [dropOpen, setDropOpen] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
   const [shared, setShared] = useState<boolean>(() => {
     try {
       return typeof localStorage !== "undefined" && localStorage.getItem(SHARE_QUEST_KEY) === "1";
@@ -158,17 +167,21 @@ function DropsPage() {
       return false;
     }
   });
+
   const drops = useQuery({
     queryKey: ["drops"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("drops")
-        .select("*, creator:profiles!drops_creator_id_fkey(username,display_name,avatar_url)")
-        .gt("expires_at", new Date().toISOString())
+      const since = new Date(Date.now() - BOARD_LOOKBACK_DAYS * 86_400_000).toISOString();
+      const { data } = await (supabase.from as any)("drops")
+        .select(
+          "*, creator:profiles!drops_creator_id_fkey(username,display_name,avatar_url,bounties_completed,bounties_cancelled)",
+        )
+        .gt("expires_at", since)
         .order("expires_at");
-      return data ?? [];
+      return (data ?? []) as BountyRow[];
     },
   });
+
   const myClaims = useQuery({
     queryKey: ["my-claims", user?.id],
     queryFn: async () => {
@@ -177,6 +190,25 @@ function DropsPage() {
     },
     enabled: !!user,
   });
+
+  // Housekeeping: an open bounty that ran out of time hands the Paws back. It
+  // is idempotent and only touches bounties past their deadline, so running it
+  // on every visit is cheaper than a cron that can be missed.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void settleExpiredBounties().then((settled) => {
+      if (cancelled || settled <= 0) return;
+      toast.info(
+        settled === 1 ? "A bounty expired — Paws refunded" : `${settled} bounties expired — Paws refunded`,
+      );
+      void qc.invalidateQueries({ queryKey: ["drops"] });
+      void refreshProfile();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, qc, refreshProfile]);
 
   useEffect(() => {
     const ch = supabase
@@ -188,11 +220,70 @@ function DropsPage() {
         qc.invalidateQueries({ queryKey: ["drops"] });
         qc.invalidateQueries({ queryKey: ["my-claims"] });
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bounty_submissions" }, () => {
+        qc.invalidateQueries({ queryKey: ["bounty-submissions"] });
+        qc.invalidateQueries({ queryKey: ["drops"] });
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
   }, [qc]);
+
+  const rows = drops.data ?? [];
+
+  // Names of the members currently on a bounty, so a card can say who.
+  const workerIds = useMemo(
+    () => [...new Set(rows.map((row) => row.assigned_to).filter((id): id is string => !!id))],
+    [rows],
+  );
+  const workers = useQuery({
+    queryKey: ["bounty-workers", workerIds.join(",")],
+    enabled: workerIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id,username,avatar_url")
+        .in("id", workerIds);
+      return new Map(
+        (data ?? []).map((row: { id: string; username: string | null; avatar_url: string | null }) => [
+          row.id,
+          row,
+        ]),
+      );
+    },
+  });
+
+  // Proof is only readable by the two people in the deal, so only ask for the
+  // bounties this viewer is part of.
+  const myDropIds = useMemo(() => {
+    if (!user) return [];
+    return rows
+      .filter((row) => viewerRole(row, user.id) !== "guest")
+      .map((row) => row.id);
+  }, [rows, user]);
+  const submissions = useBountySubmissions(myDropIds);
+
+  const submissionFor = (dropId: string) =>
+    (submissions.data ?? []).find((row) => row.drop_id === dropId) ?? null;
+
+  const myBounties = useMemo(
+    () => rows.filter((row) => viewerRole(row, user?.id) !== "guest"),
+    [rows, user],
+  );
+  const desk = useMemo(() => bountiesNeedingYou(rows, user?.id), [rows, user]);
+  const visible = onlyMine ? myBounties : rows;
+
+  const escrowHeld = useMemo(
+    () =>
+      rows
+        .filter(
+          (row) =>
+            row.creator_id === user?.id && (row.escrow_state ?? "none") === "held" && isEscrowBounty(row),
+        )
+        .reduce((total, row) => total + Number(row.prize_paws ?? 0), 0),
+    [rows, user],
+  );
 
   const claim = async (dropId: string) => {
     if (!user) return;
@@ -247,9 +338,7 @@ function DropsPage() {
 
   const questCtx = {
     claims: myClaims.data?.size ?? 0,
-    posted: (drops.data ?? []).some(
-      (d: { creator_id?: string }) => user && d.creator_id === user.id,
-    ),
+    posted: rows.some((row) => row.creator_id === user?.id),
     shared,
   };
   const questsDone = QUESTS.filter((q) => q.done(questCtx)).length;
@@ -266,7 +355,7 @@ function DropsPage() {
             <Coins className="h-6 w-6 text-primary" /> Bounties
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Limited bounties. Fast claims. Don&apos;t sleep.
+            Put Paws on a task. Pay only for work you approve.
           </p>
         </div>
         <Button
@@ -276,7 +365,7 @@ function DropsPage() {
           <Plus className="h-4 w-4 mr-1" />
           Bounty
         </Button>
-        <CreateDropDialog open={dropOpen} onOpenChange={setDropOpen} />
+        <PostBountyDialog open={dropOpen} onOpenChange={setDropOpen} />
       </motion.div>
 
       <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
@@ -289,108 +378,100 @@ function DropsPage() {
             {formatNumber(profile?.paw_balance ?? 0)} Paws
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Every successful bounty claim pays {BOUNTY_PAW_REWARD} Paws.
+            {escrowHeld > 0
+              ? `${formatNumber(escrowHeld)} Paws are held in escrow on your bounties.`
+              : "Open calls still pay 25 Paws per claim; escrow bounties pay their full prize on approval."}
           </p>
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {[
+            { label: "Done", value: Number((profile as any)?.bounties_completed ?? 0) },
+            { label: "Held", value: escrowHeld },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-center"
+            >
+              <p className="font-mono text-sm font-bold leading-none">{formatNumber(stat.value)}</p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {rows.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {(
+            [
+              { id: false, label: "All bounties", icon: Coins },
+              { id: true, label: desk.length ? `Your desk · ${desk.length}` : "Your desk", icon: Hand },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={String(tab.id)}
+              type="button"
+              onClick={() => setOnlyMine(tab.id)}
+              aria-pressed={onlyMine === tab.id}
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${
+                onlyMine === tab.id
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
 
       <div className="space-y-3">
-        {drops.data?.map((d: any) => {
-          const claimed = myClaims.data?.has(d.id);
-          const soldOut = d.claim_count >= d.claim_limit;
-          const ownBounty = d.creator_id === user?.id;
-          const pct = Math.min(100, (d.claim_count / d.claim_limit) * 100);
-          return (
-            <motion.div
-              key={d.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass rounded-3xl overflow-hidden border border-white/5"
-            >
-              {d.media_url && (
-                <div className="aspect-video bg-black overflow-hidden">
-                  <img
-                    src={d.media_url}
-                    alt={d.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <div className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-xl">{fixCommonTypos(d.title)}</h3>
-                    {d.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {fixCommonTypos(d.description)}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2">by @{d.creator?.username}</p>
-                  </div>
-                  <Countdown to={d.expires_at} />
-                </div>
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-muted-foreground">
-                      {formatNumber(d.claim_count)} / {formatNumber(d.claim_limit)} claimed
-                    </span>
-                    <span
-                      className="font-bold"
-                      style={{ color: pct > 90 ? "var(--brand-signal)" : undefined }}
-                    >
-                      {Math.round(pct)}%
-                    </span>
-                  </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={() => claim(d.id)}
-                  disabled={claimed || soldOut || ownBounty || !user}
-                  className={`w-full mt-4 ${claimed || soldOut || ownBounty ? "glass border border-white/10" : "bg-primary text-primary-foreground border-0 shadow-md"}`}
-                  variant={claimed || soldOut || ownBounty ? "outline" : "default"}
-                >
-                  {claimed ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1" /> Claimed
-                    </>
-                  ) : soldOut ? (
-                    "Sold out"
-                  ) : ownBounty ? (
-                    "Your bounty"
-                  ) : (
-                    <>
-                      <PawPrint className="h-4 w-4 mr-1" /> Claim · +{BOUNTY_PAW_REWARD} Paws
-                    </>
-                  )}
-                </Button>
-              </div>
-            </motion.div>
-          );
-        })}
+        {visible.map((row) => (
+          <BountyCard
+            key={row.id}
+            bounty={row}
+            submission={submissionFor(row.id)}
+            workerName={
+              row.assigned_to ? (workers.data?.get(row.assigned_to)?.username ?? null) : null
+            }
+            claimed={myClaims.data?.has(row.id) ?? false}
+            onClaim={claim}
+            onChanged={() => {
+              void qc.invalidateQueries({ queryKey: ["drops"] });
+              void refreshProfile();
+              void qc.invalidateQueries({ queryKey: ["paw-ledger", user?.id] });
+            }}
+          />
+        ))}
       </div>
 
-      {drops.data?.length === 0 && (
+      {visible.length === 0 && (
         <div className="glass flex flex-col items-center rounded-3xl p-10 text-center">
-          <QuestEmblem icon={Coins} size="lg" />
-          <h2 className="mt-3 font-display text-xl font-bold">No active bounties</h2>
-          <p className="text-sm text-muted-foreground mt-1">Post one and watch the rush.</p>
+          <QuestEmblem icon={onlyMine ? Hand : Coins} size="lg" />
+          <h2 className="mt-3 font-display text-xl font-bold">
+            {onlyMine ? "Nothing on your desk" : "No active bounties"}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {onlyMine
+              ? "Bounties you post or take show up here, with the next move spelled out."
+              : "Post one and watch the rush."}
+          </p>
         </div>
       )}
 
       <div className="glass rounded-3xl p-5 mt-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
-          <h2 className="font-display text-lg font-bold">Paws leaderboard</h2>
+          <h2 className="font-display text-lg font-bold flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" /> How escrow protects both sides
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            See who is stacking the most Paws this week.
+            The prize leaves the poster's wallet when the bounty goes live and is locked until they
+            approve the work. No approval inside the review window and it pays out on its own. Pull a
+            bounty and a fee is kept — double once somebody is already on it.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
@@ -461,160 +542,10 @@ function DropsPage() {
           })}
         </div>
         <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-          Bounty claims pay {BOUNTY_PAW_REWARD} Paws each. Quest progress is tracked on this device;
+          Open calls pay {BOUNTY_PAW_REWARD} Paws each. Quest progress is tracked on this device;
           Paws never expire and never lose their leaderboard value when you spend them.
         </p>
       </section>
     </div>
-  );
-}
-
-function Countdown({ to }: { to: string }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const diff = Math.max(0, new Date(to).getTime() - now);
-  const h = Math.floor(diff / 3.6e6);
-  const m = Math.floor((diff % 3.6e6) / 6e4);
-  const s = Math.floor((diff % 6e4) / 1000);
-  return (
-    <div className="border border-border bg-card rounded-xl px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1 shrink-0">
-      <Timer className="h-3 w-3 text-primary" />
-      {h > 0 ? `${h}h ${m}m` : `${m}:${String(s).padStart(2, "0")}`}
-    </div>
-  );
-}
-
-function CreateDropDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [limit, setLimit] = useState(100);
-  const [hours, setHours] = useState(24);
-  const [busy, setBusy] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const create = async () => {
-    if (!user || !title.trim()) return;
-    setBusy(true);
-    try {
-      let media_url: string | null = null;
-      if (file) {
-        const path = `${user.id}/${Date.now()}-${file.name}`;
-        const { error: upErr } = await supabase.storage.from("drops").upload(path, file);
-        if (upErr) throw upErr;
-        media_url = supabase.storage.from("drops").getPublicUrl(path).data.publicUrl;
-      }
-      const expires_at = new Date(Date.now() + hours * 3.6e6).toISOString();
-      const { error } = await supabase.from("drops").insert({
-        creator_id: user.id,
-        title: title.trim(),
-        description: desc.trim() || null,
-        claim_limit: limit,
-        expires_at,
-        media_url,
-      });
-      if (error) throw error;
-      toast.success("Bounty is live 🚀");
-      qc.invalidateQueries({ queryKey: ["drops"] });
-      onOpenChange(false);
-      setTitle("");
-      setDesc("");
-      setFile(null);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10">
-        <DialogHeader>
-          <DialogTitle className="font-display">New bounty</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Input
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={60}
-            className="glass border-white/10"
-          />
-          {hasKnownTypo(title) && (
-            <button
-              type="button"
-              onClick={() => setTitle(fixCommonTypos(title))}
-              className="-mt-1 text-left text-[11px] text-primary hover:underline"
-            >
-              Did you mean “{fixCommonTypos(title)}”?
-            </button>
-          )}
-          <Textarea
-            placeholder="Hype it up"
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            maxLength={280}
-            className="glass border-white/10"
-          />
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileRef.current?.click()}
-            className="w-full glass border-white/10"
-          >
-            {file ? `📎 ${file.name}` : "Add image (optional)"}
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-muted-foreground">Claim limit</label>
-              <Input
-                type="number"
-                value={limit}
-                onChange={(e) => setLimit(+e.target.value)}
-                min={1}
-                max={10000}
-                className="glass border-white/10"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Duration (hrs)</label>
-              <Input
-                type="number"
-                value={hours}
-                onChange={(e) => setHours(+e.target.value)}
-                min={1}
-                max={168}
-                className="glass border-white/10"
-              />
-            </div>
-          </div>
-          <Button
-            onClick={create}
-            disabled={busy || !title.trim()}
-            className="w-full bg-primary text-primary-foreground border-0 shadow-md"
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Launch bounty"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

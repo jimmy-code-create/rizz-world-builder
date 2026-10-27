@@ -22,6 +22,11 @@ async function check(name, fn) {
 
 const drops = readFileSync(new URL("../src/routes/_app/drops.tsx", import.meta.url), "utf8");
 const board = readFileSync(new URL("../src/routes/_app/leaderboard.tsx", import.meta.url), "utf8");
+const postDialog = readFileSync(
+  new URL("../src/components/bounties/PostBountyDialog.tsx", import.meta.url),
+  "utf8",
+);
+const card = readFileSync(new URL("../src/components/bounties/BountyCard.tsx", import.meta.url), "utf8");
 const palette = readFileSync(
   new URL("../src/components/CommandPalette.tsx", import.meta.url),
   "utf8",
@@ -49,18 +54,25 @@ await check("old voice aliases kept, speak wording updated", async () => {
 
 await check("route, tables, and claim mechanics still present", async () => {
   assert.ok(drops.includes('createFileRoute("/_app/drops")'));
-  assert.ok(drops.includes('from("drops")') && drops.includes('from("drop_claims")'));
-  assert.ok(drops.includes('storage.from("drops")'));
-  assert.ok(drops.includes("claim_limit") && drops.includes("Claim · +"));
+  // Both tables are read on the board; `drops` carries the escrow columns and
+  // `drop_claims` keeps the legacy open-call history.
+  assert.ok(drops.includes('("drops")') && drops.includes('from("drop_claims")'));
+  // The free open call survived the escrow board: same claim RPC, same flat
+  // reward, same "+25 Paws" promise on the button that pays it.
   assert.ok(drops.includes('rpc("claim_bounty"'));
   assert.ok(drops.includes("BOUNTY_PAW_REWARD"));
+  assert.ok(card.includes("Claim · +25 Paws"));
+  assert.ok(card.includes("claim_limit"));
+  assert.ok(postDialog.includes('storage.from("drops")'));
+  assert.ok(postDialog.includes("claim_limit"));
   assert.ok(drops.includes("Paws balance"));
-  assert.ok(drops.includes("Every successful bounty claim pays"));
+  assert.ok(drops.includes("Open calls still pay 25 Paws per claim"));
 });
 
 await check("quests drive promotion with existing flows only", async () => {
   assert.ok(drops.includes('aria-label="Bounty quests"'));
   assert.ok(drops.includes('role="progressbar"'));
+  assert.ok(drops.includes("Quest progress is tracked on this device"));
   for (const title of [
     "Claim your first bounty",
     "Post a bounty for the crew",
