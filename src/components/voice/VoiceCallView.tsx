@@ -1,12 +1,35 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
+import {
+  ChevronDown,
+  Gamepad2,
+  Music,
+  MonitorPlay,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Radio,
+  RefreshCw,
+  ScreenShare,
+  ScreenShareOff,
+  SwitchCamera,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+  Wifi,
+  Sliders,
+  MessageSquare,
+  X,
+  Send,
+  Headphones,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext, useVoiceSpeaking } from "@/components/voice/VoiceCallProvider";
-import { useMusicBotInCall } from "@/components/voice/MusicBotInCall";
+import { setMusicBotDismissed, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -49,7 +72,17 @@ import {
   type PeerAudioState,
 } from "@/lib/peer-audio";
 
-function PeerVolumeControl({ userId, username }: { userId: string; username: string }) {
+function ParticipantMenu({
+  userId,
+  username,
+  canKick,
+  onKick,
+}: {
+  userId: string;
+  username: string;
+  canKick: boolean;
+  onKick: () => void;
+}) {
   const peerAudio = usePeerAudio();
   const muted = peerAudio.muted.includes(userId);
   const committed = peerVolumeOf(peerAudio, userId);
@@ -66,10 +99,18 @@ function PeerVolumeControl({ userId, username }: { userId: string; username: str
           aria-label={`Volume for @${username}`}
           className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80 text-muted-foreground transition hover:text-foreground"
         >
-          {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          {muted || volume === 0 ? (
+            <VolumeX className="h-3.5 w-3.5" />
+          ) : (
+            <Volume2 className="h-3.5 w-3.5" />
+          )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" side="top" className="w-60 space-y-3 border-white/10 glass-strong">
+      <PopoverContent
+        align="end"
+        side="top"
+        className="w-60 space-y-3 border-white/10 glass-strong"
+      >
         <p className="truncate text-xs font-semibold">@{username}</p>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -101,6 +142,21 @@ function PeerVolumeControl({ userId, username }: { userId: string; username: str
           {muted ? `Unmute @${username}` : `Mute @${username}`}
         </Button>
         <p className="text-[10px] text-muted-foreground">Only changes what you hear.</p>
+        {canKick && (
+          <>
+            <div aria-hidden className="h-px bg-white/10" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onKick}
+              className="w-full justify-start gap-2 rounded-lg px-2 text-[#ff5d5d] hover:bg-[#ff5d5d]/14 hover:text-[#ff5d5d]"
+            >
+              <PhoneOff className="h-4 w-4" />
+              Remove from call
+            </Button>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -113,7 +169,17 @@ function PeerVolumeControl({ userId, username }: { userId: string; username: str
  * in some browsers, so the picker is best-effort: when it is missing, playback
  * stays on the system default instead of failing.
  */
-function RemoteAudio({ stream, onBlocked, peerId, deafened = false }: { stream: MediaStream; onBlocked: () => void; peerId?: string; deafened?: boolean }) {
+function RemoteAudio({
+  stream,
+  onBlocked,
+  peerId,
+  deafened = false,
+}: {
+  stream: MediaStream;
+  onBlocked: () => void;
+  peerId?: string;
+  deafened?: boolean;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [settings] = useSoundSettings();
   const peerAudio = usePeerAudio();
@@ -158,7 +224,13 @@ export function VoiceCallAudio() {
   return (
     <>
       {remoteStreams.map(({ peerId, stream }) => (
-        <RemoteAudio key={peerId} stream={stream} peerId={peerId} onBlocked={markPlaybackBlocked} deafened={deafened} />
+        <RemoteAudio
+          key={peerId}
+          stream={stream}
+          peerId={peerId}
+          onBlocked={markPlaybackBlocked}
+          deafened={deafened}
+        />
       ))}
     </>
   );
@@ -195,6 +267,7 @@ export function VoiceCallView() {
     toggleScreenShare,
     startGameShare,
     leaveCall,
+    kickFromCall,
     retry,
   } = useVoiceCallContext();
 
@@ -238,6 +311,8 @@ export function VoiceCallView() {
   const [gamesOpen, setGamesOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [selectedSharePeerId, setSelectedSharePeerId] = useState<string | null>(null);
+  // Bots can be taken out of this call and put back — never a one-way door.
+  const [hiddenBots, setHiddenBots] = useState<{ music?: boolean; game?: boolean }>({});
   // Immersive = game as the background with the voice dock floating over it.
   // Toggling it off keeps the game open as a side panel (desktop only).
   const [immersive, setImmersive] = useState(true);
@@ -289,7 +364,11 @@ export function VoiceCallView() {
 
   // Game Activities: ephemeral per-room state over realtime (broadcast +
   // presence), so late joiners sync the live game with no database table.
-  const roomActivity = useRoomActivity(call?.roomId ?? null, user ? { id: user.id, name: selfName } : null, panelOpen);
+  const roomActivity = useRoomActivity(
+    call?.roomId ?? null,
+    user ? { id: user.id, name: selfName } : null,
+    panelOpen,
+  );
   const playingCount = Object.keys(roomActivity.players).length;
   const prevActivityRef = useRef<RoomActivity | null>(null);
   useEffect(() => {
@@ -325,8 +404,7 @@ export function VoiceCallView() {
   const liveGame = gameBot.state.activeGame;
   const myGame = gameBot.mySession;
   const isGameStreaming = sharingScreen && shareMode === "game";
-  const viewedSession =
-    gameBot.sessionsById[gameBot.viewingHostId ?? ""] ?? myGame ?? null;
+  const viewedSession = gameBot.sessionsById[gameBot.viewingHostId ?? ""] ?? myGame ?? null;
 
   const openGameSession = (session: GameSession) => {
     const joined = gameBot.join(session.hostId);
@@ -358,9 +436,9 @@ export function VoiceCallView() {
   const selectedRemoteShare =
     remoteShares.find(({ peerId }) => peerId === selectedSharePeerId) ?? null;
   const remoteShare = selectedRemoteShare ?? remoteShares[0] ?? null;
-  const stageStream = sharingScreen ? localScreenStream : remoteShare?.stream ?? null;
+  const stageStream = sharingScreen ? localScreenStream : (remoteShare?.stream ?? null);
   const stagePeerId = sharingScreen ? user?.id : remoteShare?.peerId;
-  const stageSession = stagePeerId ? gameBot.sessionsById[stagePeerId] ?? null : null;
+  const stageSession = stagePeerId ? (gameBot.sessionsById[stagePeerId] ?? null) : null;
   const stageHasGame = stagePeerId
     ? !!stageSession ||
       gameBot.sessions.some((session) =>
@@ -370,7 +448,8 @@ export function VoiceCallView() {
   const stageIsGame = sharingScreen ? shareMode === "game" : stageHasGame;
   const stageOwner = sharingScreen
     ? "you"
-    : participants.find((participant) => participant.user_id === stagePeerId)?.user?.username ?? "someone";
+    : (participants.find((participant) => participant.user_id === stagePeerId)?.user?.username ??
+      "someone");
 
   return (
     // A voice call takes over the screen: the tiles, the music bot and the
@@ -387,16 +466,18 @@ export function VoiceCallView() {
         aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(70% 45% at 50% 0%, rgba(201,255,61,0.14), transparent 65%)" }}
-        />
-        <header className="relative flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3 pt-4">
+        <header className="relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2.5 pt-3 sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Voice channel</p>
-            <h1 className="truncate font-display text-lg font-bold leading-tight">{call.channelName}</h1>
-            <p role={error ? "alert" : undefined} className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}>
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Voice
+            </p>
+            <h1 className="truncate font-display text-[17px] font-bold leading-tight">
+              {call.channelName}
+            </h1>
+            <p
+              role={error ? "alert" : undefined}
+              className={`mt-0.5 flex items-center gap-1.5 text-xs ${error ? "text-destructive" : "text-muted-foreground"}`}
+            >
               {!error && <Wifi className="h-3 w-3" />}
               {error ??
                 `${status} · ${participants.length + (musicBot.enabled ? 1 : 0)} ${
@@ -409,57 +490,52 @@ export function VoiceCallView() {
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Open VC text chat"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${chatOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setChatOpen((v) => !v)}
-            title="VC Text Chat"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Games menu"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${gamesOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setGamesOpen(true)}
-            title="Games"
-          >
-            <Gamepad2 className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Music"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${musicOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setMusicOpen(true)}
-            title="Music"
-          >
-            <Music className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Voice settings"
-            className={`glass h-11 w-11 shrink-0 border-white/10 ${settingsOpen ? "bg-primary/20 text-primary border-primary/50" : ""}`}
-            onClick={() => setSettingsOpen(true)}
-            title="Voice Settings"
-          >
-            <Sliders className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
+          {[
+            {
+              label: "Open text chat",
+              active: chatOpen,
+              onClick: () => setChatOpen((v) => !v),
+              icon: MessageSquare,
+            },
+            {
+              label: "Games",
+              active: gamesOpen,
+              onClick: () => setGamesOpen(true),
+              icon: Gamepad2,
+            },
+            { label: "Music", active: musicOpen, onClick: () => setMusicOpen(true), icon: Music },
+            {
+              label: "Voice settings",
+              active: settingsOpen,
+              onClick: () => setSettingsOpen(true),
+              icon: Sliders,
+            },
+          ].map(({ label, active, onClick, icon: Icon }) => (
+            <button
+              key={label}
+              type="button"
+              aria-label={label}
+              title={label}
+              onClick={onClick}
+              className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors after:absolute after:-inset-1 after:content-[''] sm:h-10 sm:w-10 ${
+                active
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-white/10 bg-white/[0.04] text-foreground hover:bg-white/[0.08]"
+              }`}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </button>
+          ))}
+          <button
+            type="button"
             aria-label="Minimize call"
-            className="glass h-11 w-11 shrink-0 border-white/10"
+            title="Minimize"
             onClick={closeView}
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-foreground transition-colors after:absolute after:-inset-1 after:content-[''] hover:bg-white/[0.08] sm:h-10 sm:w-10"
           >
-            <ChevronDown className="h-5 w-5" />
-          </Button>
+            <ChevronDown className="h-[18px] w-[18px]" />
+          </button>
         </header>
-
         <GameSessionsBar
           sessions={gameBot.sessions}
           viewersByHost={gameBot.viewersByHost}
@@ -475,347 +551,445 @@ export function VoiceCallView() {
           }}
           onStream={streamGameSession}
         />
-
-        {roomActivity.activity && !panelOpen && (!bannerDismissedAt || roomActivity.activity.startedAt > bannerDismissedAt) && (
-          <div className="relative shrink-0 px-3 pt-3 sm:px-4">
-            <JoinGameBanner
-              activity={roomActivity.activity}
-              playingCount={playingCount}
-              onJoin={() => {
-                setPanelMinimized(false);
-                setImmersive(true);
-                setPanelOpen(true);
-              }}
-              onDismiss={() => setBannerDismissedAt(roomActivity.activity!.startedAt)}
-            />
-          </div>
-        )}
-
+        {roomActivity.activity &&
+          !panelOpen &&
+          (!bannerDismissedAt || roomActivity.activity.startedAt > bannerDismissedAt) && (
+            <div className="relative shrink-0 px-3 pt-3 sm:px-4">
+              <JoinGameBanner
+                activity={roomActivity.activity}
+                playingCount={playingCount}
+                onJoin={() => {
+                  setPanelMinimized(false);
+                  setImmersive(true);
+                  setPanelOpen(true);
+                }}
+                onDismiss={() => setBannerDismissedAt(roomActivity.activity!.startedAt)}
+              />
+            </div>
+          )}
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
           <div className="mx-auto flex w-full max-w-6xl items-start gap-3">
             <div className="min-w-0 flex-1">
-          {!sharingScreen && remoteShares.length > 1 && (
-            <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 overflow-x-auto pb-1">
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Streams
-              </span>
-              {remoteShares.map(({ peerId }) => {
-                const owner = participants.find((participant) => participant.user_id === peerId);
-                const session = gameBot.sessionsById[peerId];
-                return (
-                  <button
-                    key={peerId}
-                    type="button"
-                    onClick={() => setSelectedSharePeerId(peerId)}
-                    className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors ${
-                      remoteShare?.peerId === peerId
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <MonitorPlay className="h-3.5 w-3.5" />
-                    {session ? `${session.hostName}'s game` : `@${owner?.user?.username ?? "member"}`}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {stageStream && (
-            <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-primary/40 bg-black shadow-md">
-              <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
-                <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary">
-                  <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">
-                    {sharingScreen
-                      ? isGameStreaming
-                        ? "Your game stream"
-                        : "Your screen"
-                      : `${stageIsGame ? "Game stream" : "Screen"} shared by @${stageOwner}`}
+              {!sharingScreen && remoteShares.length > 1 && (
+                <div className="mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 overflow-x-auto pb-1">
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Streams
                   </span>
-                </span>
-                {sharingScreen && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 border-destructive/40 bg-destructive/15 px-2.5 text-xs text-destructive hover:bg-destructive/25"
-                    onClick={toggleScreenShare}
-                  >
-                    {isGameStreaming ? "Stop game stream" : "Stop sharing"}
-                  </Button>
-                )}
-              </div>
-              <VideoTile stream={stageStream} />
-              {isGameStreaming && !shareCropped && (
-                <p className="border-t border-white/10 bg-black/60 px-3 py-1.5 text-[10px] text-muted-foreground">
-                  This browser can&apos;t crop the tab automatically. Pick the game tab or window when
-                  the picker opens so only the game is streamed.
-                </p>
+                  {remoteShares.map(({ peerId }) => {
+                    const owner = participants.find(
+                      (participant) => participant.user_id === peerId,
+                    );
+                    const session = gameBot.sessionsById[peerId];
+                    return (
+                      <button
+                        key={peerId}
+                        type="button"
+                        onClick={() => setSelectedSharePeerId(peerId)}
+                        className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors ${
+                          remoteShare?.peerId === peerId
+                            ? "border-primary/50 bg-primary/15 text-primary"
+                            : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <MonitorPlay className="h-3.5 w-3.5" />
+                        {session
+                          ? `${session.hostName}'s game`
+                          : `@${owner?.user?.username ?? "member"}`}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            </div>
-          )}
 
-          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            <SpeakingTiles>
-              {(speakingSet) =>
-                participants.map((participant) => {
-              const isMe = participant.user_id === user?.id;
-              const speaking = speakingSet.has(participant.user_id) && !participant.muted;
-              const videoStream = isMe
-                ? cameraOn && cameraReady
-                  ? localCameraStream
-                  : null
-                : videosByPeer.get(participant.user_id) ?? null;
-              const username = participant.user?.username ?? "member";
-              const initial = (participant.user?.display_name || username).charAt(0).toUpperCase();
-              const tileRow = presenceMap.rows[participant.user_id] ?? null;
-              const tileStatus = publicStatusOf(tileRow, isMe);
-              const tileCustom = publicCustomStatus(tileRow, isMe);
-              const participantSession = gameBot.sessionsById[participant.user_id] ?? null;
-              const participantViewing =
-                participantSession ??
-                gameBot.sessions.find((session) =>
-                  gameBot.viewersByHost[session.hostId]?.includes(participant.user_id),
-                ) ??
-                null;
-              const joinedThisGame = participantSession?.hostId === gameBot.viewingHostId;
-              const playingGame =
-                participantViewing?.game.name ??
-                roomActivity.players[participant.user_id]?.gameName ??
-                null;
-
-              return (
-                <div
-                  key={participant.user_id}
-                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
-                    speaking
-                      ? "border-primary/70 bg-primary/[0.07] ring-1 ring-primary/45"
-                      : "border-white/10 glass"
-                  }`}
-                >
-                  {videoStream ? (
-                    <VideoTile stream={videoStream} />
-                  ) : (
-                    <>
-                      <div className="relative">
-                        <Avatar
-                          className={`h-16 w-16 transition-colors duration-200 ${
-                            speaking ? "ring-2 ring-primary ring-offset-2 ring-offset-[#0b0714]" : ""
-                          }`}
-                        >
-                          <AvatarImage src={participant.user?.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">{initial}</AvatarFallback>
-                        </Avatar>
-                        <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-[#0b0714] p-[2px]">
-                          <StatusDotButton
-                            userId={participant.user_id}
-                            username={username}
-                            status={tileStatus}
-                            isSelf={isMe}
-                            size={16}
-                          />
-                        </span>
-
-                      </div>
-                      <p className="max-w-full truncate text-xs font-semibold">
-                        @{username}
-                        {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
-                      </p>
-                      {playingGame ? (
-                        <span className="max-w-full truncate text-[11px] font-semibold text-[#c8ff3d]">
-                          Playing {playingGame}
-                        </span>
-                      ) : (
-                        tileCustom &&
-                        (tileCustom.emoji || tileCustom.text) && (
-                          <span className="max-w-full">
-                            <CustomStatusLine status={tileCustom} className="-mt-1 truncate text-[11px]" />
-                          </span>
-                        )
-                      )}
-                      {participantSession && !isMe && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            joinedThisGame ? openGameSession(participantSession) : joinGameSession(participantSession)
-                          }
-                          className={`mt-0.5 flex h-8 items-center gap-1 rounded-full px-3 text-[10px] font-bold transition active:scale-95 ${
-                            joinedThisGame
-                              ? "border border-primary/40 bg-primary/15 text-primary"
-                              : "bg-primary text-primary-foreground"
-                          }`}
-                        >
-                          <Gamepad2 className="h-3 w-3" />
-                          {joinedThisGame ? "Open game" : "Join game"}
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {videoStream && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[11px] font-semibold text-white">
-                          @{username}
-                          {isMe && " (you)"}
-                        </span>
-                        {playingGame ? (
-                          <span className="block truncate text-[10px] font-semibold text-[#c8ff3d]">
-                            Playing {playingGame}
-                          </span>
-                        ) : (
-                          tileCustom &&
-                          (tileCustom.emoji || tileCustom.text) && (
-                            <CustomStatusLine status={tileCustom} className="truncate text-[10px] text-white/70" />
-                          )
-                        )}
+              {stageStream && (
+                <div className="mx-auto mb-4 w-full max-w-4xl overflow-hidden rounded-3xl border border-primary/40 bg-black">
+                  <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/60 px-3 py-2">
+                    <span className="flex min-w-0 items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary">
+                      <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {sharingScreen
+                          ? isGameStreaming
+                            ? "Your game stream"
+                            : "Your screen"
+                          : `${stageIsGame ? "Game stream" : "Screen"} shared by @${stageOwner}`}
                       </span>
-                      {participant.muted && <MicOff className="h-3.5 w-3.5 shrink-0 text-white/80" />}
-                    </div>
+                    </span>
+                    {sharingScreen && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 border-destructive/40 bg-destructive/15 px-2.5 text-xs text-destructive hover:bg-destructive/25"
+                        onClick={toggleScreenShare}
+                      >
+                        {isGameStreaming ? "Stop game stream" : "Stop sharing"}
+                      </Button>
+                    )}
+                  </div>
+                  <VideoTile stream={stageStream} />
+                  {isGameStreaming && !shareCropped && (
+                    <p className="border-t border-white/10 bg-black/60 px-3 py-1.5 text-[10px] text-muted-foreground">
+                      This browser can&apos;t crop the tab automatically. Pick the game tab or
+                      window when the picker opens so only the game is streamed.
+                    </p>
                   )}
+                </div>
+              )}
 
-                  {videoStream && participantSession && !isMe && (
+              <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                <SpeakingTiles>
+                  {(speakingSet) =>
+                    participants.map((participant) => {
+                      const isMe = participant.user_id === user?.id;
+                      const speaking = speakingSet.has(participant.user_id) && !participant.muted;
+                      const videoStream = isMe
+                        ? cameraOn && cameraReady
+                          ? localCameraStream
+                          : null
+                        : (videosByPeer.get(participant.user_id) ?? null);
+                      const username = participant.user?.username ?? "member";
+                      const initial = (participant.user?.display_name || username)
+                        .charAt(0)
+                        .toUpperCase();
+                      const tileRow = presenceMap.rows[participant.user_id] ?? null;
+                      const tileStatus = publicStatusOf(tileRow, isMe);
+                      const tileCustom = publicCustomStatus(tileRow, isMe);
+                      const participantSession = gameBot.sessionsById[participant.user_id] ?? null;
+                      const participantViewing =
+                        participantSession ??
+                        gameBot.sessions.find((session) =>
+                          gameBot.viewersByHost[session.hostId]?.includes(participant.user_id),
+                        ) ??
+                        null;
+                      const joinedThisGame = participantSession?.hostId === gameBot.viewingHostId;
+                      const playingGame =
+                        participantViewing?.game.name ??
+                        roomActivity.players[participant.user_id]?.gameName ??
+                        null;
+
+                      return (
+                        <div
+                          key={participant.user_id}
+                          className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
+                            speaking
+                              ? "border-primary/70 bg-primary/[0.07] ring-1 ring-primary/45"
+                              : "border-white/10 glass"
+                          }`}
+                        >
+                          {videoStream ? (
+                            <VideoTile stream={videoStream} />
+                          ) : (
+                            <>
+                              <div className="relative">
+                                <Avatar
+                                  className={`h-16 w-16 transition-colors duration-200 ${
+                                    speaking
+                                      ? "ring-2 ring-primary ring-offset-2 ring-offset-[#0b0714]"
+                                      : ""
+                                  }`}
+                                >
+                                  <AvatarImage src={participant.user?.avatar_url ?? undefined} />
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                                    {initial}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="absolute -bottom-1 -right-1 z-10 grid place-items-center rounded-full bg-[#0b0714] p-[2px]">
+                                  <StatusDotButton
+                                    userId={participant.user_id}
+                                    username={username}
+                                    status={tileStatus}
+                                    isSelf={isMe}
+                                    size={16}
+                                  />
+                                </span>
+                              </div>
+                              <p className="max-w-full truncate text-xs font-semibold">
+                                @{username}
+                                {isMe && <span className="ml-1 text-muted-foreground">(you)</span>}
+                              </p>
+                              {playingGame ? (
+                                <span className="max-w-full truncate text-[11px] font-semibold text-[#c8ff3d]">
+                                  Playing {playingGame}
+                                </span>
+                              ) : (
+                                tileCustom &&
+                                (tileCustom.emoji || tileCustom.text) && (
+                                  <span className="max-w-full">
+                                    <CustomStatusLine
+                                      status={tileCustom}
+                                      className="-mt-1 truncate text-[11px]"
+                                    />
+                                  </span>
+                                )
+                              )}
+                              {participantSession && !isMe && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    joinedThisGame
+                                      ? openGameSession(participantSession)
+                                      : joinGameSession(participantSession)
+                                  }
+                                  className={`mt-0.5 flex h-8 items-center gap-1 rounded-full px-3 text-[10px] font-bold transition active:scale-95 ${
+                                    joinedThisGame
+                                      ? "border border-primary/40 bg-primary/15 text-primary"
+                                      : "bg-primary text-primary-foreground"
+                                  }`}
+                                >
+                                  <Gamepad2 className="h-3 w-3" />
+                                  {joinedThisGame ? "Open game" : "Join game"}
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {videoStream && (
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[11px] font-semibold text-white">
+                                  @{username}
+                                  {isMe && " (you)"}
+                                </span>
+                                {playingGame ? (
+                                  <span className="block truncate text-[10px] font-semibold text-[#c8ff3d]">
+                                    Playing {playingGame}
+                                  </span>
+                                ) : (
+                                  tileCustom &&
+                                  (tileCustom.emoji || tileCustom.text) && (
+                                    <CustomStatusLine
+                                      status={tileCustom}
+                                      className="truncate text-[10px] text-white/70"
+                                    />
+                                  )
+                                )}
+                              </span>
+                              {participant.muted && (
+                                <MicOff className="h-3.5 w-3.5 shrink-0 text-white/80" />
+                              )}
+                            </div>
+                          )}
+
+                          {videoStream && participantSession && !isMe && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                joinedThisGame
+                                  ? openGameSession(participantSession)
+                                  : joinGameSession(participantSession)
+                              }
+                              className={`absolute left-2 top-9 z-20 flex h-8 items-center gap-1 rounded-full px-2.5 text-[10px] font-bold shadow-md transition active:scale-95 ${
+                                joinedThisGame
+                                  ? "border border-primary/50 bg-black/70 text-primary"
+                                  : "bg-primary text-primary-foreground"
+                              }`}
+                            >
+                              <Gamepad2 className="h-3 w-3" />
+                              {joinedThisGame ? "Open game" : "Join game"}
+                            </button>
+                          )}
+
+                          {!videoStream && participant.muted && (
+                            <span
+                              className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80"
+                              aria-label="Muted"
+                            >
+                              <MicOff className="h-3.5 w-3.5 text-destructive" />
+                            </span>
+                          )}
+                          {!videoStream && speaking && (
+                            <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                              Speaking
+                            </span>
+                          )}
+                          {sharingSet.has(participant.user_id) && (
+                            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-primary/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                              <MonitorPlay className="h-3 w-3" />
+                              {gameBot.sessionsById[participant.user_id] ? "Game live" : "Sharing"}
+                            </span>
+                          )}
+                          {!isMe && (
+                            <ParticipantMenu
+                              userId={participant.user_id}
+                              username={username}
+                              canKick={!!call?.isHost}
+                              onKick={() => kickFromCall(participant.user_id)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })
+                  }
+                </SpeakingTiles>
+
+                {musicBot.enabled && !musicBot.dismissed && (
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() =>
-                        joinedThisGame ? openGameSession(participantSession) : joinGameSession(participantSession)
-                      }
-                      className={`absolute left-2 top-9 z-20 flex h-8 items-center gap-1 rounded-full px-2.5 text-[10px] font-bold shadow-md transition active:scale-95 ${
-                        joinedThisGame
-                          ? "border border-primary/50 bg-black/70 text-primary"
-                          : "bg-primary text-primary-foreground"
-                      }`}
+                      onClick={() => setMusicOpen(true)}
+                      aria-label="Open music controls"
+                      className="relative flex aspect-square w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
                     >
-                      <Gamepad2 className="h-3 w-3" />
-                      {joinedThisGame ? "Open game" : "Join game"}
+                      <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
+                        {!musicBot.track
+                          ? "In call"
+                          : musicBot.blocked
+                            ? "Tap to play"
+                            : musicBot.singing
+                              ? "Singing"
+                              : "Paused"}
+                      </span>
+                      <Avatar
+                        className={`h-16 w-16 ${musicBot.singing ? "ring-2 ring-emerald-400" : ""}`}
+                      >
+                        <AvatarImage src={musicBot.track?.artwork_url ?? undefined} alt="" />
+                        <AvatarFallback className="bg-emerald-500/25 text-emerald-100">
+                          <Music className="h-6 w-6" aria-hidden="true" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="min-w-0 px-1">
+                        <span className="block truncate text-xs font-semibold">MUSIC BOT</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {musicBot.track
+                            ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
+                            : "Nothing queued — tap for music"}
+                        </span>
+                      </span>
                     </button>
-                  )}
+                    {/* A bot is removable per call; the chip below the grid always
+                    offers it back (no dead end after an accidental tap). */}
+                    <button
+                      type="button"
+                      aria-label="Remove MUSIC BOT from this call"
+                      title="Remove bot"
+                      onClick={() => setMusicBotDismissed(true)}
+                      className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-lg bg-black/40 text-white/70 transition-colors hover:bg-black/60 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
 
-                  {!videoStream && participant.muted && (
-                    <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80" aria-label="Muted">
-                      <MicOff className="h-3.5 w-3.5 text-destructive" />
-                    </span>
-                  )}
-                  {!videoStream && speaking && (
-                    <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">Speaking</span>
-                  )}
-                  {sharingSet.has(participant.user_id) && (
-                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-primary/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                      <MonitorPlay className="h-3 w-3" />
-                      {gameBot.sessionsById[participant.user_id] ? "Game live" : "Sharing"}
-                    </span>
-                  )}
-                  {!isMe && <PeerVolumeControl userId={participant.user_id} username={username} />}
-                </div>
-              );
-                })}
-            </SpeakingTiles>
-
-            {musicBot.enabled && (
-              <button
-                type="button"
-                onClick={() => setMusicOpen(true)}
-                aria-label="Open music controls"
-                className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-emerald-400/40 bg-emerald-400/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-              >
-                <span className="absolute left-2 top-2 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">
-                  {!musicBot.track
-                    ? "In call"
-                    : musicBot.blocked
-                      ? "Tap to play"
-                      : musicBot.singing
-                        ? "Singing"
-                        : "Paused"}
-                </span>
-                <Avatar className={`h-16 w-16 ${musicBot.singing ? "ring-2 ring-emerald-400" : ""}`}>
-                  <AvatarImage src={musicBot.track?.artwork_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-emerald-500/25 text-emerald-100">
-                    <Music className="h-6 w-6" aria-hidden="true" />
-                  </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 px-1">
-                  <span className="block truncate text-xs font-semibold">MUSIC BOT</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {musicBot.track
-                      ? `${musicBot.track.title}${musicBot.track.artist ? ` · ${musicBot.track.artist}` : ""}`
-                      : "Nothing queued — tap for music"}
-                  </span>
-                </span>
-              </button>
-            )}
-
-            {/* GAME BOT: ready-made games that play as an overlay over the call. */}
-            <button
-              type="button"
-              onClick={() => {
-                if (viewedSession) openGameSession(viewedSession);
-                else setGamesOpen(true);
-              }}
-              aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
-              className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
-            >
-              <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                {liveGame
-                  ? gameBot.state.isPaused
-                    ? "Paused"
-                    : gameBot.isHost
-                      ? "Your game"
-                      : "Live"
-                  : roomActivity.activity
-                    ? "Live"
-                    : "In call"}
-              </span>
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="bg-primary/25 text-primary">
-                  {liveGame ? (
-                    <img
-                      src={liveGame.icon}
-                      alt=""
-                      className="h-16 w-16 rounded-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                {/* GAME BOT: ready-made games that play as an overlay over the call. */}
+                {!hiddenBots.game && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (viewedSession) openGameSession(viewedSession);
+                        else setGamesOpen(true);
                       }}
-                    />
-                  ) : (
-                    <Gamepad2 className="h-6 w-6" aria-hidden="true" />
-                  )}
-                </AvatarFallback>
-              </Avatar>
-              <span className="min-w-0 px-1">
-                <span className="block truncate text-xs font-semibold">
-                  {gameBot.isHost ? "YOUR GAME" : "GAME BOT"}
-                </span>
-                <span className="block truncate text-[11px] text-muted-foreground">
-                  {liveGame
-                    ? gameBot.isHost
-                      ? `${liveGame.name} — tap to play`
-                      : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
-                    : roomActivity.activity
-                      ? `${roomActivity.activity.gameName} — tap to join`
-                      : "Tap to pick a game"}
-                </span>
-              </span>
-            </button>
+                      aria-label={viewedSession ? "Open your game" : "Open the Games menu"}
+                      className="relative flex aspect-square w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-primary/40 bg-primary/[0.07] p-3 text-center transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                    >
+                      <span className="absolute left-2 top-2 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                        {liveGame
+                          ? gameBot.state.isPaused
+                            ? "Paused"
+                            : gameBot.isHost
+                              ? "Your game"
+                              : "Live"
+                          : roomActivity.activity
+                            ? "Live"
+                            : "In call"}
+                      </span>
+                      <Avatar className="h-16 w-16">
+                        <AvatarFallback className="bg-primary/25 text-primary">
+                          {liveGame ? (
+                            <img
+                              src={liveGame.icon}
+                              alt=""
+                              className="h-16 w-16 rounded-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <Gamepad2 className="h-6 w-6" aria-hidden="true" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="min-w-0 px-1">
+                        <span className="block truncate text-xs font-semibold">
+                          {gameBot.isHost ? "YOUR GAME" : "GAME BOT"}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {liveGame
+                            ? gameBot.isHost
+                              ? `${liveGame.name} — tap to play`
+                              : `${gameBot.state.hostName ?? "Someone"}'s ${liveGame.name}`
+                            : roomActivity.activity
+                              ? `${roomActivity.activity.gameName} — tap to join`
+                              : "Tap to pick a game"}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Remove GAME BOT from this call"
+                      title="Remove bot"
+                      onClick={() => {
+                        gameBot.leave();
+                        setHiddenBots((h) => ({ ...h, game: true }));
+                      }}
+                      className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-lg bg-black/40 text-white/70 transition-colors hover:bg-black/60 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {(musicBot.dismissed || hiddenBots.game) && (
+                  <div className="col-span-full flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                      {musicBot.dismissed && hiddenBots.game
+                        ? "MUSIC BOT and GAME BOT were removed from this call."
+                        : musicBot.dismissed
+                          ? "MUSIC BOT was removed. Type /play in chat or add it back."
+                          : "GAME BOT was removed. Pick a game to bring it back."}
+                    </p>
+                    {musicBot.dismissed && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 rounded-lg px-2 text-[11px] text-primary hover:bg-primary/10"
+                        onClick={() => setMusicBotDismissed(false)}
+                      >
+                        <Music className="h-3.5 w-3.5" /> Add MUSIC BOT
+                      </Button>
+                    )}
+                    {hiddenBots.game && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 rounded-lg px-2 text-[11px] text-primary hover:bg-primary/10"
+                        onClick={() => setHiddenBots((h) => ({ ...h, game: false }))}
+                      >
+                        <Gamepad2 className="h-3.5 w-3.5" /> Add GAME BOT
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {playing && !isMobileView && !immersive && roomActivity.activity && (
+                <ActivityPanel
+                  activity={roomActivity.activity}
+                  entry={gameEntry}
+                  canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
+                  playingCount={playingCount}
+                  players={Math.max(1, participants.length)}
+                  minimized={panelMinimized}
+                  onMinimize={() => setPanelMinimized(true)}
+                  onReopen={() => setPanelMinimized(false)}
+                  onLeave={() => setPanelOpen(false)}
+                  onEnd={() => void handleEndGame()}
+                  onExpand={() => setImmersive(true)}
+                />
+              )}
             </div>
-            </div>
-            {playing && !isMobileView && !immersive && roomActivity.activity && (
-              <ActivityPanel
-                activity={roomActivity.activity}
-                entry={gameEntry}
-                canEnd={roomActivity.activity.startedBy === user?.id || !!call?.isHost}
-                playingCount={playingCount}
-                players={Math.max(1, participants.length)}
-                minimized={panelMinimized}
-                onMinimize={() => setPanelMinimized(true)}
-                onReopen={() => setPanelMinimized(false)}
-                onLeave={() => setPanelOpen(false)}
-                onEnd={() => void handleEndGame()}
-                onExpand={() => setImmersive(true)}
-              />
-            )}
           </div>
         </div>
-
         {/* Music section: full now-playing + queue + transport live in the
             music sheet now; the tile above is just an icon entry point. */}
         <div
@@ -836,7 +1010,9 @@ export function VoiceCallView() {
               }`}
             >
               {muted ? <MicOff className="h-5 w-5 mb-0.5" /> : <Mic className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{muted ? "Unmute" : "Mute"}</span>
+              <span className="text-[10px] font-semibold leading-none">
+                {muted ? "Unmute" : "Mute"}
+              </span>
             </button>
 
             {/* Deafen */}
@@ -851,8 +1027,14 @@ export function VoiceCallView() {
                   : "glass border-white/10 text-foreground hover:bg-white/10"
               }`}
             >
-              {deafened ? <VolumeX className="h-5 w-5 mb-0.5 text-destructive" /> : <Headphones className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{deafened ? "Undeafen" : "Deafen"}</span>
+              {deafened ? (
+                <VolumeX className="h-5 w-5 mb-0.5 text-destructive" />
+              ) : (
+                <Headphones className="h-5 w-5 mb-0.5" />
+              )}
+              <span className="text-[10px] font-semibold leading-none">
+                {deafened ? "Undeafen" : "Deafen"}
+              </span>
             </button>
 
             {/* Share Screen */}
@@ -860,7 +1042,9 @@ export function VoiceCallView() {
               type="button"
               onClick={toggleScreenShare}
               disabled={!screenSupported}
-              title={screenSupported ? undefined : "Screen sharing isn't available in this browser."}
+              title={
+                screenSupported ? undefined : "Screen sharing isn't available in this browser."
+              }
               aria-label={sharingScreen ? "Stop sharing screen" : "Share screen"}
               aria-pressed={sharingScreen}
               className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
@@ -869,8 +1053,14 @@ export function VoiceCallView() {
                   : "glass border-white/10 text-foreground hover:bg-white/10"
               }`}
             >
-              {sharingScreen ? <ScreenShareOff className="h-5 w-5 mb-0.5" /> : <ScreenShare className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">{sharingScreen ? "Stop" : "Share"}</span>
+              {sharingScreen ? (
+                <ScreenShareOff className="h-5 w-5 mb-0.5" />
+              ) : (
+                <ScreenShare className="h-5 w-5 mb-0.5" />
+              )}
+              <span className="text-[10px] font-semibold leading-none">
+                {sharingScreen ? "Stop" : "Share"}
+              </span>
             </button>
 
             {/* Game stream — only the game surface, never the whole desktop. */}
@@ -909,7 +1099,11 @@ export function VoiceCallView() {
                   : "glass border-white/10 text-foreground hover:bg-white/10"
               }`}
             >
-              {cameraOn ? <Video className="h-5 w-5 mb-0.5" /> : <VideoOff className="h-5 w-5 mb-0.5" />}
+              {cameraOn ? (
+                <Video className="h-5 w-5 mb-0.5" />
+              ) : (
+                <VideoOff className="h-5 w-5 mb-0.5" />
+              )}
               <span className="text-[10px] font-semibold leading-none">Camera</span>
             </button>
 
@@ -946,9 +1140,12 @@ export function VoiceCallView() {
                   ? `Camera on · ${facing === "user" ? "front" : "back"}`
                   : "Camera off · mic " + (muted ? "muted" : "live")}
           </p>
-          {screenError && <p role="alert" className="mt-1 text-center text-[10px] text-destructive">{screenError}</p>}
+          {screenError && (
+            <p role="alert" className="mt-1 text-center text-[10px] text-destructive">
+              {screenError}
+            </p>
+          )}
         </div>
-
         {/* Voice Settings Sheet */}
         <VoiceSettingsSheet
           open={settingsOpen}
@@ -959,7 +1156,6 @@ export function VoiceCallView() {
           currentUserId={user?.id}
           peerAudio={peerAudio}
         />
-
         {/* Music menu — the shared MUSIC BOT sheet, same one the realm voice bar opens */}
         <RealmMusicHub
           open={musicOpen}
@@ -968,7 +1164,6 @@ export function VoiceCallView() {
           roomId={call.channelId}
           roomName={call.channelName}
         />
-
         {/* Games menu — ready-made games launch into the GAME BOT overlay */}
         <RealmGamesHub
           open={gamesOpen}
@@ -977,13 +1172,14 @@ export function VoiceCallView() {
           roomId={call.channelId}
           roomName={call.channelName}
         />
-
-        {/* Host Leave Confirmation Dialog */}        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
+        {/* Host Leave Confirmation Dialog */}{" "}
+        <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
           <AlertDialogContent className="glass-strong border-white/10 max-w-sm">
             <AlertDialogHeader>
               <AlertDialogTitle className="font-display">Leave & End Call?</AlertDialogTitle>
               <AlertDialogDescription>
-                You are the host of this voice call. Leaving will end the call for everyone in the room.
+                You are the host of this voice call. Leaving will end the call for everyone in the
+                room.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1000,7 +1196,6 @@ export function VoiceCallView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
         {/* THE OVERLAY: the game is the background, the voice dock floats on
             top of it. Voice keeps running because the call engine belongs to
             the provider — this is only a sibling layer. */}
@@ -1024,10 +1219,12 @@ export function VoiceCallView() {
             onEnd={() => void handleEndGame()}
           />
         )}
-
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-          <SheetContent side="right" className="glass-strong border-white/10 w-full sm:max-w-md p-0 flex flex-col z-[140]">
+          <SheetContent
+            side="right"
+            className="glass-strong border-white/10 w-full sm:max-w-md p-0 flex flex-col z-[140]"
+          >
             <SheetHeader className="p-4 pr-12 border-b border-white/10 flex flex-row items-center justify-between">
               <SheetTitle className="font-display text-sm font-bold flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" /> VC Text Chat
@@ -1039,7 +1236,9 @@ export function VoiceCallView() {
                 <p className="py-6 text-center text-xs text-muted-foreground">Loading chat…</p>
               )}
               {!roomMessages.isLoading && (roomMessages.data ?? []).length === 0 && (
-                <p className="py-12 text-center text-xs text-muted-foreground">No messages in VC chat yet. Say hello!</p>
+                <p className="py-12 text-center text-xs text-muted-foreground">
+                  No messages in VC chat yet. Say hello!
+                </p>
               )}
               {roomMessages.data?.map((msg) => {
                 const author = ((msg as any).author ?? (msg as any).sender ?? {}) as any;
@@ -1056,7 +1255,10 @@ export function VoiceCallView() {
                       <div className="flex items-baseline gap-1.5">
                         <span className="font-semibold text-foreground truncate">{aName}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                          {new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
                         </span>
                       </div>
                       <p className="text-foreground/90 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">

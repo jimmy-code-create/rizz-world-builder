@@ -213,7 +213,7 @@ export function MentionAutocomplete({
       window.removeEventListener("scroll", bump, true);
       window.visualViewport?.removeEventListener("resize", bump);
     };
-  }, [query ]);
+  }, [query]);
 
   // ---- combobox wiring on the text box itself ----
   useEffect(() => {
@@ -294,7 +294,8 @@ export function MentionAutocomplete({
 
   const q = query.trim();
   const empty = sorted.length === 0;
-  const panelH = pos?.height ?? (empty ? 40 : Math.min(MAX_ROWS, Math.max(sorted.length, 1)) * ROW_H);
+  const panelH =
+    pos?.height ?? (empty ? 40 : Math.min(MAX_ROWS, Math.max(sorted.length, 1)) * ROW_H);
 
   return createPortal(
     <div
@@ -311,9 +312,20 @@ export function MentionAutocomplete({
         zIndex: "var(--z-popover, 150)",
         visibility: pos ? "visible" : "hidden",
       }}
-      className="overflow-y-auto rounded-xl border border-[#2a2a2e] bg-[#141416] shadow-[0_18px_48px_-20px_rgba(0,0,0,0.95)]"
+      className="overflow-hidden rounded-xl border border-[#2a2a2e] bg-[#141416] shadow-[0_18px_48px_-20px_rgba(0,0,0,0.95)]"
     >
-      <div style={{ height: panelH, overflowY: "auto", overscrollBehavior: "contain" }}>
+      {/* One scroller with a thin visible bar: the list is meant to be dragged
+          on a phone and wheeled on desktop, and the old double wrapper made the
+          second one look like a dead panel when it ran out of rows. */}
+      <div
+        style={{
+          height: panelH,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          scrollbarWidth: "thin",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {empty ? (
           <p className="flex h-10 items-center px-3 text-[13px] text-muted-foreground">
             {q && emptyHint && scoped ? emptyHint : "No people found"}

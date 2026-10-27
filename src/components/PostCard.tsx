@@ -38,6 +38,8 @@ import { QuoteEmbed } from "@/components/post/QuoteEmbed";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
+import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
+import { shareDraftForPost } from "@/lib/share-to-chat";
 import { MarkdownText } from "@/components/MarkdownText";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { RizzVideoPlayer } from "@/components/RizzVideoPlayer";
@@ -351,13 +353,20 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   // The permalink for a single post, so a link can point at the post itself
   // and not just the profile it happens to sit on.
   const postUrl = typeof window !== "undefined" ? `${window.location.origin}/p/${post.id}` : "";
-  const sharePost = async () => {
-    if (typeof navigator !== "undefined" && (navigator as any).share) {
-      try { await (navigator as any).share({ title: `@${post.author?.username} on RIZZ`, text: post.caption ?? "", url: postUrl }); return; } catch {}
-    }
-    navigator.clipboard.writeText(postUrl);
-    toast.success("Link copied");
-  };
+  // Sharing happens inside Rizz first — a DM, a group or a realm — so a post
+  // never dead-ends in the OS share sheet.
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareDraft = useMemo(
+    () =>
+      shareDraftForPost({
+        caption: post.caption,
+        mediaUrl: post.media_url,
+        mediaKind: post.media_type,
+        permalink: postUrl,
+        title: "Share post",
+      }),
+    [post.caption, post.media_url, post.media_type, postUrl],
+  );
 
   // Tapping the photo (not the caption) opens the full-screen viewer.
   const media = useMediaViewer();
@@ -758,13 +767,15 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <Button
           variant="ghost"
           size="sm"
-          onClick={sharePost}
+          onClick={() => setShareOpen(true)}
           className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
           aria-label="Share post"
         >
           <Share2 className="h-4 w-4" />
         </Button>
       </footer>
+
+      <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
 
       <AnimatePresence>
         {showComments && <CommentsThread postId={post.id} />}

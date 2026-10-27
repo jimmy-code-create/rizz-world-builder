@@ -126,7 +126,9 @@ export function RealmMusicHub({ open, onOpenChange, realmId, roomId, roomName }:
       <Sheet open={open && !queueOpen} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#0b0714] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+          // z-[160] clears the full-screen voice call (z-[130]); at the sheet's
+          // default layer this menu opened invisibly behind the call.
+          className="z-[160] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#0b0714] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
         >
           <SheetHeader className="pb-3 pt-2 text-left">
             <SheetTitle className="flex items-center gap-2 font-display text-2xl">

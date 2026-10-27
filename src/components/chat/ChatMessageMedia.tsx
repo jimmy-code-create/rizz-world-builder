@@ -37,8 +37,14 @@ export function ChatMessageMedia({
         alt={alt}
         width={width ?? undefined}
         height={height ?? undefined}
-        loading="lazy"
+        // Chat media is the message. Lazy-loading it meant a fresh photo waited
+        // for a scroll/observer tick before even starting its request, which is
+        // why images felt seconds slower than the text around them.
+        loading="eager"
+        // The bytes are already on the origin's CDN; decode off the main thread
+        // and let the browser start it at the front of the queue.
         decoding="async"
+        fetchPriority="high"
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
         className={cn("chat-media", !loaded && "invisible")}

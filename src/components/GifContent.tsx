@@ -28,10 +28,13 @@ export function GifContent({ children, className }: { children: string; classNam
               key={`media-${index}`}
               src={part.value}
               alt={part.isSticker ? "Sticker" : "GIF"}
-              loading="lazy"
+              // A GIF is the content of the message, so it loads immediately
+              // instead of waiting to be scrolled into view.
+              loading="eager"
               decoding="async"
-              className={`my-2 inline-block max-w-full rounded-xl object-contain align-middle ${
-                part.isSticker ? "max-h-40" : "max-h-64"
+              fetchPriority="high"
+              className={`my-2 inline-block max-w-full rounded-xl bg-transparent object-contain align-middle ${
+                part.isSticker ? "max-h-40" : "max-h-[min(60dvh,20rem)]"
               }`}
             />
           );

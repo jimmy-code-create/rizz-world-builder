@@ -27,7 +27,7 @@ export type { ReactionPulse };
  * (invisible padding) so they stay small and cute but easy to hit. Four chips
  * show, then a "+N" chip opens the full list.
  */
-const MAX_VISIBLE_CHIPS = 4;
+const MAX_VISIBLE_CHIPS = 6;
 const LONG_PRESS_MS = 320;
 
 /**
@@ -215,11 +215,11 @@ function ReactionChip({
       }}
       // The visible chip is 24px; the invisible ::after makes the tap area 44px
       // without adding any layout height.
-      className={`relative flex h-7 shrink-0 select-none items-center gap-1.5 rounded-full border px-2.5 leading-none after:absolute after:inset-x-0 after:-inset-y-[9px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      className={`relative flex h-8 max-w-full shrink-0 select-none items-center gap-1.5 rounded-lg border px-2 leading-none after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
         mine
-          ? "border-primary/60 bg-primary/15 text-primary"
+          ? "border-primary/70 bg-primary/15 text-primary"
           : "border-white/15 bg-white/[0.07] text-foreground/90 hover:bg-white/[0.12]"
-      } ${glowing ? "ring-2 ring-primary/50" : ""}`}
+      } ${glowing ? "ring-1 ring-primary/40" : ""}`}
     >
       <span className="text-[15px]" aria-hidden="true">
         {(() => {
@@ -384,9 +384,12 @@ export function ReactionChips({
       <div
         ref={rowRef}
         data-testid={`reaction-row-${messageId}`}
-        className={`relative z-10 flex flex-wrap items-center gap-1 ${
+        // `w-full` is what lets flex-wrap work: inside the shrink-to-fit
+        // message column the row sized to its content and ran past the bubble,
+        // clipping chips in DMs, groups and realms.
+        className={`relative z-10 w-full max-w-full flex-wrap items-center gap-1.5 ${
           align === "right" ? "justify-end" : "justify-start"
-        } ${hasChips ? "-mt-1.5 min-h-[18px]" : "h-0"}`}
+        } ${hasChips ? "mt-1 min-h-[18px]" : "hidden"}`}
       >
         <AnimatePresence initial={false}>
           {visible.map((group) => (
@@ -422,8 +425,7 @@ export function ReactionChips({
               transition={{ type: "spring", stiffness: 620, damping: 20 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
-              className="relative flex h-7 shrink-0 select-none items-center rounded-full border border-white/15 bg-white/[0.07] px-2.5 text-xs font-semibold leading-none text-foreground/90 after:absolute after:inset-x-0 after:-inset-y-[9px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              style={{ boxShadow: "0 2px 8px -4px rgba(0,0,0,0.6)" }}
+              className="relative flex h-8 shrink-0 select-none items-center rounded-lg border border-white/15 bg-white/[0.07] px-2 text-xs font-semibold tabular-nums leading-none text-foreground/90 after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               +{overflow}
             </motion.button>

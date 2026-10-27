@@ -776,13 +776,19 @@
    inline-block. The padding that used to be here is what opened a gap either
    side of an @mention. */
 .mention-highlight {
+  /* One Discord-style pill across the whole @name. The negative margin cancels
+     the small padding so the word still sits flush with the text around it,
+     and box-decoration-break keeps a wrapped mention rounded on both lines. */
   display: inline;
-  margin: 0;
-  padding: 0;
-  color: var(--rizz-mention-color, #5865f2);
-  background-color: color-mix(in srgb, var(--rizz-mention-color, #5865f2) 18%, transparent);
-  border-radius: 0.2rem;
+  margin: 0 -1px;
+  padding: 1px 3px;
+  color: #d9ff7a;
+  background-color: rgba(200, 255, 61, 0.16);
+  border-radius: 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   white-space: inherit;
+  line-height: inherit;
 }
 .chat-scroll {
   overscroll-behavior: contain;
@@ -1882,16 +1888,8 @@ body:has([role="dialog"][data-state="open"]) .overlay-hide {
 }
 
 /* ============ TASK 5: unified mention style ============ */
-.mention-highlight {
-  display: inline;
-  margin: 0;
-  padding: 0 4px;
-  border-radius: 4px;
-  font-weight: 500;
-  color: #c8ff3d;
-  background-color: rgba(200, 255, 61, 0.14);
-  white-space: inherit;
-}
+/* The definition lives with the chat media rules above; only the hover layer
+   belongs here. */
 a.mention-highlight:hover,
 button.mention-highlight:hover,
 .mention-highlight:hover {

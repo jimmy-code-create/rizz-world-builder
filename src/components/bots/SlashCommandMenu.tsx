@@ -62,7 +62,9 @@ export function SlashCommandMenu({
         ref={listRef}
         role="listbox"
         aria-label="Bot commands"
-        className="no-scrollbar max-h-[min(44dvh,18rem)] overflow-y-auto px-1.5 pb-1.5"
+        // A visible, momentum-scrolling list: long bot menus must scroll on a
+        // phone and with a mouse, and hiding the bar made them look cut off.
+        className="max-h-[min(52dvh,20rem)] overflow-y-auto overscroll-contain px-1.5 pb-1.5 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]"
       >
         {commands.map((command, index) => {
           const active = index === activeIndex;

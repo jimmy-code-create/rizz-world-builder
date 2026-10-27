@@ -3,14 +3,16 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Bot as BotIcon, Crown, Flag,
-  Gauge, Hash, Heart, ListOrdered, Lock, MessageSquareWarning, ScrollText, Search, Shield, ShieldCheck,
-  SmilePlus, Sparkles, Trash2, UserCog, UserMinus, UserX, X,
+  AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Bot as BotIcon, ChevronDown, Crown, Flag,
+  Gauge, Hash, Heart, ListOrdered, Lock, Megaphone, MessageSquareWarning, MessagesSquare, Plus,
+  ScrollText, Search, Shield, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserMinus, UserX,
+  Volume2, X,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,8 +20,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { RealmBotsSheet } from "@/components/bots/RealmBotsSheet";
 import { ChannelPermissionsPanel } from "@/components/realms/ChannelPermissionsSheet";
 import {
-  banRealmMember, createRealmInvite, createRealmRoom, deleteRealm, fetchRealmBySlug, fetchRealmRooms,
-  kickRealmMember, listRealmMembers, setRealmMemberRole, unbanRealmMember, type RealmRoom,
+  banRealmMember, createRealmInvite, createRealmRoom, deleteRealm, deleteRealmRoom,
+  fetchRealmBySlug, fetchRealmRooms, kickRealmMember, listRealmMembers, setRealmMemberRole,
+  unbanRealmMember, type RealmRoom, type RealmRoomKind,
 } from "@/lib/realms";
 import type { ReactionsMode } from "@/lib/realm-permissions";
 import {
@@ -50,6 +53,11 @@ import {
  * simply greys out what the server would refuse.
  */
 export const Route = createFileRoute("/_app/r/$slug_/settings")({
+  // `?section=channels` (and friends) deep-links into one panel, so "Manage
+  // channels" from the realm lands on the channel manager, not the overview.
+  validateSearch: (search: Record<string, unknown>): { section?: string } => ({
+    section: typeof search.section === "string" && search.section ? search.section : undefined,
+  }),
   head: ({ params }) => ({ meta: [{ title: `Settings · ${params.slug} · RIZZ` }] }),
   component: RealmSettingsPage,
 });
@@ -79,7 +87,13 @@ function RealmSettingsPage() {
   const { user } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
-  const [section, setSection] = useState<SectionKey>("overview");
+  const search = Route.useSearch();
+  const [section, setSection] = useState<SectionKey>(() => {
+    const requested = search.section;
+    return SECTIONS.some((entry) => entry.key === requested)
+      ? (requested as SectionKey)
+      : "overview";
+  });
 
   const realm = useQuery({ queryKey: ["realm", slug], queryFn: () => fetchRealmBySlug(slug) });
   const realmId = realm.data?.id ?? null;
@@ -198,7 +212,7 @@ function RealmSettingsPage() {
           ) : section === "members" ? (
             <MembersSection realmId={payload.realm.id} ownerId={payload.realm.owner_id} canManage={can("manage_members")} />
           ) : section === "channels" ? (
-            <ChannelsSection realmId={payload.realm.id} canManage={can("manage_channels")} />
+            <ChannelsSection realmId={payload.realm.id} slug={slug} canManage={can("manage_channels")} />
           ) : section === "automod" ? (
             <AutomodSection realmId={payload.realm.id} payload={payload} canManage={can("manage_automod")} />
           ) : section === "reports" ? (
@@ -780,11 +794,40 @@ function MembersSection({
 
 // ---------------------------------------------------------------- channels
 
-function ChannelsSection({ realmId, canManage }: { realmId: string; canManage: boolean }) {
+const ROOM_KIND_LABEL: Record<RealmRoomKind, string> = {
+  text: "Text",
+  announcement: "Announcement",
+  voice: "Voice",
+  forum: "Forum",
+};
+
+/** The one icon per channel kind, used in the list and the kind picker. */
+function RoomKindIcon({ kind, className }: { kind: RealmRoomKind; className?: string }) {
+  if (kind === "voice") return <Volume2 className={className} />;
+  if (kind === "announcement") return <Megaphone className={className} />;
+  if (kind === "forum") return <MessagesSquare className={className} />;
+  return <Hash className={className} />;
+}
+
+function ChannelsSection({
+  realmId,
+  slug,
+  canManage,
+}: {
+  realmId: string;
+  slug: string;
+  canManage: boolean;
+}) {
   const invalidate = useInvalidate(realmId);
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [busy, setBusy] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [newKind, setNewKind] = useState<RealmRoomKind>("text");
+  const [newPrivate, setNewPrivate] = useState(false);
+  const [creatingOpen, setCreatingOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RealmRoom | null>(null);
   const [draft, setDraft] = useState<Record<string, { name: string; topic: string; slowmode: number; isPrivate: boolean }>>({});
 
   const rooms = useQuery({ queryKey: ["realm-rooms", realmId], queryFn: () => fetchRealmRooms(realmId) });
@@ -851,10 +894,29 @@ function ChannelsSection({ realmId, canManage }: { realmId: string; canManage: b
     if (!newName.trim()) return;
     setBusy("create");
     try {
-      await createRealmRoom({ realmId, name: newName.trim(), kind: "text" });
+      const room = await createRealmRoom({
+        realmId,
+        name: newName.trim(),
+        kind: newKind,
+      });
+      // A private channel is one follow-up call: creation covers the name and
+      // kind, while privacy is a room setting.
+      if (newPrivate) {
+        await updateRealmRoomSettings({
+          roomId: room.id,
+          name: room.name,
+          topic: room.topic ?? "",
+          slowmodeSeconds: 0,
+          isPrivate: true,
+        });
+      }
       setNewName("");
+      setNewPrivate(false);
+      setNewKind("text");
+      setCreatingOpen(false);
+      setExpandedId(room.id);
       await qc.invalidateQueries({ queryKey: ["realm-rooms", realmId] });
-      toast.success("Channel created");
+      toast.success(`${ROOM_KIND_LABEL[newKind]} channel created`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't create that channel");
     } finally {
@@ -863,117 +925,326 @@ function ChannelsSection({ realmId, canManage }: { realmId: string; canManage: b
   };
 
   const ordered = [...(rooms.data ?? [])].sort((a, b) => a.position - b.position);
+  const textChannels = ordered.filter((room) => room.kind !== "voice");
+
+  /**
+   * Deleting a channel is destructive and easy to misfire, so the rules are
+   * explicit: never the default channel (it is the realm's front door) and
+   * never the last text channel (the realm would have nowhere to talk).
+   */
+  const deleteBlockedReason = (room: RealmRoom): string | null => {
+    if (!canManage) return "You don't have permission to manage channels.";
+    if (room.is_default) return "This is the default channel and can't be deleted.";
+    if (ordered.length <= 1) return "A realm needs at least one channel.";
+    if (room.kind !== "voice" && textChannels.length <= 1) {
+      return "A realm needs at least one text channel.";
+    }
+    return null;
+  };
+
+  const remove = async () => {
+    const room = deleteTarget;
+    if (!room) return;
+    const blocked = deleteBlockedReason(room);
+    if (blocked) {
+      toast.error(blocked);
+      throw new Error(blocked);
+    }
+    setBusy(`delete:${room.id}`);
+    try {
+      await deleteRealmRoom(room.id);
+      if (expandedId === room.id) setExpandedId(null);
+      setDraft((current) => {
+        const next = { ...current };
+        delete next[room.id];
+        return next;
+      });
+      await qc.invalidateQueries({ queryKey: ["realm-rooms", realmId] });
+      await qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
+      await qc.invalidateQueries({ queryKey: ["realm", slug] });
+      toast.success(`#${room.name} deleted`);
+      setDeleteTarget(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete that channel");
+      throw error;
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
-    <Panel title="Channels" description="Rename, reorder, slow down or hide a channel. Private channels are visible to moderators only (plus anyone you grant the permission to).">
-      <div className="space-y-3">
+    <Panel
+      title="Channels"
+      description="Create, rename, reorder, slow down or hide a channel. Private channels are visible to moderators only, plus anyone you grant the permission to."
+    >
+      <div className="space-y-2.5">
+        {canManage && (
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+            <button
+              type="button"
+              onClick={() => setCreatingOpen((open) => !open)}
+              aria-expanded={creatingOpen}
+              className="flex min-h-[52px] w-full items-center gap-2.5 px-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                <Plus className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Create a channel</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Text, voice, forum or announcements
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${creatingOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {creatingOpen && (
+              <div className="space-y-2.5 border-t border-white/10 p-3">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                  {(["text", "voice", "forum", "announcement"] as const).map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => setNewKind(kind)}
+                      aria-pressed={newKind === kind}
+                      className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-semibold transition-colors ${
+                        newKind === kind
+                          ? "border-primary/60 bg-primary/15 text-primary"
+                          : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <RoomKindIcon kind={kind} className="h-4 w-4" />
+                      {ROOM_KIND_LABEL[kind]}
+                    </button>
+                  ))}
+                </div>
+
+                <Input
+                  value={newName}
+                  maxLength={40}
+                  placeholder={`New ${ROOM_KIND_LABEL[newKind].toLowerCase()} channel name`}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void create();
+                  }}
+                  className="glass h-11 border-white/10"
+                />
+
+                <label className="flex min-h-10 items-center gap-2 text-xs text-muted-foreground">
+                  <Switch checked={newPrivate} onCheckedChange={setNewPrivate} />
+                  Private channel (moderators only)
+                </label>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setCreatingOpen(false)}
+                    className="h-11 flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={busy === "create" || !newName.trim()}
+                    onClick={() => void create()}
+                    className="h-11 flex-1 border-0 bg-primary text-primary-foreground"
+                  >
+                    {busy === "create" ? "Creating…" : "Create channel"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {ordered.map((room, index) => {
           const entry = entryOf(room);
-          const key = `r:${room.id}`;
+          const expanded = expandedId === room.id;
+          const blocked = deleteBlockedReason(room);
           return (
-            <div key={room.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5">
-                  <Hash className="h-4 w-4" />
+            <div
+              key={room.id}
+              className={`overflow-hidden rounded-2xl border transition-colors ${
+                expanded ? "border-primary/30 bg-white/[0.04]" : "border-white/10 bg-white/[0.02]"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 p-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-foreground/80">
+                  <RoomKindIcon kind={room.kind} className="h-4 w-4" />
                 </span>
-                <Input
-                  value={entry.name}
-                  maxLength={40}
-                  disabled={!canManage}
-                  onChange={(e) => update(room.id, { name: e.target.value })}
-                  className="glass h-10 border-white/10"
-                />
-                <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expanded ? null : room.id)}
+                  aria-expanded={expanded}
+                  className="min-w-0 flex-1 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-semibold">{room.name}</span>
+                    {room.is_default && (
+                      <span className="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Default
+                      </span>
+                    )}
+                    {entry.isPrivate && (
+                      <Lock className="h-3 w-3 shrink-0 text-amber-300" aria-label="Private channel" />
+                    )}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                    {ROOM_KIND_LABEL[room.kind]}
+                    {entry.topic.trim() ? ` · ${entry.topic.trim()}` : " · No topic"}
+                    {entry.slowmode > 0 ? ` · ${entry.slowmode}s slowmode` : ""}
+                  </span>
+                </button>
+
+                <div className="flex shrink-0 flex-col gap-0.5">
                   <button
                     type="button"
                     aria-label={`Move ${room.name} up`}
                     disabled={!canManage || index === 0 || busy === "order"}
                     onClick={() => void move(index, -1)}
-                    className="grid h-5 w-6 place-items-center rounded border border-white/10 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    className="grid h-6 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground disabled:opacity-30"
                   >
-                    <ArrowUp className="h-3 w-3" />
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     aria-label={`Move ${room.name} down`}
                     disabled={!canManage || index === ordered.length - 1 || busy === "order"}
                     onClick={() => void move(index, 1)}
-                    className="grid h-5 w-6 place-items-center rounded border border-white/10 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    className="grid h-6 w-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground disabled:opacity-30"
                   >
-                    <ArrowDown className="h-3 w-3" />
+                    <ArrowDown className="h-3.5 w-3.5" />
                   </button>
                 </div>
-              </div>
-
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <Input
-                  value={entry.topic}
-                  maxLength={160}
-                  placeholder="Channel topic"
-                  disabled={!canManage}
-                  onChange={(e) => update(room.id, { topic: e.target.value })}
-                  className="glass h-10 border-white/10"
-                />
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={21600}
-                    value={entry.slowmode}
-                    disabled={!canManage}
-                    aria-label={`Slowmode for ${room.name}`}
-                    onChange={(e) => update(room.id, { slowmode: Number(e.target.value) || 0 })}
-                    className="glass h-10 border-white/10"
-                  />
-                  <span className="shrink-0 text-[11px] text-muted-foreground">s slowmode</span>
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-center gap-3">
-                <label className="flex min-h-10 flex-1 items-center gap-2 text-xs text-muted-foreground">
-                  <Switch
-                    checked={entry.isPrivate}
-                    disabled={!canManage}
-                    aria-label={`${room.name} is private`}
-                    onCheckedChange={(next) => update(room.id, { isPrivate: next })}
-                  />
-                  Private channel
-                </label>
-                <Button
+                <button
                   type="button"
-                  size="sm"
-                  disabled={!canManage || busy === room.id}
-                  onClick={() => void save(room)}
-                  className="h-10 border-0 bg-primary text-primary-foreground"
+                  onClick={() => setExpandedId(expanded ? null : room.id)}
+                  aria-label={`${expanded ? "Close" : "Manage"} ${room.name}`}
+                  aria-expanded={expanded}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  {busy === room.id ? "Saving…" : "Save"}
-                </Button>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
+
+              {expanded && (
+                <div className="space-y-2.5 border-t border-white/10 p-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      value={entry.name}
+                      maxLength={40}
+                      disabled={!canManage}
+                      aria-label={`Name of ${room.name}`}
+                      onChange={(e) => update(room.id, { name: e.target.value })}
+                      className="glass h-10 border-white/10"
+                    />
+                    <Input
+                      value={entry.topic}
+                      maxLength={160}
+                      placeholder="Channel topic"
+                      disabled={!canManage}
+                      aria-label={`Topic of ${room.name}`}
+                      onChange={(e) => update(room.id, { topic: e.target.value })}
+                      className="glass h-10 border-white/10"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={21600}
+                        value={entry.slowmode}
+                        disabled={!canManage}
+                        aria-label={`Slowmode for ${room.name}`}
+                        onChange={(e) => update(room.id, { slowmode: Number(e.target.value) || 0 })}
+                        className="glass h-10 border-white/10"
+                      />
+                      <span className="shrink-0 text-[11px] text-muted-foreground">s slowmode</span>
+                    </div>
+                    <label className="flex min-h-10 items-center gap-2 text-xs text-muted-foreground">
+                      <Switch
+                        checked={entry.isPrivate}
+                        disabled={!canManage}
+                        aria-label={`${room.name} is private`}
+                        onCheckedChange={(next) => update(room.id, { isPrivate: next })}
+                      />
+                      Private channel
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 gap-1.5 text-[12px] text-muted-foreground"
+                      onClick={() =>
+                        nav({
+                          to: "/r/$slug",
+                          params: { slug },
+                          search: { room: room.id },
+                        })
+                      }
+                    >
+                      Open channel
+                    </Button>
+                    <span className="flex-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={!!busy || !!blocked}
+                      title={blocked ?? `Delete #${room.name}`}
+                      onClick={() => setDeleteTarget(room)}
+                      className="h-9 gap-1.5 rounded-lg px-2 text-[12px] text-[#ff5d5d] hover:bg-[#ff5d5d]/14 hover:text-[#ff5d5d]"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!canManage || busy === room.id || !entry.name.trim()}
+                      onClick={() => void save(room)}
+                      className="h-9 border-0 bg-primary text-primary-foreground"
+                    >
+                      {busy === room.id ? "Saving…" : "Save"}
+                    </Button>
+                  </div>
+                  {blocked && (
+                    <p className="text-[10.5px] leading-snug text-muted-foreground">{blocked}</p>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
-        {ordered.length === 0 && <EmptyState>No channels yet.</EmptyState>}
 
-        {canManage && (
-          <div className="flex gap-2">
-            <Input
-              value={newName}
-              maxLength={40}
-              placeholder="New channel name"
-              onChange={(e) => setNewName(e.target.value)}
-              className="glass h-11 border-white/10"
-            />
-            <Button
-              type="button"
-              disabled={busy === "create" || !newName.trim()}
-              onClick={() => void create()}
-              className="h-11 shrink-0 border-0 bg-primary text-primary-foreground"
-            >
-              Create
-            </Button>
-          </div>
-        )}
+        {ordered.length === 0 && <EmptyState>No channels yet. Create the first one above.</EmptyState>}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null);
+        }}
+        title={deleteTarget ? `Delete #${deleteTarget.name}?` : "Delete channel?"}
+        description={
+          deleteTarget
+            ? `Deleting the ${ROOM_KIND_LABEL[deleteTarget.kind].toLowerCase()} channel #${deleteTarget.name} also deletes every message posted in it. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete channel"
+        tone="danger"
+        onConfirm={remove}
+      />
     </Panel>
   );
 }

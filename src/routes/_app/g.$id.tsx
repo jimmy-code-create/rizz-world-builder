@@ -2,7 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Palette, X } from "lucide-react";
+import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Palette, X, Forward } from "lucide-react";
+import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
+import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
+import { isOnlyMediaMarker } from "@/lib/gif-content";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
@@ -40,12 +43,17 @@ import { nameColorFor } from "@/lib/chat-appearance";
 const GROUP_MESSAGE_LIMIT = 10_000;
 
 export const Route = createFileRoute("/_app/g/$id")({
+  // `?message=` lands a mention notification on the exact message.
+  validateSearch: (search: Record<string, unknown>): { message?: string } => ({
+    message: typeof search.message === "string" && search.message ? search.message : undefined,
+  }),
   head: () => ({ meta: [{ title: "Group · RIZZ" }] }),
   component: GroupRoom,
 });
 
 function GroupRoom() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -54,6 +62,8 @@ function GroupRoom() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
+  const [highlightedMessage, setHighlightedMessage] = useState<string | null>(null);
+  const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   // Per-group wallpaper: a preset or an uploaded background URL.
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
@@ -348,6 +358,32 @@ function GroupRoom() {
   // hooks than during the previous render" once the group query resolves.
   const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
   const visibleIds = visibleMessages.map((message: { id: string }) => message.id);
+
+  // Mention notifications deep-link here; the row may mount a tick after the
+  // route changes, so keep looking briefly instead of jumping once and missing.
+  const deepLinkedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const target = search.message;
+    if (!target || deepLinkedRef.current === target) return;
+    const timer = window.setInterval(() => {
+      const element = document.getElementById(`msg-${target}`);
+      if (!element) return;
+      window.clearInterval(timer);
+      deepLinkedRef.current = target;
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedMessage(target);
+      window.setTimeout(
+        () => setHighlightedMessage((current) => (current === target ? null : current)),
+        2400,
+      );
+    }, 150);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 5000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.message]);
   const reactions = useChatReactions("group", visibleIds, {
     myMessageIds: visibleMessages
       .filter((message: { author_id: string }) => message.author_id === user?.id)
@@ -439,8 +475,9 @@ function GroupRoom() {
         <AnimatePresence initial={false}>
           {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
-            const deletedAt = m.deleted_at as string | null | undefined;
-            const hasText = !!(m.body && m.body.trim());
+            const deletedAt = m.deleted_at as string | null | undefined;              const hasText = !!(m.body && m.body.trim());
+              // A GIF/sticker-only message is media, not a text bubble.
+              const mediaOnly = isOnlyMediaMarker(m.body);
             const previous = visibleMessages[index - 1];
             const startsGroup = !previous ||
               previous.author_id !== m.author_id ||
@@ -452,7 +489,9 @@ function GroupRoom() {
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}                    className={`flex items-end gap-2 rounded-2xl transition-shadow ${
+                      highlightedMessage === m.id ? "ring-2 ring-primary" : ""
+                    } ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (startsGroup ? (
                   <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                 ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
@@ -486,6 +525,21 @@ function GroupRoom() {
                           );
                         },
                       },
+                      ...(!deletedAt
+                        ? [{
+                            label: "Forward",
+                            icon: Forward,
+                            onSelect: () => {
+                              setForwardDraft(
+                                shareDraftForMessage({
+                                  body: m.body,
+                                  attachmentUrl: m.attachment_url,
+                                  author: m.author?.username ?? null,
+                                }),
+                              );
+                            },
+                          }]
+                        : []),
                       ...(mine && !deletedAt && !String(m.id).startsWith("pending-")
                         ? [{
                             label: "Delete for everyone",
@@ -504,14 +558,18 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble message-bubble rounded-2xl px-4 py-2 select-none touch-manipulation ${m.delivery_status ? "opacity-55" : ""} ${
+                    <div className={`chat-bubble message-bubble rounded-2xl select-none touch-manipulation ${
+                      hasText && !mediaOnly ? "px-4 py-2" : ""
+                    } ${m.delivery_status ? "opacity-55" : ""} ${
                       deletedAt
                         ? "message-bubble--unsent"
-                        : hasText
-                          ? mine
-                            ? "message-bubble--outgoing"
-                            : "message-bubble--incoming"
-                          : "message-bubble--media"
+                        : mediaOnly
+                          ? "message-bubble--media"
+                          : hasText
+                            ? mine
+                              ? "message-bubble--outgoing"
+                              : "message-bubble--incoming"
+                            : "message-bubble--media"
                     }`}>
                       {m.attachment_url && !deletedAt && (
                         <ChatMessageMedia
@@ -669,6 +727,14 @@ function GroupRoom() {
           </div>
         </div>
       </div>
+
+      <ShareToChatSheet
+        open={!!forwardDraft}
+        onOpenChange={(next) => {
+          if (!next) setForwardDraft(null);
+        }}
+        draft={forwardDraft}
+      />
 
       <WallpaperSheet
         open={wallpaperOpen}

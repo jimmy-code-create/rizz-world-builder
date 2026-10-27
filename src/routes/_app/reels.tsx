@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
+import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
+import { shareDraftForPost } from "@/lib/share-to-chat";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -273,6 +275,7 @@ function ReelItem({
   const [likeCount, setLikeCount] = useState<number>(post.like_count ?? 0);
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
@@ -444,10 +447,15 @@ function ReelItem({
   }
 
   const remix = () => toast.success("Remix template saved to your drafts ✨");
-  const share = () => {
-    navigator.clipboard.writeText(window.location.origin + "/u/" + post.author?.username);
-    toast.success("Link copied");
-  };
+  // A reel is shareable into any conversation; its permalink opens the reel
+  // itself, not the author's profile.
+  const shareDraft = shareDraftForPost({
+    caption: post.caption,
+    mediaUrl: post.media_url,
+    mediaKind: post.media_type,
+    permalink: `${window.location.origin}/p/${post.id}`,
+    title: "Share reel",
+  });
 
   return (
       <section data-reel-index={reelIndex} className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}>
@@ -523,11 +531,12 @@ function ReelItem({
                 onClick={doSave}
                 active={saved}
               />
-              <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />
+              <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={() => setShareOpen(true)} />
               <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
             </div>
           </div>
           <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+          <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
         </>
       ) : (
         <>
@@ -725,11 +734,12 @@ function ReelItem({
           onClick={doSave}
           active={saved}
         />
-        <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={share} />
+        <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={() => setShareOpen(true)} />
         <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
       </div>
 
       <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+      <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
         </>
       )}
 

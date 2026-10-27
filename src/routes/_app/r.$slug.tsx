@@ -89,7 +89,10 @@ import {
   Copy,
   Plus,
   Volume2,
+  Forward,
 } from "lucide-react";
+import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
+import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
@@ -187,9 +190,13 @@ type RealmChannelCall = {
 export const Route = createFileRoute("/_app/r/$slug")({
   // A channel, or a forum thread inside one, is addressable: the room and post
   // live in the URL so a link lands where it was meant to.
-  validateSearch: (search: Record<string, unknown>): { room?: string; post?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { room?: string; post?: string; message?: string } => ({
     room: typeof search.room === "string" && search.room ? search.room : undefined,
     post: typeof search.post === "string" && search.post ? search.post : undefined,
+    // A mention notification points at one message: open its channel and land on it.
+    message: typeof search.message === "string" && search.message ? search.message : undefined,
   }),
   head: ({ params }) => ({ meta: [{ title: `#${params.slug} · RIZZ` }] }),
   component: RealmPage,
@@ -263,6 +270,8 @@ function RealmPage() {
   // Phase 5: search, levels, threads, scheduling, polls, emoji, reaction roles.
   const [searchOpen, setSearchOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
+  // Forward uses the same picker posts, reels and DMs use.
+  const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   const [threadRoot, setThreadRoot] = useState<{
     id: string;
     body: string;
@@ -724,6 +733,38 @@ function RealmPage() {
       );
     }, 50);
   };
+
+  // Deep link from a mention: resolve the message's channel first (it may be a
+  // channel you are not currently looking at), then jump once the row exists.
+  const deepLinkedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const target = search.message;
+    if (!target || deepLinkedRef.current === target || !realm.data?.id) return;
+    let cancelled = false;
+    void supabase
+      .from("messages")
+      .select("id,realm_id,realm_room_id")
+      .eq("id", target)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data || data.realm_id !== realm.data?.id) return;
+        if (data.realm_room_id && data.realm_room_id !== activeRoomId) {
+          setActiveRoomId(data.realm_room_id);
+          return; // the effect runs again once that channel's rows load
+        }
+        const timer = window.setInterval(() => {
+          if (!document.getElementById(`msg-${target}`)) return;
+          window.clearInterval(timer);
+          deepLinkedRef.current = target;
+          jumpToMessage(target);
+        }, 150);
+        window.setTimeout(() => window.clearInterval(timer), 5000);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.message, realm.data?.id, activeRoomId, roomMessages.dataUpdatedAt]);
 
   const handlePinToggle = async (messageId: string, isPinned: boolean) => {
     setUnpinningId(messageId);
@@ -1427,6 +1468,15 @@ function RealmPage() {
                       />
                     </div>
                   ))}
+                  <Link
+                    to="/r/$slug/settings"
+                    params={{ slug }}
+                    search={{ section: "channels" }}
+                    onClick={() => setRoomsOpen(false)}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] text-[12px] font-semibold text-foreground/80 transition-colors hover:border-white/20 hover:text-foreground"
+                  >
+                    <Settings className="h-3.5 w-3.5" /> Rename, reorder or delete channels
+                  </Link>
                 </div>
               )}
 
@@ -1964,6 +2014,23 @@ function RealmPage() {
                             },
                           },
                           {
+                            label: "Forward",
+                            icon: Forward,
+                            onSelect: () => {
+                              setForwardDraft(
+                                shareDraftForMessage({
+                                  body: m.body,
+                                  attachmentUrl: m.attachment_url,
+                                  author:
+                                    m.sender?.username ??
+                                    m.bot?.name ??
+                                    m.webhook_meta?.name ??
+                                    null,
+                                }),
+                              );
+                            },
+                          },
+                          {
                             label: "Reply in thread",
                             icon: MessagesSquare,
                             onSelect: () =>
@@ -2263,6 +2330,13 @@ function RealmPage() {
         onUnpin={(pin) => void handlePinToggle(pin.message_id, true)}
       />
 
+      <ShareToChatSheet
+        open={!!forwardDraft}
+        onOpenChange={(next) => {
+          if (!next) setForwardDraft(null);
+        }}
+        draft={forwardDraft}
+      />
       <MessageSearchSheet
         open={searchOpen}
         onOpenChange={setSearchOpen}

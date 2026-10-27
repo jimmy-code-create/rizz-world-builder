@@ -78,7 +78,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="glass-strong flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
+      <SheetContent side="right" className="glass-strong z-[170] flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
         <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
             <Music className="h-4 w-4 text-primary" /> Music

@@ -1,6 +1,22 @@
 const MEDIA_MARKER_PATTERN =
   /!\[(gif|sticker)\]\((https:\/\/(?:media\d*\.giphy\.com|i\.giphy\.com)\/[^)\s]+|\/stickers\/(?:noto|black-cat|kotya)\/[a-z0-9/_-]+\.(?:webm|png))\)/gi;
 
+/**
+ * True when a message is nothing but a GIF or sticker marker.
+ *
+ * A body like `![gif](…)` has no words, so it must be treated as media — not as
+ * text — or the picture ends up inside a coloured message bubble with padding
+ * around it, which is what made media-only messages look like a giant empty card.
+ */
+export function isOnlyMediaMarker(text: string | null | undefined) {
+  const value = (text ?? "").trim();
+  if (!value) return false;
+  const segments = renderGifSegments(value);
+  const media = segments.filter((segment) => segment.isGif || segment.isSticker);
+  if (media.length === 0) return false;
+  return segments.every((segment) => segment.isGif || segment.isSticker || !segment.value.trim());
+}
+
 export function renderGifSegments(text: string) {
   const segments: {
     isGif: boolean;

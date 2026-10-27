@@ -9,8 +9,11 @@ import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag, Forward } from "lucide-react";
 import { CornerUpLeft } from "lucide-react";
+import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
+import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
+import { isOnlyMediaMarker } from "@/lib/gif-content";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
@@ -71,12 +74,17 @@ function ownChatImagePath(url: string | null, userId: string) {
 }
 
 export const Route = createFileRoute("/_app/dm/$userId")({
+  // `?message=` deep-links a notification to one message in the thread.
+  validateSearch: (search: Record<string, unknown>): { message?: string } => ({
+    message: typeof search.message === "string" && search.message ? search.message : undefined,
+  }),
   head: () => ({ meta: [{ title: "DM · RIZZ" }] }),
   component: DMPage,
 });
 
 function DMPage() {
   const { userId } = Route.useParams();
+  const search = Route.useSearch();
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -118,6 +126,8 @@ function DMPage() {
   // The chat's own wallpaper: a preset or an uploaded background URL.
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  // Forward opens the same "send to" picker posts, reels and realms use.
+  const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -255,8 +265,28 @@ function DMPage() {
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     setHighlighted(id);
-    window.setTimeout(() => setHighlighted((h) => (h === id ? null : h)), 1600);
+    window.setTimeout(() => setHighlighted((h) => (h === id ? null : h)), 2400);
   };
+
+  // Deep link from the inbox: wait for the row to render, then jump to it and
+  // keep the lime ring for long enough to find it mid-conversation.
+  const deepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    const target = search.message;
+    if (!target || deepLinkRef.current === target) return;
+    const timer = window.setInterval(() => {
+      if (!document.getElementById(`msg-${target}`)) return;
+      window.clearInterval(timer);
+      deepLinkRef.current = target;
+      jumpToMessage(target);
+    }, 150);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 5000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.message]);
 
   const other = useQuery({
     queryKey: ["profile-id", userId],
@@ -907,6 +937,8 @@ function DMPage() {
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
             const hasText = !!(rest && rest.trim());
+            // A GIF/sticker-only message is media: no lime bubble, no padding.
+            const mediaOnly = isOnlyMediaMarker(rest);
             const previous = filteredMsgs[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -1030,6 +1062,19 @@ function DMPage() {
                       },
                     },
                     {
+                      label: "Forward",
+                      icon: Forward,
+                      onSelect: () => {
+                        setForwardDraft(
+                          shareDraftForMessage({
+                            body: rest || m.body,
+                            attachmentUrl: m.attachment_url,
+                            author: mine ? profile?.username : other.data?.username,
+                          }),
+                        );
+                      },
+                    },
+                    {
                       label: "Report",
                       icon: Flag,
                       onSelect: () => {
@@ -1056,7 +1101,7 @@ function DMPage() {
                 >
                   <div
                     className={`chat-bubble message-bubble rounded-2xl text-left select-none touch-manipulation ${
-                      hasText && !m.attachment_url ? "px-4 py-2" : ""
+                      hasText && !mediaOnly && !m.attachment_url ? "px-4 py-2" : ""
                     } ${
                       deliveryStatus ? "opacity-60" : ""
                     } ${
@@ -1064,7 +1109,7 @@ function DMPage() {
                       // bubble (or its border) behind someone's picture.
                       deletedAt
                         ? "message-bubble--unsent"
-                        : m.attachment_url
+                        : m.attachment_url || mediaOnly
                           ? "message-bubble--media"
                           : hasText
                             ? mine
@@ -1300,6 +1345,14 @@ function DMPage() {
           </div>
         </div>
       </div>
+
+      <ShareToChatSheet
+        open={!!forwardDraft}
+        onOpenChange={(next) => {
+          if (!next) setForwardDraft(null);
+        }}
+        draft={forwardDraft}
+      />
 
       <WallpaperSheet
         open={wallpaperOpen}

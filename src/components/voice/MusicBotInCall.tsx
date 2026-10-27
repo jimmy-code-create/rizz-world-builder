@@ -41,9 +41,18 @@ type MusicBotState = {
   enabled: boolean;
   /** Why the bot is quiet, in the user's words — null while it is singing. */
   note: string | null;
+  /** Taken out of the call by hand; audio stops until it is added back. */
+  dismissed: boolean;
 };
 
-let store: MusicBotState = { track: null, singing: false, blocked: false, enabled: false, note: null };
+let store: MusicBotState = {
+  track: null,
+  singing: false,
+  blocked: false,
+  enabled: false,
+  note: null,
+  dismissed: false,
+};
 const listeners = new Set<() => void>();
 
 function update(patch: Partial<MusicBotState>) {
@@ -53,7 +62,8 @@ function update(patch: Partial<MusicBotState>) {
     next.singing === store.singing &&
     next.blocked === store.blocked &&
     next.enabled === store.enabled &&
-    next.note === store.note
+    next.note === store.note &&
+    next.dismissed === store.dismissed
   ) {
     return;
   }
@@ -61,8 +71,22 @@ function update(patch: Partial<MusicBotState>) {
   listeners.forEach((listener) => listener());
 }
 
+/**
+ * Take MUSIC BOT out of the current call, or put it back.
+ *
+ * Removal has to stop the audio too — hiding the tile while music kept playing
+ * would be the worst of both worlds.
+ */
+export function setMusicBotDismissed(dismissed: boolean) {
+  update({ dismissed });
+}
+
 /** Imperative controls the audio owner publishes for the call view's buttons. */
-export const musicBotControls: { toggle: () => void; retry: () => void; seek: (seconds: number) => void } = {
+export const musicBotControls: {
+  toggle: () => void;
+  retry: () => void;
+  seek: (seconds: number) => void;
+} = {
   toggle: () => {},
   retry: () => {},
   seek: () => {},
@@ -112,6 +136,7 @@ export class MusicBotBoundary extends Component<{ children: ReactNode }, { faile
  */
 export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
   const qc = useQueryClient();
+  const botState = useMusicBotInCall();
   const realmId = call?.realmId ?? null;
   // The queue is keyed by the REALM CHANNEL id, while `call.roomId` is the
   // voice_rooms row. Using the voice-room id made every lookup miss, so the bot
@@ -123,7 +148,9 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     queryFn: () => fetchRealmBots(realmId!),
     enabled: !!realmId,
   });
-  const botEnabled = (bots.data?.bots ?? []).some((entry) => entry.name === "MUSIC BOT" && entry.enabled);
+  const botEnabled = (bots.data?.bots ?? []).some(
+    (entry) => entry.name === "MUSIC BOT" && entry.enabled,
+  );
 
   const queue = useMusicQueue(realmId, roomId, botEnabled);
   const track = (queue.data ?? [])[0] ?? null;
@@ -141,6 +168,12 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     update({ enabled: botEnabled && !!realmId, track });
     if (!realmId) update({ singing: false, blocked: false, note: null });
   }, [botEnabled, realmId, track]);
+
+  // A bot removed in one call must be back in the next one: dismissal is a
+  // per-call choice, not a permanent setting.
+  useEffect(() => {
+    update({ dismissed: false });
+  }, [call?.roomId]);
 
   useEffect(() => {
     if (track && !playable) {
@@ -200,6 +233,13 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
     };
   }, []);
 
+  // Removing the bot unmounts the player below, which stops the audio; putting
+  // it back mounts a fresh one on the same track.
+  const dismissed = botState.dismissed;
+  useEffect(() => {
+    if (dismissed) update({ singing: false });
+  }, [dismissed]);
+
   useEffect(() => {
     musicBotControls.toggle = () => {
       if (!playable) return;
@@ -214,6 +254,8 @@ export function MusicBotAudio({ call }: { call: ActiveCall | null }) {
       musicBotControls.seek = () => {};
     };
   }, [playable]);
+
+  if (dismissed) return null;
 
   return (
     <MusicPlayer

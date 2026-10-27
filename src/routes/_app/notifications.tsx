@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/lib/toast";
@@ -49,13 +50,40 @@ function forumTarget(n: any): { slug: string; room: string; post: string } | nul
   return { slug: data.realm_slug, room: data.room_id, post: data.post_id };
 }
 
+/**
+ * A mention knows exactly which message it came from: the trigger stores
+ * `message_id` plus the realm or group it belongs to. Tapping the row opens
+ * that conversation on that message, which the chat then highlights.
+ */
+function mentionTarget(
+  n: any,
+):
+  | { kind: "group"; groupId: string; messageId: string }
+  | { kind: "realm"; realmId: string; messageId: string }
+  | null {
+  const data = n?.data as {
+    source?: string;
+    message_id?: string;
+    group_id?: string;
+    realm_id?: string;
+  } | null;
+  if (!data?.message_id) return null;
+  if (data.source === "group" && data.group_id) {
+    return { kind: "group", groupId: data.group_id, messageId: data.message_id };
+  }
+  if (data.source === "realm" && data.realm_id) {
+    return { kind: "realm", realmId: data.realm_id, messageId: data.message_id };
+  }
+  return null;
+}
+
 function NotificationsPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"all" | "unread" | "like" | "comment" | "follow" | "mention">(
-    "all",
-  );
+  const [tab, setTab] = useState<
+    "all" | "unread" | "messages" | "like" | "comment" | "follow" | "mention"
+  >("all");
   const items = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -106,6 +134,88 @@ function NotificationsPage() {
 
   const unreadCount = (items.data ?? []).filter((n: any) => !n.read).length;
 
+  // Discord's inbox has messages in it, not just likes: the unread DM threads
+  // live here with a direct link to the exact message that is waiting.
+  const unreadDms = useQuery({
+    queryKey: ["notif-unread-dms", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("direct_messages")
+        .select(
+          "id,created_at,body,sender_id,sender:profiles!direct_messages_sender_id_fkey(id,username,display_name,avatar_url)",
+        )
+        .eq("recipient_id", user!.id)
+        .eq("read", false)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      type UnreadDmRow = {
+        id: string;
+        body: string;
+        created_at: string;
+        sender_id: string;
+        sender: {
+          id: string;
+          username: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+        } | null;
+      };
+      const seen = new Map<
+        string,
+        {
+          id: string;
+          body: string;
+          created_at: string;
+          sender: NonNullable<UnreadDmRow["sender"]>;
+          count: number;
+        }
+      >();
+      for (const row of (data ?? []) as UnreadDmRow[]) {
+        if (!row.sender) continue;
+        const existing = seen.get(row.sender_id);
+        if (existing) existing.count += 1;
+        else
+          seen.set(row.sender_id, {
+            id: row.id,
+            body: row.body,
+            created_at: row.created_at,
+            sender: row.sender,
+            count: 1,
+          });
+      }
+      return [...seen.values()];
+    },
+  });
+
+  // Mentions only store ids; the realm link needs the slug.
+  const mentionRealmIds = useMemo(
+    () => [
+      ...new Set(
+        (items.data ?? [])
+          .map((n: any) => mentionTarget(n))
+          .filter(
+            (target): target is { kind: "realm"; realmId: string; messageId: string } =>
+              target?.kind === "realm",
+          )
+          .map((target) => target.realmId),
+      ),
+    ],
+    [items.data],
+  );
+
+  const realmSlugs = useQuery({
+    queryKey: ["notif-realm-slugs", mentionRealmIds],
+    enabled: mentionRealmIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("realms").select("id,slug").in("id", mentionRealmIds);
+      return new Map(
+        (data ?? []).map((realm: { id: string; slug: string }) => [realm.id, realm.slug]),
+      );
+    },
+  });
+
   // The trigger behind a "commented on your post" notification only writes the
   // label "New Comment", so the comment itself is recovered here and the row
   // becomes a link to the post it belongs to.
@@ -136,9 +246,10 @@ function NotificationsPage() {
       <p className="text-sm text-muted-foreground mb-4">{t("notif_subtitle")}</p>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
-        <TabsList className="glass border border-white/5">
+        <TabsList className="no-scrollbar glass w-full max-w-full justify-start overflow-x-auto border border-white/5">
           <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
           <TabsTrigger value="unread">{t("tab_unread")}</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="like">{t("tab_likes")}</TabsTrigger>
           <TabsTrigger value="comment">{t("tab_comments")}</TabsTrigger>
           <TabsTrigger value="follow">{t("tab_follows")}</TabsTrigger>
@@ -147,105 +258,165 @@ function NotificationsPage() {
       </Tabs>
 
       <div className="space-y-2">
-        {filtered.map((n: any) => {
-          const Icon = ICON[n.type] ?? Bell;
-          const target = forumTarget(n);
-          const comment = commentTargets.data?.get(n.id) ?? null;
-          const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
-          const inner = (
-            <>
-              <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Icon className="h-5 w-5 text-primary" />
+        {tab === "messages" &&
+          (unreadDms.data ?? []).map((dm) => (
+            <Link
+              key={dm.sender.id}
+              to="/dm/$userId"
+              params={{ userId: dm.sender.id }}
+              search={{ message: dm.id }}
+              className="glass flex w-full items-center gap-3 rounded-2xl border border-primary/40 bg-card p-4 text-left"
+            >
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={dm.sender.avatar_url ?? undefined} alt="" />
+                <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
+                  {(dm.sender.display_name || dm.sender.username || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  {dm.sender.display_name || dm.sender.username}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{dm.body}</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm flex-1 min-w-0">
-                  {n.actor?.username ? (
-                    <ProfilePreviewTrigger
-                      username={n.actor.username}
-                      className="font-bold hover:underline"
-                    >
-                      @{n.actor.username}
-                    </ProfilePreviewTrigger>
-                  ) : (
-                    <span className="font-bold">@someone</span>
-                  )}{" "}
-                  {n.type === "like"
-                    ? t("notif_liked")
-                    : n.type === "comment"
-                      ? t("notif_commented")
-                      : n.type === "follow"
-                        ? t("notif_followed")
-                        : n.type === "mention"
-                          ? t("notif_mentioned")
-                          : n.type === "forum_reply"
-                            ? t("notif_forum_reply")
-                            : n.type === "forum_tag"
-                              ? t("notif_forum_tag")
-                              : t("notif_reacted")}
-                  {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") &&
-                    n.body && (
-                      <span className="block text-xs text-muted-foreground truncate mt-0.5">
-                        “{n.body}”
+              <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {dm.count}
+              </span>
+            </Link>
+          ))}
+
+        {tab !== "messages" &&
+          filtered.map((n: any) => {
+            const Icon = ICON[n.type] ?? Bell;
+            const target = forumTarget(n);
+            const comment = commentTargets.data?.get(n.id) ?? null;
+            const mention = mentionTarget(n);
+            const mentionRealmSlug =
+              mention?.kind === "realm" ? (realmSlugs.data?.get(mention.realmId) ?? null) : null;
+            const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
+            const inner = (
+              <>
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm flex-1 min-w-0">
+                    {n.actor?.username ? (
+                      <ProfilePreviewTrigger
+                        username={n.actor.username}
+                        className="font-bold hover:underline"
+                      >
+                        @{n.actor.username}
+                      </ProfilePreviewTrigger>
+                    ) : (
+                      <span className="font-bold">@someone</span>
+                    )}{" "}
+                    {n.type === "like"
+                      ? t("notif_liked")
+                      : n.type === "comment"
+                        ? t("notif_commented")
+                        : n.type === "follow"
+                          ? t("notif_followed")
+                          : n.type === "mention"
+                            ? t("notif_mentioned")
+                            : n.type === "forum_reply"
+                              ? t("notif_forum_reply")
+                              : n.type === "forum_tag"
+                                ? t("notif_forum_tag")
+                                : t("notif_reacted")}
+                    {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") &&
+                      n.body && (
+                        <span className="block text-xs text-muted-foreground truncate mt-0.5">
+                          “{n.body}”
+                        </span>
+                      )}
+                    {comment && (
+                      <span className="block text-xs text-foreground/90 truncate mt-0.5">
+                        “{comment.body}”
                       </span>
                     )}
-                  {comment && (
-                    <span className="block text-xs text-foreground/90 truncate mt-0.5">
-                      “{comment.body}”
-                    </span>
-                  )}
-                  {comment?.postCaption && (
-                    <span className="block text-[11px] text-muted-foreground truncate">
-                      on “{comment.postCaption}”
-                    </span>
-                  )}
-                  {!comment && n.type !== "mention" && n.title && !isGenericTitle(n.title) && (
-                    <span className="block text-xs text-muted-foreground truncate mt-0.5">
-                      {n.title}
-                    </span>
-                  )}
-                </p>
-                <p
-                  className="text-[10px] text-muted-foreground mt-0.5"
-                  title={formatFullDate(n.created_at)}
-                >
-                  {formatRelativeTime(n.created_at)}
-                </p>
-              </div>
-            </>
-          );
-          return (
-            <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-              {target ? (
-                <Link
-                  to="/r/$slug"
-                  params={{ slug: target.slug }}
-                  search={{ room: target.room, post: target.post }}
-                  className={shell}
-                >
-                  {inner}
-                </Link>
-              ) : comment ? (
-                <Link
-                  to="/p/$postId"
-                  params={{ postId: n.post_id }}
-                  search={{ comment: comment.commentId }}
-                  className={shell}
-                >
-                  {inner}
-                </Link>
-              ) : n.post_id ? (
-                <Link to="/p/$postId" params={{ postId: n.post_id }} className={shell}>
-                  {inner}
-                </Link>
-              ) : (
-                <div className={shell}>{inner}</div>
-              )}
-            </motion.div>
-          );
-        })}
+                    {comment?.postCaption && (
+                      <span className="block text-[11px] text-muted-foreground truncate">
+                        on “{comment.postCaption}”
+                      </span>
+                    )}
+                    {!comment && n.type !== "mention" && n.title && !isGenericTitle(n.title) && (
+                      <span className="block text-xs text-muted-foreground truncate mt-0.5">
+                        {n.title}
+                      </span>
+                    )}
+                  </p>
+                  <p
+                    className="text-[10px] text-muted-foreground mt-0.5"
+                    title={formatFullDate(n.created_at)}
+                  >
+                    {formatRelativeTime(n.created_at)}
+                  </p>
+                </div>
+              </>
+            );
+            return (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                {mention?.kind === "group" ? (
+                  <Link
+                    to="/g/$id"
+                    params={{ id: mention.groupId }}
+                    search={{ message: mention.messageId }}
+                    className={shell}
+                  >
+                    {inner}
+                  </Link>
+                ) : mention && mentionRealmSlug ? (
+                  <Link
+                    to="/r/$slug"
+                    params={{ slug: mentionRealmSlug }}
+                    search={{ message: mention.messageId }}
+                    className={shell}
+                  >
+                    {inner}
+                  </Link>
+                ) : target ? (
+                  <Link
+                    to="/r/$slug"
+                    params={{ slug: target.slug }}
+                    search={{ room: target.room, post: target.post }}
+                    className={shell}
+                  >
+                    {inner}
+                  </Link>
+                ) : comment ? (
+                  <Link
+                    to="/p/$postId"
+                    params={{ postId: n.post_id }}
+                    search={{ comment: comment.commentId }}
+                    className={shell}
+                  >
+                    {inner}
+                  </Link>
+                ) : n.post_id ? (
+                  <Link to="/p/$postId" params={{ postId: n.post_id }} className={shell}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className={shell}>{inner}</div>
+                )}
+              </motion.div>
+            );
+          })}
       </div>
 
-      {filtered.length === 0 && (
+      {tab === "messages" && (unreadDms.data ?? []).length === 0 && (
+        <div className="glass rounded-3xl p-8 text-center">
+          <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
+          <p className="text-sm text-muted-foreground">No unread messages</p>
+        </div>
+      )}
+
+      {tab !== "messages" && filtered.length === 0 && (
         <div className="glass rounded-3xl p-8 text-center">
           <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
           <p className="text-sm text-muted-foreground">

@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import {
@@ -42,6 +50,8 @@ export type ActiveCall = {
   channelId: string;
   channelName: string;
   isHost: boolean;
+  /** The call's host. Only the host may remove somebody from the call. */
+  hostId: string | null;
 };
 
 export type CallParticipantRow = {
@@ -87,6 +97,8 @@ type VoiceCallContextValue = {
   cameraReady: boolean;
   joinChannel: (channel: VoiceChannelRef) => void;
   leaveCall: () => void;
+  /** Host only: send someone out of the call (they leave with a notice). */
+  kickFromCall: (userId: string) => void;
   openView: () => void;
   closeView: () => void;
   toggleMute: () => void;
@@ -136,9 +148,13 @@ export function useRealmVoiceChannels(realmId?: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "voice_participants" }, () => {
         void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "voice_rooms", filter: `realm_id=eq.${realmId}` }, () => {
-        void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "voice_rooms", filter: `realm_id=eq.${realmId}` },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -164,6 +180,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
 
   const callRef = useRef<ActiveCall | null>(null);
   const pendingSwitchRef = useRef<VoiceChannelRef | null>(null);
+  // The roster channel doubles as the call's control channel (kick), so a ref
+  // to it is kept for the participant menus.
+  const rosterChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const leaveCallRef = useRef<() => void>(() => {});
   const userIdRef = useRef<string | null>(null);
   const tokenRef = useRef("");
   callRef.current = call;
@@ -179,7 +199,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   });
 
   const participants = useMemo(
-    () => ((participantsQuery.data ?? []) as unknown as CallParticipantRow[]),
+    () => (participantsQuery.data ?? []) as unknown as CallParticipantRow[],
     [participantsQuery.data],
   );
 
@@ -187,7 +207,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     roomId: call?.roomId ?? "",
     userId: user?.id ?? "",
     accessToken: session?.access_token ?? "",
-    participants: participants.map((participant) => ({ user_id: participant.user_id, muted: participant.muted })),
+    participants: participants.map((participant) => ({
+      user_id: participant.user_id,
+      muted: participant.muted,
+    })),
     muted,
     cameraOn,
     facing,
@@ -214,20 +237,51 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     const roomId = call?.roomId;
     if (!roomId) return;
     const channel = supabase
-      .channel(`voice-call-roster-${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "voice_participants", filter: `room_id=eq.${roomId}` }, () => {
-        void qc.invalidateQueries({ queryKey: ["voice-call-participants", roomId] });
-        if (callRef.current) void qc.invalidateQueries({ queryKey: ["realm-channel-calls", callRef.current.realmId] });
+      .channel(`voice-call-roster-${roomId}`, { config: { broadcast: { self: false } } })
+      .on("broadcast", { event: "voice-kick" }, ({ payload }) => {
+        const kick = payload as { userId?: string; hostId?: string } | null;
+        const current = callRef.current;
+        if (!kick?.userId || kick.userId !== userIdRef.current) return;
+        // Only a message claiming to come from this call's host removes anyone:
+        // a stray broadcast from another room can never empty this call.
+        if (!current || kick.hostId !== current.hostId) return;
+        toast("The host removed you from the voice channel");
+        leaveCallRef.current();
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "voice_rooms", filter: `id=eq.${roomId}` }, (payload) => {
-        if ((payload.new as { is_live?: boolean })?.is_live === false && callRef.current?.roomId === roomId) {
-          toast("Voice call ended");
-          setCall(null);
-          setViewOpen(false);
-        }
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "voice_participants",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["voice-call-participants", roomId] });
+          if (callRef.current)
+            void qc.invalidateQueries({
+              queryKey: ["realm-channel-calls", callRef.current.realmId],
+            });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "voice_rooms", filter: `id=eq.${roomId}` },
+        (payload) => {
+          if (
+            (payload.new as { is_live?: boolean })?.is_live === false &&
+            callRef.current?.roomId === roomId
+          ) {
+            toast("Voice call ended");
+            setCall(null);
+            setViewOpen(false);
+          }
+        },
+      )
       .subscribe();
+    rosterChannelRef.current = channel;
     return () => {
+      rosterChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
   }, [call?.roomId, qc]);
@@ -266,6 +320,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           channelId: channel.id,
           channelName: channel.name,
           isHost: room.host_id === user.id,
+          hostId: room.host_id ?? null,
         });
         setViewOpen(true);
         hapticVoiceJoin();
@@ -301,6 +356,37 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     void qc.invalidateQueries({ queryKey: ["voice-call-participants", current.roomId] });
   }, [participants, qc]);
 
+  leaveCallRef.current = () => {
+    void leaveCall();
+  };
+
+  /**
+   * Host-only: tell the target's client to leave, and (best effort) drop the
+   * roster row so the card disappears even if their tab is asleep.
+   */
+  const kickFromCall = useCallback(
+    (userId: string) => {
+      const current = callRef.current;
+      if (!current || !userIdRef.current) return;
+      if (current.hostId !== userIdRef.current) {
+        toast.error("Only the call host can remove someone");
+        return;
+      }
+      if (userId === userIdRef.current) return;
+      void rosterChannelRef.current?.send({
+        type: "broadcast",
+        event: "voice-kick",
+        payload: { userId, hostId: current.hostId },
+      });
+      void leaveRoom(current.roomId, userId).catch((error: unknown) => {
+        console.debug("Couldn't remove the roster row; the client was told to leave", error);
+      });
+      void qc.invalidateQueries({ queryKey: ["voice-call-participants", current.roomId] });
+      toast.success("Removed from the call");
+    },
+    [qc],
+  );
+
   const confirmSwitch = useCallback(async () => {
     const target = pendingSwitchRef.current;
     setPendingSwitch(null);
@@ -314,9 +400,11 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     setMuted((previous) => {
       const next = !previous;
       if (current && userIdRef.current) {
-        void updateParticipant(current.roomId, userIdRef.current, { muted: next }).catch((error) => {
-          console.warn("Couldn't sync the mute state", error);
-        });
+        void updateParticipant(current.roomId, userIdRef.current, { muted: next }).catch(
+          (error) => {
+            console.warn("Couldn't sync the mute state", error);
+          },
+        );
       }
       return next;
     });
@@ -333,7 +421,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   }, [muted, toggleMute]);
 
   const toggleCamera = useCallback(() => setCameraOn((previous) => !previous), []);
-  const flipCamera = useCallback(() => setFacing((previous) => (previous === "user" ? "environment" : "user")), []);
+  const flipCamera = useCallback(
+    () => setFacing((previous) => (previous === "user" ? "environment" : "user")),
+    [],
+  );
   const toggleScreenShare = useCallback(() => {
     if (engineRef.current.sharingScreen) engineRef.current.stopScreenShare();
     else void engineRef.current.startScreenShare();
@@ -397,6 +488,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       leaveCall: () => {
         void leaveCall();
       },
+      kickFromCall,
       openView: () => setViewOpen(true),
       closeView: () => setViewOpen(false),
       toggleMute,
@@ -440,6 +532,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       engine.markPlaybackBlocked,
       joinChannel,
       leaveCall,
+      kickFromCall,
       toggleMute,
       toggleDeafen,
       toggleCamera,
@@ -450,33 +543,42 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <VoiceSpeakingContext.Provider value={engine.speakingIds}>
-    <VoiceCallContext.Provider value={value}>
-      {children}
-      {/* Audio keeps playing while the view is minimized. */}
-      <VoiceCallAudio />
-      {/* MUSIC BOT rides in the call: its audio element lives here too, inside a
+      <VoiceCallContext.Provider value={value}>
+        {children}
+        {/* Audio keeps playing while the view is minimized. */}
+        <VoiceCallAudio />
+        {/* MUSIC BOT rides in the call: its audio element lives here too, inside a
           boundary so a bot failure can never take the page down with it. */}
-      <MusicBotBoundary>
-        <MusicBotAudio call={call} />
-      </MusicBotBoundary>
-      <VoiceCallView />
-      <AlertDialog open={!!pendingSwitch} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
-        <AlertDialogContent className="glass-strong border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Switch voice channel?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You're in {call?.channelName}. Joining {pendingSwitch?.name} leaves the current call.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmSwitch()} className="bg-primary text-primary-foreground border-0">
-              Switch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </VoiceCallContext.Provider>
+        <MusicBotBoundary>
+          <MusicBotAudio call={call} />
+        </MusicBotBoundary>
+        <VoiceCallView />
+        <AlertDialog
+          open={!!pendingSwitch}
+          onOpenChange={(open) => {
+            if (!open) setPendingSwitch(null);
+          }}
+        >
+          <AlertDialogContent className="glass-strong border-white/10">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display">Switch voice channel?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You're in {call?.channelName}. Joining {pendingSwitch?.name} leaves the current
+                call.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Stay</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => void confirmSwitch()}
+                className="bg-primary text-primary-foreground border-0"
+              >
+                Switch
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </VoiceCallContext.Provider>
     </VoiceSpeakingContext.Provider>
   );
 }

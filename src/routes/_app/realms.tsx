@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus } from "lucide-react";
+import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/lib/toast";
 
@@ -293,27 +293,45 @@ function RealmsPage() {
             if (!realm) return null;
             const Icon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
             return (
-              <Link key={realm.id} to="/r/$slug" params={{ slug: realm.slug }} className="block min-h-[44px] rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                <div className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]">
-                  <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15 bg-surface-2">
-                      {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-primary" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-bold text-base leading-tight truncate flex items-center gap-1.5">
-                        {realm.name}
-                        {realm.is_public ? <Globe className="h-3.5 w-3.5 text-muted-foreground" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </h3>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{realm.topic || "—"}</p>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-foreground/80">{m.role}</span>
+              <div
+                key={realm.id}
+                className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]"
+              >
+                {/* The whole card opens the realm; the settings shortcut is a
+                    sibling above that overlay, so it stays its own control. */}
+                <Link
+                  to="/r/$slug"
+                  params={{ slug: realm.slug }}
+                  aria-label={`Open ${realm.name}`}
+                  className="absolute inset-0 z-0 rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+                <div className="pointer-events-none relative z-10 flex items-start gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-2xl flex shrink-0 items-center justify-center ring-1 ring-white/15 bg-surface-2">
+                    {realm.icon_url ? <img src={realm.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-primary" />}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="h-3.5 w-3.5" />
-                    <span>{realm.member_count} members</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display font-bold text-base leading-tight truncate flex items-center gap-1.5">
+                      {realm.name}
+                      {realm.is_public ? <Globe className="h-3.5 w-3.5 text-muted-foreground" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </h3>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{realm.topic || "—"}</p>
                   </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-foreground/80">{m.role}</span>
                 </div>
-              </Link>
+                <div className="pointer-events-none relative z-10 mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  <span>{realm.member_count} members</span>
+                  <Link
+                    to="/r/$slug/settings"
+                    params={{ slug: realm.slug }}
+                    aria-label={`Settings for ${realm.name}`}
+                    className="pointer-events-auto ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-foreground/80 transition-colors hover:border-white/20 hover:text-foreground"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                    Settings
+                  </Link>
+                </div>
+              </div>
             );
           })}
         </div>

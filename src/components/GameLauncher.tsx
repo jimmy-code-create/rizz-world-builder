@@ -347,7 +347,7 @@ export function GameLauncher({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="h-[90dvh] max-h-[900px] bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] border-t border-white/10 p-0"
+        className="z-[170] h-[90dvh] max-h-[900px] border-t border-white/10 bg-[#0f0f12] p-0"
       >
         <div className="flex flex-col h-full">
           {/* Header */}
