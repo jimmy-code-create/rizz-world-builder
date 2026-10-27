@@ -180,6 +180,19 @@ function ReelsPage() {
             setCaptions={setCaptions}
             setFilter={setFilter}
             isActive={activeIndex === index}
+            // Load window: the reel on screen gets the connection, its
+            // neighbours get their first frame so the next swipe is instant,
+            // and everything else is left on the server. Without this every
+            // reel in the list mounted a <video> at the browser's default
+            // preload and started downloading at once, so the reel being
+            // watched fought twenty others for bandwidth on a phone.
+            preload={
+              index === activeIndex
+                ? "auto"
+                : Math.abs(index - (activeIndex < 0 ? 0 : activeIndex)) <= 1
+                  ? "metadata"
+                  : "none"
+            }
             autoplay={autoplay}
             setAutoplay={setAutoplay}
             onEnded={() => advanceReel(index)}
@@ -240,6 +253,7 @@ function ReelItem({
   initialLiked,
   initialSaved,
   isActive,
+  preload,
   autoplay,
   setAutoplay,
   onEnded,
@@ -257,6 +271,8 @@ function ReelItem({
   initialLiked: boolean;
   initialSaved: boolean;
   isActive: boolean;
+  /** "auto" on screen, "metadata" for the neighbour slides, "none" far away. */
+  preload: "auto" | "metadata" | "none";
   autoplay: boolean;
   setAutoplay: React.Dispatch<React.SetStateAction<boolean>>;
   onEnded: () => void;
@@ -543,6 +559,7 @@ function ReelItem({
         <video
           ref={ref}
           src={post.media_url}
+          preload={preload}
           muted={muted}
           playsInline
           onClick={handleVideoTap}

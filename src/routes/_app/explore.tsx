@@ -131,7 +131,18 @@ function ExplorePage() {
             {trending.data.map((p) => (
               <div key={p.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border relative group">
                 {p.media_type === "video" ? (
-                  <video src={p.media_url ?? ""} className="w-full h-full object-cover" muted />
+                  // A trending tile is a thumbnail, not a player: it needs the
+                  // first frame and nothing else. Without `preload` the browser
+                  // used its default and pulled a whole video file for every
+                  // square in the grid, which is most of what made Explore
+                  // slow to settle on a phone.
+                  <video
+                    src={p.media_url ?? ""}
+                    preload="metadata"
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <img src={p.media_url ?? ""} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                 )}
