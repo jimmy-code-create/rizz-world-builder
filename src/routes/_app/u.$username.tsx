@@ -40,6 +40,8 @@ import { blockUser, isBlocked, unblockUser } from "@/lib/social";
 import { StatusPill } from "@/components/presence/StatusDot";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
+import { useKnockMood } from "@/lib/knock";
+import { KnockButton } from "@/components/knock/KnockControls";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { useWornEffects } from "@/lib/effects";
@@ -87,6 +89,8 @@ function ProfilePage() {
   // Presence for this profile: invisible accounts read as offline to others.
   const presenceRow = usePresence(profile?.id);
   const presenceStatus = publicStatusOf(presenceRow, Boolean(isMe));
+  // Whether their app is actually open, which is the question a knock asks.
+  const knockMood = useKnockMood(isMe ? null : profile?.id);
   const customStatus = publicCustomStatus(presenceRow, Boolean(isMe));
   const blockStatusKey = ["block-status", user?.id, profile?.id];
   const blockStatus = useQuery({
@@ -463,6 +467,17 @@ function ProfilePage() {
           >
             {isFollowing ? "Following" : "Follow"}
           </Button>
+          {!blockStatus.data && profile && (
+            <KnockButton
+              to={profile.id}
+              username={profile.username ?? ""}
+              displayName={profile.display_name}
+              mood={knockMood}
+              variant="button"
+              label="Knock"
+              className="h-9 shrink-0 gap-1.5 border-white/15 px-3 text-[12.5px] font-bold text-foreground hover:bg-white/[0.06]"
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

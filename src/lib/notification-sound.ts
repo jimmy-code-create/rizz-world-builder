@@ -58,6 +58,25 @@ export function playNotificationPing(volumeMultiplier?: number) {
   tone(1174, now + 0.11, 170, 0.045 * level);
 }
 
+/**
+ * The knock knock: two low thuds on a door.
+ *
+ * Deliberately nothing like the message ping — someone standing at your door
+ * should be recognisable before you look at the screen. Silenced by the same
+ * switches as every other sound, Do not disturb included: a quiet door is the
+ * whole point of DND, and the knock still waits in the thread either way.
+ */
+export function playKnockSound(volumeMultiplier?: number) {
+  if (shouldStayQuiet()) return;
+  const level = volumeMultiplier ?? channelVolume(loadSoundSettings(), "notifications");
+  if (level <= 0) return;
+  const ac = audioContext();
+  if (!ac) return;
+  const now = ac.currentTime;
+  tone(185, now, 110, 0.075 * level);
+  tone(148, now + 0.17, 150, 0.065 * level);
+}
+
 /** True when sounds and calls should stay quiet right now. */
 export function shouldStayQuiet() {
   return (

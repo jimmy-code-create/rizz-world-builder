@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { nameColorFor } from "@/lib/chat-appearance";
@@ -26,6 +26,12 @@ export type MessageRowProps = {
   mentionsMe?: boolean;
   /** Tap on the avatar or name opens the profile card. */
   onAuthorClick?: (event: React.MouseEvent) => void;
+  /**
+   * Long-press anywhere in the row opens this message's actions — the same
+   * whole-row gesture realm chat has, so pressing the avatar, the name, a photo
+   * or the empty space beside a short line all work.
+   */
+  onLongPress?: () => void;
   /** Small badges beside the name (BOT, PINNED…). */
   badges?: ReactNode;
   className?: string;
@@ -48,6 +54,7 @@ export function MessageRow({
   highlighted = false,
   mentionsMe = false,
   onAuthorClick,
+  onLongPress,
   badges,
   className = "",
   children,
@@ -55,11 +62,62 @@ export function MessageRow({
   const initial = (author.name || "?").charAt(0).toUpperCase();
   const color = nameColorFor(author.id ?? null, author.accentColor ?? null);
 
+  // Whole-row long press. A 320ms hold with a 20px movement allowance: finger
+  // jitter on a phone is well under that, while a scroll drag always crosses it
+  // and cancels — so scrolling a conversation never pops a menu open.
+  const pressTimer = useRef<number | null>(null);
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const clearPress = () => {
+    if (pressTimer.current !== null) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+    pressOrigin.current = null;
+  };
+  const startPress = (event: React.PointerEvent) => {
+    if (!onLongPress) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    // Controls inside the row own their presses (profile links, media, the
+    // reaction bar, an embed button…).
+    if ((event.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]")) return;
+    clearPress();
+    pressOrigin.current = { x: event.clientX, y: event.clientY };
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null;
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+          navigator.vibrate(35);
+        } catch {
+          // Vibration is a nicety; a device without it must not break the tap.
+        }
+      }
+      onLongPress();
+    }, 320);
+  };
+  const movePress = (event: React.PointerEvent) => {
+    const origin = pressOrigin.current;
+    if (!origin || pressTimer.current === null) return;
+    if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 20) clearPress();
+  };
+
   return (
     <motion.div
       id={`msg-${id}`}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
+      onPointerDown={startPress}
+      onPointerMove={movePress}
+      onPointerUp={clearPress}
+      onPointerCancel={clearPress}
+      onContextMenu={
+        onLongPress
+          ? (event) => {
+              if ((event.target as HTMLElement).closest("a, input, textarea, button")) return;
+              event.preventDefault();
+              onLongPress();
+            }
+          : undefined
+      }
       className={`realm-message ${startsGroup ? "realm-message--group-start" : ""} ${
         lifted ? "relative z-[41]" : ""
       } ${highlighted ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${

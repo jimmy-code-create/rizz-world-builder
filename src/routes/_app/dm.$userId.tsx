@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -27,7 +27,10 @@ import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
 import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
-import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
+import { publicCustomStatus, publicStatusOf, usePresence } from "@/lib/presence";
+import { markKnocksSeen, useKnockMood, useKnockThread, type Knock } from "@/lib/knock";
+import { KnockButton } from "@/components/knock/KnockControls";
+import { KnockThreadCard } from "@/components/knock/KnockThreadCard";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
@@ -95,7 +98,6 @@ function DMPage() {
   // Where the caret sits in the composer, so the `@` mention popup knows which
   // username is being typed.
   const [caret, setCaret] = useState(0);
-  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -107,10 +109,6 @@ function DMPage() {
   const wasNearBottomRef = useRef(true);
   const previousMessageIdsRef = useRef<string[]>([]);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
-  const pressTimer = useRef<number | null>(null);
-  const pressStart = useRef<{ x: number; y: number } | null>(null);
-  const longPressFired = useRef(false);
-  const lastTap = useRef<{ id: string; at: number } | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
@@ -138,18 +136,6 @@ function DMPage() {
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    const syncHeight = () => setVisualViewportHeight(viewport?.height ?? window.innerHeight);
-    syncHeight();
-    viewport?.addEventListener("resize", syncHeight);
-    window.addEventListener("resize", syncHeight);
-    return () => {
-      viewport?.removeEventListener("resize", syncHeight);
-      window.removeEventListener("resize", syncHeight);
-    };
-  }, []);
 
   useEffect(() => () => {
     imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -212,56 +198,6 @@ function DMPage() {
     const t = window.setInterval(() => setRecMs(Date.now() - recStart.current), 200);
     return () => window.clearInterval(t);
   }, [recording]);
-
-  const startPress = (id: string, point?: { x: number; y: number }) => {
-    if (pressTimer.current) window.clearTimeout(pressTimer.current);
-    pressStart.current = point ?? null;
-    longPressFired.current = false; // Reset flag at the start
-    pressTimer.current = window.setTimeout(() => {
-      if (navigator.vibrate) navigator.vibrate(15);
-      longPressFired.current = true;
-      setOpenMsg(id);
-      pressTimer.current = null;
-    }, 500); // Increased from 480ms to 500ms for more reliable detection
-  };
-  /** Only cancel on a real drag (scroll), not on tiny finger jitter. */
-  const movePress = (point: { x: number; y: number }) => {
-    const s = pressStart.current;
-    if (!s || !pressTimer.current) return;
-    if (Math.hypot(point.x - s.x, point.y - s.y) > 15) cancelPress(); // Increased threshold from 12 to 15
-  };
-  /**
-   * Ends a press. A press that never became a long press is a tap; the second
-   * tap within 300ms reacts with a heart instead of opening the chat menu.
-   */
-  const cancelPress = (id?: string) => {
-    const wasLongPress = longPressFired.current;
-    if (pressTimer.current) {
-      window.clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-    // Keep the second tap's position so the heart bursts under the finger.
-    const tapPoint = pressStart.current;
-    pressStart.current = null;
-    
-    // If it was a long press, don't process as tap
-    if (wasLongPress) {
-      longPressFired.current = false;
-      return;
-    }
-    
-    longPressFired.current = false;
-    if (!id || !user || openMsg) return;
-    
-    const previous = lastTap.current;
-    const now = Date.now();
-    if (previous && previous.id === id && now - previous.at < 300) {
-      lastTap.current = null;
-      void doubleTapHeart(id, tapPoint ?? undefined);
-      return;
-    }
-    lastTap.current = { id, at: now };
-  };
 
   const jumpToMessage = (id: string) => {
     const el = document.getElementById(`msg-${id}`);
@@ -684,6 +620,40 @@ function DMPage() {
   const peerCustom = publicCustomStatus(peerPresence, false);
   const media = useMediaViewer();
 
+  // Knock Knock: is their app actually open, and what has already been knocked
+  // between the two of us. Knocks ride in the timeline so one that arrived while
+  // the tab was closed is still waiting here.
+  const knockMood = useKnockMood(other.data?.id);
+  const knocks = useKnockThread(userId);
+  const peerName = other.data?.display_name || other.data?.username || "They";
+  const showKnocks = !searchQ;
+
+  const knockTimeline = useMemo(() => {
+    const byMessage = new Map<string, Knock[]>();
+    const data = msgs.data ?? [];
+    if (!showKnocks || !knocks.length || !data.length) {
+      return { byMessage, trailing: showKnocks ? knocks : [] };
+    }
+    let cursor = 0;
+    for (const message of data) {
+      const at = new Date(message.created_at).getTime();
+      const bucket: Knock[] = [];
+      while (cursor < knocks.length && new Date(knocks[cursor].created_at).getTime() <= at) {
+        bucket.push(knocks[cursor]);
+        cursor += 1;
+      }
+      if (bucket.length) byMessage.set(String(message.id), bucket);
+    }
+    // Anything left is newer than the newest message — a knock that just landed.
+    return { byMessage, trailing: knocks.slice(cursor) };
+  }, [knocks, msgs.data, showKnocks]);
+
+  // Reading the thread is seeing the door: their knock stops showing as unseen.
+  useEffect(() => {
+    if (!userId || !knocks.some((knock) => knock.to_user === user?.id && !knock.seen)) return;
+    void markKnocksSeen(userId);
+  }, [userId, knocks, user?.id]);
+
   const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
     !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase())
   );
@@ -790,15 +760,14 @@ function DMPage() {
     // phone layout keeps the single column and uses /dms for the list.
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       <DmThreadRail activeId={userId} />
+      {/* The column is exactly as tall as the app shell's space above the
+          keyboard. Pinning it to a JS-measured visualViewport height (the
+          earlier workaround) fought Android's own scroll-into-view and left a
+          black void under the composer, so the shell's `h-dvh` plus the
+          `interactive-widget=resizes-content` viewport do the job instead. */}
       <div
         className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
-        style={{
-          ...wallpaperStyle(wallpaper),
-          ...(visualViewportHeight ? {
-            height: `min(100%, ${Math.round(visualViewportHeight)}px)`,
-            maxHeight: `min(100%, ${Math.round(visualViewportHeight)}px)`,
-          } : {}),
-        }}
+        style={wallpaperStyle(wallpaper)}
       >
       {openMsg && (
         <div
@@ -827,18 +796,30 @@ function DMPage() {
           </Avatar>
         </AvatarWithStatus>
         </Link>
-        <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="flex-1 min-w-0">
-          <p className="font-bold truncate flex items-center gap-1.5">
-            {other.data?.display_name || other.data?.username}
-            {peerStatus !== "offline" && (
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+        <div className="min-w-0 flex-1">
+          <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="block min-w-0">
+            <p className="truncate font-bold">{other.data?.display_name || other.data?.username}</p>
+            {peerCustom && (
+              <CustomStatusLine status={peerCustom} className="text-[11px] text-primary/90" />
             )}
-          </p>
-          {peerCustom && (
-            <CustomStatusLine status={peerCustom} className="text-[11px] text-primary/90" />
+          </Link>
+          {blockStatus.data ? (
+            <p className="truncate text-xs text-muted-foreground">Blocked by you</p>
+          ) : peerTyping ? (
+            <p className="truncate text-xs text-muted-foreground">typing…</p>
+          ) : (
+            // One line, two jobs: it answers "is their app actually open?" and it
+            // IS the doorbell. The old passive "Active now" could never tell an
+            // idle tab apart from a closed one.
+            <KnockButton
+              to={userId}
+              username={other.data?.username ?? ""}
+              displayName={other.data?.display_name}
+              mood={knockMood}
+              className="mt-0.5"
+            />
           )}
-          <p className="text-xs text-muted-foreground truncate">{blockStatus.data ? "Blocked by you" : peerTyping ? "typing…" : peerStatus === "offline" ? `@${other.data?.username}` : statusLabel(peerStatus) === "Idle" ? "Away" : "Active now"}</p>
-        </Link>
+        </div>
         {peerInCall && (
           <Link
             to="/call/$userId"
@@ -935,6 +916,9 @@ function DMPage() {
         <AnimatePresence initial={false}>
           {filteredMsgs.map((m, index) => {
             const mine = m.sender_id === user?.id;
+            // Knocks that happened right before this message, so the doorbell
+            // reads as part of the conversation instead of a floating toast.
+            const knockCards = knockTimeline.byMessage.get(String(m.id));
             const deliveryStatus = (m as CachedDirectMessage).delivery_status;
             const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
@@ -969,6 +953,14 @@ function DMPage() {
               ];
               return (
                 <div key={m.id} className="space-y-1">
+                  {knockCards?.map((knock) => (
+                    <KnockThreadCard
+                      key={knock.id}
+                      knock={knock}
+                      mine={knock.from_user === user?.id}
+                      peerName={peerName}
+                    />
+                  ))}
                   {startsGroup && !deliveryStatus && (
                     <div className="flex w-full justify-center py-0.5">
                       <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -1007,6 +999,15 @@ function DMPage() {
             }
             const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
+              <div key={m.id} className="space-y-1">
+              {knockCards?.map((knock) => (
+                <KnockThreadCard
+                  key={knock.id}
+                  knock={knock}
+                  mine={knock.from_user === user?.id}
+                  peerName={peerName}
+                />
+              ))}
               <MessageRow
                 id={String(m.id)}
                 author={{
@@ -1023,6 +1024,9 @@ function DMPage() {
                 startsGroup={startsGroup}
                 lifted={openMsg === m.id}
                 highlighted={highlighted === m.id}
+                // Long-press anywhere in the row (avatar, name, photo, empty
+                // space) opens this message's actions — the realm gesture.
+                onLongPress={() => setOpenMsg(m.id)}
                 onAuthorClick={
                   (mine ? profile?.username : other.data?.username)
                     ? () =>
@@ -1042,18 +1046,16 @@ function DMPage() {
                   open={openMsg === m.id}
                   onOpenChange={(o) => setOpenMsg(o ? m.id : null)}
                   align={mine ? "right" : "left"}
-                  detectPress={true}
+                  // The row owns long-press; the menu keeps double-tap, keyboard
+                  // and right-click. Two racing timers double-vibrated.
+                  detectPress={false}
                   reactionBar={{
                     onPick: (emoji) => {
                       void react(m.id, emoji);
                       setOpenMsg(null);
                     },
                   }}
-                  onDoubleTap={() => {
-                    burstOverMessage(m.id, DOUBLE_TAP_REACTION);
-                    reactionHaptic();
-                    void react(m.id, DOUBLE_TAP_REACTION);
-                  }}
+                  onDoubleTap={() => void doubleTapHeart(m.id)}
                   preview={{
                     author: mine ? "You" : (other.data?.display_name || other.data?.username || "User"),
                     time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
@@ -1202,9 +1204,18 @@ function DMPage() {
                   removed={removedPreviews.hidden.has(m.id)}
                 />
               </MessageRow>
+              </div>
             );
           })}
         </AnimatePresence>
+        {knockTimeline.trailing.map((knock) => (
+          <KnockThreadCard
+            key={knock.id}
+            knock={knock}
+            mine={knock.from_user === user?.id}
+            peerName={peerName}
+          />
+        ))}
         <div ref={endRef} />
         {peerTyping && (
           // Typing is a quiet line, not a bubble: it sits in the message flow at
@@ -1293,6 +1304,12 @@ function DMPage() {
               }}
               onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
               onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              // Opening the keyboard shrinks the list; keep the newest message in
+              // view instead of leaving the reader on a stale scroll position.
+              onFocus={() => {
+                const scroller = scrollRef.current;
+                if (scroller) scroller.scrollTop = scroller.scrollHeight;
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                   e.preventDefault();

@@ -12,6 +12,13 @@ export interface ResponsiveOverlayProps {
   className?: string;
   triggerRef?: React.RefObject<HTMLElement | null>;
   showClose?: boolean;
+  /**
+   * Stack order for the overlay. Defaults to the app's `--z-overlay` (100);
+   * pass a higher number when the sheet opens over a full-screen layer that
+   * sits above the app — the voice call renders at z-130, so its sheets pass
+   * 150. Without this the sheet mounted behind the call and looked dead.
+   */
+  zIndex?: number;
 }
 
 /**
@@ -31,9 +38,15 @@ export function ResponsiveOverlay({
   className,
   triggerRef,
   showClose = true,
+  zIndex,
 }: ResponsiveOverlayProps) {
   const [isMobile, setIsMobile] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // Both the backdrop and the panel read `--z-overlay`, so the variable is set
+  // on each of them (they are siblings inside the portal).
+  const layerStyle = zIndex
+    ? ({ "--z-overlay": String(zIndex) } as React.CSSProperties)
+    : undefined;
 
   useEffect(() => {
     const check = () => {
@@ -49,12 +62,14 @@ export function ResponsiveOverlay({
       <DialogPrimitive.Portal>
         {/* Dimmed backdrop */}
         <DialogPrimitive.Overlay
+          style={layerStyle}
           className="fixed inset-0 z-[var(--z-overlay,100)] bg-black/75 backdrop-blur-xs transition-opacity duration-200 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
         />
 
         {/* Overlay Content */}
         <DialogPrimitive.Content
           ref={contentRef}
+          style={layerStyle}
           onOpenAutoFocus={(e) => {
             // Prevent initial auto-focus from landing on the close button
             e.preventDefault();

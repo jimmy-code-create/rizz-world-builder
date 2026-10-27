@@ -104,7 +104,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        // `viewport-fit=cover` turns on the safe-area insets the chat bars,
+        // composers and sheets already read, and `interactive-widget=
+        // resizes-content` makes Android Chrome resize the layout viewport when
+        // the keyboard opens. Without it the app kept its full height, the
+        // browser scrolled it to reveal the focused input, and a DM ended up
+        // with clipped media up top and a black void under the composer.
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+      },
       { title: "RIZZ — Your feed. Your server. Your world." },
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },

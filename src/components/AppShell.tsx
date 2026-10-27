@@ -55,6 +55,8 @@ import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
 import { WelcomeTourHost } from "@/components/onboarding/WelcomeTourHost";
+import { KnockDoorbell } from "@/components/knock/KnockDoorbell";
+import { usePresenceHeartbeat } from "@/lib/knock";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { useI18n } from "@/lib/i18n";
@@ -208,6 +210,9 @@ export function AppShell() {
   const presence = useSelfPresence();
   // Keeps earned badges current app-wide: awards on mount, re-checks on focus.
   useBadgeSync(user?.id);
+  // Knock Knock's heartbeat: while this tab is open, last_seen_at stays current,
+  // which is how someone else can tell "app open but away" from "app closed".
+  usePresenceHeartbeat(!!user?.id);
 
   const isConversation =
     /^\/(?:_app\/)?(?:dm\/|g\/|c\/)/.test(path) || /^\/(?:_app\/)?r\/[^/]+\/?$/.test(path);
@@ -551,6 +556,9 @@ export function AppShell() {
 
       {/* First-run + replay coach marks, over the real feed. */}
       <WelcomeTourHost />
+
+      {/* Someone at the door — knocks ring wherever you are in the app. */}
+      <KnockDoorbell />
 
       {/* Mobile bottom nav — 5 items, center FAB with 48px min touch height */}
       {!isConversation && (

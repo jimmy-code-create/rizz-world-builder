@@ -5,14 +5,16 @@ import { GlassToast, type GlassToastAction, type GlassToastType } from "@/compon
 /**
  * The app-wide toast API.
  *
- * Every call renders one <GlassToast /> (top-center, glass, accent rail) with
- * the behaviour the product asks for:
+ * Every call renders one <GlassToast /> (a compact pill at the top, content
+ * width) with the behaviour the product asks for:
  *   - success / error / info / warning (+ loading for progress flows),
  *   - an optional one-line message and one action button ("Retry", "Undo"),
- *   - auto-dismiss after 3.5s (5s when there is an action), paused while the
- *     card is pressed or focused,
+ *   - auto-dismiss after 2s (2.4s info, 4.5s error, 5s when there is an action),
+ *     paused while the card is pressed or focused,
  *   - identical calls merge instead of stacking: the same type+title+message
  *     reuses one toast id, so three failed retries never become three cards,
+ *   - only two cards can be on screen at once, so a burst of confirmations can
+ *     never pile up over the page,
  *   - a light haptic on error where the device supports it.
  *
  * Import this instead of "sonner" so every popup in the app is this component.
@@ -31,7 +33,18 @@ export type ToastOptions = {
   icon?: ReactNode;
 };
 
-const BASE_DURATION = 3500;
+/**
+ * Receipts, not announcements. A confirmation card is only useful for as long
+ * as the eye needs to catch it, so routine ones leave fast; errors linger a
+ * little longer because they may need acting on.
+ */
+const DURATIONS: Record<string, number> = {
+  success: 2000,
+  info: 2400,
+  warning: 3200,
+  error: 4500,
+  loading: 3500,
+};
 const ACTION_DURATION = 5000;
 
 function hapticError() {
@@ -46,7 +59,7 @@ function push(type: GlassToastType, title: string, options: ToastOptions = {}) {
   const safeTitle = typeof title === "string" && title.trim() ? title : "Something went wrong";
   // Identical toasts merge: the hash id makes sonner refresh the existing card.
   const id = options.id ?? `${type}:${safeTitle}:${options.description ?? ""}`;
-  const duration = options.duration ?? (options.action ? ACTION_DURATION : BASE_DURATION);
+  const duration = options.duration ?? (options.action ? ACTION_DURATION : (DURATIONS[type] ?? 2400));
   if (type === "error") hapticError();
 
   return sonner.custom(

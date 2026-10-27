@@ -410,6 +410,26 @@ throwing a PostgREST error.
 - Story viewer details read existing `story_views` rows and profile display
   fields. Story expiry remains the existing 24-hour `expires_at` behavior.
 
+## Knock Knock — `20261106000000_knock_knock.sql`
+
+The knock doorbell in `/dm/<id>`, the profile card and the profile page answers
+"are you around?" before anything is typed, which the backend has to support:
+
+- `ping_presence()` — the heartbeat an open tab calls every two minutes. It only
+  moves `last_seen_at` and never touches the status the user picked, which is the
+  only way "app open but away" and "app closed an hour ago" stop looking the
+  same.
+- `knocks` — one row per knock, one answer from the recipient (`come_in`,
+  `later`, `busy`), readable by both sides only, written through the RPCs:
+  `send_knock`, `respond_knock` and `mark_knocks_seen`. A knock is refused in
+  both directions while a `blocks` row exists, and rate limited per person (one
+  per 30 seconds, fifteen per hour).
+
+Until the migration is applied nothing breaks: `send_knock` answers with "Knock
+Knock needs the latest backend migration (20261106000000_knock_knock.sql)."
+instead of a raw PostgREST error, the knock card simply never appears, and the DM
+header still reads the verdict from the existing `user_presence` row.
+
 ## Lovable apply-and-test checklist
 
 0. Apply `20261025000000_badge_earning.sql`, then call `badge_progress()` as a
@@ -432,3 +452,11 @@ throwing a PostgREST error.
    at the `fx-puppy-love` uuid. Open the profile in a second browser: Biscuit is
    visible to a visitor. Re-running the migration changes nothing, and a
    previously equipped Web Slinger row stays equipped under the new name.
+7. Apply `20261106000000_knock_knock.sql`. With both accounts signed in, the DM
+   header reads "Live now" and a knock rings the other tab (card at the top,
+   two low thuds) — answer "Open the door" and the sender sees the answer in the
+   thread. Close the second tab, wait five minutes and knock again: the pill
+   reads "App closed · last seen …", the knock still lands, and it is waiting in
+   the conversation when that account comes back. Repeat with the recipient on
+   "Do not disturb": the knock arrives silently, and a knocks row has
+   `seen = true` once the thread is opened.

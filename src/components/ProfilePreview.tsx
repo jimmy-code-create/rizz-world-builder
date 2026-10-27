@@ -24,6 +24,8 @@ import {
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { getBanner } from "@/lib/banner";
 import { usePresence, publicStatusOf, statusLabel } from "@/lib/presence";
+import { knockMoodColor, useKnockMood } from "@/lib/knock";
+import { KnockButton } from "@/components/knock/KnockControls";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -204,6 +206,8 @@ export function ProfilePreviewDialog({
   const presence = usePresence(p?.id ?? "");
   const status = publicStatusOf(presence);
   const statusText = statusLabel(status);
+  // The honest answer to "are they around", which is what the knock needs.
+  const knockMood = useKnockMood(p?.id ?? "");
 
   const badges = useQuery({
     queryKey: ["profile-preview-badges", p?.id],
@@ -387,11 +391,22 @@ export function ProfilePreviewDialog({
             status={status}
             statusIsSelf={isOwnProfile}
             customStatus={null}
-            statusLine={<p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>}
+            statusLine={
+              isOwnProfile ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">{statusText}</p>
+              ) : (
+                <p className="mt-0.5 truncate text-xs" style={{ color: knockMoodColor(knockMood.verdict) }}>
+                  {knockMood.label}
+                  <span className="text-muted-foreground"> · {knockMood.detail}</span>
+                </p>
+              )
+            }
             handleExtra={
               // Keep the badges together in one compact, non-wrapping tray.
+              // Details open as a sheet here: a popover under the handle lands
+              // squarely on the Message / Follow / Knock row below it.
               markBadges.length > 0 ? (
-                <BadgeLine badges={markBadges} wornSlug={wornSlug} />
+                <BadgeLine badges={markBadges} wornSlug={wornSlug} layout="sheet" />
               ) : undefined
             }
             overlayActions={
@@ -450,10 +465,12 @@ export function ProfilePreviewDialog({
             {/* Primary actions sit directly under the identity, like Discord's
                   profile menu — no scrolling past the bio to message someone. */}
             {!isOwnProfile && (
-              <div className="flex items-center gap-2">
+              // Wraps instead of squeezing: with Follow and Knock in the row, a
+              // 360px screen would otherwise crush the Message label.
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   onClick={handleMessage}
-                  className="h-11 flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground hover:bg-primary/90 active:bg-primary/85"
+                  className="h-11 min-w-[7.5rem] flex-1 gap-1.5 border-0 bg-primary text-[13px] font-bold text-primary-foreground hover:bg-primary/90 active:bg-primary/85"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Message
@@ -474,6 +491,17 @@ export function ProfilePreviewDialog({
                     )}
                     {following.data ? "Following" : "Follow"}
                   </Button>
+                )}
+                {!blocked.data && p && (
+                  <KnockButton
+                    to={p.id}
+                    username={p.username}
+                    displayName={p.display_name}
+                    mood={knockMood}
+                    variant="button"
+                    label="Knock"
+                    className="h-11 shrink-0 gap-1.5 border-white/15 px-3 text-[13px] font-bold text-foreground hover:bg-white/[0.06]"
+                  />
                 )}
               </div>
             )}

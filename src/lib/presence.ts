@@ -15,7 +15,16 @@ export type PresenceRow = {
   custom_status_emoji: string | null;
   custom_status_text: string | null;
   custom_status_expires_at: string | null;
+  /**
+   * The last heartbeat from an open tab (see ping_presence). It is the only
+   * field that can tell "app open but away" from "app closed", which is what
+   * Knock Knock reads.
+   */
+  last_seen_at: string | null;
 };
+
+const PRESENCE_COLUMNS =
+  "user_id,status,manual,custom_status_emoji,custom_status_text,custom_status_expires_at,last_seen_at";
 
 /** Idle after five minutes without activity, back to online on activity. */
 export const IDLE_AFTER_MS = 5 * 60_000;
@@ -130,7 +139,7 @@ export function usePresenceMap(userIds: string[]) {
     queryFn: async (): Promise<Record<string, PresenceRow>> => {
       if (!ids.length) return {};
       const { data, error } = await presenceTable()
-        .select("user_id,status,manual,custom_status_emoji,custom_status_text,custom_status_expires_at")
+        .select(PRESENCE_COLUMNS)
         .in("user_id", ids);
       if (error) throw error;
       return Object.fromEntries(((data ?? []) as PresenceRow[]).map((row) => [row.user_id, row]));
@@ -156,17 +165,28 @@ export function usePresenceMap(userIds: string[]) {
   };
 }
 
-/** One user's presence (used in chat headers and profiles). */
-export function usePresence(userId: string | null | undefined) {
+/**
+ * One user's presence (used in chat headers and profiles).
+ *
+ * `refetchInterval` exists for surfaces that read `last_seen_at` (Knock Knock):
+ * a stale row would keep claiming someone is live long after their tab closed,
+ * and no row change arrives to correct it because nothing was written.
+ */
+export function usePresence(
+  userId: string | null | undefined,
+  options: { refetchInterval?: number } = {},
+) {
   const qc = useQueryClient();
+  const refetchInterval = options.refetchInterval;
   const query = useQuery({
     queryKey: ["presence-user", userId ?? "none"],
     enabled: !!userId,
     staleTime: 30_000,
+    refetchInterval,
     queryFn: async (): Promise<PresenceRow | null> => {
       if (!userId) return null;
       const { data, error } = await presenceTable()
-        .select("user_id,status,manual,custom_status_emoji,custom_status_text,custom_status_expires_at")
+        .select(PRESENCE_COLUMNS)
         .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
@@ -234,7 +254,7 @@ export function useSelfPresence() {
     queryFn: async (): Promise<PresenceRow | null> => {
       if (!user?.id) return null;
       const { data, error } = await presenceTable()
-        .select("user_id,status,manual,custom_status_emoji,custom_status_text,custom_status_expires_at")
+        .select(PRESENCE_COLUMNS)
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;

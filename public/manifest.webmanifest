@@ -5,8 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#12101A",
-  "theme_color": "#6C4BFF",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
   "icons": [
     {
       "src": "/brand/rizz-cat-logo.svg",

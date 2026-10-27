@@ -19,6 +19,54 @@ import {
   Check,
   PawPrint,
 } from "lucide-react";
+
+/**
+ * The quest emblem: a squared tile rather than a round chip.
+ *
+ * Round icon pills read as generic settings rows; a squared tile with a top
+ * sheen and a corner tick for the finished ones reads as an achievement token,
+ * which is what a quest is. It is also what the reward tile and the empty state
+ * use, so the whole page speaks one shape language.
+ */
+function QuestEmblem({
+  icon: Icon,
+  done = false,
+  size = "md",
+}: {
+  icon: typeof Coins;
+  done?: boolean;
+  size?: "md" | "lg";
+}) {
+  return (
+    <span
+      aria-hidden
+      className={`relative grid shrink-0 place-items-center overflow-hidden border ${
+        size === "lg" ? "h-14 w-14 rounded-2xl" : "h-11 w-11 rounded-[13px]"
+      } ${
+        done
+          ? "border-primary/35 bg-primary/[0.14] text-primary"
+          : "border-white/10 bg-white/[0.04] text-foreground/80"
+      }`}
+    >
+      {/* Sheen: keeps the flat tile from reading as an empty grey box. */}
+      <span
+        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/[0.07] to-transparent"
+      />
+      {done ? (
+        <Check className={size === "lg" ? "relative h-6 w-6" : "relative h-5 w-5"} strokeWidth={2.6} />
+      ) : (
+        <Icon className={size === "lg" ? "relative h-6 w-6" : "relative h-5 w-5"} strokeWidth={1.9} />
+      )}
+      {done && (
+        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-tl-[7px] bg-primary/85" />
+      )}
+    </span>
+  );
+}
+
+/** The one button recipe for the bounty page: square corners, 40px tall. */
+const ACTION_BUTTON =
+  "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 text-xs font-bold text-foreground transition-colors hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 import { motion } from "framer-motion";
 import { formatNumber } from "@/lib/formatters";
 import { fixCommonTypos, hasKnownTypo } from "@/lib/text-fix";
@@ -232,9 +280,7 @@ function DropsPage() {
       </motion.div>
 
       <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-          <PawPrint className="h-5 w-5" />
-        </span>
+        <QuestEmblem icon={PawPrint} />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Paws balance
@@ -313,7 +359,9 @@ function DropsPage() {
                   variant={claimed || soldOut || ownBounty ? "outline" : "default"}
                 >
                   {claimed ? (
-                    "✓ Claimed"
+                    <>
+                      <Check className="h-4 w-4 mr-1" /> Claimed
+                    </>
                   ) : soldOut ? (
                     "Sold out"
                   ) : ownBounty ? (
@@ -331,9 +379,9 @@ function DropsPage() {
       </div>
 
       {drops.data?.length === 0 && (
-        <div className="glass rounded-3xl p-10 text-center">
-          <div className="text-5xl mb-3">🪙</div>
-          <h2 className="font-display text-xl font-bold">No active bounties</h2>
+        <div className="glass flex flex-col items-center rounded-3xl p-10 text-center">
+          <QuestEmblem icon={Coins} size="lg" />
+          <h2 className="mt-3 font-display text-xl font-bold">No active bounties</h2>
           <p className="text-sm text-muted-foreground mt-1">Post one and watch the rush.</p>
         </div>
       )}
@@ -346,11 +394,8 @@ function DropsPage() {
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          <Link
-            to="/leaderboard"
-            search={{ earn: true }}
-            className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
+          <Link to="/leaderboard" search={{ earn: true }} className={ACTION_BUTTON}>
+            <PawPrint className="h-4 w-4 text-primary" />
             Top Paws
           </Link>
         </div>
@@ -385,12 +430,7 @@ function DropsPage() {
                 key={quest.id}
                 className={`glass flex items-center gap-3 rounded-2xl border border-white/5 p-4 ${done ? "opacity-80" : ""}`}
               >
-                <span
-                  aria-hidden
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${done ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground"}`}
-                >
-                  {done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-                </span>
+                <QuestEmblem icon={Icon} done={done} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold">{quest.title}</p>
                   <p className="truncate text-xs text-muted-foreground">{quest.desc}</p>
@@ -398,31 +438,24 @@ function DropsPage() {
                     Pays: {quest.pays}
                   </p>
                 </div>
-                {!done &&
-                  (quest.action.kind === "link" ? (
-                    <Link
-                      to={quest.action.to}
-                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      Go
-                    </Link>
-                  ) : quest.action.kind === "create" ? (
-                    <button
-                      type="button"
-                      onClick={() => setDropOpen(true)}
-                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      Go
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={shareApp}
-                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      Share
-                    </button>
-                  ))}
+                {done ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-[11px] font-bold text-primary">
+                    <Check className="h-3.5 w-3.5" /> Done
+                  </span>
+                ) : quest.action.kind === "link" ? (
+                  <Link to={quest.action.to} className={ACTION_BUTTON}>
+                    Go
+                  </Link>
+                ) : quest.action.kind === "create" ? (
+                  <button type="button" onClick={() => setDropOpen(true)} className={ACTION_BUTTON}>
+                    Go
+                  </button>
+                ) : (
+                  <button type="button" onClick={shareApp} className={ACTION_BUTTON}>
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+                )}
               </div>
             );
           })}

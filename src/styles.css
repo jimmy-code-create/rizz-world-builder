@@ -76,6 +76,16 @@
   --brand-signal: #c9ff3d;
   --brand-signal-ink: #0a0a0b;
   --brand-signal-dim: #9cc72c;
+  /* A profile with no banner photo and no gradient still needs a cover. A lime
+     sheen over ink says "nothing picked yet"; the old flat #141416 read as a
+     hole punched in the sheet. */
+  --profile-banner-fallback: radial-gradient(
+      120% 150% at 14% -10%,
+      rgba(201, 255, 61, 0.18) 0%,
+      rgba(201, 255, 61, 0.06) 34%,
+      transparent 64%
+    ),
+    linear-gradient(152deg, #1b1c19 0%, #141416 52%, #0f0f11 100%);
 
   /* Radii: tight. Cards 8px, larger panels 10px, pills round. */
   --radius: 0.5rem;
@@ -292,6 +302,13 @@
 [data-mode="light"] {
   /* Paper mode: a warm off-white sheet with ink text. Ink becomes the accent
      here (lime on paper fails AA), so buttons and links stay legible. */
+  --profile-banner-fallback: radial-gradient(
+      120% 150% at 14% -10%,
+      rgba(21, 21, 26, 0.12) 0%,
+      rgba(21, 21, 26, 0.04) 34%,
+      transparent 64%
+    ),
+    linear-gradient(152deg, #eae5d7 0%, #ded9ca 52%, #d2cdbe 100%);
   --background: #f2efe6;
   --foreground: #15151a;
   --card: #fffdf7;
@@ -954,8 +971,8 @@
   bottom: auto !important;
 }
 
-/* Enter/exit stay under 250ms; the card, its accent rail and the countdown all
-   live in <GlassToast /> so each type stays legible on any wallpaper. */
+/* Enter/exit stay under 250ms; the pill, its type dot and the countdown all
+   live in <GlassToast /> so a receipt never fights the page behind it. */
 .rizz-toaster [data-sonner-toast] {
   transition-duration: 200ms !important;
 }

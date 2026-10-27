@@ -513,6 +513,9 @@ function GroupRoom() {
                 startsGroup={startsGroup}
                 highlighted={highlightedMessage === m.id}
                 mentionsMe={mentionsMe}
+                // Long-press anywhere in the row opens the actions, exactly like
+                // realm chat — the avatar gutter and blank space included.
+                onLongPress={() => setOpenMessageId(m.id)}
                 onAuthorClick={
                   m.author?.username
                     ? () => void nav({ to: "/u/$username", params: { username: m.author.username } })
@@ -523,6 +526,8 @@ function GroupRoom() {
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
                     align={mine ? "right" : "left"}
+                    // The row owns long-press, so the trigger must not race it.
+                    detectPress={false}
                     reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
                     onDoubleTap={() => {
                       burstOverMessage(m.id, DOUBLE_TAP_REACTION);
@@ -708,6 +713,12 @@ function GroupRoom() {
               }}
               onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
               onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              // Opening the keyboard shrinks the list; keep the newest message in
+              // view instead of leaving the reader on a stale scroll position.
+              onFocus={() => {
+                const scroller = messagesListRef.current;
+                if (scroller) scroller.scrollTop = scroller.scrollHeight;
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                   e.preventDefault();

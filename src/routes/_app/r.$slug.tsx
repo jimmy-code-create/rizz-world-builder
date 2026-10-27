@@ -161,7 +161,10 @@ import {
 import type { PollCard as PollCardPayload } from "@/lib/realm-polls";
 import { threadLabel } from "@/lib/realm-threads";
 import { flushDueScheduledMessages } from "@/lib/realm-schedule";
-import { isMusicCommand } from "@/lib/music";
+import { isMusicCommand, runMusicCommand } from "@/lib/music";
+import { VOICE_BOT_COMMANDS, voiceBotCommand } from "@/lib/voice-bot-commands";
+import { setGameBotHidden } from "@/lib/call-bots";
+import { setMusicBotDismissed } from "@/components/voice/MusicBotInCall";
 import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
 import { emojiTextClass } from "@/lib/text-size";
@@ -516,8 +519,14 @@ function RealmPage() {
   });
   const webhookBotMap = webhookBots.data ?? {};
   const slashQuery = parseSlashCommand(body);
+  // The realm's own bot commands first, then the two built-in voice bots: /music
+  // and /game invite MUSIC BOT and GAME BOT into the current voice channel, so a
+  // bot can be brought into a call from any chat.
   const slashMatches = slashQuery
-    ? filterSlashCommands(realmCommands.commands, slashQuery.name)
+    ? filterSlashCommands(
+        [...realmCommands.commands, ...VOICE_BOT_COMMANDS],
+        slashQuery.name,
+      )
     : [];
   // The menu only shows while the command word itself is being typed, so the
   // arguments after the first space never sit under a popup. It also opens when
@@ -529,9 +538,9 @@ function RealmPage() {
   const slashHint =
     !slashMenuOpen || slashMatchCount > 0
       ? undefined
-      : realmCommands.commands.length === 0
+      : slashMatchCount === 0 && !slashQuery?.name
         ? "No bot commands in this channel yet."
-        : `No command matches "/${slashQuery?.name ?? ""}".`;
+        : `No command matches "/${slashQuery?.name ?? ""}". Try /music or /game.`;
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -652,6 +661,47 @@ function RealmPage() {
     // "/name args" that matches an installed command runs the bot. Any other
     // text that happens to start with "/" is still just a message.
     const parsed = parseSlashCommand(body);
+    // /music and /game are built in: they invite the voice bots into the call.
+    const wantedBot = parsed ? voiceBotCommand(parsed.name) : null;
+    if (parsed && wantedBot) {
+      if (!activeCall && activeRoom?.kind !== "voice") {
+        toast.error("Join a voice channel first", {
+          description: `/${parsed.name} brings a bot into the call you are in.`,
+        });
+        return;
+      }
+      if (wantedBot === "music") {
+        setMusicBotDismissed(false);
+        const query = parsed.args.trim();
+        if (query && activeCall) {
+          try {
+            const result = await runMusicCommand("play", {
+              args: query,
+              realmId: c.id,
+              roomId: activeCall.channelId,
+            });
+            if (result.ok) toast.success("MUSIC BOT is on it", { description: query });
+            else toast.error(result.error ?? "MUSIC BOT couldn't play that");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "MUSIC BOT didn't answer");
+          }
+        } else {
+          toast.success("MUSIC BOT joined the call", {
+            description: "Type /play <song> or open its card in the call.",
+          });
+        }
+      } else {
+        setGameBotHidden(false);
+        toast.success("GAME BOT is back in the call", {
+          description: "Tap its card in the call to pick a game.",
+        });
+      }
+      setBody("");
+      setCaret(0);
+      setSlashIndex(0);
+      setSlashHidden(false);
+      return;
+    }
     const command = parsed ? slashMatches.find((entry) => entry.name === parsed.name) : undefined;
     if (parsed && command) {
       setSending(true);

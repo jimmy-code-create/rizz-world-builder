@@ -130,10 +130,16 @@ export function ProfileHeader({
         } as CSSProperties
       }
     >
-      {/* 1. Banner photo. The box never changes height, even when empty. */}
+      {/* 1. Banner photo. The box never changes height, even when empty — and
+             when the profile has neither a photo nor a gradient it paints the
+             branded fallback cover, so an unfinished profile never shows up as
+             a black void above the avatar. */}
       <div
-        className="relative w-full touch-none overflow-hidden rounded-3xl bg-[#141416] sm:touch-auto"
-        style={{ aspectRatio: "3 / 1", background: banner.background }}
+        className="relative w-full touch-none overflow-hidden rounded-3xl sm:touch-auto"
+        style={{
+          aspectRatio: "3 / 1",
+          background: banner.background ?? "var(--profile-banner-fallback, #141416)",
+        }}
         onPointerDown={onBannerPointerDown}
       >
         {/* 2. Soft scrim for the avatar/name overlap. */}

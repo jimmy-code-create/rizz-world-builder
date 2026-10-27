@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   Gamepad2,
@@ -31,7 +31,6 @@ import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext, useVoiceSpeaking } from "@/components/voice/VoiceCallProvider";
 import { setMusicBotDismissed, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +54,12 @@ import { VoiceActivityOverlay } from "@/components/voice/VoiceActivityOverlay";
 import { VideoTile } from "@/components/voice/VideoTile";
 import { getGame, useRoomActivity, type RoomActivity } from "@/lib/activities";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
+import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
+import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
+import { VOICE_BOT_COMMANDS, voiceBotCommand } from "@/lib/voice-bot-commands";
+import { setGameBotHidden, useGameBotHidden } from "@/lib/call-bots";
+import { isMusicCommand, runMusicCommand } from "@/lib/music";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -72,15 +77,28 @@ import {
   type PeerAudioState,
 } from "@/lib/peer-audio";
 
-function ParticipantMenu({
+/**
+ * One person's settings in the call: what you hear from them, and — for the
+ * host — the way to take them out of it.
+ *
+ * This used to be a popover pinned to a 28px volume dot in the corner of the
+ * tile, so "manage" was hidden behind a small target. Now the whole tile answers
+ * a long press (or a right-click) and opens this as a bottom sheet, the same way
+ * the bot cards are managed.
+ */
+function ParticipantSheet({
   userId,
   username,
   canKick,
+  open,
+  onOpenChange,
   onKick,
 }: {
   userId: string;
   username: string;
   canKick: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onKick: () => void;
 }) {
   const peerAudio = usePeerAudio();
@@ -92,26 +110,15 @@ function ParticipantMenu({
   const volume = draft ?? committed;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Volume for @${username}`}
-          className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-background/80 text-muted-foreground transition hover:text-foreground"
-        >
-          {muted || volume === 0 ? (
-            <VolumeX className="h-3.5 w-3.5" />
-          ) : (
-            <Volume2 className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        side="top"
-        className="w-60 space-y-3 border-white/10 glass-strong"
-      >
-        <p className="truncate text-xs font-semibold">@{username}</p>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`@${username}`}
+      description="Volume and mute only change what you hear."
+      // Above the call layer (z-130), otherwise the sheet opens behind it.
+      zIndex={150}
+    >
+      <div className="space-y-4">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Your volume</span>
@@ -124,9 +131,9 @@ function ParticipantMenu({
             step={5}
             onValueChange={([next]) => setDraft(next ?? 100)}
             onValueCommit={([next]) => {
-              const v = next ?? draft ?? committed;
+              const value = next ?? draft ?? committed;
               setDraft(null);
-              setPeerVolume(userId, v);
+              setPeerVolume(userId, value);
             }}
             aria-label={`Volume for @${username}`}
           />
@@ -134,33 +141,178 @@ function ParticipantMenu({
         <Button
           type="button"
           variant="outline"
-          size="sm"
           onClick={() => togglePeerMute(userId)}
-          className="w-full gap-2 border-white/10 bg-white/5"
+          className="h-11 w-full gap-2 border-white/10 bg-white/5"
         >
           {muted ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           {muted ? `Unmute @${username}` : `Mute @${username}`}
         </Button>
-        <p className="text-[10px] text-muted-foreground">Only changes what you hear.</p>
         {canKick && (
           <>
             <div aria-hidden className="h-px bg-white/10" />
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="outline"
               onClick={onKick}
-              className="w-full justify-start gap-2 rounded-lg px-2 text-[#ff5d5d] hover:bg-[#ff5d5d]/14 hover:text-[#ff5d5d]"
+              className="h-11 w-full justify-center gap-2 border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               <PhoneOff className="h-4 w-4" />
               Remove from call
             </Button>
+            <p className="text-[11px] text-muted-foreground">
+              They leave this call right away and can join again unless you ban them in the realm.
+            </p>
           </>
         )}
-      </PopoverContent>
-    </Popover>
+      </div>
+    </ResponsiveOverlay>
   );
 }
+
+/**
+ * The bottom control bar, memoized.
+ *
+ * Every button here is a plain, unblurred surface with a colour transition: the
+ * backdrop blur each one used to carry forced a full-screen re-sample on every
+ * press (and while the tiles animated), which is what made the bar feel sticky
+ * on a phone. Nothing in this component re-renders unless a call state it
+ * actually draws changes.
+ */
+const CallControls = memo(function CallControls({
+  muted,
+  deafened,
+  cameraOn,
+  sharingScreen,
+  isGameStreaming,
+  screenSupported,
+  onToggleMute,
+  onToggleDeafen,
+  onToggleScreenShare,
+  onToggleGameShare,
+  onToggleCamera,
+  onOpenSettings,
+  onLeave,
+}: {
+  muted: boolean;
+  deafened: boolean;
+  cameraOn: boolean;
+  sharingScreen: boolean;
+  isGameStreaming: boolean;
+  screenSupported: boolean;
+  onToggleMute: () => void;
+  onToggleDeafen: () => void;
+  onToggleScreenShare: () => void;
+  onToggleGameShare: () => void;
+  onToggleCamera: () => void;
+  onOpenSettings: () => void;
+  onLeave: () => void;
+}) {
+  const base =
+    "flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-colors";
+  const idle = "border border-white/10 bg-[#1a1530] text-foreground hover:bg-[#241d40]";
+  const on = "border border-primary/40 bg-primary text-primary-foreground hover:brightness-105";
+  const danger =
+    "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25";
+
+  return (
+    <div className="mx-auto flex max-w-lg items-center justify-between gap-1.5 sm:justify-center sm:gap-3">
+      <button
+        type="button"
+        onClick={onToggleMute}
+        aria-label={muted ? "Unmute microphone" : "Mute microphone"}
+        aria-pressed={!muted}
+        className={`${base} ${muted ? danger : on}`}
+      >
+        {muted ? <MicOff className="mb-0.5 h-5 w-5" /> : <Mic className="mb-0.5 h-5 w-5" />}
+        <span className="text-[10px] font-semibold leading-none">{muted ? "Unmute" : "Mute"}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleDeafen}
+        aria-label={deafened ? "Undeafen incoming audio" : "Deafen incoming audio"}
+        aria-pressed={deafened}
+        className={`${base} ${deafened ? danger : idle}`}
+      >
+        {deafened ? (
+          <VolumeX className="mb-0.5 h-5 w-5 text-destructive" />
+        ) : (
+          <Headphones className="mb-0.5 h-5 w-5" />
+        )}
+        <span className="text-[10px] font-semibold leading-none">
+          {deafened ? "Undeafen" : "Deafen"}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        // Never disabled: a dead-looking button was the complaint. When the
+        // browser cannot capture, the tap explains why instead of doing nothing.
+        onClick={onToggleScreenShare}
+        aria-label={sharingScreen ? "Stop sharing screen" : "Share screen"}
+        aria-pressed={sharingScreen}
+        className={`${base} ${sharingScreen ? on : idle}`}
+      >
+        {sharingScreen ? (
+          <ScreenShareOff className="mb-0.5 h-5 w-5" />
+        ) : (
+          <ScreenShare className="mb-0.5 h-5 w-5" />
+        )}
+        <span className="text-[10px] font-semibold leading-none">
+          {sharingScreen ? "Stop" : "Share"}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleGameShare}
+        aria-label={isGameStreaming ? "Stop game stream" : "Stream only your game"}
+        aria-pressed={isGameStreaming}
+        className={`${base} ${isGameStreaming ? on : idle}`}
+      >
+        <Radio className="mb-0.5 h-5 w-5" />
+        <span className="text-[10px] font-semibold leading-none">
+          {isGameStreaming ? "Stop" : "Game"}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleCamera}
+        aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
+        aria-pressed={cameraOn}
+        className={`${base} ${cameraOn ? on : idle}`}
+      >
+        {cameraOn ? (
+          <Video className="mb-0.5 h-5 w-5" />
+        ) : (
+          <VideoOff className="mb-0.5 h-5 w-5" />
+        )}
+        <span className="text-[10px] font-semibold leading-none">Camera</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        aria-label="Voice settings"
+        className={`${base} ${idle}`}
+      >
+        <Sliders className="mb-0.5 h-5 w-5 text-primary" />
+        <span className="text-[10px] font-semibold leading-none">Settings</span>
+      </button>
+
+      <Button
+        variant="outline"
+        aria-label="Leave call"
+        onClick={onLeave}
+        className="flex min-h-[50px] items-center gap-1.5 rounded-2xl border-destructive/40 bg-destructive/15 px-4 text-xs font-bold text-destructive transition-colors hover:bg-destructive/25 active:scale-95 sm:px-6"
+      >
+        <PhoneOff className="h-4 w-4" />
+        Leave
+      </Button>
+    </div>
+  );
+});
 
 /**
  * Plays a remote participant's audio. Video tracks are ignored here.
@@ -311,8 +463,11 @@ export function VoiceCallView() {
   const [gamesOpen, setGamesOpen] = useState(false);
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [selectedSharePeerId, setSelectedSharePeerId] = useState<string | null>(null);
-  // Bots can be taken out of this call and put back — never a one-way door.
-  const [hiddenBots, setHiddenBots] = useState<{ music?: boolean; game?: boolean }>({});
+  // Which participant's settings sheet is open (long-press on their tile).
+  const [participantSheet, setParticipantSheet] = useState<string | null>(null);
+  // GAME BOT visibility lives in a shared store: the tile, the in-call chat and a
+  // /game command typed anywhere all have to be able to bring it back.
+  const gameHidden = useGameBotHidden();
   // Immersive = game as the background with the voice dock floating over it.
   // Toggling it off keeps the game open as a side panel (desktop only).
   const [immersive, setImmersive] = useState(true);
@@ -322,6 +477,9 @@ export function VoiceCallView() {
   const isMobileView = useIsMobile();
   const [soundSettings, setSoundSettings] = useSoundSettings();
   const [chatBody, setChatBody] = useState("");
+  const [chatSlashIndex, setChatSlashIndex] = useState(0);
+  const [chatSlashHidden, setChatSlashHidden] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const peerAudio = usePeerAudio();
   const qc = useQueryClient();
   const presenceMap = usePresenceMap(participants.map((participant) => participant.user_id));
@@ -338,13 +496,58 @@ export function VoiceCallView() {
     setConfirmLeaveOpen(false);
   }, [viewOpen]);
 
-  const handleLeaveClick = () => {
+  // Stable handlers: the memoized control bar and the participant sheet must
+  // not re-render (or re-create their own children) just because the view did.
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  // Whole-tile long press: 320ms with a 20px movement allowance, so dragging the
+  // list to scroll never opens a sheet, and small finger jitter still counts.
+  const tilePressTimer = useRef<number | null>(null);
+  const tilePressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const clearTilePress = useCallback(() => {
+    if (tilePressTimer.current !== null) {
+      window.clearTimeout(tilePressTimer.current);
+      tilePressTimer.current = null;
+    }
+    tilePressOrigin.current = null;
+  }, []);
+  const beginTilePress = useCallback(
+    (event: React.PointerEvent, userId: string) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if ((event.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]"))
+        return;
+      clearTilePress();
+      tilePressOrigin.current = { x: event.clientX, y: event.clientY };
+      tilePressTimer.current = window.setTimeout(() => {
+        tilePressTimer.current = null;
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          try {
+            navigator.vibrate(35);
+          } catch {
+            // A device without vibration must not break the gesture.
+          }
+        }
+        setParticipantSheet(userId);
+      }, 320);
+    },
+    [clearTilePress],
+  );
+  const moveTilePress = useCallback(
+    (event: React.PointerEvent) => {
+      const origin = tilePressOrigin.current;
+      if (!origin || tilePressTimer.current === null) return;
+      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 20) clearTilePress();
+    },
+    [clearTilePress],
+  );
+  const endTilePress = useCallback(() => clearTilePress(), [clearTilePress]);
+  const handleLeaveClick = useCallback(() => {
     if (call?.isHost && participants.length > 1) {
       setConfirmLeaveOpen(true);
     } else {
       leaveCall();
     }
-  };
+  }, [call?.isHost, participants.length, leaveCall]);
+
 
   const roomMessages = useQuery({
     queryKey: ["realm-room-messages", call?.channelId],
@@ -361,6 +564,91 @@ export function VoiceCallView() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // ---- slash commands in the call chat -------------------------------------
+  // Typing "/" here offers the two voice bots and MUSIC BOT's own commands, so
+  // a bot can be invited into the call (or made to play something) from the
+  // chat, exactly like a chat bot is invoked. Anything that is not a command is
+  // posted as a message.
+  const chatSlash = parseSlashCommand(chatBody);
+  const chatSlashMatches = chatSlash
+    ? filterSlashCommands(VOICE_BOT_COMMANDS, chatSlash.name)
+    : [];
+  const chatSlashOpen = !!chatSlash && chatSlash.typingName && !chatSlashHidden;
+  const chatSlashActive = Math.min(chatSlashIndex, Math.max(chatSlashMatches.length - 1, 0));
+
+  const bringBotIn = (bot: "music" | "game", args: string) => {
+    if (!call) return;
+    if (bot === "music") {
+      setMusicBotDismissed(false);
+      if (!musicBot.enabled) {
+        toast.error("MUSIC BOT isn't enabled in this realm", {
+          description: "A mod can add it under realm settings → Bots.",
+        });
+        return;
+      }
+      const query = args.trim();
+      if (!query) {
+        toast.success("MUSIC BOT joined the call", { description: "Type /play <song> or open its card." });
+        return;
+      }
+      void runMusicCommand("play", { args: query, realmId: call.realmId, roomId: call.channelId })
+        .then((result) => {
+          if (result.ok) toast.success("MUSIC BOT is on it", { description: query });
+          else toast.error(result.error ?? "MUSIC BOT couldn't play that");
+        })
+        .catch((error: unknown) =>
+          toast.error(error instanceof Error ? error.message : "MUSIC BOT didn't answer"),
+        );
+      return;
+    }
+    setGameBotHidden(false);
+    toast.success("GAME BOT is back in the call", { description: "Tap its card to pick a game." });
+  };
+
+  /** Submits the call chat: commands run, everything else posts. */
+  const submitChat = () => {
+    const text = chatBody.trim();
+    if (!text || !user || !call || sendMut.isPending) return;
+    const parsed = parseSlashCommand(text);
+    if (parsed) {
+      const bot = voiceBotCommand(parsed.name);
+      if (bot) {
+        bringBotIn(bot, parsed.args);
+        setChatBody("");
+        setChatSlashIndex(0);
+        setChatSlashHidden(false);
+        return;
+      }
+      if (isMusicCommand(parsed.name)) {
+        if (!musicBot.enabled) {
+          toast.error("MUSIC BOT isn't enabled in this realm", {
+            description: "A mod can add it under realm settings → Bots.",
+          });
+          return;
+        }
+        setMusicBotDismissed(false);
+        void runMusicCommand(parsed.name, {
+          args: parsed.args.trim(),
+          realmId: call.realmId,
+          roomId: call.channelId,
+        })
+          .then((result) => {
+            if (result.ok) {
+              toast.success(`/${parsed.name}`, { description: "MUSIC BOT handled that in the call." });
+              setChatBody("");
+            } else {
+              toast.error(result.error ?? `/${parsed.name} didn't work`);
+            }
+          })
+          .catch((error: unknown) =>
+            toast.error(error instanceof Error ? error.message : "That command didn't work"),
+          );
+        return;
+      }
+    }
+    sendMut.mutate();
+  };
 
   // Game Activities: ephemeral per-room state over realtime (broadcast +
   // presence), so late joiners sync the live game with no database table.
@@ -399,11 +687,40 @@ export function VoiceCallView() {
     setPanelOpen(false);
   };
 
+  const sheetParticipant =
+    participants.find((participant) => participant.user_id === participantSheet) ?? null;
   const playing = panelOpen && !!roomActivity.activity;
   const gameEntry = roomActivity.activity ? getGame(roomActivity.activity.gameId) : null;
   const liveGame = gameBot.state.activeGame;
   const myGame = gameBot.mySession;
   const isGameStreaming = sharingScreen && shareMode === "game";
+  // Stable identity, declared after the flag it reads: the memoized control bar
+  // must not see a new callback on every render of this huge view.
+  /** Screen capture that explains itself when the browser can't do it. */
+  const blockedCaptureHint = useCallback(() => {
+    toast.info("This browser can't capture a screen", {
+      description:
+        "Chrome on Android can't share your screen. Open Rizz on a laptop, or start a game from the Games hub — that streams inside the app.",
+    });
+  }, []);
+  const toggleScreenShareSafe = useCallback(() => {
+    if (!screenSupported && !sharingScreen) {
+      blockedCaptureHint();
+      return;
+    }
+    toggleScreenShare();
+  }, [screenSupported, sharingScreen, toggleScreenShare, blockedCaptureHint]);
+  const toggleGameShare = useCallback(() => {
+    if (isGameStreaming) {
+      toggleScreenShare();
+      return;
+    }
+    if (!screenSupported) {
+      blockedCaptureHint();
+      return;
+    }
+    startGameShare();
+  }, [isGameStreaming, screenSupported, toggleScreenShare, startGameShare, blockedCaptureHint]);
   const viewedSession = gameBot.sessionsById[gameBot.viewingHostId ?? ""] ?? myGame ?? null;
 
   const openGameSession = (session: GameSession) => {
@@ -669,10 +986,26 @@ export function VoiceCallView() {
                       return (
                         <div
                           key={participant.user_id}
-                          className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
+                          // Long-press (or right-click) anywhere on the tile opens
+                          // that person's settings — volume, mute for me, and the
+                          // host's Remove from call. Tap still opens the profile.
+                          onPointerDown={(event) => beginTilePress(event, participant.user_id)}
+                          onPointerMove={moveTilePress}
+                          onPointerUp={endTilePress}
+                          onPointerCancel={endTilePress}
+                          onContextMenu={(event) => {
+                            if ((event.target as HTMLElement).closest("a, input, textarea")) return;
+                            event.preventDefault();
+                            clearTilePress();
+                            setParticipantSheet(participant.user_id);
+                          }}
+                          // A solid surface instead of `glass`: a blur behind
+                          // every tile (and behind the speaking ring animating on
+                          // top of it) was the expensive part of this screen.
+                          className={`relative flex aspect-square touch-manipulation flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
                             speaking
-                              ? "border-primary/70 bg-primary/[0.07] ring-1 ring-primary/45"
-                              : "border-white/10 glass"
+                              ? "border-primary/70 bg-[#181233] ring-1 ring-primary/45"
+                              : "border-white/10 bg-[#150f2b]"
                           }`}
                         >
                           {videoStream ? (
@@ -808,12 +1141,16 @@ export function VoiceCallView() {
                             </span>
                           )}
                           {!isMe && (
-                            <ParticipantMenu
-                              userId={participant.user_id}
-                              username={username}
-                              canKick={!!call?.isHost}
-                              onKick={() => kickFromCall(participant.user_id)}
-                            />
+                            // The small volume dot stays as a discoverable entry
+                            // point; the tile itself answers a long press.
+                            <button
+                              type="button"
+                              aria-label={`Settings for @${username}`}
+                              onClick={() => setParticipantSheet(participant.user_id)}
+                              className="absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#0f0b1f] text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <Volume2 className="h-3.5 w-3.5" />
+                            </button>
                           )}
                         </div>
                       );
@@ -870,7 +1207,7 @@ export function VoiceCallView() {
                 )}
 
                 {/* GAME BOT: ready-made games that play as an overlay over the call. */}
-                {!hiddenBots.game && (
+                {!gameHidden && (
                   <div className="relative">
                     <button
                       type="button"
@@ -929,7 +1266,7 @@ export function VoiceCallView() {
                       title="Remove bot"
                       onClick={() => {
                         gameBot.leave();
-                        setHiddenBots((h) => ({ ...h, game: true }));
+                        setGameBotHidden(true);
                       }}
                       className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-lg bg-black/40 text-white/70 transition-colors hover:bg-black/60 hover:text-white"
                     >
@@ -938,14 +1275,14 @@ export function VoiceCallView() {
                   </div>
                 )}
 
-                {(musicBot.dismissed || hiddenBots.game) && (
+                {(musicBot.dismissed || gameHidden) && (
                   <div className="col-span-full flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
                     <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
-                      {musicBot.dismissed && hiddenBots.game
+                      {musicBot.dismissed && gameHidden
                         ? "MUSIC BOT and GAME BOT were removed from this call."
                         : musicBot.dismissed
-                          ? "MUSIC BOT was removed. Type /play in chat or add it back."
-                          : "GAME BOT was removed. Pick a game to bring it back."}
+                          ? "MUSIC BOT was removed. Type /music in chat or add it back."
+                          : "GAME BOT was removed. Type /game in chat or pick one here."}
                     </p>
                     {musicBot.dismissed && (
                       <Button
@@ -958,13 +1295,13 @@ export function VoiceCallView() {
                         <Music className="h-3.5 w-3.5" /> Add MUSIC BOT
                       </Button>
                     )}
-                    {hiddenBots.game && (
+                    {gameHidden && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className="h-8 gap-1.5 rounded-lg px-2 text-[11px] text-primary hover:bg-primary/10"
-                        onClick={() => setHiddenBots((h) => ({ ...h, game: false }))}
+                        onClick={() => setGameBotHidden(false)}
                       >
                         <Gamepad2 className="h-3.5 w-3.5" /> Add GAME BOT
                       </Button>
@@ -996,139 +1333,21 @@ export function VoiceCallView() {
           className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
-          <div className="mx-auto flex max-w-lg items-center justify-between sm:justify-center gap-1.5 sm:gap-3">
-            {/* Mute */}
-            <button
-              type="button"
-              onClick={toggleMute}
-              aria-label={muted ? "Unmute microphone" : "Mute microphone"}
-              aria-pressed={!muted}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                muted
-                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
-                  : "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-              }`}
-            >
-              {muted ? <MicOff className="h-5 w-5 mb-0.5" /> : <Mic className="h-5 w-5 mb-0.5" />}
-              <span className="text-[10px] font-semibold leading-none">
-                {muted ? "Unmute" : "Mute"}
-              </span>
-            </button>
-
-            {/* Deafen */}
-            <button
-              type="button"
-              onClick={toggleDeafen}
-              aria-label={deafened ? "Undeafen incoming audio" : "Deafen incoming audio"}
-              aria-pressed={deafened}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                deafened
-                  ? "border border-destructive/30 bg-destructive/15 text-destructive hover:bg-destructive/25"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {deafened ? (
-                <VolumeX className="h-5 w-5 mb-0.5 text-destructive" />
-              ) : (
-                <Headphones className="h-5 w-5 mb-0.5" />
-              )}
-              <span className="text-[10px] font-semibold leading-none">
-                {deafened ? "Undeafen" : "Deafen"}
-              </span>
-            </button>
-
-            {/* Share Screen */}
-            <button
-              type="button"
-              onClick={toggleScreenShare}
-              disabled={!screenSupported}
-              title={
-                screenSupported ? undefined : "Screen sharing isn't available in this browser."
-              }
-              aria-label={sharingScreen ? "Stop sharing screen" : "Share screen"}
-              aria-pressed={sharingScreen}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
-                sharingScreen
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {sharingScreen ? (
-                <ScreenShareOff className="h-5 w-5 mb-0.5" />
-              ) : (
-                <ScreenShare className="h-5 w-5 mb-0.5" />
-              )}
-              <span className="text-[10px] font-semibold leading-none">
-                {sharingScreen ? "Stop" : "Share"}
-              </span>
-            </button>
-
-            {/* Game stream — only the game surface, never the whole desktop. */}
-            <button
-              type="button"
-              onClick={() => (isGameStreaming ? toggleScreenShare() : startGameShare())}
-              disabled={!screenSupported}
-              title={
-                isGameStreaming
-                  ? "Stop streaming your game"
-                  : "Stream only a game tab or window, never your whole desktop"
-              }
-              aria-label={isGameStreaming ? "Stop game stream" : "Stream only your game"}
-              aria-pressed={isGameStreaming}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 disabled:opacity-40 ${
-                isGameStreaming
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              <Radio className="h-5 w-5 mb-0.5" />
-              <span className="text-[10px] font-semibold leading-none">
-                {isGameStreaming ? "Stop" : "Game"}
-              </span>
-            </button>
-
-            {/* Camera */}
-            <button
-              type="button"
-              onClick={toggleCamera}
-              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-              aria-pressed={cameraOn}
-              className={`flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95 ${
-                cameraOn
-                  ? "bg-primary text-primary-foreground shadow-sm hover:brightness-105"
-                  : "glass border-white/10 text-foreground hover:bg-white/10"
-              }`}
-            >
-              {cameraOn ? (
-                <Video className="h-5 w-5 mb-0.5" />
-              ) : (
-                <VideoOff className="h-5 w-5 mb-0.5" />
-              )}
-              <span className="text-[10px] font-semibold leading-none">Camera</span>
-            </button>
-
-            {/* Settings */}
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Voice settings"
-              className="glass border-white/10 text-foreground hover:bg-white/10 flex min-h-[50px] min-w-[52px] sm:min-w-[60px] flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all active:scale-95"
-            >
-              <Sliders className="h-5 w-5 mb-0.5 text-primary" />
-              <span className="text-[10px] font-semibold leading-none">Settings</span>
-            </button>
-
-            {/* Leave */}
-            <Button
-              variant="outline"
-              aria-label="Leave call"
-              onClick={handleLeaveClick}
-              className="min-h-[50px] rounded-2xl border-destructive/40 bg-destructive/15 px-4 sm:px-6 text-destructive hover:bg-destructive/25 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
-            >
-              <PhoneOff className="h-5 w-5" />
-              <span>Leave</span>
-            </Button>
-          </div>
+          <CallControls
+            muted={muted}
+            deafened={deafened}
+            cameraOn={cameraOn}
+            sharingScreen={sharingScreen}
+            isGameStreaming={isGameStreaming}
+            screenSupported={screenSupported}
+            onToggleMute={toggleMute}
+            onToggleDeafen={toggleDeafen}
+            onToggleScreenShare={toggleScreenShareSafe}
+            onToggleGameShare={toggleGameShare}
+            onToggleCamera={toggleCamera}
+            onOpenSettings={openSettings}
+            onLeave={handleLeaveClick}
+          />
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
             {sharingScreen
               ? isGameStreaming
@@ -1146,6 +1365,22 @@ export function VoiceCallView() {
             </p>
           )}
         </div>
+        {/* Participant settings — long-press a tile (or tap its volume dot). */}
+        {participantSheet && sheetParticipant && (
+          <ParticipantSheet
+            userId={sheetParticipant.user_id}
+            username={sheetParticipant.user?.username ?? "member"}
+            canKick={!!call?.isHost}
+            open
+            onOpenChange={(next) => {
+              if (!next) setParticipantSheet(null);
+            }}
+            onKick={() => {
+              kickFromCall(sheetParticipant.user_id);
+              setParticipantSheet(null);
+            }}
+          />
+        )}
         {/* Voice Settings Sheet */}
         <VoiceSettingsSheet
           open={settingsOpen}
@@ -1274,16 +1509,60 @@ export function VoiceCallView() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (chatBody.trim() && user) sendMut.mutate();
+                  submitChat();
                 }}
-                className="flex items-center gap-2"
+                className="relative flex items-center gap-2"
               >
+                {/* "/" opens the command list: invite the bots into this call
+                    or run MUSIC BOT straight from the chat. */}
+                {chatSlashOpen && (
+                  <div className="absolute inset-x-0 bottom-full z-[150] mb-2">
+                    <SlashCommandMenu
+                      commands={chatSlashMatches}
+                      activeIndex={chatSlashActive}
+                      onHover={setChatSlashIndex}
+                      onSelect={(command) => {
+                        setChatBody(insertSlashCommand(chatBody, command.name));
+                        setChatSlashHidden(true);
+                        setChatSlashIndex(0);
+                        chatInputRef.current?.focus();
+                      }}
+                      emptyHint="Try /music to bring MUSIC BOT in, or /game for GAME BOT."
+                    />
+                  </div>
+                )}
                 <input
+                  ref={chatInputRef}
                   value={chatBody}
-                  onChange={(e) => setChatBody(e.target.value)}
-                  placeholder="Message voice chat…"
+                  onChange={(e) => {
+                    setChatBody(e.target.value);
+                    setChatSlashIndex(0);
+                    setChatSlashHidden(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!chatSlashOpen || chatSlashMatches.length === 0) return;
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setChatSlashIndex((current) => wrapIndex(current + 1, chatSlashMatches.length));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setChatSlashIndex((current) => wrapIndex(current - 1, chatSlashMatches.length));
+                    } else if (e.key === "Tab" || e.key === "Enter") {
+                      e.preventDefault();
+                      const picked = chatSlashMatches[chatSlashActive];
+                      if (picked) {
+                        setChatBody(insertSlashCommand(chatBody, picked.name));
+                        setChatSlashHidden(true);
+                        setChatSlashIndex(0);
+                      }
+                    } else if (e.key === "Escape") {
+                      setChatSlashHidden(true);
+                    }
+                  }}
+                  placeholder="Message voice chat… or / for commands"
                   maxLength={500}
-                  className="flex-1 h-10 px-3.5 rounded-full border border-white/10 bg-black/40 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  enterKeyHint="send"
+                  className="h-10 flex-1 rounded-full border border-white/10 bg-black/40 px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <Button
                   type="submit"
