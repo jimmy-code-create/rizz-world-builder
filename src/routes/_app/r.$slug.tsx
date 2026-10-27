@@ -79,7 +79,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  SmilePlus,
   Sparkles,
   Trophy,
   Trash2,
@@ -578,6 +577,56 @@ function RealmPage() {
       });
   }, [realm.data?.id, qc]);
 
+  /** Jumps to a message and flashes it briefly. */
+  const jumpToMessage = (messageId: string) => {
+    window.setTimeout(() => {
+      document
+        .getElementById(`msg-${messageId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(messageId);
+      window.setTimeout(
+        () => setHighlightId((current) => (current === messageId ? null : current)),
+        1600,
+      );
+    }, 50);
+  };
+
+  // Deep link from a mention: resolve the message's channel first (it may be a
+  // channel you are not currently looking at), then jump once the row exists.
+  //
+  // This sits ABOVE the loading/not-found returns on purpose. A hook after an
+  // early return is React #310 ("Rendered more hooks than during the previous
+  // render"): the skeleton passage ran fewer hooks than the loaded passage and
+  // the route crashed the moment the realm arrived.
+  const deepLinkedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const target = search.message;
+    if (!target || deepLinkedRef.current === target || !realm.data?.id) return;
+    let cancelled = false;
+    void supabase
+      .from("messages")
+      .select("id,realm_id,realm_room_id")
+      .eq("id", target)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data || data.realm_id !== realm.data?.id) return;
+        if (data.realm_room_id && data.realm_room_id !== activeRoomId) {
+          setActiveRoomId(data.realm_room_id);
+          return; // the effect runs again once that channel's rows load
+        }
+        const timer = window.setInterval(() => {
+          if (!document.getElementById(`msg-${target}`)) return;
+          window.clearInterval(timer);
+          deepLinkedRef.current = target;
+          jumpToMessage(target);
+        }, 150);
+        window.setTimeout(() => window.clearInterval(timer), 5000);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [search.message, realm.data?.id, activeRoomId, roomMessages.dataUpdatedAt]);
+
   if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
   if (!realm.data)
     return (
@@ -771,52 +820,6 @@ function RealmPage() {
       );
     }, 0);
   };
-
-  /** Flashes a message on screen, whichever list it belongs to. */
-  const jumpToMessage = (messageId: string) => {
-    window.setTimeout(() => {
-      document
-        .getElementById(`msg-${messageId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHighlightId(messageId);
-      window.setTimeout(
-        () => setHighlightId((current) => (current === messageId ? null : current)),
-        1600,
-      );
-    }, 50);
-  };
-
-  // Deep link from a mention: resolve the message's channel first (it may be a
-  // channel you are not currently looking at), then jump once the row exists.
-  const deepLinkedRef = useRef<string | null>(null);
-  useEffect(() => {
-    const target = search.message;
-    if (!target || deepLinkedRef.current === target || !realm.data?.id) return;
-    let cancelled = false;
-    void supabase
-      .from("messages")
-      .select("id,realm_id,realm_room_id")
-      .eq("id", target)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data || data.realm_id !== realm.data?.id) return;
-        if (data.realm_room_id && data.realm_room_id !== activeRoomId) {
-          setActiveRoomId(data.realm_room_id);
-          return; // the effect runs again once that channel's rows load
-        }
-        const timer = window.setInterval(() => {
-          if (!document.getElementById(`msg-${target}`)) return;
-          window.clearInterval(timer);
-          deepLinkedRef.current = target;
-          jumpToMessage(target);
-        }, 150);
-        window.setTimeout(() => window.clearInterval(timer), 5000);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.message, realm.data?.id, activeRoomId, roomMessages.dataUpdatedAt]);
 
   const handlePinToggle = async (messageId: string, isPinned: boolean) => {
     setUnpinningId(messageId);
@@ -2504,20 +2507,15 @@ function RealmPage() {
             </p>
           )}
           <div className="mx-auto flex w-full max-w-3xl gap-2">
+            {/* One composer control for every emoji: standard, this server's own,
+                GIFs and stickers. The second smiley button is gone. */}
             <GifPicker
+              realmId={c.id}
               onSelect={(marker) =>
                 setBody((current) => `${current}${current ? " " : ""}${marker}`)
               }
+              onCustomEmoji={joined ? () => setEmojiOpen(true) : undefined}
             />
-            <button
-              type="button"
-              aria-label="Custom emoji"
-              onClick={() => setEmojiOpen(true)}
-              disabled={!joined}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
-            >
-              <SmilePlus className="h-4 w-4" />
-            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

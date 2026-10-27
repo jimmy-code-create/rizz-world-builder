@@ -388,7 +388,14 @@ export function VoiceCallAudio() {
   );
 }
 
-export function VoiceCallView() {
+/**
+ * Memoised on purpose. The provider holds the engine, so it re-renders whenever
+ * speaking levels change (up to ~5x a second in a live conversation). Without
+ * this boundary the whole call surface — grid, chat sheet, bot panels, stage —
+ * went through a render on every one of those ticks, which is what made taps on
+ * the control bar feel late. Now only <SpeakingTiles> reacts to the audio.
+ */
+export const VoiceCallView = memo(function VoiceCallView() {
   const { user } = useAuth();
   const {
     call,
@@ -1002,7 +1009,10 @@ export function VoiceCallView() {
                           // A solid surface instead of `glass`: a blur behind
                           // every tile (and behind the speaking ring animating on
                           // top of it) was the expensive part of this screen.
-                          className={`relative flex aspect-square touch-manipulation flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
+                          // `select-none` matters on Android: without it a hold
+                          // starts a text selection, the browser takes the touch
+                          // away from us and the sheet never opens.
+                          className={`relative flex aspect-square touch-manipulation select-none flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
                             speaking
                               ? "border-primary/70 bg-[#181233] ring-1 ring-primary/45"
                               : "border-white/10 bg-[#150f2b]"
@@ -1579,7 +1589,7 @@ export function VoiceCallView() {
       </div>
     </FullScreenLayer>
   );
-}
+});
 
 /**
  * The only subscriber to speaking levels: an audio tick re-renders just the

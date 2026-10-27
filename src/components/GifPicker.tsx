@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Loader2, Search, Smile, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Image, Loader2, Search, Settings2, Smile, Sparkles } from "lucide-react";
+import { fetchRealmEmoji, realmEmojiKey } from "@/lib/realm-emoji";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +26,7 @@ type Sticker = {
 
 type PickerTab = "emoji" | "gifs" | "stickers";
 type EmojiEntry = { emoji: string; name: string; group: string };
+type RealmEmojiRow = { id: string; name: string; url: string; kind: string };
 
 const GIF_MARKER = (url: string) => `![gif](${url})`;
 const STICKER_MARKER = (url: string) => `![sticker](${url})`;
@@ -194,7 +197,17 @@ const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
 /** The quick-pick row above the sections. */
 const TOP_EMOJIS = EMOJIS.slice(0, 12);
 
-export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) {
+export function GifPicker({
+  onSelect,
+  realmId,
+  onCustomEmoji,
+}: {
+  onSelect: (marker: string) => void;
+  /** A realm passes its id so its own emoji and stickers show up in this picker. */
+  realmId?: string;
+  /** Opens the realm's emoji manager (add, upload, remove) for moderators. */
+  onCustomEmoji?: () => void;
+}) {
   // GIFs are a Purify feature; emoji and stickers stay free for everyone.
   const { allowed } = usePurify();
   const { t } = useI18n();
@@ -208,6 +221,13 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const apiKey = import.meta.env.VITE_GIPHY_API_KEY?.trim();
+  // The realm's own emoji: one query, only while the sheet is open.
+  const realmEmoji = useQuery({
+    queryKey: realmEmojiKey(realmId),
+    enabled: open && !!realmId,
+    queryFn: () => fetchRealmEmoji(realmId!),
+  });
+  const realmRows = ((realmEmoji.data ?? []) as RealmEmojiRow[]).filter((row) => row.kind !== "sticker");
   // Discord-style sections: the category strip below jumps to a section instead
   // of making the whole list one long scroll.
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -369,6 +389,62 @@ export function GifPicker({ onSelect }: { onSelect: (marker: string) => void }) 
             />
           </div>
         ) : null}
+
+        {tab === "emoji" && realmId && !query && (
+          // MERGED: the realm's own emoji used to live behind a second smiley
+          // button next to this picker. They now sit inside the emoji tab, so a
+          // composer has one control and every emoji — standard, custom, GIFs,
+          // stickers — is behind it. "Manage" still opens the full editor.
+          <div className="mb-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                This server
+              </p>
+              {onCustomEmoji && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onCustomEmoji();
+                  }}
+                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                >
+                  <Settings2 className="h-3 w-3" />
+                  Manage
+                </button>
+              )}
+            </div>
+            {realmEmoji.isLoading ? (
+              <p className="flex items-center gap-2 px-0.5 pb-1 text-[11px] text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading your server's emoji…
+              </p>
+            ) : realmRows.length ? (
+              <div className="flex flex-wrap gap-1">
+                {realmRows.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => {
+                      onSelect(`:${row.name}:`);
+                      setOpen(false);
+                    }}
+                    className="grid h-9 w-9 place-items-center rounded-lg transition hover:scale-110 hover:bg-white/10"
+                    title={`:${row.name}:`}
+                    aria-label={`Add :${row.name}:`}
+                  >
+                    <img src={row.url} alt="" loading="lazy" className="h-7 w-7 object-contain" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="px-0.5 pb-1 text-[11px] text-muted-foreground">
+                {onCustomEmoji
+                  ? "No custom emoji yet — tap Manage to add one."
+                  : "This server has no custom emoji yet."}
+              </p>
+            )}
+          </div>
+        )}
 
         {tab === "emoji" && (
           <div className="flex min-h-0 flex-col">

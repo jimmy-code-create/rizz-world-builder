@@ -143,20 +143,29 @@ export function useRealmVoiceChannels(realmId?: string) {
 
   useEffect(() => {
     if (!realmId) return;
+    // Joining, muting or leaving writes several participant rows at once, and a
+    // call with five people produces a burst of events. Refetching for each one
+    // re-rendered the whole realm screen (and the call bar inside it) over and
+    // over; the burst now collapses into a single refetch.
+    let pending: number | null = null;
+    const schedule = () => {
+      if (pending !== null) return;
+      pending = window.setTimeout(() => {
+        pending = null;
+        void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
+      }, 400);
+    };
     const channel = supabase
       .channel(`realm-voice-channels-${realmId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "voice_participants" }, () => {
-        void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "voice_participants" }, schedule)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "voice_rooms", filter: `realm_id=eq.${realmId}` },
-        () => {
-          void qc.invalidateQueries({ queryKey: ["realm-channel-calls", realmId] });
-        },
+        schedule,
       )
       .subscribe();
     return () => {
+      if (pending !== null) window.clearTimeout(pending);
       void supabase.removeChannel(channel);
     };
   }, [realmId, qc]);
@@ -184,6 +193,8 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   // to it is kept for the participant menus.
   const rosterChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const leaveCallRef = useRef<() => void>(() => {});
+  /** Pending roster refetch, so a burst of participant rows costs one query. */
+  const rosterRefresh = useRef<number | null>(null);
   const userIdRef = useRef<string | null>(null);
   const tokenRef = useRef("");
   callRef.current = call;
@@ -257,11 +268,17 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           filter: `room_id=eq.${roomId}`,
         },
         () => {
-          void qc.invalidateQueries({ queryKey: ["voice-call-participants", roomId] });
-          if (callRef.current)
-            void qc.invalidateQueries({
-              queryKey: ["realm-channel-calls", callRef.current.realmId],
-            });
+          // One refetch per burst, not one per row: a mute toggle used to kick
+          // off two queries that re-rendered the call view while you were still
+          // on the button.
+          if (rosterRefresh.current !== null) return;
+          rosterRefresh.current = window.setTimeout(() => {
+            rosterRefresh.current = null;
+            const current = callRef.current;
+            if (!current) return;
+            void qc.invalidateQueries({ queryKey: ["voice-call-participants", current.roomId] });
+            void qc.invalidateQueries({ queryKey: ["realm-channel-calls", current.realmId] });
+          }, 350);
         },
       )
       .on(
@@ -282,6 +299,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     rosterChannelRef.current = channel;
     return () => {
       rosterChannelRef.current = null;
+      if (rosterRefresh.current !== null) {
+        window.clearTimeout(rosterRefresh.current);
+        rosterRefresh.current = null;
+      }
       void supabase.removeChannel(channel);
     };
   }, [call?.roomId, qc]);
