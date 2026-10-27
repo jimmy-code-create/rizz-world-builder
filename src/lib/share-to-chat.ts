@@ -130,6 +130,37 @@ async function fetchJoinedRealms(userId: string): Promise<ShareTarget[]> {
     }));
 }
 
+/**
+ * People search for the "send to…" picker: anyone on RIZZ, not just the
+ * conversations you already have, so a post can be sent to a member you have
+ * never messaged before. A DM row is all a new conversation needs.
+ */
+export async function searchShareProfiles(
+  userId: string,
+  query: string,
+): Promise<ShareTarget[]> {
+  const needle = query.trim();
+  if (needle.length < 2) return [];
+  // Escaping keeps a stray % or , from breaking the PostgREST filter string.
+  const safe = needle.replace(/[%_,()]/g, " ").trim();
+  if (!safe) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,username,display_name,avatar_url")
+    .neq("id", userId)
+    .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
+    .order("username", { ascending: true })
+    .limit(20);
+  if (error) throw error;
+  return ((data ?? []) as ProfileBits[]).map((profile) => ({
+    kind: "dm" as const,
+    id: profile.id,
+    name: profile.display_name || profile.username || "Someone",
+    subtitle: profile.username ? `@${profile.username}` : "Start a chat",
+    avatarUrl: profile.avatar_url,
+  }));
+}
+
 /** The default text channel of a realm, where a shared item should land. */
 async function defaultRoomOf(realmId: string): Promise<string | null> {
   const { data } = await supabase

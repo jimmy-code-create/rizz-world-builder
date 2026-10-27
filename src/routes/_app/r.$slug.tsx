@@ -124,6 +124,8 @@ import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocom
 import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
 import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
 import { EmbedList } from "@/components/chat/Embed";
+import { SharedPostCards } from "@/components/chat/SharedPostCards";
+import { withoutShareLinks } from "@/lib/share-links";
 import type { EmbedData } from "@/lib/embeds";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
@@ -1106,35 +1108,42 @@ function RealmPage() {
                 <Copy className="h-4 w-4" /> Copy invite link
               </SheetRowButton>
             )}
-            <SheetRowButton
-              onClick={() => {
-                setOptionsOpen(false);
-                setMembersOpen(true);
-              }}
-            >
-              <Shield className="h-4 w-4" /> Moderation
-            </SheetRowButton>
-            {/* The channel permission page opens from here, as its own sheet:
-                opening it from inside the members dialog left it mounted behind
-                that dialog, where every switch was inert. */}
-            <SheetRowButton
-              onClick={() => {
-                setOptionsOpen(false);
-                setPermissionsOpen(true);
-              }}
-            >
-              <ShieldCheck className="h-4 w-4" /> Channels &amp; permissions
-            </SheetRowButton>
-            {/* Bots are a realm-only feature, so this lives on the realm, not in
-                the global app settings. */}
-            <SheetRowButton
-              onClick={() => {
-                setOptionsOpen(false);
-                setBotsOpen(true);
-              }}
-            >
-              <BotIcon className="h-4 w-4" /> Bots
-            </SheetRowButton>
+            {/* Mod tools are for the owner and mods. A plain member sees the
+                invite link, their own settings and the way out — nothing that
+                they cannot actually use. */}
+            {canModerate && (
+              <>
+                <SheetRowButton
+                  onClick={() => {
+                    setOptionsOpen(false);
+                    setMembersOpen(true);
+                  }}
+                >
+                  <Shield className="h-4 w-4" /> Moderation
+                </SheetRowButton>
+                {/* The channel permission page opens from here, as its own sheet:
+                    opening it from inside the members dialog left it mounted behind
+                    that dialog, where every switch was inert. */}
+                <SheetRowButton
+                  onClick={() => {
+                    setOptionsOpen(false);
+                    setPermissionsOpen(true);
+                  }}
+                >
+                  <ShieldCheck className="h-4 w-4" /> Channels &amp; permissions
+                </SheetRowButton>
+                {/* Bots are a realm-only feature, so this lives on the realm, not in
+                    the global app settings. */}
+                <SheetRowButton
+                  onClick={() => {
+                    setOptionsOpen(false);
+                    setBotsOpen(true);
+                  }}
+                >
+                  <BotIcon className="h-4 w-4" /> Bots
+                </SheetRowButton>
+              </>
+            )}
             {joined && (
               <SheetRowButton
                 onClick={() => {
@@ -1423,16 +1432,20 @@ function RealmPage() {
               </button>
             );
           })}
+          {/* Creating and renaming rooms is a mod action; members cannot even
+              open this dialog. */}
           <Dialog open={roomsOpen} onOpenChange={setRoomsOpen}>
-            <DialogTrigger asChild>
-              <button
-                type="button"
-                className="grid h-9 min-h-[36px] w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
-                aria-label="New room"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </DialogTrigger>
+            {canModerate && (
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className="grid h-9 min-h-[36px] w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:text-white"
+                  aria-label="New room"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </DialogTrigger>
+            )}
             <DialogContent className="glass-strong max-h-[85dvh] overflow-y-auto border-white/10">
               <DialogHeader>
                 <DialogTitle className="font-display">Rooms & channels</DialogTitle>
@@ -1827,6 +1840,10 @@ function RealmPage() {
               }
 
               // Check if this message mentions the current user (Discord-style mention highlight)
+              // A shared post/reel travels as its permalink: the raw URL is
+              // swapped for a real card right under the message, the same card
+              // DMs and groups render.
+              const bodyText = withoutShareLinks(m.body);
               const mentionsMe = Boolean(
                 user &&
                 m.sender_id !== user.id &&
@@ -2110,9 +2127,9 @@ function RealmPage() {
                         ]}
                       >
                         <div
-                          className={`realm-message__body select-none touch-manipulation ${emojiTextClass(m.body, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}
+                          className={`realm-message__body select-none touch-manipulation ${emojiTextClass(bodyText, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}
                         >
-                          {renderGifSegments(m.body).map((seg, si) => {
+                          {renderGifSegments(bodyText).map((seg, si) => {
                             if (seg.isGif || seg.isSticker) {
                               return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
                             }
@@ -2298,8 +2315,11 @@ function RealmPage() {
                         pulse={reactions.lastPulse}
                         onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                       />
+                      <SharedPostCards text={m.body} />
                       <MessageLinkPreviews
-                        text={m.body}
+                        // Internal permalinks are cards now; previews stay for the
+                        // outside web, so the same URL never renders twice.
+                        text={bodyText}
                         messageId={m.id}
                         scope="realm"
                         canHide={mine || canModerate}

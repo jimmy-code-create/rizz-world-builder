@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Hash, Search, Send, Users } from "lucide-react";
+import { Check, Hash, Search, Send, Users, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,15 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import {
   fetchShareTargets,
+  searchShareProfiles,
   sendToTarget,
   type ShareDraft,
   type ShareTarget,
   type ShareTargetKind,
 } from "@/lib/share-to-chat";
+
+/** Which shelf of the picker is on screen. */
+type ShareCategory = "all" | "dm" | "group" | "realm";
 
 /**
  * The one "send to…" picker for the whole app.
@@ -38,8 +42,16 @@ export function ShareToChatSheet({
 }) {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  // The search box stays responsive while the people query waits for a pause.
+  const [debounced, setDebounced] = useState("");
+  const [category, setCategory] = useState<ShareCategory>("all");
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   const targets = useQuery({
     queryKey: ["share-targets", user?.id],
@@ -48,22 +60,49 @@ export function ShareToChatSheet({
     staleTime: 30_000,
   });
 
+  // Anyone on RIZZ can be sent to, even without an existing conversation —
+  // this is what makes "share it to that person" work for a new member.
+  const people = useQuery({
+    queryKey: ["share-people", user?.id, debounced],
+    queryFn: () => searchShareProfiles(user!.id, debounced),
+    enabled: open && !!user && debounced.length >= 2 && category !== "realm" && category !== "group",
+    staleTime: 60_000,
+  });
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const match = (target: ShareTarget) =>
       !needle ||
       target.name.toLowerCase().includes(needle) ||
       (target.subtitle ?? "").toLowerCase().includes(needle);
+    const dms = (targets.data?.dms ?? []).filter(match);
+    const seen = new Set(dms.map((dm) => dm.id));
+    // People the plain name filter already lists stay in the People section once.
+    const extraPeople = (people.data ?? []).filter(
+      (person) => !seen.has(person.id) && !dms.some((dm) => dm.name === person.name),
+    );
     return {
-      dms: (targets.data?.dms ?? []).filter(match),
+      dms,
+      extraPeople,
       groups: (targets.data?.groups ?? []).filter(match),
       realms: (targets.data?.realms ?? []).filter(match),
     };
-  }, [targets.data, query]);
+  }, [targets.data, people.data, query]);
+
+  const counts = {
+    all: 0,
+    dm: (targets.data?.dms ?? []).length,
+    group: (targets.data?.groups ?? []).length,
+    realm: (targets.data?.realms ?? []).length,
+  };
+
+  const showCategory = (kind: Exclude<ShareCategory, "all">) => category === "all" || category === kind;
 
   const nothing =
     !targets.isLoading &&
-    filtered.dms.length + filtered.groups.length + filtered.realms.length === 0;
+    (!showCategory("dm") || filtered.dms.length + filtered.extraPeople.length === 0) &&
+    (!showCategory("group") || filtered.groups.length === 0) &&
+    (!showCategory("realm") || filtered.realms.length === 0);
 
   const send = async (target: ShareTarget) => {
     if (!draft || !user || sendingTo) return;
@@ -136,11 +175,21 @@ export function ShareToChatSheet({
       </section>
     ) : null;
 
+  const categories: Array<{ id: ShareCategory; label: string; count?: number }> = [
+    { id: "all", label: "All" },
+    { id: "dm", label: "People", count: counts.dm },
+    { id: "group", label: "Groups", count: counts.group },
+    { id: "realm", label: "Realms", count: counts.realm },
+  ];
+
   return (
     <ResponsiveOverlay
       open={open}
       onOpenChange={(next) => {
-        if (!next) setQuery("");
+        if (!next) {
+          setQuery("");
+          setCategory("all");
+        }
         onOpenChange(next);
       }}
       title={draft?.title ?? "Send to"}
@@ -155,12 +204,39 @@ export function ShareToChatSheet({
           </div>
         )}
 
+        {/* Category shelf: pick where the share should go, or "All" to search
+            everything at once. */}
+        <div className="flex gap-1.5 overflow-x-auto overscroll-contain pb-0.5" role="tablist">
+          {categories.map((item) => {
+            const active = category === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setCategory(item.id)}
+                className={`flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
+                  active
+                    ? "border-primary/60 bg-primary/12 text-foreground"
+                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item.label}
+                {typeof item.count === "number" && item.count > 0 && (
+                  <span className="text-[11px] font-bold text-muted-foreground">{item.count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people, groups, realms"
+            placeholder="Search any member, group or realm"
             className="h-11 rounded-xl pl-9 text-[15px]"
             autoComplete="off"
           />
@@ -184,15 +260,21 @@ export function ShareToChatSheet({
             </p>
           )}
 
+          {people.isLoading && debounced.length >= 2 && (
+            <p className="px-2 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Searching people…
+            </p>
+          )}
+
           {nothing && (
             <p className="px-2 py-6 text-center text-xs text-muted-foreground">
               Nothing matches “{query.trim()}”.
             </p>
           )}
 
-          {section("People", filtered.dms)}
-          {section("Groups", filtered.groups, <Users className="h-3 w-3" />)}
-          {section("Realms", filtered.realms, <Hash className="h-3 w-3" />)}
+          {showCategory("dm") && section("People", [...filtered.dms, ...filtered.extraPeople], <UserRound className="h-3 w-3" />)}
+          {showCategory("group") && section("Groups", filtered.groups, <Users className="h-3 w-3" />)}
+          {showCategory("realm") && section("Realms", filtered.realms, <Hash className="h-3 w-3" />)}
         </div>
 
         {draft && (

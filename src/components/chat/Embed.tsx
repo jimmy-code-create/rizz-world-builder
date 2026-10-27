@@ -58,8 +58,11 @@ export function Embed({
   const showImage = !!embed.image?.url && isHttpsUrl(embed.image.url) && imageOk;
 
   return (
+    // Bot cards are flat black rectangles, full width, squared corners: the
+    // message text sits above them and the card reads as one solid panel
+    // instead of a second bubble floating in the conversation.
     <article
-      className="overflow-hidden rounded-xl border border-[#2a2a2e] bg-[#141416]"
+      className="w-full overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]"
       style={{ borderLeft: `3px solid ${color}` }}
     >
       <div className="flex min-w-0 gap-3 p-3">
@@ -128,7 +131,7 @@ export function Embed({
                   event.stopPropagation();
                   onAction?.(embed.button!);
                 }}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#c8ff3d]/45 bg-[#c8ff3d]/10 px-4 text-[13px] font-bold text-[#c8ff3d] transition-colors hover:bg-[#c8ff3d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 px-3 text-[12.5px] font-semibold text-[#c8ff3d] transition-colors hover:bg-[#c8ff3d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
               >
                 {embed.button.label || "Say hi"}
               </button>
@@ -164,7 +167,7 @@ export function Embed({
           src={embed.image!.url}
           alt=""
           loading="lazy"
-          className="max-h-72 w-full object-cover"
+          className="max-h-80 w-full bg-black object-cover"
           onError={() => setImageOk(false)}
         />
       )}
@@ -182,8 +185,9 @@ export function EmbedList({
   onAction?: (button: EmbedButton, embed: EmbedData) => void;
 }) {
   if (!embeds || embeds.length === 0) return null;
+  // Stacked, full width, one gap: the cards line up with the message column.
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2 flex w-full flex-col gap-2">
       {embeds.slice(0, 10).map((embed, i) => (
         <Embed key={i} embed={embed} onAction={onAction ? (button) => onAction(button, embed) : undefined} />
       ))}

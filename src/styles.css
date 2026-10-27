@@ -776,19 +776,25 @@
    inline-block. The padding that used to be here is what opened a gap either
    side of an @mention. */
 .mention-highlight {
-  /* One Discord-style pill across the whole @name. The negative margin cancels
-     the small padding so the word still sits flush with the text around it,
-     and box-decoration-break keeps a wrapped mention rounded on both lines. */
+  /* One Discord-style chip across the whole @name: a filled pill with a tinted
+     light label, so it reads the same on lime, indigo or any colour someone
+     picks in Settings -> Preferences. The colour comes from
+     --rizz-mention-color (prefs.mentionColor); the text is that colour pulled
+     most of the way to white and the fill is pulled toward the app's ink, which
+     keeps contrast on light colours too. The negative margin cancels the small
+     padding so the word stays flush with the text around it, and
+     box-decoration-break keeps a wrapped mention rounded on both lines. */
   display: inline;
   margin: 0 -1px;
-  padding: 1px 3px;
-  color: #d9ff7a;
-  background-color: rgba(200, 255, 61, 0.16);
+  padding: 1px 4px;
+  color: color-mix(in srgb, var(--rizz-mention-color, #5865f2) 24%, #ffffff);
+  background-color: color-mix(in srgb, var(--rizz-mention-color, #5865f2) 72%, #0b0b0c);
   border-radius: 4px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   white-space: inherit;
   line-height: inherit;
+  font-weight: 500;
 }
 .chat-scroll {
   overscroll-behavior: contain;
@@ -1893,7 +1899,7 @@ body:has([role="dialog"][data-state="open"]) .overlay-hide {
 a.mention-highlight:hover,
 button.mention-highlight:hover,
 .mention-highlight:hover {
-  background-color: #c8ff3d;
+  background-color: var(--rizz-mention-color, #5865f2);
   color: #0b0b0c;
   text-decoration: none;
 }

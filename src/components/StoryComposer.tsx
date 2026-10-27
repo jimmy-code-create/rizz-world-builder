@@ -26,6 +26,11 @@ import {
   Redo2,
   Sparkle,
   Waves,
+  Move,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
@@ -396,11 +401,19 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     setSelected(id);
   };
 
-  // Multi-touch drag / pinch / rotate
-  const onDragOverlay = (id: string) => (e: React.PointerEvent) => {
+  // Multi-touch drag / pinch / rotate. `force` lets the text editor's move
+  // handle drag a layer that is currently open for typing.
+  const onDragOverlay = (id: string, force = false) => (e: React.PointerEvent) => {
     // Brush mode owns all stage touches so strokes paint over overlays.
     if (panel === "brush") return;
-    if (editingId === id) return;
+    if (editingId === id && !force) return;
+    // Moving a layer that is being typed in commits what is on screen first.
+    if (editingId === id && force) {
+      const el = textEditorRef.current;
+      if (el) updateSelected({ value: el.textContent || " " });
+      setEditingId(null);
+      setEditorText("");
+    }
     const stage = stageRef.current; if (!stage) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setSelected(id);
@@ -852,6 +865,23 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
               ) : ov.kind === "sticker" && ov.icon ? (
                 <IconThumb name={ov.icon} color={ov.iconColor || "#c8ff3d"} size={previewStickerPx} />
               ) : ov.kind === "text" && editingId === ov.id ? (
+                <span className="inline-flex flex-col items-center">
+                {/* Move handle: while the caret is in the text, the words
+                    themselves eat the pointer, so dragging them is impossible.
+                    This grip sits above the text and drags the layer with the
+                    same maths as a normal drag (plus a nudge row for phones,
+                    where a 24px handle is fiddly). */}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Drag to move this text"
+                  data-interactive="true"
+                  onPointerDown={(e) => { e.stopPropagation(); onDragOverlay(ov.id, true)(e); }}
+                  className="mb-1 flex cursor-grab touch-none items-center gap-1 rounded-full border border-white/20 bg-black/70 px-2 py-1 text-[11px] font-bold text-white active:cursor-grabbing"
+                >
+                  <Move className="h-3.5 w-3.5" />
+                  Drag to move
+                </span>
                 <span
                   ref={textEditorRef}
                   contentEditable
@@ -872,6 +902,38 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
                   className={`inline-block outline-none ${ov.live ? "story-live-text" : ""}`}
                 >{ov.value}</span>
+                {/* Fine nudges: 1% of the stage per tap, so text can be centred
+                    exactly without fighting a 360px-wide drag. */}
+                <span className="mt-1 flex touch-none items-center gap-0.5 rounded-full border border-white/20 bg-black/70 p-0.5">
+                  {([["left", ChevronLeft, -0.02, 0], ["up", ChevronUp, 0, -0.02], ["down", ChevronDown, 0, 0.02], ["right", ChevronRight, 0.02, 0]] as const).map(
+                    ([dir, Icon, dx, dy]) => (
+                      <button
+                        key={dir}
+                        type="button"
+                        aria-label={`Move text ${dir}`}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOverlays((cur) =>
+                            cur.map((it) =>
+                              it.id === ov.id
+                                ? {
+                                    ...it,
+                                    x: Math.max(0, Math.min(1, it.x + dx)),
+                                    y: Math.max(0, Math.min(1, it.y + dy)),
+                                  }
+                                : it,
+                            ),
+                          );
+                        }}
+                        className="grid h-7 w-7 place-items-center rounded-full text-white transition-colors hover:bg-white/15"
+                      >
+                        <Icon className="h-4 w-4" />
+                      </button>
+                    ),
+                  )}
+                </span>
+                </span>
               ) : ov.kind === "text" && ov.live ? (
                 <span className="story-live-text">{ov.value}</span>
               ) : ov.value}

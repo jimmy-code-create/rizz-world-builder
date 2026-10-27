@@ -36,6 +36,9 @@ import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-not
 import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
+import { MessageRow } from "@/components/chat/MessageRow";
+import { SharedPostCards } from "@/components/chat/SharedPostCards";
+import { withoutShareLinks } from "@/lib/share-links";
 import { extractInviteCode } from "@/lib/groups";
 import { GroupInviteMessageCard } from "@/components/chat/GroupInviteMessageCard";
 import { GifPicker } from "@/components/GifPicker";
@@ -915,15 +918,15 @@ function DMPage() {
       <div
         ref={scrollRef}
         onClick={media.onMediaClick}
-        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-3"
+        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pb-3"
       >
         {media.viewer}
         {/* The conversation column is capped and centred so the messages line
-            up with the composer instead of hugging the far left of a wide
-            screen (and the far right of it for outgoing messages). */}
-        <div className="mx-auto w-full max-w-3xl space-y-2">
+            up with the composer. Rows carry their own side padding (the same
+            variable realm chat uses) so all three surfaces align identically. */}
+        <div className="mx-auto w-full max-w-3xl">
         {hasOlderMessages && (
-          <div className="flex justify-center pb-2">
+          <div className="flex justify-center px-4 pb-2">
             <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
               {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
             </Button>
@@ -936,9 +939,11 @@ function DMPage() {
             const audioPath = (m as any).audio_url as string | null;
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
-            const hasText = !!(rest && rest.trim());
-            // A GIF/sticker-only message is media: no lime bubble, no padding.
-            const mediaOnly = isOnlyMediaMarker(rest);
+            // A shared post/reel travels as its permalink: the raw URL is swapped
+            // for a real card (SharedPostCards) right under the message.
+            const restText = withoutShareLinks(rest);
+            const hasText = !!restText.trim();
+            const mediaOnly = isOnlyMediaMarker(restText);
             const previous = filteredMsgs[index - 1];
             const startsGroup = !previous ||
               previous.sender_id !== m.sender_id ||
@@ -1002,23 +1007,33 @@ function DMPage() {
             }
             const deletedAt = (m as CachedDirectMessage).deleted_at;
             return (
-              <div key={m.id} className="space-y-1">
-              {startsGroup && !deliveryStatus && (
-                <div className="flex w-full justify-center py-0.5">
-                  <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                </div>
-              )}
-              <motion.div
-                id={`msg-${m.id}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`group flex min-w-0 flex-col rounded-2xl transition-shadow duration-500 ${
-                  openMsg === m.id ? "relative z-[41]" : ""
-                } ${
-                  highlighted === m.id ? "ring-2 ring-primary shadow-md" : ""
-                } ${mine ? "items-end" : "items-start"}`}
+              <MessageRow
+                id={String(m.id)}
+                author={{
+                  id: m.sender_id,
+                  name: mine
+                    ? profile?.display_name || profile?.username || "You"
+                    : other.data?.display_name || other.data?.username || "User",
+                  avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
+                }}
+                time={new Date(m.created_at).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                startsGroup={startsGroup}
+                lifted={openMsg === m.id}
+                highlighted={highlighted === m.id}
+                onAuthorClick={
+                  (mine ? profile?.username : other.data?.username)
+                    ? () =>
+                        void nav({
+                          to: "/u/$username",
+                          params: {
+                            username: (mine ? profile?.username : other.data?.username) as string,
+                          },
+                        })
+                    : undefined
+                }
               >
                 {inviteCode && !deletedAt ? (
                   <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
@@ -1100,22 +1115,8 @@ function DMPage() {
                   ]}
                 >
                   <div
-                    className={`chat-bubble message-bubble rounded-2xl text-left select-none touch-manipulation ${
-                      hasText && !mediaOnly && !m.attachment_url ? "px-4 py-2" : ""
-                    } ${
+                    className={`realm-message__body select-none touch-manipulation ${
                       deliveryStatus ? "opacity-60" : ""
-                    } ${
-                      // A photo always owns the frame: never paint the green outgoing
-                      // bubble (or its border) behind someone's picture.
-                      deletedAt
-                        ? "message-bubble--unsent"
-                        : m.attachment_url || mediaOnly
-                          ? "message-bubble--media"
-                          : hasText
-                            ? mine
-                              ? "message-bubble--outgoing"
-                              : "message-bubble--incoming"
-                            : "message-bubble--media"
                     }`}
                     style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                   >
@@ -1124,7 +1125,7 @@ function DMPage() {
                         role="button"
                         tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
-                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start text-[11px] opacity-80 border-l-2 border-current/40 pl-2 line-clamp-2"
+                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-white/25 pl-2 text-[11px] text-muted-foreground line-clamp-2"
                       >
                         <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                       </span>
@@ -1136,9 +1137,13 @@ function DMPage() {
                         className={hasText ? "mb-1" : ""}
                       />
                     )}
-                    {deletedAt ? "This message was unsent" : !hasText ? null : (
-                      <div className={m.attachment_url ? "chat-media-caption" : "contents"}>
-                        {renderGifSegments(rest).map((seg, si) =>
+                    {deletedAt ? (
+                      <span className="text-[13px] italic text-muted-foreground">
+                        This message was unsent
+                      </span>
+                    ) : !hasText ? null : (
+                      <div className={m.attachment_url || mediaOnly ? "chat-media-caption" : ""}>
+                        {renderGifSegments(restText).map((seg, si) =>
                           seg.isGif || seg.isSticker
                             ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                             : (
@@ -1150,11 +1155,10 @@ function DMPage() {
                                     p.mentionToken
                                       ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
                                       : p.mention
-                                        ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
-                                        : p.tag
-                                          ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                        ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>                                          : p.tag
+                                          ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className="font-medium text-primary hover:underline">{p.text}</Link>
                                           : p.url
-                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-primary hover:underline break-words"}>{p.text}</a>
+                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="break-words text-primary hover:underline">{p.text}</a>
                                             : <span key={`${si}-${pi}`}>{p.text}</span>
                                   )
                                 }
@@ -1182,33 +1186,36 @@ function DMPage() {
                   messageId={m.id}
                   groups={reactions.groupsFor(m.id)}
                   reactorsFor={reactions.reactorsFor}
-                  align={mine ? "right" : "left"}
+                  align="left"
                   hidden={!!deletedAt || String(m.id).startsWith("pending-")}
                   pulse={reactions.lastPulse}
                   onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                 />
+                <SharedPostCards text={deletedAt ? null : m.body} />
                 <MessageLinkPreviews
-                  text={deletedAt ? null : m.body}
+                  // Internal permalinks are cards now; previews stay for the
+                  // outside web, so the same URL never renders twice.
+                  text={deletedAt ? null : restText}
                   messageId={m.id}
                   scope="dm"
                   canHide={mine}
                   removed={removedPreviews.hidden.has(m.id)}
                 />
-              </motion.div>
-              </div>
+              </MessageRow>
             );
           })}
         </AnimatePresence>
         <div ref={endRef} />
         {peerTyping && (
-          <div className="flex items-end gap-1 justify-start">
-            <div className="glass border border-white/10 px-3 py-2 rounded-2xl">
-              <span className="inline-flex gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:120ms]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:240ms]" />
-              </span>
-            </div>
+          // Typing is a quiet line, not a bubble: it sits in the message flow at
+          // the same left edge as the rows above it.
+          <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
+            <span className="inline-flex gap-1">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+            </span>
+            {other.data?.display_name || other.data?.username || "They"} is typing…
           </div>
         )}
         </div>

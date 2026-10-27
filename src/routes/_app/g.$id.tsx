@@ -38,7 +38,9 @@ import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
-import { nameColorFor } from "@/lib/chat-appearance";
+import { MessageRow } from "@/components/chat/MessageRow";
+import { SharedPostCards } from "@/components/chat/SharedPostCards";
+import { withoutShareLinks } from "@/lib/share-links";
 
 const GROUP_MESSAGE_LIMIT = 10_000;
 
@@ -457,16 +459,16 @@ function GroupRoom() {
         <div
           ref={messagesListRef}
           onClick={media.onMediaClick}
-          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain py-4"
           style={wallpaperStyle(wallpaper)}
         >
           {media.viewer}
           {/* The conversation column is capped and centred so the messages line
-              up with the composer instead of hugging the far left of a wide
-              screen (and the far right of it for outgoing messages). */}
-          <div className="mx-auto w-full max-w-3xl space-y-2">
+              up with the composer. Rows carry their own side padding (the same
+              variable realm chat uses) so all three surfaces align identically. */}
+          <div className="mx-auto w-full max-w-3xl">
           {hasOlderMessages && (
-            <div className="flex justify-center pb-2">
+            <div className="flex justify-center px-4 pb-2">
               <Button onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
                 {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
               </Button>
@@ -475,35 +477,48 @@ function GroupRoom() {
         <AnimatePresence initial={false}>
           {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
-            const deletedAt = m.deleted_at as string | null | undefined;              const hasText = !!(m.body && m.body.trim());
-              // A GIF/sticker-only message is media, not a text bubble.
-              const mediaOnly = isOnlyMediaMarker(m.body);
+            const deletedAt = m.deleted_at as string | null | undefined;
+            // A shared post/reel travels as its permalink; the raw URL becomes a
+            // card (SharedPostCards) so it renders the same in every chat.
+            const bodyText = withoutShareLinks(m.body);
+            const hasText = !!bodyText.trim();
+            const mediaOnly = isOnlyMediaMarker(bodyText);
             const previous = visibleMessages[index - 1];
             const startsGroup = !previous ||
               previous.author_id !== m.author_id ||
               new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
+            // Discord-style mention highlight: a message that names me (or the
+            // whole group) gets the lime wash and the lime rail down its left edge.
+            const myUsername = profile?.username ?? null;
+            const mentionsMe = Boolean(
+              user &&
+              m.author_id !== user.id &&
+              ((myUsername && new RegExp(`@${myUsername}\\b`, "i").test(m.body || "")) ||
+                /@(everyone|here)\\b/i.test(m.body || "")),
+            );
             return (
               <Fragment key={m.id}>
-              {startsGroup && !m.delivery_status && (
-                <div className="py-1 text-center text-[10px] font-medium text-muted-foreground">
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                </div>
-              )}
-              <motion.div id={`msg-${m.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}                    className={`flex items-end gap-2 rounded-2xl transition-shadow ${
-                      highlightedMessage === m.id ? "ring-2 ring-primary" : ""
-                    } ${mine ? "justify-end" : "justify-start"}`}>
-                {!mine && (startsGroup ? (
-                  <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={m.author?.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">{(m.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                ) : <div aria-hidden="true" className="h-7 w-7 shrink-0" />)}
-                <div className={`w-fit max-w-[88%] min-w-0 ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                  {!mine && startsGroup && (
-                    <span
-                      className="mb-0.5 ml-3 max-w-full truncate text-[11px]"
-                      style={{ color: nameColorFor(m.author_id, m.author?.accent_color ?? null) }}
-                    >
-                      @{m.author?.username}
-                    </span>
-                  )}
+              <MessageRow
+                id={String(m.id)}
+                author={{
+                  id: m.author_id,
+                  name: m.author?.display_name || m.author?.username || "Member",
+                  avatarUrl: m.author?.avatar_url ?? null,
+                  accentColor: m.author?.accent_color ?? null,
+                }}
+                time={new Date(m.created_at).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                startsGroup={startsGroup}
+                highlighted={highlightedMessage === m.id}
+                mentionsMe={mentionsMe}
+                onAuthorClick={
+                  m.author?.username
+                    ? () => void nav({ to: "/u/$username", params: { username: m.author.username } })
+                    : undefined
+                }
+              >
                   <MessageActionMenu
                     open={openMessageId === m.id}
                     onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
@@ -558,29 +573,25 @@ function GroupRoom() {
                         : []),
                     ]}
                   >
-                    <div className={`chat-bubble message-bubble rounded-2xl select-none touch-manipulation ${
-                      hasText && !mediaOnly ? "px-4 py-2" : ""
-                    } ${m.delivery_status ? "opacity-55" : ""} ${
-                      deletedAt
-                        ? "message-bubble--unsent"
-                        : mediaOnly
-                          ? "message-bubble--media"
-                          : hasText
-                            ? mine
-                              ? "message-bubble--outgoing"
-                              : "message-bubble--incoming"
-                            : "message-bubble--media"
-                    }`}>
+                    <div
+                      className={`realm-message__body select-none touch-manipulation ${
+                        m.delivery_status ? "opacity-55" : ""
+                      }`}
+                    >
                       {m.attachment_url && !deletedAt && (
                         <ChatMessageMedia
                           src={m.attachment_url}
                           alt="Image shared in chat"
-                          className={hasText ? "mb-2" : ""}
+                          className={hasText ? "mb-1" : ""}
                         />
                       )}
-                      {deletedAt ? "This message was unsent" : !hasText ? null : (
+                      {deletedAt ? (
+                        <span className="text-[13px] italic text-muted-foreground">
+                          This message was unsent
+                        </span>
+                      ) : !hasText ? null : (
                         <>
-                          {renderGifSegments(m.body).map((seg, si) =>
+                          {renderGifSegments(bodyText).map((seg, si) =>
                             seg.isGif || seg.isSticker
                               ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                               : (
@@ -592,11 +603,11 @@ function GroupRoom() {
                                       p.mentionToken
                                         ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
                                         : p.mention
-                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>
+                                          ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} className="mention-highlight font-medium">{p.text}</Link>
                                           : p.tag
-                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
+                                            ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="font-medium text-primary hover:underline">{p.text}</Link>
                                             : p.url
-                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-primary hover:underline break-words"}>{p.text}</a>
+                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="break-words text-primary hover:underline">{p.text}</a>
                                               : <span key={`${si}-${pi}`}>{p.text}</span>
                                     )
                                   }
@@ -612,13 +623,16 @@ function GroupRoom() {
                     messageId={m.id}
                     groups={reactions.groupsFor(m.id)}
                     reactorsFor={reactions.reactorsFor}
-                    align={mine ? "right" : "left"}
+                    align="left"
                     hidden={!!deletedAt || String(m.id).startsWith("pending-")}
                     pulse={reactions.lastPulse}
                     onToggle={(emoji) => reactions.toggle(m.id, emoji)}
                   />
+                  <SharedPostCards text={deletedAt ? null : m.body} />
                   <MessageLinkPreviews
-                    text={deletedAt ? null : m.body}
+                    // Internal permalinks are cards now; previews stay for the
+                    // outside web, so the same URL never renders twice.
+                    text={deletedAt ? null : bodyText}
                     messageId={m.id}
                     scope="group"
                     canHide={mine}
@@ -629,18 +643,17 @@ function GroupRoom() {
                       <button
                         onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url })}
                         disabled={sendMessage.isPending}
-                        className="text-[10px] text-amber-200/80 mt-0.5 px-2 hover:text-amber-100"
+                        className="mt-0.5 text-[10px] text-amber-200/80 hover:text-amber-100"
                       >
                         Not sent · tap to retry
                       </button>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground mt-0.5 px-2">Sending…</span>
+                      <span className="mt-0.5 text-[10px] text-muted-foreground">Sending…</span>
                     )
                   ) : (
                     null
                   )}
-                </div>
-              </motion.div>
+              </MessageRow>
               </Fragment>
             );
           })}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus, Settings } from "lucide-react";
+import { Hash, Megaphone, Mic, Users, Plus, Loader2, Globe, Lock, KeyRound, ImagePlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/lib/toast";
 
@@ -297,8 +297,8 @@ function RealmsPage() {
                 key={realm.id}
                 className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]"
               >
-                {/* The whole card opens the realm; the settings shortcut is a
-                    sibling above that overlay, so it stays its own control. */}
+                {/* The whole card opens the realm. Settings live inside the
+                    realm itself (header gear), never on this list. */}
                 <Link
                   to="/r/$slug"
                   params={{ slug: realm.slug }}
@@ -321,15 +321,6 @@ function RealmsPage() {
                 <div className="pointer-events-none relative z-10 mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <Users className="h-3.5 w-3.5" />
                   <span>{realm.member_count} members</span>
-                  <Link
-                    to="/r/$slug/settings"
-                    params={{ slug: realm.slug }}
-                    aria-label={`Settings for ${realm.name}`}
-                    className="pointer-events-auto ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-foreground/80 transition-colors hover:border-white/20 hover:text-foreground"
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                    Settings
-                  </Link>
                 </div>
               </div>
             );

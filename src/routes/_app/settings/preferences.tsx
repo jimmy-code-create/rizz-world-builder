@@ -65,9 +65,14 @@ function PreferencesSettingsPage() {
             <p className="mt-0.5 text-xs text-muted-foreground">{t("pref_mention_color_desc")}</p>
           </div>
           <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+            {/* The preview uses the exact chip recipe the chats use, so what you
+                pick here is what you get in DMs, groups and realms. */}
             <span
-              className="rounded-md px-2 py-1 text-sm font-semibold"
-              style={{ color: prefs.mentionColor, backgroundColor: `color-mix(in srgb, ${prefs.mentionColor} 18%, transparent)` }}
+              className="rounded px-1.5 py-0.5 text-sm font-medium"
+              style={{
+                color: `color-mix(in srgb, ${prefs.mentionColor} 24%, #ffffff)`,
+                backgroundColor: `color-mix(in srgb, ${prefs.mentionColor} 72%, #0b0b0c)`,
+              }}
             >
               @mention
             </span>
@@ -80,6 +85,40 @@ function PreferencesSettingsPage() {
               className="h-8 w-9 cursor-pointer rounded-md border-0 bg-transparent p-0"
             />
           </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Presets</span>
+          {[
+            { label: "Discord", value: "#5865f2" },
+            { label: "Rizz lime", value: "#c8ff3d" },
+            { label: "Rose", value: "#ff5d8f" },
+            { label: "Sky", value: "#38bdf8" },
+            { label: "Amber", value: "#f5a524" },
+            { label: "Cream", value: "#f4f1e7" },
+          ].map((preset) => {
+            const active = prefs.mentionColor.toLowerCase() === preset.value;
+            return (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => updatePref("mentionColor", preset.value)}
+                aria-pressed={active}
+                className={`flex min-h-9 items-center gap-2 rounded-lg border px-2 text-xs font-medium transition-colors ${
+                  active
+                    ? "border-primary/60 bg-primary/10 text-foreground"
+                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 rounded-full border border-white/20"
+                  style={{ background: preset.value }}
+                />
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
 
         <div>

@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Bot as BotIcon, ChevronDown, Crown, Flag,
-  Gauge, Hash, Heart, ListOrdered, Lock, Megaphone, MessageSquareWarning, MessagesSquare, Plus,
+  Gauge, Hash, Heart, ListOrdered, Lock, LogOut, Megaphone, MessageSquareWarning, MessagesSquare, Plus,
   ScrollText, Search, Shield, ShieldCheck, SmilePlus, Sparkles, Trash2, UserCog, UserMinus, UserX,
   Volume2, X,
 } from "lucide-react";
@@ -21,8 +21,8 @@ import { RealmBotsSheet } from "@/components/bots/RealmBotsSheet";
 import { ChannelPermissionsPanel } from "@/components/realms/ChannelPermissionsSheet";
 import {
   banRealmMember, createRealmInvite, createRealmRoom, deleteRealm, deleteRealmRoom,
-  fetchRealmBySlug, fetchRealmRooms, kickRealmMember, listRealmMembers, setRealmMemberRole,
-  unbanRealmMember, type RealmRoom, type RealmRoomKind,
+  fetchRealmBySlug, fetchRealmRooms, kickRealmMember, leaveRealmSecure, listRealmMembers,
+  setRealmMemberRole, unbanRealmMember, type RealmRoom, type RealmRoomKind,
 } from "@/lib/realms";
 import type { ReactionsMode } from "@/lib/realm-permissions";
 import {
@@ -78,7 +78,11 @@ const SECTIONS = [
   { key: "bots", label: "Bots & integrations", icon: BotIcon },
   { key: "audit", label: "Audit log", icon: ScrollText },
   { key: "danger", label: "Danger zone", icon: AlertTriangle },
+  { key: "leave", label: "Leave realm", icon: LogOut },
 ] as const;
+
+/** The sections an ordinary member is allowed to see. Owner and mod get the lot. */
+const MEMBER_SECTIONS: ReadonlyArray<SectionKey> = ["overview", "leave"];
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
 
@@ -99,6 +103,19 @@ function RealmSettingsPage() {
   const realmId = realm.data?.id ?? null;
   const settings = useRealmSettings(realmId);
   const can = (permission: RealmPermission) => realmCan(settings.data, permission);
+  // A plain member has nothing to configure here, so channels, roles, mod tools
+  // and bots are not even listed — the page shows the realm's info and the way
+  // out. Hooks stay above the early returns below.
+  const myRole = settings.data?.my_role ?? null;
+  const isStaff = myRole === "owner" || myRole === "mod";
+  const visibleSections = useMemo(
+    () => (isStaff ? SECTIONS : SECTIONS.filter((entry) => MEMBER_SECTIONS.includes(entry.key))),
+    [isStaff],
+  );
+  useEffect(() => {
+    if (!settings.data) return;
+    if (!visibleSections.some((entry) => entry.key === section)) setSection("overview");
+  }, [settings.data, visibleSections, section]);
 
   if (realm.isLoading) return <div className="mx-auto mt-6 h-64 w-full max-w-5xl animate-pulse rounded-3xl glass" />;
   if (!realm.data) {
@@ -113,7 +130,6 @@ function RealmSettingsPage() {
   }
 
   const payload = settings.data;
-  const myRole = payload?.my_role ?? null;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 sm:px-6">
@@ -147,7 +163,7 @@ function RealmSettingsPage() {
           className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:mb-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:px-0 lg:pb-0"
         >
           <div className="flex gap-2 lg:sticky lg:top-4 lg:flex-col">
-            {SECTIONS.map((entry) => {
+            {visibleSections.map((entry) => {
               const Icon = entry.icon;
               const active = section === entry.key;
               const badge =
@@ -225,6 +241,16 @@ function RealmSettingsPage() {
             <BotsSection realmId={payload.realm.id} realmName={payload.realm.name} installed={payload.counts.installed_bots} />
           ) : section === "audit" ? (
             <AuditSection realmId={payload.realm.id} canView={can("view_audit")} />
+          ) : section === "leave" ? (
+            <LeaveRealmSection
+              realmId={payload.realm.id}
+              realmName={payload.realm.name}
+              isOwner={payload.realm.owner_id === user?.id}
+              onLeft={() => {
+                void qc.invalidateQueries({ queryKey: ["realms"] });
+                void nav({ to: "/realms" });
+              }}
+            />
           ) : (
             <DangerSection
               realmId={payload.realm.id}
@@ -239,6 +265,74 @@ function RealmSettingsPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- leave realm
+
+/**
+ * The one action an ordinary member has in realm settings. Owners are told to
+ * delete or hand the realm over instead — leaving your own realm is how realms
+ * end up orphaned.
+ */
+function LeaveRealmSection({
+  realmId,
+  realmName,
+  isOwner,
+  onLeft,
+}: {
+  realmId: string;
+  realmName: string;
+  isOwner: boolean;
+  onLeft: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Panel
+      title="Leave realm"
+      description={`You will stop seeing ${realmName}'s channels and voice rooms until you join again.`}
+    >
+      {isOwner ? (
+        <p className="text-sm text-muted-foreground">
+          You own this realm. Hand ownership over to someone you trust in Members, or
+          delete the realm from the Danger zone.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Your messages stay where they are. Someone can invite you back at any time.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(true)}
+            className="mt-3 gap-2 border-destructive/40 text-destructive hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" /> Leave {realmName}
+          </Button>
+        </>
+      )}
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Leave ${realmName}?`}
+        description="You can rejoin with an invite or from Explore."
+        confirmLabel="Leave realm"
+        tone="danger"
+        onConfirm={async () => {
+          try {
+            await leaveRealmSecure(realmId);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Couldn't leave this realm");
+            throw error;
+          }
+          toast.success(`Left ${realmName}`);
+          onLeft();
+        }}
+      />
+    </Panel>
   );
 }
 
