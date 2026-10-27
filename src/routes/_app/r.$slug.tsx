@@ -93,6 +93,7 @@ import {
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
+import { hapticSend } from "@/lib/haptics";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
@@ -634,6 +635,8 @@ function RealmPage() {
       toast.error("A moderator turned off writing here for you");
       return;
     }
+
+    hapticSend();
 
     // "/name args" that matches an installed command runs the bot. Any other
     // text that happens to start with "/" is still just a message.
@@ -1270,7 +1273,7 @@ function RealmPage() {
                         href={part.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="break-all text-sky-400 hover:underline"
+                        className="break-words text-primary hover:underline"
                       >
                         {part.text}
                       </a>
@@ -1637,7 +1640,7 @@ function RealmPage() {
                 onClick={() => openCallView()}
                 className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
               >
-                <Mic className="h-4 w-4" /> Open Voice Call
+                <Mic className="h-4 w-4" /> Open voice call
               </Button>
             ) : (
               <Button
@@ -1648,16 +1651,16 @@ function RealmPage() {
                 }
                 className="h-11 px-5 gap-2 bg-primary text-primary-foreground font-semibold shadow-md hover:brightness-110"
               >
-                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join Voice Channel"}
+                <Mic className="h-4 w-4" /> {joiningVoice ? "Connecting…" : "Join voice"}
               </Button>
             )}
             <Button
               size="lg"
               variant="outline"
               onClick={() => setShowVoiceChat(true)}
-              className="h-11 px-4 gap-2 glass border-white/10 hover:bg-white/10 text-xs"
+              className="h-11 px-4 gap-2 glass border-white/10 hover:bg-white/10"
             >
-              <MessageSquare className="h-4 w-4" /> Open VC Text Chat
+              <MessageSquare className="h-4 w-4" /> Open text chat
             </Button>
           </div>
         </div>
@@ -2164,7 +2167,7 @@ function RealmPage() {
                                             href={p.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-sky-400 hover:underline break-words"
+                                            className="text-primary hover:underline break-words"
                                           >
                                             {p.text}
                                           </a>
@@ -2500,7 +2503,6 @@ function RealmPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

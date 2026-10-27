@@ -215,20 +215,13 @@ function ReactionChip({
       }}
       // The visible chip is 24px; the invisible ::after makes the tap area 44px
       // without adding any layout height.
-      className={`relative flex h-6 shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      className={`relative flex h-7 shrink-0 select-none items-center gap-1.5 rounded-full border px-2.5 leading-none after:absolute after:inset-x-0 after:-inset-y-[9px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         mine
-          ? "border-primary/60 bg-primary/20 text-foreground"
-          : "border-white/12 bg-[#0c0812]/70 text-foreground/90"
-      }`}
-      style={{
-        boxShadow: glowing
-          ? "0 0 0 2px var(--brand-signal), 0 2px 12px -2px var(--brand-signal)"
-          : mine
-            ? "0 2px 10px -4px var(--brand-signal)"
-            : "0 2px 8px -4px rgba(0,0,0,0.6)",
-      }}
+          ? "border-primary/60 bg-primary/15 text-primary"
+          : "border-white/15 bg-white/[0.07] text-foreground/90 hover:bg-white/[0.12]"
+      } ${glowing ? "ring-2 ring-primary/50" : ""}`}
     >
-      <span className="text-[13px]" aria-hidden="true">
+      <span className="text-[15px]" aria-hidden="true">
         {(() => {
           const cat = catNameForShortcode(emoji);
           return cat ? <CatEmoji name={cat} size={16} animate={pulse?.emoji === emoji ? "once" : false} /> : emoji;
@@ -239,7 +232,7 @@ function ReactionChip({
         initial={{ y: 6, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 26 }}
-        className="text-[11px] font-semibold tabular-nums"
+        className="text-xs font-semibold tabular-nums"
       >
         {count}
       </motion.span>
@@ -429,7 +422,7 @@ export function ReactionChips({
               transition={{ type: "spring", stiffness: 620, damping: 20 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
-              className="relative flex h-6 shrink-0 select-none items-center rounded-full border border-white/12 bg-[#0c0812]/70 px-2 text-[11px] font-semibold leading-none text-foreground/90 backdrop-blur-sm after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative flex h-7 shrink-0 select-none items-center rounded-full border border-white/15 bg-white/[0.07] px-2.5 text-xs font-semibold leading-none text-foreground/90 after:absolute after:inset-x-0 after:-inset-y-[9px] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               style={{ boxShadow: "0 2px 8px -4px rgba(0,0,0,0.6)" }}
             >
               +{overflow}

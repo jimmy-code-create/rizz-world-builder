@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Gamepad2, Music, MonitorPlay, Mic, MicOff, PhoneOff, Radio, RefreshCw, ScreenShare, ScreenShareOff, SwitchCamera, Video, VideoOff, Volume2, VolumeX, Wifi, Sliders, MessageSquare, X, Send, Headphones } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { useAuth } from "@/lib/auth";
-import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { useVoiceCallContext, useVoiceSpeaking } from "@/components/voice/VoiceCallProvider";
 import { useMusicBotInCall } from "@/components/voice/MusicBotInCall";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -171,7 +171,6 @@ export function VoiceCallView() {
     viewOpen,
     closeView,
     participants,
-    speakingIds,
     remoteStreams,
     localCameraStream,
     localScreenStream,
@@ -198,6 +197,27 @@ export function VoiceCallView() {
     leaveCall,
     retry,
   } = useVoiceCallContext();
+
+  // Sharing is a Set so the per-tile check stays O(1). Speaking levels are
+  // read inside <SpeakingTiles> only, so an audio tick never re-renders the
+  // sheet, the panels, the stage or the control bar.
+  const sharingSet = useMemo(() => new Set(sharingIds), [sharingIds]);
+  const videosByPeer = useMemo(
+    () =>
+      new Map(
+        remoteStreams.map(({ peerId, stream }) => [
+          peerId,
+          stream.getVideoTracks().some((track) => track.readyState === "live") ? stream : null,
+        ]),
+      ),
+    [remoteStreams],
+  );
+  // The stage shows one shared screen: mine while I am sharing, otherwise the
+  // first peer whose roster flag says they are sharing.
+  const sharingParticipants = useMemo(
+    () => participants.filter((participant) => sharingSet.has(participant.user_id)),
+    [participants, sharingSet],
+  );
 
   // MUSIC BOT joins the call as a participant (see MusicBotInCall for the audio).
   const musicBot = useMusicBotInCall();
@@ -330,13 +350,6 @@ export function VoiceCallView() {
 
   if (!call) return null;
 
-  const videosByPeer = new Map(
-    remoteStreams.map(({ peerId, stream }) => [peerId, stream.getVideoTracks().some((track) => track.readyState === "live") ? stream : null]),
-  );
-
-  // The stage shows one shared screen: mine while I am sharing, otherwise the
-  // first peer whose roster flag says they are sharing.
-  const sharingParticipants = participants.filter((participant) => sharingIds.includes(participant.user_id));
   // A track that exists but is muted is the always-negotiated screen
   // transceiver with nobody sharing on it — never a picture.
   const remoteShares = remoteScreenStreams.filter(({ stream }) =>
@@ -543,9 +556,11 @@ export function VoiceCallView() {
           )}
 
           <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {participants.map((participant) => {
+            <SpeakingTiles>
+              {(speakingSet) =>
+                participants.map((participant) => {
               const isMe = participant.user_id === user?.id;
-              const speaking = speakingIds.includes(participant.user_id) && !participant.muted;
+              const speaking = speakingSet.has(participant.user_id) && !participant.muted;
               const videoStream = isMe
                 ? cameraOn && cameraReady
                   ? localCameraStream
@@ -572,9 +587,9 @@ export function VoiceCallView() {
               return (
                 <div
                   key={participant.user_id}
-                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-all duration-200 ${
+                  className={`relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border p-3 transition-colors duration-200 ${
                     speaking
-                      ? "border-primary bg-primary/10 shadow-[0_0_0_2px_hsl(var(--primary)),0_0_24px_rgba(200,255,61,0.35)]"
+                      ? "border-primary/70 bg-primary/[0.07] ring-1 ring-primary/45"
                       : "border-white/10 glass"
                   }`}
                 >
@@ -584,10 +599,8 @@ export function VoiceCallView() {
                     <>
                       <div className="relative">
                         <Avatar
-                          className={`h-16 w-16 transition-all duration-200 ${
-                            speaking
-                              ? "ring-4 ring-primary ring-offset-2 ring-offset-[#0b0714] shadow-[0_0_18px_rgba(200,255,61,0.65)]"
-                              : ""
+                          className={`h-16 w-16 transition-colors duration-200 ${
+                            speaking ? "ring-2 ring-primary ring-offset-2 ring-offset-[#0b0714]" : ""
                           }`}
                         >
                           <AvatarImage src={participant.user?.avatar_url ?? undefined} />
@@ -602,12 +615,7 @@ export function VoiceCallView() {
                             size={16}
                           />
                         </span>
-                        {speaking && (
-                          <span
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -inset-1 rounded-full animate-ping bg-primary/30"
-                          />
-                        )}
+
                       </div>
                       <p className="max-w-full truncate text-xs font-semibold">
                         @{username}
@@ -691,7 +699,7 @@ export function VoiceCallView() {
                   {!videoStream && speaking && (
                     <span className="absolute left-2 top-2 text-[10px] font-bold uppercase tracking-wider text-primary">Speaking</span>
                   )}
-                  {sharingIds.includes(participant.user_id) && (
+                  {sharingSet.has(participant.user_id) && (
                     <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-primary/40 bg-background/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                       <MonitorPlay className="h-3 w-3" />
                       {gameBot.sessionsById[participant.user_id] ? "Game live" : "Sharing"}
@@ -700,7 +708,8 @@ export function VoiceCallView() {
                   {!isMe && <PeerVolumeControl userId={participant.user_id} username={username} />}
                 </div>
               );
-            })}
+                })}
+            </SpeakingTiles>
 
             {musicBot.enabled && (
               <button
@@ -1089,4 +1098,15 @@ export function VoiceCallView() {
       </div>
     </FullScreenLayer>
   );
+}
+
+/**
+ * The only subscriber to speaking levels: an audio tick re-renders just the
+ * participant tiles, never the sheets, the activity panel, the stage or the
+ * control bar underneath them.
+ */
+function SpeakingTiles({ children }: { children: (speaking: Set<string>) => ReactNode }) {
+  const speakingIds = useVoiceSpeaking();
+  const speaking = useMemo(() => new Set(speakingIds), [speakingIds]);
+  return <>{children(speaking)}</>;
 }

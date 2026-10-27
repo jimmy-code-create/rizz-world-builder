@@ -534,7 +534,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                       return <Link key={i} to="/u/$username" params={{ username: p.mention }} className="mention-highlight hover:underline font-medium">{p.text}</Link>;
                     }
                     if (p.url) {
-                      return <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline break-all">{p.text}</a>;
+                      return <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-words">{p.text}</a>;
                     }
                     return <span key={i}>{p.text}</span>;
                   })}

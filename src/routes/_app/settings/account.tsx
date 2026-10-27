@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PREFS_KEY } from "@/lib/prefs";
 import { deleteMyAccount } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 
 export const Route = createFileRoute("/_app/settings/account")({
@@ -22,6 +23,7 @@ function AccountSettingsPage() {
   const nav = useNavigate();
   const deleteAccount = useServerFn(deleteMyAccount);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   async function exportData() {
     if (!user) return;
@@ -49,8 +51,6 @@ function AccountSettingsPage() {
 
   async function permanentlyDeleteAccount() {
     if (!user || deletingAccount) return;
-    const confirmed = window.confirm("Delete your RIZZ account permanently? Your profile, posts, stories, messages, and media links will be removed. This cannot be undone.");
-    if (!confirmed) return;
     setDeletingAccount(true);
     try {
       await deleteAccount({ data: undefined });
@@ -59,6 +59,9 @@ function AccountSettingsPage() {
       nav({ to: "/" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete your account");
+      // Rethrow so the confirm dialog stays open for a retry instead of
+      // closing as if the account had been deleted.
+      throw error;
     } finally {
       setDeletingAccount(false);
     }
@@ -102,11 +105,21 @@ function AccountSettingsPage() {
         <Button
           variant="outline"
           disabled={deletingAccount}
+          aria-busy={deletingAccount}
           className="mt-2 w-full border-destructive/20 text-destructive/80 hover:bg-destructive/10"
-          onClick={() => void permanentlyDeleteAccount()}
+          onClick={() => setConfirmDeleteOpen(true)}
         >
           {deletingAccount ? t("deleting_account") : t("delete_account")}
         </Button>
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          onOpenChange={setConfirmDeleteOpen}
+          title="Delete your RIZZ account?"
+          description="Your profile, posts, stories, messages and media links are removed permanently. This cannot be undone."
+          confirmLabel="Delete account"
+          tone="danger"
+          onConfirm={permanentlyDeleteAccount}
+        />
       </SettingsCard>
     </SettingsSubPage>
   );

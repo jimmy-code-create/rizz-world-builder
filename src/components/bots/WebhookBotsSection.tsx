@@ -16,6 +16,7 @@ import {
   webhookUrlFor,
 } from "@/lib/webhook-bots";
 import { EmbedBuilder } from "@/components/bots/EmbedBuilder";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
  * Realm → Bots → Webhook bots (owners/admins).
@@ -42,6 +43,11 @@ export function WebhookBotsSection({
   const [busy, setBusy] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [builderFor, setBuilderFor] = useState<string | null>(null);
+  // Regenerate/revoke are destructive, so they ask first — in the app's own
+  // sheet, never with the browser's window.confirm.
+  const [pendingAction, setPendingAction] = useState<
+    { kind: "regenerate" | "revoke"; botId: string; botName: string } | null
+  >(null);
 
   const list = useQuery({
     queryKey: webhookBotsKey(realmId),
@@ -68,7 +74,6 @@ export function WebhookBotsSection({
   };
 
   const regenerate = async (botId: string, botName: string) => {
-    if (!window.confirm(`New secret for ${botName}? The old webhook URL stops working.`)) return;
     setBusy(`regen:${botId}`);
     try {
       const secret = await regenerateWebhookSecret(botId);
@@ -82,7 +87,6 @@ export function WebhookBotsSection({
   };
 
   const revoke = async (botId: string, botName: string) => {
-    if (!window.confirm(`Revoke ${botName}? It stops posting immediately.`)) return;
     setBusy(`revoke:${botId}`);
     try {
       await revokeWebhookBot(botId);
@@ -229,7 +233,9 @@ export function WebhookBotsSection({
                 <Button
                   type="button" size="sm" variant="outline"
                   disabled={busy === `regen:${bot.id}`}
-                  onClick={() => void regenerate(bot.id, bot.name)}
+                  onClick={() =>
+                    setPendingAction({ kind: "regenerate", botId: bot.id, botName: bot.name })
+                  }
                   className="h-11 flex-1 gap-1.5"
                 >
                   <RotateCw className="h-3.5 w-3.5" /> Regenerate secret
@@ -237,7 +243,9 @@ export function WebhookBotsSection({
                 <Button
                   type="button" size="sm" variant="ghost"
                   disabled={busy === `revoke:${bot.id}`}
-                  onClick={() => void revoke(bot.id, bot.name)}
+                  onClick={() =>
+                    setPendingAction({ kind: "revoke", botId: bot.id, botName: bot.name })
+                  }
                   aria-label={`Revoke ${bot.name}`}
                   className="h-11 gap-1.5 text-rose-300 hover:text-rose-200"
                 >
@@ -272,6 +280,32 @@ export function WebhookBotsSection({
           <Check className="h-3.5 w-3.5 text-[#c8ff3d]" /> URLs stay visible until you leave this screen.
         </p>
       )}
+
+      <ConfirmDialog
+        open={!!pendingAction}
+        onOpenChange={(next) => {
+          if (!next) setPendingAction(null);
+        }}
+        title={
+          pendingAction?.kind === "revoke"
+            ? `Revoke ${pendingAction?.botName ?? "this bot"}?`
+            : `New secret for ${pendingAction?.botName ?? "this bot"}?`
+        }
+        description={
+          pendingAction?.kind === "revoke"
+            ? "It stops posting immediately and its webhook URL stops working."
+            : "The old webhook URL stops working straight away. Update your bot with the new one."
+        }
+        confirmLabel={pendingAction?.kind === "revoke" ? "Revoke" : "New secret"}
+        tone={pendingAction?.kind === "revoke" ? "danger" : "default"}
+        onConfirm={async () => {
+          if (!pendingAction) return;
+          const { kind, botId, botName } = pendingAction;
+          if (kind === "revoke") await revoke(botId, botName);
+          else await regenerate(botId, botName);
+          setPendingAction(null);
+        }}
+      />
     </section>
   );
 }

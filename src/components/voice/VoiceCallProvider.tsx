@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { hapticVoiceJoin, hapticVoiceLeave } from "@/lib/haptics";
 import {
   endRoom,
   ensureChannelVoiceCall,
@@ -66,7 +67,6 @@ type VoiceCallContextValue = {
   cameraOn: boolean;
   facing: "user" | "environment";
   participants: CallParticipantRow[];
-  speakingIds: string[];
   remoteStreams: { peerId: string; stream: MediaStream }[];
   localStream: MediaStream | null;
   localCameraStream: MediaStream | null;
@@ -106,6 +106,17 @@ export function useVoiceCallContext() {
   const value = useContext(VoiceCallContext);
   if (!value) throw new Error("useVoiceCallContext must be used inside VoiceCallProvider");
   return value;
+}
+
+/**
+ * Speaking levels change every ~180ms while anyone talks, so they live in their
+ * own context: the call bar, the audio elements and the bot cards stay still,
+ * and only the tiles that draw a speaking ring re-render.
+ */
+const VoiceSpeakingContext = createContext<string[]>([]);
+
+export function useVoiceSpeaking(): string[] {
+  return useContext(VoiceSpeakingContext);
 }
 
 /** Live calls for every voice channel of a realm, with who is in them. */
@@ -257,6 +268,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           isHost: room.host_id === user.id,
         });
         setViewOpen(true);
+        hapticVoiceJoin();
         await qc.invalidateQueries({ queryKey: ["voice-call-participants", room.id] });
         await qc.invalidateQueries({ queryKey: ["realm-channel-calls", channel.realmId] });
       } catch (error) {
@@ -277,6 +289,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     setDeafened(false);
     setCameraOn(false);
     setFacing("user");
+    hapticVoiceLeave();
     if (!current || !userIdRef.current) return;
     try {
       await leaveRoom(current.roomId, userIdRef.current);
@@ -363,7 +376,6 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       cameraOn,
       facing,
       participants,
-      speakingIds: engine.speakingIds,
       remoteStreams: engine.remoteStreams,
       localStream: engine.localStream,
       localCameraStream: engine.localCameraStream,
@@ -410,7 +422,6 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       facing,
       participants,
       sharingIds,
-      engine.speakingIds,
       engine.remoteStreams,
       engine.localStream,
       engine.localCameraStream,
@@ -438,6 +449,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
+    <VoiceSpeakingContext.Provider value={engine.speakingIds}>
     <VoiceCallContext.Provider value={value}>
       {children}
       {/* Audio keeps playing while the view is minimized. */}
@@ -465,5 +477,6 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
         </AlertDialogContent>
       </AlertDialog>
     </VoiceCallContext.Provider>
+    </VoiceSpeakingContext.Provider>
   );
 }

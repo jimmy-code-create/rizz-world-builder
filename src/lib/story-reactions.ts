@@ -164,18 +164,23 @@ async function notifyStoryCreator(
 /**
  * React hook for story reactions, with realtime live-updates.
  */
-export function useStoryReactions(storyId: string, userId?: string) {
+export function useStoryReactions(
+  storyId: string,
+  userId?: string,
+  options?: { enabled?: boolean },
+) {
   const qc = useQueryClient();
   const queryKey = ["story-reactions", storyId];
+  const enabled = (options?.enabled ?? true) && !!storyId;
 
   const query = useQuery({
     queryKey,
     queryFn: () => fetchStoryReactions(storyId),
-    enabled: !!storyId,
+    enabled,
   });
 
   useEffect(() => {
-    if (!storyId) return;
+    if (!enabled) return;
     const channel = supabase
       .channel(`story-reactions:${storyId}`)
       .on(
@@ -196,11 +201,30 @@ export function useStoryReactions(storyId: string, userId?: string) {
     };
     // queryKey is stable per storyId; qc is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyId]);
+  }, [storyId, enabled]);
 
+  // Optimistic both ways: the chip fills in on tap and rolls back if the
+  // write fails, so the reaction row never feels laggy on a slow connection.
   const addMutation = useMutation({
     mutationFn: (emoji: StoryReactionEmoji) => addStoryReaction(storyId, userId!, emoji),
-    onSuccess: () => {
+    onMutate: async (emoji) => {
+      if (!userId) return undefined;
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<StoryReaction[]>(queryKey) ?? [];
+      if (prev.some((row) => row.user_id === userId && row.emoji === emoji)) return prev;
+      const optimistic: StoryReaction = {
+        story_id: storyId,
+        user_id: userId,
+        emoji,
+        created_at: new Date().toISOString(),
+      };
+      qc.setQueryData<StoryReaction[]>(queryKey, [optimistic, ...prev]);
+      return prev;
+    },
+    onError: (_error, _emoji, prev) => {
+      if (prev) qc.setQueryData(queryKey, prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey });
     },
   });
@@ -208,7 +232,20 @@ export function useStoryReactions(storyId: string, userId?: string) {
   const removeMutation = useMutation({
     mutationFn: (emoji?: StoryReactionEmoji | string) =>
       removeStoryReaction(storyId, userId!, emoji),
-    onSuccess: () => {
+    onMutate: async (emoji) => {
+      if (!userId) return undefined;
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<StoryReaction[]>(queryKey) ?? [];
+      qc.setQueryData<StoryReaction[]>(
+        queryKey,
+        prev.filter((row) => !(row.user_id === userId && (!emoji || row.emoji === emoji))),
+      );
+      return prev;
+    },
+    onError: (_error, _emoji, prev) => {
+      if (prev) qc.setQueryData(queryKey, prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey });
     },
   });
@@ -230,6 +267,53 @@ export function useStoryReactions(storyId: string, userId?: string) {
     removeReaction: removeMutation.mutate,
     isAdding: addMutation.isPending || removeMutation.isPending,
   };
+}
+
+export type StoryReactor = {
+  user_id: string;
+  emoji: string;
+  created_at: string;
+  profile: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+/**
+ * Everyone who reacted to a story, with their profile.
+ *
+ * Only the story's author can read the other rows (see the
+ * `story_reactions_select` policy), so this is opened from the author's
+ * Story insights sheet; a viewer just gets their own rows back.
+ */
+export function useStoryReactors(storyId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["story-reactors", storyId],
+    enabled: enabled && !!storyId,
+    queryFn: async (): Promise<StoryReactor[]> => {
+      const { data, error } = await supabase
+        .from("story_reactions")
+        .select("user_id, emoji, created_at")
+        .eq("story_id", storyId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const rows = data ?? [];
+      const ids = [...new Set(rows.map((row) => row.user_id))];
+      if (!ids.length) return [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .in("id", ids);
+      if (profileError) throw profileError;
+
+      const byId = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      return rows.map((row) => ({ ...row, profile: byId.get(row.user_id) ?? null }));
+    },
+  });
 }
 
 /**

@@ -199,7 +199,7 @@ export function FeedSideDiscussion({
   const postAuthor = activePost.author?.display_name || activePost.author?.username || "creator";
 
   return (
-    <div className="glass-strong rounded-3xl border border-white/10 overflow-hidden flex flex-col h-[calc(100vh-6rem)] sticky top-6 shadow-2xl">
+    <div className="glass-strong rounded-3xl border border-white/10 overflow-hidden flex flex-col h-[calc(100dvh-6rem)] sticky top-6 shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">

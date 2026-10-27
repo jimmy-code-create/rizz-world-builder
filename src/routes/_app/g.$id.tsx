@@ -538,7 +538,7 @@ function GroupRoom() {
                                           : p.tag
                                             ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                             : p.url
-                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                              ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className={mine ? "underline break-words" : "text-primary hover:underline break-words"}>{p.text}</a>
                                               : <span key={`${si}-${pi}`}>{p.text}</span>
                                     )
                                   }

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   Copy,
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GameIcon } from "@/components/GameIcon";
 import { GameStage } from "@/components/games/GameStage";
 import { VideoTile } from "@/components/voice/VideoTile";
-import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { useVoiceCallContext, useVoiceSpeaking } from "@/components/voice/VoiceCallProvider";
 import { useAuth } from "@/lib/auth";
 import { useFullscreen } from "@/lib/fullscreen";
 import { inviteText, type GameEntry, type RoomActivity } from "@/lib/activities";
@@ -61,7 +61,6 @@ export function VoiceActivityOverlay({
   const { user } = useAuth();
   const {
     participants,
-    speakingIds,
     remoteStreams,
     localCameraStream,
     cameraOn,
@@ -82,7 +81,8 @@ export function VoiceActivityOverlay({
       stream.getVideoTracks().some((track) => track.readyState === "live") ? stream : null,
     ]),
   );
-  const speaking = new Set(speakingIds);
+  const speakingIds = useVoiceSpeaking();
+  const speaking = useMemo(() => new Set(speakingIds), [speakingIds]);
 
   const copyInvite = async () => {
     try {

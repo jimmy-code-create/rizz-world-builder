@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AtSign, Eye, Heart, Loader2, Plus, Send, X } from "lucide-react";
+import { Eye, Heart, Plus, X } from "lucide-react";
 import { CloseButton } from "@/components/ui/close-button";
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from "framer-motion";
 import { StoryComposer } from "@/components/StoryComposer";
 import { FullScreenLayer } from "@/components/FullScreenLayer";
 import { toast } from "@/lib/toast";
-import { Input } from "@/components/ui/input";
+import { StoryFooter } from "@/components/story/StoryReactions";
+import { useStoryReactors } from "@/lib/story-reactions";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { useI18n } from "@/lib/i18n";
-import { hapticButton, hapticReaction, hapticSend, hapticStoryTransition } from "@/lib/haptics";
+import { hapticButton, hapticStoryTransition } from "@/lib/haptics";
 
 /**
  * The stories row at the top of the feed, and the full-screen viewer.
@@ -413,8 +414,6 @@ function StoryViewer({
   const [idx, setIdx] = useState(0);
   const story = group[idx];
   const { user } = useAuth();
-  const [replyBody, setReplyBody] = useState("");
-  const [replying, setReplying] = useState(false);
   const [viewersOpen, setViewersOpen] = useState(false);
   const [paused, setPaused] = useState(false);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
@@ -423,81 +422,31 @@ function StoryViewer({
   const lastTap = useRef(0);
   const heart = useAnimationControls();
   const [heartBurst, setHeartBurst] = useState(0);
-  const quickReactions = ["🔥", "😂", "😮", "😢", "👏"];
 
   const storyId = story?.id ?? "";
   const captionBodies = useMemo(() => [story?.caption ?? ""], [story?.caption]);
   const mentionLabel = useMentionLabels(captionBodies);
   const isMine = !!user && user.id === story?.author_id;
   const isLiked = likedIds.has(storyId);
-  const qc = useQueryClient();
-  const reactionsKey = useMemo(() => ["story-reactions", user?.id, storyId], [user?.id, storyId]);
+  // Quick reactions, their counts, the optimistic toggle and the realtime
+  // channel all come from the shared StoryFooter (useStoryReactions).
+  const reactors = useStoryReactors(storyId, isMine && viewersOpen);
 
-  /**
-   * Likes are saved in `story_likes`; reactions are saved in `story_reactions`.
-   * Both were on the same row before, which is why the heart could look selected
-   * without anything being persisted.
-   */
-  const reactions = useQuery({
-    queryKey: reactionsKey,
-    enabled: !!user && !!story,
-    queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("story_reactions")
-        .select("emoji")
-        .eq("story_id", storyId)
-        .eq("user_id", user!.id);
-      if (error) throw error;
-      return (data ?? []).map((row: { emoji: string }) => row.emoji) as string[];
-    },
-  });
-  const myReactions = reactions.data ?? [];
+  /** emoji -> how many people used it, biggest first (author view only). */
+  const reactorCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of reactors.data ?? []) counts.set(row.emoji, (counts.get(row.emoji) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [reactors.data]);
 
-  const toggleReaction = async (emoji: string) => {
-    if (!user) {
-      toast.info("Sign in to react to stories");
-      return;
+  /** viewer id -> the emoji that person left, shown next to their name. */
+  const reactionsByViewer = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const row of reactors.data ?? []) {
+      map.set(row.user_id, [...(map.get(row.user_id) ?? []), row.emoji]);
     }
-    hapticReaction();
-    const selected = myReactions.includes(emoji);
-    const prev = myReactions;
-    const next = selected ? prev.filter((e) => e !== emoji) : [...prev, emoji];
-
-    // Optimistic update for instant feedback
-    qc.setQueryData<string[]>(reactionsKey, next);
-
-    const query = (supabase.from as any)("story_reactions");
-    const { error } = selected
-      ? await query.delete().eq("story_id", storyId).eq("user_id", user.id).eq("emoji", emoji)
-      : await query.insert({ story_id: storyId, user_id: user.id, emoji });
-    if (error) {
-      qc.setQueryData<string[]>(reactionsKey, prev);
-      toast.error("Couldn't save that reaction.");
-      return;
-    }
-  };
-
-  // Realtime: another device reacting to this story updates our chips live.
-  useEffect(() => {
-    if (!storyId) return;
-    const channel = supabase
-      .channel(`story-reactions:${storyId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "story_reactions",
-          filter: `story_id=eq.${storyId}`,
-        },
-        () => {
-          qc.invalidateQueries({ queryKey: reactionsKey });
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc, reactionsKey, storyId]);
+    return map;
+  }, [reactors.data]);
 
   const viewers = useQuery({
     queryKey: ["story-viewers", storyId],
@@ -525,15 +474,13 @@ function StoryViewer({
     },
   });
 
-  const sendStoryReply = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const text = replyBody.trim();
-    if (!user || !story || !text || replying) return;
+  /** True when the DM landed, so the footer can clear its pill. */
+  const sendStoryReply = async (text: string): Promise<boolean> => {
+    if (!user || !story) return false;
     if (isMine) {
       toast.info("You can't reply to your own story.");
-      return;
+      return false;
     }
-    setReplying(true);
     try {
       // The reply is a normal DM that carries the story id, so it lands in the
       // author's inbox as a message with the story attached — never as a story
@@ -545,13 +492,11 @@ function StoryViewer({
         story_id: story.id,
       });
       if (error) throw error;
-      hapticSend(); // Haptic feedback on successful send
-      setReplyBody("");
       toast.success("Reply sent to their inbox");
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't send your story reply");
-    } finally {
-      setReplying(false);
+      return false;
     }
   };
 
@@ -808,75 +753,15 @@ function StoryViewer({
               </p>
             )}
 
-            {/* React row: the like chip and the quick emoji live in one capsule,
-                so the bar reads as a single control instead of floating emoji. */}
-            <div className="flex min-h-[62px] items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2">
-              <button
-                type="button"
-                aria-label={isLiked ? "Remove like" : "Like story"}
-                aria-pressed={isLiked}
-                disabled={!user}
-                onClick={() => void onToggleLike(story.id)}
-                className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isLiked
-                    ? "border-primary/45 bg-primary/15 text-primary"
-                    : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/10"
-                }`}
-              >
-                <motion.span animate={isLiked ? { scale: [1, 1.35, 1] } : {}} transition={{ duration: 0.24 }}>
-                  <Heart className={`h-5 w-5 ${isLiked ? "fill-current" : ""}`} />
-                </motion.span>
-                <span className="text-xs font-bold tabular-nums">{story.like_count}</span>
-              </button>
-
-              <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-between gap-0.5 overflow-x-auto rounded-full border border-white/[0.08] bg-white/[0.03] p-1">
-                {quickReactions.map((emoji) => {
-                  const selected = myReactions.includes(emoji);
-                  return (
-                    <button
-                      key={emoji}
-                      type="button"
-                      aria-label={`React with ${emoji}`}
-                      aria-pressed={selected}
-                      disabled={!user}
-                      onClick={() => void toggleReaction(emoji)}
-                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        selected
-                          ? "bg-primary/20 ring-1 ring-primary/45"
-                          : "hover:bg-white/10"
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {user && !isMine && (
-              <form onSubmit={sendStoryReply} className="flex items-center gap-2 border-t border-white/10 bg-white/[0.025] px-3 py-2.5">
-                <div className="relative min-w-0 flex-1">
-                  <AtSign className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                  <Input
-                    value={replyBody}
-                    onChange={(event) => setReplyBody(event.target.value)}
-                    maxLength={2000}
-                    aria-label="Reply to story"
-                    placeholder="Reply to their inbox…"
-                    className="h-11 min-w-0 rounded-full border-white/10 bg-black/25 pl-10"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={!replyBody.trim() || replying}
-                  size="icon"
-                  aria-label="Send story reply"
-                  className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95"
-                >
-                  {replying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </form>
-            )}
+            <StoryFooter
+              storyId={story.id}
+              storyAuthorId={story.author_id}
+              isLiked={isLiked}
+              likeCount={story.like_count}
+              onToggleLike={() => onToggleLike(story.id)}
+              onSendReply={sendStoryReply}
+              onComposerFocusChange={setPaused}
+            />
 
             <Dialog open={viewersOpen} onOpenChange={setViewersOpen}>
               <DialogContent className="glass-strong z-[140] border-white/10">
@@ -889,6 +774,22 @@ function StoryViewer({
                     <Heart className="h-4 w-4 fill-primary text-primary" /> {story.like_count} likes
                   </span>
                 </div>
+                {reactorCounts.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-white/[0.06] px-2.5 py-2">
+                    <span className="mr-0.5 text-xs font-semibold text-muted-foreground">Reactions</span>
+                    {reactorCounts.map(([emoji, count]) => (
+                      <span
+                        key={emoji}
+                        className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5"
+                      >
+                        <span className="text-sm leading-none" aria-hidden>
+                          {emoji}
+                        </span>
+                        <span className="text-xs font-bold tabular-nums">{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {viewers.isLoading ? (
                   <p className="text-sm text-muted-foreground">Loading viewers…</p>
                 ) : viewers.isError ? (
@@ -904,6 +805,11 @@ function StoryViewer({
                         <span className="min-w-0 flex-1 truncate text-sm font-medium">
                           {row.viewer?.display_name || `@${row.viewer?.username ?? "user"}`}
                         </span>
+                        {(reactionsByViewer.get(row.viewer_id) ?? []).map((emoji) => (
+                          <span key={emoji} className="text-base leading-none" aria-hidden>
+                            {emoji}
+                          </span>
+                        ))}
                       </div>
                     ))}
                   </div>

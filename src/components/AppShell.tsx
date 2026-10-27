@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { installGlobalTapHaptics } from "@/lib/haptics";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -215,6 +216,12 @@ export function AppShell() {
     path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
 
   const mainRef = useRef<HTMLElement>(null);
+
+  // One 10ms tick for every control tap in the app, installed once. Buttons
+  // with their own pattern (send/reaction/error) override it via dedupe.
+  useEffect(() => {
+    installGlobalTapHaptics();
+  }, []);
 
   // Preserve and restore main scroll position across tabs and reloads
   useEffect(() => {

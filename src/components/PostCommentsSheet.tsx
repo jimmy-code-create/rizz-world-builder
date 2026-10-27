@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, CornerDownRight, Maximize2, Send, ArrowDownUp } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -206,6 +207,7 @@ export function PostCommentsSheet({
   const [sort, setSort] = useState<"top" | "new">("top");
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const comments = useQuery({
@@ -325,6 +327,7 @@ export function PostCommentsSheet({
   const capped = loaded >= COMMENT_PAGE;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
@@ -408,9 +411,7 @@ export function PostCommentsSheet({
               onVote={(id) => voteMut.mutate(id)}
               onReply={(id, username) => setReplyTo({ id, username })}
               isMine={comment.author_id === user?.id}
-              onDelete={(id) => {
-                if (window.confirm("Delete this comment?")) removeMut.mutate(id);
-              }}
+              onDelete={setPendingDelete}
             />
           ))}
 
@@ -460,6 +461,23 @@ export function PostCommentsSheet({
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={!!pendingDelete}
+      onOpenChange={(next) => {
+        if (!next) setPendingDelete(null);
+      }}
+      title="Delete this comment?"
+      description="It disappears from the thread for everyone. This can't be undone."
+      confirmLabel="Delete"
+      tone="danger"
+      onConfirm={async () => {
+        if (!pendingDelete) return;
+        await removeMut.mutateAsync(pendingDelete);
+        setPendingDelete(null);
+      }}
+    />
+    </>
   );
 }
 

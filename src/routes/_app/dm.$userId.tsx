@@ -13,6 +13,7 @@ import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, 
 import { CornerUpLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
+import { hapticSend } from "@/lib/haptics";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -531,6 +532,7 @@ function DMPage() {
       toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
       return;
     }
+    hapticSend();
     const pendingId = `pending-${crypto.randomUUID()}`;
     if (replyTo) pendingReplyRef.current.set(pendingId, replyTo.id);
     const optimistic: CachedDirectMessage = {
@@ -1107,7 +1109,7 @@ function DMPage() {
                                         : p.tag
                                           ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className={`font-medium ${mine ? "underline decoration-white/60" : "text-primary hover:underline"}`}>{p.text}</Link>
                                           : p.url
-                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-sky-400 hover:underline break-words"}>{p.text}</a>
+                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={mine ? "underline break-words" : "text-primary hover:underline break-words"}>{p.text}</a>
                                             : <span key={`${si}-${pi}`}>{p.text}</span>
                                   )
                                 }

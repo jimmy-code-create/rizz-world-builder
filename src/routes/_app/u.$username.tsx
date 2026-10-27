@@ -675,7 +675,7 @@ function ProfilePage() {
                             href={p.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="break-all text-sky-400 hover:underline"
+                            className="break-words text-primary hover:underline"
                           >
                             {p.text}
                           </a>
