@@ -142,6 +142,22 @@ export function ProfileHeader({
         }}
         onPointerDown={onBannerPointerDown}
       >
+        {/* 1b. Edge vignette: light falls from the top centre and the corners
+                roll into the theme, so the cover reads as a surface rather than
+                a flat rectangle pasted on the page. Four edges, one faint
+                inner rim, and nothing that shifts when the photo loads. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-10 rounded-3xl"
+          style={{
+            background: [
+              "linear-gradient(180deg, rgba(4,4,6,0.34) 0%, rgba(4,4,6,0) 26%)",
+              "radial-gradient(95% 115% at 50% 6%, rgba(4,4,6,0) 40%, rgba(4,4,6,0.6) 100%)",
+            ].join(", "),
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+          }}
+        />
+
         {/* 2. Soft scrim for the avatar/name overlap. */}
         <div
           aria-hidden

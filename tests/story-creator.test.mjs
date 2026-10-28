@@ -212,11 +212,48 @@ await check("dragging a layer survives the gesture, on every browser", async () 
   // detached, and an uncaught throw skipped the listeners entirely.
   assert.ok(/try \{\s*\n\s*handle\.setPointerCapture/.test(drag), "capture must be guarded");
   assert.ok(drag.includes("window.addEventListener(\"pointermove\", move, true)"), "moves must be captured");
-  // The layer follows the grab point, and a tap is not an undo step.
-  assert.ok(drag.includes("grabX") && drag.includes("baseX + nx - grabX"), "drag must track the grab point");
+  // The layer follows the finger's delta, and a tap is not an undo step.
+  assert.ok(
+    drag.includes("posX + (p.x - prevX) * unitX"),
+    "drag integrates pointer deltas, so a mid-gesture resize cannot fling it",
+  );
+  assert.ok(
+    drag.includes("const r = stage.getBoundingClientRect();"),
+    "the stage is re-read every frame — a phone keyboard resizes it",
+  );
+  assert.ok(
+    drag.includes("dragLayerIdRef.current = id") &&
+      drag.includes("dragLayerIdRef.current = null"),
+    "the gesture claims the layer and releases it on release",
+  );
   assert.ok(drag.includes("beginMove") && drag.includes("if (pushed) return;"), "history only grows on a real move");
   // Dropping on the bin has to read the release-time state, not the closure.
   assert.ok(drag.includes("dragOverTrashRef.current"), "trash drop must use the live hover state");
+});
+
+await check("pressing the move handle can't close the editor under the finger", async () => {
+  // The mobile failure: tapping the handle moved focus off the caret, the
+  // blur closed the editor, and the handle unmounted while the finger held it.
+  // iOS answers that with pointercancel, so text could not be moved on a phone.
+  assert.ok(
+    composerSrc.includes("if (dragLayerIdRef.current === editingId) return;"),
+    "the caret's blur is guarded while its own layer is being dragged",
+  );
+  assert.ok(
+    composerSrc.includes("textEditorRef.current?.blur();"),
+    "the handle drops the caret itself, so the keyboard gets out of the way",
+  );
+  const armed = composerSrc.indexOf("onDragOverlay(ov.id, true)(e);");
+  const dropped = composerSrc.indexOf("textEditorRef.current?.blur();");
+  assert.ok(
+    armed > 0 && dropped > armed,
+    "the gesture must be armed before the blur fires",
+  );
+  assert.match(
+    composerSrc,
+    /min-h-\[40px\][^"]*touch-none/,
+    "the handle is a real touch target, not a 24px pill",
+  );
 });
 
 await check("lens tool removed from the story composer", async () => {

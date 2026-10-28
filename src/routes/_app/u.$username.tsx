@@ -518,7 +518,11 @@ function ProfilePage() {
 
   return (
     <div
-      className="relative isolate -mx-3 min-h-[70vh] px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6"
+      // Full-bleed inside the scroll pane: the negative margins cancel main's
+      // own gutters and `flex-1` lets the wash reach both edges of the pane, so
+      // a short profile ends on the theme colour instead of a hard line where
+      // the gradient stops and the app background starts.
+      className="relative isolate -mx-3 -mt-3 -mb-3 min-h-[70vh] flex-1 px-3 sm:-mx-4 sm:px-4 md:-mt-4 md:-mb-4 lg:-mx-6 lg:px-6"
       style={
         pageBanner.profileBackground ? { background: pageBanner.profileBackground } : undefined
       }

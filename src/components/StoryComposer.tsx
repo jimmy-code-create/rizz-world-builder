@@ -171,6 +171,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   // The drop decision is read on release, so it cannot come from the state
   // closure that existed when the drag began.
   const dragOverTrashRef = useRef(false);
+  // The layer a live gesture is moving (null when idle). Pressing the move
+  // handle blurs the caret — and a blur used to close the editor, unmounting
+  // the handle under the finger. iOS answers that with pointercancel and the
+  // drag died on its first move, which is why moving text "didn't work on
+  // mobile". The guard keeps the layer mounted until the gesture releases.
+  const dragLayerIdRef = useRef<string | null>(null);
   const [audience, setAudience] = useState<StoryAudience>("everyone");
   const [hiddenFrom, setHiddenFrom] = useState<Person[]>([]);
   const [caption, setCaption] = useState("");
@@ -435,13 +441,27 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     }
 
     setSelected(id);
-    const rect = stage.getBoundingClientRect();
-    const grabX = (e.clientX - rect.left) / rect.width;
-    const grabY = (e.clientY - rect.top) / rect.height;
+    // This layer is owned by the gesture now: pressing the move handle blurs
+    // the caret, and that blur must not unmount the handle under the finger.
+    dragLayerIdRef.current = id;
     const baseX = start.x;
     const baseY = start.y;
     const originX = e.clientX;
     const originY = e.clientY;
+    // The layer's position is integrated frame by frame from how far the
+    // pointer travelled, never from its absolute screen coordinate. A phone
+    // keyboard collapsing mid-gesture resizes the stage, and grab-point maths
+    // would apply the stage's own movement to the layer — flinging the words
+    // across the canvas on the first move. Only the finger's delta is applied.
+    let posX = baseX;
+    let posY = baseY;
+    let prevX = e.clientX;
+    let prevY = e.clientY;
+    let pinchBaseX = baseX;
+    let pinchBaseY = baseY;
+    let pinchX = 0;
+    let pinchY = 0;
+    const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
     let moved = false;
     let pushed = false;
     const beginMove = () => {
@@ -467,18 +487,38 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
     const move = (ev: PointerEvent) => {
       if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       const arr = Array.from(pts.values());
+      // Read the stage every frame: it resizes when a phone keyboard opens or
+      // collapses, and the deltas below have to be divided by the size that is
+      // true right now.
+      const r = stage.getBoundingClientRect();
+      const unitX = r.width > 0 ? 1 / r.width : 0;
+      const unitY = r.height > 0 ? 1 / r.height : 0;
       if (arr.length >= 2) {
         const [a, b] = arr;
         const dx = b.x - a.x, dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-        if (initDist === 0) { initDist = dist; initAngle = angle; return; }
+        const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        if (initDist === 0) {
+          // Adopt the current centre as the pinch origin so a finger landing
+          // after some one-finger dragging never restarts the layer from base.
+          initDist = dist;
+          initAngle = angle;
+          pinchBaseX = posX;
+          pinchBaseY = posY;
+          pinchX = cx;
+          pinchY = cy;
+          prevX = cx;
+          prevY = cy;
+          return;
+        }
         beginMove();
         const scale = Math.max(0.3, Math.min(6, baseScale * (dist / initDist)));
         const rotate = baseRotate + (angle - initAngle);
-        const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-        const x = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
-        const y = Math.max(0, Math.min(1, (cy - rect.top) / rect.height));
+        posX = clamp01(pinchBaseX + (cx - pinchX) * unitX);
+        posY = clamp01(pinchBaseY + (cy - pinchY) * unitY);
+        const x = posX;
+        const y = posY;
         setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y, scale, rotate } : it));
       } else if (arr.length === 1) {
         const p = arr[0];
@@ -492,10 +532,12 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
           dragOverTrashRef.current = overTrash;
           setDragOverTrash(overTrash);
         }
-        const nx = (p.x - rect.left) / rect.width;
-        const ny = (p.y - rect.top) / rect.height;
-        const x = Math.max(0, Math.min(1, baseX + nx - grabX));
-        const y = Math.max(0, Math.min(1, baseY + ny - grabY));
+        posX = clamp01(posX + (p.x - prevX) * unitX);
+        posY = clamp01(posY + (p.y - prevY) * unitY);
+        prevX = p.x;
+        prevY = p.y;
+        const x = posX;
+        const y = posY;
         setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y } : it));
       }
     };
@@ -503,8 +545,13 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       pts.delete(ev.pointerId);
       if (pts.size > 0) {
         initDist = 0; // a second finger picks up the pinch from here
+        // The finger that stays on screen becomes the origin of the next move,
+        // so handing back to one-finger dragging starts where it actually is.
+        const rest = Array.from(pts.values())[0];
+        if (rest) { prevX = rest.x; prevY = rest.y; }
         return;
       }
+      dragLayerIdRef.current = null;
       window.removeEventListener("pointermove", move, true);
       window.removeEventListener("pointerup", finish, true);
       window.removeEventListener("pointercancel", finish, true);
@@ -921,17 +968,25 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 {/* Move handle: while the caret is in the text, the words
                     themselves eat the pointer, so dragging them is impossible.
                     This grip sits above the text and drags the layer with the
-                    same maths as a normal drag (plus a nudge row for phones,
-                    where a 24px handle is fiddly). */}
+                    same maths as a normal drag. It is a real touch target —
+                    the old 24px pill was fiddly to hold on a phone — and
+                    pressing it starts the gesture first, then drops the caret
+                    so the keyboard gets out of the way of the finger. */}
                 <span
                   role="button"
                   tabIndex={0}
                   aria-label="Drag to move this text"
                   data-interactive="true"
-                  onPointerDown={(e) => { e.stopPropagation(); onDragOverlay(ov.id, true)(e); }}
-                  className="mb-1 flex cursor-grab touch-none items-center gap-1 rounded-full border border-white/20 bg-black/70 px-2 py-1 text-[11px] font-bold text-white active:cursor-grabbing"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    // Gesture first: it arms the blur guard and the window
+                    // listeners before focus moves off the caret.
+                    onDragOverlay(ov.id, true)(e);
+                    textEditorRef.current?.blur();
+                  }}
+                  className="mb-1.5 flex min-h-[40px] cursor-grab touch-none select-none items-center gap-1.5 rounded-full border border-white/25 bg-black/75 px-3 text-[12px] font-bold text-white active:cursor-grabbing"
                 >
-                  <Move className="h-3.5 w-3.5" />
+                  <Move className="h-4 w-4" />
                   Drag to move
                 </span>
                 <span
@@ -950,7 +1005,18 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                     const selection = window.getSelection();
                     setEditorCaret(selection?.anchorOffset ?? (el.textContent ?? "").length);
                   }}
-                  onBlur={(e) => { updateSelected({ value: e.currentTarget.textContent || " " }); setEditingId(null); setEditorText(""); }}
+                  onBlur={(e) => {
+                    // Pressing the move handle blurs the caret — and closing
+                    // the editor here would unmount that handle while the
+                    // finger holds it, which iOS answers with pointercancel:
+                    // the drag died on its first move. The gesture for this
+                    // same layer commits on release instead; every other blur
+                    // still closes the editor as before.
+                    if (dragLayerIdRef.current === editingId) return;
+                    updateSelected({ value: e.currentTarget.textContent || " " });
+                    setEditingId(null);
+                    setEditorText("");
+                  }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
                   className={`inline-block outline-none ${ov.live ? "story-live-text" : ""}`}
                 >{ov.value}</span>

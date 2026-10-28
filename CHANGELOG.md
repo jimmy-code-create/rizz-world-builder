@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-10-28 — Story text moves again on a phone
+
+- Pressing the move handle blurred the caret, that blur closed the editor, and
+  the handle unmounted while the finger was still holding it. iOS answers an
+  unmounting capture target with `pointercancel`, so the drag died on its first
+  move — text simply would not move on mobile. A live gesture now claims the
+  layer and the caret's blur is ignored for that one layer until release, where
+  the text commits as before; a blur from anywhere else still closes the editor.
+- The layer follows the pointer's delta instead of its grab point, re-read from
+  the stage every frame. When the phone keyboard collapses under the gesture the
+  stage resizes, and grab-point maths applied the stage's own movement to the
+  layer — flinging the words across the canvas.
+- The handle is a 40px touch target that drops the caret itself, so the keyboard
+  gets out of the way before the finger starts moving.
+
+## 2026-10-28 — The cover vignette, and a wash that reaches the fold
+
+- The profile cover carries an edge vignette: light falls from the top centre,
+  the corners roll into the theme colour and a faint 1px rim keeps the edge
+  crisp, so a banner reads as a surface with light on it instead of a flat
+  rectangle pasted above the name. It sits under the avatar scrim, so the
+  overlap and the buttons are unaffected.
+- The profile wash now fills the scroll pane. The container stopped at
+  `min-h-[70vh]`, so a short profile ended on a hard line where the gradient
+  stopped and the app background began; it now cancels the pane's own gutters
+  and grows to fill it, and the theme runs to both edges without a seam.
+
 ## 2026-10-28 — Reel party, and mentions in every comment
 
 - Reels can be watched together. The people icon beside Upload opens a room;

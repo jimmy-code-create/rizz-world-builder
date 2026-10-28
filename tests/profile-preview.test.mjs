@@ -198,4 +198,41 @@ await check("a nested avatar never opens a second preview sheet", async () => {
   assert.ok(avatar.includes("username && !insideTrigger"), "and leaves the preview to that trigger");
 });
 
+await check("the cover carries an edge vignette so it stops reading as a flat plate", async () => {
+  assert.match(
+    profileHeader,
+    /radial-gradient\(95% 115% at 50% 6%, rgba\(4,4,6,0\) 40%, rgba\(4,4,6,0\.6\) 100%\)/,
+    "the vignette rolls the corners into the theme",
+  );
+  assert.match(
+    profileHeader,
+    /absolute inset-0 z-10 rounded-3xl/,
+    "it covers the whole box, corners included",
+  );
+  assert.ok(
+    profileHeader.indexOf("pointer-events-none absolute inset-0 z-10") <
+      profileHeader.indexOf('className="pointer-events-none absolute inset-x-0 bottom-0 z-20'),
+    "it is painted under the avatar scrim, not over it",
+  );
+  assert.match(
+    profileHeader,
+    /inset 0 0 0 1px rgba\(255,255,255,0\.06\)/,
+    "a faint rim keeps the edge crisp on a dark photo",
+  );
+  assert.ok(profileHeader.includes('aspectRatio: "3 / 1"'), "the box height never moves");
+});
+
+await check("the profile wash reaches both edges of the scroll pane", async () => {
+  assert.match(
+    profilePage,
+    /-mx-3 -mt-3 -mb-3 min-h-\[70vh\] flex-1/,
+    "full-bleed and grown to fill the pane, so a short profile has no seam",
+  );
+  assert.match(profilePage, /md:-mt-4 md:-mb-4/, "the desktop gutters cancel too");
+  assert.ok(
+    profilePage.includes("background: pageBanner.profileBackground"),
+    "the wash still comes from the one banner source",
+  );
+});
+
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);
