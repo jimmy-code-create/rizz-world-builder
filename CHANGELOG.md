@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-28 — The badge emblems, minted as one set
+
+- Every emblem in `public/badges/badges.svg` is redrawn on one system: a
+  same-colour round-join silhouette stroke (one corner radius across the set), a
+  single top-left tier gradient, an engraved inset rim, one ink glyph with a 1.7
+  stroke floor, and one white specular. Nothing in the art depends on detail
+  that dies at the 20px name row.
+- Three legibility bugs went with it: the Early Member ring hid its own numeral
+  inside the hole (it is a gold coin now), the Rising Star's ink centre read as a
+  hole (now white), and the Top Rizzler crown was heavy enough to look like a
+  hole punched in the shield.
+- Silhouettes no longer repeat: HypeSquad's bolt sits in a diamond rather than a
+  third shield, Night Owl is a true two-arc crescent, the 30-day flame moved into
+  a hex crest, and Meme Lord / Streamer / Creator keep distinct tiles.
+- `tests/badge-artwork.test.mjs` rasterises every emblem at 240px (draws, not
+  clipped, centred, sane coverage) and compares all twenty at 20px in colour, so
+  a future edit cannot quietly ship a blank or look-alike badge.
+
 ## 2026-10-24 — The trending rail reads as a feed card
 
 - The rail between the composer and "LATEST DROPS" is now an ink card of its
