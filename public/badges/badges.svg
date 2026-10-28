@@ -31,39 +31,40 @@
   <symbol id="rookie" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-rookie" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FBFCFE"/>
-        <stop offset="1" stop-color="#9AA4B2"/>
+        <stop stop-color="#F5FBFF"/>
+        <stop offset="1" stop-color="#7892AA"/>
       </linearGradient>
     </defs>
     <path d="M12 2.8 19.97 7.4v9.2L12 21.2 4.03 16.6V7.4Z" fill="url(#bzg-rookie)" stroke="url(#bzg-rookie)" stroke-width="2" stroke-linejoin="round"/>
     <path d="M12 4.8 18.23 8.4v7.2L12 19.2 5.77 15.6V8.4Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".15" stroke-width=".8" stroke-linejoin="round"/>
     <path d="M12 18.4V12.6" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 13.1C9.3 13.3 7.5 11.9 7.2 9.3 9.9 9.2 11.7 10.5 12 13.1Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M12 14.3c2.9.1 4.7-1.3 5-3.9-2.7-.1-4.5 1.2-5 3.9Z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M12 13.2C9.1 13.4 7.3 11.8 7.1 9c3 .1 4.7 1.6 4.9 4.2Z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M12 14.3c2.9.1 4.8-1.4 5-4.2-3 .1-4.7 1.6-5 4.2Z" fill="var(--bz-ink,#0B0B0B)"/>
     <path d="M8.6 6.6A8.7 8.7 0 0 1 12.4 4.6" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
   <!-- Rising Star: a sharp five-point star with an ink sparkle at its heart. -->
   <symbol id="rising-star" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-star" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E9FFA3"/>
-        <stop offset="1" stop-color="#8FD400"/>
+        <stop stop-color="#FFF1A8"/>
+        <stop offset=".48" stop-color="#D8F35D"/>
+        <stop offset="1" stop-color="#79B900"/>
       </linearGradient>
     </defs>
     <path d="M12 2.6 14.47 8.9 21.23 9.3 15.99 13.6 17.7 20.15 12 16.5 6.3 20.15 8.01 13.6 2.77 9.3 9.53 8.9Z" fill="url(#bzg-star)" stroke="url(#bzg-star)" stroke-width="1.2" stroke-linejoin="round"/>
-    <path d="M12 9.7 12.9 11.4 14.6 12.3 12.9 13.2 12 14.9 11.1 13.2 9.4 12.3 11.1 11.4Z" fill="#fff" fill-opacity=".95"/>
-    <path d="M8.5 5.4 10.3 7.9" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 9.55 12.85 11.15 14.45 12 12.85 12.85 12 14.45 11.15 12.85 9.55 12 11.15 11.15Z" fill="#FFFDF1" fill-opacity=".96"/>
+    <path d="M7.9 5.35 10.1 7.7" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="1" stroke-linecap="round"/>
   </symbol>
   <!-- Chatterbox: one speech bubble, three dots, no tail noise. -->
   <symbol id="smooth-talker" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-talker" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FBFCFE"/>
-        <stop offset="1" stop-color="#9AA4B2"/>
+        <stop stop-color="#F5F7FF"/>
+        <stop offset="1" stop-color="#8291B2"/>
       </linearGradient>
     </defs>
     <rect x="2.6" y="3.9" width="18.8" height="12.9" rx="4.4" fill="url(#bzg-talker)"/>
-    <path d="M7.5 15.6 6.4 20.6 11.7 16.3Z" fill="url(#bzg-talker)"/>
+    <path d="M8.15 15.9 6.2 20.1 12.15 16.2Z" fill="url(#bzg-talker)"/>
     <rect x="3.95" y="5.25" width="16.1" height="10.2" rx="3.2" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".14" stroke-width=".8"/>
     <circle cx="7.6" cy="10.35" r="1.5" fill="var(--bz-ink,#0B0B0B)"/>
     <circle cx="12" cy="10.35" r="1.5" fill="var(--bz-ink,#0B0B0B)"/>
@@ -75,8 +76,8 @@
   <symbol id="night-owl" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-owl" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#EDF4FE"/>
-        <stop offset="1" stop-color="#7A90AA"/>
+        <stop stop-color="#E8F3FF"/>
+        <stop offset="1" stop-color="#657DA7"/>
       </linearGradient>
     </defs>
     <path d="M19.24 5.86A9.5 9.5 0 1 0 17.23 19.93 7.4 7.4 0 1 1 19.24 5.86Z" fill="url(#bzg-owl)" stroke="url(#bzg-owl)" stroke-width=".7" stroke-linejoin="round"/>
@@ -89,29 +90,30 @@
   <symbol id="meme-lord" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-meme" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFC9A4"/>
-        <stop offset="1" stop-color="#EE4F3A"/>
+        <stop stop-color="#FFD0A4"/>
+        <stop offset=".48" stop-color="#FF8060"/>
+        <stop offset="1" stop-color="#CE3346"/>
       </linearGradient>
     </defs>
     <circle cx="12" cy="12" r="9.7" fill="url(#bzg-meme)" stroke="url(#bzg-meme)" stroke-width="1.2"/>
     <circle cx="12" cy="12" r="8.1" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".8"/>
     <path d="M6.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.9" stroke-linecap="round"/>
     <path d="M13.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.9" stroke-linecap="round"/>
-    <path d="M7.4 12.6h9.2a4.6 4.6 0 0 1-9.2 0Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M8.5 13.3h7" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M7.2 12.4h9.6a4.8 4.8 0 0 1-9.6 0Z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M8.1 13.1h7.8" fill="none" stroke="#fff" stroke-opacity=".94" stroke-width="1.25" stroke-linecap="round"/>
     <path d="M7.6 5.5A9.2 9.2 0 0 1 12.2 3.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
   <!-- Top Rizzler: shield, engraved rim, ink crown on a base bar. -->
   <symbol id="top-rizzler" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-crown" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E9FFA3"/>
-        <stop offset="1" stop-color="#8FD400"/>
+        <stop stop-color="#FFF0A7"/>
+        <stop offset="1" stop-color="#D59517"/>
       </linearGradient>
     </defs>
     <path d="M12 2.2 20.4 5.2v6.1c0 5.1-3.5 8.8-8.4 10.6-4.9-1.8-8.4-5.5-8.4-10.6V5.2Z" fill="url(#bzg-crown)" stroke="url(#bzg-crown)" stroke-width="1.2" stroke-linejoin="round"/>
     <path d="M12 4.1 18.5 6.5v4.7c0 3.9-2.6 6.9-6.5 8.4-3.9-1.5-6.5-4.5-6.5-8.4V6.5Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85" stroke-linejoin="round"/>
-    <path d="M7.6 14.8 7.0 9.0 10.0 11.4 12 8.2 14.0 11.4 17.0 9.0 16.4 14.8Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".9" stroke-linejoin="round"/>
+    <path d="M7.3 14.8 6.8 8.7 10 11.3 12 7.9 14 11.3 17.2 8.7 16.7 14.8Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".9" stroke-linejoin="round"/>
     <rect x="7.6" y="15.5" width="8.8" height="1.5" rx=".75" fill="var(--bz-ink,#0B0B0B)"/>
     <path d="M5.5 7.6A9 9 0 0 1 8.4 4.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
@@ -133,26 +135,27 @@
         <stop offset="1" stop-color="#021836" stop-opacity=".46"/>
       </radialGradient>
     </defs>
-    <path d="M14.04 4.37 Q18.38 0.94 17.59 6.41 Q23.06 5.62 19.63 9.96 Q24.77 12 19.63 14.04 Q23.06 18.38 17.59 17.59 Q18.38 23.06 14.04 19.63 Q12 24.77 9.96 19.63 Q5.62 23.06 6.41 17.59 Q0.94 18.38 4.37 14.04 Q-0.77 12 4.37 9.96 Q0.94 5.62 6.41 6.41 Q5.62 0.94 9.96 4.37 Q12 -0.77 14.04 4.37Z" fill="none" stroke="#45C4FF" stroke-opacity=".16" stroke-width="2.6" stroke-linejoin="round"/>
-    <path d="M14.04 4.37 Q18.38 0.94 17.59 6.41 Q23.06 5.62 19.63 9.96 Q24.77 12 19.63 14.04 Q23.06 18.38 17.59 17.59 Q18.38 23.06 14.04 19.63 Q12 24.77 9.96 19.63 Q5.62 23.06 6.41 17.59 Q0.94 18.38 4.37 14.04 Q-0.77 12 4.37 9.96 Q0.94 5.62 6.41 6.41 Q5.62 0.94 9.96 4.37 Q12 -0.77 14.04 4.37Z" fill="none" stroke="#7AD8FF" stroke-opacity=".28" stroke-width="1.5" stroke-linejoin="round"/>
-    <path d="M14.04 4.37 Q18.38 0.94 17.59 6.41 Q23.06 5.62 19.63 9.96 Q24.77 12 19.63 14.04 Q23.06 18.38 17.59 17.59 Q18.38 23.06 14.04 19.63 Q12 24.77 9.96 19.63 Q5.62 23.06 6.41 17.59 Q0.94 18.38 4.37 14.04 Q-0.77 12 4.37 9.96 Q0.94 5.62 6.41 6.41 Q5.62 0.94 9.96 4.37 Q12 -0.77 14.04 4.37Z" fill="url(#bzg-verified)" stroke="#8FE6FF" stroke-opacity=".5" stroke-width=".9" stroke-linejoin="round"/>
-    <path d="M14.04 4.37 Q18.38 0.94 17.59 6.41 Q23.06 5.62 19.63 9.96 Q24.77 12 19.63 14.04 Q23.06 18.38 17.59 17.59 Q18.38 23.06 14.04 19.63 Q12 24.77 9.96 19.63 Q5.62 23.06 6.41 17.59 Q0.94 18.38 4.37 14.04 Q-0.77 12 4.37 9.96 Q0.94 5.62 6.41 6.41 Q5.62 0.94 9.96 4.37 Q12 -0.77 14.04 4.37Z" fill="url(#bzg-verified-vignette)"/>
-    <path d="M14.04 4.37 Q18.38 0.94 17.59 6.41 Q23.06 5.62 19.63 9.96 Q24.77 12 19.63 14.04 Q23.06 18.38 17.59 17.59 Q18.38 23.06 14.04 19.63 Q12 24.77 9.96 19.63 Q5.62 23.06 6.41 17.59 Q0.94 18.38 4.37 14.04 Q-0.77 12 4.37 9.96 Q0.94 5.62 6.41 6.41 Q5.62 0.94 9.96 4.37 Q12 -0.77 14.04 4.37Z" transform="translate(12 12) scale(.9) translate(-12 -12)" fill="none" stroke="#EAF9FF" stroke-opacity=".2" stroke-width=".7"/>
-    <path d="M5.8 10.9A8.1 8.1 0 0 1 10.9 5.8" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".95" stroke-linecap="round"/>
-    <path d="M6.9 12.55 10.5 16.15 18 8.65" fill="none" stroke="#043A6D" stroke-opacity=".28" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.55 12.2 10.5 16.15 18.25 8.4" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="none" stroke="#45C4FF" stroke-opacity=".16" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="none" stroke="#7AD8FF" stroke-opacity=".28" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="url(#bzg-verified)" stroke="#8FE6FF" stroke-opacity=".5" stroke-width=".9" stroke-linejoin="round"/>
+    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="url(#bzg-verified-vignette)"/>
+    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" transform="translate(12 12) scale(.88) translate(-12 -12)" fill="none" stroke="#EAF9FF" stroke-opacity=".28" stroke-width=".8"/>
+    <path d="M5.5 9.8A8.7 8.7 0 0 1 10.7 5.3" fill="none" stroke="#fff" stroke-opacity=".68" stroke-width="1.05" stroke-linecap="round"/>
+    <path d="M6.75 12.65 10.45 16.35 18 8.55" fill="none" stroke="#043A6D" stroke-opacity=".42" stroke-width="3.35" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.55 12.2 10.45 16.1 18.25 8.15" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
   <!-- 7 Day Streak: one flame, an ink core, nothing else. -->
   <symbol id="streak-7" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-streak7" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFDD9A"/>
-        <stop offset="1" stop-color="#FF8A12"/>
+        <stop stop-color="#FFE7A1"/>
+        <stop offset=".52" stop-color="#FFAA35"/>
+        <stop offset="1" stop-color="#ED5B22"/>
       </linearGradient>
     </defs>
     <path d="M12.4 2.1c.6 3.1 2.7 4.8 4.3 6.8 1.6 2.1 2.8 4 2.8 6.2 0 4.2-3.3 7-7.5 7s-7.5-2.8-7.5-7c0-3.4 2.1-6 4.1-8.1 1.4-1.5 3.3-3 3.8-4.9Z" fill="url(#bzg-streak7)" stroke="url(#bzg-streak7)" stroke-width="1" stroke-linejoin="round"/>
     <path d="M12.2 6.6c.4 1.9 1.6 3 2.6 4.2 1 1.2 1.7 2.3 1.7 3.6 0 2.9-2 5-4.5 5s-4.5-2.1-4.5-5c0-2.1 1.3-3.7 2.5-5 .9-1 2-2 2.2-2.8Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".13" stroke-width=".8"/>
-    <path d="M12.2 12.2c.2 1.2.9 1.8 1.4 2.5.5.7.9 1.3.9 2 0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5c0-1 .6-1.8 1.2-2.5.5-.6 1.2-1.2 1.5-2Z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="M12.2 12.1c.25 1.15.9 1.85 1.4 2.5.55.7.85 1.35.85 2.05a2.45 2.45 0 0 1-4.9 0c0-1 .55-1.8 1.2-2.5.55-.65 1.15-1.2 1.45-2.05Z" fill="var(--bz-ink,#0B0B0B)"/>
     <path d="M8.6 8.6A7.2 7.2 0 0 1 11.4 5.6" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
   <!-- 30 Day Streak: the flame family, held in a hex crest so it never reads
@@ -160,8 +163,9 @@
   <symbol id="streak-30" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-streak30" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFB36B"/>
-        <stop offset="1" stop-color="#DE2F17"/>
+        <stop stop-color="#FFD28A"/>
+        <stop offset=".48" stop-color="#FF7148"/>
+        <stop offset="1" stop-color="#B91F35"/>
       </linearGradient>
     </defs>
     <path d="M12 2.6 20.14 7.3v9.4L12 21.4 3.86 16.7V7.3Z" fill="url(#bzg-streak30)" stroke="url(#bzg-streak30)" stroke-width="1.4" stroke-linejoin="round"/>
@@ -175,13 +179,14 @@
   <symbol id="streamer" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-stream" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFB0DC"/>
-        <stop offset="1" stop-color="#D02A7C"/>
+        <stop stop-color="#FFD0E9"/>
+        <stop offset=".45" stop-color="#F45AAE"/>
+        <stop offset="1" stop-color="#A71975"/>
       </linearGradient>
     </defs>
     <rect x="2.5" y="2.5" width="19" height="19" rx="5.8" fill="url(#bzg-stream)" stroke="url(#bzg-stream)" stroke-width="1.2"/>
     <rect x="4.1" y="4.1" width="15.8" height="15.8" rx="4.4" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85"/>
-    <path d="M9.7 7.9 16.3 12 9.7 16.1Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M9.4 7.45 16.65 12 9.4 16.55Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".85" stroke-linejoin="round"/>
     <circle cx="17.3" cy="6.9" r="1.5" fill="#fff"/>
     <circle cx="17.3" cy="6.9" r=".7" fill="var(--bz-ink,#0B0B0B)" fill-opacity=".55"/>
     <path d="M6.2 6.4A6 6 0 0 1 9.5 4.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
@@ -190,8 +195,9 @@
   <symbol id="bounty-hunter" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-bounty" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FF9E93"/>
-        <stop offset="1" stop-color="#CE2932"/>
+        <stop stop-color="#FFC58A"/>
+        <stop offset=".48" stop-color="#FF665C"/>
+        <stop offset="1" stop-color="#B92348"/>
       </linearGradient>
     </defs>
     <path d="M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18Z M12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 1 0 0-11.2Z" fill="url(#bzg-bounty)" fill-rule="evenodd"/>
@@ -203,8 +209,9 @@
   <symbol id="game-champ" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-game" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#BCB3FF"/>
-        <stop offset="1" stop-color="#5743DF"/>
+        <stop stop-color="#E3D9FF"/>
+        <stop offset=".5" stop-color="#927AFF"/>
+        <stop offset="1" stop-color="#4930B9"/>
       </linearGradient>
     </defs>
     <rect x="2.8" y="4.9" width="18.4" height="11.4" rx="4.6" fill="url(#bzg-game)" stroke="url(#bzg-game)" stroke-width="1.2"/>
@@ -221,21 +228,24 @@
   <symbol id="og" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-og" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFEDB0"/>
-        <stop offset="1" stop-color="#D3981A"/>
+        <stop stop-color="#FFF0B7"/>
+        <stop offset=".5" stop-color="#E9B94A"/>
+        <stop offset="1" stop-color="#A86A14"/>
       </linearGradient>
     </defs>
     <circle cx="12" cy="12" r="9.6" fill="url(#bzg-og)" stroke="url(#bzg-og)" stroke-width="1"/>
-    <circle cx="12" cy="12" r="7.4" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".18" stroke-width=".8"/>
-    <path d="M10.7 8.4 12.7 7.3v9.5M10.4 16.8h4.6" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="12" cy="12" r="7.7" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".2" stroke-width=".85"/>
+    <path d="M10.25 8.7 12.35 7.45v9.1M10.15 16.75h4.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.5 10.6c.15-1 .5-1.9 1.05-2.75M17.5 10.6c-.15-1-.5-1.9-1.05-2.75" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".58" stroke-width="1.1" stroke-linecap="round"/>
     <path d="M5.5 8.8A9.6 9.6 0 0 1 8.4 5.2" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
   <!-- HypeSquad Bravery: a diamond, ink bolt — never a second shield. -->
   <symbol id="hypesquad-bravery" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-hype" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E9FFA3"/>
-        <stop offset="1" stop-color="#8FD400"/>
+        <stop stop-color="#F2FFA8"/>
+        <stop offset=".48" stop-color="#C8F25C"/>
+        <stop offset="1" stop-color="#69B52F"/>
       </linearGradient>
     </defs>
     <path d="M12 2.6 21.4 12 12 21.4 2.6 12Z" fill="url(#bzg-hype)" stroke="url(#bzg-hype)" stroke-width="1.4" stroke-linejoin="round"/>
@@ -247,13 +257,14 @@
   <symbol id="verified-creator" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-creator" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#CDFFE8"/>
-        <stop offset="1" stop-color="#2CBE8C"/>
+        <stop stop-color="#D8FFF0"/>
+        <stop offset=".5" stop-color="#59D6B2"/>
+        <stop offset="1" stop-color="#218C91"/>
       </linearGradient>
     </defs>
     <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6" fill="url(#bzg-creator)" stroke="url(#bzg-creator)" stroke-width="1.2"/>
     <rect x="4.15" y="4.15" width="15.7" height="15.7" rx="4.3" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85"/>
-    <path d="M9.7 7.9 16.3 12 9.7 16.1Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M9.4 7.45 16.65 12 9.4 16.55Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".85" stroke-linejoin="round"/>
     <circle cx="17.5" cy="17.5" r="3.5" fill="var(--bz-ink,#0B0B0B)"/>
     <path d="M15.9 17.5 17.1 18.7 19.1 16.4" fill="none" stroke="#CDFFE8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M6.6 6.4A6 6 0 0 1 9.9 4.5" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
@@ -262,9 +273,9 @@
   <symbol id="rizzz-team" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-team" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E9FFA3"/>
-        <stop offset=".6" stop-color="#B6F04A"/>
-        <stop offset="1" stop-color="#63C8A8"/>
+        <stop stop-color="#F3FFA9"/>
+        <stop offset=".52" stop-color="#B7EC56"/>
+        <stop offset="1" stop-color="#4EAFA5"/>
       </linearGradient>
     </defs>
     <path d="M21.14 15.79 15.79 21.14H8.21L2.86 15.79V8.21L8.21 2.86h7.58l5.35 5.35Z" fill="url(#bzg-team)" stroke="url(#bzg-team)" stroke-width="1.4" stroke-linejoin="round"/>
@@ -278,8 +289,9 @@
   <symbol id="main-character" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-main" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FBFDF4"/>
-        <stop offset="1" stop-color="#B7EE3A"/>
+        <stop stop-color="#FFFDE2"/>
+        <stop offset=".52" stop-color="#D8F56B"/>
+        <stop offset="1" stop-color="#86C944"/>
       </linearGradient>
     </defs>
     <path d="M12 2.2 14.55 9.45 21.8 12 14.55 14.55 12 21.8 9.45 14.55 2.2 12 9.45 9.45Z" fill="url(#bzg-main)" stroke="url(#bzg-main)" stroke-width="1" stroke-linejoin="round"/>
@@ -291,8 +303,9 @@
   <symbol id="voice-of-realm" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-voice" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#D5F8FF"/>
-        <stop offset="1" stop-color="#2FA9E0"/>
+        <stop stop-color="#D8FBFF"/>
+        <stop offset=".5" stop-color="#64D2E8"/>
+        <stop offset="1" stop-color="#238BB8"/>
       </linearGradient>
     </defs>
     <rect x="2.5" y="3.4" width="19" height="13.6" rx="6.8" fill="url(#bzg-voice)"/>
@@ -308,9 +321,9 @@
   <symbol id="the-rizz" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-rizz" x1="5" y1="2.5" x2="18" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F4FFC8"/>
-        <stop offset=".45" stop-color="#9BE8FF"/>
-        <stop offset="1" stop-color="#9B5BFF"/>
+        <stop stop-color="#FFF4BD"/>
+        <stop offset=".45" stop-color="#75DDF2"/>
+        <stop offset="1" stop-color="#8D52E8"/>
       </linearGradient>
     </defs>
     <path d="M8.4 3.2h7.2l5.8 6L12 21.6 2.6 9.2Z" fill="url(#bzg-rizz)" stroke="url(#bzg-rizz)" stroke-width="1" stroke-linejoin="round"/>
@@ -341,17 +354,18 @@
         <stop offset="1" stop-color="#F2B33D"/>
       </linearGradient>
     </defs>
-    <path d="M3.1 10.1V3.8l5.5 3.3L12 5l3.4 2.1 5.5-3.3v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#C084FC" stroke-opacity=".18" stroke-width="2.4" stroke-linejoin="round"/>
-    <path d="M3.1 10.1V3.8l5.5 3.3L12 5l3.4 2.1 5.5-3.3v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#D8B4FE" stroke-opacity=".3" stroke-width="1.3" stroke-linejoin="round"/>
-    <path d="M3.1 10.1V3.8l5.5 3.3L12 5l3.4 2.1 5.5-3.3v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify)" stroke="#E9D5FF" stroke-opacity=".45" stroke-width=".85" stroke-linejoin="round"/>
-    <path d="M3.1 10.1V3.8l5.5 3.3L12 5l3.4 2.1 5.5-3.3v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify-vignette)"/>
-    <path d="M3.1 10.1V3.8l5.5 3.3L12 5l3.4 2.1 5.5-3.3v6.3a9 9 0 1 1-17.8 0Z" transform="translate(12 12) scale(.91) translate(-12 -12)" fill="none" stroke="#F5EBFF" stroke-opacity=".2" stroke-width=".65"/>
-    <path d="M12 8.05c-1.5 2.2-3.8 4.75-3.8 6.85a3.8 3.8 0 0 0 7.6 0c0-2.1-2.3-4.65-3.8-6.85Z" fill="#320A63" fill-opacity=".38" transform="translate(0 .4)"/>
-    <path d="M12 7.55c-1.4 2.1-3.6 4.6-3.6 6.65a3.6 3.6 0 0 0 7.2 0c0-2.05-2.2-4.55-3.6-6.65Z" fill="#fff"/>
-    <path d="M12 9.5c-.8 1.25-2 2.65-2 3.65a2 2 0 0 0 4 0c0-1-1.2-2.4-2-3.65Z" fill="url(#bzg-purify-gold)"/>
-    <path d="M8.7 16.35c-1.35-.1-2.25-.8-2.75-1.95.9.1 1.75.55 2.75 1.95Zm6.6 0c1.35-.1 2.25-.8 2.75-1.95-.9.1-1.75.55-2.75 1.95Z" fill="#fff" fill-opacity=".92"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#C084FC" stroke-opacity=".18" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#D8B4FE" stroke-opacity=".3" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify)" stroke="#E9D5FF" stroke-opacity=".45" stroke-width=".85" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify-vignette)"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" transform="translate(12 12) scale(.9) translate(-12 -12)" fill="none" stroke="#F5EBFF" stroke-opacity=".3" stroke-width=".8"/>
+    <path d="M12 7.85c-1.35 2.25-4.05 4.95-4.05 7.05a4.05 4.05 0 0 0 8.1 0c0-2.1-2.7-4.8-4.05-7.05Z" fill="#320A63" fill-opacity=".42" transform="translate(0 .4)"/>
+    <path d="M12 7.35c-1.3 2.15-3.75 4.65-3.75 6.85a3.75 3.75 0 0 0 7.5 0c0-2.2-2.45-4.7-3.75-6.85Z" fill="#FFF8FF"/>
+    <path d="M12 9.05c-.85 1.35-2.15 2.9-2.15 4.15a2.15 2.15 0 0 0 4.3 0c0-1.25-1.3-2.8-2.15-4.15Z" fill="url(#bzg-purify-gold)"/>
+    <path d="M8.25 16.35c-1.55-.1-2.55-.85-3.05-2.25 1.15.1 2.25.85 3.05 2.25Zm7.5 0c1.55-.1 2.55-.85 3.05-2.25-1.15.1-2.25.85-3.05 2.25Z" fill="#FFF8FF" fill-opacity=".96"/>
+    <path d="M9.05 15.95c-.1-1.05.35-1.9 1.25-2.55M14.95 15.95c.1-1.05-.35-1.9-1.25-2.55" fill="none" stroke="#D8B4FE" stroke-opacity=".76" stroke-width=".75" stroke-linecap="round"/>
     <path d="M18.3 7.85 18.78 9.07 20 9.55 18.78 10.03 18.3 11.25 17.82 10.03 16.6 9.55 17.82 9.07Z" fill="url(#bzg-purify-gold)"/>
     <path d="M6.1 9.7 6.36 10.34 7 10.6 6.36 10.86 6.1 11.5 5.84 10.86 5.2 10.6 5.84 10.34Z" fill="#fff" fill-opacity=".8"/>
-    <path d="M5.5 8.3A5.4 5.4 0 0 1 8.3 5.7" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M5.35 8.15A5.6 5.6 0 0 1 8.3 5.55" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="1" stroke-linecap="round"/>
   </symbol>
 </svg>
