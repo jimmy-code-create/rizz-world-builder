@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-10-28 — Reel party, and mentions in every comment
+
+- Reels can be watched together. The people icon beside Upload opens a room;
+  the host's swipe, play, pause and seek are broadcast over a Supabase Realtime
+  channel and guests follow the same feed and playhead. A six-character code or
+  `/reels?party=CODE` link is the whole invite, presence counts the room and
+  says when the host leaves, and nothing is written to a table — closing the
+  tabs ends the party.
+- Reel comments now draw `@mentions` through the caption renderer, and post
+  comments use the same chip, so a mention is highlighted and one tap from the
+  profile on both surfaces instead of plain text.
+- The Purify subscriber mark is redrawn as an amethyst cat-ear crest with a
+  two-stroke halo, inner vignette, inset rim and a white lotus over a gold
+  flame. The sprite keeps the mark filter-free for 20px rows and share cards.
+- Badge artwork is fetched with a version query, so a browser-cached sprite
+  cannot keep showing the previous drawing after a deploy.
+
+## 2026-10-28 — Verified is its own blue seal
+
+- The `verified` badge is redrawn from the supplied mark: a twelve-lobed azure
+  seal with a thick white check, a two-stroke blue halo (no filter — it stays
+  cheap in a 20px name row and on the canvas share export), an inner vignette
+  that darkens the scallops, an inset rim and a specular edge. It is one vector
+  symbol, so the same art is used beside names, in the badge tray, on `/badges`,
+  in share cards and in the reels creator pill.
+- The reels “Verified” pill now uses an azure border and tint instead of lime,
+  so the identity mark no longer reads as one more tier badge.
+- The profile preview puts its badge tray on the name row, immediately right of
+  the name — the same place the full profile already had it — instead of under
+  the handle. The worn badge keeps its ring, and details still open as a sheet
+  so the Message / Follow row stays clear.
+- `VerifiedSeal` is redrawn to the same seal for any surface that needs the
+  mark without the badge row.
+
 ## 2026-10-28 — The cover holds the wash, and the spider retires
 
 - A gradient profile no longer paints a dark 3:1 plate over its own cover. With

@@ -112,4 +112,34 @@ await check("every emblem is a gradient silhouette with depth layers", async () 
   }
 });
 
+await check("the Purify mark keeps its cat crest, halo, vignette and gold flame", async () => {
+  const purify = symbols.get("purify");
+  assert.ok(purify, "purify has art in the sprite");
+  assert.ok(purify.body.includes("bzg-purify"), "the amethyst tier gradient is still the fill");
+  assert.ok(purify.body.includes("bzg-purify-vignette"), "the inner vignette is drawn");
+  assert.ok(
+    purify.body.includes('stroke="#C084FC"') && purify.body.includes('stroke="#D8B4FE"'),
+    "the glow is a pair of violet halo strokes",
+  );
+  assert.ok(purify.body.includes("bzg-purify-gold"), "the lotus core keeps its gold flame");
+  assert.ok(purify.body.includes("M3.1 10.1V3.8"), "the cat-ear crest is still the silhouette");
+  assert.ok(!purify.body.includes("<rect"), "the mark has a transparent background");
+});
+
+await check("the verified seal keeps its blue halo, vignette and check", async () => {
+  const verified = symbols.get("verified");
+  assert.ok(verified, "verified has art in the sprite");
+  assert.ok(verified.body.includes("bzg-verified"), "the azure tier gradient is still the fill");
+  assert.ok(
+    verified.body.includes("bzg-verified-vignette"),
+    "the inner vignette is drawn over the seal",
+  );
+  assert.ok(
+    verified.body.includes('stroke="#45C4FF"') && verified.body.includes('stroke="#7AD8FF"'),
+    "the glow border is a pair of blue halo strokes",
+  );
+  assert.ok(verified.body.includes('stroke-width="2.7"'), "the white check stays bold at 20px");
+  assert.ok(!verified.body.includes("<rect"), "the seal has a transparent background");
+});
+
 console.log(`\n${passed} checks passed.`);

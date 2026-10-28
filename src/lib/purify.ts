@@ -48,15 +48,15 @@ export const PURIFY_BENEFITS: { title: string; detail: string }[] = [
 /**
  * The subscriber mark itself. It is not a `badges` row: it exists only while the
  * entitlement does, so it can never be awarded or kept after a subscription
- * ends. `AnimatedBadge` draws its particles.
+ * ends. The sprite carries its own amethyst halo and inner vignette.
  */
 export const PURIFY_BADGE: Badge = {
   id: "badge:purify",
   slug: "purify",
   name: "Purify",
-  description: "Purified. A live particle badge that only subscribers carry.",
+  description: "Purified. The amethyst crest only subscribers carry.",
   icon: "purify",
-  color: "#c9ff3d",
+  color: "#b47cff",
   rarity: "mythic",
 };
 

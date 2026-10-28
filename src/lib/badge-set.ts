@@ -54,6 +54,8 @@ export type CanonicalBadge = {
 
 const LIME = "#C6FF1A";
 const WHITE = "#F2F2F2";
+/** Verified's own mark is azure; its accents follow the art, not a tier colour. */
+const AZURE = "#39B7FF";
 
 export const BADGE_SET: CanonicalBadge[] = [
   {
@@ -129,7 +131,7 @@ export const BADGE_SET: CanonicalBadge[] = [
     symbol: "verified",
     art: "/badges/badges.svg#verified",
     tier: "rare",
-    glow: LIME,
+    glow: AZURE,
   },
   {
     slug: "streak-7",
@@ -276,7 +278,7 @@ export const LEGACY_BADGE_SET: CanonicalBadge[] = [
     symbol: "verified",
     art: "/badges/badges.svg#verified",
     tier: "rare",
-    glow: LIME,
+    glow: AZURE,
   },
 ];
 

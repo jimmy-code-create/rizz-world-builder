@@ -1,0 +1,174 @@
+/**
+ * Reel Party + mention highlights.
+ *
+ * Two things a future edit can quietly undo:
+ *
+ *  1. The party is host-authoritative. Guests must not autoplay, scroll or
+ *     advance on their own, while the host must publish the reel, play/pause
+ *     and seek. If the guard disappears, the room drifts apart.
+ *  2. Comments must render the same @mention chip as chat and reel captions.
+ *     Falling back to plain <GifContent> makes mentions inert again.
+ *
+ * Run: node tests/reel-party.test.mjs
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+let passed = 0;
+async function check(name, fn) {
+  try {
+    await fn();
+    passed += 1;
+    console.log(`ok - ${name}`);
+  } catch (error) {
+    console.error(`FAIL - ${name}`);
+    console.error(error);
+    process.exitCode = 1;
+  }
+}
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const party = read("src/lib/reel-party.ts");
+const reels = read("src/routes/_app/reels.tsx");
+const comments = read("src/components/PostCommentsSheet.tsx");
+const bar = read("src/components/reels/ReelPartyBar.tsx");
+const sheet = read("src/components/reels/ReelPartySheet.tsx");
+const sprite = read("public/badges/badges.svg");
+
+await check("a party code is short, random and unambiguous", () => {
+  assert.match(party, /export const REEL_PARTY_CODE_LENGTH = 6/);
+  assert.match(party, /crypto\.getRandomValues\(bytes\)/);
+  assert.ok(
+    party.includes('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'),
+    "the alphabet must skip I, O, 0 and 1 so a code can be read aloud",
+  );
+  assert.match(party, /byte % CODE_ALPHABET\.length/);
+});
+
+await check("pasted invite links and messy codes both normalize", () => {
+  assert.match(party, /export function normalizeReelPartyCode/);
+  assert.match(party, /\[\?&\]party=\(\[A-Z0-9\]\{6\}\)/, "invite links are understood");
+  assert.match(party, /replace\(\/\[\^A-Z0-9\]\/g, ""\)/, "spaces and dashes are tolerated");
+  assert.match(party, /code\.length === REEL_PARTY_CODE_LENGTH/, "wrong lengths are rejected");
+});
+
+await check("the room is presence + broadcast, with no table", () => {
+  assert.match(party, /supabase\.channel\(`reel-party-\$\{code\}`/);
+  assert.match(party, /config: \{ presence: \{ key: userId \} \}/);
+  assert.match(party, /channel\.on\("presence", \{ event: "sync" \}/);
+  assert.match(party, /event: "sync"/);
+  assert.match(party, /event: "hello"/);
+  assert.match(party, /subscribeSafely\(channel/);
+  assert.match(party, /supabase\.removeChannel\(channel\)/);
+  assert.doesNotMatch(party, /supabase\s*\.from\(/, "a party never writes to the database");
+});
+
+await check("only the host publishes, and a heartbeat keeps late guests aligned", () => {
+  assert.match(party, /if \(!hostRef\.current\) return;[\s\S]{0,80}sendSync/, "publish is host-only");
+  assert.match(party, /window\.setInterval\([\s\S]{0,220}?\}, 2500\)/, "the host heartbeats");
+  assert.match(party, /if \(hostRef\.current\) \{[\s\S]{0,140}?sendSync\(channel, snapshot\)/, "subscribe resyncs the room");
+  assert.match(party, /else \{[\s\S]{0,160}?event: "hello"/, "a guest announces itself on subscribe");
+  assert.match(party, /onSyncRef\.current\(\{[\s\S]{0,260}?at: sync\.at/, "guests receive the host clock");
+});
+
+await check("the feed has a party entry point and a shareable /reels?party= link", () => {
+  assert.match(reels, /validateSearch:[\s\S]{0,160}?party/);
+  assert.match(reels, /const \{ party: partyParam \} = Route\.useSearch\(\)/);
+  assert.match(reels, /<ReelPartyBar/);
+  assert.match(reels, /<ReelPartySheet/);
+  assert.match(reels, /aria-label=\{party\.code \? "Reel party controls" : "Start a reel party"\}/);
+  assert.match(party, /`\$\{origin\}\/reels\?party=\$\{encodeURIComponent\(code\)\}`/);
+  assert.match(reels, /navigator\.clipboard\.writeText\(reelPartyInviteUrl/);
+  assert.match(sheet, /value=\{reelPartyInviteUrl\(code\)\}/);
+});
+
+await check("a guest follows the host instead of fighting it", () => {
+  assert.match(
+    reels,
+    /const partyControlled = !!party\.code && !party\.isHost && party\.hostPresent/,
+  );
+  assert.match(
+    reels,
+    /partyControlled \? "overflow-y-hidden" : "overflow-y-auto"/,
+    "a controlled guest cannot swipe away from the host",
+  );
+  assert.match(reels, /partyControlled=\{partyControlled\}/);
+  assert.match(reels, /if \(partyControlled\) \{[\s\S]{0,160}?return \(\) => \{ cancelled = true; \};/, "no guest autoplay");
+  assert.match(reels, /if \(!video \|\| !isActive \|\| partyControlled\) return;/, "no guest play/pause");
+  assert.match(reels, /!isExternal && !partyControlled && <button/, "the guest loses the pause control");
+  assert.match(reels, /if \(!partyControlled && autoplay && isActive\) onEnded\(\);/, "the guest never advances the room");
+});
+
+await check("the host publishes swipe, play, pause and seek", () => {
+  assert.match(reels, /publishPartySnapshot\(\);[\s\S]{0,80}?\}, \[activeIndex, publishPartySnapshot\]\)/);
+  assert.match(reels, /scroller\.addEventListener\("play", onPlayback, true\)/);
+  assert.match(reels, /scroller\.addEventListener\("pause", onPlayback, true\)/);
+  assert.match(reels, /scroller\.addEventListener\("seeked", onPlayback, true\)/);
+  assert.match(reels, /scroller\.scrollTo\(\{ top, behavior: "smooth" \}\)/);
+  assert.match(reels, /Date\.now\(\) - sync\.at\) \/ 1000/, "guests age the playhead during flight");
+});
+
+await check("joining by link works, and a signed-out invite asks for a login", () => {
+  assert.match(reels, /normalizeReelPartyCode\(partyParam\)/);
+  assert.match(reels, /if \(party\.join\(normalizedPartyParam\)\)/);
+  assert.match(reels, /setPartyOpen\(true\);[\s\S]{0,80}?toast\.info\("Sign in to join the reel party"\)/);
+  assert.match(sheet, /to="\/login"/);
+});
+
+await check("the bar shows host, watcher count and a way out", () => {
+  assert.match(bar, /Reel party/);
+  assert.match(bar, /\{watching\} watching/);
+  assert.match(bar, /You control the playhead/);
+  assert.match(bar, /Following the host/);
+  assert.match(bar, /Waiting for the host/);
+  assert.match(bar, /aria-label="Copy reel party invite link"/);
+  assert.match(bar, /aria-label="Leave reel party"/);
+});
+
+await check("the sheet can start, join, copy, leave and host a fresh room", () => {
+  assert.match(sheet, /Start a reel party/);
+  assert.match(sheet, /or join with a code/);
+  assert.match(sheet, /placeholder="ABC123"/);
+  assert.match(sheet, /Leave party/);
+  assert.match(sheet, /Start a new party/);
+  assert.match(sheet, /Anyone with the link can join/);
+});
+
+await check("reel comments render the mention chip", () => {
+  assert.match(
+    reels,
+    /<CaptionText caption=\{c\.body\} \/>/,
+    "reel comments must go through the caption renderer, not plain GifContent",
+  );
+  assert.ok(
+    !/<GifContent>\{c\.body\}<\/GifContent>/.test(reels),
+    "the plain body renderer leaves mentions inert",
+  );
+  assert.match(reels, /className="mention-highlight font-semibold underline underline-offset-2"/);
+});
+
+await check("post comments render the same mention chip", () => {
+  assert.match(comments, /function CommentBody\(\{ body \}: \{ body: string \}\)/);
+  assert.match(comments, /renderGifSegments\(body\)/);
+  assert.match(comments, /renderCaptionWithTags\(segment\.value\)/);
+  assert.match(comments, /className="mention-highlight font-semibold"/);
+  assert.match(comments, /<CommentBody body=\{comment\.body\} \/>/);
+  assert.ok(
+    !comments.includes("<GifContent>{comment.body}</GifContent>"),
+    "mentions in ordinary post comments must not stay plain text",
+  );
+});
+
+await check("the Purify mark was redrawn with a halo, vignette and lotus", () => {
+  const start = sprite.indexOf('<symbol id="purify"');
+  assert.ok(start > -1, "the sprite carries the Purify symbol");
+  const symbol = sprite.slice(start, sprite.indexOf("</symbol>", start));
+  assert.ok(symbol.includes('id="bzg-purify"'), "the amethyst crest gradient is present");
+  assert.ok(symbol.includes('id="bzg-purify-vignette"'), "the inner vignette is present");
+  assert.ok(symbol.includes('id="bzg-purify-gold"'), "the gold flame is present");
+  assert.ok(symbol.includes("M8.7 16.35"), "the lotus petals are drawn");
+  assert.ok(!symbol.includes("<filter"), "the sprite stays filter-free for cheap 20px drawing");
+  assert.match(symbol, /stroke-opacity="\.18"/, "the halo is a second stroke, not a blur");
+});
+
+console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

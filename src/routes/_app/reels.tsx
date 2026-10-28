@@ -4,7 +4,7 @@ import { useCallback, useRef, useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
-  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, Send, MoreVertical,
+  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, Send, MoreVertical, Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
@@ -31,6 +31,15 @@ import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { formatCount } from "@/lib/utils";
+import { ReelPartyBar } from "@/components/reels/ReelPartyBar";
+import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
+import {
+  normalizeReelPartyCode,
+  reelPartyInviteUrl,
+  useReelParty,
+  type ReelPartySnapshot,
+  type ReelPartySync,
+} from "@/lib/reel-party";
 
 const SONG_LIBRARY = [
   { id: "neon", title: "Neon Heartbeat", artist: "RIZZ FM", bpm: 128, mood: "Hype" },
@@ -78,20 +87,31 @@ const REEL_LIKE_EFFECTS = [
 
 export const Route = createFileRoute("/_app/reels")({
   head: () => ({ meta: [{ title: "Reels · RIZZ" }] }),
+  validateSearch: (search: Record<string, unknown>): { party?: string } => ({
+    party: typeof search.party === "string" ? search.party : undefined,
+  }),
   component: ReelsPage,
 });
 
 function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const { user } = useAuth();
+  const navigate = Route.useNavigate();
+  const { party: partyParam } = Route.useSearch();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [partyOpen, setPartyOpen] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [captions, setCaptions] = useState(true);
   const [filter, setFilter] = useState<string>("none");
   const [autoplay, setAutoplay] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const activeIndexRef = useRef(-1);
+  activeIndexRef.current = activeIndex;
+  const partySyncTimers = useRef<number[]>([]);
+  const autoJoinedParty = useRef(false);
+  const invitePrompted = useRef(false);
 
   const likes = useQuery({
     queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
@@ -103,6 +123,132 @@ function ReelsPage() {
     queryFn: () => fetchMyBookmarkIds(user!.id),
     enabled: !!user,
   });
+
+  const readPartySnapshot = useCallback((): ReelPartySnapshot | null => {
+    const scroller = scrollerRef.current;
+    const index = activeIndexRef.current;
+    if (!scroller || index < 0) return null;
+    const video = scroller.querySelector<HTMLVideoElement>(
+      `[data-reel-index="${index}"] video`,
+    );
+    // External (YouTube) reels have no <video> to seek, but the room should
+    // still follow the host to the right slide.
+    return {
+      index,
+      position: video?.currentTime ?? 0,
+      playing: video ? !video.paused : false,
+    };
+  }, []);
+
+  const applyPartySync = useCallback((sync: ReelPartySync) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const top = Math.max(0, sync.index) * scroller.clientHeight;
+    if (Math.abs(scroller.scrollTop - top) > 4) {
+      scroller.scrollTo({ top, behavior: "smooth" });
+    }
+    // Advance the host's playhead by the time the message spent in flight, so
+    // a guest joins mid-reel instead of restarting it. Clamp the flight time:
+    // a badly skewed device clock must not throw the guest decades ahead.
+    const flight = sync.playing
+      ? Math.min(5, Math.max(0, (Date.now() - sync.at) / 1000))
+      : 0;
+    const expected = Math.max(0, sync.position) + flight;
+    const apply = () => {
+      const video = scroller.querySelector<HTMLVideoElement>(
+        `[data-reel-index="${sync.index}"] video`,
+      );
+      if (!video) return;
+      if (Number.isFinite(expected) && Math.abs(video.currentTime - expected) > 1.1) {
+        try {
+          video.currentTime = expected;
+        } catch {
+          /* metadata is not ready yet; the retry below covers it */
+        }
+      }
+      if (sync.playing) void video.play().catch(() => {});
+      else video.pause();
+    };
+    apply();
+    partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
+    partySyncTimers.current = [
+      window.setTimeout(apply, 160),
+      window.setTimeout(apply, 520),
+    ];
+  }, []);
+
+  const party = useReelParty({
+    userId: user?.id,
+    onSync: applyPartySync,
+    readSnapshot: readPartySnapshot,
+  });
+  const partyControlled = !!party.code && !party.isHost && party.hostPresent;
+
+  const publishPartySnapshot = useCallback(() => {
+    if (!party.code || !party.isHost) return;
+    const snapshot = readPartySnapshot();
+    if (snapshot) party.publish(snapshot);
+  }, [party.code, party.isHost, party.publish, readPartySnapshot]);
+
+  useEffect(() => () => {
+    partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
+  // A host's swipe is the room's next reel.
+  useEffect(() => {
+    publishPartySnapshot();
+  }, [activeIndex, publishPartySnapshot]);
+
+  // Play, pause and seek can happen without the index moving; the capture
+  // listener sees them wherever they fire inside the feed.
+  useEffect(() => {
+    if (!party.code || !party.isHost) return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const onPlayback = (event: Event) => {
+      const video = event.target;
+      if (!(video instanceof HTMLVideoElement)) return;
+      const holder = video.closest<HTMLElement>("[data-reel-index]");
+      if (!holder || Number(holder.dataset.reelIndex) !== activeIndexRef.current) return;
+      publishPartySnapshot();
+    };
+    scroller.addEventListener("play", onPlayback, true);
+    scroller.addEventListener("pause", onPlayback, true);
+    scroller.addEventListener("seeked", onPlayback, true);
+    return () => {
+      scroller.removeEventListener("play", onPlayback, true);
+      scroller.removeEventListener("pause", onPlayback, true);
+      scroller.removeEventListener("seeked", onPlayback, true);
+    };
+  }, [party.code, party.isHost, publishPartySnapshot, reels.data?.length]);
+
+  // Losing the session mid-party would leave a guest locked to a screen they
+  // can no longer control; close the room instead.
+  const signedOutInParty = !user && !!party.code;
+  useEffect(() => {
+    if (!signedOutInParty) return;
+    party.leave();
+    setPartyOpen(false);
+    void navigate({ to: "/reels", search: {}, replace: true });
+  }, [signedOutInParty, party.leave, navigate]);
+
+  const normalizedPartyParam = normalizeReelPartyCode(partyParam);
+  useEffect(() => {
+    if (!normalizedPartyParam || !user || party.code || autoJoinedParty.current) return;
+    autoJoinedParty.current = true;
+    if (party.join(normalizedPartyParam)) {
+      toast.success(`Joined reel party ${normalizedPartyParam}`);
+    }
+  }, [normalizedPartyParam, user, party.code, party.join]);
+
+  // An invite opened signed-out should ask for the one thing it needs instead
+  // of silently dropping the code.
+  useEffect(() => {
+    if (!normalizedPartyParam || user || party.code || invitePrompted.current) return;
+    invitePrompted.current = true;
+    setPartyOpen(true);
+    toast.info("Sign in to join the reel party");
+  }, [normalizedPartyParam, user, party.code]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -130,6 +276,60 @@ function ReelsPage() {
     next?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  function copyPartyInvite() {
+    if (!party.code) return;
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      toast.error("Copy isn't available in this browser");
+      return;
+    }
+    void navigator.clipboard.writeText(reelPartyInviteUrl(party.code)).then(
+      () => toast.success("Invite link copied"),
+      () => toast.error("Couldn't copy the invite link"),
+    );
+  }
+
+  function startParty() {
+    if (!user) {
+      toast.error("Sign in to start a reel party");
+      return;
+    }
+    const code = party.create();
+    setPartyOpen(false);
+    void navigate({ to: "/reels", search: { party: code }, replace: true });
+    const copied = typeof navigator !== "undefined"
+      ? navigator.clipboard?.writeText?.(reelPartyInviteUrl(code))
+      : undefined;
+    if (copied) {
+      void copied.then(
+        () => toast.success(`Party ${code} is live — invite link copied`),
+        () => toast.success(`Party ${code} is live`),
+      );
+    } else {
+      toast.success(`Party ${code} is live`);
+    }
+  }
+
+  function joinParty(raw: string) {
+    if (!user) {
+      toast.error("Sign in to join a reel party");
+      return;
+    }
+    const code = party.join(raw);
+    if (!code) {
+      toast.error("That party code isn't valid");
+      return;
+    }
+    setPartyOpen(false);
+    void navigate({ to: "/reels", search: { party: code }, replace: true });
+    toast.success(`Joined party ${code}`);
+  }
+
+  function leaveParty() {
+    party.leave();
+    setPartyOpen(false);
+    void navigate({ to: "/reels", search: {}, replace: true });
+  }
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-black">
       <div className="absolute inset-x-3 top-3 z-30 flex items-center gap-2 pointer-events-none">
@@ -141,9 +341,53 @@ function ReelsPage() {
         >
           <Plus className="h-5 w-5 text-white" />
         </button>
+        <button
+          onClick={() => setPartyOpen(true)}
+          className={`pointer-events-auto relative grid h-10 w-10 place-items-center rounded-full border shadow-md backdrop-blur-md transition-transform active:scale-95 ${
+            party.code
+              ? "border-primary/50 bg-primary/20 text-primary"
+              : "border-white/15 bg-black/45 text-white"
+          }`}
+          aria-label={party.code ? "Reel party controls" : "Start a reel party"}
+          title="Reel party"
+        >
+          <Users className="h-5 w-5" />
+          {party.code && (
+            <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-black leading-4 text-primary-foreground">
+              {party.watching}
+            </span>
+          )}
+        </button>
       </div>
 
+      {party.code && (
+        <div className="absolute inset-x-3 top-16 z-30 flex justify-center pointer-events-none">
+          <ReelPartyBar
+            code={party.code}
+            isHost={party.isHost}
+            watching={party.watching}
+            hostPresent={party.hostPresent}
+            onCopyInvite={copyPartyInvite}
+            onLeave={leaveParty}
+            onOpen={() => setPartyOpen(true)}
+          />
+        </div>
+      )}
+
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+      <ReelPartySheet
+        open={partyOpen}
+        onOpenChange={setPartyOpen}
+        code={party.code}
+        isHost={party.isHost}
+        watching={party.watching}
+        hostPresent={party.hostPresent}
+        signedIn={!!user}
+        onStart={startParty}
+        onJoin={joinParty}
+        onLeave={leaveParty}
+        onCopyInvite={copyPartyInvite}
+      />
 
       {reels.isLoading && <div className="grid min-h-0 flex-1 place-items-center text-muted-foreground">Loading reels…</div>}
       {reels.isError && (
@@ -165,13 +409,20 @@ function ReelsPage() {
         </div>
       )}
       {!!reels.data?.length && (
-        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain snap-y snap-mandatory no-scrollbar">
+        <div
+          ref={scrollerRef}
+          aria-label="Reels"
+          className={`min-h-0 flex-1 overscroll-contain snap-y snap-mandatory no-scrollbar ${
+            partyControlled ? "overflow-y-hidden" : "overflow-y-auto"
+          }`}
+        >
           {reels.data.map((r, index) => (
           <ReelItem
             key={r.id}
             post={r}
             reelIndex={index}
             muted={muted}
+            partyControlled={partyControlled}
             toggleMute={() => setMuted((m) => !m)}
             speed={speed}
             captions={captions}
@@ -243,6 +494,7 @@ function ReelItem({
   post,
   reelIndex,
   muted,
+  partyControlled,
   toggleMute,
   speed,
   captions,
@@ -261,6 +513,8 @@ function ReelItem({
   post: any;
   reelIndex: number;
   muted: boolean;
+  /** A guest in a live room: the host owns play/pause and the playhead. */
+  partyControlled: boolean;
   toggleMute: () => void;
   speed: number;
   captions: boolean;
@@ -335,6 +589,11 @@ function ReelItem({
       setPaused(true);
       return () => { cancelled = true; };
     }
+    if (partyControlled) {
+      // The party sync owns this player. Trying to autoplay here would fight
+      // the host's pause, so leave the decision to the incoming snapshot.
+      return () => { cancelled = true; };
+    }
     if (autoplay) {
       video.play()
         .then(() => {
@@ -352,7 +611,7 @@ function ReelItem({
       setPaused(true);
     }
     return () => { cancelled = true; };
-  }, [isActive, autoplay]);
+  }, [isActive, autoplay, partyControlled]);
   useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
   useEffect(() => {
     if (!isActive) return;
@@ -402,7 +661,7 @@ function ReelItem({
 
   async function togglePlayback() {
     const video = ref.current;
-    if (!video || !isActive) return;
+    if (!video || !isActive || partyControlled) return;
     if (video.paused) {
       try {
         await video.play();
@@ -453,7 +712,7 @@ function ReelItem({
     }
     tapTimer.current = window.setTimeout(() => {
       tapTimer.current = null;
-      void togglePlayback();
+      if (!partyControlled) void togglePlayback();
     }, 260);
   }
 
@@ -565,7 +824,7 @@ function ReelItem({
           onClick={handleVideoTap}
           onPlay={() => setPaused(false)}
           onPause={() => setPaused(true)}
-          onEnded={() => { if (autoplay && isActive) onEnded(); }}
+          onEnded={() => { if (!partyControlled && autoplay && isActive) onEnded(); }}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
             if (v.duration) setProgress((v.currentTime / v.duration) * 100);
@@ -625,7 +884,7 @@ function ReelItem({
         <div className="h-full bg-primary text-primary-foreground shadow-md" style={{ width: `${progress}%` }} />
       </div>}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-        {!isExternal && <button
+        {!isExternal && !partyControlled && <button
           type="button"
           onClick={() => void togglePlayback()}
           className="h-10 w-10 rounded-full glass-strong grid place-items-center"
@@ -833,7 +1092,7 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold">@{c.author?.username}</p>
-                <p className="text-sm break-words whitespace-pre-wrap"><GifContent>{c.body}</GifContent></p>
+                <p className="text-sm break-words whitespace-pre-wrap"><CaptionText caption={c.body} /></p>
               </div>
             </div>
           ))}

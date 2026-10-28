@@ -401,10 +401,10 @@ export function ProfilePreviewDialog({
                 </p>
               )
             }
-            handleExtra={
-              // Keep the badges together in one compact, non-wrapping tray.
-              // Details open as a sheet here: a popover under the handle lands
-              // squarely on the Message / Follow / Knock row below it.
+            featuredBadge={
+              // The packed tray sits on the name row, right of the name — the
+              // same place the full profile puts it. Details still open as a
+              // sheet here so they never cover the Message / Follow row.
               markBadges.length > 0 ? (
                 <BadgeLine badges={markBadges} wornSlug={wornSlug} layout="sheet" />
               ) : undefined

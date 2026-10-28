@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, CornerDownRight, Maximize2, Send, ArrowDownUp } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -17,6 +18,8 @@ import { emojiTextClass } from "@/lib/text-size";
 import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { RizzCat } from "@/components/RizzCat";
+import { renderGifSegments } from "@/lib/gif-content";
+import { renderCaptionWithTags } from "@/lib/hashtags";
 
 /** The page size fetchComments uses. When a thread fills it, say "100+" instead
  *  of pretending that is the whole thread. */
@@ -32,6 +35,63 @@ type CommentRow = {
 };
 
 type VoteData = { counts: Map<string, number>; mine: Set<string> };
+
+/**
+ * A comment with the same mention chips as chat and reel captions. Before this
+ * an `@name` in a comment stayed plain text, so the person was never one tap
+ * away and the highlight the rest of the app uses was missing.
+ */
+function CommentBody({ body }: { body: string }) {
+  return (
+    <>
+      {renderGifSegments(body).map((segment, segmentIndex) =>
+        segment.isGif || segment.isSticker ? (
+          <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
+        ) : (
+          renderCaptionWithTags(segment.value).map((part, index) => {
+            if (part.mention) {
+              return (
+                <ProfilePreviewTrigger
+                  key={index}
+                  username={part.mention}
+                  className="mention-highlight font-semibold"
+                >
+                  {part.text}
+                </ProfilePreviewTrigger>
+              );
+            }
+            if (part.tag) {
+              return (
+                <Link
+                  key={index}
+                  to="/tag/$tag"
+                  params={{ tag: part.tag }}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {part.text}
+                </Link>
+              );
+            }
+            if (part.url) {
+              return (
+                <a
+                  key={index}
+                  href={part.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline underline-offset-2"
+                >
+                  {part.text}
+                </a>
+              );
+            }
+            return <span key={index}>{part.text}</span>;
+          })
+        ),
+      )}
+    </>
+  );
+}
 
 function timeAgo(iso: string): string {
   const seconds = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -159,7 +219,7 @@ const CommentRowView = memo(function CommentRowView({
             emojiTextClass(comment.body, "comment"),
           )}
         >
-          <GifContent>{comment.body}</GifContent>
+          <CommentBody body={comment.body} />
         </p>
         <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
           <button
