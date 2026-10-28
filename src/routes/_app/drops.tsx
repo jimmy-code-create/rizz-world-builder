@@ -21,6 +21,7 @@ import { toast } from "@/lib/toast";
 import { BountyCard } from "@/components/bounties/BountyCard";
 import { PostBountyDialog } from "@/components/bounties/PostBountyDialog";
 import {
+  activeBounties,
   bountiesNeedingYou,
   isEscrowBounty,
   settleExpiredBounties,
@@ -152,7 +153,11 @@ const QUESTS: Quest[] = [
   },
 ];
 
-/** Finished bounties stay on the board for a few days as receipts. */
+/**
+ * How far back the board asks for rows. Finished bounties are filtered out of
+ * the list, but an expired one is still fetched for a few days so the settle
+ * pass below can hand its Paws back before it disappears.
+ */
 const BOARD_LOOKBACK_DAYS = 3;
 
 function DropsPage() {
@@ -267,12 +272,16 @@ function DropsPage() {
   const submissionFor = (dropId: string) =>
     (submissions.data ?? []).find((row) => row.drop_id === dropId) ?? null;
 
+  // Paid, cancelled and expired bounties are done — they leave the board, and
+  // so does an open call whose every claim has been taken. Only work a member
+  // can still act on is listed.
+  const active = useMemo(() => activeBounties(rows), [rows]);
   const myBounties = useMemo(
-    () => rows.filter((row) => viewerRole(row, user?.id) !== "guest"),
-    [rows, user],
+    () => active.filter((row) => viewerRole(row, user?.id) !== "guest"),
+    [active, user],
   );
-  const desk = useMemo(() => bountiesNeedingYou(rows, user?.id), [rows, user]);
-  const visible = onlyMine ? myBounties : rows;
+  const desk = useMemo(() => bountiesNeedingYou(active, user?.id), [active, user]);
+  const visible = onlyMine ? myBounties : active;
 
   const escrowHeld = useMemo(
     () =>
@@ -401,7 +410,7 @@ function DropsPage() {
         </div>
       </div>
 
-      {rows.length > 0 && (
+      {active.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {(
             [

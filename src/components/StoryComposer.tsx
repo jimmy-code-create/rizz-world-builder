@@ -168,6 +168,9 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [history, setHistory] = useState<Overlay[][]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
+  // The drop decision is read on release, so it cannot come from the state
+  // closure that existed when the drag began.
+  const dragOverTrashRef = useRef(false);
   const [audience, setAudience] = useState<StoryAudience>("everyone");
   const [hiddenFrom, setHiddenFrom] = useState<Person[]>([]);
   const [caption, setCaption] = useState("");
@@ -403,30 +406,56 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
 
   // Multi-touch drag / pinch / rotate. `force` lets the text editor's move
   // handle drag a layer that is currently open for typing.
+  //
+  // Three rules keep this working on a phone, where it silently did not:
+  //  - the pressed handle never unmounts mid-gesture. iOS cancels the pointer
+  //    of a captured element that leaves the DOM, so committing the text on
+  //    press killed every text drag at the first move. It commits on release;
+  //  - the layer tracks the grab point instead of snapping its centre under the
+  //    finger, so grabbing an edge no longer yanks the words away;
+  //  - a tap is a selection, not an edit — history only grows once the finger
+  //    has actually travelled, so tapping a layer to select it no longer buries
+  //    the real undo step.
   const onDragOverlay = (id: string, force = false) => (e: React.PointerEvent) => {
     // Brush mode owns all stage touches so strokes paint over overlays.
     if (panel === "brush") return;
     if (editingId === id && !force) return;
-    // Moving a layer that is being typed in commits what is on screen first.
-    if (editingId === id && force) {
-      const el = textEditorRef.current;
-      if (el) updateSelected({ value: el.textContent || " " });
-      setEditingId(null);
-      setEditorText("");
-    }
-    const stage = stageRef.current; if (!stage) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setSelected(id);
-    const rect = stage.getBoundingClientRect();
+    const stage = stageRef.current;
+    if (!stage) return;
     const start = overlays.find((o) => o.id === id);
     // Locked layers stay put (toggle in the Layers panel).
     if (!start || start.locked) return;
-    pushHistory(overlays);
+
+    const commitTextOnRelease = force && editingId === id;
+    const handle = e.currentTarget as HTMLElement;
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+      // Capture is a convenience; the window listeners below do the moving.
+    }
+
+    setSelected(id);
+    const rect = stage.getBoundingClientRect();
+    const grabX = (e.clientX - rect.left) / rect.width;
+    const grabY = (e.clientY - rect.top) / rect.height;
+    const baseX = start.x;
+    const baseY = start.y;
+    const originX = e.clientX;
+    const originY = e.clientY;
+    let moved = false;
+    let pushed = false;
+    const beginMove = () => {
+      if (pushed) return;
+      pushed = true;
+      pushHistory(overlays);
+    };
 
     const pts = new Map<number, { x: number; y: number }>();
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    let baseScale = start.scale, baseRotate = start.rotate;
-    let initDist = 0, initAngle = 0;
+    const baseScale = start.scale;
+    const baseRotate = start.rotate;
+    let initDist = 0;
+    let initAngle = 0;
 
     const trashHit = (cx: number, cy: number) => {
       const t = document.getElementById("story-trash");
@@ -444,6 +473,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         const dist = Math.hypot(dx, dy);
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
         if (initDist === 0) { initDist = dist; initAngle = angle; return; }
+        beginMove();
         const scale = Math.max(0.3, Math.min(6, baseScale * (dist / initDist)));
         const rotate = baseRotate + (angle - initAngle);
         const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
@@ -452,39 +482,61 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y, scale, rotate } : it));
       } else if (arr.length === 1) {
         const p = arr[0];
-        const x = Math.max(0, Math.min(1, (p.x - rect.left) / rect.width));
-        const y = Math.max(0, Math.min(1, (p.y - rect.top) / rect.height));
-        setDragOverTrash(trashHit(p.x, p.y));
+        if (!moved) {
+          if (Math.hypot(p.x - originX, p.y - originY) < 2) return;
+          moved = true;
+        }
+        beginMove();
+        const overTrash = trashHit(p.x, p.y);
+        if (overTrash !== dragOverTrashRef.current) {
+          dragOverTrashRef.current = overTrash;
+          setDragOverTrash(overTrash);
+        }
+        const nx = (p.x - rect.left) / rect.width;
+        const ny = (p.y - rect.top) / rect.height;
+        const x = Math.max(0, Math.min(1, baseX + nx - grabX));
+        const y = Math.max(0, Math.min(1, baseY + ny - grabY));
         setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, x, y } : it));
       }
     };
-    const up = (ev: PointerEvent) => {
+    const finish = (ev: PointerEvent) => {
       pts.delete(ev.pointerId);
-      if (pts.size === 0) {
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", up);
-        // Trash drop
-        if (dragOverTrash) {
-          setOverlays((cur) => cur.filter((it) => it.id !== id));
-          setSelected(null);
-        }
-        setDragOverTrash(false);
-      } else {
-        initDist = 0; // reset pinch base
+      if (pts.size > 0) {
+        initDist = 0; // a second finger picks up the pinch from here
+        return;
       }
+      window.removeEventListener("pointermove", move, true);
+      window.removeEventListener("pointerup", finish, true);
+      window.removeEventListener("pointercancel", finish, true);
+      window.removeEventListener("pointerdown", addPointer, true);
+      const droppedOnTrash = dragOverTrashRef.current;
+      dragOverTrashRef.current = false;
+      setDragOverTrash(false);
+      // Trash drop. The history entry was pushed when the finger started
+      // moving, so undo brings the layer back rather than the pre-drag state.
+      if (droppedOnTrash && moved) {
+        setOverlays((cur) => cur.filter((it) => it.id !== id));
+        setSelected(null);
+      }
+      if (commitTextOnRelease) {
+        const el = textEditorRef.current;
+        if (el) {
+          const text = el.textContent || " ";
+          setOverlays((cur) => cur.map((it) => it.id === id ? { ...it, value: text } : it));
+        }
+        setEditingId(null);
+        setEditorText("");
+      }
+      try { handle.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
     };
-    const extra = (ev: PointerEvent) => {
+    const addPointer = (ev: PointerEvent) => {
       pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       initDist = 0;
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-    window.addEventListener("pointerdown", extra);
-    // cleanup extra listener on end
-    const stopExtra = () => window.removeEventListener("pointerdown", extra);
-    window.addEventListener("pointerup", stopExtra, { once: true });
+    window.addEventListener("pointermove", move, true);
+    window.addEventListener("pointerup", finish, true);
+    window.addEventListener("pointercancel", finish, true);
+    window.addEventListener("pointerdown", addPointer, true);
   };
 
   const sel = overlays.find((o) => o.id === selected) || null;

@@ -189,6 +189,36 @@ await check("new text spawns below centre, not on the photo's middle", async () 
   );
 });
 
+await check("dragging a layer survives the gesture, on every browser", async () => {
+  // Text could not be dragged. The move handle committed the text on press,
+  // which unmounted the very element holding the pointer — iOS cancels the
+  // pointer of a captured element that leaves the DOM, so the drag died on the
+  // first move. The commit must happen when the finger lifts instead.
+  const drag = composerSrc.slice(
+    composerSrc.indexOf("const onDragOverlay"),
+    composerSrc.indexOf("if (!open) return null;"),
+  );
+  assert.ok(drag.length > 0, "onDragOverlay must exist");
+  assert.ok(
+    /commitTextOnRelease\s*=\s*force\s*&&\s*editingId\s*===\s*id/.test(drag),
+    "the pressed handle must stay mounted until the drag ends",
+  );
+  assert.ok(
+    !/if \(editingId === id && force\) \{\s*\n\s*const el/.test(drag),
+    "the old press-time commit (which unmounted the handle) must not return",
+  );
+  assert.ok(/if \(commitTextOnRelease\)/.test(drag), "the text commits on release");
+  // Pointer capture is an optimisation only: Safari throws when the node is
+  // detached, and an uncaught throw skipped the listeners entirely.
+  assert.ok(/try \{\s*\n\s*handle\.setPointerCapture/.test(drag), "capture must be guarded");
+  assert.ok(drag.includes("window.addEventListener(\"pointermove\", move, true)"), "moves must be captured");
+  // The layer follows the grab point, and a tap is not an undo step.
+  assert.ok(drag.includes("grabX") && drag.includes("baseX + nx - grabX"), "drag must track the grab point");
+  assert.ok(drag.includes("beginMove") && drag.includes("if (pushed) return;"), "history only grows on a real move");
+  // Dropping on the bin has to read the release-time state, not the closure.
+  assert.ok(drag.includes("dragOverTrashRef.current"), "trash drop must use the live hover state");
+});
+
 await check("lens tool removed from the story composer", async () => {
   assert.ok(!composerSrc.includes("FaceEffectsStudio"), "FaceEffectsStudio must not be wired in");
   assert.ok(!composerSrc.includes('label="Lens"'), "Lens tool button must be gone");

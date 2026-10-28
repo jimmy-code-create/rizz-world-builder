@@ -17,6 +17,11 @@ import { AlertTriangle, Check, Info, LoaderCircle, XCircle } from "lucide-react"
  * - tap anywhere on the card to dismiss,
  * - the optional action button ("Retry", "Undo", ...).
  * Swiping, stacking (max 2 at the host) and enter/exit motion are sonner's.
+ *
+ * The card is a pill while its sentence fits and grows a second line when it
+ * does not. It used to truncate both spans (`truncate` plus a hard 46% cap on
+ * the message), so a receipt like "Cancelled — 10 Paws fee / 90 Paws came back"
+ * was cut in half and the numbers — the point of the toast — went first.
  */
 
 export type GlassToastType = "success" | "error" | "info" | "warning" | "loading";
@@ -81,7 +86,7 @@ export function GlassToast({
       role={type === "error" ? "alert" : "status"}
       aria-live={type === "error" ? "assertive" : "polite"}
       data-toast-type={type}
-      className="pointer-events-auto relative mx-auto flex w-fit max-w-[min(21rem,calc(100vw-1.5rem))] cursor-default touch-pan-y items-center gap-2 rounded-full border border-white/[0.09] bg-[#111113]/92 py-2 pl-3 pr-3.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.9)] backdrop-blur-md"
+      className="pointer-events-auto relative mx-auto flex w-fit max-w-[min(23rem,calc(100vw-1.5rem))] cursor-default touch-pan-y flex-wrap items-center gap-x-2 gap-y-1 rounded-[20px] border border-white/[0.09] bg-[#111113]/92 py-2 pl-3 pr-3.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.9)] backdrop-blur-md"
       onPointerDown={pause}
       onPointerUp={resume}
       onPointerCancel={resume}
@@ -107,11 +112,13 @@ export function GlassToast({
           style={{ backgroundColor: style.accent, boxShadow: `0 0 6px ${style.accent}66` }}
         />
       )}
-      <span className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-[#f2efe6]">
+      <span className="min-w-0 text-[12.5px] font-semibold leading-snug text-[#f2efe6] [overflow-wrap:anywhere]">
         {title}
       </span>
       {message ? (
-        <span className="min-w-0 max-w-[46%] truncate text-[11.5px] font-medium leading-tight text-white/55">
+        // `flex-1` lets the sentence take the rest of the line it lands on; when
+        // it cannot share the title's line it wraps below, indented past the dot.
+        <span className="min-w-[7rem] flex-1 text-[11.5px] font-medium leading-snug text-white/55 [overflow-wrap:anywhere]">
           {message}
         </span>
       ) : null}

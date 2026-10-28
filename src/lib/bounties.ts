@@ -132,6 +132,30 @@ export function bountyState(row: BountyRow): BountyState {
   return (row.state ?? (row.assigned_to ? "taken" : "open")) as BountyState;
 }
 
+/** States with nothing left to do and nothing left to pay. */
+const FINISHED_STATES: readonly BountyState[] = ["paid", "cancelled", "expired"];
+
+/**
+ * A settled bounty leaves the board.
+ *
+ * `/drops` used to keep finished bounties around for a few days as receipts,
+ * which turned the board into a pile of rows nobody could act on — the bounty
+ * you completed, or the one you cancelled, stayed in the list between live
+ * work. Paid, cancelled and expired escrow bounties are over; a legacy open
+ * call is over once every claim has been taken.
+ */
+export function isBountyFinished(row: BountyRow): boolean {
+  if (FINISHED_STATES.includes(bountyState(row))) return true;
+  if (isEscrowBounty(row)) return false;
+  const limit = Number(row.claim_limit ?? 0);
+  return limit > 0 && Number(row.claim_count ?? 0) >= limit;
+}
+
+/** The bounties still worth showing: open, taken or in review. */
+export function activeBounties(rows: BountyRow[]): BountyRow[] {
+  return rows.filter((row) => !isBountyFinished(row));
+}
+
 export function canTakeBounty(row: BountyRow, userId?: string | null, now: number = Date.now()): boolean {
   if (!userId) return false;
   if (!isEscrowBounty(row)) return false;
