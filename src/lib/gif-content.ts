@@ -17,6 +17,18 @@ export function isOnlyMediaMarker(text: string | null | undefined) {
   return segments.every((segment) => segment.isGif || segment.isSticker || !segment.value.trim());
 }
 
+/**
+ * The old image-only placeholder that used to be stored as a message body.
+ *
+ * `send()` wrote "📷 Image" when a photo was shared without a caption, so every
+ * one of those messages still shows the words "📷 Image" under (or instead of)
+ * the photo. The writer no longer adds it, and readers treat it as empty text.
+ */
+export function isMediaPlaceholderText(text: string | null | undefined) {
+  const value = (text ?? "").replace(/\uFE0F/g, "").trim().toLowerCase();
+  return value === "📷 image" || value === "📸 image" || value === "🖼 image";
+}
+
 export function renderGifSegments(text: string) {
   const segments: {
     isGif: boolean;

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Palette, X, Forward } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
-import { isOnlyMediaMarker } from "@/lib/gif-content";
+import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
@@ -65,6 +65,8 @@ function GroupRoom() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
+  // Hover-toolbar smiley opens on reactions; every other entry point on actions.
+  const [openMessageView, setOpenMessageView] = useState<"actions" | "reactions">("actions");
   const [highlightedMessage, setHighlightedMessage] = useState<string | null>(null);
   const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   // Per-group wallpaper: a preset or an uploaded background URL.
@@ -481,7 +483,10 @@ function GroupRoom() {
             const deletedAt = m.deleted_at as string | null | undefined;
             // A shared post/reel travels as its permalink; the raw URL becomes a
             // card (SharedPostCards) so it renders the same in every chat.
-            const bodyText = withoutShareLinks(m.body);
+            const rawBodyText = withoutShareLinks(m.body);
+            // Legacy image-only messages carry a literal “📷 Image” body; it is
+            // a placeholder from the old composer, not something to display.
+            const bodyText = isMediaPlaceholderText(rawBodyText) ? "" : rawBodyText;
             const hasText = !!bodyText.trim();
             const mediaOnly = isOnlyMediaMarker(bodyText);
             const previous = visibleMessages[index - 1];
@@ -520,7 +525,19 @@ function GroupRoom() {
                 mentionsMe={mentionsMe}
                 // Long-press anywhere in the row opens the actions, exactly like
                 // realm chat — the avatar gutter and blank space included.
-                onLongPress={() => setOpenMessageId(m.id)}
+                onLongPress={() => {
+                  setOpenMessageView("actions");
+                  setOpenMessageId(m.id);
+                }}
+                // Mouse users get Discord's hover toolbar instead of a hold.
+                onQuickReact={() => {
+                  setOpenMessageView("reactions");
+                  setOpenMessageId(m.id);
+                }}
+                onMoreActions={() => {
+                  setOpenMessageView("actions");
+                  setOpenMessageId(m.id);
+                }}
                 onAuthorClick={
                   m.author?.username
                     ? () => void nav({ to: "/u/$username", params: { username: m.author.username } })
@@ -529,7 +546,11 @@ function GroupRoom() {
               >
                   <MessageActionMenu
                     open={openMessageId === m.id}
-                    onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
+                    onOpenChange={(open) => {
+                      if (open) setOpenMessageView("actions");
+                      setOpenMessageId(open ? m.id : null);
+                    }}
+                    initialView={openMessageView}
                     align={mine ? "right" : "left"}
                     // The row owns long-press, so the trigger must not race it.
                     detectPress={false}

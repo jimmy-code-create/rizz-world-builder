@@ -13,11 +13,12 @@ import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, 
 import { CornerUpLeft } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
-import { isOnlyMediaMarker } from "@/lib/gif-content";
+import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -109,7 +110,11 @@ function DMPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
   const previousMessageIdsRef = useRef<string[]>([]);
+  const isMobile = useIsMobile();
   const [openMsg, setOpenMsg] = useState<string | null>(null);
+  // The desktop hover toolbar's smiley opens the menu straight into reactions;
+  // every other entry point (long press, right click, keyboard) opens actions.
+  const [openMsgView, setOpenMsgView] = useState<"actions" | "reactions">("actions");
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
@@ -199,6 +204,11 @@ function DMPage() {
     const t = window.setInterval(() => setRecMs(Date.now() - recStart.current), 200);
     return () => window.clearInterval(t);
   }, [recording]);
+
+  const openMessageMenu = (id: string, view: "actions" | "reactions" = "actions") => {
+    setOpenMsgView(view);
+    setOpenMsg(id);
+  };
 
   const jumpToMessage = (id: string) => {
     const el = document.getElementById(`msg-${id}`);
@@ -497,7 +507,9 @@ function DMPage() {
     if (!user || (!body.trim() && !imageFile) || sendingMessageRef.current) return;
     const composerText = body;
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
-    const text = (quoted + body.trim()).trim() || "📷 Image";
+    // An image with no caption keeps an empty body. Writing “📷 Image” here made
+    // every photo message read as a caption that repeated the picture.
+    const text = (quoted + body.trim()).trim();
     if (text.length > MAX_MESSAGE_LENGTH) {
       toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
       return;
@@ -770,7 +782,10 @@ function DMPage() {
         className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
         style={wallpaperStyle(wallpaper)}
       >
-      {openMsg && (
+      {/* The dimmer exists for the phone's bottom sheet. On a desktop the menu
+          is a popover beside the message, exactly like Discord's — dimming the
+          whole conversation for it made the hover toolbar feel like a modal. */}
+      {openMsg && isMobile && (
         <div
           aria-hidden="true"
           onClick={() => setOpenMsg(null)}
@@ -927,8 +942,12 @@ function DMPage() {
             // A shared post/reel travels as its permalink: the raw URL is swapped
             // for a real card (SharedPostCards) right under the message.
             const restText = withoutShareLinks(rest);
-            const hasText = !!restText.trim();
-            const mediaOnly = isOnlyMediaMarker(restText);
+            // Old image-only messages stored the literal words “📷 Image” as
+            // their body. A photo should stand on its own, not repeat itself in
+            // a caption, so that placeholder is not text.
+            const messageText = isMediaPlaceholderText(restText) ? "" : restText;
+            const hasText = !!messageText.trim();
+            const mediaOnly = isOnlyMediaMarker(messageText);
             const previous = filteredMsgs[index - 1];
             // A new calendar day always opens a group (and a divider) — the
             // five-minute burst rule must not swallow midnight.
@@ -1032,7 +1051,11 @@ function DMPage() {
                 highlighted={highlighted === m.id}
                 // Long-press anywhere in the row (avatar, name, photo, empty
                 // space) opens this message's actions — the realm gesture.
-                onLongPress={() => setOpenMsg(m.id)}
+                onLongPress={() => openMessageMenu(m.id)}
+                // On a desktop the same two actions live on a hover toolbar,
+                // Discord-style, so a mouse never has to hold a message down.
+                onQuickReact={() => openMessageMenu(m.id, "reactions")}
+                onMoreActions={() => openMessageMenu(m.id)}
                 onAuthorClick={
                   (mine ? profile?.username : other.data?.username)
                     ? () =>
@@ -1050,7 +1073,8 @@ function DMPage() {
                 ) : (
                 <MessageActionMenu
                   open={openMsg === m.id}
-                  onOpenChange={(o) => setOpenMsg(o ? m.id : null)}
+                  onOpenChange={(o) => (o ? openMessageMenu(m.id) : setOpenMsg(null))}
+                  initialView={openMsgView}
                   align={mine ? "right" : "left"}
                   // The row owns long-press; the menu keeps double-tap, keyboard
                   // and right-click. Two racing timers double-vibrated.
@@ -1151,7 +1175,7 @@ function DMPage() {
                       </span>
                     ) : !hasText ? null : (
                       <div className={m.attachment_url || mediaOnly ? "chat-media-caption" : ""}>
-                        {renderGifSegments(restText).map((seg, si) =>
+                        {renderGifSegments(messageText).map((seg, si) =>
                           seg.isGif || seg.isSticker
                             ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
                             : (
@@ -1203,7 +1227,7 @@ function DMPage() {
                 <MessageLinkPreviews
                   // Internal permalinks are cards now; previews stay for the
                   // outside web, so the same URL never renders twice.
-                  text={deletedAt ? null : restText}
+                  text={deletedAt ? null : messageText}
                   messageId={m.id}
                   scope="dm"
                   canHide={mine}

@@ -89,6 +89,8 @@ import {
   Plus,
   Volume2,
   Forward,
+  MoreHorizontal,
+  SmilePlus,
 } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
@@ -118,7 +120,7 @@ import { GifContent } from "@/components/GifContent";
 import { MarkdownText } from "@/components/MarkdownText";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
-import { renderGifSegments } from "@/lib/gif-content";
+import { isMediaPlaceholderText, renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
 import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
@@ -237,6 +239,9 @@ function RealmPage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
+  // Which pane the message menu opens on: the hover smiley goes straight to
+  // reactions, every other gesture starts on the actions.
+  const [openMessageView, setOpenMessageView] = useState<"actions" | "reactions">("actions");
   const [membersOpen, setMembersOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomsOpen, setRoomsOpen] = useState(false);
@@ -340,6 +345,7 @@ function RealmPage() {
     (realm.data?.owner_id && realm.data.owner_id === user?.id ? "owner" : null);
   const canModerate = canModerateRealm(myRole, realm.data?.owner_id, user?.id);
   const endRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (realm.data && user) {
@@ -584,9 +590,11 @@ function RealmPage() {
         .getElementById(`msg-${messageId}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightId(messageId);
+      // Long enough for the soft wash to finish its 2.2s fade before the class
+      // is dropped, so the row never snaps back mid-animation.
       window.setTimeout(
         () => setHighlightId((current) => (current === messageId ? null : current)),
-        1600,
+        2300,
       );
     }, 50);
   };
@@ -1784,6 +1792,7 @@ function RealmPage() {
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
         <div
+          ref={messageListRef}
           onClick={media.onMediaClick}
           className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3"
         >
@@ -1896,7 +1905,10 @@ function RealmPage() {
               // A shared post/reel travels as its permalink: the raw URL is
               // swapped for a real card right under the message, the same card
               // DMs and groups render.
-              const bodyText = withoutShareLinks(m.body);
+              const rawBodyText = withoutShareLinks(m.body);
+              // The old image-only placeholder is not a caption — hide it so a
+              // photo does not come with the words “📷 Image” underneath.
+              const bodyText = isMediaPlaceholderText(rawBodyText) ? "" : rawBodyText;
               const mentionsMe = Boolean(
                 user &&
                 m.sender_id !== user.id &&
@@ -1948,6 +1960,7 @@ function RealmPage() {
                       navigator.vibrate(35);
                     } catch {}
                   }
+                  setOpenMessageView("actions");
                   setOpenMessageId(m.id);
                 }, 320);
               };
@@ -1976,10 +1989,41 @@ function RealmPage() {
                     onContextMenu={(e) => {
                       if ((e.target as HTMLElement).closest("a, input, textarea, button")) return;
                       e.preventDefault();
+                      setOpenMessageView("actions");
                       setOpenMessageId(m.id);
                     }}
-                    className={`realm-message select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${mentionClasses}`}
+                    className={`realm-message relative select-none ${startsGroup || newDay ? "realm-message--group-start" : ""} ${highlightId === m.id ? "chat-jump-highlight" : ""} ${mentionClasses}`}
                   >
+                    {/* Discord's mouse affordance: hover the row, get quick
+                        react + more. Touch keeps the long-press sheet. */}
+                    <div className="chat-hover-actions">
+                      <button
+                        type="button"
+                        data-interactive="true"
+                        aria-label="Add reaction"
+                        title="Add reaction"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMessageView("reactions");
+                          setOpenMessageId(m.id);
+                        }}
+                      >
+                        <SmilePlus className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        data-interactive="true"
+                        aria-label="More message actions"
+                        title="More"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMessageView("actions");
+                          setOpenMessageId(m.id);
+                        }}
+                      >
+                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
                     {startsGroup ? (
                       <button
                         type="button"
@@ -2037,7 +2081,11 @@ function RealmPage() {
                       )}
                       <MessageActionMenu
                         open={openMessageId === m.id}
-                        onOpenChange={(open) => setOpenMessageId(open ? m.id : null)}
+                        onOpenChange={(open) => {
+                          if (open) setOpenMessageView("actions");
+                          setOpenMessageId(open ? m.id : null);
+                        }}
+                        initialView={openMessageView}
                         align={mine ? "right" : "left"}
                         // The row already detects long-press (it covers media and
                         // avatar areas the trigger doesn't wrap); the menu keeps
@@ -2562,7 +2610,17 @@ function RealmPage() {
                   setCaret(e.target.selectionStart ?? e.target.value.length);
                 }}
                 onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-                onClick={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
+                // Tapping the composer means “I'm replying to the now”: land on
+                // the newest message instead of leaving the reader scrolled up.
+                onClick={(e) => {
+                  setCaret((e.target as HTMLInputElement).selectionStart ?? 0);
+                  const scroller = messageListRef.current;
+                  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+                }}
+                onFocus={() => {
+                  const scroller = messageListRef.current;
+                  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+                }}
                 onKeyDown={(e) => {
                   // Arrow keys and Enter belong to the slash menu while it has rows;
                   // the no-match hint does not steal Enter, so the message still sends.

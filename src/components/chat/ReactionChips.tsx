@@ -22,9 +22,9 @@ export type { ReactionPulse };
  * THE reaction chips for the whole app: DMs, groups and realm channels all
  * render this one component, so the three chats cannot drift apart again.
  *
- * Layout: the row sits directly under the bubble, aligned to the bubble's side,
- * and overlaps its bottom edge by 6px. Chips are 24px tall with 44px tap areas
- * (invisible padding) so they stay small and cute but easy to hit. Four chips
+ * Layout: a single wrapping row of Discord-style pills sit directly under the
+ * message, aligned to its side. They are 26px tall with 40px tap areas
+ * (invisible padding) so they stay small and cute but easy to hit. Six chips
  * show, then a "+N" chip opens the full list.
  */
 const MAX_VISIBLE_CHIPS = 6;
@@ -213,15 +213,15 @@ function ReactionChip({
         }
         void handleActivate();
       }}
-      // The visible chip is 24px; the invisible ::after makes the tap area 44px
+      // The visible pill is 26px; the invisible ::after makes the tap area 40px
       // without adding any layout height.
-      className={`relative flex h-8 max-w-full shrink-0 select-none items-center gap-1.5 rounded-lg border px-2 leading-none after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+      className={`relative flex h-[26px] max-w-full shrink-0 select-none items-center gap-1 rounded-full border px-2 leading-none transition-colors after:absolute after:inset-x-0 after:-inset-y-[7px] after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
         mine
-          ? "border-primary/70 bg-primary/15 text-primary"
-          : "border-white/15 bg-white/[0.07] text-foreground/90 hover:bg-white/[0.12]"
+          ? "border-primary/50 bg-primary/[0.14] text-primary hover:border-primary/70 hover:bg-primary/[0.20]"
+          : "border-white/10 bg-white/[0.06] text-[#dbdee1] hover:border-white/20 hover:bg-white/[0.10]"
       } ${glowing ? "ring-1 ring-primary/40" : ""}`}
     >
-      <span className="text-[15px]" aria-hidden="true">
+      <span className="text-[14px]" aria-hidden="true">
         {(() => {
           const cat = catNameForShortcode(emoji);
           return cat ? <CatEmoji name={cat} size={16} animate={pulse?.emoji === emoji ? "once" : false} /> : emoji;
@@ -232,7 +232,7 @@ function ReactionChip({
         initial={{ y: 6, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 26 }}
-        className="text-xs font-semibold tabular-nums"
+        className="text-[11px] font-bold tabular-nums"
       >
         {count}
       </motion.span>
@@ -384,12 +384,13 @@ export function ReactionChips({
       <div
         ref={rowRef}
         data-testid={`reaction-row-${messageId}`}
-        // `w-full` is what lets flex-wrap work: inside the shrink-to-fit
-        // message column the row sized to its content and ran past the bubble,
-        // clipping chips in DMs, groups and realms.
-        className={`relative z-10 w-full max-w-full flex-wrap items-center gap-1.5 ${
+        // `flex` is what actually lays the chips out side by side; without it
+        // every pill became its own block and the row stacked vertically in
+        // DMs, groups and realms. `w-full` lets that row wrap instead of
+        // running past the message column.
+        className={`relative z-10 w-full max-w-full flex-wrap items-center gap-1 ${
           align === "right" ? "justify-end" : "justify-start"
-        } ${hasChips ? "mt-1 min-h-[18px]" : "hidden"}`}
+        } ${hasChips ? "mt-1 flex min-h-[18px]" : "hidden"}`}
       >
         <AnimatePresence initial={false}>
           {visible.map((group) => (
@@ -425,7 +426,7 @@ export function ReactionChips({
               transition={{ type: "spring", stiffness: 620, damping: 20 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setSheetOpen(true)}
-              className="relative flex h-8 shrink-0 select-none items-center rounded-lg border border-white/15 bg-white/[0.07] px-2 text-xs font-semibold tabular-nums leading-none text-foreground/90 after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="relative flex h-[26px] shrink-0 select-none items-center rounded-full border border-white/10 bg-white/[0.06] px-2 text-[11px] font-bold tabular-nums leading-none text-[#dbdee1] transition-colors hover:border-white/20 hover:bg-white/[0.10] after:absolute after:inset-x-0 after:-inset-y-[7px] after:content-[''] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               +{overflow}
             </motion.button>

@@ -59,6 +59,12 @@ export type MessageActionMenuProps = {
    * keyboard still work with this off.
    */
   detectPress?: boolean;
+  /**
+   * Which pane opens first. The desktop hover toolbar's smiley opens straight
+   * into the reaction picker, the way Discord's does, while every other route
+   * into the menu still starts on the actions.
+   */
+  initialView?: "actions" | "reactions";
 };
 
 type PressOrigin = {
@@ -83,6 +89,7 @@ export function MessageActionMenu({
   onDoubleTap,
   preview,
   detectPress = true,
+  initialView = "actions",
 }: MessageActionMenuProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<PressOrigin | null>(null);
@@ -101,8 +108,8 @@ export function MessageActionMenu({
   const [view, setView] = useState<"actions" | "reactions">("actions");
 
   useEffect(() => {
-    if (!open) setView("actions");
-  }, [open]);
+    setView(open ? initialView : "actions");
+  }, [open, initialView]);
 
   const clearPress = () => {
     if (pressTimer.current !== null) {

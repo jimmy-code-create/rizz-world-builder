@@ -1,5 +1,51 @@
 # Changelog
 
+## 2026-10-28 — Chat: reaction pills, Discord hover actions, clean media
+
+- Reaction chips are a row again. The shared chip row carried `flex-wrap` but
+  not `flex`, so each pill became its own block and reactions stacked vertically
+  in DMs, groups and realms. Chips are now 26px Discord-style pills on one
+  wrapping line, with a quiet lime tint for the ones you added.
+- A photo that fails to load says so and offers **Retry**, instead of collapsing
+  into an empty grey sliver where the picture should be.
+- Image-only messages no longer carry the words “📷 Image”: the composer stops
+  writing that placeholder, and older messages hide it, so a photo stands alone.
+- Desktop gets Discord's affordance: hovering a message shows a small toolbar
+  with quick-react (opens the reaction picker) and more (opens the actions).
+  Touch keeps the long-press sheet, and the DM menu no longer dims the whole
+  conversation on a desktop popover.
+- Jumping to a message is a soft lime wash that fades out, not a hard 2px ring
+  drawn around the full-width row.
+- Tapping a chat's composer now lands on the newest message; realm chat was the
+  one surface that left the reader scrolled up.
+
+## 2026-10-28 — Toasts show their whole sentence
+
+- The toast pill was clipping itself: `truncate` on the title, plus a hard
+  `max-w-[46%]` on the message, so a receipt like "Cancelled — 10 Paws fee / 90
+  Paws came back to your wallet." was cut off in the middle of the numbers.
+- The card wraps now. Title and message share one line when they fit; when they
+  do not, the message drops to a second line, indented past the type dot. Width
+  is still content-driven and the corners still read as a capsule, so a short
+  receipt looks exactly as it did. The cap moved from 21rem to 23rem, which is
+  enough for a typical two-clause receipt on one line on a phone.
+
+## 2026-10-28 — Finished bounties leave the board, story text drags
+
+- `/drops` lists only work that can still be acted on. A paid, cancelled or
+  expired escrow bounty is finished, and so is a legacy open call whose every
+  claim has been taken; `activeBounties()` filters both the board and the "Your
+  desk" tab, so a completed bounty no longer sits in the list as a dead row.
+- Story text can be dragged again. The "Drag to move" handle committed the edit
+  on press, which unmounted the element holding the pointer capture — iOS
+  cancels the pointer of a captured element that leaves the DOM, so the drag
+  died on its first move. Text now commits when the finger lifts.
+- Dragging is direct manipulation now: the layer follows the point you grabbed
+  instead of snapping its centre under your finger, a tap only selects (no new
+  undo step), pointer capture is guarded against Safari's throw on detached
+  nodes, and dropping a layer on the trash works — the drop used to read a
+  stale state closure and never fired.
+
 ## 2026-10-28 — The badge emblems, minted as one set
 
 - Every emblem in `public/badges/badges.svg` is redrawn on one system: a

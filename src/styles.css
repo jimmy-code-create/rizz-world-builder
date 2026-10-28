@@ -860,6 +860,79 @@
 .realm-message:hover {
   background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
+
+/* Jump-to-message / deep-link landing. The old highlight drew a hard 2px lime
+   ring around the full-width row, which read as a focus error. This is a soft
+   wash plus a slim lime rail that fades out on its own — the row is pointed at,
+   not boxed in. No `forwards` fill, so hover and mention backgrounds come back
+   when the animation ends. */
+.chat-jump-highlight {
+  border-radius: 0.5rem;
+  animation: chat-jump-wash 2.2s ease-out;
+}
+@keyframes chat-jump-wash {
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 19%, transparent);
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+  65% {
+    background-color: color-mix(in srgb, var(--primary) 8%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary) 55%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No motion, but the row is still pointed at: a still wash and rail that the
+     existing 2.3s state timeout takes away. */
+  .chat-jump-highlight {
+    animation: none;
+    background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary) 70%, transparent);
+  }
+}
+/* Discord's hover toolbar: quick-react and more, only for a real mouse. Phones
+   keep the long-press sheet; they never get a control that needs hovering. */
+.chat-hover-actions {
+  position: absolute;
+  right: 0.375rem;
+  top: 0;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  background: #111214;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.65);
+  transform: translateY(-38%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .realm-message:hover > .chat-hover-actions,
+  .realm-message:focus-within > .chat-hover-actions {
+    display: flex;
+  }
+}
+.chat-hover-actions button {
+  display: grid;
+  height: 1.5rem;
+  width: 1.5rem;
+  place-items: center;
+  border-radius: 0.375rem;
+  color: #b5bac1;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+.chat-hover-actions button:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+}
+.chat-hover-actions button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 .realm-message__body {
   flex: 1 1 auto;
   min-width: 0;
@@ -952,6 +1025,30 @@
   border-radius: 1rem;
   object-fit: contain;
   background: transparent;
+}
+.chat-media-failed {
+  display: flex;
+  min-width: min(14rem, 60vw);
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px dashed color-mix(in srgb, var(--foreground) 18%, transparent);
+  background: color-mix(in srgb, var(--surface-bubble) 55%, transparent);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.chat-media-failed button {
+  margin-left: auto;
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--primary-foreground, #0b0b0c);
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+}
+.chat-media-failed button:hover {
+  background: var(--primary);
 }
 .chat-media-skeleton {
   display: block;

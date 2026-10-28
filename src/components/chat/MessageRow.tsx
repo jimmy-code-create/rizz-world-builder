@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { MoreHorizontal, SmilePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { nameColorFor } from "@/lib/chat-appearance";
 
@@ -32,6 +33,13 @@ export type MessageRowProps = {
    * or the empty space beside a short line all work.
    */
   onLongPress?: () => void;
+  /**
+   * Mouse-only hover toolbar, like Discord's: a smiley that opens the reaction
+   * picker and a “more” button that opens the actions. Both fall back to the
+   * long-press sheet on touch, where there is nothing to hover.
+   */
+  onQuickReact?: () => void;
+  onMoreActions?: () => void;
   /** Small badges beside the name (BOT, PINNED…). */
   badges?: ReactNode;
   className?: string;
@@ -55,6 +63,8 @@ export function MessageRow({
   mentionsMe = false,
   onAuthorClick,
   onLongPress,
+  onQuickReact,
+  onMoreActions,
   badges,
   className = "",
   children,
@@ -118,12 +128,44 @@ export function MessageRow({
             }
           : undefined
       }
-      className={`realm-message ${startsGroup ? "realm-message--group-start" : ""} ${
-        lifted ? "relative z-[41]" : ""
-      } ${highlighted ? "bg-primary/[0.08] ring-2 ring-primary/50" : ""} ${
+      className={`realm-message relative ${startsGroup ? "realm-message--group-start" : ""} ${
+        lifted ? "z-[41]" : ""
+      } ${highlighted ? "chat-jump-highlight" : ""} ${
         mentionsMe ? "realm-message--mentions-me" : ""
       } ${className}`}
     >
+      {(onQuickReact || onMoreActions) && (
+        <div className="chat-hover-actions">
+          {onQuickReact && (
+            <button
+              type="button"
+              data-interactive="true"
+              onClick={(event) => {
+                event.stopPropagation();
+                onQuickReact();
+              }}
+              aria-label="Add reaction"
+              title="Add reaction"
+            >
+              <SmilePlus className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          {onMoreActions && (
+            <button
+              type="button"
+              data-interactive="true"
+              onClick={(event) => {
+                event.stopPropagation();
+                onMoreActions();
+              }}
+              aria-label="More message actions"
+              title="More"
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      )}
       {startsGroup ? (
         <button
           type="button"
