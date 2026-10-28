@@ -30,6 +30,7 @@ const file = (path) => new URL(`../${path}`, import.meta.url);
 
 const baseMigration = read("supabase/migrations/20261104000000_effects_shop_v3.sql");
 const mediaMigration = read("supabase/migrations/20261105000000_effects_shop_media.sql");
+const retireMigration = read("supabase/migrations/20261109000000_retire_web_slinger.sql");
 const catalogueSql = `${baseMigration}\n${mediaMigration}`;
 const registry = read("src/components/effects/registry.tsx");
 const chubby = read("src/components/effects/ChubbyDecoration.tsx");
@@ -53,9 +54,21 @@ await check("the catalogue ships both shelves", async () => {
 });
 
 await check("every seeded slug has art, and every drawn slug is seeded", async () => {
-  const seeded = slugsIn(catalogueSql, /'(fx-[a-z-]+)'/g);
+  const retired = slugsIn(retireMigration, /'(fx-[a-z-]+)'/g);
+  const seeded = slugsIn(catalogueSql, /'(fx-[a-z-]+)'/g).filter(
+    (slug) => !retired.includes(slug),
+  );
   const drawn = slugsIn(registry, /"(fx-[a-z-]+)":/g);
   assert.deepEqual(drawn, seeded);
+});
+
+await check("the Web Slinger is retired from both the art and the catalogue", async () => {
+  assert.ok(!registry.includes("fx-web-slinger"), "the registry draws no spider scene");
+  assert.match(
+    retireMigration,
+    /DELETE FROM public\.profile_effects\s+WHERE slug = 'fx-web-slinger'/,
+    "the catalogue row is deleted, so ownership cascades away",
+  );
 });
 
 await check("the drawn frame is a transparent cutout, not a plate", async () => {

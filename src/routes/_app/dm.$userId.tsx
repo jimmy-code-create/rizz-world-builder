@@ -58,6 +58,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { renderGifSegments } from "@/lib/gif-content";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
+import { scrollChatToLatest } from "@/lib/chat-scroll";
 
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
@@ -1333,13 +1334,14 @@ function DMPage() {
                 broadcastTyping();
               }}
               onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              // Opening the keyboard shrinks the list; keep the newest message in
-              // view instead of leaving the reader on a stale scroll position.
-              onFocus={() => {
-                const scroller = scrollRef.current;
-                if (scroller) scroller.scrollTop = scroller.scrollHeight;
+              // Tapping the composer means “I'm replying to the now”: land on
+              // the newest message, including after the keyboard resizes the
+              // list (the shared helper follows the viewport).
+              onClick={(e) => {
+                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+                scrollChatToLatest(scrollRef.current);
               }}
+              onFocus={() => scrollChatToLatest(scrollRef.current)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                   e.preventDefault();

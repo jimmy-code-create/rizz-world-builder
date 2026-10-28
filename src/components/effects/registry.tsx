@@ -26,7 +26,6 @@ export const EFFECT_ART: Record<string, EffectArt> = {
   "fx-chubby-cloud": { kind: "avatar", variant: "cloud" },
   "fx-chubby-paws": { kind: "avatar", variant: "paws" },
   "fx-chubby-bloom": { kind: "avatar", variant: "bloom" },
-  "fx-web-slinger": { kind: "profile", variant: "slinger" },
   "fx-web-veil": { kind: "profile", variant: "veil" },
   "fx-ivory-filigree": {
     kind: "avatar-image",

@@ -38,6 +38,7 @@ import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { MarkdownText } from "@/components/MarkdownText";
 import { useMentionLabels } from "@/lib/mention-tokens";
+import { scrollChatToLatest } from "@/lib/chat-scroll";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
@@ -738,13 +739,13 @@ function GroupRoom() {
                 setCaret(e.target.selectionStart ?? e.target.value.length);
               }}
               onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              // Opening the keyboard shrinks the list; keep the newest message in
-              // view instead of leaving the reader on a stale scroll position.
-              onFocus={() => {
-                const scroller = messagesListRef.current;
-                if (scroller) scroller.scrollTop = scroller.scrollHeight;
+              // Tapping the composer means “I'm replying to the now”: land on
+              // the newest message, including after the keyboard resizes the list.
+              onClick={(e) => {
+                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+                scrollChatToLatest(messagesListRef.current);
               }}
+              onFocus={() => scrollChatToLatest(messagesListRef.current)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
                   e.preventDefault();

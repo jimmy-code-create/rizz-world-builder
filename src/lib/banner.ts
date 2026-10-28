@@ -4,8 +4,9 @@
  * Every surface (settings preview, card, popup, full profile, account menu)
  * calls `getBanner(user)` so an uploaded image, the full-page gradient, or an
  * empty banner can never disagree between two views. The v1 column names still
- * say "banner", but the gradient now paints the whole profile behind the
- * banner and content — never the 3:1 banner box itself.
+ * say "banner", but the gradient paints the whole profile behind the cover and
+ * the content; a gradient profile's cover is glass so the wash runs through it,
+ * while an uploaded photo still owns the 3:1 box.
  */
 
 export type BannerMode = "image" | "gradient" | "none";
@@ -132,25 +133,36 @@ function mixHex(from: string, to: string, toWeight: number): string {
 const DEFAULT_PROFILE_SURFACE = "#141416";
 
 /**
- * How tall the colour band runs before the wash becomes a flat tint. A profile
- * page is thousands of pixels tall; a gradient stretched over all of it reached
- * near-black by the first post, which read as "the gradient stops below the
- * tab bar". Banding it and holding the colour underneath keeps the profile
- * tinted from the banner to the last post.
- */
-const PROFILE_WASH_BAND = "820px";
-
-/**
  * The profile-wide theme. Discord tints the whole profile with the banner's
  * colours, then darkens it enough for white text to stay readable. The raw
  * gradient is only shown in the picker swatches; this version is the surface.
  *
- * Two layers: the diagonal colour band (top of the page) plus a scrim for text
- * contrast, and then a solid tint of the same colour as the page background for
- * everything below the band. Every surface that paints this — the full profile,
- * the preview sheet, the editor and the profile card — gets the same look, and
- * a page that is shorter than the band simply shows the whole gradient.
+ * Three layers, all sized to the surface itself rather than to a fixed band:
+ *   vignette — transparent behind the cover, darker toward the edges and the
+ *              bottom, so the wash reads as light falling on a surface;
+ *   scrim    — the minimum darkness white text needs at every height;
+ *   gradient — the member's two colours, corner to corner.
+ *
+ * The old version clipped the colour to an 820px band and held a flat tint
+ * below it, which read as the gradient being cut off partway down a profile.
+ * Painting the layers at 100% × 100% lets the wash run the whole page and still
+ * land on the solid tint underneath, so a very tall profile has no seam.
  */
+const PROFILE_VIGNETTE =
+  "radial-gradient(135% 120% at 50% 6%, rgba(5,5,7,0) 36%, rgba(5,5,7,0.5) 100%)";
+
+const PROFILE_SCRIM =
+  "linear-gradient(180deg, rgba(8,8,10,0.2) 0%, rgba(8,8,10,0.46) 58%, rgba(8,8,10,0.66) 100%)";
+
+/**
+ * A gradient profile's 3:1 cover is glass, not a dark plate: the page wash has
+ * to show through the banner box, or the top third of the profile looks like
+ * the gradient was painted only below the cover. The faint bottom lift keeps the
+ * avatar and name readable where they overlap.
+ */
+const GRADIENT_COVER_BACKGROUND =
+  "linear-gradient(180deg, rgba(8,8,10,0.04) 0%, rgba(8,8,10,0.34) 100%)";
+
 export function profileThemeFor(gradient: BannerGradient | null): {
   background: string | null;
   surface: string;
@@ -158,9 +170,10 @@ export function profileThemeFor(gradient: BannerGradient | null): {
   if (!gradient) return { background: null, surface: DEFAULT_PROFILE_SURFACE };
   return {
     background: [
-      `linear-gradient(180deg, rgba(8,8,10,0.34) 0%, rgba(8,8,10,0.56) 55%, rgba(8,8,10,0.72) 100%) 0 0 / 100% ${PROFILE_WASH_BAND} no-repeat`,
-      `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2}) 0 0 / 100% ${PROFILE_WASH_BAND} no-repeat`,
-      mixHex(gradient.c2, "#0b0b0c", 0.7),
+      `${PROFILE_VIGNETTE} 0 0 / 100% 100% no-repeat`,
+      `${PROFILE_SCRIM} 0 0 / 100% 100% no-repeat`,
+      `linear-gradient(${gradient.angle}deg, ${gradient.c1}, ${gradient.c2}) 0 0 / 100% 100% no-repeat`,
+      mixHex(gradient.c2, "#0b0b0c", 0.66),
     ].join(", "),
     // The presence-dot cutout and banner scrim need one solid colour. Use a
     // heavily darkened accent so it melts into the bottom of the page theme.
@@ -264,7 +277,9 @@ export function getBanner(user: unknown): BannerSource {
     mode,
     imageUrl: image,
     gradient,
-    background: EMPTY_BANNER_BACKGROUND,
+    // No photo: a gradient profile lets the page wash run through its cover,
+    // while a plain profile keeps the branded fallback so it is never a void.
+    background: gradient ? GRADIENT_COVER_BACKGROUND : EMPTY_BANNER_BACKGROUND,
     profileBackground: theme.background,
     surface: theme.surface,
     key: `empty:${mode}:${gradient ? `${gradient.c1}:${gradient.c2}:${gradient.angle}` : "plain"}`,

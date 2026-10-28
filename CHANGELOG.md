@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-28 — The cover holds the wash, and the spider retires
+
+- A gradient profile no longer paints a dark 3:1 plate over its own cover. With
+  no banner photo, the header's banner box is glass
+  (`GRADIENT_COVER_BACKGROUND` in `src/lib/banner.ts`), so the theme runs from
+  the very top of the profile; the faint bottom lift keeps the avatar and name
+  readable where they overlap it.
+- The profile theme now fills the surface it is painted on instead of stopping
+  at an 820px band, and it gains a vignette (`PROFILE_VIGNETTE`): the wash fades
+  darker toward the edges and the bottom, so it reads as light on a surface
+  rather than a flat rectangle that visibly cuts off partway down. The solid
+  tint underneath is unchanged, so a very tall profile still lands without a
+  seam. The same theme feeds the preview sheet, the editor and the profile card.
+- The **Web Slinger** profile effect is retired: its art is no longer in the
+  effects registry, and `20261109000000_retire_web_slinger.sql` deletes the
+  catalogue row, cascading ownership away. It can no longer be bought, worn or
+  drawn anywhere; Silk Veil keeps its own silk scene.
+- Tapping a chat composer lands on the newest message for real now. The old
+  one-shot `scrollTop` write ran before the on-screen keyboard resized the list,
+  so the jump stopped short. The shared `scrollChatToLatest` helper repeats the
+  jump across the next frames and follows `visualViewport` while the keyboard
+  settles — on `/dm/$userId`, `/g/$id` and `/r/$slug`.
+
 ## 2026-10-28 — Chat: reaction pills, Discord hover actions, clean media
 
 - Reaction chips are a row again. The shared chip row carried `flex-wrap` but

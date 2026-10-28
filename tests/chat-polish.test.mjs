@@ -112,13 +112,15 @@ await check("jump-to-message is a fading wash, not a ring", async () => {
   assert.ok(realm.includes("chat-jump-highlight"), "realm rows use the wash");
 });
 
-await check("the composer lands on the newest message", async () => {
+await check("clicking a composer lands on the newest message", async () => {
   for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
-    assert.ok(
-      /\.scrollTop = \.scrollHeight|scroller\.scrollTop = scroller\.scrollHeight/.test(source),
-      `${name} scrolls to the bottom when its composer is focused`,
-    );
+    assert.ok(source.includes("scrollChatToLatest("), `${name} uses the shared jump`);
+    assert.match(source, /onClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/, `${name} jumps on click`);
   }
+  const helper = read("lib/chat-scroll.ts");
+  assert.match(helper, /scroller\.scrollTop = scroller\.scrollHeight/, "it scrolls to the bottom");
+  assert.match(helper, /requestAnimationFrame/, "and settles over the next frames");
+  assert.match(helper, /visualViewport/, "following the on-screen keyboard's resize");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

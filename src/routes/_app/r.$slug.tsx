@@ -136,6 +136,7 @@ import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/li
 import { runBotCommand, useRealmSlashCommands } from "@/lib/bots";
 import { moderateDeleteMessage, reportRealmMessage } from "@/lib/realm-settings";
 import { useMentionLabels } from "@/lib/mention-tokens";
+import { scrollChatToLatest } from "@/lib/chat-scroll";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2614,13 +2615,9 @@ function RealmPage() {
                 // the newest message instead of leaving the reader scrolled up.
                 onClick={(e) => {
                   setCaret((e.target as HTMLInputElement).selectionStart ?? 0);
-                  const scroller = messageListRef.current;
-                  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+                  scrollChatToLatest(messageListRef.current);
                 }}
-                onFocus={() => {
-                  const scroller = messageListRef.current;
-                  if (scroller) scroller.scrollTop = scroller.scrollHeight;
-                }}
+                onFocus={() => scrollChatToLatest(messageListRef.current)}
                 onKeyDown={(e) => {
                   // Arrow keys and Enter belong to the slash menu while it has rows;
                   // the no-match hint does not steal Enter, so the message still sends.
