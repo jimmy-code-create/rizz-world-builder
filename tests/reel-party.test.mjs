@@ -31,7 +31,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 const party = read("src/lib/reel-party.ts");
 const reels = read("src/routes/_app/reels.tsx");
 const comments = read("src/components/PostCommentsSheet.tsx");
-const bar = read("src/components/reels/ReelPartyBar.tsx");
+
 const sheet = read("src/components/reels/ReelPartySheet.tsx");
 const sprite = read("public/badges/badges.svg");
 
@@ -54,7 +54,7 @@ await check("pasted invite links and messy codes both normalize", () => {
 
 await check("the room is presence + broadcast, with no table", () => {
   assert.match(party, /supabase\.channel\(`reel-party-\$\{code\}`/);
-  assert.match(party, /config: \{ presence: \{ key: userId \} \}/);
+  assert.match(party, /config: \{ presence: \{ key: presenceKey \} \}/);
   assert.match(party, /channel\.on\("presence", \{ event: "sync" \}/);
   assert.match(party, /event: "sync"/);
   assert.match(party, /event: "hello"/);
@@ -74,7 +74,6 @@ await check("only the host publishes, and a heartbeat keeps late guests aligned"
 await check("the feed has a party entry point and a shareable /reels?party= link", () => {
   assert.match(reels, /validateSearch:[\s\S]{0,160}?party/);
   assert.match(reels, /const \{ party: partyParam \} = Route\.useSearch\(\)/);
-  assert.match(reels, /<ReelPartyBar/);
   assert.match(reels, /<ReelPartySheet/);
   assert.match(reels, /aria-label=\{party\.code \? "Reel party controls" : "Start a reel party"\}/);
   assert.match(party, /`\$\{origin\}\/reels\?party=\$\{encodeURIComponent\(code\)\}`/);
@@ -115,14 +114,58 @@ await check("joining by link works, and a signed-out invite asks for a login", (
   assert.match(sheet, /to="\/login"/);
 });
 
-await check("the bar shows host, watcher count and a way out", () => {
-  assert.match(bar, /Reel party/);
-  assert.match(bar, /\{watching\} watching/);
-  assert.match(bar, /You control the playhead/);
-  assert.match(bar, /Following the host/);
-  assert.match(bar, /Waiting for the host/);
-  assert.match(bar, /aria-label="Copy reel party invite link"/);
-  assert.match(bar, /aria-label="Leave reel party"/);
+await check("no floating status pill sits over the reel — the icon is the room", () => {
+  assert.ok(!reels.includes("ReelPartyBar"), "the floating pill is gone");
+  assert.ok(!reels.includes("Reel party ·"), "no status line is painted over the video");
+  assert.match(
+    reels,
+    /aria-label=\{party\.code \? "Reel party controls" : "Start a reel party"\}/,
+    "the toolbar icon is the single entry point",
+  );
+  assert.match(reels, /members=\{party\.members\}/, "the icon's sheet gets the roster");
+});
+
+await check("the party sheet lists who is watching", () => {
+  assert.match(sheet, /Watching now/);
+  assert.match(sheet, /members: ReelPartyMember\[\]/);
+  assert.match(sheet, /members\.map\(\(member\)/);
+  assert.match(sheet, /member\.self/, "a watcher can tell which row is them");
+  assert.match(sheet, /member\.host/, "the host is called out");
+  assert.match(sheet, /aria-label="Party invite link"/);
+  assert.match(sheet, /Leave party/);
+});
+
+await check("each tab is its own presence entry, so the host is never overwritten", () => {
+  assert.match(party, /function makePresenceKey\(userId: string\)/);
+  assert.match(party, /\$\{userId\}#\$\{suffix\}/, "key is account + tab");
+  assert.match(
+    party,
+    /config: \{ presence: \{ key: presenceKey \} \}/,
+    "the channel tracks under that key",
+  );
+  assert.doesNotMatch(
+    party,
+    /config: \{ presence: \{ key: userId \} \}/,
+    "an account-wide key lets a second window clobber the host flag",
+  );
+});
+
+await check("watchers announce their name and avatar for the roster", () => {
+  assert.match(party, /identity\?: ReelPartyIdentity \| null/);
+  assert.match(party, /name: self\?\.name/);
+  assert.match(party, /avatar: self\?\.avatar/);
+  assert.match(party, /username: self\?\.username/);
+  assert.match(party, /setMembers\(roster\)/);
+  assert.match(party, /self: key === presenceKey/, "a watcher can tell which row is them");
+  assert.match(reels, /const partyIdentity = useMemo/);
+});
+
+await check("host liveness comes from the playhead itself, not presence alone", () => {
+  assert.match(party, /lastSyncAt\.current = Date\.now\(\);/, "every sync proves the host is alive");
+  assert.match(party, /setHostPresent\(true\);\s*\n\s*onSyncRef\.current/, "and opens the lock");
+  assert.match(party, /HOST_ABSENCE_MS/);
+  assert.match(party, /Date\.now\(\) - lastSyncAt\.current > HOST_ABSENCE_MS/);
+  assert.match(party, /roster\.some\(\(member\) => member\.host\)/, "presence agrees");
 });
 
 await check("the sheet can start, join, copy, leave and host a fresh room", () => {

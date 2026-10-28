@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
@@ -31,7 +31,6 @@ import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { formatCount } from "@/lib/utils";
-import { ReelPartyBar } from "@/components/reels/ReelPartyBar";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
 import {
   normalizeReelPartyCode,
@@ -95,7 +94,7 @@ export const Route = createFileRoute("/_app/reels")({
 
 function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = Route.useNavigate();
   const { party: partyParam } = Route.useSearch();
   const [muted, setMuted] = useState(true);
@@ -177,8 +176,22 @@ function ReelsPage() {
     ];
   }, []);
 
+  const partyIdentity = useMemo(() => {
+    if (!user) return null;
+    return {
+      name:
+        profile?.display_name ||
+        profile?.username ||
+        user.email?.split("@")[0] ||
+        "Someone",
+      avatar: profile?.avatar_url ?? null,
+      username: profile?.username ?? null,
+    };
+  }, [user, profile]);
+
   const party = useReelParty({
     userId: user?.id,
+    identity: partyIdentity,
     onSync: applyPartySync,
     readSnapshot: readPartySnapshot,
   });
@@ -360,20 +373,6 @@ function ReelsPage() {
         </button>
       </div>
 
-      {party.code && (
-        <div className="absolute inset-x-3 top-16 z-30 flex justify-center pointer-events-none">
-          <ReelPartyBar
-            code={party.code}
-            isHost={party.isHost}
-            watching={party.watching}
-            hostPresent={party.hostPresent}
-            onCopyInvite={copyPartyInvite}
-            onLeave={leaveParty}
-            onOpen={() => setPartyOpen(true)}
-          />
-        </div>
-      )}
-
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
       <ReelPartySheet
         open={partyOpen}
@@ -382,6 +381,7 @@ function ReelsPage() {
         isHost={party.isHost}
         watching={party.watching}
         hostPresent={party.hostPresent}
+        members={party.members}
         signedIn={!!user}
         onStart={startParty}
         onJoin={joinParty}

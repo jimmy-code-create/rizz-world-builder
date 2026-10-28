@@ -9,9 +9,9 @@ import {
   MonitorPlay,
   Sparkles,
   Users,
-  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InteractiveAvatar } from "@/components/ui/avatar";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,8 +23,8 @@ import {
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
+  type ReelPartyMember,
 } from "@/lib/reel-party";
-import { cn } from "@/lib/utils";
 
 type ReelPartySheetProps = {
   open: boolean;
@@ -33,6 +33,8 @@ type ReelPartySheetProps = {
   isHost: boolean;
   watching: number;
   hostPresent: boolean;
+  /** Everyone in the room, straight from presence. */
+  members: ReelPartyMember[];
   signedIn: boolean;
   onStart: () => void;
   onJoin: (code: string) => void;
@@ -41,9 +43,9 @@ type ReelPartySheetProps = {
 };
 
 /**
- * The Reel Party control room. When a party is live this becomes the invite
- * card — code, copyable link, role and a way out — and when there is no party
- * it is the host/join entry point.
+ * What the reel-party icon opens: the roster of who is watching right now,
+ * plus the invite a host needs to get someone else in. With no party live it
+ * is the host/join entry point instead.
  */
 export function ReelPartySheet({
   open,
@@ -52,6 +54,7 @@ export function ReelPartySheet({
   isHost,
   watching,
   hostPresent,
+  members,
   signedIn,
   onStart,
   onJoin,
@@ -105,61 +108,92 @@ export function ReelPartySheet({
 
         {code ? (
           <div className="mt-5 space-y-3">
-            <div className="overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-b from-primary/15 via-black/30 to-black/40">
-              <div className="px-4 pb-4 pt-5 text-center">
-                <p className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-white/45">
-                  <Crown className="h-3 w-3" />
-                  {isHost ? "You are hosting" : hostPresent ? "Host is live" : "Host is away"}
+            {/* The roster is the point of this sheet: who is watching now. */}
+            <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+              <header className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 text-primary" />
+                  Watching now
                 </p>
-                <p className="mt-2 font-mono text-3xl font-black tracking-[0.35em] text-white">
-                  {code}
-                </p>
-                <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-white/55">
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {watching} watching
-                  </span>
-                  <span className="text-white/20">·</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                      isHost
-                        ? "bg-primary/20 text-primary"
-                        : hostPresent
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-amber-500/15 text-amber-300",
-                    )}
-                  >
-                    <Wifi className="h-3 w-3" />
-                    {isHost ? "Host" : hostPresent ? "Guest" : "Waiting"}
-                  </span>
-                </div>
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                  {watching}
+                </span>
+              </header>
+              <div className="max-h-[42dvh] overflow-y-auto p-1.5">
+                {members.length === 0 ? (
+                  <p className="px-2.5 py-3 text-xs text-muted-foreground">
+                    Waiting for everyone to join…
+                  </p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {members.map((member) => (
+                      <li
+                        key={member.key}
+                        className="flex items-center gap-2.5 rounded-xl px-2 py-1.5"
+                      >
+                        <InteractiveAvatar
+                          src={member.avatar}
+                          fallback={(member.name || "?").charAt(0).toUpperCase()}
+                          size={32}
+                          userId={member.userId}
+                          username={member.username}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+                            <span className="truncate">{member.name}</span>
+                            {member.self && (
+                              <span className="shrink-0 text-[11px] font-normal text-muted-foreground">
+                                you
+                              </span>
+                            )}
+                          </p>
+                          {member.username && (
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              @{member.username}
+                            </p>
+                          )}
+                        </div>
+                        {member.host && (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                            <Crown className="h-3 w-3" />
+                            Host
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <div className="flex items-center gap-2 border-t border-white/10 bg-black/20 p-2.5">
-                <Input
-                  readOnly
-                  value={reelPartyInviteUrl(code)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  aria-label="Party invite link"
-                  className="h-9 border-white/10 bg-white/5 font-mono text-[11px] text-white/70"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleCopy}
-                  className="h-9 shrink-0 border-0 bg-primary text-primary-foreground shadow-md"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-              </div>
+            </section>
+
+            {/* Invite: a code to read out, a link to paste. */}
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 p-2.5">
+              <span className="shrink-0 rounded-md bg-white/10 px-2 py-1 font-mono text-xs font-bold tracking-[0.24em] text-white">
+                {code}
+              </span>
+              <Input
+                readOnly
+                value={reelPartyInviteUrl(code)}
+                onFocus={(event) => event.currentTarget.select()}
+                aria-label="Party invite link"
+                className="h-8 min-w-0 flex-1 border-white/10 bg-white/5 font-mono text-[11px] text-white/70"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleCopy}
+                className="h-8 shrink-0 border-0 bg-primary text-primary-foreground shadow-md"
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
             </div>
 
             <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
               {isHost
-                ? "Anything you play, pause or swipe happens for everyone in the room."
+                ? "You control the reels. Whatever you swipe to, watch, pause or resume happens for everyone."
                 : hostPresent
-                  ? "The host chooses the reel and the playhead. Your screen follows automatically."
+                  ? "The host drives the reels. Your feed follows — swiping, play and pause are theirs."
                   : "The host isn't here anymore. You can wait, leave, or open a fresh room."}
             </p>
 
