@@ -519,19 +519,18 @@ function ProfilePage() {
   return (
     <div
       // Full-bleed inside the scroll pane: the negative margins cancel main's
-      // own gutters and `flex-1` lets the wash reach both edges of the pane, so
-      // a short profile ends on the theme colour instead of a hard line where
-      // the gradient stops and the app background starts.
-      className="relative isolate -mx-3 -mt-3 -mb-3 min-h-[70vh] flex-1 px-3 sm:-mx-4 sm:px-4 md:-mt-4 md:-mb-4 lg:-mx-6 lg:px-6"
+      // own gutters. Grow into spare viewport space, but never shrink below
+      // the content height or the background would stop while the profile
+      // keeps scrolling.
+      className="relative isolate -mx-3 -mt-3 -mb-3 min-h-[70vh] flex-1 basis-auto shrink-0 px-3 sm:-mx-4 sm:px-4 md:-mt-4 md:-mb-4 lg:-mx-6 lg:px-6"
       style={
         pageBanner.profileBackground ? { background: pageBanner.profileBackground } : undefined
       }
     >
       <Tabs defaultValue="main">
-        {/* The hero clip. The profile gradient, the worn scene and the tab rule
-            all end on this line: a scene can no longer drift behind the posts,
-            and a full-profile wash stops at the tab bar instead of tinting the
-            whole timeline. */}
+        {/* Clip only the hero and its worn scene so effects never drift behind
+            the timeline. The profile-wide gradient stays on the outer wrapper
+            and continues behind tabs and scrolling profile content. */}
         <div className="relative overflow-hidden">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-0">
         <ProfileHeader
