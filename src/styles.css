@@ -2126,6 +2126,105 @@ button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:
 [data-reduced-motion="true"] .status-bubble-in,
 [data-reduced-motion="true"] .status-bubble-float { animation: none !important; }
 
+/* ============ Animated emoji + icon motion ============
+   One layer for reactions everywhere: a wobble on hover, a spring pop when a
+   reaction lands, a slow bob for a loop. Keyframes only — no Lottie runtime in
+   the bundle — and every one of them is switched off for reduced motion. */
+.motion-emoji {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  line-height: 0;
+  isolation: isolate;
+}
+.motion-emoji__body {
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+  transform-origin: 50% 62%;
+}
+.motion-emoji__glyph {
+  display: block;
+  line-height: 1;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+/* Hover: a quick wobble that settles. A grid of emoji stays quiet until touched. */
+.motion-emoji--hover:hover .motion-emoji__body,
+.motion-emoji--hover:focus-within .motion-emoji__body,
+button:hover .motion-emoji--hover .motion-emoji__body,
+button:focus-visible .motion-emoji--hover .motion-emoji__body,
+button:active .motion-emoji--hover .motion-emoji__body {
+  animation: emoji-wobble 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Pop: the reaction just landed. The ring is the tap's echo. */
+.motion-emoji--pop .motion-emoji__body {
+  animation: emoji-pop 440ms cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+.motion-emoji--pop::after {
+  content: "";
+  position: absolute;
+  inset: -38%;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--brand-signal, #c8ff3d) 65%, transparent);
+  animation: emoji-burst 520ms ease-out both;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Loop: an idle bob, never a spin — the emoji should feel alive, not busy. */
+.motion-emoji--loop .motion-emoji__body {
+  animation: emoji-bob 2100ms ease-in-out infinite;
+}
+
+/* Icons: a one-pixel lift on hover, a press that gives under the finger. */
+.motion-icon {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease;
+  transform-origin: center;
+}
+button:hover > .motion-icon,
+button:focus-visible > .motion-icon,
+a:hover > .motion-icon {
+  transform: translateY(-1px) scale(1.1);
+}
+button:active > .motion-icon {
+  transform: scale(0.9);
+}
+
+@keyframes emoji-pop {
+  0% { transform: scale(0.55) rotate(-10deg); opacity: 0.35; }
+  60% { transform: scale(1.26) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes emoji-wobble {
+  0%, 100% { transform: scale(1) rotate(0); }
+  35% { transform: scale(1.2) rotate(-7deg); }
+  70% { transform: scale(1.12) rotate(6deg); }
+}
+@keyframes emoji-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.5px) scale(1.06); }
+}
+@keyframes emoji-burst {
+  0% { transform: scale(0.4); opacity: 0.85; }
+  70% { opacity: 0.22; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-emoji__body,
+  .motion-emoji--pop::after { animation: none !important; }
+  .motion-icon { transition: none !important; }
+  button:hover > .motion-icon,
+  button:focus-visible > .motion-icon,
+  a:hover > .motion-icon { transform: none !important; }
+}
+[data-reduced-motion="true"] .motion-emoji__body,
+[data-reduced-motion="true"] .motion-emoji--pop::after { animation: none !important; }
+[data-reduced-motion="true"] .motion-icon { transition: none !important; }
+
 /* Vector badges: one sprite file, flat marks, no containers of their own.
    These rules only handle sizing and the locked state — no hover lift, no
    ring behind the mark. The artwork is pure SVG geometry. */

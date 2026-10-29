@@ -1,5 +1,67 @@
 # Changelog
 
+## 2026-10-29 — Reactions with a pulse
+
+- Every reaction glyph in the app now comes from one animated primitive, so a
+  unicode emoji and the cat emoji behave the same whether they sit in a chat
+  picker, under a post or in a comment thread. A glyph wobbles when you hover or
+  focus its tile, springs into place with a small ring when a reaction lands,
+  and can idle-bob where that reads better — all in CSS keyframes, so nothing
+  extra is downloaded for a hundred-comment thread.
+- A reaction pops only when it is *new* to that row. The pill you just added
+  arrives with a spring, existing pills stay still until touched, and a chat
+  chip that gains a reaction pops too. The old tile-wide `scale-110` hover zoom
+  is gone, so the emoji moves instead of the button.
+- Icons answer the pointer as well: Reply, React, Delete, the vote chevron and
+  the fold arrows lift a pixel on hover and give under a press.
+- All of it is switched off by `prefers-reduced-motion` and by the app's own
+  reduced-motion switch, the same way the cat emoji already were.
+
+## 2026-10-29 — One comment thread, nested for everyone
+
+- Comments finally thread. A reply is grouped under the comment it answers
+  instead of sitting somewhere later in a flat chronological list, a branch says
+  how many replies it holds and folds away, and indentation stops growing at six
+  levels so a long argument cannot squeeze the text into a column. A page that
+  arrives without its parent — deleted, or older than the last hundred rows —
+  keeps its replies as a top-level comment rather than losing the branch.
+- Every reply can be voted on, reacted to with the app's own emoji and cat
+  emoji, answered again, or deleted by whoever wrote it. Deleting asks first,
+  then soft-deletes: the row stays as a tombstone while anything still answers
+  it, and vanishes once nothing does. Replies pointing at a tombstone say so
+  instead of looking like they answer nobody.
+- The four surfaces are one component now. The full-screen post sheet, the
+  thread that drops open under a feed card, the desktop discussion pane and
+  reel comments all mount `CommentSection`, so reply, votes, reactions and
+  delete are identical by construction — reel comments had none of them before.
+  Votes and reactions used to be fetched one comment at a time; a page of
+  comments is now two reads total.
+- Reactions open a tray with six quick emoji, a wider grid and the cat set,
+  the composer grows with the draft, keeps it when a send fails, sends on Enter
+  and breaks the line on Shift+Enter, and a signed-out reader gets a sign-in
+  path instead of a dead box. `@mentions`, `#tags`, links and GIF/sticker
+  bodies keep the chips they had.
+
+## 2026-10-29 — The badge set, redrawn in Lucide's language
+
+- All twenty marks are new, and they are no longer twenty freehand emblems.
+  Every collectible is one shared *signet* coin — a deep tint of its own hue lit
+  from the top left, an inner vignette gathering at the bottom right, a bright
+  hairline rim and an engraved inner ring — carrying exactly one stroke-only
+  glyph at a fixed 2.15 weight on the 24 grid: sprout, comet, speech bubble,
+  crescent, laughing face, crown, flame, flame-in-a-ring, broadcast, bullseye,
+  joystick, medal, pennant, play tile, two figures, sparkles, waveform, diamond.
+  Same drawing at 20px beside a name and at 96px in the showcase.
+- Verified and Purify are identity marks, not collectibles, so they keep their
+  own silhouettes — the four-lobe seal and the cat crest — redrawn with the same
+  rim, vignette and glyph weight, plus a halo stroke instead of the old stacked
+  gradients. Night Owl lost the sparkle that sat on its own arc, Purify lost the
+  lotus that turned to mush at 20px, and the compact filled shapes that went
+  solid when stroked (trophy cup, gamepad, pennant flag, faceted gem) were
+  replaced with open marks: joystick, open pennant, diamond and table facet.
+- The sprite cache key moved to `?v=4` in `Badge.tsx` and `badge-share.ts`, so a
+  browser holding the old drawing fetches the new one on the next load.
+
 ## 2026-10-28 — Story text moves again on a phone
 
 - Pressing the move handle blurred the caret, that blur closed the editor, and

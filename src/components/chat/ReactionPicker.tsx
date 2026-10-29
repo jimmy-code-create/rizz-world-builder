@@ -3,6 +3,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { CAT_EMOJI_MANIFEST, catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,9 +51,9 @@ export function ReactionPicker({
             type="button"
             aria-label={`React with ${emoji}`}
             onClick={() => onPick(emoji)}
-            className="grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-md text-xl transition-transform hover:scale-110 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            className="grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-md transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
           >
-            {emoji}
+            <AnimatedEmoji emoji={emoji} size={22} motion="hover" />
           </button>
         ))}
         <button
@@ -74,9 +75,9 @@ export function ReactionPicker({
               type="button"
               aria-label={`React with ${emoji}`}
               onClick={() => onPick(emoji)}
-              className="grid h-9 w-9 min-h-[36px] min-w-[36px] place-items-center rounded text-lg transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              className="grid h-9 w-9 min-h-[36px] min-w-[36px] place-items-center rounded transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
             >
-              {emoji}
+              <AnimatedEmoji emoji={emoji} size={18} motion="hover" />
             </button>
           ))}
         </div>

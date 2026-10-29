@@ -30,7 +30,7 @@ async function check(name, fn) {
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const party = read("src/lib/reel-party.ts");
 const reels = read("src/routes/_app/reels.tsx");
-const comments = read("src/components/PostCommentsSheet.tsx");
+const commentBody = read("src/components/comments/CommentBody.tsx");
 
 const sheet = read("src/components/reels/ReelPartySheet.tsx");
 const sprite = read("public/badges/badges.svg");
@@ -177,11 +177,11 @@ await check("the sheet can start, join, copy, leave and host a fresh room", () =
   assert.match(sheet, /Anyone with the link can join/);
 });
 
-await check("reel comments render the mention chip", () => {
+await check("reel comments go through the shared thread, mentions included", () => {
   assert.match(
     reels,
-    /<CaptionText caption=\{c\.body\} \/>/,
-    "reel comments must go through the caption renderer, not plain GifContent",
+    /<CommentSection[\s\S]{0,160}?postId=\{postId\}/,
+    "reel comments must mount the shared thread, not a private flat list",
   );
   assert.ok(
     !/<GifContent>\{c\.body\}<\/GifContent>/.test(reels),
@@ -191,13 +191,12 @@ await check("reel comments render the mention chip", () => {
 });
 
 await check("post comments render the same mention chip", () => {
-  assert.match(comments, /function CommentBody\(\{ body \}: \{ body: string \}\)/);
-  assert.match(comments, /renderGifSegments\(body\)/);
-  assert.match(comments, /renderCaptionWithTags\(segment\.value\)/);
-  assert.match(comments, /className="mention-highlight font-semibold"/);
-  assert.match(comments, /<CommentBody body=\{comment\.body\} \/>/);
+  assert.match(commentBody, /export function CommentBody\(\{ body \}: \{ body: string \}\)/);
+  assert.match(commentBody, /renderGifSegments\(body\)/);
+  assert.match(commentBody, /renderCaptionWithTags\(segment\.value\)/);
+  assert.match(commentBody, /className="mention-highlight font-semibold"/);
   assert.ok(
-    !comments.includes("<GifContent>{comment.body}</GifContent>"),
+    !commentBody.includes("<GifContent>{comment.body}</GifContent>"),
     "mentions in ordinary post comments must not stay plain text",
   );
 });

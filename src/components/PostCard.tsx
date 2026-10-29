@@ -2,11 +2,10 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Send, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
 import { cn, formatCount } from "@/lib/utils";
-import { commentDepths as commentDepthsFor, commentIndent } from "@/lib/comment-tree";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
@@ -15,7 +14,6 @@ import { Nameplate } from "@/components/profile/Nameplate";
 import { PostCommentsButton } from "@/components/PostCommentsSheet";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -28,14 +26,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import {
-  toggleLike, addReaction, removeReaction, fetchReactions, fetchComments, addComment,
+  toggleLike, addReaction, removeReaction, fetchReactions,
   deletePost, reportPost, updatePostCaption, togglePinPost,
   type FeedPost,
 } from "@/lib/posts";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
-import { GifPicker } from "@/components/GifPicker";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
@@ -47,7 +45,6 @@ import { parseExternalReelLink } from "@/lib/external-reels";
 import { blockUser, muteUser } from "@/lib/social";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { toast } from "@/lib/toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate";
 import { loadPrefs } from "@/lib/prefs";
@@ -826,267 +823,21 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   );
 }
 
+/**
+ * The comments that drop open under a feed post. The thread itself is the
+ * shared section, so a reply here can be nested, reacted to and deleted with
+ * exactly the same rules as the sheet, the side discussion and reels.
+ */
 function CommentsThread({ postId }: { postId: string }) {
-  const { user, profile } = useAuth();
-  const qc = useQueryClient();
-  const [body, setBody] = useState("");
-  const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
-  const comments = useQuery({
-    queryKey: ["comments", postId],
-    queryFn: () => fetchComments(postId),
-  });
-  /** How deep each comment sits in the reply chain, so the thread has shape. */
-  const commentDepths = useMemo(() => commentDepthsFor(comments.data ?? []), [comments.data]);
-  const mut = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sign in to comment");
-      if (!body.trim()) return;
-      await addComment(postId, user.id, body.trim(), replyTo?.id);
-    },
-    onSuccess: () => {
-      setBody("");
-      setReplyTo(null);
-      qc.invalidateQueries({ queryKey: ["comments", postId] });
-      qc.invalidateQueries({ queryKey: ["feed"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="border-t border-white/5 bg-black/20 overflow-hidden"
+      className="overflow-hidden border-t border-white/5 bg-black/20"
     >
-      <div className="px-4 py-3 max-h-72 overflow-y-auto space-y-3">
-        {comments.isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
-        {comments.data?.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-4">No comments yet — be first ✨</p>
-        )}
-        {comments.data?.map((c: any) => {
-          const a = (c as unknown as { author: { username: string; display_name: string | null; avatar_url: string | null } }).author;
-          const comment = c as typeof c & { parent_comment_id?: string | null };
-          const depth = commentDepths.get(c.id) ?? 0;
-          return (
-            <div
-              key={c.id}
-              className={cn("flex gap-2 text-sm", depth > 0 && "border-l border-white/10 pl-2")}
-              style={depth > 0 ? { marginLeft: commentIndent(depth) } : undefined}
-            >
-              <Avatar className="h-7 w-7 shrink-0">
-                <AvatarImage src={a?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
-                  {(a?.display_name || a?.username || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-xs">@{a?.username}</span>{" "}
-                <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
-                <p className={cn("text-sm leading-snug mt-0.5 whitespace-pre-wrap", emojiTextClass(c.body, "comment"))}><GifContent>{c.body}</GifContent></p>
-                <div className="mt-1 flex items-center gap-3">
-                  {user && (
-                    <button
-                      type="button"
-                      className="text-[10px] text-muted-foreground hover:text-primary"
-                      onClick={() => setReplyTo({ id: c.id, username: a?.username ?? "user" })}
-                    >
-                      Reply
-                    </button>
-                  )}
-                  {user?.id === c.author_id && (
-                    <button
-                      type="button"
-                      className="text-[10px] text-muted-foreground hover:text-destructive"
-                      onClick={async () => {
-                        const currentUserId = user?.id;
-                        if (!currentUserId) return;
-                        const { error } = await (supabase.from as any)("post_comments")
-                          .update({ deleted_at: new Date().toISOString() })
-                          .eq("id", c.id)
-                          .eq("author_id", currentUserId);
-                        if (error) {
-                          toast.error(error.message);
-                          return;
-                        }
-                        void qc.invalidateQueries({ queryKey: ["comments", postId] });
-                        void qc.invalidateQueries({ queryKey: ["feed"] });
-                      }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-                <CommentInteractions commentId={c.id} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {user && (
-        <div className="border-t border-white/5">
-          {replyTo && (
-            <div className="flex items-center justify-between px-3 pt-2 text-[11px] text-muted-foreground">
-              <span>Replying to @{replyTo.username}</span>
-              <button type="button" onClick={() => setReplyTo(null)} className="hover:text-foreground">Cancel</button>
-            </div>
-          )}
-          <form
-            onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
-            className="flex items-center gap-2 p-3"
-          >
-            <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 500))} />
-            <Avatar className="h-7 w-7 shrink-0">
-              <AvatarImage src={profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
-                {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <Input
-              value={body}
-              onChange={(e) => setBody(e.target.value.slice(0, 500))}
-              placeholder={replyTo ? "Write a reply…" : "Add a comment…"}
-              className="bg-transparent border-white/10 h-9"
-            />
-            <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 h-9 w-9">
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
-      )}
+      <CommentSection postId={postId} compact showToolbar={false} />
     </motion.div>
-  );
-}
-
-type CommentReaction = { emoji: string; user_id: string };
-type CommentInteractions = { reactions: CommentReaction[]; likes: string[] };
-
-function CommentInteractions({ commentId }: { commentId: string }) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const key = ["comment-interactions", commentId] as const;
-  const interactions = useQuery({
-    queryKey: key,
-    enabled: !!user,
-    queryFn: async (): Promise<CommentInteractions> => {
-      const [reactionResult, likeResult] = await Promise.all([
-        (supabase.from as any)("comment_reactions").select("emoji,user_id").eq("comment_id", commentId),
-        (supabase.from as any)("comment_likes").select("user_id").eq("comment_id", commentId),
-      ]);
-      if (reactionResult.error) throw reactionResult.error;
-      if (likeResult.error) throw likeResult.error;
-      return {
-        reactions: reactionResult.data ?? [],
-        likes: (likeResult.data ?? []).map((row: { user_id: string }) => row.user_id),
-      };
-    },
-    staleTime: 10_000,
-  });
-  const current = interactions.data ?? { reactions: [], likes: [] };
-  const grouped = current.reactions.reduce<Record<string, { count: number; mine: boolean }>>((result, reaction) => {
-    result[reaction.emoji] ??= { count: 0, mine: false };
-    result[reaction.emoji].count += 1;
-    result[reaction.emoji].mine ||= reaction.user_id === user?.id;
-    return result;
-  }, {});
-  const liked = current.likes.includes(user?.id ?? "");
-
-  const react = useMutation({
-    mutationFn: async (emoji: string) => {
-      const { data, error } = await (supabase.rpc as any)("toggle_comment_reaction", {
-        _comment_id: commentId,
-        _emoji: emoji,
-      });
-      if (error) throw error;
-      return data as { emoji: string; count: number; mine: boolean }[];
-    },
-    onMutate: async (emoji) => {
-      await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
-      const exists = previous.reactions.some((reaction) => reaction.emoji === emoji && reaction.user_id === user?.id);
-      qc.setQueryData<CommentInteractions>(key, {
-        ...previous,
-        reactions: exists
-          ? previous.reactions.filter((reaction) => reaction.emoji !== emoji || reaction.user_id !== user?.id)
-          : [...previous.reactions, { emoji, user_id: user?.id ?? "" }],
-      });
-      return { previous };
-    },
-    onSuccess: (data) => {
-      qc.setQueryData<CommentInteractions>(key, (previous) => ({
-        reactions: data.flatMap((entry) => Array.from({ length: entry.count }, (_, index) => ({
-          emoji: entry.emoji,
-          user_id: entry.mine && index === 0 ? user?.id ?? "" : `other-${entry.emoji}-${index}`,
-        }))),
-        likes: previous?.likes ?? [],
-      }));
-    },
-    onError: (error: Error, _emoji, context) => {
-      if (context) qc.setQueryData(key, context.previous);
-      toast.error(error.message);
-    },
-  });
-
-  const toggleLike = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("toggle_comment_like", { _comment_id: commentId });
-      if (error) throw error;
-      return data as { liked: boolean; like_count: number };
-    },
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<CommentInteractions>(key) ?? { reactions: [], likes: [] };
-      qc.setQueryData<CommentInteractions>(key, {
-        ...previous,
-        likes: liked
-          ? previous.likes.filter((id) => id !== user?.id)
-          : [...previous.likes, user?.id ?? ""],
-      });
-      return { previous };
-    },
-    onSuccess: (result) => {
-      qc.setQueryData<CommentInteractions>(key, (previous) => {
-        const likes = (previous?.likes ?? []).filter((id) => id !== user?.id);
-        if (result.liked && user) likes.push(user.id);
-        return { reactions: previous?.reactions ?? [], likes };
-      });
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context) qc.setQueryData(key, context.previous);
-      toast.error(error.message);
-    },
-  });
-
-  if (!user) return null;
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-1">
-      <button
-        type="button"
-        aria-pressed={liked}
-        disabled={toggleLike.isPending}
-        onClick={() => toggleLike.mutate()}
-        className={`rounded-full px-1.5 py-0.5 text-[10px] ${liked ? "text-primary" : "text-muted-foreground"}`}
-      >
-        ♥ {current.likes.length || ""}
-      </button>
-      {["❤️", "😂", "🔥"].map((emoji) => (
-        <ReactionChipButton
-          key={emoji}
-          emoji={emoji}
-          count={grouped[emoji]?.count ?? 0}
-          mine={grouped[emoji]?.mine ?? false}
-          target={{
-            emoji,
-            count: grouped[emoji]?.count ?? 0,
-            source: { kind: "comment", id: commentId },
-            ...(grouped[emoji]?.mine ? { remove: () => react.mutate(emoji) } : {}),
-          }}
-          onToggle={() => react.mutate(emoji)}
-          className="h-5 gap-1 px-1.5 text-[10px]"
-          title={`React ${emoji}`}
-        />
-      ))}
-    </div>
   );
 }
 

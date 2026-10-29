@@ -1,6 +1,7 @@
-import type { Ref } from "react";
+import { useEffect, useRef, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useReactorPeek, type ReactionTarget } from "@/components/reactions/ReactorPeek";
+import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 
 const SIZES = {
   sm: "h-6 gap-1 px-2 text-[11px]",
@@ -38,6 +39,12 @@ export function ReactionChipButton({
   title?: string;
 }) {
   const peek = useReactorPeek(target && count > 0 ? target : null);
+  // A chip that just gained a reaction pops; the rest only wobble on hover.
+  const previousCount = useRef(count);
+  const grew = count > previousCount.current;
+  useEffect(() => {
+    previousCount.current = count;
+  });
   return (
     <button
       ref={peek.anchorRef as Ref<HTMLButtonElement>}
@@ -57,9 +64,11 @@ export function ReactionChipButton({
         className,
       )}
     >
-      <span aria-hidden className="leading-none">
-        {emoji}
-      </span>
+      <AnimatedEmoji
+        emoji={emoji}
+        size={size === "lg" ? 16 : 14}
+        motion={grew ? "pop" : "hover"}
+      />
       <span className="font-mono font-medium leading-none">{count}</span>
     </button>
   );

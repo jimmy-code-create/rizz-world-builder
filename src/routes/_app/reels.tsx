@@ -4,13 +4,12 @@ import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
-  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, Send, MoreVertical, Users,
+  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, MoreVertical, Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GifPicker } from "@/components/GifPicker";
 import { GifContent } from "@/components/GifContent";
 import { renderGifSegments } from "@/lib/gif-content";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
@@ -22,7 +21,9 @@ import { CloseButton } from "@/components/ui/close-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchComments, addComment } from "@/lib/posts";
+import { fetchReels, createPost, toggleLike, fetchMyLikes } from "@/lib/posts";
+import { CommentSection } from "@/components/comments/CommentSection";
+import { REEL_COMMENT_MAX_LENGTH } from "@/lib/comment-thread";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
@@ -1046,72 +1047,35 @@ function ReelAction({ icon, label, onClick, active }: { icon: React.ReactNode; l
   );
 }
 
+/**
+ * Reel comments, on the shared thread.
+ *
+ * This used to be a flat, one-way list with no reply, vote, reaction or delete
+ * — the reel had the least capable comments in the app. The thread is mounted
+ * only while the sheet is open, so scrolling reels never fetches comments for
+ * reel after reel in the background.
+ */
 function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenChange: (o: boolean) => void; postId: string }) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const [body, setBody] = useState("");
-  const comments = useQuery({
-    queryKey: ["reel-comments", postId],
-    queryFn: () => fetchComments(postId),
-    enabled: open,
-  });
-  const mut = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sign in first");
-      if (!body.trim()) throw new Error("Say something");
-      await addComment(postId, user.id, body.trim().slice(0, 500));
-    },
-    onSuccess: () => {
-      setBody("");
-      qc.invalidateQueries({ queryKey: ["reel-comments", postId] });
-      qc.invalidateQueries({ queryKey: ["reels"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         hideClose
-        className="glass-strong border-white/10 rounded-t-3xl max-h-[80dvh] flex flex-col pb-[max(env(safe-area-inset-bottom),0.75rem)]"
+        className="glass-strong border-white/10 rounded-t-3xl h-[80dvh] max-h-[85dvh] flex flex-col p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
           <SheetTitle className="font-display text-lg">Comments</SheetTitle>
           <SheetClose asChild>
             <CloseButton />
           </SheetClose>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-3">
-          {comments.isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
-          {comments.data?.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Be the first to comment ✨</p>}
-          {(comments.data ?? []).map((c: any) => (
-            <div key={c.id} className="flex gap-2.5">
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(c.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold">@{c.author?.username}</p>
-                <p className="text-sm break-words whitespace-pre-wrap"><CaptionText caption={c.body} /></p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <form
-          onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
-          className="flex items-center gap-2 pt-2 border-t border-white/5"
-        >
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, 500))} />
-          <Input
-            value={body}
-            onChange={(e) => setBody(e.target.value.slice(0, 500))}
-            placeholder="Add a comment…"
-            className="glass border-white/10"
+        {open && (
+          <CommentSection
+            postId={postId}
+            maxLength={REEL_COMMENT_MAX_LENGTH}
+            className="min-h-0 flex-1"
           />
-          <Button type="submit" size="icon" disabled={!body.trim() || mut.isPending} className="bg-primary text-primary-foreground border-0 shadow-md shrink-0">
-            {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </form>
+        )}
       </SheetContent>
     </Sheet>
   );
