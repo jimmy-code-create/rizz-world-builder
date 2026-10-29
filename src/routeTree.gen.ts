@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as BadgePreviewRouteImport } from './routes/badge-preview'
 import { Route as ClaimRouteImport } from './routes/claim'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -75,6 +76,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BadgePreviewRoute = BadgePreviewRouteImport.update({
+  id: '/badge-preview',
+  path: '/badge-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClaimRoute = ClaimRouteImport.update({
@@ -362,6 +368,7 @@ const ApiBotWebhookBotIdSecretRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/badge-preview': typeof BadgePreviewRoute
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -421,6 +428,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/badge-preview': typeof BadgePreviewRoute
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -481,6 +489,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/badge-preview': typeof BadgePreviewRoute
   '/claim': typeof ClaimRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -542,6 +551,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/badge-preview'
     | '/claim'
     | '/login'
     | '/reset-password'
@@ -601,6 +611,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/badge-preview'
     | '/claim'
     | '/login'
     | '/reset-password'
@@ -660,6 +671,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/badge-preview'
     | '/claim'
     | '/login'
     | '/reset-password'
@@ -721,6 +733,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  BadgePreviewRoute: typeof BadgePreviewRoute
   ClaimRoute: typeof ClaimRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -755,6 +768,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/badge-preview': {
+      id: '/badge-preview'
+      path: '/badge-preview'
+      fullPath: '/badge-preview'
+      preLoaderRoute: typeof BadgePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/claim': {
@@ -1267,6 +1287,7 @@ const ApiLinkPreviewRouteWithChildren = ApiLinkPreviewRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  BadgePreviewRoute: BadgePreviewRoute,
   ClaimRoute: ClaimRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
