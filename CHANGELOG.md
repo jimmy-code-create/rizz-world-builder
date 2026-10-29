@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-29 — The profile badges, redrawn and applied
+
+- Every badge now draws from one inline SVG component: a 24-grid silhouette
+  with a 1u white hairline rim, a two-tone gradient in *user space* (lit at the
+  top, deep at the bottom — so the paw's four shapes share a single light), a
+  top-edge highlight clipped to the silhouette, and a glow that scales with the
+  rendered px. No drop shadows, no flat fills, no image files, no emoji.
+- Five marks: **verified** (shield + check), **premium** (gem + sparkle),
+  **early_member** (star), **top_paws** (paw), **creator** (crown), each with
+  one inner icon simple enough to survive 16px. Adding a sixth is one entry in
+  the badge table.
+- The swap happens in the one component every surface already used, so the
+  profile card, the full profile, feed rows, forum rows, the preview sheet and
+  the /badges shelf all moved at once with props (`slug`, `size`, `locked`,
+  `title`, `className`) unchanged. The name row's four slugs map to four
+  *different* new marks — verified → shield, purify → gem, streamer → crown,
+  bounty-hunter → paw — and `og`/`founder` get the star. Any slug the family
+  does not cover keeps the sprite badge instead of disappearing.
+- Name rows carry their marks in one rounded pill with 4px between them, on the
+  feed and in forum rows as well as on the profile.
+- `/badge-preview` is the spec sheet: every mark at 16, 20 and 28 on the
+  profile's purple-to-navy wash and on a light surface, with the pill rows.
+
 ## 2026-10-29 — Polls in every chat, sorts on every thread, a party you read together
 
 - **Polls reach DMs and groups.** The `+` offers Poll in all three chats now.

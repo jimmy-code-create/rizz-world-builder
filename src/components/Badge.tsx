@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { canonicalFor } from "@/lib/badge-set";
+import { Badge as VectorBadge, badgeTypeForSlug } from "@/components/badges/Badge";
 
 /**
  * Vector badge system.
@@ -93,6 +94,26 @@ export function Badge({ slug, size = 20, locked = false, title, className, style
   const spriteReady = useBadgeSpriteReady();
   const symbol = canonicalFor(slug)?.symbol ?? slug;
   const px = Math.max(12, Math.round(size));
+
+  // The redrawn family owns every slug it has a mark for. Props, sizing and
+  // the locked treatment are unchanged, so each surface — profile card, full
+  // profile, feed, forum, preview sheet, /badges — switches over without a
+  // single call-site edit, while anything unmapped keeps the sprite.
+  const vector = badgeTypeForSlug(slug) ?? badgeTypeForSlug(symbol);
+  if (vector) {
+    return (
+      <span
+        className={cn("badge", locked && "badge--locked", className)}
+        style={{ width: px, height: px, ...style }}
+        role={title ? "img" : undefined}
+        aria-label={title}
+        aria-hidden={title ? undefined : true}
+        title={title}
+      >
+        <VectorBadge type={vector} size={px} label={title} noTooltip />
+      </span>
+    );
+  }
   return (
     <span
       className={cn("badge", locked && "badge--locked", className)}

@@ -95,7 +95,7 @@ const BADGES: Record<BadgeType, BadgeDef> = {
   },
   top_paws: {
     label: "Top paws",
-    hint: "Top of this week's creators",
+    hint: "Top of this week's earners",
     from: "#b7f5d9",
     to: "#0f9d6f",
     glow: "rgba(16,185,129,0.5)",
@@ -229,7 +229,19 @@ export function Badge({
   );
 
   if (noTooltip) {
-    return <span className={cn("inline-flex shrink-0 items-center", className)}>{art}</span>;
+    // The surface owns the tooltip (BadgeChip already draws one), so the mark
+    // only needs to be nameable on its own — for screen readers and for the
+    // long-press label on a phone.
+    return (
+      <span
+        role="img"
+        aria-label={`${name} badge`}
+        title={`${name} — ${sub}`}
+        className={cn("inline-flex shrink-0 items-center", className)}
+      >
+        {art}
+      </span>
+    );
   }
 
   return (
@@ -258,6 +270,47 @@ export function Badge({
 
 /** Alias, so call sites can pick the name that reads best in context. */
 export { Badge as ProfileBadge };
+
+/**
+ * Which catalog slug draws which mark.
+ *
+ * The name row carries four slugs — `verified`, `streamer`, `bounty-hunter`,
+ * `purify` — so the map is chosen to give that row four *different* new marks
+ * instead of mixing old art with new in one pill:
+ *
+ *   verified / no-cap         → shield (the blue check it has always been)
+ *   purify                    → gem    (the purple gem it has always been)
+ *   streamer / verified_creator → crown (a creator is a creator)
+ *   og / founder              → star   (early members)
+ *   bounty-hunter / top-rizzler / top_paws → paw (the top earner)
+ *   premium / plus            → gem
+ *
+ * Anything not listed keeps the sprite badge, so a retired or unknown award
+ * still renders instead of silently disappearing from a profile.
+ */
+const SLUG_TO_TYPE: Record<string, BadgeType> = {
+  verified: "verified",
+  "no-cap": "verified",
+  purify: "premium",
+  premium: "premium",
+  plus: "premium",
+  og: "early_member",
+  founder: "early_member",
+  "early-member": "early_member",
+  streamer: "creator",
+  creator: "creator",
+  "verified-creator": "creator",
+  "bounty-hunter": "top_paws",
+  "top-rizzler": "top_paws",
+  "top-paws": "top_paws",
+};
+
+/** `top_paws` and `verified_creator` are stored both ways; normalise first. */
+export function badgeTypeForSlug(slug: string | null | undefined): BadgeType | null {
+  if (!slug) return null;
+  const key = slug.trim().toLowerCase().replace(/_/g, "-");
+  return SLUG_TO_TYPE[key] ?? SLUG_TO_TYPE[slug.trim()] ?? null;
+}
 
 /**
  * The pill that holds badges beside a name: a rounded capsule with 6px between

@@ -174,7 +174,11 @@ await check("the name-row badge line renders every mark on one nowrap row", () =
     "each earned mark is a tappable button",
   );
   assert.ok(html.includes("flex-nowrap"), "the marks never wrap onto a second row");
-  assert.ok(!html.includes("rounded-full border"), "no plate or pedestal behind the mark");
+  // The name row draws its marks as one capsule — the pill the badge spec asks
+  // for — rather than four loose marks. (This assertion used to forbid the
+  // plate while `BadgeLine` rendered it by default.)
+  assert.ok(html.includes("rounded-full border"), "the marks sit in one rounded pill");
+  assert.ok(html.includes("gap-1"), "4px between marks");
 });
 
 await check("feed rows drop retired marks even when the award still exists", () => {

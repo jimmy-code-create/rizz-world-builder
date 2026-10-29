@@ -10,10 +10,11 @@ import {
 /**
  * /badge-preview — the redrawn profile badges, everywhere they have to work.
  *
- * Preview only: nothing else in the app renders the new marks yet, so this page
- * can be reviewed (and rejected) without touching the shipped sprite badges.
- * Three sizes — 16, 20 and 28 — on dark and on light, with the pill that will
- * sit next to a name.
+ * These marks are now live: `src/components/Badge.tsx` draws them for every
+ * slug the family covers, so the profile card, the full profile, the feed,
+ * forum rows, the preview sheet and /badges all show them. This page stays as
+ * the spec sheet — three sizes — 16, 20 and 28 — on dark and on light, with the
+ * pill that sits next to a name.
  */
 export const Route = createFileRoute("/badge-preview")({
   head: () => ({
@@ -159,14 +160,15 @@ function BadgePreviewPage() {
     <main className="min-h-screen w-full bg-[#0a0b14] px-4 py-10 text-[#f4f1e7] sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-5xl">
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#c8ff3d]">
-          Preview · not applied yet
+          Badge set · applied
         </p>
         <h1 className="mt-2 font-display text-2xl font-black sm:text-3xl">Profile badges</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
           Five marks, one construction rule: two-tone gradient in a single light direction, a
           hairline rim, a top-edge highlight, and a small glow. Hover (or long-press) a mark for
-          its label. Nothing outside this page uses them yet — approve this and they replace the
-          sprite badges on the profile card, the full profile, the feed and the chat list.
+          its label. Every surface draws them through one component — profile card, full profile,
+          feed, forum rows and the profile preview — and any badge the family has no mark for
+          keeps its sprite.
         </p>
 
         {/* A shared spec strip, so the "same style" rule is visible at once. */}

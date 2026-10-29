@@ -863,7 +863,11 @@ function AuthorNameLink({ post }: { post: any }) {
       >
         <Nameplate name={name} />
       </ProfilePreviewTrigger>
-      {!!post.author?.badges?.length && <BadgeRow badges={post.author.badges} max={4} size="sm" />}
+      {!!post.author?.badges?.length && (
+        // One pill beside the name, 4px between marks — the same capsule the
+        // profile uses, so a row of badges reads as one object everywhere.
+        <BadgeRow badges={post.author.badges} max={4} size="sm" tray />
+      )}
     </div>
   );
 }
