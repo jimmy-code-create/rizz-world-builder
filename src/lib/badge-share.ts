@@ -55,7 +55,7 @@ function fetchBadgeSprite(): Promise<string> {
   if (!spriteText) {
     // Keep this query in lockstep with Badge.tsx so the share card draws the
     // same (uncached) artwork as the on-screen badge.
-    spriteText = fetch("/badges/badges.svg?v=5")
+    spriteText = fetch("/badges/badges.svg?v=6")
       .then((res) => {
         if (!res.ok) throw new Error(`badge sprite ${res.status}`);
         return res.text();

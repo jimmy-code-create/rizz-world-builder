@@ -202,16 +202,14 @@ await check("post comments render the same mention chip", () => {
   );
 });
 
-await check("the Purify mark was redrawn with a halo, vignette and lotus", () => {
+await check("the Purify mark is an amethyst orbiting crystal", () => {
   const start = sprite.indexOf('<symbol id="purify"');
   assert.ok(start > -1, "the sprite carries the Purify symbol");
   const symbol = sprite.slice(start, sprite.indexOf("</symbol>", start));
-  assert.ok(symbol.includes('id="bzg-purify"'), "the amethyst crest gradient is present");
-  assert.ok(symbol.includes('id="bzg-purify-vignette"'), "the inner vignette is present");
-  assert.ok(symbol.includes('id="bzg-purify-gold"'), "the gold flame is present");
-  assert.ok(symbol.includes("M8.7 16.35"), "the lotus petals are drawn");
+  assert.ok(symbol.includes('id="bzg-purify"'), "the amethyst crystal gradient is present");
+  assert.ok(symbol.includes('fill="url(#bzg-purify)"'), "the crystal uses the gradient");
+  assert.ok(symbol.includes('transform="rotate(-27 12 12)"'), "the violet orbit surrounds the crystal");
   assert.ok(!symbol.includes("<filter"), "the sprite stays filter-free for cheap 20px drawing");
-  assert.match(symbol, /stroke-opacity="\.18"/, "the halo is a second stroke, not a blur");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);
