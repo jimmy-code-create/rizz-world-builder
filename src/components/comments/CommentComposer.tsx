@@ -3,8 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { CornerDownRight, Loader2, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GifPicker } from "@/components/GifPicker";
 import { useAuth } from "@/lib/auth";
+import { defaultAvatarFor } from "@/lib/default-avatars";
 import { cn } from "@/lib/utils";
 
 /**
@@ -41,6 +43,13 @@ export function CommentComposer({
   const { user, profile } = useAuth();
   const signedIn = Boolean(user);
   const nearLimit = value.length > maxLength * 0.8;
+  // A real photo when there is one; otherwise the account's own cat, which is
+  // the same face the profile shows. Never a bare initial.
+  const avatarSrc =
+    profile?.avatar_url ?? defaultAvatarFor(profile?.username ?? user?.id ?? "you");
+  const avatarLetter = (profile?.display_name || profile?.username || "you")
+    .charAt(0)
+    .toUpperCase();
 
   // Grow with the draft, up to 8rem, then scroll inside the box.
   useEffect(() => {
@@ -80,17 +89,18 @@ export function CommentComposer({
         <>
           <div className="flex items-end gap-2">
             <GifPicker
+              triggerClassName={compact ? "h-9 w-9" : "h-10 w-10"}
               onSelect={(marker) =>
                 onChange(`${value}${value ? " " : ""}${marker}`.slice(0, maxLength))
               }
             />
-            <div className="flex min-w-0 flex-1 items-end rounded-xl border border-white/10 bg-black/25 px-2.5">
-              <span
-                aria-hidden="true"
-                className="mb-2.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
-              >
-                {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
-              </span>
+            <div className="flex min-w-0 flex-1 items-end gap-1 rounded-xl border border-white/10 bg-black/25 pl-1.5 pr-1">
+              <Avatar className="my-1.5 h-6 w-6 shrink-0 ring-1 ring-white/10">
+                <AvatarImage src={avatarSrc} alt="" />
+                <AvatarFallback className="bg-primary/20 text-[10px] font-bold text-primary">
+                  {avatarLetter}
+                </AvatarFallback>
+              </Avatar>
               <Textarea
                 ref={textareaRef}
                 value={value}

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
-import { CatEmoji } from "@/components/emoji/CatEmoji";
-import { CAT_EMOJI_MANIFEST, catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { RIZZ_REACTIONS } from "@/lib/rizz-library";
 import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 import { cn } from "@/lib/utils";
 
@@ -83,25 +82,26 @@ export function ReactionPicker({
         </div>
       )}
 
-      <div className="mt-1.5 rounded-lg border border-white/[0.06] bg-[#2b2d31] p-1" aria-label="Cat reactions">
-        <div className="grid grid-cols-6 gap-0.5">
-          {CAT_EMOJI_MANIFEST.map((entry) => (
+      {/* The Rizz picks replace the old twelve-cat grid: plain Unicode reads at
+          14px in a chip, costs nothing to draw, and survives every surface. */}
+      <div className="mt-1.5 rounded-lg border border-white/[0.06] bg-[#2b2d31] p-1" aria-label="Rizz reactions">
+        <div className="grid grid-cols-8 gap-0.5">
+          {RIZZ_REACTIONS.map((emoji) => (
             <button
-              key={entry.shortcode}
+              key={emoji}
               type="button"
-              aria-label={`React with ${entry.label}`}
-              title={entry.shortcode}
-              onClick={() => onPick(entry.shortcode)}
+              aria-label={`React with ${emoji}`}
+              onClick={() => onPick(emoji)}
               className="grid h-10 w-10 min-h-[40px] min-w-[40px] place-items-center rounded-md transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
             >
-              <CatEmoji name={catNameForShortcode(entry.shortcode)!} size={22} animate="hover" />
+              <AnimatedEmoji emoji={emoji} size={20} motion="hover" />
             </button>
           ))}
         </div>
       </div>
 
       <p className="mt-1.5 px-1 text-[10px] leading-snug text-[#949ba4]">
-        Tap an emoji to react. Cat emoji count here too.
+        Tap an emoji to react — or open the Rizz library from the + in the composer.
       </p>
     </div>
   );

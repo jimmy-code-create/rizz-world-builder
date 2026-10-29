@@ -201,12 +201,15 @@ export function GifPicker({
   onSelect,
   realmId,
   onCustomEmoji,
+  triggerClassName,
 }: {
   onSelect: (marker: string) => void;
   /** A realm passes its id so its own emoji and stickers show up in this picker. */
   realmId?: string;
   /** Opens the realm's emoji manager (add, upload, remove) for moderators. */
   onCustomEmoji?: () => void;
+  /** Match the trigger to the composer it sits in (a 44px row, a 36px row). */
+  triggerClassName?: string;
 }) {
   // GIFs are a Purify feature; emoji and stickers stay free for everyone.
   const { allowed } = usePurify();
@@ -324,7 +327,7 @@ export function GifPicker({
           size="icon"
           aria-label={t("emoji_picker")}
           title={t("emoji_picker")}
-          className="shrink-0 text-primary"
+          className={`shrink-0 text-primary ${triggerClassName ?? ""}`}
         >
           <Smile className="h-5 w-5" />
         </Button>

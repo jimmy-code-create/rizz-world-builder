@@ -77,7 +77,8 @@ await check("reactions are a smiley on the message, not an expanded tray", async
 await check("the reaction picker is compact but complete", async () => {
   assert.ok(picker.includes("QUICK_REACTIONS"));
   assert.ok(picker.includes("MORE_REACTIONS"));
-  assert.ok(picker.includes("CAT_EMOJI_MANIFEST"), "custom cat emoji stay available");
+  assert.ok(picker.includes("RIZZ_REACTIONS"), "the Rizz picks fill the old cat grid");
+  assert.ok(!picker.includes("CAT_EMOJI_MANIFEST"), "the cat grid is gone from the reaction sheet");
   assert.ok(picker.includes("ArrowLeft"), "there is a way back to the actions");
   assert.ok(picker.includes('aria-label="Back to message actions"'));
   assert.ok(picker.includes("bg-[#2b2d31]"), "Discord's reaction tray colour");

@@ -87,6 +87,9 @@ import {
   Users,
   Copy,
   Plus,
+  ImagePlus,
+  Camera,
+  X,
   Volume2,
   Forward,
   MoreHorizontal,
@@ -98,6 +101,10 @@ import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
+import { compressChatImage } from "@/lib/chat-media";
+import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
+import { insertRizzItem } from "@/lib/rizz-library";
+import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
@@ -122,7 +129,6 @@ import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { nameColorFor } from "@/lib/chat-appearance";
 import { isMediaPlaceholderText, renderGifSegments } from "@/lib/gif-content";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
-import { CatAutocomplete, replaceCatShortcode } from "@/components/emoji/CatEmojiPicker";
 import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
 import { EmbedList } from "@/components/chat/Embed";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
@@ -239,6 +245,11 @@ function RealmPage() {
   const [joined, setJoined] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  // Photo attachments, like DMs and groups: preview locally, upload on send.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   // Which pane the message menu opens on: the hover smiley goes straight to
   // reactions, every other gesture starts on the actions.
@@ -699,8 +710,32 @@ function RealmPage() {
       });
   };
 
+  useEffect(() => () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
+
+  const chooseImage = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.");
+      return;
+    }
+    const uploadLimit = chatUploadLimitBytes(myProfile);
+    if (file.size > uploadLimit) {
+      toast.error(`Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`);
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const handleSend = async () => {
-    if (!user || !body.trim()) return;
+    if (!user || (!body.trim() && !imageFile)) return;
     if (!joined) {
       toast.error("Join the realm to send messages");
       return;
@@ -717,8 +752,9 @@ function RealmPage() {
     hapticSend();
 
     // "/name args" that matches an installed command runs the bot. Any other
-    // text that happens to start with "/" is still just a message.
-    const parsed = parseSlashCommand(body);
+    // text that happens to start with "/" is still just a message. A photo
+    // caption is never a command.
+    const parsed = imageFile ? null : parseSlashCommand(body);
     // /music and /game are built in: they invite the voice bots into the call.
     const wantedBot = parsed ? voiceBotCommand(parsed.name) : null;
     if (parsed && wantedBot) {
@@ -801,13 +837,30 @@ function RealmPage() {
 
     setSending(true);
     try {
+      let attachmentUrl: string | null = null;
+      if (imageFile) {
+        const blob = await compressChatImage(imageFile);
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("chat-media")
+          .upload(path, blob, { contentType: "image/jpeg" });
+        if (uploadError) {
+          throw new Error(
+            /bucket|not found|does not exist|schema cache/i.test(uploadError.message)
+              ? "Photo sending needs the chat-media storage setup in BACKEND_REQUIREMENTS.md."
+              : uploadError.message,
+          );
+        }
+        attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
+      }
       if (activeRoomId && activeRoom?.kind !== "voice") {
-        await sendRealmRoomMessage(activeRoomId, user.id, body.trim());
+        await sendRealmRoomMessage(activeRoomId, user.id, body.trim(), attachmentUrl);
         await qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       } else {
-        await sendRealmMessage(c.id, user.id, body.trim());
+        await sendRealmMessage(c.id, user.id, body.trim(), attachmentUrl);
       }
       setBody("");
+      clearImage();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -2555,36 +2608,62 @@ function RealmPage() {
               moderator can switch it back on.
             </p>
           )}
-          <div className="mx-auto flex w-full max-w-3xl gap-2">
+          <div className="mx-auto w-full max-w-3xl">
+            {imagePreview && (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  Photo compresses before upload
+                </span>
+                <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-2">
             {/* One composer control for every emoji: standard, this server's own,
                 GIFs and stickers. The second smiley button is gone. */}
             <GifPicker
               realmId={c.id}
+              triggerClassName="h-11 w-11"
               onSelect={(marker) =>
                 setBody((current) => `${current}${current ? " " : ""}${marker}`)
               }
               onCustomEmoji={joined ? () => setEmojiOpen(true) : undefined}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Add a poll or schedule this message"
-                  disabled={!!composerBlock}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="glass-strong border-white/10">
-                <DropdownMenuItem onSelect={() => setPollOpen(true)}>
-                  <BarChart3 className="mr-2 h-4 w-4" /> New poll
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setScheduleOpen(true)} disabled={!body.trim()}>
-                  <CalendarClock className="mr-2 h-4 w-4" /> Schedule message
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                chooseImage(event.target.files?.[0] ?? null);
+                event.currentTarget.value = "";
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(event) => {
+                chooseImage(event.target.files?.[0] ?? null);
+                event.currentTarget.value = "";
+              }}
+            />
+            {/* Discord's `+`: one sheet for photo, camera, poll, schedule and
+                the Rizz library, instead of a bare `+` or a photo-only icon. */}
+            <ChatAttachButton
+              disabled={!!composerBlock}
+              actions={[
+                { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+                { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+                { id: "poll", label: "Poll", hint: "Ask the room", icon: BarChart3, onSelect: () => setPollOpen(true) },
+                { id: "schedule", label: "Schedule", hint: "Send later", icon: CalendarClock, onSelect: () => setScheduleOpen(true), disabled: !body.trim() },
+              ]}
+              onInsertSticker={(item) => setBody((current) => insertRizzItem(current, item))}
+            />
             {/* The slider and the mention popup both anchor to the input wrapper, so
               they can never end up on opposite sides of the composer. */}
             <div className="relative min-w-0 flex-1">
@@ -2673,30 +2752,16 @@ function RealmPage() {
                     });
                 }}
               />
-              <CatAutocomplete
-                value={body}
-                caret={caret}
-                onPick={(shortcode) => {
-                  const next = replaceCatShortcode(body, caret, shortcode);
-                  setBody(next.value);
-                  setCaret(next.caret);
-                  const el = inputRef.current;
-                  if (el)
-                    requestAnimationFrame(() => {
-                      el.focus();
-                      el.setSelectionRange(next.caret, next.caret);
-                    });
-                }}
-              />
             </div>
             <Button
               onClick={handleSend}
-              disabled={!joined || !body.trim() || sending || roomLockedForMe || myWriteBlocked}
+              disabled={!joined || (!body.trim() && !imageFile) || sending || roomLockedForMe || myWriteBlocked}
               size="icon"
-              className="bg-primary text-primary-foreground border-0 shadow-md shrink-0"
+              className="h-11 w-11 shrink-0 border-0 bg-primary text-primary-foreground shadow-md"
             >
               <Send className="h-4 w-4" />
             </Button>
+            </div>
           </div>
         </div>
       )}

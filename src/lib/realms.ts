@@ -120,10 +120,20 @@ export async function fetchRealmMessages(realmId: string, limit = 100) {
   return ((data ?? []) as unknown as RealmMessage[]).reverse();
 }
 
-export async function sendRealmMessage(realmId: string, senderId: string, body: string) {
+export async function sendRealmMessage(
+  realmId: string,
+  senderId: string,
+  body: string,
+  attachmentUrl?: string | null,
+) {
   const { error } = await supabase
     .from("messages")
-    .insert({ realm_id: realmId, sender_id: senderId, body });
+    .insert({
+      realm_id: realmId,
+      sender_id: senderId,
+      body,
+      ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
+    });
   if (error) throw error;
 }
 
@@ -353,7 +363,12 @@ export async function fetchRealmRoomMessages(roomId: string, limit = 100) {
   return ((data ?? []) as unknown as RealmMessage[]).reverse();
 }
 
-export async function sendRealmRoomMessage(roomId: string, senderId: string, body: string) {
+export async function sendRealmRoomMessage(
+  roomId: string,
+  senderId: string,
+  body: string,
+  attachmentUrl?: string | null,
+) {
   const { data: room, error: roomError } = await supabase
     .from("realm_rooms")
     .select("realm_id")
@@ -368,6 +383,7 @@ export async function sendRealmRoomMessage(roomId: string, senderId: string, bod
       realm_room_id: roomId,
       sender_id: senderId,
       body,
+      ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
     });
   if (error) throw error;
 }

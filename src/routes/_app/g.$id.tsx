@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Palette, X, Forward } from "lucide-react";
+import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft } from "lucide-react";
+import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
+import { insertRizzItem } from "@/lib/rizz-library";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
@@ -78,6 +80,10 @@ function GroupRoom() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  // Replying is composer state, like Discord: the bar sits above the box, the
+  // keyboard opens, and the chat settles on the newest message.
+  const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -245,14 +251,27 @@ function GroupRoom() {
     setImagePreview(null);
   };
 
+  // Tapping Reply opens the keyboard and keeps the bar above it, the way
+  // Discord does — otherwise the reply sits behind the keyboard on a phone.
+  useEffect(() => {
+    if (!replyTo) return;
+    composerRef.current?.focus({ preventScroll: true });
+    scrollChatToLatest(messagesListRef.current);
+  }, [replyTo]);
+
   const send = async () => {
     if (!user) return;
-    const text = body.trim();
-    if (!text && !imageFile) return;
+    const draft = body.trim();
+    // The quote travels in the body, like DMs, so it survives a reload without
+    // another join or a schema change.
+    const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
+    const text = (quoted + draft).trim();
+    if (!draft && !imageFile) return;
     if (text.length > GROUP_MESSAGE_LIMIT) {
       toast.error(`Messages can be up to ${GROUP_MESSAGE_LIMIT.toLocaleString()} characters`);
       return;
     }
+    setReplyTo(null);
     if (imageFile) {
       setUploadingImage(true);
       try {
@@ -563,6 +582,12 @@ function GroupRoom() {
                     }}
                     actions={[
                       {
+                        label: "Reply",
+                        icon: CornerUpLeft,
+                        onSelect: () =>
+                          setReplyTo({ id: m.id, body: m.body, author: m.author?.username ?? null }),
+                      },
+                      {
                         label: "Copy message",
                         icon: Copy,
                         onSelect: () => {
@@ -708,6 +733,25 @@ function GroupRoom() {
               </Button>
             </div>
           )}
+          {replyTo && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.06] px-2.5 py-1.5">
+              <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-semibold">
+                  {replyTo.author ? `@${replyTo.author}` : "Replying"}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">{replyTo.body || "Photo"}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                aria-label="Cancel reply"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
           <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
           <input
@@ -717,17 +761,25 @@ function GroupRoom() {
             hidden
             onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
-          <Button
-            type="button"
-            onClick={() => imageInputRef.current?.click()}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+          />
+          <ChatAttachButton
+            className="h-9 w-9"
             disabled={uploadingImage}
-            variant="ghost"
-            size="icon"
-            aria-label="Attach a photo"
-            className="shrink-0 text-muted-foreground"
-          >
-            <ImagePlus className="h-5 w-5" />
-          </Button>
+            actions={[
+              { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+              { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+            ]}
+            onInsertSticker={(item) =>
+              setBody((current) => insertRizzItem(current, item, GROUP_MESSAGE_LIMIT))
+            }
+          />
           {/* The mention popup anchors to this wrapper, so it opens above the
               composer instead of the nearest positioned ancestor. */}
           <div className="relative min-w-0 flex-1">

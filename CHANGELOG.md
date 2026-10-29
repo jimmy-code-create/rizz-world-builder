@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-10-29 — Discord's +, the Rizz library, and a reply that opens the keyboard
+
+- Every chat composer — DMs, groups and realms — now opens the same attach
+  sheet from one `+`: Photo (library), Camera (the lens, not the library), Poll
+  and Schedule where the surface has them, and the Rizz library. The photo-only
+  icon and the realm's bare `+` are gone, so nothing is discoverable only by
+  guessing what an icon does.
+- The Rizz library inserts Unicode emoji and kaomoji straight into the draft —
+  searchable, four packs (Faces, Hype, Soft, Chaos), one tap from the `+`. Media
+  picked from Photo/Camera still compresses, uploads and travels with the
+  message.
+- Replying behaves like Discord on a phone: tapping Reply on a message focuses
+  the composer (so the keyboard opens) and re-pins the chat to the newest
+  message while the viewport settles, instead of leaving the reply bar under the
+  keyboard. Groups gained reply at all — a bar above the box, a Reply action on
+  the message, and the quote carried in the body so it survives a reload.
+- The reaction sheet drops its twelve-cat grid. Sixteen Rizz reaction emoji take
+  its place: plain Unicode, readable at 14px in a chip, and free to render.
+  Existing `:cat_*:` shortcodes still render in old messages and reactions.
+
+## 2026-10-29 — A better cat, a real face, and photos in realms
+
+- The twelve cat emoji are redrawn. One silhouette — ear pair plus head circle,
+  one rim light — and much bigger features: 9px eyes with pupils and a
+  catchlight, blush, a lime nose, and expressions that live in the eyes and the
+  mouth instead of in decoration. The sleeper's z's are drawn as paths now, so
+  they no longer depend on whatever font a phone happens to have.
+- The comment box shows your actual photo. When an account has no picture it
+  falls back to the cat the app already gives that account, not a lime letter.
+- Realms can send photos. The composer's bare `+` now wears the photo icon and
+  keeps polls and scheduled messages one tap inside; a picked photo previews
+  above the composer, compresses, uploads to the same bucket DMs and groups use,
+  and travels with the message as `attachment_url` — alone, or with a caption
+  that is never mistaken for a slash command.
+- Composer rows line up: the emoji picker takes a `triggerClassName`, realms run
+  one 44px row, and the comment box matches its picker to its send button.
+- The emoji loop only pays for an `IntersectionObserver` when something is
+  actually looping; a picker of twelve faces used to create twelve observers
+  that never had anything to pause.
+
 ## 2026-10-29 — The streamer badge finds its centre
 
 - The broadcast mark's box sat 1.5 units high in its 24 grid — the arcs reach

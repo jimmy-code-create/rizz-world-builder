@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Users, Copy, Flag, Forward } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward } from "lucide-react";
+import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
+import { insertRizzItem } from "@/lib/rizz-library";
 import { CornerUpLeft } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
@@ -117,6 +119,15 @@ function DMPage() {
   // every other entry point (long press, right click, keyboard) opens actions.
   const [openMsgView, setOpenMsgView] = useState<"actions" | "reactions">("actions");
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
+
+  // Replying opens the keyboard and keeps the composer above it: the list is
+  // re-pinned to the newest message while the viewport settles, so the reply
+  // bar never ends up behind the keyboard on a phone.
+  useEffect(() => {
+    if (!replyTo) return;
+    composerRef.current?.focus({ preventScroll: true });
+    scrollChatToLatest(scrollRef.current);
+  }, [replyTo]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);
@@ -139,6 +150,7 @@ function DMPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const pendingMediaRef = useRef(new Map<string, File>());
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
@@ -1313,16 +1325,25 @@ function DMPage() {
             hidden
             onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
-          <Button
-            type="button"
-            onClick={() => imageInputRef.current?.click()}
-            variant="ghost"
-            size="icon"
-            aria-label="Attach an image"
-            className="shrink-0 text-muted-foreground"
-          >
-            <ImagePlus className="h-5 w-5" />
-          </Button>
+          {/* The camera input is a second element, not `capture` on the first:
+              one of them has to open the library and the other the lens. */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+          />
+          <ChatAttachButton
+            className="h-9 w-9"
+            disabled={Boolean(blockStatus.data)}
+            actions={[
+              { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+              { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+            ]}
+            onInsertSticker={(item) => setBody((current) => insertRizzItem(current, item))}
+          />
           <div className="relative min-w-0 flex-1">
             <Textarea
               ref={composerRef}
