@@ -150,6 +150,11 @@ function ReelsPage() {
     // Comments ride along with the playhead, so opening the sheet is a room
     // action rather than a private one.
     setPartyComments(sync.comments);
+    // …and nothing else rides with it. A comment-only sync stops here: running
+    // the playback apply meant a smooth scroll and two delayed seek/play passes
+    // every time the host opened or closed comments, which is the stutter
+    // viewers felt while following the host's thread.
+    if (sync.scope === "comments") return;
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const top = Math.max(0, sync.index) * scroller.clientHeight;
@@ -217,8 +222,11 @@ function ReelsPage() {
   const reportHostComments = useCallback((open: boolean) => {
     if (!party.isHost || hostCommentsRef.current === open) return;
     hostCommentsRef.current = open;
-    publishPartySnapshot();
-  }, [party.isHost, publishPartySnapshot]);
+    const snapshot = readPartySnapshot();
+    if (!snapshot) return;
+    // Scoped, so guests mirror the sheet without touching their player.
+    party.publish({ ...snapshot, scope: "comments" });
+  }, [party.isHost, party.publish, readPartySnapshot]);
 
   // Leaving the room puts the guest's own screens back in their hands.
   useEffect(() => {

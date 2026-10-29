@@ -68,7 +68,7 @@ await check("only the host publishes, and a heartbeat keeps late guests aligned"
   assert.match(party, /window\.setInterval\([\s\S]{0,220}?\}, 2500\)/, "the host heartbeats");
   assert.match(party, /if \(hostRef\.current\) \{[\s\S]{0,140}?sendSync\(channel, snapshot\)/, "subscribe resyncs the room");
   assert.match(party, /else \{[\s\S]{0,160}?event: "hello"/, "a guest announces itself on subscribe");
-  assert.match(party, /onSyncRef\.current\(\{[\s\S]{0,420}?at: sync\.at/, "guests receive the host clock");
+  assert.match(party, /onSyncRef\.current\(\{[\s\S]{0,600}?at: sync\.at/, "guests receive the host clock");
 });
 
 await check("the feed has a party entry point and a shareable /reels?party= link", () => {
@@ -216,6 +216,26 @@ await check("a guest reads comments with the host", () => {
   // A guest may still open comments themselves: the follower only reacts to a
   // change in the host's state.
   assert.match(reels, /\}, \[partyComments, partyControlled\]\);/);
+});
+
+await check("comment syncs never touch the viewer's player", () => {
+  // The lag viewers felt while following the host's thread: opening the sheet
+  // published a full sync, and the guest ran the whole playback apply — a
+  // smooth scroll plus two delayed seek/play passes — so the reel stuttered the
+  // moment it was supposed to be read along with.
+  assert.match(party, /scope\?: "playback" \| "comments"/);
+  assert.match(party, /scope: sync\.scope === "comments" \? "comments" : "playback"/);
+  assert.match(reels, /party\.publish\(\{ \.\.\.snapshot, scope: "comments" \}\)/);
+
+  const apply = reels.slice(reels.indexOf("const applyPartySync"), reels.indexOf("const partyIdentity"));
+  assert.ok(apply.length > 0, "applyPartySync must exist");
+  const commentReturn = apply.indexOf('if (sync.scope === "comments") return;');
+  const setComments = apply.indexOf("setPartyComments(sync.comments)");
+  const scrollTo = apply.indexOf("scroller.scrollTo");
+  assert.ok(commentReturn > setComments, "the comment state is taken first");
+  assert.ok(commentReturn > -1 && scrollTo > commentReturn, "and the playback work stops there");
+  // Playback syncs still carry comments, so a late joiner learns the state.
+  assert.match(reels, /comments: hostCommentsRef\.current/);
 });
 
 await check("the Purify mark is an amethyst orbiting crystal", () => {

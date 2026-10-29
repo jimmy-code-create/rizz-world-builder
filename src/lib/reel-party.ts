@@ -45,6 +45,14 @@ export type ReelPartySnapshot = {
    * instead of something they have to guess at.
    */
   comments: boolean;
+  /**
+   * What this message is for. A comment-state change carries
+   * `scope: "comments"` so the guest mirrors the sheet and touches nothing
+   * else: the playback apply (smooth scroll, then two delayed seek/play passes)
+   * used to run on every comment publish and stuttered a viewer's reel at the
+   * exact moment they were reading along.
+   */
+  scope?: "playback" | "comments";
 };
 
 export type ReelPartySync = ReelPartySnapshot & {
@@ -258,6 +266,7 @@ export function useReelParty({
         playing: sync.playing !== false,
         // Older hosts never sent this field; absence means "not reading".
         comments: sync.comments === true,
+        scope: sync.scope === "comments" ? "comments" : "playback",
         at: sync.at,
       });
     });

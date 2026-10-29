@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-29 — No more stutter for viewers while the host reads comments
+
+- Opening the host's comment sheet published a full party sync, and every guest
+  ran the whole playback apply for it: a smooth scroll of the feed plus two
+  delayed seek/play passes on the reel. That is why viewers felt lag exactly
+  when the host started reading. Syncs now carry a `scope`; a comment change is
+  `"comments"`, and the guest mirrors the sheet and returns before any player
+  work. Playback syncs still carry the comment flag, so a late joiner learns it.
+
 ## 2026-10-29 — The profile badges, redrawn and applied
 
 - Every badge now draws from one inline SVG component: a 24-grid silhouette
