@@ -177,15 +177,19 @@
         <stop offset="1" stop-color="#FF584F"/>
       </linearGradient>
     </defs>
-    <path d="M12 7.3 5.25 20.1h13.5Z" fill="url(#bzg-stream)" stroke="#D74B9A" stroke-width=".8" stroke-linejoin="round"/>
-    <path d="m12 7.3-1.15 12.8h7.9Z" fill="#7F205F" fill-opacity=".22"/>
-    <path d="M8.15 14.55h7.7M6.65 17.35h10.7" fill="none" stroke="#592044" stroke-opacity=".68" stroke-width="1.15" stroke-linecap="round"/>
-    <path d="M12 8.25v10.85M7.1 19.4h9.8" fill="none" stroke="#FFF2FA" stroke-opacity=".84" stroke-width="1" stroke-linecap="round"/>
-    <path d="M8.1 6.45a5.4 5.4 0 0 1 0-4.1M15.9 6.45a5.4 5.4 0 0 0 0-4.1" fill="none" stroke="#F7B8DD" stroke-width="1.35" stroke-linecap="round"/>
-    <path d="M5.25 7.15a8.85 8.85 0 0 1 0-6.3M18.75 7.15a8.85 8.85 0 0 0 0-6.3" fill="none" stroke="#D65AA3" stroke-opacity=".85" stroke-width="1.15" stroke-linecap="round"/>
-    <circle cx="12" cy="5.9" r="2.05" fill="url(#bzg-stream-live)" stroke="#FFF1D5" stroke-width=".8"/>
-    <circle cx="12" cy="5.9" r=".65" fill="#FFFDF8"/>
-    <path d="M6.9 18.8 9.1 14.5" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width=".8" stroke-linecap="round"/>
+    <!-- The broadcast arcs sit above the tower, so the mark's box was 1.5 high
+         in its 24 grid. The whole stamp moves down instead of redrawing it. -->
+    <g transform="translate(0 1.5)">
+      <path d="M12 7.3 5.25 20.1h13.5Z" fill="url(#bzg-stream)" stroke="#D74B9A" stroke-width=".8" stroke-linejoin="round"/>
+      <path d="m12 7.3-1.15 12.8h7.9Z" fill="#7F205F" fill-opacity=".22"/>
+      <path d="M8.15 14.55h7.7M6.65 17.35h10.7" fill="none" stroke="#592044" stroke-opacity=".68" stroke-width="1.15" stroke-linecap="round"/>
+      <path d="M12 8.25v10.85M7.1 19.4h9.8" fill="none" stroke="#FFF2FA" stroke-opacity=".84" stroke-width="1" stroke-linecap="round"/>
+      <path d="M8.1 6.45a5.4 5.4 0 0 1 0-4.1M15.9 6.45a5.4 5.4 0 0 0 0-4.1" fill="none" stroke="#F7B8DD" stroke-width="1.35" stroke-linecap="round"/>
+      <path d="M5.25 7.15a8.85 8.85 0 0 1 0-6.3M18.75 7.15a8.85 8.85 0 0 0 0-6.3" fill="none" stroke="#D65AA3" stroke-opacity=".85" stroke-width="1.15" stroke-linecap="round"/>
+      <circle cx="12" cy="5.9" r="2.05" fill="url(#bzg-stream-live)" stroke="#FFF1D5" stroke-width=".8"/>
+      <circle cx="12" cy="5.9" r=".65" fill="#FFFDF8"/>
+      <path d="M6.9 18.8 9.1 14.5" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width=".8" stroke-linecap="round"/>
+    </g>
   </symbol>
   <!-- Bounty Hunter: a folded contract with a stamped gold reward coin. -->
   <symbol id="bounty-hunter" viewBox="0 0 24 24">

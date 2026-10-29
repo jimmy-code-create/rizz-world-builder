@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-29 — The streamer badge finds its centre
+
+- The broadcast mark's box sat 1.5 units high in its 24 grid — the arcs reach
+  further above the tower than the tower sits below them — so the sprite's own
+  centring guard caught it 7.1% off the optical centre. One `translate` moves
+  the whole stamp down; the drawing itself is untouched.
+
 ## 2026-10-29 — Reactions with a pulse
 
 - Every reaction glyph in the app now comes from one animated primitive, so a
@@ -41,26 +48,6 @@
   and breaks the line on Shift+Enter, and a signed-out reader gets a sign-in
   path instead of a dead box. `@mentions`, `#tags`, links and GIF/sticker
   bodies keep the chips they had.
-
-## 2026-10-29 — The badge set, redrawn in Lucide's language
-
-- All twenty marks are new, and they are no longer twenty freehand emblems.
-  Every collectible is one shared *signet* coin — a deep tint of its own hue lit
-  from the top left, an inner vignette gathering at the bottom right, a bright
-  hairline rim and an engraved inner ring — carrying exactly one stroke-only
-  glyph at a fixed 2.15 weight on the 24 grid: sprout, comet, speech bubble,
-  crescent, laughing face, crown, flame, flame-in-a-ring, broadcast, bullseye,
-  joystick, medal, pennant, play tile, two figures, sparkles, waveform, diamond.
-  Same drawing at 20px beside a name and at 96px in the showcase.
-- Verified and Purify are identity marks, not collectibles, so they keep their
-  own silhouettes — the four-lobe seal and the cat crest — redrawn with the same
-  rim, vignette and glyph weight, plus a halo stroke instead of the old stacked
-  gradients. Night Owl lost the sparkle that sat on its own arc, Purify lost the
-  lotus that turned to mush at 20px, and the compact filled shapes that went
-  solid when stroked (trophy cup, gamepad, pennant flag, faceted gem) were
-  replaced with open marks: joystick, open pennant, diamond and table facet.
-- The sprite cache key moved to `?v=4` in `Badge.tsx` and `badge-share.ts`, so a
-  browser holding the old drawing fetches the new one on the next load.
 
 ## 2026-10-28 — Story text moves again on a phone
 
