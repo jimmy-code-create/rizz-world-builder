@@ -2,9 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft } from "lucide-react";
+import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft, BarChart3 } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { insertRizzItem } from "@/lib/rizz-library";
+import { PollDialog } from "@/components/chat/PollDialog";
+import { ChatPollCard } from "@/components/chat/PollCard";
+import { asChatPollCard } from "@/lib/chat-polls";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
@@ -79,6 +81,7 @@ function GroupRoom() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   // Replying is composer state, like Discord: the bar sits above the box, the
@@ -506,7 +509,10 @@ function GroupRoom() {
             const rawBodyText = withoutShareLinks(m.body);
             // Legacy image-only messages carry a literal “📷 Image” body; it is
             // a placeholder from the old composer, not something to display.
-            const bodyText = isMediaPlaceholderText(rawBodyText) ? "" : rawBodyText;
+            // A poll's question is also in the body for older clients; the card
+            // is the message, so the plain text is not shown above it.
+            const pollCard = asChatPollCard(m.card);
+            const bodyText = pollCard || isMediaPlaceholderText(rawBodyText) ? "" : rawBodyText;
             const hasText = !!bodyText.trim();
             const mediaOnly = isOnlyMediaMarker(bodyText);
             const previous = visibleMessages[index - 1];
@@ -673,6 +679,7 @@ function GroupRoom() {
                           )}
                         </>
                       )}
+                      {pollCard && !deletedAt && <ChatPollCard card={pollCard} />}
                     </div>
                   </MessageActionMenu>
                   <ReactionChips
@@ -775,10 +782,8 @@ function GroupRoom() {
             actions={[
               { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
               { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+              { id: "poll", label: "Poll", hint: "Ask the group", icon: BarChart3, onSelect: () => setPollOpen(true), disabled: uploadingImage },
             ]}
-            onInsertSticker={(item) =>
-              setBody((current) => insertRizzItem(current, item, GROUP_MESSAGE_LIMIT))
-            }
           />
           {/* The mention popup anchors to this wrapper, so it opens above the
               composer instead of the nearest positioned ancestor. */}
@@ -848,6 +853,10 @@ function GroupRoom() {
         value={wallpaper}
         onChange={setWallpaper}
       />
+
+      {/* The RPC inserts the poll message with its card; realtime drops it into
+          the transcript like any other message. */}
+      <PollDialog open={pollOpen} onOpenChange={setPollOpen} groupId={id} />
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="glass-strong border-white/10">

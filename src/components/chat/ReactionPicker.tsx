@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
-import { RIZZ_REACTIONS } from "@/lib/rizz-library";
+import { RIZZ_REACTIONS } from "@/lib/reactions";
 import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 import { cn } from "@/lib/utils";
 

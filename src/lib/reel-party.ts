@@ -39,6 +39,12 @@ export type ReelPartySnapshot = {
   position: number;
   /** False while the host has the reel paused. */
   playing: boolean;
+  /**
+   * True while the host has the comments sheet open. Guests open the same
+   * sheet on the same reel, so reading along is part of watching together
+   * instead of something they have to guess at.
+   */
+  comments: boolean;
 };
 
 export type ReelPartySync = ReelPartySnapshot & {
@@ -250,6 +256,8 @@ export function useReelParty({
         index: sync.index,
         position: typeof sync.position === "number" ? sync.position : 0,
         playing: sync.playing !== false,
+        // Older hosts never sent this field; absence means "not reading".
+        comments: sync.comments === true,
         at: sync.at,
       });
     });

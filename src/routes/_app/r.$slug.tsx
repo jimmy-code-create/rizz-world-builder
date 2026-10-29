@@ -103,7 +103,6 @@ import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { compressChatImage } from "@/lib/chat-media";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { insertRizzItem } from "@/lib/rizz-library";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
@@ -2652,8 +2651,8 @@ function RealmPage() {
                 event.currentTarget.value = "";
               }}
             />
-            {/* Discord's `+`: one sheet for photo, camera, poll, schedule and
-                the Rizz library, instead of a bare `+` or a photo-only icon. */}
+            {/* Discord's `+`: one sheet for photo, camera, poll and schedule,
+                instead of a bare `+` or a photo-only icon. */}
             <ChatAttachButton
               disabled={!!composerBlock}
               actions={[
@@ -2662,7 +2661,6 @@ function RealmPage() {
                 { id: "poll", label: "Poll", hint: "Ask the room", icon: BarChart3, onSelect: () => setPollOpen(true) },
                 { id: "schedule", label: "Schedule", hint: "Send later", icon: CalendarClock, onSelect: () => setScheduleOpen(true), disabled: !body.trim() },
               ]}
-              onInsertSticker={(item) => setBody((current) => insertRizzItem(current, item))}
             />
             {/* The slider and the mention popup both anchor to the input wrapper, so
               they can never end up on opposite sides of the composer. */}

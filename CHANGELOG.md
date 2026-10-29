@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-10-29 — Polls in every chat, sorts on every thread, a party you read together
+
+- **Polls reach DMs and groups.** The `+` offers Poll in all three chats now.
+  A new migration adds a nullable `card` payload to `direct_messages` and
+  `group_messages`, a `chat_polls` / `chat_poll_votes` pair scoped by group or
+  by the two people in a DM, and two SECURITY DEFINER RPCs (`create_chat_poll`,
+  `vote_chat_poll`) that re-check membership, blocks and the closing time. The
+  poll renders from the message itself and tallies stream over Realtime, the
+  same shape realm polls have had. A blocked pair cannot be polled.
+- **The Rizz library is gone.** The `+` sheet no longer opens an emoji/sticker
+  sub-view: the component, the four packs, the search and the insert helper are
+  deleted, and every composer stopped wiring them. The curated reaction set
+  moved to `src/lib/reactions.ts`, where the rest of the reaction vocabulary
+  lives.
+- **The `+` is a square.** The trigger is a squared tile with a squared frame
+  around the plus, and the sheet is a grid of equal square tiles instead of
+  differently sized cards — a palette of choices rather than a list.
+- **Comments can always be sorted.** Every thread (posts, side discussion,
+  reels) shows **Top voted** and **Newest** as two pills whenever there is at
+  least one comment. Before, one button showed the current order and only
+  appeared with more than one thread, so a fresh reel looked like comments had
+  no sort at all.
+- **Reel party reads together.** The party sync now carries whether the host
+  has comments open. A guest's comments sheet opens on the same reel when the
+  host opens theirs and closes when the host closes, with a pulsing “Host is
+  reading” badge in the sheet header. A guest can still open comments alone —
+  the follower only reacts to a change from the host.
+
+## 2026-10-29 — Story layers you can place without a precise drag
+
+- The selected-layer toolbar was one horizontally scrolling strip, so on a 360px
+  phone the rotate dial, the fonts and the colours sat past the fold — "rotate"
+  and "font" looked missing and a drag was the only way to place words. It is a
+  panel now with three tabs: **Move**, **Font** and **Colour**.
+- Move carries a nudge pad (four arrows, 1.5% of the canvas per tap, the centre
+  button snaps the layer back to the middle), a rotate stepper at ±15° with a 0°
+  reset and a −180…180 fine slider, and size steps from 0.2× to 4×. Every step
+  is undo-safe and clamped to the stage, so "drag" is no longer the only way to
+  line a caption up.
+- Font shows each family as its own card, drawing its name in that typeface, so
+  the choice is made by shape rather than by reading four labels. Colour holds
+  the eight swatches (32px, with a white ring on the current one) and the
+  Living-text toggle.
+- Text and sticker layers gained 10px of padding on their drag box. A two-letter
+  word used to be a ~30px grab target that a thumb missed; the words themselves
+  stay centred on their own x/y.
+
 ## 2026-10-29 — Discord's +, the Rizz library, and a reply that opens the keyboard
 
 - Every chat composer — DMs, groups and realms — now opens the same attach

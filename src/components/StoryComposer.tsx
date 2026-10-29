@@ -27,6 +27,11 @@ import {
   Sparkle,
   Waves,
   Move,
+  RotateCcw,
+  RotateCw,
+  Plus,
+  Minus,
+  Target,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -133,6 +138,10 @@ type Overlay = {
   template?: boolean;
 };
 
+/** 32px hit targets used by the layer panel's nudge pad and steppers. */
+const NUDGE = "grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground active:scale-95";
+const STEP = "grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-foreground transition-colors hover:bg-white/[0.09] active:scale-95";
+
 const STICKER_TABS: StickerTab[] = ["Emoji", "Icons", "Mood", "Gen Z", "Hinglish", "Desi pop"];
 const TEXT_COLORS = ["#ffffff","#000000","#c8ff3d","#8a8a92","#22d3ee","#fde047","#f97316","#10b981"];
 /** Canvas + editor font stacks, matched to RIZZ (Bricolage display). */
@@ -165,6 +174,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const [bg, setBg] = useState<string>("#131315");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<"text" | "sticker" | "filter" | "bg" | "caption" | "privacy" | "templates" | "layers" | "brush" | "tune" | "motion" | null>(null);
+  // Which tab the selected-layer panel shows. Dragging text on a phone is a
+  // fine motor skill; the Move tab gives every layer explicit, reversible
+  // nudges plus a rotate dial, and Font/Colour are one tap away instead of
+  // parked at the end of a horizontal scroll.
+  const [editTab, setEditTab] = useState<"move" | "font" | "colour">("move");
   const [history, setHistory] = useState<Overlay[][]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
@@ -229,6 +243,7 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
       setBakeId("none"); setAdjust(NEUTRAL_ADJUST); setMotionKind("none");
       setBrush("pen"); setBrushColor("#c8ff3d"); setBrushSize(10);
       setRedoStack([]); drawingRef.current = null;
+      setEditTab("move");
     }
   }, [open]);
 
@@ -376,6 +391,28 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
   const updateSelected = (patch: Partial<Overlay>) => {
     if (!selected) return;
     setOverlays((o) => o.map((it) => it.id === selected ? { ...it, ...patch } : it));
+  };
+  /** Step the selected layer by a fraction of the canvas (clamped to the stage). */
+  const nudgeSelected = (dx: number, dy: number) => {
+    if (!selected) return;
+    setOverlays((cur) =>
+      cur.map((it) =>
+        it.id === selected
+          ? { ...it, x: Math.max(0, Math.min(1, it.x + dx)), y: Math.max(0, Math.min(1, it.y + dy)) }
+          : it,
+      ),
+    );
+  };
+  /** Rotate in wrapped degrees, so -180 and 180 are the same edge, not a jump. */
+  const rotateSelected = (delta: number) => {
+    if (!selected) return;
+    setOverlays((cur) =>
+      cur.map((it) =>
+        it.id === selected
+          ? { ...it, rotate: ((((it.rotate + delta + 180) % 360) + 360) % 360) - 180 }
+          : it,
+      ),
+    );
   };
   const removeSelected = () => {
     if (!selected) return;
@@ -939,6 +976,11 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
                 color: ov.color, fontFamily: fontFor(ov.font), fontWeight: 700,
                 textShadow: ov.kind === "text" ? "0 2px 8px rgba(0,0,0,.5)" : undefined,
                 whiteSpace: "nowrap",
+                // A word like "hi" is a ~30px-wide drag target at this font
+                // size, which a thumb misses more often than it hits. Padding
+                // widens the grab area without moving the words: the layer is
+                // still centred on its own x/y.
+                padding: ov.kind === "image" ? undefined : 10,
                 width: ov.kind === "image" && ov.w ? `${ov.w * 100}%` : undefined,
                 height: ov.kind === "image" && ov.h ? `${ov.h * 100}%` : undefined,
               }}
@@ -1128,75 +1170,183 @@ export function StoryComposer({ open, onClose, onPosted }: { open: boolean; onCl
         </div>
       </div>
 
-      {/* Selected overlay toolbar */}
+      {/* Selected layer panel.
+          This was one horizontally scrolling strip: on a 360px phone the rotate
+          dial and the fonts sat past the fold, so "font" and "rotate" looked
+          missing and the only way to place words was a drag. Three tabs keep
+          every control on screen, and Move carries explicit nudges plus a
+          rotate stepper for when a finger drag is too coarse. */}
       {sel && (
-        <div className="px-2 pb-1 shrink-0">
-          <div className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-xs px-2 text-muted-foreground shrink-0">{sel.kind === "text" ? "Text" : sel.kind === "image" ? "Photo" : "Sticker"}{sel.locked ? " 🔒" : ""}</span>
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] text-muted-foreground">size</span>
-              <Slider value={[sel.scale * 50]} min={20} max={200} step={1} onValueChange={([v]) => updateSelected({ scale: v/50 })} className="w-24" />
+        <div className="shrink-0 px-2 pb-1">
+          <div className="glass-strong rounded-2xl p-1.5">
+            <div className="flex items-center gap-1.5 px-0.5">
+              <span className="rounded-md bg-white/[0.07] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {sel.kind === "text" ? "Text" : sel.kind === "image" ? "Photo" : "Sticker"}
+              </span>
+              <span className={`truncate text-[10px] font-semibold tabular-nums ${sel.locked ? "text-amber-300" : "text-muted-foreground"}`}>
+                {sel.locked ? "locked · " : ""}{Math.round(sel.scale * 100)}% · {Math.round(sel.rotate)}°
+              </span>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] text-muted-foreground">rotate</span>
-              <Slider value={[sel.rotate + 180]} min={0} max={360} step={1} onValueChange={([v]) => updateSelected({ rotate: v - 180 })} className="w-24" />
-            </div>
+
             {sel.kind === "text" && (
-              <div className="flex items-center gap-1 shrink-0">
-                {TEXT_COLORS.map((c) => (
-                  <button key={c} onClick={() => updateSelected({ color: c })}
-                    className={`h-6 w-6 rounded-full border ${sel.color===c ? "border-white" : "border-white/20"}`}
-                    style={{ background: c }} aria-label={c} />
+              <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-xl bg-black/30 p-0.5" role="tablist" aria-label="Text tools">
+                {([
+                  ["move", "Move", Move],
+                  ["font", "Font", Type],
+                  ["colour", "Colour", Palette],
+                ] as const).map(([id, label, Icon]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={editTab === id}
+                    onClick={() => setEditTab(id)}
+                    className={`flex h-8 items-center justify-center gap-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                      editTab === id ? "bg-white/15 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </button>
                 ))}
               </div>
             )}
-            {sel.kind === "text" && (
-              <button
-                type="button"
-                onClick={() => updateSelected({ live: !sel.live })}
-                aria-pressed={!!sel.live}
-                title="Living text — it breathes in the editor and shares as a 3s clip"
-                className={`flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold ${sel.live ? "border-primary/60 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground"}`}
-              >
-                <Sparkle className="h-3 w-3" /> Live
-              </button>
+
+            {(sel.kind !== "text" || editTab === "move") && (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="grid shrink-0 grid-cols-3 gap-0.5 rounded-xl border border-white/10 bg-black/25 p-1" aria-label="Move layer">
+                  <span aria-hidden="true" className="h-8 w-8" />
+                  <button type="button" onClick={() => nudgeSelected(0, -0.015)} aria-label="Move layer up" className={NUDGE}>
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                  <span aria-hidden="true" className="h-8 w-8" />
+                  <button type="button" onClick={() => nudgeSelected(-0.015, 0)} aria-label="Move layer left" className={NUDGE}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => updateSelected({ x: 0.5, y: 0.5 })} aria-label="Centre layer on the canvas" className={NUDGE}>
+                    <Target className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => nudgeSelected(0.015, 0)} aria-label="Move layer right" className={NUDGE}>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <span aria-hidden="true" className="h-8 w-8" />
+                  <button type="button" onClick={() => nudgeSelected(0, 0.015)} aria-label="Move layer down" className={NUDGE}>
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                  <span aria-hidden="true" className="h-8 w-8" />
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-1">
+                    <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Turn</span>
+                    <button type="button" onClick={() => rotateSelected(-15)} aria-label="Rotate 15 degrees left" className={STEP}>
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                    <span className="min-w-[40px] text-center text-[11px] font-bold tabular-nums">{Math.round(sel.rotate)}°</span>
+                    <button type="button" onClick={() => rotateSelected(15)} aria-label="Rotate 15 degrees right" className={STEP}>
+                      <RotateCw className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateSelected({ rotate: 0 })}
+                      className="ml-auto rounded-lg border border-white/10 px-1.5 py-1 text-[10px] font-bold text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      0°
+                    </button>
+                  </div>
+                  <Slider
+                    value={[sel.rotate]}
+                    min={-180}
+                    max={180}
+                    step={1}
+                    onValueChange={([v]) => updateSelected({ rotate: v })}
+                    aria-label="Rotation"
+                  />
+                  <div className="flex items-center gap-1">
+                    <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Size</span>
+                    <button
+                      type="button"
+                      onClick={() => updateSelected({ scale: Math.max(0.2, Number((sel.scale - 0.1).toFixed(2))) })}
+                      aria-label="Make smaller"
+                      className={STEP}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="min-w-[40px] text-center text-[11px] font-bold tabular-nums">{Math.round(sel.scale * 100)}%</span>
+                    <button
+                      type="button"
+                      onClick={() => updateSelected({ scale: Math.min(4, Number((sel.scale + 0.1).toFixed(2))) })}
+                      aria-label="Make bigger"
+                      className={STEP}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-            {sel.kind === "text" && (
-              <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Text style">
+            {sel.kind === "text" && editTab === "colour" && (
+              <div className="mt-2 flex items-center gap-1.5">
+                {TEXT_COLORS.map((c) => (
+                  <button key={c} onClick={() => updateSelected({ color: c })}
+                    aria-pressed={sel.color === c}
+                    className={`h-8 flex-1 rounded-lg border-2 transition-transform ${sel.color===c ? "scale-105 border-white" : "border-white/15"}`}
+                    style={{ background: c }} aria-label={`Text colour ${c}`} />
+                ))}
+              </div>
+            )}
+            {sel.kind === "text" && editTab === "colour" && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateSelected({ live: !sel.live })}
+                  aria-pressed={!!sel.live}
+                  className={`flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-[10px] font-bold ${sel.live ? "border-primary/60 bg-primary/15 text-primary" : "border-white/10 text-muted-foreground"}`}
+                >
+                  <Sparkle className="h-3 w-3" /> Living text
+                </button>
+                <span className="min-w-0 text-[10px] leading-tight text-muted-foreground">
+                  Breathes in the editor · shares as a 3s clip
+                </span>
+              </div>
+            )}
+            {sel.kind === "text" && editTab === "font" && (
+              <div className="mt-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar" role="group" aria-label="Text style">
                 {TEXT_STYLES.map((s) => (
                   <button key={s.id} onClick={() => updateSelected({ style: s.id })}
                     aria-pressed={sel.style === s.id || (!sel.style && s.id === "classic")}
-                    className={`text-[10px] px-2 py-1 rounded-md border ${sel.style===s.id || (!sel.style && s.id==="classic") ? "bg-white/15 border-white/30" : "border-white/10"}`}>
+                    className={`h-8 shrink-0 rounded-lg border px-2 text-[10px] font-semibold ${sel.style===s.id || (!sel.style && s.id==="classic") ? "bg-white/15 border-white/30" : "border-white/10 text-muted-foreground"}`}>
                     {s.label}
                   </button>
                 ))}
               </div>
             )}
-            {sel.kind === "text" && (
-              <div className="flex items-center gap-1 shrink-0">
+            {sel.kind === "text" && editTab === "font" && (
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                 {FONTS.map((f) => (
                   <button key={f.id} onClick={() => updateSelected({ font: f.id })}
-                    style={{ fontFamily: f.stack }}
-                    className={`text-[10px] px-2 py-1 rounded-md border ${sel.font===f.id ? "bg-white/15 border-white/30" : "border-white/10"}`}>
-                    {f.label}
+                    aria-pressed={sel.font === f.id}
+                    className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border px-2.5 transition-colors ${sel.font===f.id ? "border-primary/60 bg-primary/12" : "border-white/10 bg-white/[0.03]"}`}>
+                    <span className="text-[17px] leading-none" style={{ fontFamily: f.stack }}>Aa</span>
+                    <span className="truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{f.label}</span>
                   </button>
                 ))}
               </div>
             )}
-            <div className="ml-auto flex items-center gap-1 shrink-0">
-              <button onClick={() => reorderSelected(1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 text-xs font-bold" aria-label="Bring forward">
-                ▲
+            <div className="mt-2 flex items-center justify-end gap-1 border-t border-white/[0.06] pt-1.5">
+              <button type="button" onClick={() => reorderSelected(1)} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground" aria-label="Bring forward">
+                <ChevronUp className="h-4 w-4" />
               </button>
-              <button onClick={() => reorderSelected(-1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10 text-xs font-bold" aria-label="Send back">
-                ▼
+              <button type="button" onClick={() => reorderSelected(-1)} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground" aria-label="Send back">
+                <ChevronDown className="h-4 w-4" />
               </button>
-              <button onClick={toggleLockSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10" aria-label={sel.locked ? "Unlock layer" : "Lock layer"} aria-pressed={!!sel.locked}>
+              <button type="button" onClick={toggleLockSelected} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground" aria-label={sel.locked ? "Unlock layer" : "Lock layer"} aria-pressed={!!sel.locked}>
                 <Lock className="h-4 w-4" />
               </button>
-              <button onClick={duplicateSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-white/10" aria-label="Duplicate">
+              <button type="button" onClick={duplicateSelected} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground" aria-label="Duplicate">
                 <Copy className="h-4 w-4" />
               </button>
-              <button onClick={removeSelected} className="h-8 w-8 rounded-full grid place-items-center hover:bg-destructive/20 text-destructive" aria-label="Delete">
+              <button type="button" onClick={removeSelected} className="grid h-8 w-8 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/20" aria-label="Delete">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

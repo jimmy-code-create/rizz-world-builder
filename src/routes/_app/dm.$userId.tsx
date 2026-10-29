@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward } from "lucide-react";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3 } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { insertRizzItem } from "@/lib/rizz-library";
+import { PollDialog } from "@/components/chat/PollDialog";
+import { ChatPollCard } from "@/components/chat/PollCard";
+import { asChatPollCard } from "@/lib/chat-polls";
 import { CornerUpLeft } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
@@ -149,6 +151,7 @@ function DMPage() {
   const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pollOpen, setPollOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pendingMediaRef = useRef(new Map<string, File>());
@@ -955,10 +958,14 @@ function DMPage() {
             // A shared post/reel travels as its permalink: the raw URL is swapped
             // for a real card (SharedPostCards) right under the message.
             const restText = withoutShareLinks(rest);
+            // A poll message carries its question in the body as a fallback for
+            // older clients; the card is the real message, so the text is not
+            // repeated above it.
+            const pollCard = asChatPollCard((m as { card?: unknown }).card);
             // Old image-only messages stored the literal words “📷 Image” as
             // their body. A photo should stand on its own, not repeat itself in
             // a caption, so that placeholder is not text.
-            const messageText = isMediaPlaceholderText(restText) ? "" : restText;
+            const messageText = pollCard || isMediaPlaceholderText(restText) ? "" : restText;
             const hasText = !!messageText.trim();
             const mediaOnly = isOnlyMediaMarker(messageText);
             const previous = filteredMsgs[index - 1];
@@ -1212,6 +1219,9 @@ function DMPage() {
                         )}
                       </div>
                     )}
+                    {pollCard && !deletedAt && (
+                      <ChatPollCard card={pollCard} canVote={!blockStatus.data} />
+                    )}
                   </div>
                 </MessageActionMenu>
                 )}
@@ -1341,8 +1351,8 @@ function DMPage() {
             actions={[
               { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
               { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+              { id: "poll", label: "Poll", hint: "Ask them", icon: BarChart3, onSelect: () => setPollOpen(true) },
             ]}
-            onInsertSticker={(item) => setBody((current) => insertRizzItem(current, item))}
           />
           <div className="relative min-w-0 flex-1">
             <Textarea
@@ -1440,7 +1450,11 @@ function DMPage() {
         value={wallpaper}
         onChange={setWallpaper}
       />
-      
+
+      {/* The poll lives in the thread: the RPC inserts the message and its card,
+          and the realtime subscription drops it into the transcript. */}
+      <PollDialog open={pollOpen} onOpenChange={setPollOpen} dmUserId={userId ?? undefined} />
+
       </div>
     </div>
   );

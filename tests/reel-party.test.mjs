@@ -68,7 +68,7 @@ await check("only the host publishes, and a heartbeat keeps late guests aligned"
   assert.match(party, /window\.setInterval\([\s\S]{0,220}?\}, 2500\)/, "the host heartbeats");
   assert.match(party, /if \(hostRef\.current\) \{[\s\S]{0,140}?sendSync\(channel, snapshot\)/, "subscribe resyncs the room");
   assert.match(party, /else \{[\s\S]{0,160}?event: "hello"/, "a guest announces itself on subscribe");
-  assert.match(party, /onSyncRef\.current\(\{[\s\S]{0,260}?at: sync\.at/, "guests receive the host clock");
+  assert.match(party, /onSyncRef\.current\(\{[\s\S]{0,420}?at: sync\.at/, "guests receive the host clock");
 });
 
 await check("the feed has a party entry point and a shareable /reels?party= link", () => {
@@ -199,6 +199,23 @@ await check("post comments render the same mention chip", () => {
     !commentBody.includes("<GifContent>{comment.body}</GifContent>"),
     "mentions in ordinary post comments must not stay plain text",
   );
+});
+
+await check("a guest reads comments with the host", () => {
+  // Reading together: the comments sheet is part of the room. The sync carries
+  // it, the host reports it, and the guest's sheet follows on the same reel.
+  assert.match(party, /comments: boolean;/);
+  assert.match(party, /comments: sync\.comments === true/);
+  assert.match(reels, /const \[partyComments, setPartyComments\] = useState\(false\)/);
+  assert.match(reels, /setPartyComments\(sync\.comments\)/);
+  assert.match(reels, /comments: hostCommentsRef\.current/);
+  assert.match(reels, /if \(!party\.isHost \|\| hostCommentsRef\.current === open\) return;/);
+  assert.match(reels, /onCommentsOpenChange=\{activeIndex === index \? reportHostComments : undefined\}/);
+  assert.match(reels, /setCommentsOpen\(partyComments\)/);
+  assert.match(reels, /Host is reading/);
+  // A guest may still open comments themselves: the follower only reacts to a
+  // change in the host's state.
+  assert.match(reels, /\}, \[partyComments, partyControlled\]\);/);
 });
 
 await check("the Purify mark is an amethyst orbiting crystal", () => {

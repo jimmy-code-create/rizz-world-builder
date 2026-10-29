@@ -25,6 +25,18 @@ export const MORE_REACTIONS = [
   "🤯", "😴", "🤢", "🖤",
 ] as const;
 
+/**
+ * The curated sheet, picked for a 14px chip: high contrast, no detail to lose.
+ *
+ * These replaced the cat faces that used to fill the reaction sheet — same idea
+ * (an in-house set, not the platform's default row), but plain Unicode, so a
+ * reaction costs nothing to render and survives every surface.
+ */
+export const RIZZ_REACTIONS = [
+  "🔥", "😂", "🥹", "💀", "👀", "🫶", "✨", "💯",
+  "😭", "🤝", "🥳", "😳", "🫠", "😎", "🙌", "❤️",
+] as const;
+
 /** Double tapping a message reacts with this. */
 export const DOUBLE_TAP_REACTION = "❤️";
 

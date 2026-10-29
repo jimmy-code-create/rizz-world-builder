@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ArrowDownUp, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { RizzCat } from "@/components/RizzCat";
@@ -230,22 +230,37 @@ export function CommentSection({
               ? "Comments"
               : `${capped ? `${loaded}+` : loaded} ${loaded === 1 ? "comment" : "comments"}`}
           </p>
-          {rootCount > 1 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-label={
-                sort === "top"
-                  ? "Sorted by top voted. Switch to newest"
-                  : "Sorted by newest. Switch to top voted"
-              }
-              onClick={() => setSort((value) => (value === "top" ? "new" : "top"))}
-              className="h-7 shrink-0 gap-1.5 border-white/10 bg-white/5 px-2 text-[11px]"
+          {/* Both sorts are always on screen once there is a comment to sort.
+              This used to be one button that showed the *current* order and
+              flipped when tapped, and it only appeared with more than one
+              thread — so on a fresh reel it looked like comments had no sort
+              at all. Two pills say what the choices are. */}
+          {loaded > 0 && (
+            <div
+              role="group"
+              aria-label="Sort comments"
+              className="flex shrink-0 items-center gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] p-0.5"
             >
-              <ArrowDownUp className="h-3 w-3" />
-              {sort === "top" ? "Top voted" : "Newest"}
-            </Button>
+              {([
+                ["top", "Top voted"],
+                ["new", "Newest"],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={sort === id}
+                  onClick={() => setSort(id)}
+                  className={cn(
+                    "h-6 rounded-md px-2 text-[11px] font-semibold transition-colors",
+                    sort === id
+                      ? "bg-white/12 text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}

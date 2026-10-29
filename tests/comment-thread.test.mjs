@@ -153,6 +153,18 @@ await check("every surface mounts the same section", () => {
   assert.match(reels, /maxLength=\{REEL_COMMENT_MAX_LENGTH\}/, "reels keep their shorter limit");
 });
 
+await check("both comment sorts are always offered", () => {
+  // This used to be one button showing the *current* order, and it only
+  // appeared with more than one thread — so a fresh reel looked like comments
+  // had no sort at all.
+  assert.match(section, /aria-label="Sort comments"/);
+  assert.match(section, /\["top", "Top voted"\]/);
+  assert.match(section, /\["new", "Newest"\]/);
+  assert.match(section, /aria-pressed=\{sort === id\}/);
+  assert.ok(!/rootCount > 1 && \(/.test(section), "the sort control must not hide");
+  assert.ok(!section.includes("ArrowDownUp"), "the old flip button is gone");
+});
+
 await check("no surface grew its own comment list back", () => {
   for (const [name, source] of [
     ["post card", card],

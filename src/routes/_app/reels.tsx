@@ -112,6 +112,11 @@ function ReelsPage() {
   const partySyncTimers = useRef<number[]>([]);
   const autoJoinedParty = useRef(false);
   const invitePrompted = useRef(false);
+  // The host's comments sheet is part of the room: every party sync carries it,
+  // so a guest reads the same thread on the same reel instead of watching a
+  // paused video with nobody to talk to.
+  const hostCommentsRef = useRef(false);
+  const [partyComments, setPartyComments] = useState(false);
 
   const likes = useQuery({
     queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
@@ -137,10 +142,14 @@ function ReelsPage() {
       index,
       position: video?.currentTime ?? 0,
       playing: video ? !video.paused : false,
+      comments: hostCommentsRef.current,
     };
   }, []);
 
   const applyPartySync = useCallback((sync: ReelPartySync) => {
+    // Comments ride along with the playhead, so opening the sheet is a room
+    // action rather than a private one.
+    setPartyComments(sync.comments);
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const top = Math.max(0, sync.index) * scroller.clientHeight;
@@ -203,6 +212,20 @@ function ReelsPage() {
     const snapshot = readPartySnapshot();
     if (snapshot) party.publish(snapshot);
   }, [party.code, party.isHost, party.publish, readPartySnapshot]);
+
+  /** Host-only: tell the room the comments sheet just opened or closed. */
+  const reportHostComments = useCallback((open: boolean) => {
+    if (!party.isHost || hostCommentsRef.current === open) return;
+    hostCommentsRef.current = open;
+    publishPartySnapshot();
+  }, [party.isHost, publishPartySnapshot]);
+
+  // Leaving the room puts the guest's own screens back in their hands.
+  useEffect(() => {
+    if (party.code) return;
+    hostCommentsRef.current = false;
+    setPartyComments(false);
+  }, [party.code]);
 
   useEffect(() => () => {
     partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
@@ -450,6 +473,8 @@ function ReelsPage() {
             onEnded={() => advanceReel(index)}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
+            partyComments={partyComments}
+            onCommentsOpenChange={activeIndex === index ? reportHostComments : undefined}
           />
           ))}
         </div>
@@ -506,6 +531,8 @@ function ReelItem({
   initialLiked,
   initialSaved,
   isActive,
+  partyComments,
+  onCommentsOpenChange,
   preload,
   autoplay,
   setAutoplay,
@@ -526,6 +553,8 @@ function ReelItem({
   initialLiked: boolean;
   initialSaved: boolean;
   isActive: boolean;
+  partyComments: boolean;
+  onCommentsOpenChange?: (open: boolean) => void;
   /** "auto" on screen, "metadata" for the neighbour slides, "none" far away. */
   preload: "auto" | "metadata" | "none";
   autoplay: boolean;
@@ -580,6 +609,20 @@ function ReelItem({
 
   useEffect(() => setLiked(initialLiked), [initialLiked]);
   useEffect(() => setSaved(initialSaved), [initialSaved]);
+
+  // Guests read with the host: when the host opens comments, the sheet opens on
+  // the same reel; when the host closes it, it closes. A guest can still open
+  // comments on their own — this only follows the host's changes.
+  useEffect(() => {
+    if (!partyControlled) return;
+    setCommentsOpen(partyComments);
+  }, [partyComments, partyControlled]);
+
+  // The host's own sheet is what the room follows. Only the active reel can
+  // report, because the callback is wired to `isActive` at the call site.
+  useEffect(() => {
+    onCommentsOpenChange?.(commentsOpen);
+  }, [commentsOpen, onCommentsOpenChange]);
 
   useEffect(() => {
     const video = ref.current;
@@ -811,7 +854,12 @@ function ReelItem({
               <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
             </div>
           </div>
-          <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+          <CommentsSheet
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            postId={post.id}
+            readingWithHost={partyControlled && partyComments}
+          />
           <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
         </>
       ) : (
@@ -1015,7 +1063,12 @@ function ReelItem({
         <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
       </div>
 
-      <CommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={post.id} />
+      <CommentsSheet
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        postId={post.id}
+        readingWithHost={partyControlled && partyComments}
+      />
       <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
         </>
       )}
@@ -1055,7 +1108,18 @@ function ReelAction({ icon, label, onClick, active }: { icon: React.ReactNode; l
  * only while the sheet is open, so scrolling reels never fetches comments for
  * reel after reel in the background.
  */
-function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenChange: (o: boolean) => void; postId: string }) {
+function CommentsSheet({
+  open,
+  onOpenChange,
+  postId,
+  readingWithHost,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  postId: string;
+  /** A guest whose sheet followed the host's: say so in the header. */
+  readingWithHost?: boolean;
+}) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -1064,7 +1128,15 @@ function CommentsSheet({ open, onOpenChange, postId }: { open: boolean; onOpenCh
         className="glass-strong border-white/10 rounded-t-3xl h-[80dvh] max-h-[85dvh] flex flex-col p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
-          <SheetTitle className="font-display text-lg">Comments</SheetTitle>
+          <div className="flex items-center gap-2">
+            <SheetTitle className="font-display text-lg">Comments</SheetTitle>
+            {readingWithHost && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/12 px-2 py-0.5 text-[10px] font-bold text-primary">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden="true" />
+                Host is reading
+              </span>
+            )}
+          </div>
           <SheetClose asChild>
             <CloseButton />
           </SheetClose>

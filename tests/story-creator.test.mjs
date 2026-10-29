@@ -256,6 +256,58 @@ await check("pressing the move handle can't close the editor under the finger", 
   );
 });
 
+await check("the selected layer panel keeps move, rotate and font on screen", async () => {
+  // The old toolbar was one horizontally scrolling strip: rotate and the fonts
+  // sat past the fold on a 360px phone, so placing a layer relied on a drag
+  // alone. The panel is tabbed, and status plus reset live next to the tabs.
+  assert.ok(
+    !composerSrc.includes('className="glass-strong rounded-2xl p-2 flex items-center gap-2 overflow-x-auto no-scrollbar"'),
+    "the endless scrolling toolbar must be gone",
+  );
+  for (const label of ["\"move\", \"Move\"", "\"font\", \"Font\"", "\"colour\", \"Colour\""]) {
+    assert.ok(composerSrc.includes(label), `missing tab ${label}`);
+  }
+  assert.ok(
+    composerSrc.includes('role="tablist"') && composerSrc.includes('aria-selected={editTab === id}'),
+    "the tabs must be real tabs, not decoration",
+  );
+  // Move: explicit nudges, a centre reset, a 15° stepper and a degree reset.
+  assert.ok(composerSrc.includes("nudgeSelected(0, -0.015)"), "up nudge missing");
+  assert.ok(composerSrc.includes("nudgeSelected(-0.015, 0)"), "left nudge missing");
+  assert.ok(composerSrc.includes("nudgeSelected(0, 0.015)"), "down nudge missing");
+  assert.ok(composerSrc.includes("nudgeSelected(0.015, 0)"), "right nudge missing");
+  assert.ok(
+    composerSrc.includes("updateSelected({ x: 0.5, y: 0.5 })"),
+    "the pad centre must snap the layer back to the middle",
+  );
+  assert.ok(composerSrc.includes("rotateSelected(-15)") && composerSrc.includes("rotateSelected(15)"), "rotate steppers missing");
+  assert.ok(composerSrc.includes("updateSelected({ rotate: 0 })"), "rotation reset missing");
+  assert.ok(composerSrc.includes("min={-180}") && composerSrc.includes("max={180}"), "the fine rotation slider must cover a full turn");
+  assert.ok(
+    composerSrc.includes("it.rotate + delta + 180") &&
+      composerSrc.includes("% 360) + 360) % 360) - 180"),
+    "rotation must wrap instead of jumping past the slider limits",
+  );
+  // Font: a card per family that shows its own shape, not just its name.
+  assert.ok(
+    composerSrc.includes("style={{ fontFamily: f.stack }}>Aa</span>"),
+    "font cards must show the font's own Aa",
+  );
+  assert.ok(
+    composerSrc.includes("aria-pressed={sel.font === f.id}"),
+    "the chosen font must be announced",
+  );
+  // Colour and Living text only exist on their own tab, so neither crowds Move.
+  const colourTab = composerSrc.split('editTab === "colour"').length - 1;
+  assert.ok(colourTab >= 2, "swatches and Living text belong to the colour tab");
+  assert.ok((composerSrc.split('editTab === "font"').length - 1) >= 2, "styles and fonts belong to the font tab");
+  // A two-letter word is ~30px wide; the drag area is padded without moving it.
+  assert.ok(
+    composerSrc.includes('padding: ov.kind === "image" ? undefined : 10'),
+    "text and stickers need a wider grab area than their glyphs",
+  );
+});
+
 await check("lens tool removed from the story composer", async () => {
   assert.ok(!composerSrc.includes("FaceEffectsStudio"), "FaceEffectsStudio must not be wired in");
   assert.ok(!composerSrc.includes('label="Lens"'), "Lens tool button must be gone");

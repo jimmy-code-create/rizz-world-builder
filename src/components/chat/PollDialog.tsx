@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { createRealmPoll } from "@/lib/realm-polls";
+import { createChatPoll } from "@/lib/chat-polls";
 
 type PollDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  realmId: string;
-  roomId: string | null;
+  /** Realm chat: a realm, plus the room inside it (null = the realm channel). */
+  realmId?: string;
+  roomId?: string | null;
+  /** DM: the other person in the thread. */
+  dmUserId?: string;
+  /** Group chat. */
+  groupId?: string;
   onCreated?: () => void;
 };
 
@@ -23,7 +29,7 @@ const CLOSES_OPTIONS = [
 ];
 
 /** Creates a poll; the RPC validates the shape again before anything is stored. */
-export function PollDialog({ open, onOpenChange, realmId, roomId, onCreated }: PollDialogProps) {
+export function PollDialog({ open, onOpenChange, realmId, roomId, dmUserId, groupId, onCreated }: PollDialogProps) {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState("\n");
   const [multi, setMulti] = useState(false);
@@ -49,9 +55,27 @@ export function PollDialog({ open, onOpenChange, realmId, roomId, onCreated }: P
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true);
+    // The same dialog serves all three chats; the target decides which RPC
+    // owns the poll (realm polls need a realm, DM/group polls do not).
+    const target = dmUserId
+      ? { kind: "dm" as const, otherUserId: dmUserId }
+      : groupId
+        ? { kind: "group" as const, groupId }
+        : realmId
+          ? null
+          : undefined;
+    if (target === undefined) {
+      setBusy(false);
+      toast.error("Pick a chat first");
+      return;
+    }
     try {
-      await createRealmPoll({ realmId, roomId, question: question.trim(), options: optionList, multi, minutes });
-      toast.success("Poll posted");
+      if (target) {
+        await createChatPoll({ ...target, question: question.trim(), options: optionList, multi, minutes });
+      } else {
+        await createRealmPoll({ realmId: realmId!, roomId: roomId ?? null, question: question.trim(), options: optionList, multi, minutes });
+      }
+      toast.success(dmUserId || groupId ? "Poll sent" : "Poll posted");
       onOpenChange(false);
       onCreated?.();
     } catch (error) {

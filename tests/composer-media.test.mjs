@@ -37,7 +37,7 @@ const dm = read("src/routes/_app/dm.$userId.tsx");
 const realmsLib = read("src/lib/realms.ts");
 const gif = read("src/components/GifPicker.tsx");
 const attach = read("src/components/chat/ChatAttachSheet.tsx");
-const rizz = read("src/lib/rizz-library.ts");
+const reactions = read("src/lib/reactions.ts");
 const cat = read("src/components/emoji/CatEmoji.tsx");
 
 await check("the comment box shows the writer's face, not a letter", () => {
@@ -63,7 +63,6 @@ await check("realm composers can send a photo", () => {
 
 await check("the + is Discord's attach sheet, with photo, camera, poll and schedule", () => {
   assert.match(realm, /<ChatAttachButton[\s\S]{0,900}?label: "Photo"[\s\S]{0,300}?label: "Camera"[\s\S]{0,300}?label: "Poll"[\s\S]{0,300}?label: "Schedule"/);
-  assert.match(realm, /onInsertSticker=\{\(item\) => setBody\(\(current\) => insertRizzItem\(current, item\)\)\}/);
   assert.match(realm, /capture="environment"/, "the camera opens the lens, not the library");
   assert.ok(
     !/aria-label="Attach a photo, or add a poll or scheduled message"/.test(realm),
@@ -71,14 +70,47 @@ await check("the + is Discord's attach sheet, with photo, camera, poll and sched
   );
 });
 
-await check("the attach sheet is the Rizz library's front door", () => {
+await check("the attach sheet is a grid of squares, and the Rizz library is out of it", () => {
   assert.match(attach, /export function ChatAttachButton\(/);
-  assert.match(attach, /<Plus className="h-5 w-5" \/>/, "it wears the + people know");
-  assert.match(attach, /onInsertSticker\?: \(item: string\) => void/);
-  assert.match(attach, /Rizz library/);
-  assert.match(attach, /onPick=\{\(item\) => \{/, "picking an item inserts it into the draft");
-  assert.match(rizz, /export function insertRizzItem/);
-  assert.match(rizz, /export const RIZZ_PACKS/);
+  assert.match(attach, /<Plus className="h-4 w-4" \/>/, "it wears the + people know");
+  assert.match(attach, /rounded-xl border border-white\/10 bg-white\/\[0\.04\]/, "the trigger is a square tile");
+  assert.match(attach, /aspect-square/, "every action is a square tile");
+  assert.match(attach, /grid-cols-3/, "three squares to a row");
+  assert.ok(!attach.includes("onInsertSticker"), "the library sub-view is gone");
+  assert.ok(!attach.includes("Rizz library</span>"), "the + no longer advertises the library");
+  assert.ok(!attach.includes("RIZZ_PACKS"), "the sheet no longer imports the emoji packs");
+  for (const source of [realm, group, dm]) {
+    assert.ok(!source.includes("insertRizzItem"), "no composer still wires the library");
+  }
+  // The curated reaction set moved into the shared reactions module; the
+  // library's packs, search and insert helpers are gone with their only user.
+  assert.match(reactions, /export const RIZZ_REACTIONS/);
+  assert.ok(!attach.includes("RizzLibrary"), "no library component survives");
+});
+
+await check("DMs and groups can start a poll", () => {
+  for (const [name, source] of [["DMs", dm], ["groups", group], ["realms", realm]]) {
+    assert.match(source, /label: "Poll"/, `${name} offer a poll from the +`);
+    assert.match(source, /<PollDialog/, `${name} mount the poll dialog`);
+  }
+  assert.match(dm, /dmUserId=\{userId/);
+  assert.match(group, /groupId=\{id\}/);
+  assert.match(dm, /const pollCard = asChatPollCard\(\(m as \{ card\?: unknown \}\)\.card\)/);
+  assert.match(group, /const pollCard = asChatPollCard\(m\.card\)/);
+  assert.match(dm, /<ChatPollCard card=\{pollCard\}/);
+  assert.match(group, /<ChatPollCard card=\{pollCard\}/);
+  const dialog = read("src/components/chat/PollDialog.tsx");
+  assert.match(dialog, /dmUserId\?: string/);
+  assert.match(dialog, /groupId\?: string/);
+  assert.match(dialog, /await createChatPoll\(\{ \.\.\.target/);
+  const migration = read("supabase/migrations/20261110000000_dm_group_polls.sql");
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS card jsonb/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.chat_polls/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.chat_poll_votes/);
+  assert.match(migration, /public\.is_blocked_pair\(v_user, _other_user\)/, "a blocked pair cannot be polled");
+  assert.match(migration, /public\.is_group_member\(_group_id, v_user\)/, "group polls check membership");
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.vote_chat_poll/);
+  assert.match(migration, /ALTER PUBLICATION supabase_realtime ADD TABLE/);
 });
 
 await check("replying opens the keyboard and re-pins the chat", () => {
@@ -130,7 +162,7 @@ await check("composer rows share one height", () => {
   assert.match(gif, /triggerClassName\?: string/);
   assert.match(gif, /className=\{`shrink-0 text-primary \$\{triggerClassName \?\? ""\}`\}/);
   assert.match(realm, /triggerClassName="h-11 w-11"/, "the picker matches a 44px row");
-  assert.match(attach, /grid h-11 w-11 shrink-0 place-items-center rounded-full/);
+  assert.match(attach, /grid h-11 w-11 shrink-0 place-items-center rounded-xl/);
   assert.match(dm, /<ChatAttachButton\s*className="h-9 w-9"/, "DM's composer is a 36px row");
   assert.match(group, /<ChatAttachButton\s*className="h-9 w-9"/, "groups match it");
   assert.match(realm, /className="h-11 w-11 shrink-0 border-0 bg-primary/);
