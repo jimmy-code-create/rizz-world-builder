@@ -14,7 +14,7 @@ import { canonicalFor } from "@/lib/badge-set";
 // Bump the query when the artwork changes: the sprite is fetched at runtime,
 // so a path-only URL can keep serving a browser-cached older drawing after a
 // deploy — the reason a redrawn mark can look "not fixed" until a hard reload.
-const SPRITE_URL = "/badges/badges.svg?v=4";
+const SPRITE_URL = "/badges/badges.svg?v=5";
 const SPRITE_ID = "rizz-badge-sprite";
 
 let ready = typeof document !== "undefined" && !!document.getElementById(SPRITE_ID);

@@ -117,32 +117,28 @@
     <rect x="7.6" y="15.5" width="8.8" height="1.5" rx=".75" fill="var(--bz-ink,#0B0B0B)"/>
     <path d="M5.5 7.6A9 9 0 0 1 8.4 4.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Verified: a twelve-lobed azure seal. A blue halo (two strokes, no
-       filter — the sprite must stay cheap on the share canvas), an inner
-       vignette that darkens the scallops, a specular rim and a white check
-       with a soft drop it. The silhouette is kept off the grid edge so the
-       halo never clips at 20px. -->
+  <!-- Verified: an azure rosette seal with a crisp, unmistakable white check. -->
   <symbol id="verified" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-verified" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#82E1FF"/>
-        <stop offset=".45" stop-color="#25A8FF"/>
-        <stop offset="1" stop-color="#0A78DC"/>
+        <stop stop-color="#B9F3FF"/>
+        <stop offset=".42" stop-color="#39B9F5"/>
+        <stop offset="1" stop-color="#1769C9"/>
       </linearGradient>
       <radialGradient id="bzg-verified-vignette" cx="12" cy="8.8" r="11.2" gradientUnits="userSpaceOnUse">
-        <stop offset=".38" stop-color="#052A55" stop-opacity="0"/>
-        <stop offset=".76" stop-color="#042447" stop-opacity=".16"/>
-        <stop offset="1" stop-color="#021836" stop-opacity=".46"/>
+        <stop offset=".35" stop-color="#063B68" stop-opacity="0"/>
+        <stop offset=".74" stop-color="#07315B" stop-opacity=".14"/>
+        <stop offset="1" stop-color="#041D42" stop-opacity=".42"/>
       </radialGradient>
     </defs>
-    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="none" stroke="#45C4FF" stroke-opacity=".16" stroke-width="2.6" stroke-linejoin="round"/>
-    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="none" stroke="#7AD8FF" stroke-opacity=".28" stroke-width="1.5" stroke-linejoin="round"/>
-    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="url(#bzg-verified)" stroke="#8FE6FF" stroke-opacity=".5" stroke-width=".9" stroke-linejoin="round"/>
-    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" fill="url(#bzg-verified-vignette)"/>
-    <path d="M14.6 3.1C16.1 1.35 18.7 2.25 18.55 4.65c2.4-.2 3.3 2.4 1.55 3.9 2.3 1 2.3 3.9 0 4.9 1.75 1.5.85 4.1-1.55 3.9.15 2.4-2.45 3.3-3.95 1.55-1 2.3-4.1 2.3-5.1 0-1.5 1.75-4.1.85-3.95-1.55-2.4.2-3.3-2.4-1.55-3.9-2.3-1-2.3-3.9 0-4.9-1.75-1.5-.85-4.1 1.55-3.9-.15-2.4 2.45-3.3 3.95-1.55 1-2.3 4.1-2.3 5.1 0Z" transform="translate(12 12) scale(.88) translate(-12 -12)" fill="none" stroke="#EAF9FF" stroke-opacity=".28" stroke-width=".8"/>
-    <path d="M5.5 9.8A8.7 8.7 0 0 1 10.7 5.3" fill="none" stroke="#fff" stroke-opacity=".68" stroke-width="1.05" stroke-linecap="round"/>
-    <path d="M6.75 12.65 10.45 16.35 18 8.55" fill="none" stroke="#043A6D" stroke-opacity=".42" stroke-width="3.35" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.55 12.2 10.45 16.1 18.25 8.15" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M14.25 3.15c1.45-1.7 3.95-.75 3.75 1.55 2.3-.15 3.1 2.35 1.45 3.75 2.15.95 2.15 3.55 0 4.5 1.65 1.4.85 3.9-1.45 3.75.2 2.3-2.3 3.25-3.75 1.55-.95 2.15-3.55 2.15-4.5 0-1.45 1.7-3.95.75-3.75-1.55-2.3.15-3.1-2.35-1.45-3.75-2.15-.95-2.15-3.55 0-4.5-1.65-1.4-.85-3.9 1.45-3.75-.2-2.3 2.3-3.25 3.75-1.55.95-2.15 3.55-2.15 4.5 0Z" fill="none" stroke="#45C4FF" stroke-opacity=".17" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M14.25 3.15c1.45-1.7 3.95-.75 3.75 1.55 2.3-.15 3.1 2.35 1.45 3.75 2.15.95 2.15 3.55 0 4.5 1.65 1.4.85 3.9-1.45 3.75.2 2.3-2.3 3.25-3.75 1.55-.95 2.15-3.55 2.15-4.5 0-1.45 1.7-3.95.75-3.75-1.55-2.3.15-3.1-2.35-1.45-3.75-2.15-.95-2.15-3.55 0-4.5-1.65-1.4-.85-3.9 1.45-3.75-.2-2.3 2.3-3.25 3.75-1.55.95-2.15 3.55-2.15 4.5 0Z" fill="none" stroke="#7AD8FF" stroke-opacity=".34" stroke-width="1.45" stroke-linejoin="round"/>
+    <path d="M14.25 3.15c1.45-1.7 3.95-.75 3.75 1.55 2.3-.15 3.1 2.35 1.45 3.75 2.15.95 2.15 3.55 0 4.5 1.65 1.4.85 3.9-1.45 3.75.2 2.3-2.3 3.25-3.75 1.55-.95 2.15-3.55 2.15-4.5 0-1.45 1.7-3.95.75-3.75-1.55-2.3.15-3.1-2.35-1.45-3.75-2.15-.95-2.15-3.55 0-4.5-1.65-1.4-.85-3.9 1.45-3.75-.2-2.3 2.3-3.25 3.75-1.55.95-2.15 3.55-2.15 4.5 0Z" fill="url(#bzg-verified)" stroke="#7AD8FF" stroke-opacity=".76" stroke-width=".85" stroke-linejoin="round"/>
+    <path d="M14.25 3.15c1.45-1.7 3.95-.75 3.75 1.55 2.3-.15 3.1 2.35 1.45 3.75 2.15.95 2.15 3.55 0 4.5 1.65 1.4.85 3.9-1.45 3.75.2 2.3-2.3 3.25-3.75 1.55-.95 2.15-3.55 2.15-4.5 0-1.45 1.7-3.95.75-3.75-1.55-2.3.15-3.1-2.35-1.45-3.75-2.15-.95-2.15-3.55 0-4.5-1.65-1.4-.85-3.9 1.45-3.75-.2-2.3 2.3-3.25 3.75-1.55.95-2.15 3.55-2.15 4.5 0Z" fill="url(#bzg-verified-vignette)"/>
+    <path d="M14.25 3.15c1.45-1.7 3.95-.75 3.75 1.55 2.3-.15 3.1 2.35 1.45 3.75 2.15.95 2.15 3.55 0 4.5 1.65 1.4.85 3.9-1.45 3.75.2 2.3-2.3 3.25-3.75 1.55-.95 2.15-3.55 2.15-4.5 0-1.45 1.7-3.95.75-3.75-1.55-2.3.15-3.1-2.35-1.45-3.75-2.15-.95-2.15-3.55 0-4.5-1.65-1.4-.85-3.9 1.45-3.75-.2-2.3 2.3-3.25 3.75-1.55.95-2.15 3.55-2.15 4.5 0Z" transform="translate(12 12) scale(.87) translate(-12 -12)" fill="none" stroke="#EAFBFF" stroke-opacity=".31" stroke-width=".8"/>
+    <path d="M5.8 9.5A8.1 8.1 0 0 1 10.2 5.4" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1" stroke-linecap="round"/>
+    <path d="M6.9 12.65 10.45 16.05 17.75 8.55" fill="none" stroke="#06447D" stroke-opacity=".45" stroke-width="3.35" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.65 12.2 10.45 15.85 18.05 8.15" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
   <!-- 7 Day Streak: one flame, an ink core, nothing else. -->
   <symbol id="streak-7" viewBox="0 0 24 24">
@@ -175,35 +171,62 @@
     <path d="M6.9 9.8 7.2 10.6 8 10.9 7.2 11.2 6.9 12 6.6 11.2 5.8 10.9 6.6 10.6Z" fill="#fff" fill-opacity=".55"/>
     <path d="M6.1 7.7A9 9 0 0 1 9.2 4.7" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Streamer: magenta squircle, ink play mark, live dot. -->
+  <!-- Streamer: a broadcast camera in a bright enamel tile, live to air. -->
   <symbol id="streamer" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-stream" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFD0E9"/>
-        <stop offset=".45" stop-color="#F45AAE"/>
-        <stop offset="1" stop-color="#A71975"/>
+      <linearGradient id="bzg-stream" x1="5" y1="2.8" x2="18.5" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFE5F4"/>
+        <stop offset=".45" stop-color="#F56BAF"/>
+        <stop offset="1" stop-color="#A92D82"/>
+      </linearGradient>
+      <radialGradient id="bzg-stream-vignette" cx="9" cy="6" r="17" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF8FD" stop-opacity=".2"/>
+        <stop offset="1" stop-color="#4B124A" stop-opacity=".24"/>
+      </radialGradient>
+      <linearGradient id="bzg-stream-live" x1="16.8" y1="4.5" x2="20" y2="8.4" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFE7AD"/>
+        <stop offset="1" stop-color="#FF584F"/>
       </linearGradient>
     </defs>
     <rect x="2.5" y="2.5" width="19" height="19" rx="5.8" fill="url(#bzg-stream)" stroke="url(#bzg-stream)" stroke-width="1.2"/>
-    <rect x="4.1" y="4.1" width="15.8" height="15.8" rx="4.4" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85"/>
-    <path d="M9.4 7.45 16.65 12 9.4 16.55Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".85" stroke-linejoin="round"/>
-    <circle cx="17.3" cy="6.9" r="1.5" fill="#fff"/>
-    <circle cx="17.3" cy="6.9" r=".7" fill="var(--bz-ink,#0B0B0B)" fill-opacity=".55"/>
-    <path d="M6.2 6.4A6 6 0 0 1 9.5 4.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <rect x="2.5" y="2.5" width="19" height="19" rx="5.8" fill="url(#bzg-stream-vignette)"/>
+    <rect x="4.05" y="4.05" width="15.9" height="15.9" rx="4.35" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".8"/>
+    <path d="M6.2 10.1c.8-1.05 1.9-1.65 3.25-1.8M17.8 10.1c-.8-1.05-1.9-1.65-3.25-1.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.35" stroke-linecap="round"/>
+    <path d="M8.1 11.4c.45-.5.95-.75 1.55-.8M15.9 11.4c-.45-.5-.95-.75-1.55-.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.15" stroke-linecap="round"/>
+    <path d="M7.2 12.1h6.15a1.45 1.45 0 0 1 1.45 1.45v2.2A1.45 1.45 0 0 1 13.35 17.2H7.2a1.45 1.45 0 0 1-1.45-1.45v-2.2A1.45 1.45 0 0 1 7.2 12.1Z" fill="var(--bz-ink,#0B0B0B)"/>
+    <path d="m14.8 13.05 3.25-1.9v5.5l-3.25-1.9Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".7" stroke-linejoin="round"/>
+    <circle cx="17.85" cy="6.1" r="2.05" fill="#FFF5F5" fill-opacity=".96"/>
+    <circle cx="17.85" cy="6.1" r="1.45" fill="url(#bzg-stream-live)"/>
+    <path d="M6.1 6.6A5.6 5.6 0 0 1 9.8 4.45" fill="none" stroke="#fff" stroke-opacity=".66" stroke-width=".95" stroke-linecap="round"/>
+    <path d="M17.25 5.95a.6.6 0 0 1 .55-.38" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width=".55" stroke-linecap="round"/>
   </symbol>
-  <!-- Bounty Hunter: a crosshair ring with a gold star in the hole. -->
+  <!-- Bounty Hunter: an etched tracking reticle locked onto a gold reward token. -->
   <symbol id="bounty-hunter" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-bounty" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFC58A"/>
-        <stop offset=".48" stop-color="#FF665C"/>
-        <stop offset="1" stop-color="#B92348"/>
+      <linearGradient id="bzg-bounty" x1="5" y1="3" x2="18.5" y2="21" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFE0A1"/>
+        <stop offset=".48" stop-color="#F47752"/>
+        <stop offset="1" stop-color="#A82D54"/>
+      </linearGradient>
+      <radialGradient id="bzg-bounty-vignette" cx="9" cy="6.5" r="15" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF2D4" stop-opacity=".13"/>
+        <stop offset="1" stop-color="#4D1037" stop-opacity=".3"/>
+      </radialGradient>
+      <linearGradient id="bzg-bounty-gold" x1="9" y1="8" x2="15" y2="16" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF4B4"/>
+        <stop offset=".55" stop-color="#FFC94E"/>
+        <stop offset="1" stop-color="#D98222"/>
       </linearGradient>
     </defs>
-    <path d="M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18Z M12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 1 0 0-11.2Z" fill="url(#bzg-bounty)" fill-rule="evenodd"/>
-    <path d="M12 2.9v2.5M12 18.6v2.5M2.9 12h2.5M18.6 12h2.5" fill="none" stroke="url(#bzg-bounty)" stroke-width="2.6" stroke-linecap="round"/>
-    <path d="M12 7.1 13.26 10.26 16.66 10.49 14.05 12.66 14.88 15.96 12 14.15 9.12 15.96 9.95 12.66 7.34 10.49 10.74 10.26Z" fill="#FFD36A"/>
-    <path d="M5.6 7.7A9 9 0 0 1 8.6 4.5" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 3.1a8.9 8.9 0 1 0 0 17.8 8.9 8.9 0 1 0 0-17.8Z M12 6.15a5.85 5.85 0 1 1 0 11.7 5.85 5.85 0 1 1 0-11.7Z" fill="url(#bzg-bounty)" fill-rule="evenodd"/>
+    <path d="M12 3.1a8.9 8.9 0 1 0 0 17.8 8.9 8.9 0 1 0 0-17.8Z M12 6.15a5.85 5.85 0 1 1 0 11.7 5.85 5.85 0 1 1 0-11.7Z" fill="url(#bzg-bounty-vignette)" fill-rule="evenodd"/>
+    <path d="M12 2.55v3.1M12 18.35v3.1M2.55 12h3.1M18.35 12h3.1" fill="none" stroke="url(#bzg-bounty)" stroke-width="2.25" stroke-linecap="round"/>
+    <path d="M12 2.55v3.1M12 18.35v3.1M2.55 12h3.1M18.35 12h3.1" fill="none" stroke="#FFF0D3" stroke-opacity=".48" stroke-width=".7" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="4.15" fill="url(#bzg-bounty-gold)" stroke="#FFE59A" stroke-opacity=".75" stroke-width=".7"/>
+    <circle cx="12" cy="12" r="3.1" fill="none" stroke="#8E451F" stroke-opacity=".28" stroke-width=".65"/>
+    <path d="M12 8.65 13.02 10.72 15.3 11.05 13.65 12.66 14.04 14.93 12 13.86 9.96 14.93 10.35 12.66 8.7 11.05 10.98 10.72Z" fill="#FFF9E8" stroke="#B66A27" stroke-opacity=".56" stroke-width=".45" stroke-linejoin="round"/>
+    <path d="M5.55 7.7A8.6 8.6 0 0 1 8.65 4.45" fill="none" stroke="#fff" stroke-opacity=".66" stroke-width=".95" stroke-linecap="round"/>
+    <path d="M16.5 17.3 18.3 19.1" fill="none" stroke="#FFE8B6" stroke-opacity=".75" stroke-width=".8" stroke-linecap="round"/>
   </symbol>
   <!-- Game Champ: a controller, ink d-pad, one lime button. -->
   <symbol id="game-champ" viewBox="0 0 24 24">
@@ -333,39 +356,38 @@
     <path d="M2.6 9.2h18.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".9"/>
     <path d="M7.3 5.2 8 6.8 9.6 7.5 8 8.2 7.3 9.8 6.6 8.2 5 7.5 6.6 6.8Z" fill="#fff" fill-opacity=".9"/>
   </symbol>
-  <!-- Purify: the subscriber mark, redrawn. A cat-ear crest with an amethyst
-       halo, an inner vignette, an engraved rim and a white lotus over a gold
-       flame. No filter — the halo is two strokes so the sprite stays cheap at
-       20px and on the canvas share export. -->
+  <!-- Purify: a violet cat-ear subscriber crest; a bright lotus cradles its gold flame. -->
   <symbol id="purify" viewBox="0 0 24 24">
     <defs>
       <linearGradient id="bzg-purify" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F0E2FF"/>
-        <stop offset=".45" stop-color="#B36BFF"/>
-        <stop offset="1" stop-color="#6D28D9"/>
+        <stop stop-color="#F5E8FF"/>
+        <stop offset=".44" stop-color="#B66AFF"/>
+        <stop offset="1" stop-color="#6928C9"/>
       </linearGradient>
       <radialGradient id="bzg-purify-vignette" cx="12" cy="8.6" r="11.4" gradientUnits="userSpaceOnUse">
-        <stop offset=".36" stop-color="#2A0B5E" stop-opacity="0"/>
-        <stop offset=".76" stop-color="#25094F" stop-opacity=".16"/>
-        <stop offset="1" stop-color="#180437" stop-opacity=".48"/>
+        <stop offset=".36" stop-color="#301061" stop-opacity="0"/>
+        <stop offset=".76" stop-color="#26094E" stop-opacity=".16"/>
+        <stop offset="1" stop-color="#16032F" stop-opacity=".46"/>
       </radialGradient>
-      <linearGradient id="bzg-purify-gold" x1="10" y1="10" x2="14" y2="15" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF6C2"/>
-        <stop offset="1" stop-color="#F2B33D"/>
+      <linearGradient id="bzg-purify-gold" x1="9.2" y1="9.4" x2="14.8" y2="17.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF8CA"/>
+        <stop offset=".52" stop-color="#FFD65B"/>
+        <stop offset="1" stop-color="#E89A27"/>
       </linearGradient>
     </defs>
-    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#C084FC" stroke-opacity=".18" stroke-width="2.4" stroke-linejoin="round"/>
-    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#D8B4FE" stroke-opacity=".3" stroke-width="1.3" stroke-linejoin="round"/>
-    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify)" stroke="#E9D5FF" stroke-opacity=".45" stroke-width=".85" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#C084FC" stroke-opacity=".18" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="none" stroke="#D8B4FE" stroke-opacity=".38" stroke-width="1.35" stroke-linejoin="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify)" stroke="#E9D5FF" stroke-opacity=".58" stroke-width=".85" stroke-linejoin="round"/>
     <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" fill="url(#bzg-purify-vignette)"/>
-    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" transform="translate(12 12) scale(.9) translate(-12 -12)" fill="none" stroke="#F5EBFF" stroke-opacity=".3" stroke-width=".8"/>
-    <path d="M12 7.85c-1.35 2.25-4.05 4.95-4.05 7.05a4.05 4.05 0 0 0 8.1 0c0-2.1-2.7-4.8-4.05-7.05Z" fill="#320A63" fill-opacity=".42" transform="translate(0 .4)"/>
-    <path d="M12 7.35c-1.3 2.15-3.75 4.65-3.75 6.85a3.75 3.75 0 0 0 7.5 0c0-2.2-2.45-4.7-3.75-6.85Z" fill="#FFF8FF"/>
-    <path d="M12 9.05c-.85 1.35-2.15 2.9-2.15 4.15a2.15 2.15 0 0 0 4.3 0c0-1.25-1.3-2.8-2.15-4.15Z" fill="url(#bzg-purify-gold)"/>
-    <path d="M8.25 16.35c-1.55-.1-2.55-.85-3.05-2.25 1.15.1 2.25.85 3.05 2.25Zm7.5 0c1.55-.1 2.55-.85 3.05-2.25-1.15.1-2.25.85-3.05 2.25Z" fill="#FFF8FF" fill-opacity=".96"/>
-    <path d="M9.05 15.95c-.1-1.05.35-1.9 1.25-2.55M14.95 15.95c.1-1.05-.35-1.9-1.25-2.55" fill="none" stroke="#D8B4FE" stroke-opacity=".76" stroke-width=".75" stroke-linecap="round"/>
+    <path d="M3.1 10.1V3.8l5.35 3.35L12 4.7l3.55 2.45L20.9 3.8v6.3a9 9 0 1 1-17.8 0Z" transform="translate(12 12) scale(.9) translate(-12 -12)" fill="none" stroke="#F5EBFF" stroke-opacity=".34" stroke-width=".8" stroke-linejoin="round"/>
+    <path d="M12 7.75c-1.25 2.15-3.45 4.65-3.45 6.75a3.45 3.45 0 0 0 6.9 0c0-2.1-2.2-4.6-3.45-6.75Z" fill="#30105F" fill-opacity=".48" transform="translate(0 .55)"/>
+    <path d="M12 7.25c-1.15 2-3.1 4.25-3.1 6.35a3.1 3.1 0 0 0 6.2 0c0-2.1-1.95-4.35-3.1-6.35Z" fill="#FFF9FF"/>
+    <path d="M12 9.05c-.75 1.25-1.9 2.6-1.9 3.85a1.9 1.9 0 0 0 3.8 0c0-1.25-1.15-2.6-1.9-3.85Z" fill="url(#bzg-purify-gold)"/>
+    <path d="M8.7 16.35c-1.1-.1-1.9-.72-2.4-1.8 1.05.12 1.88.72 2.4 1.8Zm6.6 0c1.1-.1 1.9-.72 2.4-1.8-1.05.12-1.88.72-2.4 1.8Z" fill="#FFF9FF" fill-opacity=".98"/>
+    <path d="M8.8 16.55c.85 1.15 1.9 1.75 3.2 1.75s2.35-.6 3.2-1.75" fill="none" stroke="#FFF7FF" stroke-width=".85" stroke-linecap="round"/>
+    <path d="M9.2 16.05c.05-.8.4-1.45 1.05-1.95M14.8 16.05c-.05-.8-.4-1.45-1.05-1.95" fill="none" stroke="#D8B4FE" stroke-opacity=".9" stroke-width=".75" stroke-linecap="round"/>
     <path d="M18.3 7.85 18.78 9.07 20 9.55 18.78 10.03 18.3 11.25 17.82 10.03 16.6 9.55 17.82 9.07Z" fill="url(#bzg-purify-gold)"/>
-    <path d="M6.1 9.7 6.36 10.34 7 10.6 6.36 10.86 6.1 11.5 5.84 10.86 5.2 10.6 5.84 10.34Z" fill="#fff" fill-opacity=".8"/>
-    <path d="M5.35 8.15A5.6 5.6 0 0 1 8.3 5.55" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="1" stroke-linecap="round"/>
+    <path d="M6.1 9.7 6.36 10.34 7 10.6 6.36 10.86 6.1 11.5 5.84 10.86 5.2 10.6 5.84 10.34Z" fill="#fff" fill-opacity=".9"/>
+    <path d="M5.25 8.15A5.6 5.6 0 0 1 8.35 5.45" fill="none" stroke="#fff" stroke-opacity=".76" stroke-width="1" stroke-linecap="round"/>
   </symbol>
 </svg>
