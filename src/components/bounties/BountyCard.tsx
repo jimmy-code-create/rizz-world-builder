@@ -113,6 +113,33 @@ export function BountyCard({
   const soldOut = bounty.claim_count >= bounty.claim_limit;
   const claimPct = Math.min(100, (bounty.claim_count / Math.max(1, bounty.claim_limit)) * 100);
 
+  /** Make RPC failures on claims readable instead of surfacing the raw DB error. */
+  function normalizedTakeError(error: unknown): string {
+    const text = error instanceof Error ? error.message : "";
+    const lower = text.toLowerCase();
+    if (text.includes("You cannot take your own bounty.")) {
+      return "You can't take your own bounty.";
+    }
+    if (
+      text.includes("escrow_state <> 'held'") ||
+      text.includes("already settled") ||
+      text.includes("held in escrow") ||
+      (escrow && lower.includes("escrow") && lower.includes("take"))
+    ) {
+      return "That bounty is no longer open for claims.";
+    }
+    if (text.includes("already on this bounty") || text.includes("already_taken")) {
+      return "Already taken — hand it back first if you're the one on it.";
+    }
+    if (text.includes("has ended") || text.includes("ended")) {
+      return "That bounty has ended.";
+    }
+    if (lower.includes("no longer exists") || lower.includes("not found")) {
+      return "That bounty disappeared — try the board again.";
+    }
+    return error instanceof Error ? error.message : "Couldn't take that bounty";
+  }
+
   const refresh = () => {
     onChanged();
     void qc.invalidateQueries({ queryKey: ["bounty-submissions"] });
@@ -132,7 +159,7 @@ export function BountyCard({
       }
       refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't take that bounty");
+      toast.error(normalizedTakeError(error));
     } finally {
       setBusy(false);
     }
@@ -197,8 +224,14 @@ export function BountyCard({
                 {bountyStateLabel(bounty)}
               </span>
               {escrow && (
-                <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  {state === "paid" ? <Check className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                <span
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] ${
+                    state === "paid"
+                      ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                      : "border-white/10 bg-white/[0.04] text-muted-foreground"
+                  }`}
+                >
+                  {state === "paid" ? <CircleCheck className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                   {state === "paid" ? "Settled" : `${formatNumber(prize)} Paws escrowed`}
                 </span>
               )}
@@ -230,7 +263,7 @@ export function BountyCard({
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               What counts as done
             </p>
-            <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
+            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
               {fixCommonTypos(bounty.requirements)}
             </p>
           </div>
@@ -253,15 +286,16 @@ export function BountyCard({
                 <AlarmClock className="h-3.5 w-3.5" />
                 {overdue ? "Review window passed" : `Auto-pays in ${timeText(reviewLeft)}`}
               </span>
-            )}
-            {state === "paid" && (
+            )}              {state === "paid" && (
               <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-200">
                 <CircleCheck className="h-3.5 w-3.5" />
                 Paid {formatNumber(prize)} Paws to {workerLabel}
               </span>
-            )}
-            {state === "cancelled" && bounty.cancel_reason && (
-              <span className="truncate">“{fixCommonTypos(bounty.cancel_reason)}”</span>
+            )}              {state === "cancelled" && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground">
+                <Undo2 className="h-3.5 w-3.5" />
+                Cancelled — {bounty.cancel_reason ? fixCommonTypos(bounty.cancel_reason) : "no reason given"}
+              </span>
             )}
             <span className="inline-flex items-center gap-1.5">
               <Hand className="h-3.5 w-3.5" />
