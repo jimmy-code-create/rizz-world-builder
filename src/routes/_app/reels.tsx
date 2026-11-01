@@ -21,7 +21,11 @@ import { CloseButton } from "@/components/ui/close-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { fetchReels, createPost, toggleLike, fetchMyLikes } from "@/lib/posts";
+import { fetchReels, createPost, toggleLike, fetchMyLikes, fetchReactions, addReaction, removeReaction } from "@/lib/posts";
+import { ReactionTray } from "@/components/reactions/ReactionPills";
+import { SmilePlus } from "lucide-react";
+import { customReactionId, emojiMapOf, useEmojiLookup } from "@/lib/emoji-shared";
+import { EmojiGlyph } from "@/components/emoji/EmojiGlyph";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { REEL_COMMENT_MAX_LENGTH } from "@/lib/comment-thread";
 import { toggleBookmark, fetchMyBookmarkIds } from "@/lib/bookmarks";
@@ -51,6 +55,20 @@ const SONG_LIBRARY = [
   { id: "trap", title: "Diamond Drip", artist: "808 Saint", bpm: 145, mood: "Trap" },
   { id: "hyper", title: "Hyperpop Crush", artist: "Glitch", bpm: 160, mood: "Hyper" },
 ];
+
+/**
+ * Double-tap confetti: six glyphs from different colour families, so the burst
+ * reads as a celebration rather than six copies of one heart.
+ */
+const BURST_GLYPHS = ["💖", "🔥", "✨", "💚", "👑", "💀", "🫶", "🎉", "💙", "🥹", "🩷", "⚡"];
+function burstGlyphs(): string[] {
+  const pool = [...BURST_GLYPHS];
+  const picked: string[] = [];
+  while (picked.length < 6 && pool.length) {
+    picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return picked;
+}
 
 const REEL_LIKE_EFFECTS = [
   "2319-whitebouncingcat.gif",
@@ -585,6 +603,22 @@ function ReelItem({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
+  const [emojiBurst, setEmojiBurst] = useState<{ id: number; x: number; y: number; glyphs: string[] } | null>(null);
+  // Phase C: reactions do not just increment a number, they travel up the
+  // screen. One floater per reaction, capped so a fast tapper cannot flood it.
+  const [reactionOpen, setReactionOpen] = useState(false);
+  const [floaters, setFloaters] = useState<{ id: number; key: string; left: number; drift: number }[]>([]);
+  const floaterId = useRef(0);
+  const reactions = useQuery({
+    queryKey: ["reactions", post.id],
+    queryFn: () => fetchReactions(post.id),
+    enabled: reactionOpen,
+  });
+  const floaterEmoji = emojiMapOf(
+    useEmojiLookup(
+      floaters.map((f) => customReactionId(f.key)).filter((id): id is string => !!id),
+    ).data,
+  );
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
   const [paused, setPaused] = useState(true);
@@ -755,10 +789,14 @@ function ReelItem({
         loaded: false,
       };
       setStickerBurst({ id, src: effect.src, x, y, imageLoaded: effect.loaded });
+      // The sticker is the hero of the double tap; the emoji are its confetti.
+      // Six glyphs, two per colour, fired from the same point.
+      setEmojiBurst({ id, x, y, glyphs: burstGlyphs() });
       warmStickerEffect();
       if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
       stickerTimer.current = window.setTimeout(() => {
         setStickerBurst((current) => current?.id === id ? null : current);
+        setEmojiBurst((current) => (current?.id === id ? null : current));
       }, 900);
       return;
     }
@@ -766,6 +804,28 @@ function ReelItem({
       tapTimer.current = null;
       if (!partyControlled) void togglePlayback();
     }, 260);
+  }
+
+  async function react(key: string) {
+    if (!user) { toast.error("Sign in to react"); return; }
+    const mine = (reactions.data ?? []).some((r) => r.emoji === key && r.user_id === user.id);
+    if (!mine) {
+      const id = ++floaterId.current;
+      setFloaters((current) => [
+        ...current.slice(-11),
+        { id, key, left: 12 + Math.random() * 76, drift: Math.round(Math.random() * 48 - 24) },
+      ]);
+      window.setTimeout(() => {
+        setFloaters((current) => current.filter((f) => f.id !== id));
+      }, 1800);
+    }
+    try {
+      if (mine) await removeReaction(post.id, user.id, key);
+      else await addReaction(post.id, user.id, key);
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't react");
+    }
   }
 
   function viewOriginal() {
@@ -921,6 +981,58 @@ function ReelItem({
           />
         </span>
       )}
+      {floaters.map((floater) => {
+        const customId = customReactionId(floater.key);
+        const emoji = customId ? floaterEmoji.get(customId) : undefined;
+        return (
+          <span
+            key={floater.id}
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-[16%] z-[13] text-3xl"
+            style={{
+              left: `${floater.left}%`,
+              ["--drift" as string]: `${floater.drift}px`,
+              animation: "reel-float-up 1700ms cubic-bezier(0.2,0.7,0.2,1) forwards",
+            }}
+          >
+            {emoji ? (
+              <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-8 w-8" />
+            ) : (
+              floater.key
+            )}
+          </span>
+        );
+      })}
+      {emojiBurst && (
+        <span
+          key={`emoji-${emojiBurst.id}`}
+          aria-hidden="true"
+          className="pointer-events-none absolute z-[14] h-0 w-0"
+          style={{ left: `${emojiBurst.x}%`, top: `${emojiBurst.y}%` }}
+        >
+          {emojiBurst.glyphs.map((glyph, index) => {
+            const angle = (Math.PI * 2 * index) / emojiBurst.glyphs.length + 0.35;
+            const distance = 46 + (index % 3) * 14;
+            return (
+              <span
+                key={`${glyph}-${index}`}
+                className="absolute text-2xl"
+                style={{
+                  left: 0,
+                  top: 0,
+                  // Custom properties feed the keyframes below, so the animation
+                  // itself stays one shared rule instead of six inline ones.
+                  ["--dx" as string]: `${Math.cos(angle) * distance}px`,
+                  ["--dy" as string]: `${Math.sin(angle) * distance}px`,
+                  animation: `reel-emoji-burst 780ms cubic-bezier(0.2,0.7,0.2,1) ${index * 12}ms forwards`,
+                }}
+              >
+                {glyph}
+              </span>
+            );
+          })}
+        </span>
+      )}
       {staticLikeFeedback && (
         <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
@@ -1051,6 +1163,12 @@ function ReelItem({
       </div>
       <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
         <ReelAction
+          icon={<SmilePlus className={`h-6 w-6 ${reactionOpen ? "text-primary" : ""}`} />}
+          label="React"
+          onClick={() => setReactionOpen((open) => !open)}
+          active={reactionOpen}
+        />
+        <ReelAction
           icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
           label={formatCount(likeCount)}
           onClick={() => doLike()}
@@ -1070,6 +1188,16 @@ function ReelItem({
         <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={() => setShareOpen(true)} />
         <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
       </div>
+      {reactionOpen && (
+        <div className="absolute right-12 bottom-4 z-20 md:right-16 md:bottom-6">
+          <ReactionTray
+            open
+            onOpenChange={setReactionOpen}
+            quick={["💖", "🔥", "😂", "😮", "💯", "🥹"]}
+            onPick={(key) => { void react(key); }}
+          />
+        </div>
+      )}
 
       <CommentsSheet
         open={commentsOpen}
@@ -1087,6 +1215,17 @@ function ReelItem({
           25% { transform: scale(1.2); opacity: 1; }
           70% { transform: scale(1); opacity: 1; }
           100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes reel-float-up {
+          0% { opacity: 0; transform: translate(-50%, 0) scale(0.7); }
+          14% { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+          80% { opacity: 0.9; }
+          100% { opacity: 0; transform: translate(calc(-50% + var(--drift)), -230px) scale(1.08); }
+        }
+        @keyframes reel-emoji-burst {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+          22% { opacity: 1; transform: translate(calc(-50% + var(--dx) * 0.45), calc(-50% + var(--dy) * 0.45)) scale(1.12); }
+          100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.86); }
         }
         @keyframes reel-sticker-pop {
           0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-14deg); }

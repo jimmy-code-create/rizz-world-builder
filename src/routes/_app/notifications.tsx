@@ -134,7 +134,7 @@ function NotificationsPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState<
-    "all" | "unread" | "messages" | "like" | "comment" | "follow" | "mention"
+    "all" | "unread" | "messages" | "like" | "comment" | "follow" | "mention" | "bounties"
   >("all");
   const items = useQuery({
     queryKey: ["notifications", user?.id],
@@ -181,6 +181,8 @@ function NotificationsPage() {
     const list = items.data ?? [];
     if (tab === "all") return list;
     if (tab === "unread") return list.filter((n: any) => !n.read);
+    // Bounties are one lifecycle, not seven types: every event belongs here.
+    if (tab === "bounties") return list.filter((n: any) => String(n.type).startsWith("bounty"));
     return list.filter((n: any) => n.type === tab || (tab === "like" && n.type === "reaction"));
   }, [items.data, tab]);
 
@@ -306,6 +308,7 @@ function NotificationsPage() {
           <TabsTrigger value="comment">{t("tab_comments")}</TabsTrigger>
           <TabsTrigger value="follow">{t("tab_follows")}</TabsTrigger>
           <TabsTrigger value="mention">{t("tab_mentions")}</TabsTrigger>
+          <TabsTrigger value="bounties">Bounties</TabsTrigger>
         </TabsList>
       </Tabs>
 

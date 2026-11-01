@@ -3,6 +3,7 @@ import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 /**
  * A comment body with the same mention chips as chat and reel captions.
@@ -57,7 +58,9 @@ export function CommentBody({ body }: { body: string }) {
                 </a>
               );
             }
-            return <span key={index}>{part.text}</span>;
+            // Emoji tokens survive the mention/tag split: `EmojiText` resolves
+            // `<:cat:id>` to its picture and falls back to `:cat:`.
+            return <EmojiText key={index} text={part.text} />;
           })
         ),
       )}

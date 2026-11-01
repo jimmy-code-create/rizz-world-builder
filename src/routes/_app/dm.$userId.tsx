@@ -547,6 +547,9 @@ function DMPage() {
       deleted_at: null,
       delivery_status: "sending",
       attachment_url: imagePreview,
+      // A message being sent cannot carry a link card yet; the type requires
+      // the field, and the server fills it in when the preview resolves.
+      card: null,
     };
     if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);

@@ -14,6 +14,8 @@ import {
   Undo2,
   UserCheck,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { usePurify } from "@/lib/purify";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -92,6 +94,7 @@ export function BountyCard({
   onClaim?: (dropId: string) => Promise<void> | void;
 }) {
   const { user } = useAuth();
+  const premium = usePurify().active;
   const rules = useBountyRules().data;
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -147,6 +150,14 @@ export function BountyCard({
 
   const take = async () => {
     if (busy) return;
+    // Escrow bounties are a Purify perk: the prize is somebody's real Paws.
+    // Open calls (no prize) stay free for everyone.
+    if (!premium) {
+      toast.info("Escrow bounties are for premium members", {
+        description: "Upgrade to take a bounty with Paws behind it. Open calls stay free.",
+      });
+      return;
+    }
     setBusy(true);
     try {
       const result = await takeBounty(bounty.id);
@@ -353,7 +364,7 @@ export function BountyCard({
 
           {escrow && (
             <>
-              {state === "open" && role !== "creator" && (
+              {state === "open" && role !== "creator" && premium && (
                 <Button
                   onClick={() => void take()}
                   disabled={busy || !user || left <= 0}
@@ -361,6 +372,19 @@ export function BountyCard({
                 >
                   <PawPrint className="h-4 w-4" />
                   Take it · earn {formatNumber(prize)} Paws
+                </Button>
+              )}
+
+              {state === "open" && role !== "creator" && !premium && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="min-h-10 flex-1 border-0 bg-primary/15 text-xs font-bold text-primary hover:bg-primary/25"
+                >
+                  <Link to="/purify">
+                    <ShieldCheck className="h-4 w-4" />
+                    Premium to take · {formatNumber(prize)} Paws
+                  </Link>
                 </Button>
               )}
 

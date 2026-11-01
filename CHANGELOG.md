@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-11-01 — One emoji system, a bounty gate, and a louder double tap
+
+- A realm emoji is now an app emoji. It is stored as `<:shortcode:id>` so two
+  realms can both own `:cat:` without colliding, it renders through `EmojiText`
+  in comments, and one picker offers it everywhere: Recent, Default, a tab per
+  joined realm and shortcode search. A removed emoji, or one from a realm the
+  reader left, degrades to `:cat:` — the sentence never breaks.
+- The data model grew the parts the rest of the phase needs: a realm-level
+  `allow_external_emoji` switch, a `status` on each emoji so removal is a
+  tombstone rather than a delete, a 50-per-realm cap, and report/remove RPCs
+  that re-check `owner`/`admin` server-side. `post_reactions.emoji` is widened
+  so a `ce:<id>` reaction key fits.
+- Escrow bounties now say what they mean to non-premium members: instead of a
+  Take button that the database would refuse, the card offers the upgrade path.
+- Notifications gained the **Bounties** tab: every `bounty_*` event in one
+  lifecycle view.
+- Double-tapping a reel fires six differently coloured glyphs alongside the
+  sticker, from the tap point and inside the reduced-motion guard.
+- Reels gained a reaction tray: six quick reactions plus the shared picker, and
+  every reaction you leave floats up the screen from a random column, capped at
+  twelve so a fast tapper cannot flood the frame. A custom emoji floats as its
+  own image when it resolves, and as nothing at all when it does not.
+- The composer now has a page of its own at `/create`. The inline composer is
+  still one tap away (and on mobile it links out), but writing a real post no
+  longer means writing it in a box wedged between two feed cards: the draft,
+  the poll, the image and the visibility choice all survive on `/create`, and
+  the back button returns to wherever you came from.
+
 ## 2026-10-29 — No more stutter for viewers while the host reads comments
 
 - Opening the host's comment sheet published a full party sync, and every guest

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus, Smile, Maximize2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -15,10 +16,15 @@ import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocom
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EmojiPicker } from "@/components/emoji/EmojiPicker";
+import { emojiToken } from "@/lib/emoji-shared";
 
 const DRAFT_KEY = "rizz:post-draft";
 
-export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
+export function PostComposer({
+  onPosted,
+  fullPage = false,
+}: { onPosted?: () => void; fullPage?: boolean } = {}) {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [caption, setCaption] = useState<string>(() => {
@@ -35,6 +41,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const postBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -255,6 +262,24 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
+              {!fullPage && (
+                <Link
+                  to="/create"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground md:hidden"
+                  aria-label="Open the full composer"
+                  title="Write on a full page"
+                >
+                  <Maximize2 className="h-5 w-5" />
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => setEmojiOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-white/5"
+                aria-label="Add a realm emoji"
+              >
+                <Smile className="h-5 w-5" />
+              </button>
               <input
                 ref={fileRef}
                 type="file"
@@ -307,6 +332,23 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      <EmojiPicker
+        open={emojiOpen}
+        onOpenChange={setEmojiOpen}
+        onPick={(pick) => {
+          if (pick.kind !== "custom") return;
+          const token = emojiToken(pick.emoji);
+          const at = Math.min(caret, caption.length);
+          setCaption(`${caption.slice(0, at)}${token}${caption.slice(at)}`);
+          const next = at + token.length;
+          setCaret(next);
+          requestAnimationFrame(() => {
+            const ta = textareaRef.current;
+            if (ta) { ta.focus(); ta.setSelectionRange(next, next); }
+          });
+        }}
+      />
     </motion.div>
   );
 }

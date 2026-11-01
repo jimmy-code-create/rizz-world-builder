@@ -39,6 +39,7 @@ export const TRUST_LEVEL_ORDER: Record<TrustLevel, number> = {
 
 export const MIN_TRUST_LABEL: Record<MinTrustLevel, string> = {
   any: "Anyone can take it",
+  new: "New members and up",
   trusted: "Trusted or Top",
   top: "Top only",
 };
