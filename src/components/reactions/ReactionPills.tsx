@@ -76,7 +76,7 @@ export function ReactionPills({
             }}
             aria-pressed={group.mine}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 transition-colors",
+              "inline-flex items-center gap-1 rounded-full border px-2 transition-all duration-150 active:scale-90",
               compact ? "h-6 text-[11px]" : "h-7 text-xs",
               isSuper
                 ? "border-[#b47cff]/60 bg-[#b47cff]/15 text-foreground shadow-[0_0_14px_rgba(180,124,255,0.3)]"
