@@ -153,8 +153,8 @@ export function BountyCard({
     // Escrow bounties are a Purify perk: the prize is somebody's real Paws.
     // Open calls (no prize) stay free for everyone.
     if (!premium) {
-      toast.info("Escrow bounties are for premium members", {
-        description: "Upgrade to take a bounty with Paws behind it. Open calls stay free.",
+      toast.info("Escrow bounties need Purify", {
+        description: "Open calls stay free to take.",
       });
       return;
     }

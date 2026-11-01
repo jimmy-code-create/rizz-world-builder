@@ -53,16 +53,6 @@ const SONG_LIBRARY = [
   { id: "hyper", title: "Hyperpop Crush", artist: "Glitch", bpm: 160, mood: "Hyper" },
 ];
 
-/**
- * The double-tap stream. One glyph per tap, drawn from the six reactions the
- * tray used to offer, so a fast tapper builds a live-room column on the right
- * instead of six glyphs exploding around their thumb.
- */
-const STREAM_GLYPHS = ["💖", "🔥", "😂", "😮", "💯", "🥹"];
-function streamGlyph(): string {
-  return STREAM_GLYPHS[Math.floor(Math.random() * STREAM_GLYPHS.length)];
-}
-
 const REEL_LIKE_EFFECTS = [
   "2319-whitebouncingcat.gif",
   "6770-pastelpinkbouncingkitty.gif",
@@ -596,10 +586,6 @@ function ReelItem({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
-  // Double taps stream reactions up the right edge, like a live room. One
-  // floater per tap, capped so a fast tapper cannot flood the frame.
-  const [floaters, setFloaters] = useState<{ id: number; glyph: string; right: number; bottom: number; drift: number }[]>([]);
-  const floaterId = useRef(0);
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
   const [paused, setPaused] = useState(true);
@@ -771,23 +757,6 @@ function ReelItem({
         loaded: false,
       };
       setStickerBurst({ id, src: effect.src, x, y, imageLoaded: effect.loaded });
-      // The sticker is the hero at the thumb; the reaction is the live-room
-      // column that keeps rising on the right, one glyph per double tap.
-      const streamId = ++floaterId.current;
-      const lane = streamId % 3;
-      setFloaters((current) => [
-        ...current.slice(-17),
-        {
-          id: streamId,
-          glyph: streamGlyph(),
-          right: 62 + lane * 12,
-          bottom: 84 + (streamId % 4) * 12,
-          drift: Math.round(Math.random() * 18 - 9),
-        },
-      ]);
-      window.setTimeout(() => {
-        setFloaters((current) => current.filter((floater) => floater.id !== streamId));
-      }, 2500);
       warmStickerEffect();
       if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
       stickerTimer.current = window.setTimeout(() => {
@@ -954,21 +923,6 @@ function ReelItem({
           />
         </span>
       )}
-      {floaters.map((floater) => (
-        <span
-          key={floater.id}
-          aria-hidden="true"
-          className="pointer-events-none absolute z-[13] text-[28px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
-          style={{
-            right: `${floater.right}px`,
-            bottom: `${floater.bottom}px`,
-            ["--drift" as string]: `${floater.drift}px`,
-            animation: "reel-stream-up 2400ms cubic-bezier(0.22,0.7,0.3,1) forwards",
-          }}
-        >
-          {floater.glyph}
-        </span>
-      ))}
       {staticLikeFeedback && (
         <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
@@ -1134,12 +1088,6 @@ function ReelItem({
           25% { transform: scale(1.2); opacity: 1; }
           70% { transform: scale(1); opacity: 1; }
           100% { transform: scale(1.4); opacity: 0; }
-        }
-        @keyframes reel-stream-up {
-          0% { opacity: 0; transform: translateY(0) scale(0.55); }
-          10% { opacity: 1; transform: translateY(-12px) scale(1); }
-          72% { opacity: 0.9; }
-          100% { opacity: 0; transform: translate(var(--drift, 0px), -52vh) scale(1.15); }
         }
         @keyframes reel-sticker-pop {
           0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-14deg); }

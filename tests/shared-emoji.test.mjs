@@ -122,14 +122,15 @@ await check("comments render custom emoji", () => {
   assert.ok(commentBody.includes("<EmojiText"), "comment bodies still print the raw token");
 });
 
-await check("reels double tap streams reactions up the right edge", () => {
+await check("reels double tap likes without a reaction stream", () => {
   const reels = read("src/routes/_app/reels.tsx");
   assert.ok(!reels.includes("<ReactionTray"), "the react tray is still in reels");
   assert.ok(!reels.includes('label="React"'), "the react action button is still in reels");
-  assert.ok(reels.includes("const STREAM_GLYPHS = [\"💖\", \"🔥\", \"😂\", \"😮\", \"💯\", \"🥹\"]"), "the six stream glyphs changed");
-  assert.ok(reels.includes("reel-stream-up"), "a double tap does not travel up the screen");
-  assert.ok(reels.includes("right: `${floater.right}px`"), "the stream is not pinned to the right edge");
-  assert.ok(reels.includes("slice(-17)"), "the reaction stream is unbounded");
+  assert.ok(!reels.includes("STREAM_GLYPHS"), "the emoji stream is still in reels");
+  assert.ok(!reels.includes("reel-stream-up"), "the stream animation is still in reels");
+  assert.ok(reels.includes("hapticReaction()"), "the double tap has no feedback pulse");
+  assert.ok(reels.includes("void doLike(true)"), "the double tap no longer likes the reel");
+  assert.ok(reels.includes("reel-sticker-pop"), "the double-tap sticker was removed too");
 });
 
 await check("the composer stays inline and the separate create page is gone", () => {

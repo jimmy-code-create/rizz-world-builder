@@ -9,11 +9,13 @@ import { GlassToast, type GlassToastAction, type GlassToastType } from "@/compon
  * width) with the behaviour the product asks for:
  *   - success / error / info / warning (+ loading for progress flows),
  *   - an optional one-line message and one action button ("Retry", "Undo"),
- *   - auto-dismiss after 2s (2.4s info, 4.5s error, 5s when there is an action),
- *     paused while the card is pressed or focused,
+ *   - auto-dismiss after 1.8s (2.2s info, 3.8s error, 4.5s when there is an
+ *     action), paused while the card is pressed or focused,
  *   - identical calls merge instead of stacking: the same type+title+message
  *     reuses one toast id, so three failed retries never become three cards,
- *   - only two cards can be on screen at once, so a burst of confirmations can
+ *   - a repeated info/warning is ignored for six seconds instead of refreshing
+ *     the card, so tapping a locked control twice cannot keep a gate on screen,
+ *   - only one card can be on screen at once, so a burst of confirmations can
  *     never pile up over the page,
  *   - a light haptic on error where the device supports it.
  *
@@ -39,13 +41,30 @@ export type ToastOptions = {
  * little longer because they may need acting on.
  */
 const DURATIONS: Record<string, number> = {
-  success: 2000,
-  info: 2400,
-  warning: 3200,
-  error: 4500,
+  success: 1800,
+  info: 2200,
+  warning: 2800,
+  error: 3800,
   loading: 3500,
 };
-const ACTION_DURATION = 5000;
+const ACTION_DURATION = 4500;
+
+/**
+ * A gate is tapped more than once while someone works out what it means. The
+ * first card already said it, so the next few taps are silent instead of
+ * restarting the timer and pinning the message to the screen.
+ */
+const REPEAT_WINDOW_MS = 6000;
+const lastShownAt = new Map<string, number>();
+
+function shownTooRecently(id: string): boolean {
+  const now = Date.now();
+  const last = lastShownAt.get(id);
+  if (last !== undefined && now - last < REPEAT_WINDOW_MS) return true;
+  if (lastShownAt.size > 40) lastShownAt.clear();
+  lastShownAt.set(id, now);
+  return false;
+}
 
 function hapticError() {
   try {
@@ -59,8 +78,13 @@ function push(type: GlassToastType, title: string, options: ToastOptions = {}) {
   const safeTitle = typeof title === "string" && title.trim() ? title : "Something went wrong";
   // Identical toasts merge: the hash id makes sonner refresh the existing card.
   const id = options.id ?? `${type}:${safeTitle}:${options.description ?? ""}`;
-  const duration = options.duration ?? (options.action ? ACTION_DURATION : (DURATIONS[type] ?? 2400));
+  const duration = options.duration ?? (options.action ? ACTION_DURATION : (DURATIONS[type] ?? 2200));
   if (type === "error") hapticError();
+  // Actions (Undo, Retry) are one-off receipts and must always appear; only a
+  // gating message is throttled.
+  if (!options.action && (type === "info" || type === "warning") && shownTooRecently(String(id))) {
+    return id;
+  }
 
   return sonner.custom(
     (toastId) => (

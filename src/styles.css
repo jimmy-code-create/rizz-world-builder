@@ -2267,3 +2267,18 @@ button:active > .motion-icon {
 }
 [data-reduced-motion="true"] .game-cover-drift { animation: none !important; }
 
+
+/* Super reactions: a short one-shot entrance, so the super pill reads as
+   bigger than a reaction without pulsing forever. */
+@keyframes super-reaction-in {
+  0% { transform: scale(0.72); }
+  45% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.super-reaction-in {
+  animation: super-reaction-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .super-reaction-in { animation: none !important; }
+}
+[data-reduced-motion="true"] .super-reaction-in { animation: none !important; }

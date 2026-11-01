@@ -11,6 +11,10 @@ import { AlertTriangle, Check, Info, LoaderCircle, XCircle } from "lucide-react"
  * 6px dot in the type's colour and one line of text. Errors are the only type
  * that earns a glyph as well, because "did that fail?" is worth a glance.
  *
+ * Size is a feature here: roughly a thumb-wide chip (max 20.5rem), 12px title,
+ * 11px note, 6px padding. A toast that grows to banner width stops reading as
+ * a receipt and starts feeling like an interstitial.
+ *
  * Behaviour that lives here rather than in sonner:
  * - the auto-dismiss countdown, so it can pause while the card is pressed or
  *   focused (2.2s, or 5s when there is an action),
@@ -33,10 +37,12 @@ type TypeStyle = { accent: string; icon: ReactNode | null };
 const TYPE_STYLES: Record<GlassToastType, TypeStyle> = {
   success: { accent: "#c8ff3d", icon: null },
   // The one type that keeps a glyph: a failed action needs an unmistakable mark.
-  error: { accent: "#ff6a55", icon: <XCircle aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.4} /> },
-  info: { accent: "#7dd3fc", icon: null },
+  error: { accent: "#ff6a55", icon: <XCircle aria-hidden="true" className="h-3 w-3" strokeWidth={2.4} /> },
+  // Info is used for gates and reminders, so it wears the app's own lime
+  // rather than a system blue that made the pill look pasted on.
+  info: { accent: "#c8ff3d", icon: null },
   warning: { accent: "#ffc457", icon: null },
-  loading: { accent: "#c8ff3d", icon: <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin" strokeWidth={2.4} /> },
+  loading: { accent: "#c8ff3d", icon: <LoaderCircle aria-hidden="true" className="h-3 w-3 animate-spin" strokeWidth={2.4} /> },
 };
 
 export function GlassToast({
@@ -86,7 +92,7 @@ export function GlassToast({
       role={type === "error" ? "alert" : "status"}
       aria-live={type === "error" ? "assertive" : "polite"}
       data-toast-type={type}
-      className="pointer-events-auto relative mx-auto flex w-fit max-w-[min(23rem,calc(100vw-1.5rem))] cursor-default touch-pan-y flex-wrap items-center gap-x-2 gap-y-1 rounded-[20px] border border-white/[0.09] bg-[#111113]/92 py-2 pl-3 pr-3.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.9)] backdrop-blur-md"
+      className="pointer-events-auto relative mx-auto flex w-fit max-w-[min(20.5rem,calc(100vw-2rem))] cursor-default touch-pan-y flex-wrap items-center gap-x-2 gap-y-0.5 rounded-2xl border border-white/[0.08] bg-[#101012]/95 py-1.5 pl-2.5 pr-3 shadow-[0_8px_22px_-14px_rgba(0,0,0,0.85)] backdrop-blur-md"
       onPointerDown={pause}
       onPointerUp={resume}
       onPointerCancel={resume}
@@ -100,7 +106,7 @@ export function GlassToast({
       }}
     >
       {glyph ? (
-        <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center" style={{ color: style.accent }}>
+        <span aria-hidden="true" className="grid h-3.5 w-3.5 shrink-0 place-items-center" style={{ color: style.accent }}>
           {glyph}
         </span>
       ) : (
@@ -112,13 +118,13 @@ export function GlassToast({
           style={{ backgroundColor: style.accent, boxShadow: `0 0 6px ${style.accent}66` }}
         />
       )}
-      <span className="min-w-0 text-[12.5px] font-semibold leading-snug text-[#f2efe6] [overflow-wrap:anywhere]">
+      <span className="min-w-0 text-[12px] font-semibold leading-snug text-[#f2efe6] [overflow-wrap:anywhere]">
         {title}
       </span>
       {message ? (
         // `flex-1` lets the sentence take the rest of the line it lands on; when
         // it cannot share the title's line it wraps below, indented past the dot.
-        <span className="min-w-[7rem] flex-1 text-[11.5px] font-medium leading-snug text-white/55 [overflow-wrap:anywhere]">
+        <span className="min-w-0 flex-1 basis-40 text-[11px] font-medium leading-snug text-white/50 [overflow-wrap:anywhere]">
           {message}
         </span>
       ) : null}
@@ -130,7 +136,7 @@ export function GlassToast({
             action.onClick();
             onCloseRef.current();
           }}
-          className="ml-0.5 min-h-7 shrink-0 rounded-full bg-[#c8ff3d] px-2.5 text-[11.5px] font-bold text-[#0b0b0c] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
+          className="ml-0.5 min-h-6 shrink-0 rounded-full bg-[#c8ff3d] px-2.5 text-[11px] font-bold text-[#0b0b0c] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
         >
           {action.label}
         </button>

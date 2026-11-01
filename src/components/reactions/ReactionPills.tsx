@@ -76,23 +76,42 @@ export function ReactionPills({
             }}
             aria-pressed={group.mine}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 transition-all duration-150 active:scale-90",
-              compact ? "h-6 text-[11px]" : "h-7 text-xs",
+              "inline-flex items-center rounded-full border transition-all duration-150 active:scale-90",
+              compact
+                ? "h-7 gap-1 px-2 text-xs"
+                : isSuper
+                  ? "h-10 gap-1.5 px-3 text-[15px]"
+                  : "h-9 gap-1.5 px-2.5 text-sm",
               isSuper
-                ? "border-[#b47cff]/60 bg-[#b47cff]/15 text-foreground shadow-[0_0_14px_rgba(180,124,255,0.3)]"
+                ? "border-[#cfaeff]/70 bg-[linear-gradient(120deg,rgba(180,124,255,0.32),rgba(124,77,255,0.18)_48%,rgba(236,72,153,0.22))] text-foreground shadow-[0_0_20px_rgba(180,124,255,0.4)] ring-1 ring-inset ring-white/10"
                 : group.mine
                   ? "border-primary/50 bg-primary/15 text-primary"
                   : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
-              isSuper && group.mine && "ring-1 ring-primary/40",
+              isSuper && group.mine && "ring-primary/50",
+              isSuper && !compact && "super-reaction-in",
             )}
           >
             {id ? (
-              <EmojiGlyph emoji={emoji} shortcode={emoji?.shortcode ?? "emoji"} className="h-4 w-4" />
+              <EmojiGlyph
+                emoji={emoji}
+                shortcode={emoji?.shortcode ?? "emoji"}
+                className={isSuper && !compact ? "h-6 w-6" : "h-5 w-5"}
+              />
             ) : (
-              <UnicodeGlyph value={group.key} />
+              <UnicodeGlyph
+                value={group.key}
+                className={isSuper && !compact ? "text-[26px]" : "text-[22px]"}
+              />
             )}
-            {isSuper ? <Sparkles className="h-3 w-3 text-[#d9bcff]" aria-hidden="true" /> : null}
-            <span className="font-semibold tabular-nums">{group.count}</span>
+            {isSuper ? (
+              <Sparkles
+                className={compact ? "h-3 w-3 text-[#e6d4ff]" : "h-4 w-4 text-[#e6d4ff]"}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className={cn("font-bold tabular-nums", isSuper ? "text-[#f3e9ff]" : "font-semibold")}>
+              {group.count}
+            </span>
           </button>
         );
       })}

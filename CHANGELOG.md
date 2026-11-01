@@ -12,14 +12,25 @@
   tombstone rather than a delete, a 50-per-realm cap, and report/remove RPCs
   that re-check `owner`/`admin` server-side. `post_reactions.emoji` is widened
   so a `ce:<id>` reaction key fits.
-- Super reactions are live on posts for Purify members. The picker gained a
-  **Super reaction** switch; a super pick becomes a `kind = 'super'` row, leads
-  the pill row with an amethyst spark, and marks its sender in the reactor list.
-  It replaces that member's normal reaction for the same emoji, so one tap is
-  one row and the count can never double. Billing off means everyone can try
-  it; flip `VITE_PURIFY_ENFORCED` and the switch locks to subscribers. The
-  switch only appears once `20261112000000_post_super_reactions.sql` is applied,
-  and reads of the old table keep working until then.
+- Super reactions are live on posts for Purify members, drawn the way Discord
+  draws them: a taller pill than a normal reaction, an amethyst-to-violet
+  gradient, an outer glow, a spark glyph and a one-shot 520ms pop when it
+  becomes super. The picker gained a **Super reaction** switch; a super pick
+  becomes a `kind = 'super'` row and marks its sender in the reactor list. It
+  replaces that member's normal reaction for the same emoji, so one tap is one
+  row and the count can never double. Billing off means everyone can try it;
+  flip `VITE_PURIFY_ENFORCED` and the switch locks to subscribers. The switch
+  only appears once `20261112000000_post_super_reactions.sql` is applied, and
+  reads of the old table keep working until then.
+- Voted-up reaction pills are larger everywhere: the row is 36px tall with a
+  22px glyph (40px and 26px when super), so you can read what the reaction is
+  without leaning in.
+- Toasts stopped shouting. The pill is now thumb-wide (20.5rem max) with a
+  12px title and 11px note, only one is on screen at a time, routine receipts
+  leave sooner, and a gating message that gets tapped again is ignored for six
+  seconds instead of restarting its timer. Info wears the app's lime dot rather
+  than a system blue, and the escrow gate reads “Escrow bounties need Purify /
+  Open calls stay free to take.” instead of a two-sentence red alert.
 - The separate `/create` page is gone. Writing a post happens in the feed's
   inline composer or the one the plus button opens; the page-only shell, the
   expand link and the `fullPage` prop were removed with it.
@@ -34,11 +45,10 @@
 - The post footer lost its two extra entry points: the expand-to-comments arrows
   and the “view all reactions” button. The reaction pills stay, and long-pressing
   a pill still opens the reactor list.
-- Reels lost their React tray: a double tap is the whole gesture now. It still
-  likes the reel and pops the sticker at your thumb, and it now streams one of
-  six reactions up the right edge, lane by lane, like a live room instead of
-  firing a radial burst from the tap point. Reduced motion keeps the static
-  “Liked” pill and skips the stream.
+- Reels lost their React tray and their reaction column: a double tap likes
+  the reel and pops the sticker at your thumb, nothing else. The emoji stream
+  from the last pass is gone — a second, unrelated emoji appearing after a
+  double tap read as noise. Reduced motion keeps the static “Liked” pill.
 - A post reacts with the shared picker. The footer's eight fixed emoji were
   replaced by the one picker (recents, defaults, a tab per joined realm, search),
   so anyone can react with a custom emoji; the pick lands as a `ce:<id>`

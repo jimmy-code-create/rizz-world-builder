@@ -853,7 +853,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               type="button"
               onClick={() => {
                 if (!purify.allowed) {
-                  toast.error("Super reactions are a Purify perk");
+                  toast.info("Super reactions need Purify");
                   return;
                 }
                 setSuperMode((value) => !value);
