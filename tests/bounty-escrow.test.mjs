@@ -34,7 +34,12 @@ async function check(name, fn) {
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-const sql = read("supabase/migrations/20261107000000_bounty_escrow.sql");
+// The contract is split across two migrations: escrow first, trust/fees second.
+// Later definitions win, so `fnBody` below reads the newest version.
+const sql = [
+  read("supabase/migrations/20261107000000_bounty_escrow.sql"),
+  read("supabase/migrations/20261108000000_bounty_trust.sql"),
+].join("\n\n");
 const lib = read("src/lib/bounties.ts");
 const page = read("src/routes/_app/drops.tsx");
 const card = read("src/components/bounties/BountyCard.tsx");
@@ -43,7 +48,7 @@ const postDialog = read("src/components/bounties/PostBountyDialog.tsx");
 
 /** The body of one `CREATE OR REPLACE FUNCTION public.<name>` block. */
 function fnBody(name) {
-  const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
+  const start = sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
   assert.ok(start >= 0, `migration is missing public.${name}()`);
   const end = sql.indexOf("\n$$;", start);
   assert.ok(end > start, `public.${name}() is not terminated`);

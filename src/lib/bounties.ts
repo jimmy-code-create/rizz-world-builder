@@ -1,5 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { BountyTrust, FeeRecipient, MinTrustLevel } from "./bounty-trust";
+import { CANCEL_FEE, FEE_RECIPIENT, trustStats } from "./bounty-trust";
+
+/**
+ * Shared, side-effect-free rules live in `bounty-trust.ts` so the Node test
+ * chain can load them without React or a Supabase client. Re-exported here
+ * because this module is where the bounty pages already look.
+ */
+export {
+  AUTO_BLOCK_WARNINGS,
+  CANCEL_FEE,
+  FEE_RECIPIENT,
+  FEE_RECIPIENTS,
+  MIN_TRUST_LABEL,
+  MIN_TRUST_OPTIONS,
+  TRUST_LEVEL_LABEL,
+  TRUST_LEVEL_ORDER,
+  TRUST_THRESHOLDS,
+  canAffordTakerCancelFee,
+  feeRecipientLabel,
+  feeRecipientSentence,
+  isAutoBlocked,
+  meetsMinTrust,
+  takerCancelFee,
+  trustLevel,
+  trustLine,
+  trustStats,
+  warningWord,
+  warningsUntilBlock,
+} from "./bounty-trust";
+export type { BountyTrust, FeeRecipient, MinTrustLevel, TrustLevel } from "./bounty-trust";
 
 /**
  * Bounties with Paws held in escrow.
@@ -21,6 +52,86 @@ export type BountyState = "open" | "taken" | "submitted" | "paid" | "cancelled" 
 export type EscrowState = "none" | "held" | "paid" | "refunded";
 export type SubmissionStatus = "submitted" | "approved" | "rejected" | "withdrawn";
 
+/** What the poster accepts as proof. Mirrors `drops.proof_type`. */
+export type ProofType = "any" | "link" | "image" | "video" | "text";
+
+export const PROOF_TYPE_LABEL: Record<ProofType, string> = {
+  any: "Anything",
+  link: "A link",
+  image: "Screenshots",
+  video: "A screen recording",
+  text: "A written summary",
+};
+
+export const PROOF_TYPE_OPTIONS: readonly ProofType[] = [
+  "any",
+  "link",
+  "image",
+  "video",
+  "text",
+] as const;
+
+/** Why a poster warned a taker. Mirrors the check in `bounty_warnings`. */
+export type WarningReason = "no_work" | "fake_proof" | "scam" | "other";
+
+export const WARNING_REASON_LABEL: Record<WarningReason, string> = {
+  no_work: "No work delivered",
+  fake_proof: "Fake proof",
+  scam: "Scam",
+  other: "Something else",
+};
+
+export const WARNING_REASONS: readonly WarningReason[] = [
+  "no_work",
+  "fake_proof",
+  "scam",
+  "other",
+] as const;
+
+export type WarningStatus = "active" | "removed";
+export type WarningAppealStatus = "none" | "pending" | "upheld" | "rejected";
+
+export type BountyWarning = {
+  id: string;
+  drop_id: string;
+  creator_id: string;
+  taker_id: string;
+  reason: WarningReason;
+  note: string | null;
+  status: WarningStatus;
+  appeal_status: WarningAppealStatus;
+  appeal_message: string | null;
+  appealed_at: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
+export type BountyBlock = {
+  creator_id: string;
+  blocked_id: string;
+  created_at: string;
+};
+
+/** A pending warning appeal as the admin queue returns it. */
+export type BountyAppeal = {
+  id: string;
+  drop_id: string;
+  bounty_title: string;
+  prize_paws: number;
+  reason: WarningReason;
+  note: string | null;
+  appeal_message: string | null;
+  appealed_at: string | null;
+  created_at: string;
+  taker_username: string | null;
+  taker_display_name: string | null;
+  taker_avatar_url: string | null;
+  creator_username: string | null;
+  trust: { completed: number; warnings: number; level: string; auto_blocked?: boolean };
+};
+
+
 export type BountyRules = {
   minPrize: number;
   maxPrize: number;
@@ -33,6 +144,11 @@ export type BountyRules = {
   maxRejections: number;
   maxLinks: number;
   maxMedia: number;
+  /** Flat fee a taker pays for handing the bounty back or missing the date. */
+  cancelFee: number;
+  /** Who receives that fee. */
+  feeRecipient: FeeRecipient;
+  autoBlockWarnings: number;
 };
 
 export const BOUNTY_RULES: BountyRules = {
@@ -47,6 +163,9 @@ export const BOUNTY_RULES: BountyRules = {
   maxRejections: 3,
   maxLinks: 5,
   maxMedia: 4,
+  cancelFee: 1000,
+  feeRecipient: "creator",
+  autoBlockWarnings: 3,
 };
 
 export type BountyCreator = {
@@ -79,6 +198,10 @@ export type BountyRow = {
   released_count?: number;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
+  premium_only?: boolean;
+  proof_type?: ProofType;
+  min_trust?: MinTrustLevel;
+  tags?: string[] | null;
   creator?: BountyCreator | null;
 };
 
@@ -278,6 +401,10 @@ export async function postPawsBounty(input: {
   prize: number;
   hours: number;
   mediaUrl?: string | null;
+  premiumOnly?: boolean;
+  proofType?: ProofType;
+  minTrust?: MinTrustLevel;
+  tags?: string[];
 }): Promise<{ id: string; prize: number; balance: number }> {
   const result = await callBountyRpc<Record<string, unknown>>("post_paws_bounty", {
     _title: input.title.trim(),
@@ -286,6 +413,10 @@ export async function postPawsBounty(input: {
     _prize: Math.round(input.prize),
     _hours: Math.round(input.hours),
     _media_url: input.mediaUrl ?? null,
+    _premium_only: Boolean(input.premiumOnly),
+    _proof_type: input.proofType ?? "any",
+    _min_trust: input.minTrust ?? "any",
+    _tags: (input.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
   });
   return {
     id: String(result?.id ?? ""),
@@ -294,13 +425,33 @@ export async function postPawsBounty(input: {
   };
 }
 
-export async function takeBounty(dropId: string): Promise<{ status: string; prize: number }> {
+export async function takeBounty(dropId: string): Promise<{
+  status: string;
+  prize: number;
+  cancelFee: number;
+  feeRecipient: FeeRecipient;
+}> {
   const result = await callBountyRpc<Record<string, unknown>>("take_bounty", { _drop_id: dropId });
-  return { status: String(result?.status ?? "taken"), prize: Number(result?.prize ?? 0) };
+  return {
+    status: String(result?.status ?? "taken"),
+    prize: Number(result?.prize ?? 0),
+    cancelFee: Number(result?.cancel_fee ?? CANCEL_FEE),
+    feeRecipient: (result?.fee_recipient as FeeRecipient) ?? FEE_RECIPIENT,
+  };
 }
 
-export async function releaseBounty(dropId: string, reason?: string | null): Promise<void> {
-  await callBountyRpc("release_bounty", { _drop_id: dropId, _reason: reason?.trim() || null });
+export async function releaseBounty(
+  dropId: string,
+  reason?: string | null,
+): Promise<{ fee: number; feeRecipient: FeeRecipient }> {
+  const result = await callBountyRpc<Record<string, unknown>>("release_bounty", {
+    _drop_id: dropId,
+    _reason: reason?.trim() || null,
+  });
+  return {
+    fee: Number(result?.fee ?? 0),
+    feeRecipient: (result?.fee_recipient as FeeRecipient) ?? FEE_RECIPIENT,
+  };
 }
 
 export async function submitBountyProof(input: {
@@ -367,6 +518,74 @@ export async function settleExpiredBounties(): Promise<number> {
   }
 }
 
+/**
+ * A taker who blows the deadline pays the same fee as one who hands it back,
+ * and the bounty reopens. Same lazy sweep as above: the board calls it on load.
+ */
+export async function expireTakenBounties(): Promise<number> {
+  try {
+    const result = await callBountyRpc<number | Record<string, unknown>>(
+      "expire_taken_bounties",
+      {},
+    );
+    return typeof result === "number" ? result : Number((result as Record<string, unknown>) ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+// ---------------------------------------------------------------- trust + safety
+
+/** Warning and appeal plumbing. Kept beside the escrow calls, same contract. */
+
+export async function warnBountyTaker(input: {
+  dropId: string;
+  reason: WarningReason;
+  note?: string | null;
+}): Promise<{ warningId: string; warnings: number; autoBlocked: boolean }> {
+  const result = await callBountyRpc<Record<string, unknown>>("warn_bounty_taker", {
+    _drop_id: input.dropId,
+    _reason: input.reason,
+    _note: input.note?.trim() || null,
+  });
+  return {
+    warningId: String(result?.warning_id ?? ""),
+    warnings: Number(result?.warnings ?? 0),
+    autoBlocked: Boolean(result?.auto_blocked),
+  };
+}
+
+export async function appealBountyWarning(warningId: string, message: string): Promise<void> {
+  await callBountyRpc("appeal_bounty_warning", {
+    _warning_id: warningId,
+    _message: message.trim(),
+  });
+}
+
+export async function resolveBountyWarning(input: {
+  warningId: string;
+  remove: boolean;
+  note?: string | null;
+}): Promise<{ warnings: number; blocked: boolean }> {
+  const result = await callBountyRpc<Record<string, unknown>>("resolve_bounty_warning", {
+    _warning_id: input.warningId,
+    _remove: input.remove,
+    _note: input.note?.trim() || null,
+  });
+  return {
+    warnings: Number(result?.warnings ?? 0),
+    blocked: Boolean(result?.blocked),
+  };
+}
+
+export async function blockBountyUser(userId: string): Promise<void> {
+  await callBountyRpc("block_bounty_user", { _user: userId });
+}
+
+export async function unblockBountyUser(userId: string): Promise<void> {
+  await callBountyRpc("unblock_bounty_user", { _user: userId });
+}
+
 // ---------------------------------------------------------------- queries
 
 /** The database's copy of the rules, with the local constants as fallback. */
@@ -390,6 +609,10 @@ export function useBountyRules() {
           maxRejections: Number(raw.max_rejections ?? BOUNTY_RULES.maxRejections),
           maxLinks: Number(raw.max_links ?? BOUNTY_RULES.maxLinks),
           maxMedia: Number(raw.max_media ?? BOUNTY_RULES.maxMedia),
+          cancelFee: Number(raw.cancel_fee ?? BOUNTY_RULES.cancelFee),
+          feeRecipient:
+            raw.fee_recipient === "platform" ? "platform" : BOUNTY_RULES.feeRecipient,
+          autoBlockWarnings: Number(raw.auto_block_warnings ?? BOUNTY_RULES.autoBlockWarnings),
         };
       } catch {
         return BOUNTY_RULES;
@@ -423,4 +646,106 @@ export function latestSubmission(
   dropId: string,
 ): BountySubmission | null {
   return submissions.find((row) => row.drop_id === dropId) ?? null;
+}
+
+/** One member's trust line, from the database's own counter. */
+export function useBountyTrust(userId?: string | null) {
+  return useQuery({
+    queryKey: ["bounty-trust", userId ?? "me"],
+    enabled: Boolean(userId),
+    staleTime: 60_000,
+    queryFn: async (): Promise<BountyTrust> => {
+      try {
+        const raw = await callBountyRpc<Record<string, unknown>>("bounty_trust_stats", {
+          _user: userId,
+        });
+        return trustStats(raw?.completed, raw?.warnings);
+      } catch {
+        // Migration not applied yet: fall back to the profile counters the
+        // board already has rather than rendering a fake "Trusted".
+        return trustStats(0, 0);
+      }
+    },
+  });
+}
+
+/**
+ * Trust for a handful of takers in one round trip. The board shows a card per
+ * bounty, and a card with a taker needs their line to render.
+ */
+export function useBountyTrustMap(userIds: string[]) {
+  const unique = [...new Set(userIds.filter(Boolean))].sort();
+  const key = unique.join(",");
+  return useQuery({
+    queryKey: ["bounty-trust-map", key],
+    enabled: unique.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, BountyTrust>> => {
+      try {
+        const raw = await callBountyRpc<Record<string, Record<string, unknown>>>(
+          "bounty_trust_stats_many",
+          { _users: unique },
+        );
+        const out: Record<string, BountyTrust> = {};
+        for (const [id, stats] of Object.entries(raw ?? {})) {
+          out[id] = trustStats(stats?.completed, stats?.warnings);
+        }
+        return out;
+      } catch {
+        return {};
+      }
+    },
+  });
+}
+
+/** Warnings against the signed-in member, newest first, for the banner. */
+export function useMyBountyWarnings(userId?: string | null) {
+  return useQuery({
+    queryKey: ["bounty-warnings", userId ?? "none"],
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<BountyWarning[]> => {
+      const { data, error } = await (supabase.from as any)("bounty_warnings")
+        .select("*")
+        .eq("taker_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return (data ?? []) as BountyWarning[];
+    },
+  });
+}
+
+/** The creators this member has blocked, for the card's menu state. */
+export function useMyBountyBlocks(creatorId?: string | null) {
+  return useQuery({
+    queryKey: ["bounty-blocks", creatorId ?? "none"],
+    enabled: Boolean(creatorId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await (supabase.from as any)("bounty_blocks")
+        .select("blocked_id")
+        .eq("creator_id", creatorId);
+      if (error) return [];
+      return (data ?? []).map((row: { blocked_id: string }) => row.blocked_id);
+    },
+  });
+}
+
+/** Admin queue: warnings waiting on a decision. */
+export function useBountyAppeals(enabled: boolean) {
+  return useQuery({
+    queryKey: ["bounty-appeals"],
+    enabled,
+    staleTime: 15_000,
+    queryFn: async (): Promise<BountyAppeal[]> => {
+      try {
+        const raw = await callBountyRpc<BountyAppeal[] | null>("bounty_appeal_queue", {
+          _limit: 100,
+        });
+        return raw ?? [];
+      } catch {
+        return [];
+      }
+    },
+  });
 }

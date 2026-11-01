@@ -3,16 +3,21 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   AtSign,
   Ban,
   Bell,
   CheckCheck,
+  Clock,
   Coins,
   Hand,
   Hash,
   Heart,
   MessageCircle,
   MessagesSquare,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX,
   Smile,
   Undo2,
   Upload,
@@ -50,6 +55,13 @@ const ICON: Record<string, any> = {
   bounty_paid: Coins,
   bounty_rejected: Undo2,
   bounty_cancelled: Ban,
+  bounty_warned: AlertTriangle,
+  bounty_auto_blocked: ShieldAlert,
+  bounty_appeal_filed: ShieldAlert,
+  bounty_warning_upheld: ShieldCheck,
+  bounty_warning_rejected: ShieldX,
+  bounty_fee_charged: Coins,
+  bounty_deadline_missed: Clock,
 };
 
 /**
@@ -71,6 +83,13 @@ const NOTIF_COPY: Record<string, string> = {
   bounty_paid: "notif_bounty_paid",
   bounty_rejected: "notif_bounty_rejected",
   bounty_cancelled: "notif_bounty_cancelled",
+  bounty_warned: "notif_bounty_warned",
+  bounty_auto_blocked: "notif_bounty_auto_blocked",
+  bounty_appeal_filed: "notif_bounty_appeal_filed",
+  bounty_warning_upheld: "notif_bounty_warning_upheld",
+  bounty_warning_rejected: "notif_bounty_warning_rejected",
+  bounty_fee_charged: "notif_bounty_fee_charged",
+  bounty_deadline_missed: "notif_bounty_deadline_missed",
 };
 
 /**
