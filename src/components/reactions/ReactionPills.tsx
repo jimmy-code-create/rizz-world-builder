@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { customReactionId, emojiMapOf, emojiReactionKey, useEmojiLookup } from "@/lib/emoji-shared";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
@@ -11,6 +11,9 @@ export type SharedReactionGroup = {
   key: string;
   count: number;
   mine: boolean;
+  /** How many of the count were sent as Purify super reactions. */
+  superCount?: number;
+  mineSuper?: boolean;
 };
 
 /**
@@ -57,6 +60,8 @@ export function ReactionPills({
       {groups.map((group) => {
         const id = customReactionId(group.key);
         const emoji = id ? map.get(id) : undefined;
+        const superCount = group.superCount ?? 0;
+        const isSuper = superCount > 0;
         return (
           <button
             key={group.key}
@@ -73,9 +78,12 @@ export function ReactionPills({
             className={cn(
               "inline-flex items-center gap-1 rounded-full border px-2 transition-colors",
               compact ? "h-6 text-[11px]" : "h-7 text-xs",
-              group.mine
-                ? "border-primary/50 bg-primary/15 text-primary"
-                : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
+              isSuper
+                ? "border-[#b47cff]/60 bg-[#b47cff]/15 text-foreground shadow-[0_0_14px_rgba(180,124,255,0.3)]"
+                : group.mine
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
+              isSuper && group.mine && "ring-1 ring-primary/40",
             )}
           >
             {id ? (
@@ -83,6 +91,7 @@ export function ReactionPills({
             ) : (
               <UnicodeGlyph value={group.key} />
             )}
+            {isSuper ? <Sparkles className="h-3 w-3 text-[#d9bcff]" aria-hidden="true" /> : null}
             <span className="font-semibold tabular-nums">{group.count}</span>
           </button>
         );
@@ -158,17 +167,25 @@ export function ReactionTray({
 
 /** Groups raw rows into the shape the pills want. */
 export function groupReactions(
-  rows: Array<{ emoji: string; user_id: string }>,
+  rows: Array<{ emoji: string; user_id: string; kind?: "normal" | "super" }>,
   userId?: string | null,
 ): SharedReactionGroup[] {
   const map = new Map<string, SharedReactionGroup>();
   for (const row of rows) {
-    const group = map.get(row.emoji) ?? { key: row.emoji, count: 0, mine: false };
+    const group = map.get(row.emoji) ?? { key: row.emoji, count: 0, mine: false, superCount: 0 };
+    const isSuper = row.kind === "super";
     group.count += 1;
-    if (userId && row.user_id === userId) group.mine = true;
+    if (isSuper) group.superCount = (group.superCount ?? 0) + 1;
+    if (userId && row.user_id === userId) {
+      group.mine = true;
+      if (isSuper) group.mineSuper = true;
+    }
     map.set(row.emoji, group);
   }
-  return [...map.values()].sort((a, b) => b.count - a.count);
+  // A super reaction is the loudest thing on the row, so it leads.
+  return [...map.values()].sort(
+    (a, b) => Number((b.superCount ?? 0) > 0) - Number((a.superCount ?? 0) > 0) || b.count - a.count,
+  );
 }
 
 export type { SharedEmoji };

@@ -279,7 +279,8 @@ SET search_path = public
 AS $function$
 DECLARE v_author uuid;
 BEGIN
-  IF auth.uid() IS NULL OR length(coalesce(_emoji, '')) NOT BETWEEN 1 AND 16 THEN
+  -- 64, not 16: a realm emoji reaction is stored as `ce:<emoji id>`.
+  IF auth.uid() IS NULL OR length(coalesce(_emoji, '')) NOT BETWEEN 1 AND 64 THEN
     RAISE EXCEPTION 'Invalid reaction';
   END IF;
   SELECT author_id INTO v_author FROM public.posts WHERE id = _post_id;

@@ -37,6 +37,7 @@ export function EmojiPicker({
   onPick,
   canManage = false,
   title = "Emojis",
+  footer,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,6 +47,8 @@ export function EmojiPicker({
   /** Owners and admins see remove; everyone sees report. */
   canManage?: boolean;
   title?: string;
+  /** Optional row under the grid — e.g. the post card's super-reaction switch. */
+  footer?: React.ReactNode;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -200,6 +203,8 @@ export function EmojiPicker({
               ))}
             </div>
           )}
+
+          {footer ? <div className="pt-1">{footer}</div> : null}
         </div>
       </SheetContent>
     </Sheet>

@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchBlocked } from "@/lib/social";
-import { Smile, UserPlus, Check, Undo2 } from "lucide-react";
+import { Smile, UserPlus, Check, Undo2, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 import { ReactionKeyGlyph } from "@/components/reactions/ReactionKeyGlyph";
@@ -18,6 +18,8 @@ export type PostReactionUser = {
   emoji: string;
   user_id: string;
   created_at?: string;
+  /** A Purify super reaction draws a spark beside the glyph. */
+  kind?: "normal" | "super";
   user?: {
     id: string;
     username: string | null;
@@ -54,11 +56,29 @@ export function PostReactionsSheet({
     enabled: open && !!postId,
     staleTime: 10_000,
     queryFn: async (): Promise<PostReactionUser[]> => {
-      const { data: rows, error } = await supabase
-        .from("post_reactions")
-        .select("emoji, user_id, created_at")
+      type ReactionQueryRow = {
+        emoji: string;
+        user_id: string;
+        created_at: string;
+        kind?: string | null;
+      };
+      type QueryError = { message?: string } | null;
+      const source = supabase.from("post_reactions") as any;
+      let rows: ReactionQueryRow[] | null = null;
+      let error: QueryError = null;
+      ({ data: rows, error } = await source
+        .select("emoji, user_id, created_at, kind")
         .eq("post_id", postId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
+
+      // A database without the super-reaction migration still reads fine: the
+      // kind column is the only thing that can be missing.
+      if (error && /kind|column|schema cache/i.test(error.message ?? "")) {
+        ({ data: rows, error } = await source
+          .select("emoji, user_id, created_at")
+          .eq("post_id", postId)
+          .order("created_at", { ascending: false }));
+      }
 
       if (error) throw error;
       if (!rows || rows.length === 0) return [];
@@ -82,6 +102,7 @@ export function PostReactionsSheet({
         emoji: r.emoji,
         user_id: r.user_id,
         created_at: r.created_at,
+        kind: r.kind === "super" ? ("super" as const) : ("normal" as const),
         user: pMap.get(r.user_id) || {
           id: r.user_id,
           username: "user",
@@ -157,7 +178,7 @@ export function PostReactionsSheet({
     }
   };
 
-  const handleRemoveOwnReaction = async (emoji: string) => {
+  const handleRemoveOwnReaction = async (item: Pick<PostReactionUser, "emoji" | "kind">) => {
     if (!user) return;
     try {
       await supabase
@@ -165,9 +186,10 @@ export function PostReactionsSheet({
         .delete()
         .eq("post_id", postId)
         .eq("user_id", user.id)
-        .eq("emoji", emoji);
+        .eq("emoji", item.emoji);
 
       qc.invalidateQueries({ queryKey: ["post-reactors-sheet", postId] });
+      qc.invalidateQueries({ queryKey: ["reactions", postId] });
       qc.invalidateQueries({ queryKey: ["feed-posts"] });
       qc.invalidateQueries({ queryKey: ["posts"] });
 
@@ -175,10 +197,17 @@ export function PostReactionsSheet({
         action: {
           label: "Undo",
           onClick: async () => {
-            await supabase
-              .from("post_reactions")
-              .insert({ post_id: postId, user_id: user.id, emoji });
+            const restored: { post_id: string; user_id: string; emoji: string; kind?: string } = {
+              post_id: postId,
+              user_id: user.id,
+              emoji: item.emoji,
+            };
+            // Only a super row needs `kind`; a normal one stays readable on a
+            // database that has not run the migration yet.
+            if (item.kind === "super") restored.kind = "super";
+            await (supabase.from("post_reactions") as any).insert(restored);
             qc.invalidateQueries({ queryKey: ["post-reactors-sheet", postId] });
+            qc.invalidateQueries({ queryKey: ["reactions", postId] });
             qc.invalidateQueries({ queryKey: ["feed-posts"] });
             qc.invalidateQueries({ queryKey: ["posts"] });
             toast.success("Reaction restored");
@@ -268,7 +297,7 @@ export function PostReactionsSheet({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        void handleRemoveOwnReaction(item.emoji);
+                        void handleRemoveOwnReaction(item);
                       }}
                       title="Tap to remove your reaction"
                       aria-label="Remove your reaction"
@@ -281,6 +310,14 @@ export function PostReactionsSheet({
                       <ReactionKeyGlyph reactionKey={item.emoji} className="h-4 w-4 text-base" />
                     </span>
                   )}
+                  {item.kind === "super" ? (
+                    <span
+                      title="Super reaction"
+                      className="pointer-events-none absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-[#2a1b3d] text-[#d9bcff] shadow"
+                    >
+                      <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -296,7 +333,7 @@ export function PostReactionsSheet({
               {isMe ? (
                 <button
                   type="button"
-                  onClick={() => void handleRemoveOwnReaction(item.emoji)}
+                  onClick={() => void handleRemoveOwnReaction(item)}
                   className="text-[11px] font-medium text-muted-foreground hover:text-destructive px-2.5 py-1 rounded-lg border border-white/10 hover:border-destructive/40 transition-colors"
                 >
                   Remove

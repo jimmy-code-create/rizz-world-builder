@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Link } from "@tanstack/react-router";
-import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus, Smile, Maximize2 } from "lucide-react";
+import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus, Smile } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -21,10 +20,7 @@ import { emojiToken } from "@/lib/emoji-shared";
 
 const DRAFT_KEY = "rizz:post-draft";
 
-export function PostComposer({
-  onPosted,
-  fullPage = false,
-}: { onPosted?: () => void; fullPage?: boolean } = {}) {
+export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [caption, setCaption] = useState<string>(() => {
@@ -262,16 +258,6 @@ export function PostComposer({
           )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
             <div className="flex items-center gap-1">
-              {!fullPage && (
-                <Link
-                  to="/create"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-foreground md:hidden"
-                  aria-label="Open the full composer"
-                  title="Write on a full page"
-                >
-                  <Maximize2 className="h-5 w-5" />
-                </Link>
-              )}
               <button
                 type="button"
                 onClick={() => setEmojiOpen(true)}

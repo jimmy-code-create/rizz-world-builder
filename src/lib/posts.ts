@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Badge } from "@/lib/badges";
 import { startTrace } from "@/lib/upload-trace";
@@ -296,6 +297,46 @@ export async function fetchMyLikes(userId: string, postIds: string[]) {
   return new Set((data ?? []).map((r) => r.post_id));
 }
 
+export type PostReactionRow = {
+  emoji: string;
+  user_id: string;
+  /** `super` until the 20261112000000 migration lands; older rows are normal. */
+  kind?: "normal" | "super";
+};
+
+/** A missing `kind` column is a migration gap, not a real query failure. */
+function isMissingKind(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "42703" || error.code === "PGRST204") return true;
+  return /kind|column.*does not exist|schema cache/i.test(error.message ?? "");
+}
+
+/**
+ * Whether the database can store super reactions yet. The column is added by
+ * `20261112000000_post_super_reactions.sql`; until it is applied the toggle is
+ * hidden instead of failing on every tap.
+ */
+export function useSuperReactionsSupport() {
+  return useQuery({
+    queryKey: ["post-reactions-kind"],
+    queryFn: async () => {
+      const { error } = await (supabase.from("post_reactions") as any).select("kind").limit(1);
+      return !isMissingKind(error);
+    },
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+export async function toggleSuperReaction(postId: string, emoji: string) {
+  const { data, error } = await (supabase.rpc as any)("toggle_post_super_reaction", {
+    _post_id: postId,
+    _emoji: emoji,
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
 export async function addReaction(postId: string, userId: string, emoji: string) {
   void userId;
   const { data, error } = await (supabase.rpc as any)("toggle_post_reaction", {
@@ -312,13 +353,22 @@ export async function removeReaction(postId: string, userId: string, emoji: stri
   return data;
 }
 
-export async function fetchReactions(postId: string) {
-  const { data, error } = await supabase
-    .from("post_reactions")
-    .select("emoji, user_id")
+export async function fetchReactions(postId: string): Promise<PostReactionRow[]> {
+  const source = supabase.from("post_reactions") as any;
+  const { data, error } = await source
+    .select("emoji, user_id, kind")
     .eq("post_id", postId);
-  if (error) throw error;
-  return data ?? [];
+  if (!error) return data ?? [];
+  if (!isMissingKind(error)) throw error;
+
+  // Pre-migration database: read the rows that exist and treat them all as
+  // normal, so the feed keeps working while the SQL is waiting to be applied.
+  const fallback = await source.select("emoji, user_id").eq("post_id", postId);
+  if (fallback.error) throw fallback.error;
+  return (fallback.data ?? []).map((row: { emoji: string; user_id: string }) => ({
+    ...row,
+    kind: "normal" as const,
+  }));
 }
 
 export async function fetchComments(postId: string) {

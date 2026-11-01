@@ -8,7 +8,7 @@
  * Run: node tests/shared-emoji.test.mjs
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 let passed = 0;
 async function check(name, fn) {
@@ -122,19 +122,29 @@ await check("comments render custom emoji", () => {
   assert.ok(commentBody.includes("<EmojiText"), "comment bodies still print the raw token");
 });
 
-await check("reels react with the shared tray and float the reaction", () => {
+await check("reels double tap streams reactions up the right edge", () => {
   const reels = read("src/routes/_app/reels.tsx");
-  assert.ok(reels.includes("<ReactionTray"), "reels do not use the shared tray");
-  assert.ok(reels.includes("reel-float-up"), "a reaction does not travel up the screen");
-  assert.ok(reels.includes("slice(-11)"), "floating reactions are unbounded");
-  assert.ok(reels.includes("customReactionId(floater.key)"), "custom reactions cannot float as images");
+  assert.ok(!reels.includes("<ReactionTray"), "the react tray is still in reels");
+  assert.ok(!reels.includes('label="React"'), "the react action button is still in reels");
+  assert.ok(reels.includes("const STREAM_GLYPHS = [\"💖\", \"🔥\", \"😂\", \"😮\", \"💯\", \"🥹\"]"), "the six stream glyphs changed");
+  assert.ok(reels.includes("reel-stream-up"), "a double tap does not travel up the screen");
+  assert.ok(reels.includes("right: `${floater.right}px`"), "the stream is not pinned to the right edge");
+  assert.ok(reels.includes("slice(-17)"), "the reaction stream is unbounded");
 });
 
-await check("the composer has a page, and the feed links to it", () => {
-  const create = read("src/routes/_app/create.tsx");
-  assert.ok(create.includes('createFileRoute("/_app/create")'), "no deep-linkable create route");
-  assert.ok(create.includes("fullPage"), "the create page reuses the inline composer shell");
-  assert.ok(composer.includes('to="/create"'), "the inline composer never leads to the page");
+await check("the composer stays inline and the separate create page is gone", () => {
+  assert.ok(!existsSync(new URL("../src/routes/_app/create.tsx", import.meta.url)), "the /create page is back");
+  assert.ok(!composer.includes('to="/create"'), "the composer still links to /create");
+  assert.ok(!composer.includes("fullPage"), "the composer still carries the page-only shell");
+  assert.ok(composer.includes("<EmojiPicker"), "the composer does not use the shared picker");
+});
+
+await check("the post footer keeps pills and drops the extra entry points", () => {
+  const card = read("src/components/PostCard.tsx");
+  assert.ok(!card.includes("PostCommentsButton"), "the expand button is back");
+  assert.ok(!card.includes("View all reactions"), "the extra reactors button is back");
+  assert.ok(card.includes("<ReactionPills"), "the pill row was removed too");
+  assert.ok(card.includes("<EmojiPicker"), "the react picker is gone as well");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

@@ -12,6 +12,33 @@
   tombstone rather than a delete, a 50-per-realm cap, and report/remove RPCs
   that re-check `owner`/`admin` server-side. `post_reactions.emoji` is widened
   so a `ce:<id>` reaction key fits.
+- Super reactions are live on posts for Purify members. The picker gained a
+  **Super reaction** switch; a super pick becomes a `kind = 'super'` row, leads
+  the pill row with an amethyst spark, and marks its sender in the reactor list.
+  It replaces that member's normal reaction for the same emoji, so one tap is
+  one row and the count can never double. Billing off means everyone can try
+  it; flip `VITE_PURIFY_ENFORCED` and the switch locks to subscribers. The
+  switch only appears once `20261112000000_post_super_reactions.sql` is applied,
+  and reads of the old table keep working until then.
+- The separate `/create` page is gone. Writing a post happens in the feed's
+  inline composer or the one the plus button opens; the page-only shell, the
+  expand link and the `fullPage` prop were removed with it.
+- Reacting gives a short vibration on phones that support it — the post pills,
+  the picker and the reel double tap each pulse once, through the same deduped
+  haptic utility the rest of the app uses.
+- Realm emoji reactions no longer fail with **Invalid reaction**. The table had
+  already been widened, but `toggle_post_reaction` kept its own 16-character
+  guard, so a 39-character `ce:<id>` key was rejected before the insert. The
+  RPC now accepts 64 characters; `20261113000000_post_reaction_key_length.sql`
+  carries the replacement and repeats the column widening.
+- The post footer lost its two extra entry points: the expand-to-comments arrows
+  and the “view all reactions” button. The reaction pills stay, and long-pressing
+  a pill still opens the reactor list.
+- Reels lost their React tray: a double tap is the whole gesture now. It still
+  likes the reel and pops the sticker at your thumb, and it now streams one of
+  six reactions up the right edge, lane by lane, like a live room instead of
+  firing a radial burst from the tap point. Reduced motion keeps the static
+  “Liked” pill and skips the stream.
 - A post reacts with the shared picker. The footer's eight fixed emoji were
   replaced by the one picker (recents, defaults, a tab per joined realm, search),
   so anyone can react with a custom emoji; the pick lands as a `ce:<id>`

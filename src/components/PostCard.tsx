@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles } from "lucide-react";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPills";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
@@ -24,10 +24,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import {
-  toggleLike, addReaction, removeReaction, fetchReactions,
-  deletePost, reportPost, updatePostCaption, togglePinPost,
-  type FeedPost,
+  toggleLike, addReaction, removeReaction, fetchReactions, toggleSuperReaction,
+  useSuperReactionsSupport, deletePost, reportPost, updatePostCaption, togglePinPost,
+  type FeedPost, type PostReactionRow,
 } from "@/lib/posts";
+import { usePurify } from "@/lib/purify";
+import { hapticReaction } from "@/lib/haptics";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
 import { QuoteEmbed } from "@/components/post/QuoteEmbed";
@@ -72,6 +74,8 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       ? parseExternalReelLink(post.media_url)
       : null;
   const { user } = useAuth();
+  const purify = usePurify();
+  const superSupport = useSuperReactionsSupport();
   const { t } = useI18n();
   const qc = useQueryClient();
   const [liked, setLiked] = useState(!!initialLiked);
@@ -229,10 +233,62 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       toast.error("Sign in to react");
       return;
     }
+    hapticReaction();
     const current = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(["reactions", post.id]) ?? reactions.data ?? [];
     const mine = current.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id);
     reactMut.mutate({ emoji, mine });
   };
+
+  // Super reactions belong to Purify members. `allowed` is the same gate the
+  // rest of the app uses (open until billing is enforced), and the toggle only
+  // appears once the database has the `kind` column to store it in.
+  const canSendSuper = purify.allowed && superSupport.data === true;
+  const bumpFeedReactionCount = (delta: number) => {
+    if (!delta) return;
+    qc.setQueriesData<{ id: string; reaction_count?: number }[]>({ queryKey: ["feed"] }, (posts) =>
+      posts?.map((entry) =>
+        entry.id === post.id
+          ? { ...entry, reaction_count: Math.max(0, (entry.reaction_count ?? 0) + delta) }
+          : entry,
+      ),
+    );
+  };
+
+  const superMut = useMutation({
+    mutationFn: async ({ emoji }: { emoji: string }) => {
+      if (!user) throw new Error("Sign in to react");
+      if (!canSendSuper) throw new Error("Super reactions are a Purify perk");
+      return toggleSuperReaction(post.id, emoji);
+    },
+    onMutate: async ({ emoji }) => {
+      const queryKey = ["reactions", post.id] as const;
+      await qc.cancelQueries({ queryKey });
+      const previous = qc.getQueryData<PostReactionRow[]>(queryKey) ?? reactions.data ?? [];
+      const mineRow = previous.find((reaction) => reaction.emoji === emoji && reaction.user_id === user?.id);
+      const wasSuper = mineRow?.kind === "super";
+      const next = wasSuper
+        ? previous.filter((reaction) => !(reaction.emoji === emoji && reaction.user_id === user?.id))
+        : mineRow
+          ? previous.map((reaction) =>
+              reaction.emoji === emoji && reaction.user_id === user?.id
+                ? { ...reaction, kind: "super" as const }
+                : reaction,
+            )
+          : [...previous, { emoji, user_id: user?.id ?? "", kind: "super" as const }];
+      qc.setQueryData(queryKey, next);
+      return { queryKey, previous, delta: wasSuper ? -1 : mineRow ? 0 : 1 };
+    },
+    onSuccess: (_data, _variables, context) => {
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
+      bumpFeedReactionCount(context?.delta ?? 0);
+    },
+    onError: (e: Error, _variables, context) => {
+      if (context) qc.setQueryData(context.queryKey, context.previous);
+      void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
+      bumpFeedReactionCount(-(context?.delta ?? 0));
+      toast.error(e.message);
+    },
+  });
 
   const accent = post.author?.accent_color || "var(--brand-signal)";
   const initial = (post.author?.display_name || post.author?.username || "?").charAt(0).toUpperCase();
@@ -256,6 +312,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [mediaFailed, setMediaFailed] = useState(false);
   const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
   const [reactPickerOpen, setReactPickerOpen] = useState(false);
+  const [superMode, setSuperMode] = useState(false);
   const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
@@ -675,18 +732,6 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               setReactionsSheetOpen(true);
             }}
           />
-          <button
-            type="button"
-            onClick={() => {
-              setInitialReactionTab("all");
-              setReactionsSheetOpen(true);
-            }}
-            aria-label="View all reactions"
-            title="View all reactions"
-            className="h-6 w-6 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full border border-white/10 hover:bg-white/10 transition-colors shrink-0"
-          >
-            <Users className="h-3 w-3" />
-          </button>
         </div>
       )}
 
@@ -794,8 +839,62 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         onOpenChange={setReactPickerOpen}
         title="React with"
         onPick={(pick: EmojiPick) => {
-          toggleReaction(pick.kind === "unicode" ? pick.value : emojiReactionKey(pick.emoji.id));
+          const key = pick.kind === "unicode" ? pick.value : emojiReactionKey(pick.emoji.id);
+          if (superMode && canSendSuper) {
+            hapticReaction();
+            superMut.mutate({ emoji: key });
+          } else {
+            toggleReaction(key);
+          }
         }}
+        footer={
+          superSupport.data ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!purify.allowed) {
+                  toast.error("Super reactions are a Purify perk");
+                  return;
+                }
+                setSuperMode((value) => !value);
+              }}
+              aria-pressed={superMode && purify.allowed}
+              className={cn(
+                "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                superMode && purify.allowed
+                  ? "border-[#b47cff]/60 bg-[#b47cff]/15"
+                  : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]",
+                !purify.allowed && "opacity-60",
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-2 text-xs font-semibold">
+                <Sparkles
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    superMode && purify.allowed ? "text-[#d9bcff]" : "text-muted-foreground",
+                  )}
+                />
+                <span className="truncate">Super reaction</span>
+                <span className="shrink-0 rounded-full border border-[#b47cff]/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#d9bcff]">
+                  Purify
+                </span>
+              </span>
+              <span
+                className={cn(
+                  "h-4 w-7 shrink-0 rounded-full p-0.5 transition-colors",
+                  superMode && purify.allowed ? "bg-[#b47cff]" : "bg-white/15",
+                )}
+              >
+                <span
+                  className={cn(
+                    "block h-3 w-3 rounded-full bg-white transition-transform",
+                    superMode && purify.allowed && "translate-x-3",
+                  )}
+                />
+              </span>
+            </button>
+          ) : null
+        }
       />
 
       <PostReactionsSheet

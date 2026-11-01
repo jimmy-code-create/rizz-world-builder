@@ -22,7 +22,6 @@ import { Route as AppBadgesRouteImport } from './routes/_app/badges'
 import { Route as AppBookmarksRouteImport } from './routes/_app/bookmarks'
 import { Route as AppBotsRouteImport } from './routes/_app/bots'
 import { Route as AppChatStoriesRouteImport } from './routes/_app/chat-stories'
-import { Route as AppCreateRouteImport } from './routes/_app/create'
 import { Route as AppDmsRouteImport } from './routes/_app/dms'
 import { Route as AppDrawPartyRouteImport } from './routes/_app/draw-party'
 import { Route as AppDropsRouteImport } from './routes/_app/drops'
@@ -132,11 +131,6 @@ const AppBotsRoute = AppBotsRouteImport.update({
 const AppChatStoriesRoute = AppChatStoriesRouteImport.update({
   id: '/chat-stories',
   path: '/chat-stories',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCreateRoute = AppCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDmsRoute = AppDmsRouteImport.update({
@@ -385,7 +379,6 @@ export interface FileRoutesByFullPath {
   '/bookmarks': typeof AppBookmarksRoute
   '/bots': typeof AppBotsRouteWithChildren
   '/chat-stories': typeof AppChatStoriesRoute
-  '/create': typeof AppCreateRoute
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
@@ -445,7 +438,6 @@ export interface FileRoutesByTo {
   '/badges': typeof AppBadgesRoute
   '/bookmarks': typeof AppBookmarksRoute
   '/chat-stories': typeof AppChatStoriesRoute
-  '/create': typeof AppCreateRoute
   '/dms': typeof AppDmsRoute
   '/draw-party': typeof AppDrawPartyRoute
   '/drops': typeof AppDropsRoute
@@ -508,7 +500,6 @@ export interface FileRoutesById {
   '/_app/bookmarks': typeof AppBookmarksRoute
   '/_app/bots': typeof AppBotsRouteWithChildren
   '/_app/chat-stories': typeof AppChatStoriesRoute
-  '/_app/create': typeof AppCreateRoute
   '/_app/dms': typeof AppDmsRoute
   '/_app/draw-party': typeof AppDrawPartyRoute
   '/_app/drops': typeof AppDropsRoute
@@ -571,7 +562,6 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/bots'
     | '/chat-stories'
-    | '/create'
     | '/dms'
     | '/draw-party'
     | '/drops'
@@ -631,7 +621,6 @@ export interface FileRouteTypes {
     | '/badges'
     | '/bookmarks'
     | '/chat-stories'
-    | '/create'
     | '/dms'
     | '/draw-party'
     | '/drops'
@@ -693,7 +682,6 @@ export interface FileRouteTypes {
     | '/_app/bookmarks'
     | '/_app/bots'
     | '/_app/chat-stories'
-    | '/_app/create'
     | '/_app/dms'
     | '/_app/draw-party'
     | '/_app/drops'
@@ -857,13 +845,6 @@ declare module '@tanstack/react-router' {
       path: '/chat-stories'
       fullPath: '/chat-stories'
       preLoaderRoute: typeof AppChatStoriesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/create': {
-      id: '/_app/create'
-      path: '/create'
-      fullPath: '/create'
-      preLoaderRoute: typeof AppCreateRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dms': {
@@ -1209,7 +1190,6 @@ interface AppRouteChildren {
   AppBookmarksRoute: typeof AppBookmarksRoute
   AppBotsRoute: typeof AppBotsRouteWithChildren
   AppChatStoriesRoute: typeof AppChatStoriesRoute
-  AppCreateRoute: typeof AppCreateRoute
   AppDmsRoute: typeof AppDmsRoute
   AppDrawPartyRoute: typeof AppDrawPartyRoute
   AppDropsRoute: typeof AppDropsRoute
@@ -1247,7 +1227,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppBookmarksRoute: AppBookmarksRoute,
   AppBotsRoute: AppBotsRouteWithChildren,
   AppChatStoriesRoute: AppChatStoriesRoute,
-  AppCreateRoute: AppCreateRoute,
   AppDmsRoute: AppDmsRoute,
   AppDrawPartyRoute: AppDrawPartyRoute,
   AppDropsRoute: AppDropsRoute,
