@@ -109,7 +109,9 @@ export function ReactionPills({
                 aria-hidden="true"
               />
             ) : null}
-            <span className={cn("font-bold tabular-nums", isSuper ? "text-[#f3e9ff]" : "font-semibold")}>
+            <span
+              className={cn("tabular-nums", isSuper ? "font-bold text-[#f3e9ff]" : "font-semibold")}
+            >
               {group.count}
             </span>
           </button>

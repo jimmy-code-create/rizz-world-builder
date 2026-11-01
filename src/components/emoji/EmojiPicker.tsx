@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Smile, Trash2 } from "lucide-react";
+import { Loader2, Search, Smile, Sparkles, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +38,7 @@ export function EmojiPicker({
   canManage = false,
   title = "Emojis",
   footer,
+  accent = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +50,8 @@ export function EmojiPicker({
   title?: string;
   /** Optional row under the grid — e.g. the post card's super-reaction switch. */
   footer?: React.ReactNode;
+  /** Marks a mode that changes what a pick means, e.g. super reactions. */
+  accent?: boolean;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -116,6 +119,11 @@ export function EmojiPicker({
         <SheetHeader className="px-1 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
             <Smile className="h-4 w-4 text-primary" /> {title}
+            {accent ? (
+              <span className="ml-auto flex items-center gap-1 rounded-full border border-[#cfaeff]/50 bg-[#b47cff]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e6d4ff]">
+                <Sparkles className="h-2.5 w-2.5" aria-hidden="true" /> Super
+              </span>
+            ) : null}
           </SheetTitle>
         </SheetHeader>
 

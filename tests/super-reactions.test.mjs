@@ -32,6 +32,7 @@ const pills = read("src/components/reactions/ReactionPills.tsx");
 const sheet = read("src/components/reactions/PostReactionsSheet.tsx");
 const picker = read("src/components/emoji/EmojiPicker.tsx");
 const reels = read("src/routes/_app/reels.tsx");
+const styles = read("src/styles.css");
 const lengthSql = read("supabase/migrations/20261113000000_post_reaction_key_length.sql");
 
 await check("a reaction row can be normal or super", () => {
@@ -85,6 +86,15 @@ await check("the picker offers a super switch and the sheet marks supers", () =>
   assert.ok(card.includes("footer={"), "the post card never passes the switch");
   assert.ok(sheet.includes('select("emoji, user_id, created_at, kind")'), "the sheet does not read kind");
   assert.ok(sheet.includes("item.kind === \"super\""), "supers are not marked in the reactor list");
+});
+
+await check("super mode is visible while picking", () => {
+  assert.ok(picker.includes("accent?: boolean"), "the picker has no mode accent");
+  assert.ok(picker.includes("<Sparkles"), "super mode leaves no mark on the sheet");
+  assert.ok(card.includes("accent={superMode && canSendSuper}"), "the post card never passes the accent");
+  assert.ok(card.includes("linear-gradient(120deg,rgba(180,124,255,0.3)"), "the switch is not the pill's gradient");
+  assert.ok(pills.includes("super-reaction-in"), "a super pill does not pop in");
+  assert.ok(styles.includes("super-reaction-in"), "the pop-in keyframes are missing");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

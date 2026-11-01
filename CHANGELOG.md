@@ -15,7 +15,9 @@
 - Super reactions are live on posts for Purify members, drawn the way Discord
   draws them: a taller pill than a normal reaction, an amethyst-to-violet
   gradient, an outer glow, a spark glyph and a one-shot 520ms pop when it
-  becomes super. The picker gained a **Super reaction** switch; a super pick
+  becomes super. The switch itself is that language too — gradient track, glow,
+  bigger knob — and while it is on, the picker wears a **Super** chip so the
+  next pick is obviously not a normal reaction. The picker gained a **Super reaction** switch; a super pick
   becomes a `kind = 'super'` row and marks its sender in the reactor list. It
   replaces that member's normal reaction for the same emoji, so one tap is one
   row and the count can never double. Billing off means everyone can try it;

@@ -838,6 +838,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         open={reactPickerOpen}
         onOpenChange={setReactPickerOpen}
         title="React with"
+        accent={superMode && canSendSuper}
         onPick={(pick: EmojiPick) => {
           const key = pick.kind === "unicode" ? pick.value : emojiReactionKey(pick.emoji.id);
           if (superMode && canSendSuper) {
@@ -862,7 +863,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               className={cn(
                 "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
                 superMode && purify.allowed
-                  ? "border-[#b47cff]/60 bg-[#b47cff]/15"
+                  ? "border-[#cfaeff]/60 bg-[linear-gradient(120deg,rgba(180,124,255,0.3),rgba(124,77,255,0.18)_60%,rgba(236,72,153,0.2))] shadow-[0_0_18px_rgba(180,124,255,0.28)] ring-1 ring-inset ring-white/10"
                   : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]",
                 !purify.allowed && "opacity-60",
               )}
@@ -881,14 +882,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               </span>
               <span
                 className={cn(
-                  "h-4 w-7 shrink-0 rounded-full p-0.5 transition-colors",
-                  superMode && purify.allowed ? "bg-[#b47cff]" : "bg-white/15",
+                  "h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors",
+                  superMode && purify.allowed
+                    ? "bg-[linear-gradient(90deg,#8f5cff,#c9a6ff)] shadow-[0_0_10px_rgba(180,124,255,0.55)]"
+                    : "bg-white/15",
                 )}
               >
                 <span
                   className={cn(
-                    "block h-3 w-3 rounded-full bg-white transition-transform",
-                    superMode && purify.allowed && "translate-x-3",
+                    "block h-4 w-4 rounded-full bg-white shadow transition-transform",
+                    superMode && purify.allowed && "translate-x-4",
                   )}
                 />
               </span>

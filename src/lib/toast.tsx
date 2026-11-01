@@ -82,7 +82,8 @@ function push(type: GlassToastType, title: string, options: ToastOptions = {}) {
   if (type === "error") hapticError();
   // Actions (Undo, Retry) are one-off receipts and must always appear; only a
   // gating message is throttled.
-  if (!options.action && (type === "info" || type === "warning") && shownTooRecently(String(id))) {
+  const gated = type === "info" || type === "warning";
+  if (!options.action && gated && shownTooRecently(String(id))) {
     return id;
   }
 
