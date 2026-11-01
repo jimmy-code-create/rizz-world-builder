@@ -12,6 +12,7 @@ import { fetchBlocked } from "@/lib/social";
 import { Smile, UserPlus, Check, Undo2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
+import { ReactionKeyGlyph } from "@/components/reactions/ReactionKeyGlyph";
 
 export type PostReactionUser = {
   emoji: string;
@@ -217,7 +218,7 @@ export function PostReactionsSheet({
                 : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5"
             }`}
           >
-            <span>{emoji}</span>
+            <ReactionKeyGlyph reactionKey={emoji} className="h-4 w-4 text-[15px]" />
             <span className="font-mono text-[10px] opacity-80">{tabCounts[emoji]}</span>
           </button>
         ))}
@@ -271,13 +272,13 @@ export function PostReactionsSheet({
                       }}
                       title="Tap to remove your reaction"
                       aria-label="Remove your reaction"
-                      className="absolute -bottom-1 -right-1 text-base leading-none drop-shadow-sm select-none transition-transform hover:scale-125 active:scale-95 cursor-pointer rounded-full"
+                      className="absolute -bottom-1 -right-1 flex items-center justify-center leading-none drop-shadow-sm select-none transition-transform hover:scale-125 active:scale-95 cursor-pointer rounded-full"
                     >
-                      {item.emoji}
+                      <ReactionKeyGlyph reactionKey={item.emoji} className="h-4 w-4 text-base" />
                     </button>
                   ) : (
-                    <span className="absolute -bottom-1 -right-1 text-base leading-none drop-shadow-sm select-none">
-                      {item.emoji}
+                    <span className="absolute -bottom-1 -right-1 flex items-center justify-center leading-none drop-shadow-sm select-none">
+                      <ReactionKeyGlyph reactionKey={item.emoji} className="h-4 w-4 text-base" />
                     </span>
                   )}
                 </div>

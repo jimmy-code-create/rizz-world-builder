@@ -4,19 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Users } from "lucide-react";
 import { BadgeRow } from "@/components/BadgeChip";
-import { ReactionChipButton } from "@/components/reactions/ReactionChipButton";
+import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPills";
+import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
+import { emojiReactionKey } from "@/lib/emoji-shared";
 import { cn, formatCount } from "@/lib/utils";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
 import { emojiTextClass } from "@/lib/text-size";
 import { normalizeAvatarUrl } from "@/lib/default-avatars";
 import { Avatar, AvatarFallback, AvatarImage, InteractiveAvatar } from "@/components/ui/avatar";
 import { Nameplate } from "@/components/profile/Nameplate";
-import { PostCommentsButton } from "@/components/PostCommentsSheet";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { Button } from "@/components/ui/button";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -50,7 +48,6 @@ import { translateText, detectSourceLang, LANGUAGE_NAMES } from "@/lib/translate
 import { loadPrefs } from "@/lib/prefs";
 import { PostReactionsSheet } from "@/components/reactions/PostReactionsSheet";
 
-const QUICK_EMOJIS = ["🔥", "💖", "👀", "💀", "✨", "🎉", "🥶", "👑"];
 const REPORT_REASONS = ["Spam", "Harassment", "Nudity", "Hate speech", "Violence", "Other"];
 
 const HIDDEN_KEY = "rizz:hidden-posts";
@@ -127,15 +124,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     staleTime: 30_000,
   });
 
-  const grouped = (reactions.data ?? []).reduce<Record<string, { count: number; mine: boolean }>>(
-    (acc, r) => {
-      const e = r.emoji;
-      if (!acc[e]) acc[e] = { count: 0, mine: false };
-      acc[e].count++;
-      if (r.user_id === user?.id) acc[e].mine = true;
-      return acc;
-    },
-    {}
+  // Grouped once, in the shape the shared pill row wants: unicode and custom
+  // (`ce:<id>`) keys sort by count and highlight the ones you left.
+  const reactionGroups = useMemo(
+    () => groupReactions(reactions.data ?? [], user?.id),
+    [reactions.data, user?.id],
   );
 
   const likeMut = useMutation({
@@ -262,6 +255,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [caption, setCaption] = useState(post.caption ?? "");
   const [mediaFailed, setMediaFailed] = useState(false);
   const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
+  const [reactPickerOpen, setReactPickerOpen] = useState(false);
   const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
@@ -669,25 +663,18 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      {Object.keys(grouped).length > 0 && (
+      {reactionGroups.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
-          {Object.entries(grouped).map(([emoji, { count, mine }]) => (
-            <ReactionChipButton
-              key={emoji}
-              emoji={emoji}
-              count={count}
-              mine={mine}
-              // Remove works end to end: the peek's "Remove" button calls the
-              // same toggle the chip itself uses (one source of truth).
-              target={{
-                emoji,
-                count,
-                source: { kind: "post", id: post.id },
-                ...(mine && user ? { remove: () => toggleReaction(emoji) } : {}),
-              }}
-              onToggle={() => toggleReaction(emoji)}
-            />
-          ))}
+          {/* One pill row for every surface: a unicode reaction draws its glyph,
+              a custom one draws its image, and a long-press opens who reacted. */}
+          <ReactionPills
+            groups={reactionGroups}
+            onToggle={toggleReaction}
+            onShowReactors={(key) => {
+              setInitialReactionTab(key);
+              setReactionsSheetOpen(true);
+            }}
+          />
           <button
             type="button"
             onClick={() => {
@@ -728,29 +715,16 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <MessageCircle className="h-4 w-4" />
           <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
         </Button>
-        <PostCommentsButton postId={post.id} />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1" aria-label="React to post">
-              <Smile className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 bg-[var(--brand-ink-2,#131315)] border border-[var(--brand-line,#2a2a2e)] rounded-xl shadow-xl">
-            <div className="flex gap-1">
-              {QUICK_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => toggleReaction(e)}
-                  aria-label={`React with ${e}`}
-                  className="h-9 w-9 rounded-lg text-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 hover:bg-white/10 active:scale-95"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setReactPickerOpen(true)}
+          className="h-8 w-8 p-0 relative rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
+          aria-label="React to post"
+          title="React with any emoji"
+        >
+          <Smile className="h-4 w-4" />
+        </Button>
         <div className="flex-1" />
         <Button
           variant="ghost"
@@ -812,6 +786,17 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* The same picker as the composer and the reels: every joined realm's
+          emoji, searchable, and a custom pick becomes a `ce:<id>` reaction. */}
+      <EmojiPicker
+        open={reactPickerOpen}
+        onOpenChange={setReactPickerOpen}
+        title="React with"
+        onPick={(pick: EmojiPick) => {
+          toggleReaction(pick.kind === "unicode" ? pick.value : emojiReactionKey(pick.emoji.id));
+        }}
+      />
 
       <PostReactionsSheet
         postId={post.id}

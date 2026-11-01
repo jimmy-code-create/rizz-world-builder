@@ -103,6 +103,21 @@ await check("one reaction component draws both kinds", () => {
   assert.ok(pills.includes("onShowReactors"), "long-press has nowhere to go");
 });
 
+await check("a post reacts with the shared picker and shows custom pills", () => {
+  const card = read("src/components/PostCard.tsx");
+  assert.ok(card.includes("<EmojiPicker"), "the post card never opens the shared picker");
+  assert.ok(
+    card.includes("emojiReactionKey(pick.emoji.id)"),
+    "a custom pick does not become a ce: reaction key",
+  );
+  assert.ok(card.includes("<ReactionPills"), "posts still hand-roll reaction chips");
+  assert.ok(card.includes("groupReactions"), "post reactions are not grouped into pills");
+  assert.ok(!card.includes("QUICK_EMOJIS"), "the fixed eight-emoji tray is back");
+  assert.ok(!card.includes("PostCommentsButton"), "the expand button returned to the action row");
+  const sheet = read("src/components/reactions/PostReactionsSheet.tsx");
+  assert.ok(sheet.includes("<ReactionKeyGlyph"), "reactor lists print the raw ce: key");
+});
+
 await check("comments render custom emoji", () => {
   assert.ok(commentBody.includes("<EmojiText"), "comment bodies still print the raw token");
 });

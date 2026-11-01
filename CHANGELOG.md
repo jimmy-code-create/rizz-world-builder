@@ -12,6 +12,14 @@
   tombstone rather than a delete, a 50-per-realm cap, and report/remove RPCs
   that re-check `owner`/`admin` server-side. `post_reactions.emoji` is widened
   so a `ce:<id>` reaction key fits.
+- A post reacts with the shared picker. The footer's eight fixed emoji were
+  replaced by the one picker (recents, defaults, a tab per joined realm, search),
+  so anyone can react with a custom emoji; the pick lands as a `ce:<id>`
+  reaction and shows up as a pill — image, count, highlighted when it is yours.
+  Long-pressing a pill opens the reactor list, which now draws custom emoji as
+  images too instead of printing the raw key.
+- The expand-to-comments icon left the post action row: comments already open
+  from the post itself and the comment count right beside it.
 - Escrow bounties now say what they mean to non-premium members: instead of a
   Take button that the database would refuse, the card offers the upgrade path.
 - Notifications gained the **Bounties** tab: every `bounty_*` event in one

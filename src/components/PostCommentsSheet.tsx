@@ -1,6 +1,3 @@
-import { useState } from "react";
-import { Maximize2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CloseButton } from "@/components/ui/close-button";
 import { CommentSection } from "@/components/comments/CommentSection";
@@ -40,27 +37,5 @@ export function PostCommentsSheet({
         <CommentSection postId={postId} className="min-h-0 flex-1" />
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Small launcher that owns its own open state, so a post card can offer the
- * full-screen page without threading another piece of state through it.
- */
-export function PostCommentsButton({ postId }: { postId: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setOpen(true)}
-        aria-label="Open the full-screen comments page"
-        className="h-8 w-8 text-muted-foreground rounded-full relative touch-manipulation before:absolute before:-inset-y-1.5 before:-inset-x-1"
-      >
-        <Maximize2 className="h-4 w-4" />
-      </Button>
-      <PostCommentsSheet postId={postId} open={open} onOpenChange={setOpen} />
-    </>
   );
 }
