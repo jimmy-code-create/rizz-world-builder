@@ -295,6 +295,52 @@ export type Database = {
           },
         ]
       }
+      bot_templates: {
+        Row: {
+          bot_id: string
+          embed: Json
+          realm_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bot_id: string
+          embed: Json
+          realm_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bot_id?: string
+          embed?: Json
+          realm_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_templates_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_templates_realm_id_fkey"
+            columns: ["realm_id"]
+            isOneToOne: false
+            referencedRelation: "realms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_templates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bots: {
         Row: {
           avatar_url: string | null
@@ -357,6 +403,70 @@ export type Database = {
           },
         ]
       }
+      bounty_submissions: {
+        Row: {
+          created_at: string
+          drop_id: string
+          id: string
+          links: string[]
+          media_urls: string[]
+          note: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          drop_id: string
+          id?: string
+          links?: string[]
+          media_urls?: string[]
+          note?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          drop_id?: string
+          id?: string
+          links?: string[]
+          media_urls?: string[]
+          note?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bounty_submissions_drop_id_fkey"
+            columns: ["drop_id"]
+            isOneToOne: false
+            referencedRelation: "drops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounty_submissions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bounty_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           callee_id: string
@@ -398,6 +508,116 @@ export type Database = {
             columns: ["caller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_poll_votes: {
+        Row: {
+          created_at: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          option_index?: number
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "chat_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_polls: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          created_by: string
+          dm_a: string | null
+          dm_b: string | null
+          group_id: string | null
+          id: string
+          kind: string
+          message_id: string
+          multi: boolean
+          options: Json
+          question: string
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          created_by: string
+          dm_a?: string | null
+          dm_b?: string | null
+          group_id?: string | null
+          id?: string
+          kind: string
+          message_id: string
+          multi?: boolean
+          options: Json
+          question: string
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string
+          dm_a?: string | null
+          dm_b?: string | null
+          group_id?: string | null
+          id?: string
+          kind?: string
+          message_id?: string
+          multi?: boolean
+          options?: Json
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_polls_dm_a_fkey"
+            columns: ["dm_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_polls_dm_b_fkey"
+            columns: ["dm_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_polls_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]
@@ -712,6 +932,7 @@ export type Database = {
           attachment_url: string | null
           audio_url: string | null
           body: string
+          card: Json | null
           created_at: string
           deleted_at: string | null
           duration_ms: number | null
@@ -726,6 +947,7 @@ export type Database = {
           attachment_url?: string | null
           audio_url?: string | null
           body: string
+          card?: Json | null
           created_at?: string
           deleted_at?: string | null
           duration_ms?: number | null
@@ -740,6 +962,7 @@ export type Database = {
           attachment_url?: string | null
           audio_url?: string | null
           body?: string
+          card?: Json | null
           created_at?: string
           deleted_at?: string | null
           duration_ms?: number | null
@@ -845,51 +1068,94 @@ export type Database = {
       }
       drops: {
         Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           claim_count: number
           claim_limit: number
           created_at: string
           creator_id: string
           description: string | null
+          escrow_state: string
           expires_at: string
           id: string
           media_url: string | null
+          prize_paws: number
+          reject_count: number
+          released_count: number
           require_follow: boolean
+          requirements: string | null
+          review_deadline: string | null
+          state: string
+          submission_note: string | null
           title: string
           winner_count: number
           winner_user_ids: string[]
           winners_picked_at: string | null
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           claim_count?: number
           claim_limit?: number
           created_at?: string
           creator_id: string
           description?: string | null
+          escrow_state?: string
           expires_at: string
           id?: string
           media_url?: string | null
+          prize_paws?: number
+          reject_count?: number
+          released_count?: number
           require_follow?: boolean
+          requirements?: string | null
+          review_deadline?: string | null
+          state?: string
+          submission_note?: string | null
           title: string
           winner_count?: number
           winner_user_ids?: string[]
           winners_picked_at?: string | null
         }
         Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           claim_count?: number
           claim_limit?: number
           created_at?: string
           creator_id?: string
           description?: string | null
+          escrow_state?: string
           expires_at?: string
           id?: string
           media_url?: string | null
+          prize_paws?: number
+          reject_count?: number
+          released_count?: number
           require_follow?: boolean
+          requirements?: string | null
+          review_deadline?: string | null
+          state?: string
+          submission_note?: string | null
           title?: string
           winner_count?: number
           winner_user_ids?: string[]
           winners_picked_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "drops_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "drops_creator_id_fkey"
             columns: ["creator_id"]
@@ -1047,6 +1313,7 @@ export type Database = {
           audio_url: string | null
           author_id: string
           body: string
+          card: Json | null
           created_at: string
           deleted_at: string | null
           duration_ms: number | null
@@ -1059,6 +1326,7 @@ export type Database = {
           audio_url?: string | null
           author_id: string
           body: string
+          card?: Json | null
           created_at?: string
           deleted_at?: string | null
           duration_ms?: number | null
@@ -1071,6 +1339,7 @@ export type Database = {
           audio_url?: string | null
           author_id?: string
           body?: string
+          card?: Json | null
           created_at?: string
           deleted_at?: string | null
           duration_ms?: number | null
@@ -1193,6 +1462,54 @@ export type Database = {
           tag?: string
         }
         Relationships: []
+      }
+      knocks: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          note: string | null
+          responded_at: string | null
+          response: string | null
+          seen: boolean
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          note?: string | null
+          responded_at?: string | null
+          response?: string | null
+          seen?: boolean
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          note?: string | null
+          responded_at?: string | null
+          response?: string | null
+          seen?: boolean
+          to_user?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knocks_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knocks_to_user_fkey"
+            columns: ["to_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       link_preview_hides: {
         Row: {
@@ -2175,10 +2492,12 @@ export type Database = {
           accent_color: string | null
           avatar_url: string | null
           badges: string[]
-          banner_url: string | null
           banner_gradient: Json | null
           banner_mode: string | null
+          banner_url: string | null
           bio: string | null
+          bounties_cancelled: number
+          bounties_completed: number
           created_at: string
           display_name: string | null
           featured_badge: string | null
@@ -2187,9 +2506,12 @@ export type Database = {
           paw_balance: number
           paw_earned: number
           pronouns: string | null
+          purify_until: string | null
           reduced_motion: boolean
           rizz_score: number
           status_text: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           theme_mode: string
           theme_preset: string
           trial_active: boolean
@@ -2203,10 +2525,12 @@ export type Database = {
           accent_color?: string | null
           avatar_url?: string | null
           badges?: string[]
-          banner_url?: string | null
           banner_gradient?: Json | null
           banner_mode?: string | null
+          banner_url?: string | null
           bio?: string | null
+          bounties_cancelled?: number
+          bounties_completed?: number
           created_at?: string
           display_name?: string | null
           featured_badge?: string | null
@@ -2215,9 +2539,12 @@ export type Database = {
           paw_balance?: number
           paw_earned?: number
           pronouns?: string | null
+          purify_until?: string | null
           reduced_motion?: boolean
           rizz_score?: number
           status_text?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           theme_mode?: string
           theme_preset?: string
           trial_active?: boolean
@@ -2231,10 +2558,12 @@ export type Database = {
           accent_color?: string | null
           avatar_url?: string | null
           badges?: string[]
-          banner_url?: string | null
           banner_gradient?: Json | null
           banner_mode?: string | null
+          banner_url?: string | null
           bio?: string | null
+          bounties_cancelled?: number
+          bounties_completed?: number
           created_at?: string
           display_name?: string | null
           featured_badge?: string | null
@@ -2243,9 +2572,12 @@ export type Database = {
           paw_balance?: number
           paw_earned?: number
           pronouns?: string | null
+          purify_until?: string | null
           reduced_motion?: boolean
           rizz_score?: number
           status_text?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           theme_mode?: string
           theme_preset?: string
           trial_active?: boolean
@@ -4528,19 +4860,25 @@ export type Database = {
         Row: {
           acquired_at: string
           effect_id: string
+          enabled: boolean
           equipped: boolean
+          intensity: number
           user_id: string
         }
         Insert: {
           acquired_at?: string
           effect_id: string
+          enabled?: boolean
           equipped?: boolean
+          intensity?: number
           user_id: string
         }
         Update: {
           acquired_at?: string
           effect_id?: string
+          enabled?: boolean
           equipped?: boolean
+          intensity?: number
           user_id?: string
         }
         Relationships: [
@@ -4694,9 +5032,9 @@ export type Database = {
       award_paws: {
         Args: {
           _amount: number
-          _description?: string | null
+          _description?: string
           _kind: string
-          _reference?: string | null
+          _reference?: string
           _user: string
         }
         Returns: number
@@ -4725,12 +5063,15 @@ export type Database = {
         Args: { _bot_id: string; _limit: number; _window_seconds: number }
         Returns: boolean
       }
+      bot_default_embed: { Args: { _bot_id: string }; Returns: Json }
       bot_directory: { Args: { _search?: string }; Returns: Json }
+      bot_embed_prepare: { Args: { _embed: Json }; Returns: Json }
       bot_insert_message: {
         Args: {
           _body: string
           _bot_id: string
           _card?: Json
+          _embeds?: Json
           _realm_id: string
           _realm_room_id: string
         }
@@ -4739,6 +5080,23 @@ export type Database = {
       bot_installed_in_realm: {
         Args: { _bot_id: string; _realm_id: string }
         Returns: boolean
+      }
+      bot_message_vars: {
+        Args: { _realm_id: string; _realm_room_id: string; _user_id?: string }
+        Returns: Json
+      }
+      bot_plain: {
+        Args: { _label: string; _max: number; _value: string }
+        Returns: string
+      }
+      bot_render_template: {
+        Args: { _bot_id: string; _realm_id: string; _vars: Json }
+        Returns: Json
+      }
+      bounty_escrow_config: { Args: never; Returns: Json }
+      bounty_fee: {
+        Args: { _prize: number; _taken?: boolean }
+        Returns: number
       }
       bounty_paw_reward: { Args: never; Returns: number }
       can_manage_realm_bots: {
@@ -4765,6 +5123,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cancel_bounty: {
+        Args: { _drop_id: string; _reason?: string }
+        Returns: Json
+      }
       cancel_realm_message: { Args: { _id: string }; Returns: Json }
       channel_reactions_allowed: {
         Args: { _realm_id: string; _room_id: string; _user_id: string }
@@ -4772,6 +5134,10 @@ export type Database = {
       }
       channel_write_allowed: {
         Args: { _realm_id: string; _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      chat_poll_visible: {
+        Args: { _poll: Database["public"]["Tables"]["chat_polls"]["Row"] }
         Returns: boolean
       }
       claim_bounty: { Args: { _drop_id: string }; Returns: Json }
@@ -4799,6 +5165,18 @@ export type Database = {
           _command_id: string
           _realm_id: string
           _realm_room_id: string
+        }
+        Returns: Json
+      }
+      create_chat_poll: {
+        Args: {
+          _group_id: string
+          _kind: string
+          _minutes?: number
+          _multi?: boolean
+          _options: Json
+          _other_user: string
+          _question: string
         }
         Returns: Json
       }
@@ -5015,6 +5393,7 @@ export type Database = {
       list_realm_bans: { Args: { _realm_id: string }; Returns: Json }
       list_realm_invites: { Args: { _realm_id: string }; Returns: Json }
       list_realm_reports: { Args: { _realm_id: string }; Returns: Json }
+      mark_knocks_seen: { Args: { _peer: string }; Returns: undefined }
       moderate_delete_message: {
         Args: { _message_id: string; _reason?: string }
         Returns: Json
@@ -5029,8 +5408,24 @@ export type Database = {
         Args: { _actor: string; _body: string; _data: Json; _type: string }
         Returns: undefined
       }
+      payout_bounty: {
+        Args: { _drop_id: string; _note: string }
+        Returns: Json
+      }
       pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
       pin_message: { Args: { _message_id: string }; Returns: undefined }
+      ping_presence: { Args: never; Returns: string }
+      post_paws_bounty: {
+        Args: {
+          _description: string
+          _hours: number
+          _media_url?: string
+          _prize: number
+          _requirements: string
+          _title: string
+        }
+        Returns: Json
+      }
       preview_group_invite: {
         Args: { _code: string }
         Returns: {
@@ -5136,6 +5531,14 @@ export type Database = {
         }
         Returns: Json
       }
+      release_bounty: {
+        Args: { _drop_id: string; _reason?: string }
+        Returns: Json
+      }
+      release_overdue_bounty_payout: {
+        Args: { _drop_id: string }
+        Returns: Json
+      }
       reorder_realm_rooms: {
         Args: { _realm_id: string; _room_ids: string[] }
         Returns: Json
@@ -5144,8 +5547,20 @@ export type Database = {
         Args: { _message_id: string; _reason?: string }
         Returns: Json
       }
+      reset_bot_embed_template: {
+        Args: { _bot_id: string; _realm_id: string }
+        Returns: Json
+      }
       resolve_realm_report: {
         Args: { _report_id: string; _resolution?: string }
+        Returns: Json
+      }
+      respond_knock: {
+        Args: { _knock_id: string; _response: string }
+        Returns: undefined
+      }
+      review_bounty_submission: {
+        Args: { _approve: boolean; _drop_id: string; _note?: string }
         Returns: Json
       }
       revoke_realm_invite: { Args: { _invite_id: string }; Returns: undefined }
@@ -5204,10 +5619,15 @@ export type Database = {
           thread_root: string
         }[]
       }
+      send_bot_embed_test: {
+        Args: { _bot_id: string; _realm_id: string; _realm_room_id: string }
+        Returns: Json
+      }
       send_due_scheduled_messages: {
         Args: { _limit?: number }
         Returns: number
       }
+      send_knock: { Args: { _note?: string; _to: string }; Returns: Json }
       send_test_push: { Args: never; Returns: undefined }
       set_bot_command_channel_enabled: {
         Args: {
@@ -5216,6 +5636,10 @@ export type Database = {
           _realm_id: string
           _realm_room_id: string
         }
+        Returns: Json
+      }
+      set_bot_embed_template: {
+        Args: { _bot_id: string; _embed: Json; _realm_id: string }
         Returns: Json
       }
       set_bot_public: {
@@ -5246,6 +5670,10 @@ export type Database = {
       set_presence_status: {
         Args: { _manual?: boolean; _status: string }
         Returns: undefined
+      }
+      set_profile_effect_style: {
+        Args: { _enabled?: boolean; _intensity?: number; _slug: string }
+        Returns: Json
       }
       set_realm_allow_member_bots: {
         Args: { _allow: boolean; _realm_id: string }
@@ -5303,6 +5731,17 @@ export type Database = {
         Args: { _enabled: boolean; _realm_id: string }
         Returns: Json
       }
+      settle_expired_bounties: { Args: never; Returns: number }
+      submit_bounty_proof: {
+        Args: {
+          _drop_id: string
+          _links?: string[]
+          _media?: string[]
+          _note: string
+        }
+        Returns: Json
+      }
+      take_bounty: { Args: { _drop_id: string }; Returns: Json }
       timeout_realm_member: {
         Args: {
           _minutes: number
@@ -5398,6 +5837,10 @@ export type Database = {
         }
         Returns: Json
       }
+      vote_chat_poll: {
+        Args: { _option: number; _poll_id: string }
+        Returns: Json
+      }
       vote_realm_poll: {
         Args: { _option: number; _poll_id: string }
         Returns: Json
@@ -5417,7 +5860,11 @@ export type Database = {
       badge_rarity: "common" | "rare" | "epic" | "legendary" | "mythic"
       group_member_role: "owner" | "admin" | "member"
       post_visibility: "public" | "close_friends" | "followers"
-      profile_effect_type: "avatar_decoration" | "profile_effect" | "profile_frame" | "nameplate"
+      profile_effect_type:
+        | "avatar_decoration"
+        | "profile_effect"
+        | "nameplate"
+        | "profile_frame"
       realm_role: "owner" | "mod" | "member"
       realm_type: "text" | "announcement" | "drops" | "voice"
       voice_role: "host" | "speaker" | "listener"
@@ -5552,7 +5999,12 @@ export const Constants = {
       badge_rarity: ["common", "rare", "epic", "legendary", "mythic"],
       group_member_role: ["owner", "admin", "member"],
       post_visibility: ["public", "close_friends", "followers"],
-      profile_effect_type: ["avatar_decoration", "profile_effect", "profile_frame", "nameplate"],
+      profile_effect_type: [
+        "avatar_decoration",
+        "profile_effect",
+        "nameplate",
+        "profile_frame",
+      ],
       realm_role: ["owner", "mod", "member"],
       realm_type: ["text", "announcement", "drops", "voice"],
       voice_role: ["host", "speaker", "listener"],
