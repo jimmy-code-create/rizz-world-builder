@@ -24,9 +24,9 @@
   flip `VITE_PURIFY_ENFORCED` and the switch locks to subscribers. The switch
   only appears once `20261112000000_post_super_reactions.sql` is applied, and
   reads of the old table keep working until then.
-- Voted-up reaction pills are larger everywhere: the row is 36px tall with a
-  22px glyph (40px and 26px when super), so you can read what the reaction is
-  without leaning in.
+- Reaction pills are sized for the thumb without shouting: 32px tall with an
+  18px glyph, 36px and 22px when super. Readable at a glance, no longer a row
+  of dinner plates.
 - Toasts stopped shouting. The pill is now thumb-wide (20.5rem max) with a
   12px title and 11px note, only one is on screen at a time, routine receipts
   leave sooner, and a gating message that gets tapped again is ignored for six

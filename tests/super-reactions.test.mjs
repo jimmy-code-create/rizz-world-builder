@@ -95,6 +95,9 @@ await check("super mode is visible while picking", () => {
   assert.ok(card.includes("linear-gradient(120deg,rgba(180,124,255,0.3)"), "the switch is not the pill's gradient");
   assert.ok(pills.includes("super-reaction-in"), "a super pill does not pop in");
   assert.ok(styles.includes("super-reaction-in"), "the pop-in keyframes are missing");
+  assert.ok(pills.includes('"h-8 gap-1 px-2.5 text-[13px]"'), "a normal pill is not medium sized");
+  assert.ok(pills.includes('"h-9 gap-1.5 px-3 text-[13px]"'), "a super pill is not a size above normal");
+  assert.ok(pills.includes('"h-[18px] w-[18px]"'), "the glyph is not 18px");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);
