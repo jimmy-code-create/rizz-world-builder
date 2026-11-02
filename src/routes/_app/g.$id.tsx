@@ -87,9 +87,9 @@ function GroupRoom() {
   // Replying is composer state, like Discord: the bar sits above the box, the
   // keyboard opens, and the chat settles on the newest message.
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const scrolledGroupIdRef = useRef<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [olderMessages, setOlderMessages] = useState<Awaited<ReturnType<typeof fetchGroupMessages>>>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
@@ -183,7 +183,18 @@ function GroupRoom() {
     return () => { supabase.removeChannel(ch); };
   }, [groupReady, id, qc, user?.id]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
+  useEffect(() => {
+    const list = messagesListRef.current;
+    if (!list || !msgs.data?.length) return;
+    const initial = scrolledGroupIdRef.current !== id;
+    scrolledGroupIdRef.current = id;
+    const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 200;
+    if (initial || nearBottom || document.activeElement === composerRef.current) {
+      // Scroll the transcript, not the document: `scrollIntoView` could move
+      // the page under an open phone keyboard and dismiss it.
+      list.scrollTop = list.scrollHeight;
+    }
+  }, [id, msgs.data]);
   useEffect(() => {
     setOlderMessages([]);
     setHasOlderMessages(true);
@@ -222,6 +233,12 @@ function GroupRoom() {
     if (!composer) return;
     composer.style.height = "auto";
     composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+    // Typing grows the box. Keep the newest message pinned above it instead of
+    // letting the growing composer eat the bottom of the transcript.
+    if (document.activeElement === composer) {
+      const list = messagesListRef.current;
+      if (list) list.scrollTop = list.scrollHeight;
+    }
   }, [body]);
 
   useEffect(() => {
@@ -269,9 +286,17 @@ function GroupRoom() {
     scrollChatToLatest(messagesListRef.current);
   }, [replyTo]);
 
+  // Tapping Send must not hand focus to the button: on a phone that closes the
+  // keyboard after every message. The mouse guard below keeps the textarea
+  // focused; this covers browsers that move focus anyway.
+  const keepComposerFocused = () => {
+    composerRef.current?.focus({ preventScroll: true });
+  };
+
   const send = async () => {
     if (!user) return;
     const draft = body.trim();
+    keepComposerFocused();
     // The quote travels in the body, like DMs, so it survives a reload without
     // another join or a schema change.
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
@@ -585,6 +610,7 @@ function GroupRoom() {
                     }}
                     initialView={openMessageView}
                     align={mine ? "right" : "left"}
+                    className={pollCard ? "w-full" : undefined}
                     // The row owns long-press, so the trigger must not race it.
                     detectPress={false}
                     reactionBar={{ onPick: (emoji) => { void reactions.toggle(m.id, emoji); } }}
@@ -732,7 +758,6 @@ function GroupRoom() {
         {(msgs.data ?? []).length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-12">Say hi to start the conversation 👋</p>
         )}
-        <div ref={endRef} />
           </div>
       </div>
 
@@ -836,7 +861,14 @@ function GroupRoom() {
               }}
             />
           </div>
-          <Button onClick={() => void send()} disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendMessage.isPending ? "Sending message" : "Send message"}>
+          <Button
+            onClick={() => void send()}
+            onMouseDown={(event) => event.preventDefault()}
+            disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage}
+            size="icon"
+            className="bg-primary text-primary-foreground border-0 shadow-md"
+            aria-label={sendMessage.isPending ? "Sending message" : "Send message"}
+          >
             <Send className="h-4 w-4" />
           </Button>
           </div>

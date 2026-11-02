@@ -23,7 +23,7 @@ export function ReactionKeyGlyph({
   const lookup = useEmojiLookup(id ? [id] : []);
   const map = useMemo(() => emojiMapOf(lookup.data), [lookup.data]);
 
-  if (!id) return <UnicodeGlyph value={reactionKey} className={className} />;
+  if (!id) return <UnicodeGlyph value={reactionKey} className={className} size={16} />;
 
   return (
     <EmojiGlyph

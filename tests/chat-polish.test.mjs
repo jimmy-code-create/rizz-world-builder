@@ -112,6 +112,26 @@ await check("jump-to-message is a fading wash, not a ring", async () => {
   assert.ok(realm.includes("chat-jump-highlight"), "realm rows use the wash");
 });
 
+await check("sending keeps the phone keyboard open and typing follows", async () => {
+  for (const [name, source] of [["dm", dm], ["group", group]]) {
+    assert.match(
+      source,
+      /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/,
+      `${name} send does not take focus from the composer`,
+    );
+    assert.match(
+      source,
+      /const keepComposerFocused = \(\) => \{\s*composerRef\.current\?\.focus\(\{ preventScroll: true \}\);/,
+      `${name} restores focus after sending`,
+    );
+    assert.match(
+      source,
+      /document\.activeElement === composer[\s\S]{0,160}?scrollTop = (?:list|messagesListRef\.current)\.scrollHeight/,
+      `${name} keeps the newest message in view as the box grows`,
+    );
+  }
+});
+
 await check("clicking a composer lands on the newest message", async () => {
   for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
     assert.ok(source.includes("scrollChatToLatest("), `${name} uses the shared jump`);

@@ -21,7 +21,6 @@ import {
   Film,
   MoreHorizontal,
   MessageSquareText,
-  Radio,
   Gamepad2,
   ChevronRight,
   Clock,
@@ -49,6 +48,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
+import { LiveLaunchButton } from "@/components/live/LiveLaunchButton";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { PurifyPaywallSheet } from "@/components/purify/PurifyPaywallSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
@@ -445,15 +445,7 @@ export function AppShell() {
             <Plus className="h-5 w-5" /> New post
           </Button>
 
-          {isReels && (
-            <Button
-              onClick={() => setLiveOpen(true)}
-              variant="outline"
-              className="mb-4 h-11 min-h-[44px] gap-2 rounded-lg border-destructive/40 bg-destructive/10 font-semibold text-destructive hover:bg-destructive/20 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Radio className="h-5 w-5" /> Go live
-            </Button>
-          )}
+          {isReels && <LiveLaunchButton variant="sidebar" onClick={() => setLiveOpen(true)} />}
 
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto -mx-1 px-1">
             <button
@@ -634,21 +626,7 @@ export function AppShell() {
               );
             })}
             {isReels ? (
-              <button
-                type="button"
-                onClick={() => setLiveOpen(true)}
-                className="group flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
-                aria-label="Go live"
-                title="Go live"
-              >
-                <div className="relative h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-destructive text-destructive-foreground flex flex-col items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 group-focus-visible:ring-2 group-focus-visible:ring-ring">
-                  <Radio className="h-5 w-5 stroke-[2.5]" />
-                  <span className="mt-0.5 text-[8px] font-black uppercase leading-none tracking-[0.14em]">
-                    Live
-                  </span>
-                  <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-white ring-2 ring-background animate-pulse motion-reduce:animate-none" />
-                </div>
-              </button>
+              <LiveLaunchButton variant="mobile" onClick={() => setLiveOpen(true)} />
             ) : (
               <button
                 type="button"

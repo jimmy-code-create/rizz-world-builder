@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< Updated upstream
 ## 2026-11-03 — Bounty tags, heading colour, covers, and the photo-picker fix
 
 - Bounties now carry up to five Reddit-style tags. Every member can add them —
@@ -22,6 +23,65 @@
   inserts, and an 11-argument `post_paws_bounty` wrapper that preserves the
   existing escrow body. The client falls back gracefully if the migration has
   not reached a deployment yet.
+=======
+## 2026-11-02 — The RIZZ pack is nine real stickers
+
+- The old twelve hand-drawn cat faces are gone for good. The pack is now the
+  nine stickers shipped in `public/emoji/rizz/` (happy, cry, achoo, sleepy,
+  tired, angry, surprise, clap, hm), served as PNGs from one manifest, so the
+  same sticker draws in a reaction pill, a badge, a game card, a status bubble
+  and a chat message without being re-drawn by hand.
+- Legacy shortcodes (`:cat_love:`, `:cat_gg:`, …) survive as aliases to the
+  closest new sticker: stored badges, built-in games, presence presets and old
+  messages keep rendering instead of printing raw text.
+- The pack shows last everywhere it appears as a category: the shared emoji
+  sheet gains a `RIZZ` tab after Recent, Default and every joined realm, and
+  the composer sheet moves the panel below the Unicode sections.
+- Super reactions use only the pack. Flipping the super switch narrows the
+  sheet to the RIZZ tab — no default glyphs, no realm uploads — and the burst,
+  the pill and the reactor rows all draw the sticker instead of a codepoint.
+
+## 2026-11-02 — Live, with a room that talks back
+
+- The Live button is a real control now: ink, coral signal, a breathing on-air
+  dot, and the three things a room can be — camera, screen, or both. The desktop
+  rail and the phone FAB share one component instead of drifting apart.
+- The studio opens with a pre-live instead of a title box. A private camera
+  check (with a real `getUserMedia` preview), room title, sharing mode, chat
+  scope, join-request switch and a mic-starts-muted default are all chosen
+  before the room exists. The room's choices are encoded in
+  `voice_rooms.topic` (`rizz-live:v1:…`), so old rooms fall back to defaults and
+  no migration is needed.
+- Screen live gets a one-tap “Pick a screen” prompt in the studio, and the
+  existing screen-share/camera controls remain available. Camera stays off until
+  the host turns it on.
+- The room is a stage, not a grid. Only the host and people brought on stage get
+  tiles; everyone else lives in the audience dock. The dock carries live chat,
+  who is on stage, who is watching, a host mute button, and a copy-invite link.
+- Audiences can ask to come on live from a dedicated “Wanna come on live?” sheet:
+  quick prompts, a 140-character note, and a request that lands in the host's
+  dock. Accept brings the guest on stage and tells them to unmute; decline clears
+  the ask. The request flow uses the existing hand-raise flag plus broadcast
+  stage state, so it stays ephemeral like the room.
+- Chat and stage events ride one broadcast channel and disappear when the room
+  closes. Background sound beds (Night drive, Soft focus, Afterglow) are
+  synthesized on each device, default off, and can be muted from the dock.
+
+## 2026-11-02 — Polls fill the row, typing stays in flow
+
+- DM and group polls take the whole message row. The card shared realm chat's
+  `max-w-md` cap and the message menu shrink-wrapped it, so a poll on a wide
+  phone read as a half-width tile. The menu trigger now opts into `w-full` for
+  polls, the card drops its cap there, and long option labels wrap instead of
+  ending in an ellipsis.
+- Sending no longer closes the phone keyboard. The send button refuses focus on
+  pointer down and the composer takes focus back inside the tap, so a run of
+  messages can be typed without tapping the box again; the caret and draft stay
+  where they were.
+- Typing follows the newest message. As the composer grows, the transcript is
+  pinned to the bottom while the field is focused, so a long message never
+  pushes the conversation out of view.
+>>>>>>> Stashed changes
 
 ## 2026-11-02 — Purify sells itself, without the video
 

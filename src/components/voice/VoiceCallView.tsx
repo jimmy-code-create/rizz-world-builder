@@ -18,6 +18,7 @@ import {
   VolumeX,
   Wifi,
   Sliders,
+  Eye,
   MessageSquare,
   X,
   Send,
@@ -56,6 +57,9 @@ import { getGame, useRoomActivity, type RoomActivity } from "@/lib/activities";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
+import { LiveAudienceDock } from "@/components/live/LiveAudienceDock";
+import { LiveAmbience } from "@/components/live/LiveAmbience";
+import { useLiveRoom } from "@/components/live/useLiveRoom";
 import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
 import { VOICE_BOT_COMMANDS, voiceBotCommand } from "@/lib/voice-bot-commands";
 import { setGameBotHidden, useGameBotHidden } from "@/lib/call-bots";
@@ -429,6 +433,8 @@ export const VoiceCallView = memo(function VoiceCallView() {
     kickFromCall,
     retry,
   } = useVoiceCallContext();
+  const liveRoom = useLiveRoom();
+  const isLive = call?.kind === "live";
 
   // Sharing is a Set so the per-tile check stays O(1). Speaking levels are
   // read inside <SpeakingTiles> only, so an audio tick never re-renders the
@@ -774,6 +780,12 @@ export const VoiceCallView = memo(function VoiceCallView() {
     ? "you"
     : (participants.find((participant) => participant.user_id === stagePeerId)?.user?.username ??
       "someone");
+  // A live room is a stage, not a grid of everyone who opened the link. Only
+  // the host and people the host brought up get tiles; the rest of the room
+  // lives in the audience dock.
+  const stageParticipants = isLive
+    ? participants.filter((participant) => liveRoom.stageSet.has(participant.user_id))
+    : participants;
 
   return (
     // A voice call takes over the screen: the tiles, the music bot and the
@@ -792,8 +804,15 @@ export const VoiceCallView = memo(function VoiceCallView() {
       >
         <header className="relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2.5 pt-3 sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {call.kind === "live" ? "Live" : "Voice"}
+            <p className="flex items-center gap-1.5 truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {isLive ? (
+                <>
+                  <span className="live-dot h-1.5 w-1.5" />
+                  <span className="text-[#ff8a91]">Live</span>
+                </>
+              ) : (
+                "Voice"
+              )}
             </p>
             <h1 className="truncate font-display text-[17px] font-bold leading-tight">
               {call.channelName}
@@ -804,9 +823,13 @@ export const VoiceCallView = memo(function VoiceCallView() {
             >
               {!error && <Wifi className="h-3 w-3" />}
               {error ??
-                `${status} · ${participants.length + (musicBot.enabled ? 1 : 0)} ${
-                  participants.length + (musicBot.enabled ? 1 : 0) === 1 ? "person" : "people"
-                }`}
+                isLive
+                  ? `${status} · ${liveRoom.viewerCount} ${
+                      liveRoom.viewerCount === 1 ? "person" : "people"
+                    } in the room`
+                  : `${status} · ${participants.length + (musicBot.enabled ? 1 : 0)} ${
+                      participants.length + (musicBot.enabled ? 1 : 0) === 1 ? "person" : "people"
+                    }`}
             </p>
           </div>
           {error && (
@@ -869,7 +892,28 @@ export const VoiceCallView = memo(function VoiceCallView() {
             <ChevronDown className="h-[18px] w-[18px]" />
           </button>
         </header>
-        <GameSessionsBar
+        {isLive && liveRoom.isHost && liveRoom.settings.mode !== "camera" && !sharingScreen && (
+          <div className="shrink-0 border-b border-primary/15 bg-primary/[0.04] px-3 py-2.5 sm:px-4">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
+                <Radio className="h-4 w-4" />
+              </span>
+              <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-foreground">
+                <span className="font-bold text-foreground">Screen live is ready.</span>{" "}
+                Pick the tab, game or window you want the room to see.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={toggleScreenShareSafe}
+                className="h-8 shrink-0 border-0 bg-primary px-3 text-[11px] font-black text-primary-foreground"
+              >
+                <ScreenShare className="h-3.5 w-3.5" /> Pick a screen
+              </Button>
+            </div>
+          </div>
+        )}
+        {!isLive && <GameSessionsBar
           sessions={gameBot.sessions}
           viewersByHost={gameBot.viewersByHost}
           meId={user?.id}
@@ -883,8 +927,9 @@ export const VoiceCallView = memo(function VoiceCallView() {
             gameBot.leave();
           }}
           onStream={streamGameSession}
-        />
-        {roomActivity.activity &&
+        />}
+        {!isLive &&
+          roomActivity.activity &&
           !panelOpen &&
           (!bannerDismissedAt || roomActivity.activity.startedAt > bannerDismissedAt) && (
             <div className="relative shrink-0 px-3 pt-3 sm:px-4">
@@ -971,7 +1016,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
               <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3">
                 <SpeakingTiles>
                   {(speakingSet) =>
-                    participants.map((participant) => {
+                    stageParticipants.map((participant) => {
                       const isMe = participant.user_id === user?.id;
                       const speaking = speakingSet.has(participant.user_id) && !participant.muted;
                       const videoStream = isMe
@@ -1177,7 +1222,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                   }
                 </SpeakingTiles>
 
-                {musicBot.enabled && !musicBot.dismissed && (
+                {!isLive && musicBot.enabled && !musicBot.dismissed && (
                   <div className="relative">
                     <button
                       type="button"
@@ -1226,7 +1271,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                 )}
 
                 {/* GAME BOT: ready-made games that play as an overlay over the call. */}
-                {!gameHidden && (
+                {!isLive && !gameHidden && (
                   <div className="relative">
                     <button
                       type="button"
@@ -1294,7 +1339,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                   </div>
                 )}
 
-                {(musicBot.dismissed || gameHidden) && (
+                {!isLive && (musicBot.dismissed || gameHidden) && (
                   <div className="col-span-full flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
                     <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
                       {musicBot.dismissed && gameHidden
@@ -1328,7 +1373,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                   </div>
                 )}
               </div>
-              {playing && !isMobileView && !immersive && roomActivity.activity && (
+              {!isLive && playing && !isMobileView && !immersive && roomActivity.activity && (
                 <ActivityPanel
                   activity={roomActivity.activity}
                   entry={gameEntry}
@@ -1344,6 +1389,9 @@ export const VoiceCallView = memo(function VoiceCallView() {
                 />
               )}
             </div>
+            {isLive && !isMobileView && (
+              <LiveAudienceDock live={liveRoom} variant="rail" />
+            )}
           </div>
         </div>
         {/* Music section: full now-playing + queue + transport live in the
@@ -1352,31 +1400,63 @@ export const VoiceCallView = memo(function VoiceCallView() {
           className="relative shrink-0 border-t border-white/5 glass-strong px-2 sm:px-4 pt-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
-          <CallControls
-            muted={muted}
-            deafened={deafened}
-            cameraOn={cameraOn}
-            sharingScreen={sharingScreen}
-            isGameStreaming={isGameStreaming}
-            screenSupported={screenSupported}
-            onToggleMute={toggleMute}
-            onToggleDeafen={toggleDeafen}
-            onToggleScreenShare={toggleScreenShareSafe}
-            onToggleGameShare={toggleGameShare}
-            onToggleCamera={toggleCamera}
-            onOpenSettings={openSettings}
-            onLeave={handleLeaveClick}
-          />
+          {isLive && !liveRoom.isHost && !liveRoom.isOnStage ? (
+            <div className="mx-auto flex max-w-lg items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-[#1a1530] px-3 py-2.5">
+                <Eye className="h-4 w-4 shrink-0 text-[#ff8a91]" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-bold text-foreground">Watching live</span>
+                  <span className="block truncate text-[9px] text-muted-foreground">
+                    Ask in Live chat to come on stage
+                  </span>
+                </span>
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openSettings}
+                className="h-11 shrink-0 rounded-2xl border-white/10 bg-white/[0.03] px-3 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <Sliders className="h-3.5 w-3.5" /> Audio
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleLeaveClick}
+                className="h-11 shrink-0 rounded-2xl border-destructive/40 bg-destructive/15 px-3 text-[11px] font-bold text-destructive hover:bg-destructive/25"
+              >
+                <PhoneOff className="h-3.5 w-3.5" /> Leave
+              </Button>
+            </div>
+          ) : (
+            <CallControls
+              muted={muted}
+              deafened={deafened}
+              cameraOn={cameraOn}
+              sharingScreen={sharingScreen}
+              isGameStreaming={isGameStreaming}
+              screenSupported={screenSupported}
+              onToggleMute={toggleMute}
+              onToggleDeafen={toggleDeafen}
+              onToggleScreenShare={toggleScreenShareSafe}
+              onToggleGameShare={toggleGameShare}
+              onToggleCamera={toggleCamera}
+              onOpenSettings={openSettings}
+              onLeave={handleLeaveClick}
+            />
+          )}
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
-            {sharingScreen
-              ? isGameStreaming
-                ? "Streaming your game only"
-                : "Sharing your screen"
-              : sharingParticipants.length > 0
-                ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
-                : cameraOn
-                  ? `Camera on · ${facing === "user" ? "front" : "back"}`
-                  : "Camera off · mic " + (muted ? "muted" : "live")}
+            {isLive && !liveRoom.isHost && !liveRoom.isOnStage
+              ? "You're in the audience · mic stays off until the host brings you up"
+              : sharingScreen
+                ? isGameStreaming
+                  ? "Streaming your game only"
+                  : "Sharing your screen"
+                : sharingParticipants.length > 0
+                  ? `Watching @${sharingParticipants[0].user?.username ?? "someone"}'s screen`
+                  : cameraOn
+                    ? `Camera on · ${facing === "user" ? "front" : "back"}`
+                    : "Camera off · mic " + (muted ? "muted" : "live")}
           </p>
           {screenError && (
             <p role="alert" className="mt-1 text-center text-[10px] text-destructive">
@@ -1405,7 +1485,9 @@ export const VoiceCallView = memo(function VoiceCallView() {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           muted={muted}
-          onToggleMute={toggleMute}
+          onToggleMute={
+            isLive && !liveRoom.isHost && !liveRoom.isOnStage ? undefined : toggleMute
+          }
           participants={participants}
           currentUserId={user?.id}
           peerAudio={peerAudio}
@@ -1475,6 +1557,12 @@ export const VoiceCallView = memo(function VoiceCallView() {
             }}
             onEnd={() => void handleEndGame()}
           />
+        )}
+        {isLive && isMobileView && (
+          <LiveAudienceDock live={liveRoom} variant="mobile" />
+        )}
+        {isLive && (
+          <LiveAmbience bed={liveRoom.settings.soundBed} muted={liveRoom.ambienceMuted} />
         )}
         {/* VC Chat Sheet */}
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>

@@ -1,7 +1,12 @@
 import { CatEmoji } from "@/components/emoji/CatEmoji";
-import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { CAT_SHORTCODES, catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 
-const SHORTCODE_RE = /:(cat_love|cat_cool|cat_sleep|cat_lol|cat_wow|cat_sus|cat_music|cat_hype|cat_gg|cat_sad|cat_wave|cat_think):/g;
+// Built from the manifest so a new sticker (or a legacy alias) is picked up by
+// every renderer without a second list to drift.
+const SHORTCODE_RE = new RegExp(
+  `:(${[...CAT_SHORTCODES].map((code) => code.slice(1, -1)).join("|")}):`,
+  "g",
+);
 
 /** Split text on known :cat_* shortcodes. Unknown shortcodes stay plain text. */
 export function splitCatSegments(text: string): Array<{ text: string; cat?: string }> {

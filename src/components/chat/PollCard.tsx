@@ -35,6 +35,8 @@ type PollViewProps = {
   /** "Who voted" state lives with the query that fetches them. */
   votersOpen: boolean;
   onVotersOpenChange: (open: boolean) => void;
+  /** DM/group chats own the full row; realm chat keeps its compact card. */
+  fullWidth?: boolean;
 };
 
 /**
@@ -55,6 +57,7 @@ function PollCardView({
   onVote,
   votersOpen,
   onVotersOpenChange,
+  fullWidth = false,
 }: PollViewProps) {
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -78,7 +81,7 @@ function PollCardView({
   };
 
   return (
-    <div className="mt-1 w-full max-w-md rounded-[10px] border border-border bg-card p-3.5">
+    <div className={`mt-1 w-full rounded-[10px] border border-border bg-card p-3.5 ${fullWidth ? "" : "max-w-md"}`}>
       <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-primary">
         <IconTile
           size="xs"
@@ -89,7 +92,7 @@ function PollCardView({
         </IconTile>
         Poll{multi ? " · pick any" : ""}
       </p>
-      <p className="mt-1 text-sm font-semibold leading-snug">{question}</p>
+      <p className="mt-1 break-words text-sm font-semibold leading-snug">{question}</p>
 
       <div className="mt-3 space-y-1.5">
         {options.map((option, index) => {
@@ -116,7 +119,7 @@ function PollCardView({
               {/* One box per option, carrying both the choice and its tick. */}
               <span className="relative flex items-center gap-2.5">
                 <ChoiceMark shape={multi ? "checkbox" : "radio"} checked={chosen} />
-                <span className="min-w-0 flex-1 truncate">{option}</span>
+                <span className="min-w-0 flex-1 break-words">{option}</span>
                 <span className="shrink-0 text-xs font-semibold text-muted-foreground">
                   {share}%
                 </span>
@@ -126,8 +129,8 @@ function PollCardView({
         })}
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-1.5">
           {closed ? (
             <>
               <Clock className="h-3 w-3" /> Voting closed · {total} {total === 1 ? "vote" : "votes"}
@@ -254,6 +257,7 @@ export function ChatPollCard({ card, canVote = true }: { card: ChatPollCardPaylo
       onVote={(index) => voteChatPoll(card.pollId, index)}
       votersOpen={votersOpen}
       onVotersOpenChange={setVotersOpen}
+      fullWidth
     />
   );
 }

@@ -212,6 +212,12 @@ function DMPage() {
     if (!composer) return;
     composer.style.height = "auto";
     composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+    // Typing grows the box. Keep the newest message pinned above it instead of
+    // letting the growing composer eat the bottom of the transcript.
+    if (document.activeElement === composer) {
+      const list = scrollRef.current;
+      if (list) list.scrollTop = list.scrollHeight;
+    }
   }, [body]);
 
   // Live elapsed timer while recording
@@ -417,7 +423,10 @@ function DMPage() {
     const appended = previousIds.length > 0 &&
       previousIds.every((id, index) => currentIds[index] === id);
     if (initialLoad || (appended && wasNearBottomRef.current)) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Scroll the transcript itself, never the page: `scrollIntoView` could
+      // move the document under an open phone keyboard and dismiss it.
+      const list = scrollRef.current;
+      if (list) list.scrollTop = list.scrollHeight;
     }
     previousMessageIdsRef.current = currentIds;
   }, [msgs.data]);
@@ -519,8 +528,16 @@ function DMPage() {
     }
   };
 
+  // Tapping Send must not hand focus to the button: on a phone that closes the
+  // keyboard after every message. The mouse guard below keeps the textarea
+  // focused; this covers browsers that move focus anyway.
+  const keepComposerFocused = () => {
+    composerRef.current?.focus({ preventScroll: true });
+  };
+
   const send = () => {
     if (!user || (!body.trim() && !imageFile) || sendingMessageRef.current) return;
+    keepComposerFocused();
     const composerText = body;
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
     // An image with no caption keeps an empty body. Writing “📷 Image” here made
@@ -1105,6 +1122,7 @@ function DMPage() {
                   onOpenChange={(o) => (o ? openMessageMenu(m.id) : setOpenMsg(null))}
                   initialView={openMsgView}
                   align={mine ? "right" : "left"}
+                  className={pollCard ? "w-full" : undefined}
                   // The row owns long-press; the menu keeps double-tap, keyboard
                   // and right-click. Two racing timers double-vibrated.
                   detectPress={false}
@@ -1415,7 +1433,14 @@ function DMPage() {
                   <Clock className="h-4 w-4" />
                 </Button>
               )}
-              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+              <Button
+                onClick={() => void send()}
+                onMouseDown={(event) => event.preventDefault()}
+                disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)}
+                size="icon"
+                className="bg-primary text-primary-foreground border-0 shadow-md"
+                aria-label={sendingMessage ? "Sending message" : "Send message"}
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </>

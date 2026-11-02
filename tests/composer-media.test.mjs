@@ -99,6 +99,17 @@ await check("DMs and groups can start a poll", () => {
   assert.match(group, /const pollCard = asChatPollCard\(m\.card\)/);
   assert.match(dm, /<ChatPollCard card=\{pollCard\}/);
   assert.match(group, /<ChatPollCard card=\{pollCard\}/);
+  const card = read("src/components/chat/PollCard.tsx");
+  assert.match(card, /fullWidth\?: boolean/);
+  assert.match(card, /fullWidth \? "" : "max-w-md"/, "DM/group polls drop the compact cap");
+  assert.match(card, /min-w-0 flex-1 break-words/, "option text wraps instead of truncating");
+  for (const [name, source] of [["DMs", dm], ["groups", group]]) {
+    assert.match(
+      source,
+      /className=\{pollCard \? "w-full" : undefined\}/,
+      `${name} give the poll the whole message row`,
+    );
+  }
   const dialog = read("src/components/chat/PollDialog.tsx");
   assert.match(dialog, /dmUserId\?: string/);
   assert.match(dialog, /groupId\?: string/);
@@ -169,17 +180,23 @@ await check("composer rows share one height", () => {
   assert.match(composer, /triggerClassName=\{compact \? "h-9 w-9" : "h-10 w-10"\}/);
 });
 
-await check("the cat set stays one silhouette with per-face features", () => {
-  assert.ok(!/<text/.test(cat), "no text glyphs — a phone font would move the z's");
-  for (const hook of ["fx-heart", "fx-glint", "fx-z", "fx-z2", "fx-pupil", "fx-slide", "fx-flick", "fx-crown", "fx-tear", "fx-paw", "fx-dot1", "fx-dot2", "fx-dot3"]) {
-    assert.ok(cat.includes(hook), `${hook} keeps its animation hook`);
-  }
-  for (const name of [
-    "cat_love", "cat_cool", "cat_sleep", "cat_lol", "cat_wow", "cat_sus",
-    "cat_music", "cat_hype", "cat_gg", "cat_sad", "cat_wave", "cat_think",
+await check("the cat pack is nine shared stickers, not twelve drawings", () => {
+  const manifest = read("src/components/emoji/cat-emoji-manifest.ts");
+  assert.match(cat, /catImageForName/, "faces resolve to a shared image");
+  assert.match(cat, /<img/, "the pack is served as images");
+  assert.ok(!/<svg/.test(cat), "the old drawn faces are gone");
+  assert.ok(!cat.includes("EmojiFace"), "the per-face switch is gone");
+  for (const file of [
+    "101448-002-cathappy", "231129-002-catcry", "261171-002-catachu",
+    "311127-002-catsleepy", "360487-002-cattried", "671657-002-catangry",
+    "825154-002-catsurprise", "839601-002-catclap", "873539-002-cathm",
   ]) {
-    assert.ok(cat.includes(`case "${name}":`), `${name} is drawn`);
+    assert.ok(manifest.includes(file), `${file} is in the pack`);
   }
+  // Legacy shortcodes survive as aliases, so old badges, games and messages
+  // keep drawing instead of printing `:cat_gg:`.
+  assert.ok(manifest.includes('":cat_gg:"'), "legacy shortcodes survive as aliases");
+  assert.ok(manifest.includes("LEGACY_NAME_ALIAS"), "legacy component names resolve too");
 });
 
 await check("only a running loop pays for an observer", () => {

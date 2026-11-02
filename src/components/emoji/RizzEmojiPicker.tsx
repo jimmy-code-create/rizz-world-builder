@@ -14,14 +14,15 @@ import { usePurify } from "@/lib/purify";
 import { openPurifyPaywall } from "@/lib/purify-paywall";
 
 /**
- * The RIZZ emoji pack: twelve cat faces drawn in the app's dark-and-lime
- * palette. They travel as shortcodes (`:cat_love:`), so the same glyph renders
- * in a post reaction, a comment, a Reel and a message without a round trip —
+ * The RIZZ emoji pack: the nine cat stickers shipped with the app. They travel
+ * as shortcodes (`:cat_happy:`), so the same sticker renders in a post
+ * reaction, a comment, a Reel and a message without a round trip —
  * `AnimatedEmoji` and `renderTextWithCatEmoji` already resolve the shortcode.
  *
  * This is the one picker every surface uses. It carries the search field and
  * the recents row, so there is one definition of "recent" for the whole app
- * instead of four lists that drift.
+ * instead of four lists that drift. The pack itself always sits last, after
+ * Recent.
  */
 
 const RECENT_KEY = "rizz:emoji:recent";
@@ -237,7 +238,7 @@ export function RizzEmojiTrigger({
           title={label}
           className={cn("h-8 w-8 rounded-full text-muted-foreground", className)}
         >
-          <CatEmoji name="cat_wave" size={18} animate="hover" />
+          <CatEmoji name="cat_happy" size={18} animate="hover" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -246,7 +247,7 @@ export function RizzEmojiTrigger({
         className="w-[19rem] border-white/10 bg-card p-2.5 shadow-xl"
       >
         <div className="mb-2 flex items-center gap-2 border-b border-white/5 pb-2">
-          <CatEmoji name="cat_love" size={22} animate="hover" />
+          <CatEmoji name="cat_happy" size={22} animate="hover" />
           <p className="font-display text-xs font-bold">RIZZ emoji</p>
         </div>
         <RizzEmojiPanel

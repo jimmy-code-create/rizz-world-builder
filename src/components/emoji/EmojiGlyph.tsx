@@ -1,6 +1,8 @@
 import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { EmojiRow } from "@/lib/emoji-shared";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 
 /**
  * One emoji, wherever it is drawn: a unicode glyph as text, a custom emoji as
@@ -60,8 +62,31 @@ export function EmojiGlyph({
   );
 }
 
-/** The same glyph for a unicode reaction key. */
-export function UnicodeGlyph({ value, className }: { value: string; className?: string }) {
+/**
+ * The same glyph for a unicode reaction key.
+ *
+ * A cat shortcode (`:cat_happy:`) is not text — it draws the pack sticker, so
+ * a reaction pill, a reactor row and a super-reaction spark all show the cat
+ * instead of printing the shortcode.
+ */
+export function UnicodeGlyph({
+  value,
+  className,
+  size,
+}: {
+  value: string;
+  className?: string;
+  /** Sticker size for a cat key; unicode keys use the font size instead. */
+  size?: number;
+}) {
+  const cat = value.startsWith(":") ? catNameForShortcode(value) : null;
+  if (cat) {
+    return (
+      <span aria-hidden="true" className={cn("inline-grid place-items-center leading-none", className)}>
+        <CatEmoji name={cat} size={size ?? 16} animate="hover" />
+      </span>
+    );
+  }
   return (
     <span aria-hidden="true" className={cn("inline-block text-[1.05em] leading-none", className)}>
       {value}

@@ -97,6 +97,7 @@ export function ReactionPills({
               <UnicodeGlyph
                 value={group.key}
                 className={compact ? "text-[14px]" : "text-[16px]"}
+                size={compact ? 14 : 16}
               />
             )}
             {isSuper ? (

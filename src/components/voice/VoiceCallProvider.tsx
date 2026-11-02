@@ -38,6 +38,12 @@ import { useVoiceCall } from "@/lib/voice-room-audio";
 import { useCallWakeLock } from "@/lib/wake-lock";
 import { VoiceCallAudio, VoiceCallView } from "@/components/voice/VoiceCallView";
 import { MusicBotAudio, MusicBotBoundary } from "@/components/voice/MusicBotInCall";
+import {
+  LIVE_DEFAULT_SETTINGS,
+  encodeLiveSettings,
+  parseLiveSettings,
+  type LiveSettings,
+} from "@/lib/live-studio";
 
 export type VoiceChannelRef = {
   id: string;
@@ -56,12 +62,15 @@ export type ActiveCall = {
   isHost: boolean;
   /** The call's host. Only the host may remove somebody from the call. */
   hostId: string | null;
+  /** Live-only studio choices, encoded in the room's topic. */
+  liveSettings: LiveSettings | null;
 };
 
 export type CallParticipantRow = {
   user_id: string;
   role: string;
   muted: boolean;
+  hand_raised: boolean;
   sharing_screen?: boolean;
   joined_at: string;
   user?: {
@@ -101,9 +110,11 @@ type VoiceCallContextValue = {
   cameraReady: boolean;
   joinChannel: (channel: VoiceChannelRef) => void;
   /** Create a public live room and join as the host. Returns the new room id. */
-  startLiveRoom: (title: string) => Promise<string | null>;
+  startLiveRoom: (title: string, settings?: LiveSettings) => Promise<string | null>;
   /** Join a live room by id. Returns false when it has ended. */
   joinLiveRoom: (roomId: string) => Promise<boolean>;
+  /** Host only: change sound bed, chat scope or request access while live. */
+  updateLiveSettings: (patch: Partial<LiveSettings>) => Promise<void>;
   leaveCall: () => void;
   /** Host only: send someone out of the call (they leave with a notice). */
   kickFromCall: (userId: string) => void;
@@ -293,13 +304,20 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "voice_rooms", filter: `id=eq.${roomId}` },
         (payload) => {
-          if (
-            (payload.new as { is_live?: boolean })?.is_live === false &&
-            callRef.current?.roomId === roomId
-          ) {
+          const row = payload.new as { is_live?: boolean; topic?: string | null };
+          if (row?.is_live === false && callRef.current?.roomId === roomId) {
             toast("Voice call ended");
             setCall(null);
             setViewOpen(false);
+            return;
+          }
+          // The host can flip the sound bed, chat scope or join requests while
+          // live. Everyone follows the room row without a second channel.
+          if (row?.topic !== undefined && callRef.current?.kind === "live") {
+            const next = parseLiveSettings(row.topic);
+            setCall((current) =>
+              current && current.roomId === roomId ? { ...current, liveSettings: next } : current,
+            );
           }
         },
       )
@@ -351,6 +369,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           kind: "realm",
           isHost: room.host_id === user.id,
           hostId: room.host_id ?? null,
+          liveSettings: null,
         });
         setViewOpen(true);
         hapticVoiceJoin();
@@ -366,7 +385,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
   );
 
   const startLiveRoom = useCallback(
-    async (title: string) => {
+    async (title: string, settings?: LiveSettings) => {
       if (!user) {
         toast.error("Sign in to go live");
         return null;
@@ -375,14 +394,16 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
         toast.error("Leave your current call before going live");
         return null;
       }
+      const liveSettings: LiveSettings = { ...LIVE_DEFAULT_SETTINGS, ...settings };
       setBusy(true);
       try {
         const room = await createRoom({
           host_id: user.id,
           title: title.trim() || "Live on RIZZ",
-          topic: "live",
+          topic: encodeLiveSettings(liveSettings),
         });
-        setMuted(false);
+        await updateParticipant(room.id, user.id, { muted: liveSettings.startMuted });
+        setMuted(liveSettings.startMuted);
         setCameraOn(false);
         setFacing("user");
         setCall({
@@ -393,8 +414,10 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           kind: "live",
           isHost: true,
           hostId: room.host_id ?? user.id,
+          liveSettings,
         });
-        // The live sheet shows the invite link before the full studio opens.
+        // The sheet opens the studio itself once the room exists. The live
+        // dock shows the invite link, the audience and the chat.
         setViewOpen(false);
         hapticVoiceJoin();
         await qc.invalidateQueries({ queryKey: ["voice-call-participants", room.id] });
@@ -449,6 +472,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           kind: "live",
           isHost,
           hostId: room.host_id ?? null,
+          liveSettings: parseLiveSettings(room.topic),
         });
         setViewOpen(true);
         hapticVoiceJoin();
@@ -463,6 +487,21 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     },
     [user, qc],
   );
+
+  /** Host only: persist studio choices so late joiners see the same room. */
+  const updateLiveSettings = useCallback(async (patch: Partial<LiveSettings>) => {
+    const current = callRef.current;
+    if (!current || current.kind !== "live" || !current.isHost) return;
+    const next = { ...(current.liveSettings ?? LIVE_DEFAULT_SETTINGS), ...patch };
+    setCall((value) =>
+      value && value.roomId === current.roomId ? { ...value, liveSettings: next } : value,
+    );
+    const { error } = await supabase
+      .from("voice_rooms")
+      .update({ topic: encodeLiveSettings(next) })
+      .eq("id", current.roomId);
+    if (error) toast.error("Couldn't save the live settings");
+  }, []);
 
   const leaveCall = useCallback(async () => {
     const current = callRef.current;
@@ -618,6 +657,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       },
       startLiveRoom,
       joinLiveRoom,
+      updateLiveSettings,
       leaveCall: () => {
         void leaveCall();
       },
@@ -666,6 +706,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       joinChannel,
       startLiveRoom,
       joinLiveRoom,
+      updateLiveSettings,
       leaveCall,
       kickFromCall,
       toggleMute,

@@ -2106,88 +2106,52 @@ button.mention-highlight:hover,
 }
 
 /* ============ TASK 2: cat emoji animations (CSS keyframes only) ============ */
+/* The pack is nine PNG stickers; the wrapper is sized by the component and
+   the image fills it. Everything below is transform/opacity only. */
 .cat-emoji { line-height: 0; }
-.cat-emoji svg { display: block; overflow: visible; }
-.cat-emoji .fx { transform-box: fill-box; transform-origin: center; }
-/* Sticker breath: the whole head, ears and whiskers, transform-only. */
-.cat-emoji .cat-body { transform-box: fill-box; transform-origin: 50% 74%; }
-.cat-emoji .fx-ear-l,
-.cat-emoji .fx-ear-r,
-.cat-emoji .fx-whiskers { transform-box: fill-box; }
-.cat-emoji .fx-ear-l { transform-origin: 72% 100%; }
-.cat-emoji .fx-ear-r { transform-origin: 72% 100%; }
-.cat-emoji .fx-whiskers { transform-origin: 50% 50%; }
+.cat-emoji__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 /* picker grids: animate only on hover/press/focus */
-.cat-emoji--hover .fx { animation-play-state: paused; }
-.cat-emoji--hover:hover .fx, .cat-emoji--hover:active .fx, .cat-emoji--hover:focus-visible .fx,
-button:hover .cat-emoji--hover .fx, button:active .cat-emoji--hover .fx, button:focus-visible .cat-emoji--hover .fx {
+.cat-emoji--hover .cat-emoji__img { animation-play-state: paused; }
+.cat-emoji--hover:hover .cat-emoji__img, .cat-emoji--hover:active .cat-emoji__img, .cat-emoji--hover:focus-visible .cat-emoji__img,
+button:hover .cat-emoji--hover .cat-emoji__img, button:active .cat-emoji--hover .cat-emoji__img, button:focus-visible .cat-emoji--hover .cat-emoji__img {
+  animation: cat-img-wiggle 900ms ease-in-out infinite;
   animation-play-state: running;
 }
 /* reaction just added: plays once 600ms */
-.cat-emoji--once .fx { animation-iteration-count: 1; animation-duration: 600ms !important; }
+.cat-emoji--once .cat-emoji__img { animation: cat-img-pop 600ms ease-out 1; }
 /* loop budget gates .cat-emoji--loop offscreen/paused states */
-.cat-emoji--loop .fx { animation-play-state: running; }
-/* `--anim` is the entitlement/state gate: a still sticker (free account or
-   animate=false) has no expression animation at all. */
-.cat-emoji--anim.cat-emoji--cat_love .fx { animation: cat-pulse 1200ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_cool .fx-glint { animation: cat-glint 1600ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_sleep .fx-z { animation: cat-float-up 1800ms ease-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_sleep .fx-z2 { animation: cat-float-up 1800ms ease-out 300ms infinite; }
-.cat-emoji--anim.cat-emoji--cat_lol .fx { animation: cat-shake 700ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_wow .fx { animation: cat-pop 900ms ease-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_sus .fx-slide { animation: cat-slide 1400ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_music .fx { animation: cat-bob 600ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_hype .fx-flick { animation: cat-flick 500ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-.cat-emoji--anim.cat-emoji--cat_gg .fx-crown { animation: cat-wiggle 1200ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-.cat-emoji--anim.cat-emoji--cat_sad .fx-tear { animation: cat-drop 1300ms ease-in infinite; }
-.cat-emoji--anim.cat-emoji--cat_wave .fx-paw { animation: cat-wave 900ms ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-.cat-emoji--anim.cat-emoji--cat_think .fx-dot1 { animation: cat-blink 1200ms ease-in-out infinite; }
-.cat-emoji--anim.cat-emoji--cat_think .fx-dot2 { animation: cat-blink 1200ms ease-in-out 200ms infinite; }
-.cat-emoji--anim.cat-emoji--cat_think .fx-dot3 { animation: cat-blink 1200ms ease-in-out 400ms infinite; }
-
-/* The idle loop: a 3% breath, one ear twitch, a whisker sway and a soft rim
-   pulse, all transform/opacity so the reaction row never repaints layout. */
-.cat-emoji--loop .cat-body { animation: cat-breathe 3000ms ease-in-out infinite; }
-.cat-emoji--loop .fx-ear-l { animation: cat-ear-twitch-l 3000ms ease-in-out infinite; }
-.cat-emoji--loop .fx-ear-r { animation: cat-ear-twitch-r 3000ms ease-in-out infinite; }
-.cat-emoji--loop .fx-whiskers { animation: cat-whisker-sway 3000ms ease-in-out infinite; }
-.cat-emoji--loop .fx-rim-glow { animation: cat-rim-pulse 3000ms ease-in-out infinite; }
-@keyframes cat-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.028); } }
-@keyframes cat-ear-twitch-l { 0%, 58%, 100% { transform: rotate(0); } 64% { transform: rotate(-7deg); } 71% { transform: rotate(2deg); } 78% { transform: rotate(0); } }
-@keyframes cat-ear-twitch-r { 0%, 66%, 100% { transform: rotate(0); } 72% { transform: rotate(7deg); } 79% { transform: rotate(-2deg); } 86% { transform: rotate(0); } }
-@keyframes cat-whisker-sway { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(1.1deg); } }
-@keyframes cat-rim-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-@keyframes cat-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-@keyframes cat-glint { 0%,100% { opacity: 0.25; transform: translateX(0); } 50% { opacity: 1; transform: translateX(6px); } }
-@keyframes cat-float-up { 0% { opacity: 0; transform: translateY(4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
-@keyframes cat-shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
-@keyframes cat-pop { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
-@keyframes cat-slide { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-3px); } }
-@keyframes cat-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
-@keyframes cat-flick { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15, 0.9); opacity: 0.8; } }
-@keyframes cat-wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
-@keyframes cat-drop { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(7px); } }
-@keyframes cat-wave { 0%,100% { transform: rotate(0); } 50% { transform: rotate(22deg); } }
-@keyframes cat-blink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+.cat-emoji--loop .cat-emoji__img { animation: cat-img-breathe 3000ms ease-in-out infinite; }
+@keyframes cat-img-wiggle {
+  0%, 100% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(-5deg) scale(1.05); }
+  75% { transform: rotate(5deg) scale(1.05); }
+}
+@keyframes cat-img-pop {
+  0% { opacity: 0.4; transform: scale(0.7); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes cat-img-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
 /* status bubble pop-in (scale .9 to 1, 160ms) + a subtle idle float */
 @keyframes status-bubble-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 .status-bubble-in { animation: status-bubble-in 160ms ease-out; }
 @keyframes status-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .status-bubble-float { animation: status-bubble-float 5s ease-in-out 200ms infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .cat-emoji .fx, .cat-emoji .fx-heart, .cat-emoji .fx-glint, .cat-emoji .fx-z, .cat-emoji .fx-z2,
-  .cat-emoji .fx-pupil, .cat-emoji .fx-slide, .cat-emoji .fx-flick, .cat-emoji .fx-crown,
-  .cat-emoji .fx-tear, .cat-emoji .fx-paw, .cat-emoji .fx-dot1, .cat-emoji .fx-dot2, .cat-emoji .fx-dot3,
-  .cat-emoji .cat-body, .cat-emoji .fx-ear-l, .cat-emoji .fx-ear-r, .cat-emoji .fx-whiskers,
-  .cat-emoji .fx-rim-glow,
+  .cat-emoji__img,
   .status-bubble-in, .status-bubble-float { animation: none !important; }
 }
-[data-reduced-motion="true"] .cat-emoji .fx,
-[data-reduced-motion="true"] .cat-emoji .cat-body,
-[data-reduced-motion="true"] .cat-emoji .fx-ear-l,
-[data-reduced-motion="true"] .cat-emoji .fx-ear-r,
-[data-reduced-motion="true"] .cat-emoji .fx-whiskers,
-[data-reduced-motion="true"] .cat-emoji .fx-rim-glow,
+[data-reduced-motion="true"] .cat-emoji__img,
 [data-reduced-motion="true"] .status-bubble-in,
 [data-reduced-motion="true"] .status-bubble-float { animation: none !important; }
 
@@ -2456,3 +2420,35 @@ button:active > .motion-icon {
   .super-burst-scene { display: none !important; }
 }
 [data-reduced-motion="true"] .super-burst-scene { display: none !important; }
+
+/* ============ LIVE ROOM ============ */
+/* One pulse for every "on air" dot: the shell, the studio and the audience
+   dock all speak the same red. */
+.live-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: #ff5d68;
+  box-shadow: 0 0 0 0 rgb(255 93 104 / 0.55);
+  animation: live-dot-pulse 1.9s ease-out infinite;
+}
+@keyframes live-dot-pulse {
+  0%, 18% { opacity: 1; box-shadow: 0 0 0 0 rgb(255 93 104 / 0.5); }
+  65% { opacity: 0.72; box-shadow: 0 0 0 6px rgb(255 93 104 / 0); }
+  100% { opacity: 1; box-shadow: 0 0 0 0 rgb(255 93 104 / 0); }
+}
+.live-fab__halo {
+  animation: live-fab-halo 2.4s ease-out infinite;
+}
+@keyframes live-fab-halo {
+  0% { transform: scale(0.92); opacity: 0.75; }
+  72%, 100% { transform: scale(1.32); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .live-fab__halo { animation: none; }
+}
+[data-reduced-motion="true"] .live-dot,
+[data-reduced-motion="true"] .live-fab__halo {
+  animation: none;
+}

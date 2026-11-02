@@ -57,18 +57,22 @@ export function VoiceCallBar() {
           </span>
         )}
 
-        <Button
-          variant={muted ? "outline" : "default"}
-          size="icon"
-          aria-label={muted ? "Unmute microphone" : "Mute microphone"}
-          aria-pressed={!muted}
-          onClick={toggleMute}
-          className={`h-11 w-11 shrink-0 rounded-xl transition-all ${
-            muted ? "glass border-white/10 text-muted-foreground hover:text-foreground" : "border-0 bg-primary text-primary-foreground shadow-md hover:brightness-105"
-          }`}
-        >
-          {muted ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
-        </Button>
+        {/* A live audience member is a listener by default. The minimized bar
+            must not offer a one-tap unmute that jumps the stage request. */}
+        {!(call.kind === "live" && !call.isHost) && (
+          <Button
+            variant={muted ? "outline" : "default"}
+            size="icon"
+            aria-label={muted ? "Unmute microphone" : "Mute microphone"}
+            aria-pressed={!muted}
+            onClick={toggleMute}
+            className={`h-11 w-11 shrink-0 rounded-xl transition-all ${
+              muted ? "glass border-white/10 text-muted-foreground hover:text-foreground" : "border-0 bg-primary text-primary-foreground shadow-md hover:brightness-105"
+            }`}
+          >
+            {muted ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+          </Button>
+        )}
 
         <Button
           variant="outline"

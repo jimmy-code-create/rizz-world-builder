@@ -17,6 +17,8 @@ import {
   type SharedEmoji,
 } from "@/lib/emoji-shared";
 import { removeSharedEmoji, reportRealmEmoji } from "@/lib/realm-emoji-actions";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
 
 export type EmojiPick =
   | { kind: "unicode"; value: string }
@@ -25,11 +27,15 @@ export type EmojiPick =
 /**
  * The one emoji picker in the app.
  *
- * Tabs are Recent, Default and one per joined realm, with a shortcode search
- * across all of them. It returns what was picked and nothing else, so the same
- * sheet serves a caption (`<:cat:id>`), a reaction (`ce:<id>`) and a chat
- * message without three copies of this UI.
+ * Tabs are Recent, Default, one per joined realm, and the RIZZ cat pack last,
+ * with a shortcode search across all of them. It returns what was picked and
+ * nothing else, so the same sheet serves a caption (`<:cat:id>`), a reaction
+ * (`ce:<id>`) and a chat message without three copies of this UI.
+ *
+ * Super-reaction mode (`accent`) narrows the sheet to the RIZZ pack alone —
+ * a super reaction is always a cat, never a plain glyph or a realm upload.
  */
+const RIZZ_TAB = "rizz";
 export function EmojiPicker({
   open,
   onOpenChange,
@@ -66,6 +72,21 @@ export function EmojiPicker({
     if (open) setRecent(readRecentEmoji());
     else setQuery("");
   }, [open]);
+
+  // Super mode is the pack and nothing else, so land on it when the switch flips.
+  useEffect(() => {
+    if (accent) setTab(RIZZ_TAB);
+  }, [accent]);
+
+  const rizzEntries = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return CAT_EMOJI_MANIFEST;
+    return CAT_EMOJI_MANIFEST.filter((entry) =>
+      `${entry.name} ${entry.label} ${entry.tags.join(" ")} ${entry.shortcode}`
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [query]);
 
   const recentRows = useMemo(
     () => recent.map((id) => rows.find((row) => row.id === id)).filter(Boolean) as SharedEmoji[],
@@ -142,25 +163,55 @@ export function EmojiPicker({
           </label>
 
           <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabChip active={tab === "recent" && !query} onClick={() => { setTab("recent"); setQuery(""); }}>
-              Recent
+            {!accent && (
+              <>
+                <TabChip active={tab === "recent" && !query} onClick={() => { setTab("recent"); setQuery(""); }}>
+                  Recent
+                </TabChip>
+                <TabChip active={tab === "default" && !query} onClick={() => { setTab("default"); setQuery(""); }}>
+                  Default
+                </TabChip>
+                {groups.map((group) => (
+                  <TabChip
+                    key={group.id}
+                    active={tab === group.id && !query}
+                    onClick={() => { setTab(group.id); setQuery(""); }}
+                    title={group.name}
+                  >
+                    {group.name}
+                  </TabChip>
+                ))}
+              </>
+            )}
+            {/* The RIZZ pack always leads the strip last — and in super mode it
+                is the only category on offer. */}
+            <TabChip active={tab === RIZZ_TAB && !query} onClick={() => { setTab(RIZZ_TAB); setQuery(""); }}>
+              RIZZ
             </TabChip>
-            <TabChip active={tab === "default" && !query} onClick={() => { setTab("default"); setQuery(""); }}>
-              Default
-            </TabChip>
-            {groups.map((group) => (
-              <TabChip
-                key={group.id}
-                active={tab === group.id && !query}
-                onClick={() => { setTab(group.id); setQuery(""); }}
-                title={group.name}
-              >
-                {group.name}
-              </TabChip>
-            ))}
           </div>
 
-          {emoji.isLoading ? (
+          {tab === RIZZ_TAB ? (
+            <div className="grid max-h-[38dvh] grid-cols-8 gap-1 overflow-y-auto pb-2">
+              {rizzEntries.length ? (
+                rizzEntries.map((entry) => (
+                  <button
+                    key={entry.shortcode}
+                    type="button"
+                    onClick={() => chooseUnicode(entry.shortcode)}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={`${entry.label} ${entry.shortcode}`}
+                    aria-label={`${entry.label} ${entry.shortcode}`}
+                  >
+                    <CatEmoji name={entry.name} size={30} animate="hover" />
+                  </button>
+                ))
+              ) : (
+                <p className="col-span-8 py-8 text-center text-sm text-muted-foreground">
+                  No cat matches “{query.trim()}”.
+                </p>
+              )}
+            </div>
+          ) : emoji.isLoading ? (
             <div className="flex h-40 items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>

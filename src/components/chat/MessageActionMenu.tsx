@@ -65,6 +65,11 @@ export type MessageActionMenuProps = {
    * into the menu still starts on the actions.
    */
   initialView?: "actions" | "reactions";
+  /**
+   * Extra trigger classes. A poll owns the whole row, so its trigger needs
+   * `w-full`; the inline trigger otherwise shrink-wraps the card.
+   */
+  className?: string;
 };
 
 type PressOrigin = {
@@ -90,6 +95,7 @@ export function MessageActionMenu({
   preview,
   detectPress = true,
   initialView = "actions",
+  className,
 }: MessageActionMenuProps) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<PressOrigin | null>(null);
@@ -305,7 +311,7 @@ export function MessageActionMenu({
       aria-label={triggerRole === "button" ? "Open message actions" : "Message actions"}
       aria-haspopup="dialog"
       aria-expanded={open}
-      className="inline-flex max-w-full rounded-[inherit] align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className={`inline-flex max-w-full rounded-[inherit] align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${className ?? ""}`}
       style={{ touchAction: "pan-y", WebkitTouchCallout: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
-import type { CatEmojiName } from "@/components/emoji/cat-emoji-manifest";
+import { catNameForShortcode, type CatEmojiName } from "@/components/emoji/cat-emoji-manifest";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
 import { customReactionId, useEmojiLookup, type EmojiRow } from "@/lib/emoji-shared";
 
@@ -16,22 +16,25 @@ export type SuperBurst = { key: string; seq: number };
 
 const LIFETIME_MS = 2300;
 
-/** Pick the cat face that matches the reaction's mood. */
+/** Pick the sticker that matches the reaction's mood. */
 function catForKey(key: string): CatEmojiName {
+  // A pack shortcode (`:cat_happy:`) is the reaction itself — draw it.
+  const direct = key.startsWith(":") ? catNameForShortcode(key) : null;
+  if (direct) return direct;
   const k = key.toLowerCase();
-  if (/[❤🩷💜🥰😍💔]/.test(k)) return "cat_love";
-  if (/[😂🤣😆]/.test(k)) return "cat_lol";
-  if (/[🔥🚀😤]/.test(k)) return "cat_hype";
-  if (/[😮😲😱]/.test(k)) return "cat_wow";
-  if (/[😎🆒]/.test(k)) return "cat_cool";
-  if (/[😴🛌]/.test(k)) return "cat_sleep";
-  if (/[🤨🧐]/.test(k)) return "cat_sus";
-  if (/[🎵🎶🎧]/.test(k)) return "cat_music";
-  if (/[🎮🏆]/.test(k)) return "cat_gg";
-  if (/[😢😭]/.test(k)) return "cat_sad";
-  if (/[👋✋]/.test(k)) return "cat_wave";
-  if (/[🤔💭]/.test(k)) return "cat_think";
-  return "cat_cool";
+  if (/[❤🩷💜🥰😍💔]/.test(k)) return "cat_happy";
+  if (/[😂🤣😆]/.test(k)) return "cat_happy";
+  if (/[🔥🚀😤]/.test(k)) return "cat_angry";
+  if (/[😮😲😱]/.test(k)) return "cat_surprise";
+  if (/[😎🆒]/.test(k)) return "cat_hm";
+  if (/[😴🛌]/.test(k)) return "cat_sleepy";
+  if (/[🤨🧐]/.test(k)) return "cat_hm";
+  if (/[🎵🎶🎧]/.test(k)) return "cat_hm";
+  if (/[🎮🏆]/.test(k)) return "cat_clap";
+  if (/[😢😭]/.test(k)) return "cat_cry";
+  if (/[👋✋]/.test(k)) return "cat_happy";
+  if (/[🤔💭]/.test(k)) return "cat_hm";
+  return "cat_hm";
 }
 
 type Spark = {
@@ -92,7 +95,7 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
             {emoji ? (
               <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-7 w-7" />
             ) : (
-              <UnicodeGlyph value={reactionKey} className="text-[26px]" />
+              <UnicodeGlyph value={reactionKey} className="text-[26px]" size={26} />
             )}
           </span>
         </div>
@@ -115,7 +118,11 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
             } as React.CSSProperties
           }
         >
-          {spark.kind === "star" ? <Sparkles className="h-[1em] w-[1em]" aria-hidden="true" /> : emoji ? "" : reactionKey}
+          {spark.kind === "star" ? (
+            <Sparkles className="h-[1em] w-[1em]" aria-hidden="true" />
+          ) : emoji ? null : (
+            <UnicodeGlyph value={reactionKey} className="text-[1.2em]" size={20} />
+          )}
           {spark.kind === "reaction" && emoji ? (
             <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-[1.2em] w-[1.2em]" />
           ) : null}
