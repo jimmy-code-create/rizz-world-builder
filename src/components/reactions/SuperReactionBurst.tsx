@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import type { CatEmojiName } from "@/components/emoji/cat-emoji-manifest";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
-import { customReactionId, useEmojiLookup } from "@/lib/emoji-shared";
+import { customReactionId, useEmojiLookup, type EmojiRow } from "@/lib/emoji-shared";
 
 /**
  * The super-reaction celebration: when someone sends a super reaction the RIZZ
