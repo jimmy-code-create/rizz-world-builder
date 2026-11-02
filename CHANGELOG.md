@@ -1,6 +1,5 @@
 # Changelog
 
-<<<<<<< Updated upstream
 ## 2026-11-03 — Bounty tags, heading colour, covers, and the photo-picker fix
 
 - Bounties now carry up to five Reddit-style tags. Every member can add them —
@@ -23,7 +22,6 @@
   inserts, and an 11-argument `post_paws_bounty` wrapper that preserves the
   existing escrow body. The client falls back gracefully if the migration has
   not reached a deployment yet.
-=======
 ## 2026-11-02 — The RIZZ pack is nine real stickers
 
 - The old twelve hand-drawn cat faces are gone for good. The pack is now the
@@ -81,7 +79,6 @@
 - Typing follows the newest message. As the composer grows, the transcript is
   pinned to the bottom while the field is focused, so a long message never
   pushes the conversation out of view.
->>>>>>> Stashed changes
 
 ## 2026-11-02 — Purify sells itself, without the video
 
