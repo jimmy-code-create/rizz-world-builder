@@ -35,6 +35,8 @@ import {
   type RealmPermission,
 } from "@/lib/realm-settings";
 import { useAuth } from "@/lib/auth";
+import { usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 import { supabase } from "@/integrations/supabase/client";
 import { setRealmWelcome, setRealmXpEnabled } from "@/lib/realm-xp";
 import {
@@ -2106,6 +2108,7 @@ function WelcomeSection({
 
 function EmojiSection({ realmId, canManage }: { realmId: string; canManage: boolean }) {
   const { user } = useAuth();
+  const purify = usePurify();
   const qc = useQueryClient();
   const emoji = useQuery({ queryKey: realmEmojiKey(realmId), queryFn: () => fetchRealmEmoji(realmId) });
   const [name, setName] = useState("");
@@ -2128,6 +2131,12 @@ function EmojiSection({ realmId, canManage }: { realmId: string; canManage: bool
   const guard = () => {
     if (cleanName.length < 2) {
       toast.error("Name it first — a-z, 0-9 and _ (2 to 32 characters)");
+      return false;
+    }
+    // Uploading shared emoji is a Purify perk — they land in every realm's
+    // picker, not just this one. Viewing and using them stay free.
+    if (!purify.allowed) {
+      openPurifyPaywall("Shared realm emoji");
       return false;
     }
     return true;

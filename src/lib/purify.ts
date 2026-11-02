@@ -15,12 +15,56 @@ import { useAuth } from "@/lib/auth";
  */
 export const PURIFY_PRICE_CENTS = 100;
 export const PURIFY_PRICE_LABEL = "$1 / month";
+/** The same price in button form — one source, so the two can never disagree. */
+export const PURIFY_PRICE_SHORT = PURIFY_PRICE_LABEL.replace(/\s*\/\s*month$/, "/mo");
 
 /** Chat uploads: 10 MB on the free tier, 50 MB with Purify. */
 export const FREE_CHAT_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const PURIFY_CHAT_UPLOAD_BYTES = 50 * 1024 * 1024;
 /** Today's cap, kept while Purify is not enforced so nothing shrinks on launch day. */
 export const LEGACY_CHAT_UPLOAD_BYTES = 15 * 1024 * 1024;
+
+/**
+ * The four perks the upsell sells, in one place so the page, the sheet and the
+ * settings copy cannot drift apart. Each one is a real gate in the code: the
+ * escrow take in `BountyCard`, the super switch in `PostCard`, the injected
+ * mark in `withPurifyBadge`, and the shared-emoji upload in the realm settings.
+ */
+export type PurifyPerkIcon = "bounty" | "super" | "badge" | "emoji";
+
+export type PurifyPerk = {
+  id: string;
+  icon: PurifyPerkIcon;
+  title: string;
+  detail: string;
+};
+
+export const PURIFY_PERKS: PurifyPerk[] = [
+  {
+    id: "escrow",
+    icon: "bounty",
+    title: "Take escrow bounties",
+    detail: "Claim the drops with a real Paws prize held in escrow. Open calls stay free for everyone.",
+  },
+  {
+    id: "super",
+    icon: "super",
+    title: "Super reactions",
+    detail: "Send the glowing version of any reaction — it leads the pill row on the post.",
+  },
+  {
+    id: "badge",
+    icon: "badge",
+    title: "Purify profile badge",
+    detail: "The amethyst crest sits beside your name on every profile surface.",
+  },
+  {
+    id: "emoji",
+    icon: "emoji",
+    title: "Realm emoji perks",
+    detail: "Upload shared emoji for your realm so your whole community can use them in any chat.",
+  },
+];
 
 export const PURIFY_BENEFITS: { title: string; detail: string }[] = [
   {

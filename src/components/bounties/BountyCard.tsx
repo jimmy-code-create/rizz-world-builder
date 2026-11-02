@@ -19,6 +19,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -415,13 +416,11 @@ export function BountyCard({
                   </Button>
                 ) : !purify.active ? (
                   <Button
-                    asChild
+                    onClick={() => openPurifyPaywall("Escrow bounties")}
                     className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
-                    <Link to="/purify">
-                      <Sparkles className="h-4 w-4" />
-                      Premium to take
-                    </Link>
+                    <Sparkles className="h-4 w-4" />
+                    Premium to take
                   </Button>
                 ) : !affordable ? (
                   <Button

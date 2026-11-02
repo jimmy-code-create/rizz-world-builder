@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-11-02 — Purify sells itself, without the video
+
+- `/purify` is a page now, not an advert. The black video box, the mute button,
+  the Skip pill and “tap anywhere to skip” are gone, along with the 10 MB
+  `purify-intro.mp4` and `PurifyIntro.tsx`. In their place: a lime shield with
+  one slow light sweep, a four-line perk list, and a swipeable preview strip
+  built from the real `Badge`, `Avatar` and `ReactionPills` components in a demo
+  state — nothing on the page can fail to load into an empty container.
+- The perks are one array. `PURIFY_PERKS` in `src/lib/purify.ts` feeds both the
+  page and the bottom sheet, so editing a title or a line is a one-file change.
+  The four entries are the ones the code actually enforces: escrow bounties,
+  super reactions, the profile badge, and shared realm emoji uploads.
+- Price, restore and exit are honest. The card keeps the monthly price from
+  `PURIFY_PRICE_LABEL` (large, with “Billed monthly. Cancel anytime.”), Restore
+  purchase re-reads the profile, the CTA reads “Get Purify · $1/mo”, and Maybe
+  later is a quiet text link back to the feed. There is no invented member
+  count anywhere.
+- A gate is a sheet, not an interstitial. Tapping Take bounty, super react, a
+  gated banner or the realm emoji uploader posts one `rizz:open-purify-paywall`
+  event; `PurifyPaywallSheet` (mounted once in `AppShell`) answers with the
+  shield, three perks, the same CTA and a link to the full page. Deliberate
+  taps always show it; anything unasked-for is capped to once per seven days
+  after Maybe later. Nothing is ever forced on arrival.
+- The realm emoji uploader is now a Purify perk: non-members see the paywall
+  instead of the form. Viewing and using shared emoji stays free. This is inert
+  until `VITE_PURIFY_ENFORCED=1`, same as the other gates.
+- Motion is three small pieces: a 250–350ms staggered entrance, the shield
+  shimmer, and a glow that drifts with scroll. All three stand down under
+  `prefers-reduced-motion` or the app's reduced-motion flag, and the entrance
+  renders its final state instead of an invisible container.
+
 ## 2026-11-01 — One emoji system, a bounty gate, and a louder double tap
 
 - A realm emoji is now an app emoji. It is stored as `<:shortcode:id>` so two

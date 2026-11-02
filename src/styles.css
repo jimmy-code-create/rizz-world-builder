@@ -1170,6 +1170,28 @@
     animation: none !important;
   }
 }
+
+/* Purify mark: one slow band of light crossing the shield every 3.6s, then a
+   long pause. Transform-only and clipped by the shield wrapper, so it never
+   causes layout or paint outside the mark. */
+@keyframes purify-shimmer {
+  0% { transform: translateX(-140%) skewX(-12deg); }
+  55%, 100% { transform: translateX(420%) skewX(-12deg); }
+}
+.purify-shimmer {
+  animation: purify-shimmer 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .purify-shimmer {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+[data-reduced-motion="true"] .purify-shimmer {
+  animation: none !important;
+  opacity: 0;
+}
 /* Living story text: a slow breath plus a soft glow. The canvas bake in
    StoryComposer uses the same 2.1 rad/s rhythm so the editor and the posted
    clip read alike. */

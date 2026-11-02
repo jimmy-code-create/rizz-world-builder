@@ -50,6 +50,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
+import { PurifyPaywallSheet } from "@/components/purify/PurifyPaywallSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
 import { ExternalLinkGuard } from "@/components/chat/LinkPreviews";
 import { StatusDot } from "@/components/presence/StatusDot";
@@ -854,6 +855,9 @@ export function AppShell() {
       </AlertDialog>
 
       <PresenceSheet open={statusOpen} onOpenChange={setStatusOpen} />
+
+      {/* Every Purify gate asks for this one sheet (see `openPurifyPaywall`). */}
+      <PurifyPaywallSheet />
       <ExternalLinkGuard />
       <ReactionBurstLayer />
 

@@ -30,6 +30,7 @@ import {
   type FeedPost, type PostReactionRow,
 } from "@/lib/posts";
 import { usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 import { hapticReaction } from "@/lib/haptics";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
@@ -891,7 +892,8 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               type="button"
               onClick={() => {
                 if (!purify.allowed) {
-                  toast.info("Super reactions need Purify");
+                  // A sheet explains the perk; a toast only interrupted.
+                  openPurifyPaywall("Super reactions");
                   return;
                 }
                 setSuperMode((value) => !value);

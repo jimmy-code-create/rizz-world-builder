@@ -36,6 +36,7 @@ import {
   type BannerMode,
 } from "@/lib/banner";
 import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 
 /**
  * The profile editor is deliberately split into parts.
@@ -136,8 +137,8 @@ function ProfileSettingsPage() {
   /** Gradients and banner photos are Purify features; nothing already saved is removed. */
   function requirePurify(feature: string): boolean {
     if (purify.allowed) return true;
-    toast.info(`${feature} comes with Purify.`);
-    nav({ to: "/purify" });
+    // The sheet offers the perk and the price; the full page is one tap away.
+    openPurifyPaywall(feature);
     return false;
   }
 
