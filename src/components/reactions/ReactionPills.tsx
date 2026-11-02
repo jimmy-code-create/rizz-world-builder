@@ -77,11 +77,7 @@ export function ReactionPills({
             aria-pressed={group.mine}
             className={cn(
               "inline-flex items-center rounded-full border transition-all duration-150 active:scale-90",
-              compact
-                ? "h-5 gap-0.5 px-1 text-[10px]"
-                : isSuper
-                  ? "h-8 gap-1 px-2.5 text-[12px]"
-                  : "h-7 gap-1 px-2 text-[12px]",
+              compact ? "h-5 gap-0.5 px-1 text-[10px]" : "h-7 gap-1 px-2 text-[12px]",
               isSuper
                 ? "border-[#cfaeff]/70 bg-[linear-gradient(120deg,rgba(180,124,255,0.32),rgba(124,77,255,0.18)_48%,rgba(236,72,153,0.22))] text-foreground shadow-[0_0_20px_rgba(180,124,255,0.4)] ring-1 ring-inset ring-white/10"
                 : group.mine
@@ -95,25 +91,17 @@ export function ReactionPills({
               <EmojiGlyph
                 emoji={emoji}
                 shortcode={emoji?.shortcode ?? "emoji"}
-                className={
-                  compact
-                    ? "h-3.5 w-3.5"
-                    : isSuper
-                      ? "h-5 w-5"
-                      : "h-4 w-4"
-                }
+                className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
               />
             ) : (
               <UnicodeGlyph
                 value={group.key}
-                className={
-                  compact ? "text-[14px]" : isSuper ? "text-[20px]" : "text-[16px]"
-                }
+                className={compact ? "text-[14px]" : "text-[16px]"}
               />
             )}
             {isSuper ? (
               <Sparkles
-                className={compact ? "h-2.5 w-2.5 text-[#e6d4ff]" : "h-3 w-3 text-[#e6d4ff]"}
+                className={compact ? "h-2 w-2 text-[#e6d4ff]" : "h-2.5 w-2.5 text-[#e6d4ff]"}
                 aria-hidden="true"
               />
             ) : null}

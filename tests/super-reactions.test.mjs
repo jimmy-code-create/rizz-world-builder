@@ -34,6 +34,8 @@ const picker = read("src/components/emoji/EmojiPicker.tsx");
 const reels = read("src/routes/_app/reels.tsx");
 const styles = read("src/styles.css");
 const lengthSql = read("supabase/migrations/20261113000000_post_reaction_key_length.sql");
+const composer = read("src/components/PostComposer.tsx");
+const burst = read("src/components/reactions/SuperReactionBurst.tsx");
 
 await check("a reaction row can be normal or super", () => {
   assert.ok(sql.includes("ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'normal'"), "no kind column");
@@ -95,9 +97,27 @@ await check("super mode is visible while picking", () => {
   assert.ok(card.includes("linear-gradient(120deg,rgba(180,124,255,0.3)"), "the switch is not the pill's gradient");
   assert.ok(pills.includes("super-reaction-in"), "a super pill does not pop in");
   assert.ok(styles.includes("super-reaction-in"), "the pop-in keyframes are missing");
-  assert.ok(pills.includes('"h-8 gap-1 px-2.5 text-[13px]"'), "a normal pill is not medium sized");
-  assert.ok(pills.includes('"h-9 gap-1.5 px-3 text-[13px]"'), "a super pill is not a size above normal");
-  assert.ok(pills.includes('"h-[18px] w-[18px]"'), "the glyph is not 18px");
+  assert.ok(pills.includes('"h-7 gap-1 px-2 text-[12px]"'), "pills do not share one height");
+  assert.ok(!pills.includes("h-8 gap-1"), "a super pill is still taller than a normal one");
+  assert.ok(!pills.includes("text-[20px]"), "a super glyph is still larger than a normal one");
+  assert.ok(pills.includes('className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}'), "glyphs are not one size");
+});
+
+await check("the super burst cat actually performs", () => {
+  assert.ok(burst.includes('animate="loop"'), "the burst cat is still a frozen frame");
+  assert.ok(burst.includes("super-burst-cat-body"), "the cat has no idle motion layer");
+  assert.ok(styles.includes("super-burst-cat-bob"), "the idle layer has no keyframes");
+  assert.ok(styles.includes("super-burst-streak"), "the launch has no speed streaks");
+});
+
+await check("the composer keeps one emoji control", () => {
+  assert.ok(!composer.includes("Add a realm emoji"), "the duplicate smiley button is back");
+  assert.ok(!composer.includes("setEmojiOpen"), "the old emoji sheet is still mounted");
+  assert.equal(
+    (composer.match(/<GifPicker/g) ?? []).length,
+    1,
+    "the shared emoji/GIF picker is not the one control",
+  );
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

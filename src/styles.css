@@ -2287,17 +2287,59 @@ button:active > .motion-icon {
    emoji outward as sparks and dashes off. Transform/opacity only so the burst
    stays on the GPU. */
 @keyframes super-burst-cat {
-  0% { transform: scale(0.2) rotate(-24deg) translateY(30px); opacity: 0; }
-  18% { transform: scale(1.18) rotate(6deg) translateY(0); opacity: 1; }
-  30% { transform: scale(0.94) rotate(-5deg); }
-  42% { transform: scale(1.1) rotate(4deg); }
-  54% { transform: scale(1) rotate(0deg); }
-  76% { transform: scale(1.03) translateY(0); opacity: 1; }
-  100% { transform: scale(0.45) translate(70px, -120px) rotate(18deg); opacity: 0; }
+  0% { transform: scale(0.15) rotate(-32deg) translateY(52px); opacity: 0; }
+  12% { transform: scale(1.22) rotate(8deg) translateY(-10px); opacity: 1; }
+  22% { transform: scale(0.92) rotate(-5deg) translateY(4px); }
+  34% { transform: scale(1.1) rotate(4deg) translateY(-4px); }
+  46% { transform: scale(1) rotate(0deg) translateY(0); }
+  60% { transform: scale(1.04) rotate(-2deg) translateY(-8px); }
+  74% { transform: scale(1) rotate(2deg) translateY(0); }
+  86% { transform: scale(1.02) rotate(0deg) translateY(-3px); opacity: 1; }
+  100% { transform: scale(0.35) translate(92px, -150px) rotate(32deg); opacity: 0; }
 }
 .super-burst-cat {
   animation: super-burst-cat 2300ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
   will-change: transform, opacity;
+}
+/* The idle layer: a light bob and rock while the face runs its expression
+   loop. Kept separate from the entrance so neither transform cancels the
+   other. */
+@keyframes super-burst-cat-bob {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg) scale(1); }
+  30% { transform: translateY(-5px) rotate(2deg) scale(1.015); }
+  65% { transform: translateY(1px) rotate(2.5deg) scale(0.99); }
+}
+.super-burst-cat-body {
+  animation: super-burst-cat-bob 680ms ease-in-out infinite;
+  will-change: transform;
+}
+/* Two speed streaks appear as the cat launches away, so the exit reads as
+   motion instead of a fade. */
+@keyframes super-burst-streak {
+  0%, 58% { opacity: 0; scale: 0.5; }
+  70% { opacity: 0.85; scale: 1; }
+  88%, 100% { opacity: 0; scale: 1.5; }
+}
+.super-burst-streak {
+  position: absolute;
+  top: 50%;
+  width: 42px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #c8ff3d);
+  animation: super-burst-streak 2300ms ease-out both;
+  pointer-events: none;
+}
+.super-burst-streak--left {
+  left: -54px;
+  rotate: -16deg;
+  transform-origin: right center;
+}
+.super-burst-streak--right {
+  right: -54px;
+  rotate: 16deg;
+  transform-origin: left center;
+  background: linear-gradient(270deg, transparent, #c8ff3d);
 }
 @keyframes super-burst-glow {
   0% { opacity: 0; transform: scale(0.3); }
