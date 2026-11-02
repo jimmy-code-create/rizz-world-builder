@@ -61,7 +61,7 @@ function Index() {
             </h1>
             {/* Two lines on a phone. The headline already carries the message. */}
             <p className="type-lead mt-6 max-w-lg">Post once, argue in the replies, then take it to voice.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link to="/signup">
                 <Button size="lg" className="h-12 rounded-[6px] px-7 text-base font-semibold">
                   Claim your @
@@ -188,7 +188,7 @@ function Index() {
               Start a room from any post. Presence shows who is actually in it, so you never walk into
               an empty stage.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link to="/signup">
                 <Button
                   size="lg"
