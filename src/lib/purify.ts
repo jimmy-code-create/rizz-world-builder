@@ -25,12 +25,26 @@ export const PURIFY_CHAT_UPLOAD_BYTES = 50 * 1024 * 1024;
 export const LEGACY_CHAT_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 /**
- * The four perks the upsell sells, in one place so the page, the sheet and the
- * settings copy cannot drift apart. Each one is a real gate in the code: the
- * escrow take in `BountyCard`, the super switch in `PostCard`, the injected
- * mark in `withPurifyBadge`, and the shared-emoji upload in the realm settings.
+ * Every perk the upsell sells, in one place so the page, the sheet and the
+ * settings copy cannot drift apart. Each one is a real gate in the code:
+ * the escrow take in `BountyCard`, the super switch in `PostCard`, the
+ * animated RIZZ faces in `CatEmoji`, the injected mark in `withPurifyBadge`,
+ * the profile-gradient/banner gates, the GIF picker, the upload cap and the
+ * shared-emoji upload in realm settings.
+ *
+ * The first three are the sheet's set: the ones that make the upgrade felt in
+ * the first minute. The page lists all of them.
  */
-export type PurifyPerkIcon = "bounty" | "super" | "badge" | "emoji";
+export type PurifyPerkIcon =
+  | "bounty"
+  | "super"
+  | "animated"
+  | "badge"
+  | "gradient"
+  | "banner"
+  | "gif"
+  | "upload"
+  | "emoji";
 
 export type PurifyPerk = {
   id: string;
@@ -44,25 +58,60 @@ export const PURIFY_PERKS: PurifyPerk[] = [
     id: "escrow",
     icon: "bounty",
     title: "Take escrow bounties",
-    detail: "Claim the drops with a real Paws prize held in escrow. Open calls stay free for everyone.",
+    detail:
+      "Take a drop like a 500-Paws sticker job: the prize is already locked in escrow. Open calls stay free for everyone.",
   },
   {
     id: "super",
     icon: "super",
     title: "Super reactions",
-    detail: "Send the glowing version of any reaction — it leads the pill row on the post.",
+    detail:
+      "Send the glowing ✦ version of any reaction — it leads the pill row and sends the RIZZY cat across the post.",
+  },
+  {
+    id: "animated",
+    icon: "animated",
+    title: "Animated RIZZ emoji",
+    detail:
+      "All twelve cat faces move — ears twitch, whiskers sway, expressions loop. Without Purify the same faces arrive as still stickers.",
   },
   {
     id: "badge",
     icon: "badge",
     title: "Purify profile badge",
-    detail: "The amethyst crest sits beside your name on every profile surface.",
+    detail: "The amethyst crest sits beside your name on posts, DMs and every profile surface.",
+  },
+  {
+    id: "gradient",
+    icon: "gradient",
+    title: "Profile gradients",
+    detail:
+      "Wear any of the 16 gradients across the whole profile — not just the banner box. Pick one, or mix your own two colours.",
+  },
+  {
+    id: "banner",
+    icon: "banner",
+    title: "Banner photos",
+    detail: "Put a real photo behind your avatar instead of the default frame.",
+  },
+  {
+    id: "gif",
+    icon: "gif",
+    title: "GIFs everywhere",
+    detail: "Drop a GIF into a post, a DM, a group or realm chat — no more still-only replies.",
+  },
+  {
+    id: "upload",
+    icon: "upload",
+    title: "Bigger uploads",
+    detail: "Send photos up to 50 MB in every chat instead of the free 10 MB.",
   },
   {
     id: "emoji",
     icon: "emoji",
     title: "Realm emoji perks",
-    detail: "Upload shared emoji for your realm so your whole community can use them in any chat.",
+    detail:
+      "Upload shared emoji for your realm — all twelve faces or your own art — so the whole community can use them in any chat.",
   },
 ];
 

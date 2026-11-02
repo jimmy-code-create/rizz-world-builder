@@ -2,13 +2,31 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, Check, ChevronLeft, Coins, Loader2, RefreshCw, ShieldCheck, Smile, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  Coins,
+  Film,
+  Image,
+  Loader2,
+  Lock,
+  Palette,
+  RefreshCw,
+  ShieldCheck,
+  Smile,
+  Sparkles,
+  Sticker,
+  Upload,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/badges/Badge";
 import { ReactionPills } from "@/components/reactions/ReactionPills";
+import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { BANNER_PRESETS, gradientCss } from "@/lib/banner";
 import {
   PURIFY_PERKS,
   PURIFY_PRICE_LABEL,
@@ -29,9 +47,17 @@ export const Route = createFileRoute("/_app/purify")({
 const PERK_ICONS: Record<PurifyPerkIcon, LucideIcon> = {
   bounty: Coins,
   super: Sparkles,
+  animated: Sticker,
   badge: ShieldCheck,
+  gradient: Palette,
+  banner: Image,
+  gif: Film,
+  upload: Upload,
   emoji: Smile,
 };
+
+/** One real preset, so the gradient example is the actual profile wash. */
+const DEMO_GRADIENT = BANNER_PRESETS[0];
 
 function formatUntil(iso: string | null): string | null {
   if (!iso) return null;
@@ -132,7 +158,9 @@ function PurifyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-4 pb-10">
+    // `w-full` is load-bearing: without it this flex child sizes to the swipe
+    // strip's max-content on a phone, and every card runs off the right edge.
+    <div className="mx-auto w-full min-w-0 max-w-xl space-y-4 pb-10">
       <Link
         to="/settings"
         className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -173,8 +201,8 @@ function PurifyPage() {
             Everything unlocked.
           </motion.h1>
           <motion.p {...enter(0.1)} className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Escrow bounties, super reactions, your crest and your realm's emoji — for the price of
-            one coffee a month.
+            From escrow bounties to a full profile gradient — every unlock, the animated cats and
+            your realm's emoji, for the price of one coffee a month.
           </motion.p>
         </div>
       </section>
@@ -212,7 +240,7 @@ function PurifyPage() {
         <h2 className="px-1 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
           See it in action
         </h2>
-        <div className="-mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-3 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
           <div className="w-[236px] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Profile
@@ -231,6 +259,47 @@ function PurifyPage() {
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
               The amethyst crest sits beside your name everywhere.
+            </p>
+          </div>
+
+          <div className="w-[236px] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Animated emoji
+            </p>
+            <div className="mt-2 flex items-end gap-1.5">
+              <CatEmoji name="cat_cool" size={32} animate="loop" preview />
+              <CatEmoji name="cat_music" size={32} animate="loop" preview />
+              <CatEmoji name="cat_love" size={32} animate="loop" preview />
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                <Lock className="h-2.5 w-2.5" aria-hidden="true" /> Purify
+              </span>
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Twelve faces that move. Free accounts keep the still set.
+            </p>
+          </div>
+
+          <div className="w-[236px] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Gradient
+            </p>
+            <div
+              className="mt-2 overflow-hidden rounded-xl border border-white/10"
+              style={{ background: gradientCss(DEMO_GRADIENT) }}
+            >
+              <div className="h-9 bg-black/15" />
+              <div className="flex items-center gap-2 px-2 pb-2 pt-1">
+                <Avatar className="h-8 w-8 border-2 border-black/30">
+                  <AvatarFallback className="bg-black/40 text-[10px] font-bold text-white">KE</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white">kesoku</p>
+                  <p className="truncate text-[10px] text-white/70">@kesoku_1234</p>
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              16 gradients across the whole profile, not just the banner box.
             </p>
           </div>
 
@@ -315,7 +384,8 @@ function PurifyPage() {
 
         {!enforced && (
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Billing opens soon — until then every Purify feature is free for everyone.
+            Billing opens soon. Animated cats are already members-only; everything else stays
+            free until launch.
           </p>
         )}
       </motion.section>

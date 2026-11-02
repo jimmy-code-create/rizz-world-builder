@@ -50,6 +50,27 @@
 - The background dot canvas is legible on OLED phones. 6% ink crushed to
   black; 12% keeps the same one-paint halftone but actually reads as texture
   behind the post, drops and realm pages instead of an empty black field.
+- `/purify` no longer runs past the right edge of a phone. The page root was
+  `max-w-xl` without `w-full`, so as a flex child it sized to the swipe strip's
+  max-content and clipped the hero, the perk copy and every card. It now takes
+  the full column, and the strip's gutters match the shell's.
+- The perk list now carries every real gate, not four: escrow bounties, super
+  reactions, animated RIZZ emoji, the profile badge, profile gradients, banner
+  photos, GIFs, 50 MB uploads and shared realm emoji — each with the concrete
+  example (a 500-Paws drop, 16 gradients, ✦ pills). The preview strip gained an
+  animated-emoji card and a real gradient-profile card, both built from live
+  components and presets.
+- The RIZZ cat emoji were redrawn as one premium sticker set: matte jet-black
+  fur with an inner gradient, a thin lime rim light, a glossy forehead, dark
+  olive inner ears, curved lime whiskers and blush. The idle loop breathes,
+  twitches an ear, sways the whiskers and pulses the rim — transform/opacity
+  only, max three loops on screen. Static faces now have no expression
+  animation at all.
+- Animated cat emoji are a Purify perk. The pickers put a small lock on every
+  face and show the same faces as still stickers to free accounts; Purify
+  members get hover, one-shot and loop motion. Super-reaction celebrations
+  still animate for every viewer because sending one already requires Purify.
+  The super burst now uses the new Rizzy art.
 
 ## 2026-11-01 — One emoji system, a bounty gate, and a louder double tap
 

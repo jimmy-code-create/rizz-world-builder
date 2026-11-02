@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock3, Search, Smile } from "lucide-react";
+import { Clock3, Lock, Search, Smile } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import {
   CAT_EMOJI_MANIFEST,
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePurify } from "@/lib/purify";
+import { openPurifyPaywall } from "@/lib/purify-paywall";
 
 /**
  * The RIZZ emoji pack: twelve cat faces drawn in the app's dark-and-lime
@@ -66,11 +68,14 @@ function Grid({
   onPick,
   size = 30,
   columns = 6,
+  locked = false,
 }: {
   entries: readonly CatEmojiEntry[];
   onPick: (shortcode: string) => void;
   size?: number;
   columns?: number;
+  /** Free account: the faces are the same, the animation is the Purify perk. */
+  locked?: boolean;
 }) {
   return (
     <div
@@ -85,12 +90,24 @@ function Grid({
           type="button"
           role="option"
           aria-selected={false}
-          aria-label={entry.label}
-          title={`${entry.label} — ${entry.shortcode}`}
+          aria-label={locked ? `${entry.label} — animated with Purify` : entry.label}
+          title={`${entry.label} — ${entry.shortcode}${locked ? " · animated with Purify" : ""}`}
           onClick={() => onPick(entry.shortcode)}
-          className="grid aspect-square min-h-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          className="relative grid aspect-square min-h-9 place-items-center rounded-lg transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         >
-          <CatEmoji name={entry.name as CatEmojiName} size={size} animate="hover" />
+          <CatEmoji
+            name={entry.name as CatEmojiName}
+            size={size}
+            animate={locked ? "static" : "hover"}
+          />
+          {locked ? (
+            <span
+              aria-hidden="true"
+              className="absolute right-0.5 top-0.5 grid h-3 w-3 place-items-center rounded-full border border-white/10 bg-black/70 text-primary"
+            >
+              <Lock className="h-[7px] w-[7px]" />
+            </span>
+          ) : null}
         </button>
       ))}
     </div>
@@ -114,6 +131,8 @@ export function RizzEmojiPanel({
 }) {
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState<string[]>(() => readRecents());
+  const { active } = usePurify();
+  const locked = !active;
 
   useEffect(() => {
     if (compact) return;
@@ -158,7 +177,7 @@ export function RizzEmojiPanel({
           <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
             <Clock3 className="h-3 w-3" /> Recent
           </p>
-          <Grid entries={recentEntries} onPick={pick} size={compact ? 26 : 28} columns={6} />
+          <Grid entries={recentEntries} onPick={pick} size={compact ? 26 : 28} columns={6} locked={locked} />
         </div>
       )}
 
@@ -167,12 +186,25 @@ export function RizzEmojiPanel({
           <Smile className="h-3 w-3" /> The pack
         </p>
         {filtered.length > 0 ? (
-          <Grid entries={filtered} onPick={pick} size={compact ? 26 : 30} columns={columns ?? 6} />
+          <Grid entries={filtered} onPick={pick} size={compact ? 26 : 30} columns={columns ?? 6} locked={locked} />
         ) : (
           <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
             No cat matches “{query.trim()}”.
           </p>
         )}
+        {locked && !compact ? (
+          <p className="mt-1.5 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2 py-1.5 text-[10px] leading-tight text-muted-foreground">
+            <Lock className="h-2.5 w-2.5 shrink-0 text-primary" aria-hidden="true" />
+            <span>Animated faces are a Purify perk. Still faces stay free.</span>
+            <button
+              type="button"
+              onClick={() => openPurifyPaywall("Animated emoji")}
+              className="min-h-6 font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            >
+              Get Purify
+            </button>
+          </p>
+        ) : null}
       </div>
     </div>
   );

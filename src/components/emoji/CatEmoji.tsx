@@ -1,26 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { usePurify } from "@/lib/purify";
 import type { CatEmojiName } from "./cat-emoji-manifest";
 
 /**
- * <CatEmoji name size animate />
- * Inline SVG cat head, viewBox 0 0 64 64. CSS keyframes only, static frame
- * under prefers-reduced-motion.
+ * <CatEmoji name size animate preview />
+ *
+ * The RIZZ cat, drawn as one inline SVG head (64 × 64). Twelve faces share one
+ * silhouette, one fur gradient, one lime rim light and one glossy forehead, so
+ * the set reads as a sticker pack at 20px instead of twelve drawings.
+ *
+ * The look is deliberately soft-3D without filters: a radial jet-black fur
+ * gradient, a thin lime rim that is strongest on the top-left, a matte gloss
+ * on the forehead, dark-olive inner ears, lime whiskers and blush. Everything
+ * is paths and gradients, so a reaction row repaints cheaply and nothing is
+ * decoded from the network.
  *
  * animate:
- * - false / "static": no animation
+ * - false / "static": a still sticker (also what free accounts get)
  * - "hover": animates only on hover/press/focus (picker grids)
  * - "once": plays once 600ms (reaction just added)
  * - "loop": continuous loop (budgeted: max 3 running at a time, paused
  *   offscreen — and only that mode pays for an observer)
  *
- * Drawing rules, so twelve faces read as one set at 20px:
- *   1. One silhouette — the ear pair and the head circle — with a single
- *      lift colour for the top-left rim. No outline soup.
- *   2. Big features only: the eyes are 9px tall on the 64 grid, the mouth is
- *      one stroke, and nothing decorative sits on top of the face.
- *   3. Expression lives in the eyes and the mouth. Every other mark (blush,
- *      whiskers, accessory) is decoration that can be dropped without losing
- *      which cat this is.
+ * `preview` forces the animation through for demo surfaces (the Purify page
+ * shows what a member gets). Without it, animated faces are a Purify perk:
+ * free accounts keep the same twelve faces, still.
  */
 
 // Global loop budget: at most 3 looping emojis on screen.
@@ -42,11 +46,15 @@ function releaseLoopSlot() {
   }
 }
 
-const FUR = "#17171b";
-const RIM = "#33333a";
 const INK = "#08080a";
 const LIME = "#c8ff3d";
 const CREAM = "#f6f3ea";
+const FUR = "#17171b";
+const RIM = "#33333a";
+
+/** One silhouette for every face: wide cheeks, soft jaw, 21.5-unit radius. */
+const HEAD =
+  "M32 13.2c-11.6 0-20.4 7.8-20.4 18.3 0 4.2 1.1 8.1 3.2 11.3 2.8 4.3 7.2 6.7 12.5 8 3.1.8 6.4.8 9.4 0 5.3-1.3 9.7-3.7 12.5-8 2.1-3.2 3.2-7.1 3.2-11.3 0-10.5-8.8-18.3-20.4-18.3Z";
 
 export function CatEmoji({
   name,
@@ -54,19 +62,30 @@ export function CatEmoji({
   animate = false,
   className = "",
   label,
+  preview = false,
 }: {
   name: CatEmojiName;
   size?: 16 | 20 | 24 | 32 | number;
   animate?: boolean | "hover" | "once" | "loop" | "static";
   className?: string;
   label?: string;
+  /** Draw the animation even when the viewer has no active Purify. */
+  preview?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(true);
   const [loopOn, setLoopOn] = useState(false);
-
-  const mode: "static" | "hover" | "once" | "loop" =
+  const { active } = usePurify();
+  const entitled = preview || active;
+  const requested: "static" | "hover" | "once" | "loop" =
     animate === true ? "loop" : animate === false ? "static" : animate;
+  // Animated faces are the Purify perk; everyone keeps the still pack.
+  const mode: "static" | "hover" | "once" | "loop" = entitled ? requested : "static";
+  const uid = useId().replace(/:/g, "");
+  const furId = `fur-${uid}`;
+  const rimId = `rim-${uid}`;
+  const earId = `ear-${uid}`;
+  const glossId = `gloss-${uid}`;
 
   // Only a running loop is worth watching for visibility: a hover or one-shot
   // animation is paused or finished anyway, and a picker of twelve faces used
@@ -115,6 +134,7 @@ export function CatEmoji({
   const cls = [
     "cat-emoji",
     `cat-emoji--${name}`,
+    mode !== "static" ? "cat-emoji--anim" : "",
     mode === "hover" ? "cat-emoji--hover" : "",
     mode === "once" ? "cat-emoji--once" : "",
     mode === "loop" && loopOn && visible ? "cat-emoji--loop" : "",
@@ -132,25 +152,96 @@ export function CatEmoji({
       style={{ width: size, height: size, display: "inline-grid", placeItems: "center", flex: "none" }}
     >
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        {/* ears — outer pair, then the lime inner cup */}
-        <path d="M16 27C13 21 9.5 12 8.5 6.5c4.6 1.6 13.4 6.2 19 10.6Z" fill={FUR} stroke={RIM} strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="M48 27c3-6 6.5-15 7.5-20.5-4.6 1.6-13.4 6.2-19 10.6Z" fill={FUR} stroke={RIM} strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="M13.8 22c-2-4.4-4-9.6-4.6-13.2 3.4 1.4 9 4.6 12.8 7.7Z" fill={LIME} fillOpacity=".2" />
-        <path d="M50.2 22c2-4.4 4-9.6 4.6-13.2-3.4 1.4-9 4.6-12.8 7.7Z" fill={LIME} fillOpacity=".2" />
-        {/* head, with one rim light from the top left */}
-        <circle cx="32" cy="37" r="21.5" fill={FUR} stroke={RIM} strokeWidth="1.6" />
-        <path d="M13.6 33.4a18.6 18.6 0 0 1 36.8 0" stroke="#3a3a42" strokeWidth="1.4" strokeLinecap="round" />
-        {/* blush */}
-        <ellipse className="fx-blush" cx="19.5" cy="42" rx="4.2" ry="2.6" fill={LIME} fillOpacity=".18" />
-        <ellipse className="fx-blush" cx="44.5" cy="42" rx="4.2" ry="2.6" fill={LIME} fillOpacity=".18" />
-        {/* whiskers */}
-        <g stroke={LIME} strokeOpacity=".5" strokeWidth="1.2" strokeLinecap="round">
-          <line x1="4.5" y1="37" x2="13" y2="38.5" />
-          <line x1="4.5" y1="42.5" x2="13" y2="42" />
-          <line x1="59.5" y1="37" x2="51" y2="38.5" />
-          <line x1="59.5" y1="42.5" x2="51" y2="42" />
+        <defs>
+          <radialGradient id={furId} cx="34%" cy="22%" r="86%">
+            <stop offset="0%" stopColor="#303038" />
+            <stop offset="46%" stopColor="#1b1b21" />
+            <stop offset="100%" stopColor="#0a0a0d" />
+          </radialGradient>
+          <linearGradient id={rimId} x1="18%" y1="0%" x2="78%" y2="100%">
+            <stop offset="0%" stopColor="#e8ffb4" stopOpacity="0.85" />
+            <stop offset="38%" stopColor={LIME} stopOpacity="0.32" />
+            <stop offset="100%" stopColor={LIME} stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={earId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#414f1b" />
+            <stop offset="100%" stopColor="#1d240b" />
+          </linearGradient>
+          <radialGradient id={glossId} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        <g className="cat-body">
+          {/* Ears sit behind the head; the right one is the left one mirrored. */}
+          <g className="fx-ear-l">
+            <path
+              d="M15.8 27.4C11.9 21.4 8.9 13 8.1 5.6c5.4 1.7 13.2 5.7 19.1 10.8Z"
+              fill={`url(#${furId})`}
+              stroke={`url(#${rimId})`}
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M14.7 21.8c-2.5-4.7-4.4-9.8-4.9-13.5 4 1.6 9.3 4.7 13.3 8.1Z"
+              fill={`url(#${earId})`}
+            />
+          </g>
+          <g transform="translate(64 0) scale(-1 1)">
+            <g className="fx-ear-r">
+              <path
+                d="M15.8 27.4C11.9 21.4 8.9 13 8.1 5.6c5.4 1.7 13.2 5.7 19.1 10.8Z"
+                fill={`url(#${furId})`}
+                stroke={`url(#${rimId})`}
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M14.7 21.8c-2.5-4.7-4.4-9.8-4.9-13.5 4 1.6 9.3 4.7 13.3 8.1Z"
+                fill={`url(#${earId})`}
+              />
+            </g>
+          </g>
+
+          {/* Head: matte fur gradient, lime rim, then one soft forehead gloss. */}
+          <path
+            d={HEAD}
+            fill={`url(#${furId})`}
+            stroke={`url(#${rimId})`}
+            strokeWidth="1.35"
+            strokeLinejoin="round"
+          />
+          <path className="fx-rim-glow" d={HEAD} fill="none" stroke={LIME} strokeOpacity="0.16" strokeWidth="2.4" />
+          <ellipse
+            cx="26.4"
+            cy="21.8"
+            rx="9.6"
+            ry="4.2"
+            fill={`url(#${glossId})`}
+            transform="rotate(-13 26.4 21.8)"
+          />
+          <circle cx="21.6" cy="19.4" r="1.15" fill="#ffffff" fillOpacity="0.22" />
+
+          {/* Blush and whiskers: the only warm marks on the face. */}
+          <ellipse className="fx-blush" cx="19.5" cy="41.8" rx="4.3" ry="2.4" fill={LIME} fillOpacity="0.16" />
+          <ellipse className="fx-blush" cx="44.5" cy="41.8" rx="4.3" ry="2.4" fill={LIME} fillOpacity="0.16" />
+          <g
+            className="fx-whiskers"
+            stroke={LIME}
+            strokeOpacity="0.55"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            fill="none"
+          >
+            <path d="M4.6 36.6c3.1.3 5.9.9 8.4 1.8" />
+            <path d="M4.6 42.2c3-.3 5.8-.2 8.4.4" />
+            <path d="M59.4 36.6c-3.1.3-5.9.9-8.4 1.8" />
+            <path d="M59.4 42.2c-3-.3-5.8-.2-8.4.4" />
+          </g>
+
+          <EmojiFace name={name} />
         </g>
-        <EmojiFace name={name} />
       </svg>
     </span>
   );
@@ -181,7 +272,7 @@ function Eyes({ squint = false }: { squint?: boolean }) {
 
 /** The little lime nose every face shares. */
 function Nose() {
-  return <path d="M29.6 42.2h4.8L32 45.2Z" fill={LIME} fillOpacity=".9" />;
+  return <path d="M29.6 42.2h4.8L32 45.2Z" fill={LIME} fillOpacity="0.9" />;
 }
 
 function EmojiFace({ name }: { name: CatEmojiName }) {

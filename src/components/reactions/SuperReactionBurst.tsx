@@ -85,7 +85,9 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
         <div className="super-burst-cat-body relative grid place-items-center">
           <span className="super-burst-streak super-burst-streak--left" aria-hidden="true" />
           <span className="super-burst-streak super-burst-streak--right" aria-hidden="true" />
-          <CatEmoji name={cat} size={132} animate="loop" label="Super reaction" />
+          {/* A super reaction is already a Purify-only send, so the celebration
+              itself stays animated for every viewer. */}
+          <CatEmoji name={cat} size={132} animate="loop" label="Super reaction" preview />
           <span className="absolute -bottom-3 grid h-11 w-11 place-items-center rounded-full border border-[var(--super-edge)] bg-[var(--super-ink)] shadow-[0_0_18px_var(--super-shadow)] backdrop-blur">
             {emoji ? (
               <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-7 w-7" />

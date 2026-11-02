@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
+import { Lock } from "lucide-react";
+import { usePurify } from "@/lib/purify";
 import { CatEmoji } from "./CatEmoji";
 import { CAT_EMOJI_MANIFEST, type CatEmojiName } from "./cat-emoji-manifest";
 
-/** Grid of 12: never animates continuously — hover/press/focus only. */
+/** Grid of 12: never animates continuously — hover/press/focus only.
+ * Free accounts keep the same faces, still, with the Purify lock on each. */
 export function CatEmojiPicker({
   value,
   onPick,
@@ -12,6 +15,8 @@ export function CatEmojiPicker({
   onPick: (shortcode: string) => void;
   size?: number;
 }) {
+  const { active } = usePurify();
+  const locked = !active;
   return (
     <div role="listbox" aria-label="Cat emojis" className="grid grid-cols-6 gap-1">
       {CAT_EMOJI_MANIFEST.map((e) => {
@@ -25,11 +30,19 @@ export function CatEmojiPicker({
             aria-label={`${e.label} ${e.shortcode}`}
             title={`${e.label} ${e.shortcode}`}
             onClick={() => onPick(e.shortcode)}
-            className={`grid min-h-[44px] min-w-[44px] place-items-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+            className={`relative grid min-h-[44px] min-w-[44px] place-items-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
               selected ? "bg-[#c8ff3d]/20 ring-1 ring-[#c8ff3d]" : "hover:bg-white/10"
             }`}
           >
-            <CatEmoji name={e.name} size={size} animate="hover" />
+            <CatEmoji name={e.name} size={size} animate={locked ? "static" : "hover"} />
+            {locked ? (
+              <span
+                aria-hidden="true"
+                className="absolute right-0.5 top-0.5 grid h-3 w-3 place-items-center rounded-full border border-white/10 bg-black/70 text-primary"
+              >
+                <Lock className="h-[7px] w-[7px]" />
+              </span>
+            ) : null}
           </button>
         );
       })}

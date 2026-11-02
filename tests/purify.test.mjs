@@ -155,7 +155,17 @@ await check("the hero is the shield, animated once and reduced under motion", ()
 
 await check("the perks come from one config and match real gates", () => {
   assert.match(purify, /export const PURIFY_PERKS/);
-  for (const title of ["Take escrow bounties", "Super reactions", "Purify profile badge", "Realm emoji perks"]) {
+  for (const title of [
+    "Take escrow bounties",
+    "Super reactions",
+    "Animated RIZZ emoji",
+    "Purify profile badge",
+    "Profile gradients",
+    "Banner photos",
+    "GIFs everywhere",
+    "Bigger uploads",
+    "Realm emoji perks",
+  ]) {
     assert.ok(purify.includes(title), `${title} missing from the perk config`);
   }
   assert.match(page, /PURIFY_PERKS\.length > 0/);
@@ -167,6 +177,27 @@ await check("the perks come from one config and match real gates", () => {
   assert.match(card, /openPurifyPaywall\("Super reactions"\)/);
   assert.match(realmSettings, /openPurifyPaywall\("Shared realm emoji"\)/);
   assert.match(purify, /withPurifyBadge/);
+  // The profile-gradient and banner examples are the real presets, not art.
+  assert.match(page, /BANNER_PRESETS/);
+  assert.match(page, /gradientCss\(DEMO_GRADIENT\)/);
+});
+
+await check("animated RIZZ emoji are locked to a still pack without Purify", () => {
+  const cat = read("src/components/emoji/CatEmoji.tsx");
+  const picker = read("src/components/emoji/RizzEmojiPicker.tsx");
+  const picker2 = read("src/components/emoji/CatEmojiPicker.tsx");
+  assert.match(cat, /usePurify/);
+  assert.match(cat, /const entitled = preview \|\| active/);
+  assert.match(cat, /entitled \? requested : "static"/);
+  for (const source of [picker, picker2]) {
+    assert.match(source, /usePurify/);
+    assert.match(source, /locked/);
+    assert.match(source, /<Lock/);
+    assert.match(source, /animate=\{locked \? "static" : "hover"\}/);
+  }
+  // A super-reaction celebration stays animated for every viewer.
+  const burst = read("src/components/reactions/SuperReactionBurst.tsx");
+  assert.match(burst, /<CatEmoji name=\{cat\} size=\{132\} animate="loop" label="Super reaction" preview \/>/);
 });
 
 await check("the preview strip is real components, not a video", () => {
@@ -175,6 +206,9 @@ await check("the preview strip is real components, not a video", () => {
   assert.match(page, /<Badge type="premium"/);
   assert.match(page, /<Avatar/);
   assert.match(page, /Take it/);
+  assert.match(page, /<CatEmoji name="cat_music" size=\{32\} animate="loop" preview \/>/);
+  // The page must not repeat the old horizontal-overflow bug.
+  assert.match(page, /mx-auto w-full min-w-0 max-w-xl/);
 });
 
 await check("pricing is one number, a restore, and a soft way out", () => {
