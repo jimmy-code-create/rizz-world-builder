@@ -1,7 +1,10 @@
 # Test report: bounty trust/fees and feed polish
 
-Date: 2026-11-02 (updated 2026-11-03 for bounty presentation).
-Live build checked: `a46f94b` (Render) before the presentation change.
+Date: 2026-11-03.
+Live build checked: `54724b4` (Render). The signed-out `/drops` route returns
+to `/` with no console errors, and the served `drops` chunk contains the tag,
+heading-colour and cover controls. Authenticated composer checks still need a
+Purify account with a funded wallet.
 Test plan: `TEST-PLAN.md`.
 Security review: `SECURITY.md`.
 
