@@ -1417,7 +1417,6 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 /* ============ EFFECT BUDGET — MOBILE ============
    Mobile gets a clean solid surface to eliminate GPU raster jank during scroll. */
 @media (max-width: 767.98px) {
-  .nightclub-canvas { display: none; }
   .feed-post-card { transition: border-color 200ms ease; }
 }
 /* The app's own "Reduced motion" setting also stops the decorative layers. */
