@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Activity,
   Bot,
@@ -57,6 +57,7 @@ import { StatusDot } from "@/components/presence/StatusDot";
 import { StatusEmoji } from "@/lib/cat-emoji-text";
 import { RizzCat } from "@/components/RizzCat";
 import { AppLoader } from "@/components/AppLoader";
+import { isQuickReturn } from "@/lib/app-activity";
 import { WelcomeTourHost } from "@/components/onboarding/WelcomeTourHost";
 import { KnockDoorbell } from "@/components/knock/KnockDoorbell";
 import { usePresenceHeartbeat } from "@/lib/knock";
@@ -200,9 +201,38 @@ const mobileTabs = [
   { to: "/dms", label: "messages", icon: MessageCircle },
 ] as const;
 
+/**
+ * Neutral shell shown while a quick return rehydrates the session. It is
+ * deliberately not the branded loader: coming back within ten minutes should
+ * feel like the app was always open, not like a cold start.
+ */
+// The boot flag never changes after the page loads, so there is nothing to
+// subscribe to; useSyncExternalStore is here only so the server snapshot and
+// the client snapshot can differ without a hydration mismatch.
+const subscribeToBoot = () => () => {};
+
+function AppShellSkeleton() {
+  return (
+    <div
+      className="relative flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-background md:pl-64"
+      aria-hidden
+    >
+      <div className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/5 bg-card/60 md:block" />
+      <div className="flex-1 space-y-3 p-4">
+        <div className="h-10 w-40 animate-pulse rounded-xl bg-white/[0.05]" />
+        <div className="h-32 animate-pulse rounded-3xl bg-white/[0.035]" />
+        <div className="h-44 animate-pulse rounded-3xl bg-white/[0.035]" />
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
   const { t } = useI18n();
+  // Read on the client only: the server has no boot flag, so it agrees with
+  // the first hydration pass and then swaps to the neutral shell.
+  const quickReturn = useSyncExternalStore(subscribeToBoot, isQuickReturn, () => false);
   const nav = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -360,7 +390,9 @@ export function AppShell() {
   }
 
   if (loading || !user || !profile?.username) {
-    return <AppLoader />;
+    // The splash belongs to cold starts. A quick return gets the neutral shell
+    // so the branded loading screen only appears after a real absence.
+    return quickReturn ? <AppShellSkeleton /> : <AppLoader />;
   }
 
   const initial = (profile?.display_name || profile?.username || "?").charAt(0).toUpperCase();

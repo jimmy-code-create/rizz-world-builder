@@ -30,6 +30,15 @@
   shimmer, and a glow that drifts with scroll. All three stand down under
   `prefers-reduced-motion` or the app's reduced-motion flag, and the entrance
   renders its final state instead of an invisible container.
+- Opening a realm no longer crashes with React #310. The page's image-cleanup
+  effect sat below the loading/not-found early returns, so the first render
+  called fewer hooks than the render that had data. It now runs before both
+  returns, with a comment on why hooks must stay above them.
+- The loading screen now measures absence. A small pre-React script stamps
+  `rizz.last-active-at` while the app is visible and when it goes away; a
+  return within ten minutes paints the shell (or a quiet skeleton while the
+  session rehydrates) and skips the brand splash entirely. A first visit or a
+  return after ten minutes still gets it.
 
 ## 2026-11-01 — One emoji system, a bounty gate, and a louder double tap
 

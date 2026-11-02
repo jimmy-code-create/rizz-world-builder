@@ -19,6 +19,7 @@ import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
+import { isQuickReturn, markAppActive } from "@/lib/app-activity";
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -159,6 +160,39 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/**
+         * Before the splash is parsed, decide whether this load is a quick
+         * return (under ten minutes away) and hide it. The stamp is refreshed
+         * while the app is visible, when the tab goes away, and on unload, so
+         * the next cold start knows how long the app was actually gone. Keep
+         * the key and the ten-minute window in sync with `app-activity.ts`.
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+          (function () {
+            var KEY = "rizz.last-active-at";
+            var AWAY_MS = 10 * 60 * 1000;
+            try {
+              var last = Number(window.localStorage.getItem(KEY) || 0);
+              if (last > 0 && Date.now() - last < AWAY_MS) {
+                document.documentElement.setAttribute("data-boot", "quick");
+              }
+            } catch (e) {}
+            function stamp() {
+              try { window.localStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+            }
+            document.addEventListener("visibilitychange", function () {
+              if (document.visibilityState === "hidden") stamp();
+            });
+            window.addEventListener("pagehide", stamp);
+            window.setInterval(function () {
+              if (document.visibilityState !== "hidden") stamp();
+            }, 60 * 1000);
+          })();
+        `,
+          }}
+        />
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -183,6 +217,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
           }
           .boot-bar-fill {
             animation: boot-bar-slide 1.2s ease-in-out infinite;
+          }
+          /* A quick return skips the branded loader; the app paints as soon
+             as the shell is ready. */
+          html[data-boot="quick"] #boot-splash {
+            display: none;
           }
         `,
           }}
@@ -230,11 +269,17 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
+    markAppActive();
     const splash = document.getElementById("boot-splash");
-    if (splash) {
-      splash.style.opacity = "0";
-      setTimeout(() => splash.remove(), 260);
+    if (!splash) return;
+    // Quick return: the pre-React script already hid it; just drop the node.
+    if (isQuickReturn()) {
+      splash.remove();
+      return;
     }
+    splash.style.opacity = "0";
+    const timer = window.setTimeout(() => splash.remove(), 260);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

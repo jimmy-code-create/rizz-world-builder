@@ -646,6 +646,13 @@ function RealmPage() {
     };
   }, [search.message, realm.data?.id, activeRoomId, roomMessages.dataUpdatedAt]);
 
+  // Every hook has to run before the loading/not-found returns below. React
+  // counts hooks per render, and an early return followed by a later hook is
+  // error #310 ("rendered more hooks than during the previous render").
+  useEffect(() => () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
+
   if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
   if (!realm.data)
     return (
@@ -708,10 +715,6 @@ function RealmPage() {
         el.setSelectionRange(next.length, next.length);
       });
   };
-
-  useEffect(() => () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-  }, [imagePreview]);
 
   const chooseImage = (file: File | null) => {
     if (!file) return;
