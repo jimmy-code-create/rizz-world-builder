@@ -163,6 +163,7 @@ export function BountyCard({
     void qc.invalidateQueries({ queryKey: ["bounty-warnings"] });
     void qc.invalidateQueries({ queryKey: ["bounty-trust"] });
     void qc.invalidateQueries({ queryKey: ["bounty-trust-map"] });
+    void qc.invalidateQueries({ queryKey: ["bounty-blocks"] });
   };
 
   const affordable = canAffordTakerCancelFee(Number(profile?.paw_balance ?? 0));
@@ -281,9 +282,7 @@ export function BountyCard({
 
         {escrow && bounty.requirements && (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3">
-            <p className="text-[11px] font-semibold text-muted-foreground">
-              What counts as done
-            </p>
+            <p className="text-[11px] font-semibold text-muted-foreground">What counts as done</p>
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
               {fixCommonTypos(bounty.requirements)}
             </p>
@@ -361,7 +360,10 @@ export function BountyCard({
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-white/5">
-              <div className="h-full w-full origin-left bg-primary transition-transform motion-reduce:transition-none" style={{ transform: `scaleX(${claimPct / 100})` }} />
+              <div
+                className="h-full w-full origin-left bg-primary transition-transform motion-reduce:transition-none"
+                style={{ transform: `scaleX(${claimPct / 100})` }}
+              />
             </div>
           </div>
         )}
@@ -440,7 +442,6 @@ export function BountyCard({
                     Take it and earn {formatNumber(prize)} Paws
                   </Button>
                 ))}
-
 
               {state === "open" && role === "creator" && (
                 <span className="text-[12px] font-semibold text-muted-foreground">

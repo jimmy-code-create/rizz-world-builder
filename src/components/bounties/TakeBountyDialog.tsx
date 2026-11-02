@@ -32,6 +32,8 @@ import {
   canAffordTakerCancelFee,
   feeRecipientLabel,
   isEscrowBounty,
+  meetsMinTrust,
+  MIN_TRUST_LABEL,
   minutesLeft,
   takeBounty,
   trustLine,
@@ -109,7 +111,9 @@ export function TakeBountyDialog({
   const stats = creatorTrust.data;
   const affordable = canAffordTakerCancelFee(balance);
   const premium = purify.active;
-  const ready = premium && affordable && understood && left > 0 && !busy;
+  const meetsTrust =
+    !bounty.min_trust || (stats !== undefined && meetsMinTrust(stats.level, bounty.min_trust));
+  const ready = premium && affordable && meetsTrust && understood && left > 0 && !busy;
 
   const confirm = async () => {
     if (!ready) return;
@@ -219,6 +223,12 @@ export function TakeBountyDialog({
                 Upgrade
               </Link>
             </div>
+          )}
+
+          {!meetsTrust && bounty.min_trust && (
+            <p className="rounded-2xl border border-amber-300/25 bg-amber-300/[0.06] p-3 text-[12px] font-semibold text-amber-100">
+              {MIN_TRUST_LABEL[bounty.min_trust]} or better is required to take this bounty.
+            </p>
           )}
 
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
