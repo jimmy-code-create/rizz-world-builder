@@ -61,7 +61,7 @@ function buildSparks(reactionCount: number): Spark[] {
 function BurstScene({ reactionKey }: { reactionKey: string }) {
   const id = customReactionId(reactionKey);
   const lookup = useEmojiLookup(id ? [id] : []);
-  const emoji = id ? lookup.data?.find((row) => row.id === id) : undefined;
+  const emoji = id ? lookup.data?.find((row: EmojiRow) => row.id === id) : undefined;
   const sparks = useMemo(() => buildSparks(6), []);
   const cat = useMemo(() => catForKey(reactionKey), [reactionKey]);
 
