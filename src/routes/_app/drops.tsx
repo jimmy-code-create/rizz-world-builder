@@ -434,7 +434,7 @@ function DropsPage() {
       <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
         <QuestEmblem icon={PawPrint} />
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="text-[11px] font-semibold text-muted-foreground">
             Paws balance
           </p>
           <p className="font-display text-xl font-bold leading-tight">
@@ -456,7 +456,7 @@ function DropsPage() {
               className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-center"
             >
               <p className="font-mono text-sm font-bold leading-none">{formatNumber(stat.value)}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
                 {stat.label}
               </p>
             </div>
@@ -535,7 +535,7 @@ function DropsPage() {
           <p className="text-xs text-muted-foreground mt-0.5">
             The prize leaves the poster's wallet when the bounty goes live and is locked until they
             approve the work. No approval inside the review window and it pays out on its own. Pull a
-            bounty and a fee is kept — double once somebody is already on it.
+            bounty and a fee is kept, doubled once somebody is already on it.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
@@ -562,8 +562,8 @@ function DropsPage() {
           aria-valuemax={QUESTS.length}
         >
           <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${Math.round((questsDone / QUESTS.length) * 100)}%` }}
+            className="h-full w-full origin-left bg-primary transition-transform motion-reduce:transition-none"
+            style={{ transform: `scaleX(${questsDone / QUESTS.length})` }}
           />
         </div>
         <div className="mt-2 space-y-2">

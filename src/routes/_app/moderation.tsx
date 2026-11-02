@@ -140,14 +140,14 @@ function ModerationPage() {
                     {stats.level === "top" ? "Top" : stats.level === "trusted" ? "Trusted" : "New"}
                   </p>
                 </div>
-                <span className="rounded-md border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-100">
+                <span className="rounded-md border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold text-amber-100">
                   Pending
                 </span>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
-                  <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
                     <AlertTriangle className="h-3 w-3" /> The warning
                   </p>
                   <p className="mt-1 text-xs font-semibold">
@@ -158,7 +158,7 @@ function ModerationPage() {
                   )}
                 </div>
                 <div className="rounded-xl border border-primary/20 bg-primary/[0.05] p-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+                  <p className="text-[10px] font-semibold text-primary">
                     The appeal
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-foreground/90">
@@ -187,7 +187,7 @@ function ModerationPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <ShieldCheck className="h-4 w-4" /> Uphold — remove the warning
+                      <ShieldCheck className="h-4 w-4" /> Uphold and remove the warning
                     </>
                   )}
                 </Button>
@@ -197,7 +197,7 @@ function ModerationPage() {
                   variant="outline"
                   className="min-h-10 flex-1 border-white/15 bg-white/[0.04] text-xs font-bold"
                 >
-                  <ShieldX className="h-4 w-4" /> Reject — warning stays
+                  <ShieldX className="h-4 w-4" /> Reject and keep the warning
                 </Button>
               </div>
             </article>

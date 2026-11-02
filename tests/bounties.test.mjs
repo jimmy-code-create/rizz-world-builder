@@ -61,7 +61,7 @@ await check("route, tables, and claim mechanics still present", async () => {
   // reward, same "+25 Paws" promise on the button that pays it.
   assert.ok(drops.includes('rpc("claim_bounty"'));
   assert.ok(drops.includes("BOUNTY_PAW_REWARD"));
-  assert.ok(card.includes("Claim · +25 Paws"));
+  assert.ok(card.includes("Claim and earn 25 Paws"));
   assert.ok(card.includes("claim_limit"));
   assert.ok(postDialog.includes('storage.from("drops")'));
   assert.ok(postDialog.includes("claim_limit"));

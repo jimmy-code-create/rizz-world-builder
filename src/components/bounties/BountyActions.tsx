@@ -210,7 +210,7 @@ export function SubmitProofDialog({
           className="w-full bg-primary text-primary-foreground border-0 shadow-md"
         >
           {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
           ) : (
             <>
               <PawPrint className="h-4 w-4" />
@@ -285,7 +285,7 @@ export function ReviewSubmissionDialog({
           {workerTrust && workerTrust.warnings > 0 && (
             <p className="text-[11px] text-amber-200">
               {workerTrust.warnings} active warning
-              {workerTrust.warnings === 1 ? "" : "s"} — warn or block from the bounty card.
+              {workerTrust.warnings === 1 ? "" : "s"}. Warn or block from the bounty card.
             </p>
           )}
         </div>
@@ -349,7 +349,7 @@ export function ReviewSubmissionDialog({
           {overdue && (
             <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-200">
               <AlertTriangle className="h-3.5 w-3.5" />
-              The review window has passed — this pays out on its own very soon.
+              The review window has passed. This pays out on its own very soon.
             </p>
           )}
         </div>
@@ -370,7 +370,7 @@ export function ReviewSubmissionDialog({
             className="h-11 flex-1 border-white/10 bg-white/[0.03] text-xs font-bold"
           >
             {busy === "reject" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : rejectionsLeft === 0 ? (
               "Review limit reached"
             ) : (
@@ -386,7 +386,7 @@ export function ReviewSubmissionDialog({
             className="h-11 flex-1 gap-1.5 bg-primary text-xs font-bold text-primary-foreground shadow-md"
           >
             {busy === "approve" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : (
               <>
                 <CircleCheck className="h-4 w-4" />
@@ -449,10 +449,10 @@ export function CancelBountyDialog({
   return (
     <ActionDialog open={open} onOpenChange={onOpenChange} title="Cancel this bounty?">
       <div className="space-y-3">
-        <div className="space-y-2 rounded-xl border border-[#ff5d5d]/25 bg-[#ff5d5d]/[0.07] p-3">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-[#ff8f8f]">
+        <div className="space-y-2 rounded-xl border border-destructive/25 bg-destructive/[0.07] p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-destructive">
             <AlertTriangle className="h-4 w-4" />
-            Warning — cancelling is not free
+            Cancelling is not free
           </p>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             A {taken ? "taken" : "live"} bounty that gets pulled still costs the network a slot, so{" "}
@@ -485,10 +485,10 @@ export function CancelBountyDialog({
           <Button
             onClick={() => void confirm()}
             disabled={busy}
-            className="h-11 flex-1 gap-1.5 border-0 bg-[#ff5d5d] text-xs font-bold text-white hover:bg-[#ff7272]"
+            className="h-11 flex-1 gap-1.5 border-0 bg-destructive text-xs font-bold text-destructive-foreground hover:bg-destructive/90"
           >
             {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : (
               <>
                 <ShieldCheck className="h-4 w-4" />
@@ -499,7 +499,7 @@ export function CancelBountyDialog({
         </div>
         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Check className="h-3 w-3" />
-          Letting the deadline pass is free — the Paws come back with no fee.
+          Letting the deadline pass is free. The Paws come back with no fee.
         </p>
       </div>
     </ActionDialog>

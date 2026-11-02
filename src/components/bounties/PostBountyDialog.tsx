@@ -348,7 +348,7 @@ export function PostBountyDialog({
                   when you approve the work.
                 </p>
                 <p className="text-muted-foreground">
-                  Cancel before anyone takes it and {formatNumber(fee)} Paws is kept as the fee —{" "}
+                  Cancel before anyone takes it and {formatNumber(fee)} Paws is kept as the fee, or{" "}
                   {formatNumber(takenFee)} once somebody is working on it.
                 </p>
                 <p className="text-muted-foreground">
@@ -356,7 +356,7 @@ export function PostBountyDialog({
                   Paws; it goes to {feeRecipientLabel(rules?.feeRecipient ?? "creator")}.
                 </p>
                 {shortfall > 0 && (
-                  <p className="font-semibold text-[#ff5d5d]">
+                  <p className="font-semibold text-destructive">
                     You need {formatNumber(shortfall)} more Paws for this prize.
                   </p>
                 )}

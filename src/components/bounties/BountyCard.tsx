@@ -233,7 +233,7 @@ export function BountyCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] ${
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-semibold ${
                   STATE_TONE[state] ?? STATE_TONE.open
                 }`}
               >
@@ -242,7 +242,7 @@ export function BountyCard({
               </span>
               {escrow && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] ${
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-semibold ${
                     state === "paid"
                       ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
                       : "border-white/10 bg-white/[0.04] text-muted-foreground"
@@ -281,7 +281,7 @@ export function BountyCard({
 
         {escrow && bounty.requirements && (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-[11px] font-semibold text-muted-foreground">
               What counts as done
             </p>
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
@@ -338,7 +338,7 @@ export function BountyCard({
             {state === "cancelled" && (
               <span className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground">
                 <Undo2 className="h-3.5 w-3.5" />
-                Cancelled —{" "}
+                Cancelled,{" "}
                 {bounty.cancel_reason ? fixCommonTypos(bounty.cancel_reason) : "no reason given"}
               </span>
             )}
@@ -361,7 +361,7 @@ export function BountyCard({
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-white/5">
-              <div className="h-full bg-primary transition-all" style={{ width: `${claimPct}%` }} />
+              <div className="h-full w-full origin-left bg-primary transition-transform motion-reduce:transition-none" style={{ transform: `scaleX(${claimPct / 100})` }} />
             </div>
           </div>
         )}
@@ -393,7 +393,7 @@ export function BountyCard({
                 "Your bounty"
               ) : (
                 <>
-                  <PawPrint className="h-4 w-4" /> Claim · +25 Paws
+                  <PawPrint className="h-4 w-4" /> Claim and earn 25 Paws
                 </>
               )}
             </Button>
@@ -414,7 +414,7 @@ export function BountyCard({
                 ) : !purify.active ? (
                   <Button
                     asChild
-                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md"
+                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <Link to="/purify">
                       <Sparkles className="h-4 w-4" />
@@ -434,10 +434,10 @@ export function BountyCard({
                   <Button
                     onClick={() => setTakeOpen(true)}
                     disabled={busy || left <= 0}
-                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md"
+                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <PawPrint className="h-4 w-4" />
-                    Take it · earn {formatNumber(prize)} Paws
+                    Take it and earn {formatNumber(prize)} Paws
                   </Button>
                 ))}
 
@@ -452,7 +452,7 @@ export function BountyCard({
                 <>
                   <Button
                     onClick={() => setProofOpen(true)}
-                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md"
+                    className="min-h-10 flex-1 border-0 bg-primary text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <PawPrint className="h-4 w-4" />
                     Submit work

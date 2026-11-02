@@ -120,7 +120,7 @@ export function EmojiPicker({
           <SheetTitle className="flex items-center gap-2 font-display text-base">
             <Smile className="h-4 w-4 text-primary" /> {title}
             {accent ? (
-              <span className="ml-auto flex items-center gap-1 rounded-full border border-[#cfaeff]/50 bg-[#b47cff]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e6d4ff]">
+              <span className="ml-auto flex items-center gap-1 rounded-full border border-[var(--super-edge-soft)] bg-[var(--super-wash)] px-2 py-0.5 text-[9px] font-semibold text-[var(--super-paper)]">
                 <Sparkles className="h-2.5 w-2.5" aria-hidden="true" /> Super
               </span>
             ) : null}
@@ -190,7 +190,7 @@ export function EmojiPicker({
                   key={glyph}
                   type="button"
                   onClick={() => chooseUnicode(glyph)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-transform hover:scale-110 active:scale-95"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={glyph}
                 >
                   {glyph}
@@ -271,7 +271,7 @@ function CustomTile({
           event.preventDefault();
           setMenu((value) => !value);
         }}
-        className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95"
+        className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title={`:${row.shortcode}:`}
         aria-label={`:${row.shortcode}:`}
       >
@@ -292,7 +292,7 @@ function CustomTile({
         ⋯
       </button>
       {menu ? (
-        <div className="absolute right-0 top-9 z-20 w-36 overflow-hidden rounded-xl border border-white/10 bg-[#141414] text-[11px] shadow-xl">
+        <div className="absolute right-0 top-9 z-20 w-36 overflow-hidden rounded-xl border border-white/10 bg-card text-[11px] shadow-xl">
           <button
             type="button"
             onClick={() => {

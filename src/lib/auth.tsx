@@ -100,15 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileError(null);
 
       if (!nextSession) {
+        // There is no profile to fetch without a session. Calling /api/me here
+        // only produced a 401 in the console for every signed-out visitor.
         setProfile(null);
-        setLoading(true);
-        try {
-          await fetchMe(null);
-        } catch {
-          // An unauthenticated visitor still belongs on the public welcome screen.
-        } finally {
-          if (mounted && currentRequest === requestId) setLoading(false);
-        }
+        if (mounted && currentRequest === requestId) setLoading(false);
         return;
       }
 

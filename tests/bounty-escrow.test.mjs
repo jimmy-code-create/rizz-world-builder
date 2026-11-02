@@ -168,7 +168,7 @@ await check("the client shows the numbers the database will charge", () => {
   // The fee doubles, is floored, and is capped in the browser too.
   assert.ok(lib.includes("base * (taken ? rules.takenFeeMultiplier : 1)"));
   assert.ok(lib.includes("Math.min(prize, base"));
-  assert.ok(actions.includes("cancelling is not free"), "the cancel warning is missing");
+  assert.ok(actions.toLowerCase().includes("cancelling is not free"), "the cancel warning is missing");
   assert.ok(actions.includes("The fee doubles"), "the doubled fee is not explained");
   assert.ok(card.includes("Paws fee"), "the card does not name the fee");
 });

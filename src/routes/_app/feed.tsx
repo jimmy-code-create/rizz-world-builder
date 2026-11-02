@@ -201,7 +201,7 @@ function FeedPage() {
             <RizzCat mood="box" size={124} className="mx-auto" />
             <h2 className="mt-4 font-display text-xl font-bold">Nothing here yet</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Be the first to drop something hot — your post lands right here.
+              Be the first to drop something hot. Your post lands right here.
             </p>
             <Button
               type="button"
@@ -268,7 +268,7 @@ function FeedPage() {
 function SectionHeading({ title, tooltip }: { title: string; tooltip?: string }) {
   return (
     <div className="my-3 flex items-center gap-2" title={tooltip}>
-      <h2 className="shrink-0 font-display text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+      <h2 className="shrink-0 font-display text-xs font-semibold text-muted-foreground">
         {title}
       </h2>
       <span aria-hidden className="h-px flex-1 bg-border/60" />

@@ -249,7 +249,7 @@ export function WarningBanner({
             className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-2.5 py-2 text-[12px]"
           >
             <span className="font-semibold">{WARNING_REASON_LABEL[warning.reason]}</span>
-            {warning.note && <span className="text-muted-foreground">— {warning.note}</span>}
+            {warning.note && <span className="text-muted-foreground">· {warning.note}</span>}
             <span className="ml-auto text-[11px] text-muted-foreground">
               {warning.appeal_status === "pending"
                 ? "Appeal pending"
@@ -290,7 +290,7 @@ export function TrustLine({
         {stats.completed} completed · {stats.warnings} warning
         {stats.warnings === 1 ? "" : "s"}
       </span>
-      <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
+      <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
         {stats.level === "top" ? "Top" : stats.level === "trusted" ? "Trusted" : "New"}
       </span>
     </span>

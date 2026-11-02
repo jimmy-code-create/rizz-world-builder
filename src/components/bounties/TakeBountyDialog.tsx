@@ -182,7 +182,7 @@ export function TakeBountyDialog({
             <p className="mt-0.5 text-sm font-semibold">
               {stats ? trustLine(stats) : "Loading…"}
               {stats && (
-                <span className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
+                <span className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                   {TRUST_LEVEL_LABEL[stats.level]}
                 </span>
               )}
@@ -269,10 +269,10 @@ export function TakeBountyDialog({
           <Button
             onClick={() => void confirm()}
             disabled={!ready}
-            className="min-h-12 w-full border-0 bg-primary text-sm font-bold text-primary-foreground shadow-md"
+            className="min-h-12 w-full border-0 bg-primary text-sm font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : (
               <>
                 <Check className="h-4 w-4" />

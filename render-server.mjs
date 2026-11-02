@@ -45,7 +45,7 @@ function setSecurityHeaders(req, res) {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
-    "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()",
+    "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=()",
   );
   // A full script-src policy needs nonces for the theme boot script and the
   // third-party media embeds; keep the safe, non-breaking directives here and

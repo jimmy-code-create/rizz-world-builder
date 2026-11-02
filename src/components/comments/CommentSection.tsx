@@ -243,7 +243,7 @@ export function CommentSection({
     <div className={cn("flex min-h-0 flex-col", className)}>
       {showToolbar && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-4 py-2">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
             <MessageSquare className="h-3.5 w-3.5" />
             {visibleCount === 0
               ? "Comments"
@@ -272,7 +272,7 @@ export function CommentSection({
                   aria-pressed={sort === id}
                   onClick={() => setSort(id)}
                   className={cn(
-                    "h-6 rounded-md px-2 text-[11px] font-semibold transition-colors",
+                    "h-6 rounded-md px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     sort === id
                       ? "bg-white/12 text-foreground"
                       : "text-muted-foreground hover:text-foreground",
@@ -297,7 +297,7 @@ export function CommentSection({
         {comments.isLoading && (
           <div className="space-y-3 py-3" aria-label="Loading comments">
             {[0, 1, 2].map((row) => (
-              <div key={row} className="flex animate-pulse gap-2.5">
+              <div key={row} className="flex animate-pulse motion-reduce:animate-none gap-2.5">
                 <div className="h-8 w-7 shrink-0 rounded-lg bg-white/[0.06]" />
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="h-2.5 w-24 rounded bg-white/[0.08]" />
@@ -327,7 +327,7 @@ export function CommentSection({
         {!comments.isLoading && !comments.isError && rootCount === 0 && (
           <div className="py-8 text-center">
             <RizzCat mood="peek" size={compact ? 72 : 104} className="mx-auto mb-1" />
-            <p className="text-sm text-muted-foreground">No comments yet — start the thread ✨</p>
+            <p className="text-sm text-muted-foreground">No comments yet. Start the thread.</p>
           </div>
         )}
 

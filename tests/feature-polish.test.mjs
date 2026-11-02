@@ -79,8 +79,8 @@ await check("warnings are one per bounty,appealable once and decided by an admin
   assert.match(safety, /Pending appeals do not lift the block/);
   assert.match(moderation, /useBountyAppeals/);
   assert.match(moderation, /resolveBountyWarning/);
-  assert.match(moderation, /Uphold — remove the warning/);
-  assert.match(moderation, /Reject — warning stays/);
+  assert.match(moderation, /Uphold and remove the warning/);
+  assert.match(moderation, /Reject and keep the warning/);
   assert.match(moderation, /Admins only/);
 });
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { Sparkles } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import type { CatEmojiName } from "@/components/emoji/cat-emoji-manifest";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
@@ -76,7 +77,7 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
         }}
       />
       {/* Expanding ring */}
-      <div className="super-burst-ring absolute h-40 w-40 rounded-full border-2 border-[#d9bcff]" />
+      <div className="super-burst-ring absolute h-40 w-40 rounded-full border-2 border-[var(--super-violet)]" />
       {/* The RIZZ cat: the face keeps playing its own expression loop while the
           body bobs and the whole cat leaps in and out. Two transform layers,
           so the entrance/exit never fights the idle motion. */}
@@ -85,7 +86,7 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
           <span className="super-burst-streak super-burst-streak--left" aria-hidden="true" />
           <span className="super-burst-streak super-burst-streak--right" aria-hidden="true" />
           <CatEmoji name={cat} size={132} animate="loop" label="Super reaction" />
-          <span className="absolute -bottom-3 grid h-11 w-11 place-items-center rounded-full border border-[#cfaeff]/60 bg-[#141419]/90 shadow-[0_0_18px_rgba(180,124,255,0.45)] backdrop-blur">
+          <span className="absolute -bottom-3 grid h-11 w-11 place-items-center rounded-full border border-[var(--super-edge)] bg-[var(--super-ink)] shadow-[0_0_18px_var(--super-shadow)] backdrop-blur">
             {emoji ? (
               <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-7 w-7" />
             ) : (
@@ -95,7 +96,7 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
         </div>
       </div>
       {/* Label */}
-      <span className="super-burst-label absolute top-[calc(50%+96px)] rounded-full border border-[#cfaeff]/50 bg-[#141419]/85 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-[#e6d4ff] backdrop-blur">
+      <span className="super-burst-label absolute top-[calc(50%+96px)] rounded-full border border-[var(--super-edge-soft)] bg-[var(--super-ink-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--super-paper)] backdrop-blur">
         Super
       </span>
       {/* Sparks */}
@@ -112,7 +113,7 @@ function BurstScene({ reactionKey }: { reactionKey: string }) {
             } as React.CSSProperties
           }
         >
-          {spark.kind === "star" ? "✨" : emoji ? "" : reactionKey}
+          {spark.kind === "star" ? <Sparkles className="h-[1em] w-[1em]" aria-hidden="true" /> : emoji ? "" : reactionKey}
           {spark.kind === "reaction" && emoji ? (
             <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-[1.2em] w-[1.2em]" />
           ) : null}

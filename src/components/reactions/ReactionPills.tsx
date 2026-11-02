@@ -76,10 +76,10 @@ export function ReactionPills({
             }}
             aria-pressed={group.mine}
             className={cn(
-              "inline-flex items-center rounded-full border transition-all duration-150 active:scale-90",
+              "inline-flex items-center rounded-full border transition-transform duration-150 active:scale-90 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               compact ? "h-5 gap-0.5 px-1 text-[10px]" : "h-7 gap-1 px-2 text-[12px]",
               isSuper
-                ? "border-[#cfaeff]/70 bg-[linear-gradient(120deg,rgba(180,124,255,0.32),rgba(124,77,255,0.18)_48%,rgba(236,72,153,0.22))] text-foreground shadow-[0_0_20px_rgba(180,124,255,0.4)] ring-1 ring-inset ring-white/10"
+                ? "border-[var(--super-violet-soft)] super-reaction-pill text-foreground shadow-[0_0_20px_var(--super-shadow)] ring-1 ring-inset ring-white/10"
                 : group.mine
                   ? "border-primary/50 bg-primary/15 text-primary"
                   : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
@@ -101,12 +101,12 @@ export function ReactionPills({
             )}
             {isSuper ? (
               <Sparkles
-                className={compact ? "h-2 w-2 text-[#e6d4ff]" : "h-2.5 w-2.5 text-[#e6d4ff]"}
+                className={compact ? "h-2 w-2 text-[var(--super-paper)]" : "h-2.5 w-2.5 text-[var(--super-paper)]"}
                 aria-hidden="true"
               />
             ) : null}
             <span
-              className={cn("tabular-nums", isSuper ? "font-bold text-[#f3e9ff]" : "font-semibold")}
+              className={cn("tabular-nums", isSuper ? "font-bold text-[var(--super-paper)]" : "font-semibold")}
             >
               {group.count}
             </span>
@@ -145,7 +145,7 @@ export function ReactionTray({
   return (
     <>
       {open ? (
-        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#141414]/95 px-1.5 py-1 shadow-xl backdrop-blur">
+        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-card px-1.5 py-1 shadow-xl backdrop-blur">
           {quick.map((glyph) => (
             <button
               key={glyph}

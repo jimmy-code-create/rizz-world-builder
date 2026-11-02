@@ -66,9 +66,9 @@ function PostPermalinkPage() {
   if (post.isLoading) {
     return (
       <div className="mx-auto w-full max-w-2xl space-y-3">
-        <div className="glass h-10 w-28 animate-pulse rounded-xl" />
-        <div className="glass aspect-square animate-pulse rounded-3xl" />
-        <div className="glass h-24 animate-pulse rounded-3xl" />
+        <div className="glass h-10 w-28 animate-pulse rounded-xl motion-reduce:animate-none" />
+        <div className="glass aspect-square animate-pulse rounded-3xl motion-reduce:animate-none" />
+        <div className="glass h-24 animate-pulse rounded-3xl motion-reduce:animate-none" />
       </div>
     );
   }
@@ -76,7 +76,7 @@ function PostPermalinkPage() {
   if (post.isError || !post.data) {
     return (
       <div className="mx-auto w-full max-w-2xl">
-        <Button asChild variant="ghost" size="sm" className="mb-3 gap-1.5">
+        <Button asChild variant="ghost" size="sm" className="mb-3 gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Link to="/feed">
             <ArrowLeft className="h-4 w-4" /> Back to feed
           </Link>
@@ -96,10 +96,10 @@ function PostPermalinkPage() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-[11px] font-semibold text-muted-foreground">
           Post
         </span>
       </div>

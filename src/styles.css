@@ -76,6 +76,17 @@
   --brand-signal: #c9ff3d;
   --brand-signal-ink: #0a0a0b;
   --brand-signal-dim: #9cc72c;
+  /* Super-reaction celebration: a violet card on the ink canvas. Kept here so
+     the burst and the pill use one value instead of repeating hex codes. */
+  --super-violet: #d9bcff;
+  --super-violet-soft: #cfaeff;
+  --super-edge: rgba(207, 174, 255, 0.6);
+  --super-edge-soft: rgba(207, 174, 255, 0.5);
+  --super-ink: rgba(20, 20, 25, 0.9);
+  --super-ink-soft: rgba(20, 20, 25, 0.85);
+  --super-paper: #e6d4ff;
+  --super-shadow: rgba(180, 124, 255, 0.45);
+  --super-wash: rgba(180, 124, 255, 0.15);
   /* A profile with no banner photo and no gradient still needs a cover. A lime
      sheen over ink says "nothing picked yet"; the old flat #141416 read as a
      hole punched in the sheet. */
@@ -2275,6 +2286,15 @@ button:active > .motion-icon {
   45% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+.super-reaction-pill {
+  background: linear-gradient(
+    120deg,
+    rgba(180, 124, 255, 0.32),
+    rgba(124, 77, 255, 0.18) 48%,
+    rgba(236, 72, 153, 0.22)
+  );
+}
+
 .super-reaction-in {
   animation: super-reaction-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }

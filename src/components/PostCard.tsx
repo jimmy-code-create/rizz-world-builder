@@ -530,12 +530,12 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
             {(post as any).edited_at && <span className="text-[10px] italic">· edited</span>}
             {post.visibility === "close_friends" && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-semibold text-emerald-300">
                 <Lock className="h-2.5 w-2.5" /> Close friends
               </span>
             )}
             {isPinned && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary">
                 <Pin className="h-2.5 w-2.5 fill-current" /> Pinned
               </span>
             )}
@@ -659,7 +659,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 className="font-medium text-primary hover:underline focus-visible:outline-none"
               >
                 {tf("see_translation_as", { lang: LANGUAGE_NAMES[translatedLang] ?? translatedLang })}
-                <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-bold uppercase text-primary">
+                <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-semibold text-primary">
                   {t("beta")}
                 </span>
               </button>
@@ -680,7 +680,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   className="font-medium text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none"
                 >
                   {isTranslating ? t("translating") : tf("translate_post_as", { lang: LANGUAGE_NAMES[userLang] || "Preferred" })}
-                  <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-bold uppercase text-primary">
+                  <span className="ml-1 rounded-full border border-primary/40 px-1 py-px text-[8px] font-semibold text-primary">
                     {t("beta")}
                   </span>
                 </button>
@@ -722,7 +722,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
               {!imageLoaded && (
                 <div
-                  className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px]"
+                  className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px] motion-reduce:animate-none"
                   aria-hidden="true"
                 />
               )}
@@ -733,7 +733,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 decoding="async"
                 onLoad={() => setImageLoaded(true)}
                 onError={() => setMediaFailed(true)}
-                className={`w-full max-h-[min(48dvh,390px)] object-contain transition-all duration-300 ${
+                className={`w-full max-h-[min(48dvh,390px)] object-contain transition-opacity duration-300 ${
                   imageLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
                 }`}
               />
@@ -843,7 +843,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <button
                 key={r}
                 onClick={() => setReportReason(r)}
-                className={`text-sm rounded-xl px-3 py-2 border transition-all ${reportReason === r ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/5"}`}
+                className={`text-sm rounded-xl px-3 py-2 border transition-colors ${reportReason === r ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/5"}`}
               >
                 {r}
               </button>
@@ -859,7 +859,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="glass-strong border-white/10">
           <DialogTitle className="font-display">Edit caption</DialogTitle>
-          <DialogDescription>Refine your post — the original media stays the same.</DialogDescription>
+          <DialogDescription>Refine your post. The original media stays the same.</DialogDescription>
           <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="bg-transparent border-white/10" />
           <p className="text-[10px] text-muted-foreground text-right">{caption.length}/2000</p>
           <DialogFooter>

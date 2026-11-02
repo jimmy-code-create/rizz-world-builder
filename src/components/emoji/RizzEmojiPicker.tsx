@@ -155,7 +155,7 @@ export function RizzEmojiPanel({
 
       {recentEntries.length > 0 && !query && (
         <div>
-          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
             <Clock3 className="h-3 w-3" /> Recent
           </p>
           <Grid entries={recentEntries} onPick={pick} size={compact ? 26 : 28} columns={6} />
@@ -163,7 +163,7 @@ export function RizzEmojiPanel({
       )}
 
       <div>
-        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
           <Smile className="h-3 w-3" /> The pack
         </p>
         {filtered.length > 0 ? (
@@ -211,7 +211,7 @@ export function RizzEmojiTrigger({
       <PopoverContent
         align={align}
         sideOffset={6}
-        className="w-[19rem] border-white/10 bg-[var(--brand-ink-2,#131315)] p-2.5 shadow-xl"
+        className="w-[19rem] border-white/10 bg-card p-2.5 shadow-xl"
       >
         <div className="mb-2 flex items-center gap-2 border-b border-white/5 pb-2">
           <CatEmoji name="cat_love" size={22} animate="hover" />
