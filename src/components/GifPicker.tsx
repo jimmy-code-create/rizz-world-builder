@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Image, Loader2, Search, Settings2, Smile, Sparkles } from "lucide-react";
 import { fetchRealmEmoji, realmEmojiKey } from "@/lib/realm-emoji";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -451,6 +452,21 @@ export function GifPicker({
 
         {tab === "emoji" && (
           <div className="flex min-h-0 flex-col">
+            {/* The in-house pack lives in the same sheet as Unicode, GIFs and
+                stickers, so a composer has one control. The panel carries its
+                own search and recents; picking inserts a shortcode that every
+                comment/chat renderer draws as the cat. */}
+            <div className="mb-2 rounded-xl border border-primary/20 bg-primary/[0.05] p-2">
+              <RizzEmojiPanel
+                compact
+                columns={8}
+                onPick={(shortcode) => {
+                  onSelect(shortcode);
+                  setOpen(false);
+                }}
+              />
+            </div>
+
             {!query && (
               <div className="mb-2">
                 <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">

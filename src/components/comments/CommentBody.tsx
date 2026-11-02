@@ -3,6 +3,7 @@ import { GifContent } from "@/components/GifContent";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
 
 /**
  * A comment body with the same mention chips as chat and reel captions.
@@ -57,7 +58,13 @@ export function CommentBody({ body }: { body: string }) {
                 </a>
               );
             }
-            return <span key={index}>{part.text}</span>;
+            // Cat shortcodes (:cat_love:) render as the in-house pack here,
+            // the same way a reaction chip does.
+            return (
+              <span key={index}>
+                {renderTextWithCatEmoji(part.text, `cat-${segmentIndex}-${index}`)}
+              </span>
+            );
           })
         ),
       )}

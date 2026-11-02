@@ -2,10 +2,16 @@ import { memo, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, CornerDownRight, Plus, SmilePlus, Trash2 } from "lucide-react";
 import { MORE_REACTIONS, QUICK_REACTIONS, type ReactionGroup } from "@/lib/reactions";
 import { MAX_COMMENT_INDENT_DEPTH, type CommentTree } from "@/lib/comment-tree";
-import { timeAgo, type CommentReactionMap, type CommentRow, type CommentVotes } from "@/lib/comment-thread";
+import {
+  timeAgo,
+  type CommentReactionMap,
+  type CommentRow,
+  type CommentVotes,
+} from "@/lib/comment-thread";
 import { cn, formatCount } from "@/lib/utils";
 import { emojiTextClass } from "@/lib/text-size";
 import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPicker";
 import { InteractiveAvatar } from "@/components/ui/avatar";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { CommentBody } from "./CommentBody";
@@ -65,13 +71,7 @@ function useFreshEmoji(emoji: string[]): Set<string> {
   return held;
 }
 
-function ReactionTray({
-  onPick,
-  compact,
-}: {
-  onPick: (emoji: string) => void;
-  compact: boolean;
-}) {
+function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; compact: boolean }) {
   const [showMore, setShowMore] = useState(false);
   const size = compact ? "h-9 w-9" : "h-11 w-11";
   return (
@@ -108,19 +108,26 @@ function ReactionTray({
         </button>
       </div>
       {showMore && (
-        <div className="mt-1 grid grid-cols-8 gap-0.5 border-t border-white/5 pt-1">
-          {MORE_REACTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => onPick(emoji)}
-              aria-label={`React with ${emoji}`}
-              className="grid h-8 w-8 place-items-center rounded transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            >
-              <AnimatedEmoji emoji={emoji} size={17} motion="hover" />
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="mt-1 grid grid-cols-8 gap-0.5 border-t border-white/5 pt-1">
+            {MORE_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onPick(emoji)}
+                aria-label={`React with ${emoji}`}
+                className="grid h-8 w-8 place-items-center rounded transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              >
+                <AnimatedEmoji emoji={emoji} size={17} motion="hover" />
+              </button>
+            ))}
+          </div>
+          {/* The shared pack: search + recents, same component as posts,
+              Reels and Messages. */}
+          <div className="mt-1 border-t border-white/5 pt-1.5">
+            <RizzEmojiPanel compact onPick={onPick} columns={8} />
+          </div>
+        </>
       )}
     </div>
   );

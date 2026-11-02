@@ -9,7 +9,8 @@
  */
 
 export type TrustLevel = "new" | "trusted" | "top";
-export type MinTrustLevel = "any" | TrustLevel;
+/** A poster can ask for "anyone", "Trusted or better" or "Top only". */
+export type MinTrustLevel = "any" | "trusted" | "top";
 
 /**
  * Three active warnings and taking bounties is closed until an appeal lands.

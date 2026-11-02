@@ -20,6 +20,7 @@ import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import {
   BOUNTY_SUBMISSION_BUCKET,
+  PROOF_TYPE_LABEL,
   cancelFee,
   isEscrowBounty,
   minutesLeft,
@@ -28,9 +29,11 @@ import {
   submitBountyProof,
   cancelBounty,
   useBountyRules,
+  useBountyTrust,
   type BountyRow,
   type BountySubmission,
 } from "@/lib/bounties";
+import { TrustLine } from "@/components/bounties/SafetyActions";
 
 /** Shared shell so all three dialogs read as the same surface. */
 function ActionDialog({
@@ -135,6 +138,13 @@ export function SubmitProofDialog({
       subtitle={bounty.title}
     >
       <div className="space-y-3">
+        {bounty.proof_type && bounty.proof_type !== "any" && (
+          <p className="rounded-xl border border-primary/20 bg-primary/[0.06] p-2.5 text-[11px] text-muted-foreground">
+            The poster asked for{" "}
+            <span className="font-bold text-primary">{PROOF_TYPE_LABEL[bounty.proof_type]}</span> as
+            proof. Anything else may be rejected.
+          </p>
+        )}
         <Textarea
           placeholder="What did you do? Where should they look?"
           value={note}
@@ -222,6 +232,7 @@ export function ReviewSubmissionDialog({
   onReviewed: () => void;
 }) {
   const rules = useBountyRules().data;
+  const workerTrust = useBountyTrust(bounty.assigned_to).data;
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<null | "approve" | "reject">(null);
   const overdue = reviewOverdue(bounty);
@@ -262,6 +273,17 @@ export function ReviewSubmissionDialog({
       subtitle={bounty.title}
     >
       <div className="space-y-3">
+        <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <p className="text-[11px] text-muted-foreground">The taker's record</p>
+          <TrustLine stats={workerTrust} />
+          {workerTrust && workerTrust.warnings > 0 && (
+            <p className="text-[11px] text-amber-200">
+              {workerTrust.warnings} active warning
+              {workerTrust.warnings === 1 ? "" : "s"} — warn or block from the bounty card.
+            </p>
+          )}
+        </div>
+
         <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           {submission?.note ? (
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
@@ -420,12 +442,13 @@ export function CancelBountyDialog({
           </p>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             A {taken ? "taken" : "live"} bounty that gets pulled still costs the network a slot, so{" "}
-            <strong className="text-foreground">{formatNumber(fee)} Paws</strong> is kept as the fee.
-            {" "}
+            <strong className="text-foreground">{formatNumber(fee)} Paws</strong> is kept as the
+            fee.{" "}
             {isEscrowBounty(bounty)
               ? `${formatNumber(refund)} Paws returns to your wallet right away.`
               : "The bounty simply ends."}
-            {taken && " The fee doubles once somebody is already working, which is what you are paying now."}
+            {taken &&
+              " The fee doubles once somebody is already working, which is what you are paying now."}
           </p>
         </div>
 

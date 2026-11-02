@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { blockUser, isBlocked, unblockUser } from "@/lib/social";
 import { StatusPill } from "@/components/presence/StatusDot";
+import { TrustLine } from "@/components/bounties/SafetyActions";
+import { useBountyTrust } from "@/lib/bounties";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { publicCustomStatus, publicStatusOf, statusLabel, usePresence } from "@/lib/presence";
 import { useKnockMood } from "@/lib/knock";
@@ -231,6 +233,10 @@ function ProfilePage() {
   // Lifetime activity: the numbers the Activity tab shows. Likes, comments and
   // reactions are the ones received on this member's posts, so they come
   // straight off rows the profile already loads — no extra round trips.
+  // Bounty trust is earned, not edited, so it is read from the counters rather
+  // than stored on the profile row.
+  const bountyTrust = useBountyTrust(profile?.id);
+
   const lifetime = useMemo(() => {
     const list = posts.data ?? [];
     const sum = (key: "like_count" | "comment_count" | "reaction_count") =>
@@ -708,6 +714,15 @@ function ProfilePage() {
               <p className="mt-2 text-[13px] italic text-muted-foreground">
                 No bio yet — tap Edit to introduce yourself.
               </p>
+            )}
+
+            {bountyTrust.data && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Bounties
+                </span>
+                <TrustLine stats={bountyTrust.data} />
+              </div>
             )}
 
             {profile.interests?.length > 0 && (

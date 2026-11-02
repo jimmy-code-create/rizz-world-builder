@@ -20,14 +20,19 @@ import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { BountyCard } from "@/components/bounties/BountyCard";
 import { PostBountyDialog } from "@/components/bounties/PostBountyDialog";
+import { AppealWarningDialog, WarningBanner } from "@/components/bounties/SafetyActions";
 import {
   activeBounties,
   bountiesNeedingYou,
+  expireTakenBounties,
   isEscrowBounty,
   settleExpiredBounties,
   useBountySubmissions,
+  useBountyTrustMap,
+  useMyBountyWarnings,
   viewerRole,
   type BountyRow,
+  type BountyWarning,
 } from "@/lib/bounties";
 
 /**
@@ -165,6 +170,8 @@ function DropsPage() {
   const qc = useQueryClient();
   const [dropOpen, setDropOpen] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [appealWarning, setAppealWarning] = useState<BountyWarning | null>(null);
+  const myWarnings = useMyBountyWarnings(user?.id);
   const [shared, setShared] = useState<boolean>(() => {
     try {
       return typeof localStorage !== "undefined" && localStorage.getItem(SHARE_QUEST_KEY) === "1";
@@ -202,14 +209,33 @@ function DropsPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    void settleExpiredBounties().then((settled) => {
-      if (cancelled || settled <= 0) return;
-      toast.info(
-        settled === 1 ? "A bounty expired — Paws refunded" : `${settled} bounties expired — Paws refunded`,
-      );
-      void qc.invalidateQueries({ queryKey: ["drops"] });
-      void refreshProfile();
-    });
+    void (async () => {
+      // Two sweeps, both idempotent: open bounties past their deadline refund
+      // the poster, and taken ones past their deadline charge the taker the
+      // cancellation fee and reopen. The board is the cron.
+      const settled = await settleExpiredBounties();
+      const missed = await expireTakenBounties();
+      if (cancelled) return;
+      if (settled > 0) {
+        toast.info(
+          settled === 1
+            ? "A bounty expired — Paws refunded"
+            : `${settled} bounties expired — Paws refunded`,
+        );
+      }
+      if (missed > 0) {
+        toast.info(
+          missed === 1
+            ? "A bounty missed its deadline — it is open again"
+            : `${missed} bounties missed their deadline — they are open again`,
+        );
+      }
+      if (settled > 0 || missed > 0) {
+        void qc.invalidateQueries({ queryKey: ["drops"] });
+        void qc.invalidateQueries({ queryKey: ["bounty-warnings"] });
+        void refreshProfile();
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -228,6 +254,14 @@ function DropsPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bounty_submissions" }, () => {
         qc.invalidateQueries({ queryKey: ["bounty-submissions"] });
         qc.invalidateQueries({ queryKey: ["drops"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bounty_warnings" }, () => {
+        qc.invalidateQueries({ queryKey: ["bounty-warnings"] });
+        qc.invalidateQueries({ queryKey: ["bounty-trust"] });
+        qc.invalidateQueries({ queryKey: ["bounty-trust-map"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bounty_blocks" }, () => {
+        qc.invalidateQueries({ queryKey: ["bounty-blocks"] });
       })
       .subscribe();
     return () => {
@@ -268,6 +302,10 @@ function DropsPage() {
       .map((row) => row.id);
   }, [rows, user]);
   const submissions = useBountySubmissions(myDropIds);
+
+  // Trust lines for everyone on the board, in one round trip rather than one
+  // query per card.
+  const trustMap = useBountyTrustMap(workerIds).data ?? {};
 
   const submissionFor = (dropId: string) =>
     (submissions.data ?? []).find((row) => row.drop_id === dropId) ?? null;
@@ -377,6 +415,22 @@ function DropsPage() {
         <PostBountyDialog open={dropOpen} onOpenChange={setDropOpen} />
       </motion.div>
 
+      <AppealWarningDialog
+        warning={appealWarning}
+        open={Boolean(appealWarning)}
+        onOpenChange={(open) => {
+          if (!open) setAppealWarning(null);
+        }}
+        onAppealed={() => void qc.invalidateQueries({ queryKey: ["bounty-warnings"] })}
+      />
+
+      {user && (
+        <WarningBanner
+          warnings={myWarnings.data ?? []}
+          onAppeal={(warning) => setAppealWarning(warning)}
+        />
+      )}
+
       <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
         <QuestEmblem icon={PawPrint} />
         <div className="min-w-0 flex-1">
@@ -447,6 +501,7 @@ function DropsPage() {
             workerName={
               row.assigned_to ? (workers.data?.get(row.assigned_to)?.username ?? null) : null
             }
+            workerTrust={row.assigned_to ? (trustMap[row.assigned_to] ?? null) : null}
             claimed={myClaims.data?.has(row.id) ?? false}
             onClaim={claim}
             onChanged={() => {

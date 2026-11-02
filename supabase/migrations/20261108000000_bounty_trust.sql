@@ -429,7 +429,12 @@ GRANT EXECUTE ON FUNCTION public.post_paws_bounty(text, text, text, integer, int
   TO authenticated;
 
 -- ============ TAKING IT, PREMIUM-ONLY ============
-CREATE OR REPLACE FUNCTION public.take_bounty(_drop_id uuid)
+-- The optional note rides along in the poster's notification. Dropping the
+-- one-argument version first keeps a single definition (defaults on a new
+-- argument would otherwise be an ambiguous overload).
+DROP FUNCTION IF EXISTS public.take_bounty(uuid);
+
+CREATE OR REPLACE FUNCTION public.take_bounty(_drop_id uuid, _note text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -439,6 +444,7 @@ DECLARE
   v_user uuid := auth.uid();
   v_drop public.drops%ROWTYPE;
   v_taker text;
+  v_note text := nullif(btrim(coalesce(_note, '')), '');
   v_cfg jsonb := public.bounty_escrow_config();
   v_purify timestamptz;
   v_balance integer;
@@ -528,8 +534,9 @@ BEGIN
   VALUES (
     v_drop.creator_id, v_user, 'bounty_taken',
     'Your bounty was taken',
-    'Someone picked up "' || v_drop.title || '".',
-    jsonb_build_object('bounty', _drop_id)
+    'Someone picked up "' || v_drop.title || '".' ||
+      CASE WHEN v_note IS NULL THEN '' ELSE E'\n"' || v_note || '"' END,
+    jsonb_build_object('bounty', _drop_id, 'note', v_note)
   );
 
   RETURN jsonb_build_object(
@@ -542,8 +549,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.take_bounty(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.take_bounty(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.take_bounty(uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.take_bounty(uuid, text) TO authenticated;
 
 -- ============ HANDING IT BACK, WITH THE FEE ============
 CREATE OR REPLACE FUNCTION public.release_bounty(_drop_id uuid, _reason text DEFAULT NULL)

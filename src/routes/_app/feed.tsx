@@ -42,6 +42,32 @@ function FeedPage() {
     setIsClient(true);
   }, []);
 
+  // Back from a post restores where the reader was. The card saves the offset
+  // when it navigates; one restore then clears it, so a normal feed visit
+  // still starts at the top.
+  useEffect(() => {
+    if (!isClient) return;
+    let saved: string | null = null;
+    try {
+      saved = sessionStorage.getItem("rizz:feed-scroll");
+    } catch {
+      return;
+    }
+    if (!saved) return;
+    try {
+      sessionStorage.removeItem("rizz:feed-scroll");
+    } catch {
+      // Ignore: the restore below still runs.
+    }
+    const y = Number(saved);
+    if (!Number.isFinite(y) || y <= 0) return;
+    const id = window.setTimeout(
+      () => window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior }),
+      60,
+    );
+    return () => window.clearTimeout(id);
+  }, [isClient]);
+
   const greeting = (hour: number) => {
     if (hour < 5) return t("good_evening");
     if (hour < 12) return t("good_morning");

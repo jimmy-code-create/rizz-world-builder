@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -93,7 +88,12 @@ export function CommentSection({
 
   const invalidateThread = () => {
     void qc.invalidateQueries({ queryKey: commentKeys.list(postId) });
+    // The counters live on three surfaces: the feed cards, the permalink's own
+    // post query and the reels list. Refreshing only the feed left the other
+    // two showing the old number until a reload.
     void qc.invalidateQueries({ queryKey: ["feed"] });
+    void qc.invalidateQueries({ queryKey: ["post", postId] });
+    void qc.invalidateQueries({ queryKey: ["reels"] });
   };
 
   const sendMut = useMutation({
@@ -216,9 +216,28 @@ export function CommentSection({
     if (replyTo) bodyRef.current?.focus();
   }, [replyTo]);
 
+  // One metric for the header and the body.
+  //
+  // `loaded` used to be the header's number: every flat row in the page,
+  // replies and soft-deleted comments included. The thread below renders only
+  // the comments `pruneDeletedComments` kept, so two deleted leaves made the
+  // header read 2 while the thread was empty — the "2 for 0, 3 for 1, 4 for 2"
+  // bug. Count the visible rows instead, minus tombstones (a deleted parent
+  // that still holds a live reply is a divider, not a comment).
   const loaded = comments.data?.length ?? 0;
   const capped = loaded >= COMMENT_PAGE;
-  const rootCount = tree.roots.filter((root) => visible.has(root.id)).length;
+  const visibleCount = useMemo(() => {
+    let count = 0;
+    for (const id of visible) {
+      const comment = tree.byId.get(id);
+      if (comment && !comment.deleted_at) count += 1;
+    }
+    return count;
+  }, [visible, tree]);
+  const rootCount = useMemo(
+    () => tree.roots.filter((root) => visible.has(root.id)).length,
+    [tree, visible],
+  );
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
@@ -226,25 +245,27 @@ export function CommentSection({
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-4 py-2">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <MessageSquare className="h-3.5 w-3.5" />
-            {loaded === 0
+            {visibleCount === 0
               ? "Comments"
-              : `${capped ? `${loaded}+` : loaded} ${loaded === 1 ? "comment" : "comments"}`}
+              : `${capped ? `${visibleCount}+` : visibleCount} ${visibleCount === 1 ? "comment" : "comments"}`}
           </p>
           {/* Both sorts are always on screen once there is a comment to sort.
               This used to be one button that showed the *current* order and
               flipped when tapped, and it only appeared with more than one
               thread — so on a fresh reel it looked like comments had no sort
               at all. Two pills say what the choices are. */}
-          {loaded > 0 && (
+          {visibleCount > 0 && (
             <div
               role="group"
               aria-label="Sort comments"
               className="flex shrink-0 items-center gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] p-0.5"
             >
-              {([
-                ["top", "Top voted"],
-                ["new", "Newest"],
-              ] as const).map(([id, label]) => (
+              {(
+                [
+                  ["top", "Top voted"],
+                  ["new", "Newest"],
+                ] as const
+              ).map(([id, label]) => (
                 <button
                   key={id}
                   type="button"
@@ -290,9 +311,7 @@ export function CommentSection({
         {comments.isError && (
           <div className="py-8 text-center">
             <p className="text-sm text-muted-foreground">
-              {comments.error instanceof Error
-                ? comments.error.message
-                : "Comments couldn’t load."}
+              {comments.error instanceof Error ? comments.error.message : "Comments couldn’t load."}
             </p>
             <Button
               variant="outline"
@@ -308,9 +327,7 @@ export function CommentSection({
         {!comments.isLoading && !comments.isError && rootCount === 0 && (
           <div className="py-8 text-center">
             <RizzCat mood="peek" size={compact ? 72 : 104} className="mx-auto mb-1" />
-            <p className="text-sm text-muted-foreground">
-              No comments yet — start the thread ✨
-            </p>
+            <p className="text-sm text-muted-foreground">No comments yet — start the thread ✨</p>
           </div>
         )}
 
@@ -338,7 +355,7 @@ export function CommentSection({
 
         {capped && (
           <p className="py-3 text-center text-[11px] text-muted-foreground">
-            Only the last {COMMENT_PAGE} comments are loaded here.
+            Only the newest {COMMENT_PAGE} comments are loaded here.
           </p>
         )}
       </div>
