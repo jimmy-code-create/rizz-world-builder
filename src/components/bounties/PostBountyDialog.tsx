@@ -158,7 +158,9 @@ export function PostBountyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 sm:max-w-lg">
+      {/* A phone-height form: the dialog scrolls inside the viewport instead of
+          growing past it, and the last control clears the home indicator. */}
+      <DialogContent className="glass-strong max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain border-white/10 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display">Post a bounty</DialogTitle>
         </DialogHeader>

@@ -39,6 +39,17 @@
   return within ten minutes paints the shell (or a quiet skeleton while the
   session rehydrates) and skips the brand splash entirely. A first visit or a
   return after ten minutes still gets it.
+- The post page's comment panel no longer fixes itself to 62dvh. With one
+  comment that left a screen of empty surface, and because the panel was a
+  scroller itself, dragging over the blank area never moved the page. It now
+  grows with the thread, caps at 62dvh and only then scrolls, so the composer
+  sits where the conversation ends.
+- The bounty dialog fits a phone: it caps at the viewport, scrolls inside it,
+  and pads the bottom for the home indicator, so “Lock … Paws & post” is no
+  longer cut off with no way to reach it.
+- The background dot canvas is legible on OLED phones. 6% ink crushed to
+  black; 12% keeps the same one-paint halftone but actually reads as texture
+  behind the post, drops and realm pages instead of an empty black field.
 
 ## 2026-11-01 — One emoji system, a bounty gate, and a louder double tap
 

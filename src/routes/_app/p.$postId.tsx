@@ -121,12 +121,13 @@ function PostPermalinkPage() {
         </div>
       )}
 
-      {/* Media and reactions scroll with the page; the thread gets its own
-          scroller so the composer stays at the bottom of the panel, not at the
-          bottom of the post. */}
+      {/* The thread grows with its comments and only becomes a scroller once
+          it would take more than 62dvh. A fixed-height box used to sit here:
+          with one comment it left a screen of empty surface, and because the
+          box was itself a scroller, dragging over it never moved the page. */}
       <section
         aria-label="Comments"
-        className="glass mt-3 flex h-[62dvh] min-h-[22rem] flex-col overflow-hidden rounded-3xl border border-white/10"
+        className="glass mt-3 flex max-h-[62dvh] flex-col overflow-hidden rounded-3xl border border-white/10"
       >
         <CommentSection postId={p.id} className="min-h-0 flex-1" />
       </section>
