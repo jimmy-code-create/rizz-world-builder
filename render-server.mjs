@@ -39,6 +39,23 @@ const contentTypes = {
   ".woff2": "font/woff2",
 };
 
+function setSecurityHeaders(req, res) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()",
+  );
+  // A full script-src policy needs nonces for the theme boot script and the
+  // third-party media embeds; keep the safe, non-breaking directives here and
+  // track the rest in SECURITY.md.
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
+  if (req.headers["x-forwarded-proto"] === "https" || req.socket.encrypted) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+}
+
 function getPort() {
   const portIndex = process.argv.indexOf("--port");
   const requestedPort = portIndex >= 0 ? process.argv[portIndex + 1] : process.env.PORT;
@@ -97,6 +114,7 @@ async function writeWebResponse(res, webResponse) {
 }
 
 const server = http.createServer(async (req, res) => {
+  setSecurityHeaders(req, res);
   try {
     const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     let pathname;

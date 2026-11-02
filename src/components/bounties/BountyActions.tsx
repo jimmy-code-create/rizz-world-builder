@@ -35,6 +35,12 @@ import {
 } from "@/lib/bounties";
 import { TrustLine } from "@/components/bounties/SafetyActions";
 
+/** Only ordinary web URLs belong in an href; old rows may predate the check. */
+function proofHref(value: string): string | null {
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+}
+
 /** Shared shell so all three dialogs read as the same surface. */
 function ActionDialog({
   open,
@@ -296,40 +302,48 @@ export function ReviewSubmissionDialog({
           )}
           {(submission?.links ?? []).length > 0 && (
             <ul className="space-y-1">
-              {(submission?.links ?? []).map((link) => (
-                <li key={link}>
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex max-w-full items-center gap-1 truncate text-[12px] font-medium text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{link}</span>
-                  </a>
-                </li>
-              ))}
+              {(submission?.links ?? []).map((link) => {
+                const href = proofHref(link);
+                if (!href) return null;
+                return (
+                  <li key={link}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex max-w-full items-center gap-1 truncate text-[12px] font-medium text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{link}</span>
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {(submission?.media_urls ?? []).length > 0 && (
             <div className="grid grid-cols-2 gap-2">
-              {(submission?.media_urls ?? []).map((url) => (
-                <a
-                  key={url}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block overflow-hidden rounded-lg border border-white/10"
-                >
-                  <img
-                    src={url}
-                    alt="Submitted proof"
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-video w-full object-cover"
-                  />
-                </a>
-              ))}
+              {(submission?.media_urls ?? []).map((url) => {
+                const href = proofHref(url);
+                if (!href) return null;
+                return (
+                  <a
+                    key={url}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-lg border border-white/10"
+                  >
+                    <img
+                      src={href}
+                      alt="Submitted proof"
+                      loading="lazy"
+                      decoding="async"
+                      className="aspect-video w-full object-cover"
+                    />
+                  </a>
+                );
+              })}
             </div>
           )}
           {overdue && (
