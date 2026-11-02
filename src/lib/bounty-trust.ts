@@ -9,7 +9,8 @@
  */
 
 export type TrustLevel = "new" | "trusted" | "top";
-export type MinTrustLevel = "any" | TrustLevel;
+/** A poster can ask for "anyone", "Trusted or better" or "Top only". */
+export type MinTrustLevel = "any" | "trusted" | "top";
 
 /**
  * Three active warnings and taking bounties is closed until an appeal lands.
@@ -39,7 +40,6 @@ export const TRUST_LEVEL_ORDER: Record<TrustLevel, number> = {
 
 export const MIN_TRUST_LABEL: Record<MinTrustLevel, string> = {
   any: "Anyone can take it",
-  new: "New members and up",
   trusted: "Trusted or Top",
   top: "Top only",
 };

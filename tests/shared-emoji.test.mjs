@@ -92,7 +92,7 @@ await check("the picker has recents, defaults, per-realm tabs and search", () =>
   assert.ok(picker.includes("Search shortcodes"), "no shortcode search");
   assert.ok(picker.includes("readRecentEmoji"), "recents are not read");
   assert.ok(picker.includes("rememberEmoji"), "picks are not remembered");
-  assert.ok(composer.includes("<EmojiPicker"), "the composer does not use the shared picker");
+  assert.ok(composer.includes("<GifPicker"), "the composer does not use the shared emoji/GIF picker");
 });
 
 await check("one reaction component draws both kinds", () => {
@@ -137,7 +137,7 @@ await check("the composer stays inline and the separate create page is gone", ()
   assert.ok(!existsSync(new URL("../src/routes/_app/create.tsx", import.meta.url)), "the /create page is back");
   assert.ok(!composer.includes('to="/create"'), "the composer still links to /create");
   assert.ok(!composer.includes("fullPage"), "the composer still carries the page-only shell");
-  assert.ok(composer.includes("<EmojiPicker"), "the composer does not use the shared picker");
+  assert.ok(composer.includes("<GifPicker"), "the composer does not use the shared emoji/GIF picker");
 });
 
 await check("the post footer keeps pills and drops the extra entry points", () => {

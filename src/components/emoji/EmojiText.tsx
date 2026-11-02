@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useEmojiLookup, emojiMapOf, splitEmojiText } from "@/lib/emoji-shared";
 import { EmojiGlyph } from "@/components/emoji/EmojiGlyph";
+import { renderTextWithCatEmoji } from "@/lib/cat-emoji-text";
 
 /**
  * Renders stored text with its custom emoji.
@@ -32,7 +33,9 @@ export function EmojiText({
     <span className={cn("whitespace-pre-wrap break-words", className)}>
       {segments.map((segment, index) =>
         segment.kind === "text" ? (
-          <span key={`t-${index}`}>{segment.text}</span>
+          <span key={`t-${index}`}>
+            {renderTextWithCatEmoji(segment.text, `t-${index}`)}
+          </span>
         ) : (
           <EmojiGlyph
             key={`e-${segment.id}-${index}`}

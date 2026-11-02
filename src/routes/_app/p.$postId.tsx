@@ -1,11 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPostById } from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
-import { PostCommentsSheet } from "@/components/PostCommentsSheet";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { Button } from "@/components/ui/button";
 import { RizzCat } from "@/components/RizzCat";
 import { formatRelativeTime } from "@/lib/i18n";
@@ -21,16 +20,17 @@ export const Route = createFileRoute("/_app/p/$postId")({
 /**
  * A single post, on its own page.
  *
- * Every "someone commented on your post" notification used to land on a
- * notifications list that only said "New Comment", with no way to see the
- * post the comment was about. This route is that link: `/p/<post id>` shows
- * the post itself, and `/p/<post id>?comment=<comment id>` opens straight
- * into the thread the comment belongs to.
+ * The feed used to open a side discussion sheet, which on a phone covered the
+ * post it was discussing and lost your place when you closed it. This route is
+ * the full-page view: the post (media, then reactions), then the threaded
+ * comments in a scrolling panel with the composer pinned to its bottom. The
+ * back button returns to wherever you came from and restores the feed scroll
+ * position saved when the card was tapped.
  */
 function PostPermalinkPage() {
   const { postId } = Route.useParams();
   const { comment } = Route.useSearch();
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const router = useRouter();
 
   const post = useQuery({
     queryKey: ["post", postId],
@@ -38,7 +38,8 @@ function PostPermalinkPage() {
     enabled: !!postId,
   });
 
-  // The comment a notification refers to, so the thread can be opened on it.
+  // The comment a notification refers to, so the page can say which one and
+  // open the thread on it.
   const commentRow = useQuery({
     queryKey: ["post-comment", postId, comment],
     queryFn: async () => {
@@ -55,15 +56,19 @@ function PostPermalinkPage() {
     enabled: !!comment,
   });
 
-  // A link that names a comment opens the thread straight away.
-  useEffect(() => {
-    if (comment && commentRow.data) setCommentsOpen(true);
-  }, [comment, commentRow.data]);
+  const goBack = () => {
+    // `history.length` is not a perfect test, but a deep link opened in a fresh
+    // tab should land on the feed rather than close the tab.
+    if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
+    else void router.navigate({ to: "/feed" });
+  };
 
   if (post.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-2xl">
-        <div className="glass h-40 animate-pulse rounded-3xl" />
+      <div className="mx-auto w-full max-w-2xl space-y-3">
+        <div className="glass h-10 w-28 animate-pulse rounded-xl" />
+        <div className="glass aspect-square animate-pulse rounded-3xl" />
+        <div className="glass h-24 animate-pulse rounded-3xl" />
       </div>
     );
   }
@@ -90,20 +95,19 @@ function PostPermalinkPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <Button asChild variant="ghost" size="sm" className="mb-3 gap-1.5">
-        <Link to="/feed">
-          <ArrowLeft className="h-4 w-4" /> Back to feed
-        </Link>
-      </Button>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Post
+        </span>
+      </div>
 
       <PostCard post={p} />
 
       {commentRow.data && (
-        <button
-          type="button"
-          onClick={() => setCommentsOpen(true)}
-          className="mt-3 flex w-full items-start gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:bg-primary/10"
-        >
+        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3">
           <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] font-semibold text-primary">
@@ -114,10 +118,18 @@ function PostPermalinkPage() {
               {commentRow.data.body}
             </span>
           </span>
-        </button>
+        </div>
       )}
 
-      <PostCommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} postId={p.id} />
+      {/* Media and reactions scroll with the page; the thread gets its own
+          scroller so the composer stays at the bottom of the panel, not at the
+          bottom of the post. */}
+      <section
+        aria-label="Comments"
+        className="glass mt-3 flex h-[62dvh] min-h-[22rem] flex-col overflow-hidden rounded-3xl border border-white/10"
+      >
+        <CommentSection postId={p.id} className="min-h-0 flex-1" />
+      </section>
     </div>
   );
 }

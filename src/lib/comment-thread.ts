@@ -89,27 +89,31 @@ const LEGACY_COMMENT_COLUMNS =
   "id, body, created_at, author_id, author:profiles!post_comments_author_id_fkey(username, display_name, avatar_url)";
 
 /**
- * The last `COMMENT_PAGE` comments, oldest first, deleted rows included so the
- * thread can keep a parent's tombstone. Older projects without
- * `parent_comment_id`/`deleted_at` fall back to the plain column list, which
- * reads as a flat, undeletable thread instead of an error.
+ * The newest `COMMENT_PAGE` comments, returned oldest first.
+ *
+ * The query has to read newest-first: asking for the first hundred rows of a
+ * busy post used to hand back the *oldest* hundred, so new comments never
+ * appeared and the header counted a page that had nothing to do with the
+ * thread on screen. The rows are reversed afterwards because the tree builder
+ * and every renderer expect chronological input. Deleted rows stay in the page
+ * so a surviving reply keeps its parent tombstone; the header count excludes
+ * them. Older projects without `parent_comment_id`/`deleted_at` fall back to
+ * the plain column list, which reads as a flat, undeletable thread.
  */
 export async function fetchCommentPage(postId: string): Promise<CommentRow[]> {
   const source = (supabase.from as any)("post_comments");
-  let { data, error } = await source
-    .select(COMMENT_COLUMNS)
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true })
-    .limit(COMMENT_PAGE);
-  if (error && /deleted_at|parent_comment_id|schema cache/i.test(error.message ?? "")) {
-    ({ data, error } = await source
-      .select(LEGACY_COMMENT_COLUMNS)
+  const read = (columns: string) =>
+    source
+      .select(columns)
       .eq("post_id", postId)
-      .order("created_at", { ascending: true })
-      .limit(COMMENT_PAGE));
+      .order("created_at", { ascending: false })
+      .limit(COMMENT_PAGE);
+  let { data, error } = await read(COMMENT_COLUMNS);
+  if (error && /deleted_at|parent_comment_id|schema cache/i.test(error.message ?? "")) {
+    ({ data, error } = await read(LEGACY_COMMENT_COLUMNS));
   }
   if (error) throw error;
-  return (data ?? []) as CommentRow[];
+  return ((data ?? []) as CommentRow[]).slice().reverse();
 }
 
 /** Vote counts for a page of comments, in one indexed read. */

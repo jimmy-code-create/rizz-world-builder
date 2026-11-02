@@ -59,7 +59,8 @@ export function CommentBody({ body }: { body: string }) {
               );
             }
             // Emoji tokens survive the mention/tag split: `EmojiText` resolves
-            // `<:cat:id>` to its picture and falls back to `:cat:`.
+            // `<:cat:id>` to its picture, and the text pass inside it turns
+            // `:cat_love:` into the in-house cat pack.
             return <EmojiText key={index} text={part.text} />;
           })
         ),

@@ -5,6 +5,7 @@ import { Loader2, PawPrint, Plus, ShieldCheck, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -12,7 +13,18 @@ import { usePurify } from "@/lib/purify";
 import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { fixCommonTypos, hasKnownTypo } from "@/lib/text-fix";
-import { cancelFee, postPawsBounty, useBountyRules } from "@/lib/bounties";
+import {
+  CANCEL_FEE,
+  MIN_TRUST_LABEL,
+  MIN_TRUST_OPTIONS,
+  PROOF_TYPE_LABEL,
+  PROOF_TYPE_OPTIONS,
+  cancelFee,
+  feeRecipientLabel,
+  postPawsBounty,
+  useBountyRules,
+} from "@/lib/bounties";
+import type { MinTrustLevel, ProofType } from "@/lib/bounties";
 
 /** Deadline shortcuts; the hours field stays open for anything else. */
 const DEADLINES = [
@@ -21,6 +33,9 @@ const DEADLINES = [
   { hours: 72, label: "3d" },
   { hours: 168, label: "7d" },
 ];
+
+const selectClass =
+  "min-h-10 w-full rounded-md border border-white/10 bg-white/[0.03] px-2 text-sm text-foreground";
 
 type Mode = "prize" | "open";
 
@@ -60,6 +75,10 @@ export function PostBountyDialog({
   const [limit, setLimit] = useState(100);
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [premiumOnly, setPremiumOnly] = useState(true);
+  const [proofType, setProofType] = useState<ProofType>("any");
+  const [minTrust, setMinTrust] = useState<MinTrustLevel>("any");
+  const [tags, setTags] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const balance = Number(profile?.paw_balance ?? 0);
@@ -97,6 +116,14 @@ export function PostBountyDialog({
           prize: prizeValue,
           hours,
           mediaUrl: media_url,
+          premiumOnly,
+          proofType,
+          minTrust,
+          tags: tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 5),
         });
         toast.success(`${formatNumber(posted.prize)} Paws locked in escrow`, {
           description: "They pay out the moment you approve the work.",
@@ -180,9 +207,7 @@ export function PostBountyDialog({
 
           <Textarea
             placeholder={
-              mode === "prize"
-                ? "Describe the job — what does finished look like?"
-                : "Hype it up"
+              mode === "prize" ? "Describe the job — what does finished look like?" : "Hype it up"
             }
             value={desc}
             onChange={(event) => setDesc(event.target.value)}
@@ -251,6 +276,66 @@ export function PostBountyDialog({
                 ))}
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground" htmlFor="bounty-proof">
+                    Proof required
+                  </label>
+                  <select
+                    id="bounty-proof"
+                    value={proofType}
+                    onChange={(event) => setProofType(event.target.value as ProofType)}
+                    className={selectClass}
+                  >
+                    {PROOF_TYPE_OPTIONS.map((type) => (
+                      <option key={type} value={type}>
+                        {PROOF_TYPE_LABEL[type]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground" htmlFor="bounty-trust">
+                    Minimum trust
+                  </label>
+                  <select
+                    id="bounty-trust"
+                    value={minTrust}
+                    onChange={(event) => setMinTrust(event.target.value as MinTrustLevel)}
+                    className={selectClass}
+                  >
+                    {MIN_TRUST_OPTIONS.map((level) => (
+                      <option key={level} value={level}>
+                        {MIN_TRUST_LABEL[level]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <Input
+                placeholder="Tags, comma separated (max 5)"
+                value={tags}
+                onChange={(event) => setTags(event.target.value)}
+                maxLength={120}
+                className="glass border-white/10"
+              />
+
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold">Premium takers only</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Purify members can take every bounty. This pins the badge to the card so it is
+                    obvious.
+                  </p>
+                </div>
+                <Switch
+                  checked={premiumOnly}
+                  onCheckedChange={setPremiumOnly}
+                  aria-label="Premium takers only"
+                />
+              </div>
+
               {/* The receipt, before anything is charged. */}
               <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/[0.055] p-3 text-[11px]">
                 <p className="flex items-center gap-1.5 font-bold text-primary">
@@ -258,14 +343,17 @@ export function PostBountyDialog({
                   {formatNumber(Math.max(prizeValue, 0))} Paws move to escrow now
                 </p>
                 <p className="text-muted-foreground">
-                  Wallet after posting: {formatNumber(Math.max(balance - prizeValue, 0))} Paws.
-                  The prize leaves your balance the second the bounty goes live and is released
-                  only when you approve the work.
+                  Wallet after posting: {formatNumber(Math.max(balance - prizeValue, 0))} Paws. The
+                  prize leaves your balance the second the bounty goes live and is released only
+                  when you approve the work.
                 </p>
                 <p className="text-muted-foreground">
-                  Cancel before anyone takes it and {formatNumber(fee)} Paws is kept as the fee —
-                  {" "}
+                  Cancel before anyone takes it and {formatNumber(fee)} Paws is kept as the fee —{" "}
                   {formatNumber(takenFee)} once somebody is working on it.
+                </p>
+                <p className="text-muted-foreground">
+                  A taker who hands it back or misses the deadline pays {formatNumber(CANCEL_FEE)}{" "}
+                  Paws; it goes to {feeRecipientLabel(rules?.feeRecipient ?? "creator")}.
                 </p>
                 {shortfall > 0 && (
                   <p className="font-semibold text-[#ff5d5d]">
@@ -347,7 +435,9 @@ export function PostBountyDialog({
             ) : (
               <>
                 <Plus className="h-4 w-4" />
-                {mode === "prize" ? `Lock ${formatNumber(prizeValue)} Paws & post` : "Launch open call"}
+                {mode === "prize"
+                  ? `Lock ${formatNumber(prizeValue)} Paws & post`
+                  : "Launch open call"}
               </>
             )}
           </Button>

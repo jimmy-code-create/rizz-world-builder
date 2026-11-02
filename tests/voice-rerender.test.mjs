@@ -24,10 +24,24 @@ const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></
 });
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
-globalThis.navigator = dom.window.navigator;
+// Node 22+ ships a getter-only `navigator`; assignment throws before React
+// can mount. `defineProperty` swaps it for jsdom's object on those versions
+// and is harmless on older ones.
+Object.defineProperty(globalThis, "navigator", {
+  value: dom.window.navigator,
+  configurable: true,
+  writable: true,
+});
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const { createElement: h, memo, createContext, useContext, useState, useMemo } = await import("react");
+const {
+  createElement: h,
+  memo,
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+} = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
 
@@ -51,11 +65,20 @@ const speakingOf = {
 /** The call surface: big tree, no speaking subscription. */
 const HeavyView = memo(function HeavyView() {
   speakingOf.heavy += 1;
-  return h("div", null, Array.from({ length: 40 }, (_, index) => h("span", { key: index }, `row ${index}`)));
+  return h(
+    "div",
+    null,
+    Array.from({ length: 40 }, (_, index) => h("span", { key: index }, `row ${index}`)),
+  );
 });
 
-/** Same component without the memo boundary, for the counter-example. */
+/**
+ * Same component without the memo boundary, for the counter-example. It reads
+ * the context like a naive surface would; without that read React can reuse
+ * the element object and the counter measures nothing.
+ */
 function LooseView() {
+  useContext(SpeakingContext);
   speakingOf.unmemoised += 1;
   return h("div", null, "loose");
 }
@@ -77,9 +100,7 @@ function Provider({ children }) {
 
 const root = createRoot(document.getElementById("root"));
 await act(async () => {
-  root.render(
-    h(Provider, null, h(HeavyView, null), h(LooseView, null), h(Tiles, null)),
-  );
+  root.render(h(Provider, null, h(HeavyView, null), h(LooseView, null), h(Tiles, null)));
 });
 
 const afterMount = { ...speakingOf };
@@ -99,7 +120,10 @@ const unmemoisedRenders = speakingOf.unmemoised - afterMount.unmemoised;
 
 check(`memoised call surface ignores all 20 audio ticks (got ${heavyRenders})`, heavyRenders === 0);
 check(`tiles re-render on every audio tick (got ${tileRenders})`, tileRenders === 20);
-check(`unmemoised surface would re-render 20 times (got ${unmemoisedRenders})`, unmemoisedRenders === 20);
+check(
+  `unmemoised surface would re-render 20 times (got ${unmemoisedRenders})`,
+  unmemoisedRenders === 20,
+);
 
 await act(async () => {
   root.unmount();

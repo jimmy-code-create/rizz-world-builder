@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles } from "lucide-react";
@@ -79,6 +79,37 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const superSupport = useSuperReactionsSupport();
   const { t } = useI18n();
   const qc = useQueryClient();
+  const nav = useNavigate();
+
+  /**
+   * Tapping a card opens the full post page (`/p/:postId`).
+   *
+   * The guard list matters: every control in the footer is a button, and
+   * opening the post when somebody meant to like it or play a video would be
+   * a bug, not a shortcut. Text selection is left alone too, so copying a
+   * caption does not navigate away mid-drag. The feed's scroll position is
+   * saved here so the back button can put the reader where they were.
+   */
+  const goToPost = (event?: { target?: EventTarget | null }) => {
+    const target = event?.target as HTMLElement | null | undefined;
+    if (
+      target?.closest?.(
+        "a,button,input,textarea,select,video,audio,label,[role='button'],[role='menu'],[data-no-post-open]",
+      )
+    ) {
+      return;
+    }
+    if (typeof window !== "undefined" && window.getSelection()?.toString()) return;
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/p/")) return;
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/feed")) {
+      try {
+        sessionStorage.setItem("rizz:feed-scroll", String(window.scrollY));
+      } catch {
+        // Private mode: the post still opens, it just will not restore scroll.
+      }
+    }
+    void nav({ to: "/p/$postId", params: { postId: post.id } });
+  };
   const [liked, setLiked] = useState(!!initialLiked);
   const [likeCount, setLikeCount] = useState(post.like_count);
   const localLikeChange = useRef(false);
@@ -488,7 +519,8 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       data-tour="post"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="feed-post-card relative isolate mb-2 overflow-hidden rounded-2xl"
+      onClick={goToPost}
+      className="feed-post-card relative isolate mb-2 cursor-pointer overflow-hidden rounded-2xl"
     >
       <header className="flex items-center gap-2.5 p-3 pb-2">
         <AuthorAvatarLink post={post} initial={initial} />
@@ -758,10 +790,8 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("rizz:open-side-discussion", { detail: { post } }));
-            setShowComments((s) => !s);
-          }}
+          onClick={() => goToPost()}
+          aria-label="Open the post and its comments"
           className="h-8 px-2.5 relative gap-1.5 rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0"
         >
           <MessageCircle className="h-4 w-4" />

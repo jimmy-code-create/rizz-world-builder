@@ -61,7 +61,11 @@ await check("one module owns the reads, the writes and the cache keys", () => {
 await check("projects without parent_comment_id / deleted_at still load", () => {
   assert.match(data, /const LEGACY_COMMENT_COLUMNS =/);
   assert.match(data, /error && \/deleted_at\|parent_comment_id\|schema cache\/i\.test/);
-  assert.match(data, /\.select\(LEGACY_COMMENT_COLUMNS\)/, "the fallback query runs");
+  assert.match(
+    data,
+    /\.select\(LEGACY_COMMENT_COLUMNS\)|read\(LEGACY_COMMENT_COLUMNS\)/,
+    "the fallback query runs",
+  );
   assert.match(
     data,
     /throw new Error\("Replies need the comment setup/,
@@ -69,10 +73,44 @@ await check("projects without parent_comment_id / deleted_at still load", () => 
   );
 });
 
+await check("the page is the newest comments and the header matches the thread", () => {
+  // Asking for the first hundred rows used to return the oldest hundred, so new
+  // comments never appeared.
+  assert.match(
+    data,
+    /order\("created_at", \{ ascending: false \}\)/,
+    "the page reads newest-first",
+  );
+  // The header used to count every flat row (replies and deleted comments
+  // included), which is how 0 visible comments read as 2 and 1 as 3.
+  assert.match(
+    section,
+    /const visibleCount = useMemo/,
+    "the header derives its number from the tree",
+  );
+  assert.match(section, /!comment\.deleted_at/, "soft-deleted rows are not counted");
+  assert.match(
+    section,
+    /capped \? `\$\{visibleCount\}\+` : visibleCount/,
+    "the header prints the visible count",
+  );
+  assert.ok(
+    !/capped \? `\$\{loaded\}\+` : loaded/.test(section),
+    "the header no longer prints the raw page length",
+  );
+  // Counter refreshes reach every surface that prints the number.
+  assert.match(section, /\["post", postId\]/);
+  assert.match(section, /\["reels"\]/);
+});
+
 await check("a batch of comments is two reads, not two per row", () => {
   assert.match(data, /\("comment_likes"\)[\s\S]{0,120}?\.in\("comment_id", slice\)/);
   assert.match(data, /\("comment_reactions"\)[\s\S]{0,120}?\.in\("comment_id", slice\)/);
-  assert.match(data, /for \(let i = 0; i < commentIds\.length; i \+= 100\)/, "chunked for the IN limit");
+  assert.match(
+    data,
+    /for \(let i = 0; i < commentIds\.length; i \+= 100\)/,
+    "chunked for the IN limit",
+  );
   assert.ok(
     !/\bcomment_reactions["'`]\)\s*\.select\([\s\S]{0,80}?\.eq\("comment_id"/.test(section),
     "the section never asks per comment",
@@ -89,7 +127,11 @@ await check("replies nest under the comment they answer", () => {
 
 await check("a broken parent chain cannot swallow a comment", () => {
   assert.match(tree, /parentId !== comment\.id/, "self-parented rows are roots");
-  assert.match(tree, /if \(!parent\) \{\s*roots\.push\(comment\);/, "an orphan is a root, not a loss");
+  assert.match(
+    tree,
+    /if \(!parent\) \{\s*roots\.push\(comment\);/,
+    "an orphan is a root, not a loss",
+  );
   assert.match(
     tree,
     /for \(const comment of comments\) \{\s*if \(reached\.has\(comment\.id\)\) continue;/,
@@ -102,7 +144,10 @@ await check("a deleted comment keeps the branch under it", () => {
   assert.match(tree, /export function pruneDeletedComments/);
   assert.match(tree, /let keep = !isDeleted\(node\);/);
   assert.match(tree, /if \(walk\(child\)\) keep = true;/, "a reply keeps the tombstone alive");
-  assert.match(section, /pruneDeletedComments\(tree, \(comment\) => Boolean\(comment\.deleted_at\)\)/);
+  assert.match(
+    section,
+    /pruneDeletedComments\(tree, \(comment\) => Boolean\(comment\.deleted_at\)\)/,
+  );
   assert.match(thread, /This comment was deleted\./);
   assert.match(thread, /replying to a deleted comment/);
 });
@@ -110,21 +155,40 @@ await check("a deleted comment keeps the branch under it", () => {
 await check("deleting is a soft delete, and only the author's own row", () => {
   assert.match(data, /\.update\(\{ deleted_at: new Date\(\)\.toISOString\(\) \}\)/);
   assert.match(data, /\.eq\("author_id", authorId\)/, "the author filter is part of the update");
-  assert.match(thread, /const owned = signedIn && !deleted && !!myId && comment\.author_id === myId;/);
+  assert.match(
+    thread,
+    /const owned = signedIn && !deleted && !!myId && comment\.author_id === myId;/,
+  );
   assert.match(thread, /\{owned && \(/, "Delete only renders on your own comment");
   assert.match(section, /Delete this comment\?/, "there is a confirmation, not a one-tap mistake");
 });
 
 await check("votes and reactions update on screen first and roll back on failure", () => {
-  assert.match(section, /qc\.setQueryData<CommentVotes>\(votesKey, \{ counts, mine \}\)/, "optimistic vote");
-  assert.match(section, /if \(context\?\.previous\) qc\.setQueryData\(votesKey, context\.previous\)/, "vote rolls back");
-  assert.match(section, /qc\.setQueryData<CommentReactionMap>\(reactionsKey, next\)/, "optimistic reaction");
+  assert.match(
+    section,
+    /qc\.setQueryData<CommentVotes>\(votesKey, \{ counts, mine \}\)/,
+    "optimistic vote",
+  );
+  assert.match(
+    section,
+    /if \(context\?\.previous\) qc\.setQueryData\(votesKey, context\.previous\)/,
+    "vote rolls back",
+  );
+  assert.match(
+    section,
+    /qc\.setQueryData<CommentReactionMap>\(reactionsKey, next\)/,
+    "optimistic reaction",
+  );
   assert.match(
     section,
     /if \(context\?\.previous\) qc\.setQueryData\(reactionsKey, context\.previous\)/,
     "reaction rolls back",
   );
-  assert.match(section, /placeholderData: keepPreviousData/, "a new page does not flash counts back to zero");
+  assert.match(
+    section,
+    /placeholderData: keepPreviousData/,
+    "a new page does not flash counts back to zero",
+  );
 });
 
 await check("the thread row offers reply, react, vote, delete and collapse", () => {
@@ -132,14 +196,21 @@ await check("the thread row offers reply, react, vote, delete and collapse", () 
   assert.match(thread, /onClick=\{\(\) => onReply\(comment\)\}/);
   assert.match(thread, /setPickerOpen\(\(open\) => !open\)/);
   assert.match(thread, /<ReactionTray/);
-  assert.match(thread, /MAX_COMMENT_INDENT_DEPTH/, "deep replies stop indenting instead of squeezing");
+  assert.match(
+    thread,
+    /MAX_COMMENT_INDENT_DEPTH/,
+    "deep replies stop indenting instead of squeezing",
+  );
   assert.match(thread, /`Show \$\{branchSize\} \$\{branchSize === 1 \? "reply" : "replies"\}`/);
   assert.match(thread, /collapsed \? \(\s*<ChevronDown/, "a branch can be folded away");
 });
 
 await check("the composer keeps the draft and answers the right person", () => {
   assert.match(composer, /Replying to <span/);
-  assert.match(composer, /onKeyDown=\{\(event\) => \{\s*if \(event\.key === "Enter" && !event\.shiftKey\)/);
+  assert.match(
+    composer,
+    /onKeyDown=\{\(event\) => \{\s*if \(event\.key === "Enter" && !event\.shiftKey\)/,
+  );
   assert.match(composer, /if \(value\.trim\(\) && !pending\) onSend\(\);/);
   assert.match(composer, /Shift \+ Enter for a new line/);
   assert.match(composer, /Sign in to join the conversation\./, "signed-out readers get a way in");

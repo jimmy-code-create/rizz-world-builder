@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
-import { RIZZ_REACTIONS } from "@/lib/reactions";
 import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPicker";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,12 +25,7 @@ export function ReactionPicker({
   const [showMore, setShowMore] = useState(false);
 
   return (
-    <div
-      className={cn(
-        "animate-in fade-in-0 slide-in-from-bottom-1 duration-150",
-        className,
-      )}
-    >
+    <div className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-150", className)}>
       <div className="flex items-center gap-1.5 px-1 pb-2">
         <button
           type="button"
@@ -62,7 +57,10 @@ export function ReactionPicker({
           onClick={() => setShowMore((open) => !open)}
           className="grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-md text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         >
-          <Plus className={cn("h-5 w-5 transition-transform", showMore && "rotate-45")} aria-hidden="true" />
+          <Plus
+            className={cn("h-5 w-5 transition-transform", showMore && "rotate-45")}
+            aria-hidden="true"
+          />
         </button>
       </div>
 
@@ -82,26 +80,18 @@ export function ReactionPicker({
         </div>
       )}
 
-      {/* The Rizz picks replace the old twelve-cat grid: plain Unicode reads at
-          14px in a chip, costs nothing to draw, and survives every surface. */}
-      <div className="mt-1.5 rounded-lg border border-white/[0.06] bg-[#2b2d31] p-1" aria-label="Rizz reactions">
-        <div className="grid grid-cols-8 gap-0.5">
-          {RIZZ_REACTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              aria-label={`React with ${emoji}`}
-              onClick={() => onPick(emoji)}
-              className="grid h-10 w-10 min-h-[40px] min-w-[40px] place-items-center rounded-md transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            >
-              <AnimatedEmoji emoji={emoji} size={20} motion="hover" />
-            </button>
-          ))}
-        </div>
+      {/* The in-house pack, and the same picker posts, comments and Reels use:
+          one search field, one recents list, twelve cat faces that travel as
+          shortcodes so they render in every surface. */}
+      <div
+        className="mt-1.5 rounded-lg border border-white/[0.06] bg-[#2b2d31] p-2"
+        aria-label="RIZZ emoji"
+      >
+        <RizzEmojiPanel compact onPick={onPick} columns={6} />
       </div>
 
       <p className="mt-1.5 px-1 text-[10px] leading-snug text-[#949ba4]">
-        Tap an emoji to react — or open the Rizz library from the + in the composer.
+        Tap an emoji to react — cat emoji work in every post, comment, Reel and message.
       </p>
     </div>
   );

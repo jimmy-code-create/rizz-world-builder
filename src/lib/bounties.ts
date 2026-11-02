@@ -131,7 +131,6 @@ export type BountyAppeal = {
   trust: { completed: number; warnings: number; level: string; auto_blocked?: boolean };
 };
 
-
 export type BountyRules = {
   minPrize: number;
   maxPrize: number;
@@ -232,13 +231,20 @@ export function isEscrowBounty(row: Pick<BountyRow, "prize_paws">): boolean {
  * dialog can name the exact amount the database will charge. Doubles once
  * somebody is already on the bounty, and never exceeds the prize itself.
  */
-export function cancelFee(prize: number, taken: boolean, rules: BountyRules = BOUNTY_RULES): number {
+export function cancelFee(
+  prize: number,
+  taken: boolean,
+  rules: BountyRules = BOUNTY_RULES,
+): number {
   const base = Math.max(rules.feeMin, Math.ceil((prize * rules.feePercent) / 100));
   return Math.min(prize, base * (taken ? rules.takenFeeMultiplier : 1));
 }
 
 /** Whose side of the deal a viewer is on. */
-export function viewerRole(row: Pick<BountyRow, "creator_id" | "assigned_to">, userId?: string | null): ViewerRole {
+export function viewerRole(
+  row: Pick<BountyRow, "creator_id" | "assigned_to">,
+  userId?: string | null,
+): ViewerRole {
   if (!userId) return "guest";
   if (row.creator_id === userId) return "creator";
   if (row.assigned_to && row.assigned_to === userId) return "worker";
@@ -279,7 +285,11 @@ export function activeBounties(rows: BountyRow[]): BountyRow[] {
   return rows.filter((row) => !isBountyFinished(row));
 }
 
-export function canTakeBounty(row: BountyRow, userId?: string | null, now: number = Date.now()): boolean {
+export function canTakeBounty(
+  row: BountyRow,
+  userId?: string | null,
+  now: number = Date.now(),
+): boolean {
   if (!userId) return false;
   if (!isEscrowBounty(row)) return false;
   if (row.creator_id === userId) return false;
@@ -301,7 +311,10 @@ export function isEndingSoon(row: BountyRow, now: number = Date.now()): boolean 
 }
 
 /** The review window on a submission that is waiting for a decision. */
-export function reviewOverdue(row: Pick<BountyRow, "review_deadline">, now: number = Date.now()): boolean {
+export function reviewOverdue(
+  row: Pick<BountyRow, "review_deadline">,
+  now: number = Date.now(),
+): boolean {
   if (!row.review_deadline) return false;
   return new Date(row.review_deadline).getTime() <= now;
 }
@@ -358,7 +371,8 @@ export function bountyNextStep(row: BountyRow, role: ViewerRole, userId?: string
   if (state === "expired") return "The deadline passed, so the Paws went back to the poster.";
   if (state === "submitted") {
     if (role === "creator") return "Work is in — approve it, or send it back with a note.";
-    if (viewerRole(row, userId) === "worker") return "Waiting on the poster. If they stall, it pays out by itself.";
+    if (viewerRole(row, userId) === "worker")
+      return "Waiting on the poster. If they stall, it pays out by itself.";
     return "Submitted and waiting for review.";
   }
   if (state === "taken") {
@@ -425,13 +439,19 @@ export async function postPawsBounty(input: {
   };
 }
 
-export async function takeBounty(dropId: string): Promise<{
+export async function takeBounty(
+  dropId: string,
+  note?: string | null,
+): Promise<{
   status: string;
   prize: number;
   cancelFee: number;
   feeRecipient: FeeRecipient;
 }> {
-  const result = await callBountyRpc<Record<string, unknown>>("take_bounty", { _drop_id: dropId });
+  const result = await callBountyRpc<Record<string, unknown>>("take_bounty", {
+    _drop_id: dropId,
+    _note: note?.trim() || null,
+  });
   return {
     status: String(result?.status ?? "taken"),
     prize: Number(result?.prize ?? 0),
@@ -510,7 +530,10 @@ export async function releaseOverduePayout(dropId: string): Promise<{ payout: nu
  */
 export async function settleExpiredBounties(): Promise<number> {
   try {
-    const result = await callBountyRpc<number | Record<string, unknown>>("settle_expired_bounties", {});
+    const result = await callBountyRpc<number | Record<string, unknown>>(
+      "settle_expired_bounties",
+      {},
+    );
     return typeof result === "number" ? result : Number((result as Record<string, unknown>) ?? 0);
   } catch {
     // The migration may not be applied yet; housekeeping is never fatal.
@@ -610,8 +633,7 @@ export function useBountyRules() {
           maxLinks: Number(raw.max_links ?? BOUNTY_RULES.maxLinks),
           maxMedia: Number(raw.max_media ?? BOUNTY_RULES.maxMedia),
           cancelFee: Number(raw.cancel_fee ?? BOUNTY_RULES.cancelFee),
-          feeRecipient:
-            raw.fee_recipient === "platform" ? "platform" : BOUNTY_RULES.feeRecipient,
+          feeRecipient: raw.fee_recipient === "platform" ? "platform" : BOUNTY_RULES.feeRecipient,
           autoBlockWarnings: Number(raw.auto_block_warnings ?? BOUNTY_RULES.autoBlockWarnings),
         };
       } catch {

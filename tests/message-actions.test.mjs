@@ -53,7 +53,10 @@ await check("rows are compact on desktop and full-size on touch", async () => {
 await check("Delete is red, fills on hover and sits behind a hairline", async () => {
   assert.ok(menu.includes("text-[#f23f43]"), "destructive text colour");
   assert.ok(menu.includes("hover:bg-[#da373c] hover:text-white"), "Discord's red hover");
-  assert.match(menu, /const startsDanger = action\.destructive && !actions\.slice\(0, index\)\.some/);
+  assert.match(
+    menu,
+    /const startsDanger = action\.destructive && !actions\.slice\(0, index\)\.some/,
+  );
   assert.match(menu, /startsDanger && index > 0[\s\S]*?bg-white\/\[0\.06\]/, "danger separator");
 });
 
@@ -77,8 +80,15 @@ await check("reactions are a smiley on the message, not an expanded tray", async
 await check("the reaction picker is compact but complete", async () => {
   assert.ok(picker.includes("QUICK_REACTIONS"));
   assert.ok(picker.includes("MORE_REACTIONS"));
-  assert.ok(picker.includes("RIZZ_REACTIONS"), "the Rizz picks fill the old cat grid");
-  assert.ok(!picker.includes("CAT_EMOJI_MANIFEST"), "the cat grid is gone from the reaction sheet");
+  assert.ok(picker.includes("RizzEmojiPanel"), "the shared RIZZ pack picker is mounted");
+  assert.ok(
+    !picker.includes("RIZZ_REACTIONS"),
+    "the picker no longer carries its own private emoji list",
+  );
+  assert.ok(
+    !picker.includes("CAT_EMOJI_MANIFEST"),
+    "the shared panel owns the grid, not this surface",
+  );
   assert.ok(picker.includes("ArrowLeft"), "there is a way back to the actions");
   assert.ok(picker.includes('aria-label="Back to message actions"'));
   assert.ok(picker.includes("bg-[#2b2d31]"), "Discord's reaction tray colour");
@@ -101,7 +111,10 @@ await check("the realm description is a one-line strip that expands on tap", asy
   assert.match(realm, /line-clamp-1/, "collapsed by default");
   assert.match(realm, /aria-expanded=\{expanded\}/);
   assert.match(realm, /whitespace-pre-wrap/, "expanded text keeps the author's line breaks");
-  assert.ok(!/className="chat-bar flex shrink-0 items-start gap-2[^"]*text-sm/.test(realm), "the old 3-line block is gone");
+  assert.ok(
+    !/className="chat-bar flex shrink-0 items-start gap-2[^"]*text-sm/.test(realm),
+    "the old 3-line block is gone",
+  );
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

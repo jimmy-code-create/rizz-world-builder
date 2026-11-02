@@ -30,6 +30,7 @@ import { Route as AppFeedRouteImport } from './routes/_app/feed'
 import { Route as AppGamesRouteImport } from './routes/_app/games'
 import { Route as AppGroupsRouteImport } from './routes/_app/groups'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
+import { Route as AppModerationRouteImport } from './routes/_app/moderation'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppPulseRouteImport } from './routes/_app/pulse'
 import { Route as AppPurifyRouteImport } from './routes/_app/purify'
@@ -171,6 +172,11 @@ const AppGroupsRoute = AppGroupsRouteImport.update({
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppModerationRoute = AppModerationRouteImport.update({
+  id: '/moderation',
+  path: '/moderation',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -387,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/games': typeof AppGamesRoute
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/moderation': typeof AppModerationRoute
   '/notifications': typeof AppNotificationsRoute
   '/pulse': typeof AppPulseRoute
   '/purify': typeof AppPurifyRoute
@@ -446,6 +453,7 @@ export interface FileRoutesByTo {
   '/games': typeof AppGamesRoute
   '/groups': typeof AppGroupsRoute
   '/leaderboard': typeof AppLeaderboardRoute
+  '/moderation': typeof AppModerationRoute
   '/notifications': typeof AppNotificationsRoute
   '/pulse': typeof AppPulseRoute
   '/purify': typeof AppPurifyRoute
@@ -508,6 +516,7 @@ export interface FileRoutesById {
   '/_app/games': typeof AppGamesRoute
   '/_app/groups': typeof AppGroupsRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
+  '/_app/moderation': typeof AppModerationRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/pulse': typeof AppPulseRoute
   '/_app/purify': typeof AppPurifyRoute
@@ -570,6 +579,7 @@ export interface FileRouteTypes {
     | '/games'
     | '/groups'
     | '/leaderboard'
+    | '/moderation'
     | '/notifications'
     | '/pulse'
     | '/purify'
@@ -629,6 +639,7 @@ export interface FileRouteTypes {
     | '/games'
     | '/groups'
     | '/leaderboard'
+    | '/moderation'
     | '/notifications'
     | '/pulse'
     | '/purify'
@@ -690,6 +701,7 @@ export interface FileRouteTypes {
     | '/_app/games'
     | '/_app/groups'
     | '/_app/leaderboard'
+    | '/_app/moderation'
     | '/_app/notifications'
     | '/_app/pulse'
     | '/_app/purify'
@@ -901,6 +913,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof AppLeaderboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/moderation': {
+      id: '/_app/moderation'
+      path: '/moderation'
+      fullPath: '/moderation'
+      preLoaderRoute: typeof AppModerationRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notifications': {
@@ -1198,6 +1217,7 @@ interface AppRouteChildren {
   AppGamesRoute: typeof AppGamesRoute
   AppGroupsRoute: typeof AppGroupsRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
+  AppModerationRoute: typeof AppModerationRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPulseRoute: typeof AppPulseRoute
   AppPurifyRoute: typeof AppPurifyRoute
@@ -1235,6 +1255,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGamesRoute: AppGamesRoute,
   AppGroupsRoute: AppGroupsRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
+  AppModerationRoute: AppModerationRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPulseRoute: AppPulseRoute,
   AppPurifyRoute: AppPurifyRoute,
