@@ -23,10 +23,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { hapticVoiceJoin, hapticVoiceLeave } from "@/lib/haptics";
 import {
+  createRoom,
   endRoom,
   ensureChannelVoiceCall,
   fetchParticipants,
   fetchRealmChannelCalls,
+  fetchRoom,
   joinRoom,
   leaveRoom,
   leaveRoomBeacon,
@@ -49,6 +51,8 @@ export type ActiveCall = {
   realmId: string;
   channelId: string;
   channelName: string;
+  /** A realm voice channel or a public live room opened from Reels. */
+  kind: "realm" | "live";
   isHost: boolean;
   /** The call's host. Only the host may remove somebody from the call. */
   hostId: string | null;
@@ -96,6 +100,10 @@ type VoiceCallContextValue = {
   micReady: boolean;
   cameraReady: boolean;
   joinChannel: (channel: VoiceChannelRef) => void;
+  /** Create a public live room and join as the host. Returns the new room id. */
+  startLiveRoom: (title: string) => Promise<string | null>;
+  /** Join a live room by id. Returns false when it has ended. */
+  joinLiveRoom: (roomId: string) => Promise<boolean>;
   leaveCall: () => void;
   /** Host only: send someone out of the call (they leave with a notice). */
   kickFromCall: (userId: string) => void;
@@ -340,6 +348,7 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
           realmId: channel.realmId,
           channelId: channel.id,
           channelName: channel.name,
+          kind: "realm",
           isHost: room.host_id === user.id,
           hostId: room.host_id ?? null,
         });
@@ -349,6 +358,105 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
         await qc.invalidateQueries({ queryKey: ["realm-channel-calls", channel.realmId] });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Couldn't join this voice channel");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [user, qc],
+  );
+
+  const startLiveRoom = useCallback(
+    async (title: string) => {
+      if (!user) {
+        toast.error("Sign in to go live");
+        return null;
+      }
+      if (callRef.current) {
+        toast.error("Leave your current call before going live");
+        return null;
+      }
+      setBusy(true);
+      try {
+        const room = await createRoom({
+          host_id: user.id,
+          title: title.trim() || "Live on RIZZ",
+          topic: "live",
+        });
+        setMuted(false);
+        setCameraOn(false);
+        setFacing("user");
+        setCall({
+          roomId: room.id,
+          realmId: "",
+          channelId: room.id,
+          channelName: room.title,
+          kind: "live",
+          isHost: true,
+          hostId: room.host_id ?? user.id,
+        });
+        // The live sheet shows the invite link before the full studio opens.
+        setViewOpen(false);
+        hapticVoiceJoin();
+        await qc.invalidateQueries({ queryKey: ["voice-call-participants", room.id] });
+        return room.id;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Couldn't start the live room");
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [user, qc],
+  );
+
+  const joinLiveRoom = useCallback(
+    async (roomId: string) => {
+      if (!user) {
+        toast.error("Sign in to join a live room");
+        return false;
+      }
+      const current = callRef.current;
+      if (current?.roomId === roomId) {
+        setViewOpen(true);
+        return true;
+      }
+      if (current) {
+        toast.error("Leave your current call before joining a live room");
+        return false;
+      }
+      setBusy(true);
+      try {
+        const room = await fetchRoom(roomId);
+        if (!room || !room.is_live) {
+          toast.error("That live room has ended");
+          return false;
+        }
+        const isHost = room.host_id === user.id;
+        await joinRoom(room.id, user.id, isHost ? "speaker" : "listener");
+        if (isHost) {
+          setMuted(false);
+          await updateParticipant(room.id, user.id, { muted: false, hand_raised: false });
+        } else {
+          setMuted(true);
+        }
+        setCameraOn(false);
+        setFacing("user");
+        setCall({
+          roomId: room.id,
+          realmId: room.realm_id ?? "",
+          channelId: room.id,
+          channelName: room.title,
+          kind: "live",
+          isHost,
+          hostId: room.host_id ?? null,
+        });
+        setViewOpen(true);
+        hapticVoiceJoin();
+        await qc.invalidateQueries({ queryKey: ["voice-call-participants", room.id] });
+        return true;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Couldn't join this live room");
+        return false;
       } finally {
         setBusy(false);
       }
@@ -369,7 +477,9 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
     if (!current || !userIdRef.current) return;
     try {
       await leaveRoom(current.roomId, userIdRef.current);
-      if (current.isHost && others.length === 0) await endRoom(current.roomId);
+      if (current.isHost && (current.kind === "live" || others.length === 0)) {
+        await endRoom(current.roomId);
+      }
     } catch (error) {
       console.warn("Leaving the voice call failed", error);
     }
@@ -506,6 +616,8 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       joinChannel: (channel) => {
         void joinChannel(channel);
       },
+      startLiveRoom,
+      joinLiveRoom,
       leaveCall: () => {
         void leaveCall();
       },
@@ -552,6 +664,8 @@ export function VoiceCallProvider({ children }: { children: React.ReactNode }) {
       engine.retry,
       engine.markPlaybackBlocked,
       joinChannel,
+      startLiveRoom,
+      joinLiveRoom,
       leaveCall,
       kickFromCall,
       toggleMute,

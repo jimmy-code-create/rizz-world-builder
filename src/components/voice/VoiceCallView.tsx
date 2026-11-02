@@ -793,7 +793,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
         <header className="relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2.5 pt-3 sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4">
           <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Voice
+              {call.kind === "live" ? "Live" : "Voice"}
             </p>
             <h1 className="truncate font-display text-[17px] font-bold leading-tight">
               {call.channelName}
@@ -815,19 +815,28 @@ export const VoiceCallView = memo(function VoiceCallView() {
             </Button>
           )}
           {[
-            {
-              label: "Open text chat",
-              active: chatOpen,
-              onClick: () => setChatOpen((v) => !v),
-              icon: MessageSquare,
-            },
-            {
-              label: "Games",
-              active: gamesOpen,
-              onClick: () => setGamesOpen(true),
-              icon: Gamepad2,
-            },
-            { label: "Music", active: musicOpen, onClick: () => setMusicOpen(true), icon: Music },
+            ...(call.kind === "live"
+              ? []
+              : [
+                  {
+                    label: "Open text chat",
+                    active: chatOpen,
+                    onClick: () => setChatOpen((v) => !v),
+                    icon: MessageSquare,
+                  },
+                  {
+                    label: "Games",
+                    active: gamesOpen,
+                    onClick: () => setGamesOpen(true),
+                    icon: Gamepad2,
+                  },
+                  {
+                    label: "Music",
+                    active: musicOpen,
+                    onClick: () => setMusicOpen(true),
+                    icon: Music,
+                  },
+                ]),
             {
               label: "Voice settings",
               active: settingsOpen,
@@ -1421,10 +1430,13 @@ export const VoiceCallView = memo(function VoiceCallView() {
         <AlertDialog open={confirmLeaveOpen} onOpenChange={setConfirmLeaveOpen}>
           <AlertDialogContent className="glass-strong border-white/10 max-w-sm">
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-display">Leave & End Call?</AlertDialogTitle>
+              <AlertDialogTitle className="font-display">
+                {call.kind === "live" ? "End Live?" : "Leave & End Call?"}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                You are the host of this voice call. Leaving will end the call for everyone in the
-                room.
+                {call.kind === "live"
+                  ? "You are the host of this live room. Leaving will end it for everyone watching."
+                  : "You are the host of this voice call. Leaving will end the call for everyone in the room."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1436,7 +1448,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Leave & End Call
+                {call.kind === "live" ? "End Live" : "Leave & End Call"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

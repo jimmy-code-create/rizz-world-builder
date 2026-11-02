@@ -51,6 +51,7 @@ import { Route as AppBotsDeveloperRouteImport } from './routes/_app/bots.develop
 import { Route as AppCallUserIdRouteImport } from './routes/_app/call.$userId'
 import { Route as AppDmUserIdRouteImport } from './routes/_app/dm.$userId'
 import { Route as AppGIdRouteImport } from './routes/_app/g.$id'
+import { Route as AppLiveRoomIdRouteImport } from './routes/_app/live.$roomId'
 import { Route as AppPPostIdRouteImport } from './routes/_app/p.$postId'
 import { Route as AppRSlugRouteImport } from './routes/_app/r.$slug'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
@@ -279,6 +280,11 @@ const AppGIdRoute = AppGIdRouteImport.update({
   path: '/g/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLiveRoomIdRoute = AppLiveRoomIdRouteImport.update({
+  id: '/live/$roomId',
+  path: '/live/$roomId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPPostIdRoute = AppPPostIdRouteImport.update({
   id: '/p/$postId',
   path: '/p/$postId',
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
+  '/live/$roomId': typeof AppLiveRoomIdRoute
   '/p/$postId': typeof AppPPostIdRoute
   '/r/$slug': typeof AppRSlugRoute
   '/settings/account': typeof AppSettingsAccountRoute
@@ -473,6 +480,7 @@ export interface FileRoutesByTo {
   '/call/$userId': typeof AppCallUserIdRoute
   '/dm/$userId': typeof AppDmUserIdRoute
   '/g/$id': typeof AppGIdRoute
+  '/live/$roomId': typeof AppLiveRoomIdRoute
   '/p/$postId': typeof AppPPostIdRoute
   '/r/$slug': typeof AppRSlugRoute
   '/settings/account': typeof AppSettingsAccountRoute
@@ -536,6 +544,7 @@ export interface FileRoutesById {
   '/_app/call/$userId': typeof AppCallUserIdRoute
   '/_app/dm/$userId': typeof AppDmUserIdRoute
   '/_app/g/$id': typeof AppGIdRoute
+  '/_app/live/$roomId': typeof AppLiveRoomIdRoute
   '/_app/p/$postId': typeof AppPPostIdRoute
   '/_app/r/$slug': typeof AppRSlugRoute
   '/_app/settings/account': typeof AppSettingsAccountRoute
@@ -599,6 +608,7 @@ export interface FileRouteTypes {
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
+    | '/live/$roomId'
     | '/p/$postId'
     | '/r/$slug'
     | '/settings/account'
@@ -659,6 +669,7 @@ export interface FileRouteTypes {
     | '/call/$userId'
     | '/dm/$userId'
     | '/g/$id'
+    | '/live/$roomId'
     | '/p/$postId'
     | '/r/$slug'
     | '/settings/account'
@@ -721,6 +732,7 @@ export interface FileRouteTypes {
     | '/_app/call/$userId'
     | '/_app/dm/$userId'
     | '/_app/g/$id'
+    | '/_app/live/$roomId'
     | '/_app/p/$postId'
     | '/_app/r/$slug'
     | '/_app/settings/account'
@@ -1062,6 +1074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/live/$roomId': {
+      id: '/_app/live/$roomId'
+      path: '/live/$roomId'
+      fullPath: '/live/$roomId'
+      preLoaderRoute: typeof AppLiveRoomIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/p/$postId': {
       id: '/_app/p/$postId'
       path: '/p/$postId'
@@ -1227,6 +1246,7 @@ interface AppRouteChildren {
   AppCallUserIdRoute: typeof AppCallUserIdRoute
   AppDmUserIdRoute: typeof AppDmUserIdRoute
   AppGIdRoute: typeof AppGIdRoute
+  AppLiveRoomIdRoute: typeof AppLiveRoomIdRoute
   AppPPostIdRoute: typeof AppPPostIdRoute
   AppRSlugRoute: typeof AppRSlugRoute
   AppSettingsAccountRoute: typeof AppSettingsAccountRoute
@@ -1265,6 +1285,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCallUserIdRoute: AppCallUserIdRoute,
   AppDmUserIdRoute: AppDmUserIdRoute,
   AppGIdRoute: AppGIdRoute,
+  AppLiveRoomIdRoute: AppLiveRoomIdRoute,
   AppPPostIdRoute: AppPPostIdRoute,
   AppRSlugRoute: AppRSlugRoute,
   AppSettingsAccountRoute: AppSettingsAccountRoute,

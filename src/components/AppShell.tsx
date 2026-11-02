@@ -21,6 +21,7 @@ import {
   Film,
   MoreHorizontal,
   MessageSquareText,
+  Radio,
   Gamepad2,
   ChevronRight,
   Clock,
@@ -84,6 +85,9 @@ const IncomingCallRinger = lazy(() =>
 );
 const PostComposer = lazy(() =>
   import("@/components/PostComposer").then((m) => ({ default: m.PostComposer })),
+);
+const LiveStudioSheet = lazy(() =>
+  import("@/components/live/LiveStudioSheet").then((m) => ({ default: m.LiveStudioSheet })),
 );
 
 const sideTabs = [
@@ -202,6 +206,7 @@ export function AppShell() {
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [mobileSignOutConfirm, setMobileSignOutConfirm] = useState(false);
@@ -220,6 +225,12 @@ export function AppShell() {
   const isReels = path === "/reels" || path === "/_app/reels";
   const isWidePage =
     path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
+
+  // The Live entry point belongs to Reels only; never leave its sheet open
+  // after a tab change.
+  useEffect(() => {
+    if (!isReels) setLiveOpen(false);
+  }, [isReels]);
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -399,6 +410,16 @@ export function AppShell() {
             <Plus className="h-5 w-5" /> New post
           </Button>
 
+          {isReels && (
+            <Button
+              onClick={() => setLiveOpen(true)}
+              variant="outline"
+              className="mb-4 h-11 min-h-[44px] gap-2 rounded-lg border-destructive/40 bg-destructive/10 font-semibold text-destructive hover:bg-destructive/20 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Radio className="h-5 w-5" /> Go live
+            </Button>
+          )}
+
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto -mx-1 px-1">
             <button
               type="button"
@@ -577,7 +598,23 @@ export function AppShell() {
                 />
               );
             })}
-            {!isReels && (
+            {isReels ? (
+              <button
+                type="button"
+                onClick={() => setLiveOpen(true)}
+                className="group flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
+                aria-label="Go live"
+                title="Go live"
+              >
+                <div className="relative h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-destructive text-destructive-foreground flex flex-col items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 group-focus-visible:ring-2 group-focus-visible:ring-ring">
+                  <Radio className="h-5 w-5 stroke-[2.5]" />
+                  <span className="mt-0.5 text-[8px] font-black uppercase leading-none tracking-[0.14em]">
+                    Live
+                  </span>
+                  <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-white ring-2 ring-background animate-pulse motion-reduce:animate-none" />
+                </div>
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setComposerOpen(true)}
@@ -624,6 +661,12 @@ export function AppShell() {
           </Suspense>
         </DialogContent>
       </Dialog>
+
+      {isReels && (
+        <Suspense fallback={null}>
+          <LiveStudioSheet open={liveOpen} onOpenChange={setLiveOpen} />
+        </Suspense>
+      )}
 
       {/* Mobile "More" drawer */}
       <Sheet
