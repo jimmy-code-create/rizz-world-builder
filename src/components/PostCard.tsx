@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles } from "lucide-react";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPills";
+import { SuperReactionBurst, type SuperBurst } from "@/components/reactions/SuperReactionBurst";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
 import { emojiReactionKey } from "@/lib/emoji-shared";
 import { cn, formatCount } from "@/lib/utils";
@@ -278,9 +279,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       qc.setQueryData(queryKey, next);
       return { queryKey, previous, delta: wasSuper ? -1 : mineRow ? 0 : 1 };
     },
-    onSuccess: (_data, _variables, context) => {
+    onSuccess: (_data, variables, context) => {
       void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
       bumpFeedReactionCount(context?.delta ?? 0);
+      // A newly-sent super reaction (not an upgrade or a removal) fires the
+      // cat burst over the card.
+      if ((context?.delta ?? 0) > 0) {
+        setSuperBurst({ key: variables.emoji, seq: Date.now() });
+      }
     },
     onError: (e: Error, _variables, context) => {
       if (context) qc.setQueryData(context.queryKey, context.previous);
@@ -313,6 +319,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [reactionsSheetOpen, setReactionsSheetOpen] = useState(false);
   const [reactPickerOpen, setReactPickerOpen] = useState(false);
   const [superMode, setSuperMode] = useState(false);
+  const [superBurst, setSuperBurst] = useState<SuperBurst | null>(null);
   const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
@@ -899,6 +906,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           ) : null
         }
       />
+
+      {/* The super-reaction celebration lives over the card but never blocks
+          a tap (pointer-events: none) and cleans itself up. */}
+      <SuperReactionBurst burst={superBurst} onDone={() => setSuperBurst(null)} />
 
       <PostReactionsSheet
         postId={post.id}
