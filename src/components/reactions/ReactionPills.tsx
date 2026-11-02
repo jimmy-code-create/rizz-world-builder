@@ -95,17 +95,25 @@ export function ReactionPills({
               <EmojiGlyph
                 emoji={emoji}
                 shortcode={emoji?.shortcode ?? "emoji"}
-                className={isSuper && !compact ? "h-[22px] w-[22px]" : "h-[18px] w-[18px]"}
+                className={
+                  compact
+                    ? "h-3.5 w-3.5"
+                    : isSuper
+                      ? "h-5 w-5"
+                      : "h-4 w-4"
+                }
               />
             ) : (
               <UnicodeGlyph
                 value={group.key}
-                className={isSuper && !compact ? "text-[22px]" : "text-[18px]"}
+                className={
+                  compact ? "text-[14px]" : isSuper ? "text-[20px]" : "text-[16px]"
+                }
               />
             )}
             {isSuper ? (
               <Sparkles
-                className={compact ? "h-3 w-3 text-[#e6d4ff]" : "h-3.5 w-3.5 text-[#e6d4ff]"}
+                className={compact ? "h-2.5 w-2.5 text-[#e6d4ff]" : "h-3 w-3 text-[#e6d4ff]"}
                 aria-hidden="true"
               />
             ) : null}
