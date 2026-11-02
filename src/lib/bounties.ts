@@ -201,6 +201,7 @@ export type BountyRow = {
   proof_type?: ProofType;
   min_trust?: MinTrustLevel;
   tags?: string[] | null;
+  heading_color?: string | null;
   creator?: BountyCreator | null;
 };
 
@@ -419,8 +420,9 @@ export async function postPawsBounty(input: {
   proofType?: ProofType;
   minTrust?: MinTrustLevel;
   tags?: string[];
+  headingColor?: string;
 }): Promise<{ id: string; prize: number; balance: number }> {
-  const result = await callBountyRpc<Record<string, unknown>>("post_paws_bounty", {
+  const args = {
     _title: input.title.trim(),
     _description: input.description?.trim() || null,
     _requirements: input.requirements?.trim() || null,
@@ -431,7 +433,22 @@ export async function postPawsBounty(input: {
     _proof_type: input.proofType ?? "any",
     _min_trust: input.minTrust ?? "any",
     _tags: (input.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
-  });
+    _heading_color: input.headingColor ?? "#f2efe6",
+  };
+  let response = await (supabase.rpc as any)("post_paws_bounty", args);
+  if (
+    response.error &&
+    /_heading_color|PGRST202|could not find the function/i.test(response.error.message ?? "")
+  ) {
+    // The presentation migration may not have reached this deployment yet.
+    // Keep the escrow path working; the colour simply falls back to default.
+    const legacyArgs = Object.fromEntries(
+      Object.entries(args).filter(([key]) => key !== "_heading_color"),
+    );
+    response = await (supabase.rpc as any)("post_paws_bounty", legacyArgs);
+  }
+  if (response.error) throw new Error(response.error.message);
+  const result = (response.data ?? null) as Record<string, unknown> | null;
   return {
     id: String(result?.id ?? ""),
     prize: Number(result?.prize ?? input.prize),

@@ -1,7 +1,7 @@
 # Test report: bounty trust/fees and feed polish
 
-Date: 2026-11-02
-Live build checked: `a46f94b` (Render).
+Date: 2026-11-02 (updated 2026-11-03 for bounty presentation).
+Live build checked: `a46f94b` (Render) before the presentation change.
 Test plan: `TEST-PLAN.md`.
 Security review: `SECURITY.md`.
 
@@ -20,6 +20,7 @@ migration is re-applied and the schema cache is reloaded. See "Blockers" below.
 | --- | --- |
 | `npm test` | Pass, exit 0 (all suites) |
 | `node tests/bounty-security.test.mjs` | 7/7 checks |
+| `node tests/bounty-presentation.test.mjs` | 7/7 checks (tags, colour, compress-preview pickers, auth remount guard, migration) |
 | `npx tsc --noEmit` | Pass, exit 0 |
 | `NODE_OPTIONS=--max-old-space-size=4096 npm run build` | Pass, exit 0, Nitro SSR output generated |
 | `pnpm audit --prod` | Zod advisory removed; remaining sharp/undici/seroval findings are upstream and documented in `SECURITY.md` |
@@ -84,6 +85,15 @@ Available and behaving as expected:
 1. **Apply the final migrations to the live Supabase project.**
    - `supabase/migrations/20261108000000_bounty_trust.sql`
    - `supabase/migrations/20261114000000_bounty_security.sql`
+   - `supabase/migrations/20261115000000_bounty_presentation.sql`
+
+   The presentation migration adds `drops.heading_color`, the tag validation
+   trigger and the 11-argument `post_paws_bounty` wrapper used by the posting
+   form. A read-only PostgREST probe on 2026-11-03 confirmed `tags` and the
+   trust columns already exist live, while `heading_color` still returns
+   `42703`. Until it is applied, open calls keep their tags through the retry
+   path but lose the heading colour, and Paws bounties keep using the older RPC
+   signature (default cream title).
 
    The live database currently still has `take_bounty(_drop_id)` and does not
    expose `take_bounty(_drop_id, _note)`. The new Take sheet will fail with
@@ -126,7 +136,7 @@ Available and behaving as expected:
 
 ## Recommended launch sequence
 
-1. Apply both migrations and reload the PostgREST schema.
+1. Apply all three migrations and reload the PostgREST schema.
 2. Verify the two-argument `take_bounty` appears and the one-argument overload
    is gone.
 3. Seed or use a Purify test account with 1,000+ Paws.

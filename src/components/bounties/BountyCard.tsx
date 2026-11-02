@@ -10,6 +10,7 @@ import {
   Coins,
   Flag,
   Hand,
+  Hash,
   Lock,
   PawPrint,
   ShieldCheck,
@@ -101,6 +102,8 @@ export function BountyCard({
   claimed = false,
   onChanged,
   onClaim,
+  onTagClick,
+  activeTag = null,
 }: {
   bounty: BountyRow;
   /** Newest proof for this bounty, when the viewer is allowed to read it. */
@@ -113,6 +116,10 @@ export function BountyCard({
   claimed?: boolean;
   onChanged: () => void;
   onClaim?: (dropId: string) => Promise<void> | void;
+  /** Clicking a tag filters the board to it. */
+  onTagClick?: (tag: string) => void;
+  /** The board's current tag filter, used to highlight the matching chip. */
+  activeTag?: string | null;
 }) {
   const { user, profile } = useAuth();
   const purify = usePurify();
@@ -140,6 +147,10 @@ export function BountyCard({
   const workerLabel = workerName ? `@${workerName}` : "a member";
   const soldOut = bounty.claim_count >= bounty.claim_limit;
   const claimPct = Math.min(100, (bounty.claim_count / Math.max(1, bounty.claim_limit)) * 100);
+  const titleColor = /^#[0-9a-f]{6}$/i.test(bounty.heading_color ?? "")
+    ? (bounty.heading_color as string)
+    : null;
+  const tagList = (bounty.tags ?? []).filter(Boolean).slice(0, 5);
 
   /** Make RPC failures on claims readable instead of surfacing the raw DB error. */
   function normalizedTakeError(error: unknown): string {
@@ -260,7 +271,49 @@ export function BountyCard({
               )}
             </div>
 
-            <h3 className="mt-2 font-display text-xl font-bold">{fixCommonTypos(bounty.title)}</h3>
+            <h3
+              className="mt-2 font-display text-xl font-bold"
+              style={
+                titleColor
+                  ? { color: titleColor, textShadow: `0 0 26px ${titleColor}33` }
+                  : undefined
+              }
+            >
+              {fixCommonTypos(bounty.title)}
+            </h3>
+            {tagList.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tagList.map((tag) => {
+                  const selected = activeTag === tag;
+                  const className = `inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
+                    selected
+                      ? "border-primary/45 bg-primary/15 text-primary"
+                      : "border-white/10 bg-white/[0.04] text-muted-foreground hover:border-primary/30 hover:text-primary"
+                  }`;
+                  const label = (
+                    <>
+                      <Hash className="h-2.5 w-2.5" />
+                      {tag}
+                    </>
+                  );
+                  return onTagClick ? (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => onTagClick(tag)}
+                      aria-pressed={selected}
+                      className={className}
+                    >
+                      {label}
+                    </button>
+                  ) : (
+                    <span key={tag} className={className}>
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             {bounty.description && (
               <p className="mt-1 text-sm text-muted-foreground">
                 {fixCommonTypos(bounty.description)}
@@ -281,9 +334,9 @@ export function BountyCard({
           </div>
         </div>
 
-        {escrow && bounty.requirements && (
+        {bounty.requirements && (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3">
-            <p className="text-[11px] font-semibold text-muted-foreground">What counts as done</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">What the poster wants</p>
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-foreground/90">
               {fixCommonTypos(bounty.requirements)}
             </p>

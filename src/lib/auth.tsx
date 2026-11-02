@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -42,7 +42,8 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | undefined>(undefined);
 
-const retryDelay = (attempt: number) => new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+const retryDelay = (attempt: number) =>
+  new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
 
 async function fetchMe(session: Session | null): Promise<Profile | null> {
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -87,6 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  // Supabase emits TOKEN_REFRESHED when the tab wakes up (for example after the
+  // native photo picker closes). Without these refs the shell would drop back to
+  // AppLoader while /api/me refreshes, unmounting the composer and losing the
+  // photo the member just selected. Keep the last good profile and userId so a
+  // background refresh can update it in place instead.
+  const profileRef = useRef<Profile | null>(null);
+  const userIdRef = useRef<string | null>(null);
+
+  const rememberProfile = (next: Profile | null) => {
+    profileRef.current = next;
+    setProfile(next);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -95,25 +108,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const applySession = async (nextSession: Session | null) => {
       const currentRequest = ++requestId;
+      const nextUserId = nextSession?.user?.id ?? null;
+      const sameMember = Boolean(
+        nextUserId && nextUserId === userIdRef.current && profileRef.current,
+      );
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      setProfileError(null);
 
       if (!nextSession) {
         // There is no profile to fetch without a session. Calling /api/me here
         // only produced a 401 in the console for every signed-out visitor.
-        setProfile(null);
+        userIdRef.current = null;
+        setProfileError(null);
+        rememberProfile(null);
         if (mounted && currentRequest === requestId) setLoading(false);
         return;
       }
 
+      if (sameMember) {
+        // A token refresh, not a new sign-in. Refresh the profile silently and
+        // keep the app mounted: the route below may be holding an unsent draft,
+        // a selected image, or a scroll position.
+        userIdRef.current = nextUserId;
+        setProfileError(null);
+        try {
+          const nextProfile = await fetchMe(nextSession);
+          if (mounted && currentRequest === requestId) rememberProfile(nextProfile);
+        } catch (error) {
+          // A transient refresh failure must not throw the member out of what
+          // they were doing. The next focus/refresh will try again.
+          console.warn("Profile refresh failed", error);
+        } finally {
+          if (mounted && currentRequest === requestId) setLoading(false);
+        }
+        return;
+      }
+
+      userIdRef.current = nextUserId;
+      setProfileError(null);
+      rememberProfile(null);
       setLoading(true);
       try {
         const nextProfile = await fetchMe(nextSession);
-        if (mounted && currentRequest === requestId) setProfile(nextProfile);
+        if (mounted && currentRequest === requestId) rememberProfile(nextProfile);
       } catch (error) {
         if (mounted && currentRequest === requestId) {
-          setProfile(null);
+          rememberProfile(null);
           setProfileError(error instanceof Error ? error.message : "Couldn't load your account.");
         }
       } finally {
@@ -132,7 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe = () => sub.subscription.unsubscribe();
     } catch (error) {
       if (mounted) {
-        setProfileError(error instanceof Error ? error.message : "Couldn't initialize account access.");
+        setProfileError(
+          error instanceof Error ? error.message : "Couldn't initialize account access.",
+        );
         setLoading(false);
       }
       return () => {
@@ -140,15 +183,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    void supabase.auth.getSession().then(({ data }) => {
-      initialized = true;
-      if (mounted) void applySession(data.session);
-    }).catch((error: unknown) => {
-      initialized = true;
-      if (!mounted) return;
-      setProfileError(error instanceof Error ? error.message : "Couldn't check your session.");
-      setLoading(false);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        initialized = true;
+        if (mounted) void applySession(data.session);
+      })
+      .catch((error: unknown) => {
+        initialized = true;
+        if (!mounted) return;
+        setProfileError(error instanceof Error ? error.message : "Couldn't check your session.");
+        setLoading(false);
+      });
 
     return () => {
       mounted = false;
@@ -168,9 +214,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!session) return;
           setProfileError(null);
           try {
-            setProfile(await fetchMe(session));
+            rememberProfile(await fetchMe(session));
           } catch (error) {
-            setProfileError(error instanceof Error ? error.message : "Couldn't load your account.");
+            // Keep the last good profile on a failed refresh. Surfaces can keep
+            // rendering with slightly stale data; a full error screen should be
+            // reserved for the first load, when there is nothing to show.
+            if (!profileRef.current) {
+              setProfileError(
+                error instanceof Error ? error.message : "Couldn't load your account.",
+              );
+            }
             throw error;
           }
         },

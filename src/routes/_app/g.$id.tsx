@@ -36,7 +36,7 @@ import { GifContent } from "@/components/GifContent";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { WallpaperSheet } from "@/components/chat/WallpaperSheet";
 import { loadWallpaper, wallpaperStyle, type ChatWallpaper } from "@/lib/chat-wallpaper";
-import { compressChatImage } from "@/lib/chat-media";
+import { compressChatImage, prepareChatImagePreview } from "@/lib/chat-media";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
@@ -232,7 +232,7 @@ function GroupRoom() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
 
-  const chooseImage = (file: File | null) => {
+  const chooseImage = async (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Choose an image file.");
@@ -245,8 +245,15 @@ function GroupRoom() {
       );
       return;
     }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    try {
+      // Preview the compressed image, not the original: decoding a full-size
+      // camera photo is what could crash the tab right after the picker closed.
+      const preview = await prepareChatImagePreview(file);
+      setImageFile(file);
+      setImagePreview(preview);
+    } catch {
+      toast.error("That photo couldn't be prepared. Try a JPG or PNG.");
+    }
   };
 
   const clearImage = () => {
@@ -766,7 +773,7 @@ function GroupRoom() {
             type="file"
             accept="image/*"
             hidden
-            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
           <input
             ref={cameraInputRef}
@@ -774,7 +781,7 @@ function GroupRoom() {
             accept="image/*"
             capture="environment"
             hidden
-            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
           <ChatAttachButton
             className="h-9 w-9"

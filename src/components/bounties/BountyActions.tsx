@@ -181,6 +181,8 @@ export function SubmitProofDialog({
             onChange={(event) => {
               const picked = Array.from(event.target.files ?? []);
               setFiles((current) => [...current, ...picked].slice(0, rules?.maxMedia ?? 4));
+              // Let the same photo be picked again after removing it.
+              event.currentTarget.value = "";
             }}
           />
         </label>

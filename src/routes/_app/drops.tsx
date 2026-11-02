@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -9,12 +9,14 @@ import {
   Check,
   Coins,
   Hand,
+  Hash,
   Megaphone,
   PawPrint,
   Plus,
   Share2,
   ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
 import { formatNumber } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
@@ -85,6 +87,18 @@ const ACTION_BUTTON =
 
 export const Route = createFileRoute("/_app/drops")({
   head: () => ({ meta: [{ title: "Bounties · RIZZ" }] }),
+  // Tag links are shareable: /drops?tag=design opens the board pre-filtered.
+  validateSearch: (search: Record<string, unknown>): { tag?: string } => {
+    const raw = typeof search.tag === "string" ? search.tag : "";
+    const tag = raw
+      .trim()
+      .replace(/^#+/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 24);
+    return tag ? { tag } : {};
+  },
   component: DropsPage,
 });
 
@@ -168,6 +182,9 @@ const BOARD_LOOKBACK_DAYS = 3;
 function DropsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
+  const search = Route.useSearch();
+  const activeTag = search.tag ?? null;
   const [dropOpen, setDropOpen] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
   const [appealWarning, setAppealWarning] = useState<BountyWarning | null>(null);
@@ -320,6 +337,27 @@ function DropsPage() {
   );
   const desk = useMemo(() => bountiesNeedingYou(active, user?.id), [active, user]);
   const visible = onlyMine ? myBounties : active;
+
+  // One pass over the active board: the chips show how many bounties use each
+  // tag, and the selected tag narrows the list before the cards render.
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of active) {
+      for (const tag of new Set(row.tags ?? [])) {
+        if (tag) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [active]);
+
+  const tagFiltered = useMemo(
+    () => (activeTag ? visible.filter((row) => (row.tags ?? []).includes(activeTag)) : visible),
+    [visible, activeTag],
+  );
+
+  const setTagFilter = (tag: string | null) => {
+    void nav({ to: "/drops", search: tag ? { tag } : {} });
+  };
 
   const escrowHeld = useMemo(
     () =>
@@ -487,13 +525,55 @@ function DropsPage() {
               {tab.label}
             </button>
           ))}
+          {activeTag && (
+            <button
+              type="button"
+              onClick={() => setTagFilter(null)}
+              className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-primary/35 bg-primary/10 px-2.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+            >
+              <Hash className="h-3.5 w-3.5" />
+              {activeTag}
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {tagCounts.length > 0 && (
+        <div className="mb-4 -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {tagCounts.map(([tag, count]) => {
+            const selected = activeTag === tag;
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setTagFilter(selected ? null : tag)}
+                aria-pressed={selected}
+                className={`inline-flex min-h-8 shrink-0 snap-start items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold transition-colors ${
+                  selected
+                    ? "border-primary/45 bg-primary/15 text-primary"
+                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                <Hash className="h-3 w-3" />
+                {tag}
+                <span
+                  className={`rounded-full px-1.5 text-[10px] ${
+                    selected ? "bg-primary/15" : "bg-white/[0.06]"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {drops.isLoading && <div className="h-40 animate-pulse rounded-3xl glass" />}
 
       <div className="space-y-3">
-        {visible.map((row) => (
+        {tagFiltered.map((row) => (
           <BountyCard
             key={row.id}
             bounty={row}
@@ -504,6 +584,8 @@ function DropsPage() {
             workerTrust={row.assigned_to ? (trustMap[row.assigned_to] ?? null) : null}
             claimed={myClaims.data?.has(row.id) ?? false}
             onClaim={claim}
+            onTagClick={setTagFilter}
+            activeTag={activeTag}
             onChanged={() => {
               void qc.invalidateQueries({ queryKey: ["drops"] });
               void refreshProfile();
@@ -513,17 +595,32 @@ function DropsPage() {
         ))}
       </div>
 
-      {visible.length === 0 && (
+      {tagFiltered.length === 0 && (
         <div className="glass flex flex-col items-center rounded-3xl p-10 text-center">
-          <QuestEmblem icon={onlyMine ? Hand : Coins} size="lg" />
+          <QuestEmblem icon={activeTag ? Hash : onlyMine ? Hand : Coins} size="lg" />
           <h2 className="mt-3 font-display text-xl font-bold">
-            {onlyMine ? "Nothing on your desk" : "No active bounties"}
+            {activeTag
+              ? `No #${activeTag} bounties`
+              : onlyMine
+                ? "Nothing on your desk"
+                : "No active bounties"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {onlyMine
-              ? "Bounties you post or take show up here, with the next move spelled out."
-              : "Post one and watch the rush."}
+            {activeTag
+              ? "Try another tag, or clear the filter to see the whole board."
+              : onlyMine
+                ? "Bounties you post or take show up here, with the next move spelled out."
+                : "Post one and watch the rush."}
           </p>
+          {activeTag && (
+            <Button
+              variant="outline"
+              onClick={() => setTagFilter(null)}
+              className="mt-3 glass border-white/10"
+            >
+              Clear tag filter
+            </Button>
+          )}
         </div>
       )}
 

@@ -43,7 +43,7 @@ import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
-import { compressChatImage } from "@/lib/chat-media";
+import { compressChatImage, prepareChatImagePreview } from "@/lib/chat-media";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
@@ -595,7 +595,7 @@ function DMPage() {
     }
   };
 
-  const chooseImage = (file: File | null) => {
+  const chooseImage = async (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Choose an image file.");
@@ -608,10 +608,16 @@ function DMPage() {
       );
       return;
     }
-    const preview = URL.createObjectURL(file);
-    imageObjectUrlsRef.current.add(preview);
-    setImageFile(file);
-    setImagePreview(preview);
+    try {
+      // Decode once into a small preview. A full 12MP photo in an <img> is what
+      // used to exhaust memory on phones right after the native picker closed.
+      const preview = await prepareChatImagePreview(file);
+      imageObjectUrlsRef.current.add(preview);
+      setImageFile(file);
+      setImagePreview(preview);
+    } catch {
+      toast.error("That photo couldn't be prepared. Try a JPG or PNG.");
+    }
   };
 
   const scheduleSend = () => {
@@ -1336,7 +1342,7 @@ function DMPage() {
             type="file"
             accept="image/*"
             hidden
-            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
           {/* The camera input is a second element, not `capture` on the first:
               one of them has to open the library and the other the lens. */}
@@ -1346,7 +1352,7 @@ function DMPage() {
             accept="image/*"
             capture="environment"
             hidden
-            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
           <ChatAttachButton
             className="h-9 w-9"

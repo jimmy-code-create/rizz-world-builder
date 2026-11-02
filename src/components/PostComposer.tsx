@@ -263,6 +263,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                 aria-label="Attach an image"
                 onChange={(e) => {
                   pickImage(e.target.files?.[0]);
+                  e.currentTarget.value = "";
                 }}
               />
               <button

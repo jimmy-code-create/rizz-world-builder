@@ -1,6 +1,12 @@
 const MAX_IMAGE_EDGE = 1600;
 const JPEG_QUALITY = 0.82;
 
+/** A small preview URL for a photo the member just picked. */
+export async function prepareChatImagePreview(file: File): Promise<string> {
+  const blob = await compressChatImage(file);
+  return URL.createObjectURL(blob);
+}
+
 export async function compressChatImage(file: File): Promise<Blob> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Choose an image file.");
@@ -19,7 +25,8 @@ export async function compressChatImage(file: File): Promise<Blob> {
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error("This browser couldn't compress the image.")),
+      (blob) =>
+        blob ? resolve(blob) : reject(new Error("This browser couldn't compress the image.")),
       "image/jpeg",
       JPEG_QUALITY,
     );

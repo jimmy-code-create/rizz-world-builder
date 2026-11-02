@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-11-03 — Bounty tags, heading colour, covers, and the photo-picker fix
+
+- Bounties now carry up to five Reddit-style tags. Every member can add them —
+  Paws-prize bounties and free open calls alike — with suggested topics,
+  comma-paste support, duplicate/case cleanup and removable chips. Tags render
+  on the card and the board has a shareable `?tag=design` filter with counts.
+- The posting form gained a live card preview, a heading-colour picker (eight
+  bright presets plus a custom hex colour), and a cover image with a real
+  preview, replace/remove controls and compression before upload.
+- The form is longer, so it scrolls inside the phone viewport with the existing
+  safe-area padding and a sticky post button. Requirements are now captured for
+  open calls too, and the card shows them for every bounty that has them.
+- Fixed the photo-picker losing the selected image in DMs, groups and bounties.
+  A Supabase `TOKEN_REFRESHED` event on returning from the native picker was
+  flipping the auth shell back to `AppLoader`, which unmounted the route and
+  discarded its draft. Background profile refreshes now update in place and
+  keep the current screen mounted.
+- `20261115000000_bounty_presentation.sql` adds `drops.heading_color`, a GIN
+  index for tags, server-side title/tag/colour validation for direct open-call
+  inserts, and an 11-argument `post_paws_bounty` wrapper that preserves the
+  existing escrow body. The client falls back gracefully if the migration has
+  not reached a deployment yet.
+
 ## 2026-11-02 — Purify sells itself, without the video
 
 - `/purify` is a page now, not an advert. The black video box, the mute button,

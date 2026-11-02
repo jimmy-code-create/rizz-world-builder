@@ -378,7 +378,7 @@ export function AppShell() {
     };
   }, [user, qc]);
 
-  if (profileError) {
+  if (profileError && !profile) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-muted-foreground">{profileError}</p>
@@ -389,9 +389,11 @@ export function AppShell() {
     );
   }
 
-  if (loading || !user || !profile?.username) {
-    // The splash belongs to cold starts. A quick return gets the neutral shell
-    // so the branded loading screen only appears after a real absence.
+  // Do not key this off `loading`: a background token refresh must never swap
+  // the whole shell for AppLoader. The route below can be in the middle of a DM,
+  // a group post, or a bounty draft with a freshly picked image. The splash is
+  // still for cold starts and real absences, not a profile refresh.
+  if (!user || !profile?.username) {
     return quickReturn ? <AppShellSkeleton /> : <AppLoader />;
   }
 
