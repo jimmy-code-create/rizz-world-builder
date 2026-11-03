@@ -4478,6 +4478,7 @@ export type Database = {
           accent_color: string | null
           allow_external_emoji: boolean
           allow_member_bots: boolean
+          cover_url: string | null
           created_at: string
           icon_url: string | null
           id: string
@@ -4502,6 +4503,7 @@ export type Database = {
           accent_color?: string | null
           allow_external_emoji?: boolean
           allow_member_bots?: boolean
+          cover_url?: string | null
           created_at?: string
           icon_url?: string | null
           id?: string
@@ -4526,6 +4528,7 @@ export type Database = {
           accent_color?: string | null
           allow_external_emoji?: boolean
           allow_member_bots?: boolean
+          cover_url?: string | null
           created_at?: string
           icon_url?: string | null
           id?: string

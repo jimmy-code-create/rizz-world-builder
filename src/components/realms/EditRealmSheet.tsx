@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { squareImageFile } from "@/lib/image-square";
+import { RealmCoverPicker } from "@/components/realms/RealmCoverPicker";
+import { realmCoverProblem, uploadRealmCover } from "@/lib/realm-cover";
 import {
   REALM_DESCRIPTION_MAX,
   REALM_NAME_MAX,
@@ -22,6 +24,7 @@ export type EditableRealm = {
   name: string;
   topic: string | null;
   icon_url: string | null;
+  cover_url: string | null;
 };
 
 export function EditRealmSheet({
@@ -41,6 +44,9 @@ export function EditRealmSheet({
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
+  const [cover, setCover] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [removeCover, setRemoveCover] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +59,19 @@ export function EditRealmSheet({
     setPhoto(null);
     setPreview(null);
     setRemovePhoto(false);
+    setCover(null);
+    setCoverPreview(null);
+    setRemoveCover(false);
     setError(null);
-  }, [open, realm.name, realm.topic]);
+  }, [open, realm.name, realm.topic, realm.cover_url]);
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
   }, [preview]);
+
+  useEffect(() => () => {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
 
   const trimmedName = name.trim();
   const nameTooShort = trimmedName.length < REALM_NAME_MIN;
@@ -67,7 +80,9 @@ export function EditRealmSheet({
     trimmedName !== realm.name ||
     description.trim() !== (realm.topic ?? "") ||
     photo !== null ||
-    (removePhoto && !!realm.icon_url);
+    cover !== null ||
+    (removePhoto && !!realm.icon_url) ||
+    (removeCover && !!realm.cover_url);
   const canSave = dirty && !nameTooShort && !nameTooLong && !saving && !preparing;
 
   const currentIcon = removePhoto ? null : preview ?? realm.icon_url;
@@ -96,6 +111,11 @@ export function EditRealmSheet({
     setError(null);
     try {
       let iconUrl: string | null = null;
+      let coverUrl: string | null = null;
+      if (cover) {
+        if (realmCoverProblem(cover)) throw new Error(realmCoverProblem(cover) ?? "Couldn't use that cover.");
+        coverUrl = await uploadRealmCover(cover, user.id, realm.id);
+      }
       if (photo) {
         const path = `${user.id}/realm-icons/${realm.id}-${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage
@@ -111,6 +131,8 @@ export function EditRealmSheet({
         description: description.trim() || null,
         iconUrl,
         removeIcon: removePhoto,
+        coverUrl,
+        removeCover,
       });
 
       // Update what's on screen straight away, then refresh the lists/cards.
@@ -189,6 +211,30 @@ export function EditRealmSheet({
               onChange={(e) => void pickPhoto(e.target.files?.[0])}
             />
           </div>
+
+          <RealmCoverPicker
+            file={cover}
+            preview={coverPreview}
+            existingUrl={realm.cover_url}
+            remove={removeCover}
+            onPick={(picked) => {
+              const problem = realmCoverProblem(picked);
+              if (problem) {
+                toast.error(problem);
+                return;
+              }
+              if (coverPreview) URL.revokeObjectURL(coverPreview);
+              setCover(picked);
+              setCoverPreview(URL.createObjectURL(picked));
+              setRemoveCover(false);
+            }}
+            onRemove={() => {
+              if (coverPreview) URL.revokeObjectURL(coverPreview);
+              setCover(null);
+              setCoverPreview(null);
+              setRemoveCover(true);
+            }}
+          />
 
           <div>
             <label className="text-xs text-muted-foreground" htmlFor="realm-name">Realm name</label>

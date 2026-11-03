@@ -1035,6 +1035,13 @@ function RealmPage() {
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
           boxShadow: `0 0 18px ${c.accent_color}14`,
+          // The cover is the header's backdrop: an animated GIF keeps moving,
+          // and the wash keeps the room name readable over it.
+          backgroundImage: c.cover_url
+            ? `linear-gradient(180deg, rgba(8,8,10,0.72), rgba(8,8,10,0.92)), url("${c.cover_url}")`
+            : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
         <Link
@@ -1331,6 +1338,7 @@ function RealmPage() {
             name: c.name,
             topic: c.topic ?? null,
             icon_url: c.icon_url ?? null,
+            cover_url: c.cover_url ?? null,
           }}
         />
       )}

@@ -6,6 +6,8 @@ export type Realm = {
   name: string;
   topic: string | null;
   icon_url: string | null;
+  /** Wide discovery cover. GIF/WebP animate; null means no cover. */
+  cover_url: string | null;
   accent_color: string | null;
   kind: "text" | "announcement" | "drops" | "voice";
   is_public: boolean;

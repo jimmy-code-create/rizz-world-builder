@@ -12,6 +12,8 @@ const updateRealmDetailsSchema = z.object({
   description: z.string().trim().max(REALM_DESCRIPTION_MAX).nullish(),
   iconUrl: z.string().trim().max(600).nullish(),
   removeIcon: z.boolean().optional(),
+  coverUrl: z.string().trim().max(600).nullish(),
+  removeCover: z.boolean().optional(),
 });
 
 /** Strip control characters, collapse runs of whitespace and clamp to the limit. */
@@ -31,6 +33,8 @@ const updateRealmDetailsServer = createServerFn({ method: "POST" })
     description?: string | null;
     iconUrl?: string | null;
     removeIcon?: boolean;
+    coverUrl?: string | null;
+    removeCover?: boolean;
   }) => updateRealmDetailsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const name = sanitizeLine(data.name, REALM_NAME_MAX);
@@ -63,15 +67,23 @@ const updateRealmDetailsServer = createServerFn({ method: "POST" })
     }
     if (!allowed) throw new Error("Only the realm owner and admins can edit this realm.");
 
-    const patch: { name: string; topic: string | null; icon_url?: string | null } = { name, topic: description };
+    const patch: {
+      name: string;
+      topic: string | null;
+      icon_url?: string | null;
+      cover_url?: string | null;
+    } = { name, topic: description };
     if (data.removeIcon) patch.icon_url = null;
     else if (data.iconUrl) patch.icon_url = data.iconUrl;
+    if (data.removeCover) patch.cover_url = null;
+    else if (data.coverUrl) patch.cover_url = data.coverUrl;
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("realms")
       .update(patch)
       .eq("id", data.realmId)
-      .select("id, slug, name, topic, icon_url")
+      // `*` so a database without the cover migration can still save names.
+      .select("*")
       .single();
     if (updateError) throw updateError;
     return updated;
@@ -83,6 +95,8 @@ export function updateRealmDetails(input: {
   description?: string | null;
   iconUrl?: string | null;
   removeIcon?: boolean;
+  coverUrl?: string | null;
+  removeCover?: boolean;
 }) {
   return updateRealmDetailsServer({ data: input });
 }
