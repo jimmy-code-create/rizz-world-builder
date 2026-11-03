@@ -1,0 +1,6 @@
+{
+  "appId": "com.rizzapp.app",
+  "appName": "Rizz",
+  "webDir": "www",
+  "server": { "url": "https://rizzapp.onrender.com" }
+}
