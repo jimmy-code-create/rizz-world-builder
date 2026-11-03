@@ -2,5 +2,6 @@
   "appId": "com.rizzapp.app",
   "appName": "Rizz",
   "webDir": "www",
+  "android": { "appendUserAgent": "RizzApp" },
   "server": { "url": "https://rizzapp.onrender.com" }
 }
