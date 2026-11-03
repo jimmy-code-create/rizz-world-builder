@@ -43,10 +43,10 @@ await check("the Live entry point was rebuilt, not just tinted", () => {
   assert.ok(shell.includes("<LiveLaunchButton variant=\"mobile\""), "phone FAB uses it too");
   assert.ok(!shell.includes("<Radio className=\"h-5 w-5\" /> Go live"), "old sidebar button is gone");
   assert.match(launch, /live-fab__halo/, "the phone button has a halo");
-  assert.match(launch, /live-dot/, "the on-air dot is shared");
+  assert.match(launch, /live-signal-dot/, "the launch signal dot is shared");
   assert.match(launch, /Camera · screen · live chat/, "the button explains the new room");
-  assert.match(styles, /\.live-dot[\s\S]*?live-dot-pulse/);
-  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.live-dot/);
+  assert.match(styles, /\.live-signal-dot[\s\S]*?live-signal-pulse/);
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.live-signal-dot/);
 });
 
 await check("pre-live offers camera, screen and both", () => {

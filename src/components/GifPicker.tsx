@@ -243,6 +243,7 @@ export function GifPicker({
     queryFn: () => fetchRealmEmoji(realmId!),
   });
   const realmRows = ((realmEmoji.data ?? []) as RealmEmojiRow[]).filter((row) => row.kind !== "sticker");
+  const serverSectionRef = useRef<HTMLDivElement | null>(null);
   // Discord-style sections: the category strip below jumps to a section instead
   // of making the whole list one long scroll.
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -319,6 +320,10 @@ export function GifPicker({
         (sticker) => !term || `${sticker.label} ${selectedPack}`.toLowerCase().includes(term),
       );
   }, [query, selectedPack, stickers]);
+  const filteredRealmRows = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return term ? realmRows.filter((row) => row.name.toLowerCase().includes(term)) : realmRows;
+  }, [query, realmRows]);
 
   const changeTab = (next: PickerTab) => {
     setTab(next);
@@ -417,27 +422,31 @@ export function GifPicker({
           </div>
         ) : null}
 
-        {tab === "emoji" && realmId && !query && (
-          // MERGED: the realm's own emoji used to live behind a second smiley
-          // button next to this picker. They now sit inside the emoji tab, so a
-          // composer has one control and every emoji — standard, custom, GIFs,
-          // stickers — is behind it. "Manage" still opens the full editor.
-          <div className="mb-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2">
+        {tab === "emoji" && realmId && (filteredRealmRows.length > 0 || !query) && (
+          // The realm's own emoji are a section of their own: the chip row below
+          // is the category navigation, so "Server" behaves like Faces or Vibes.
+          // Management is a Settings job; this sheet only inserts emoji.
+          <div
+            ref={serverSectionRef}
+            className="mb-2.5 rounded-xl border border-primary/15 bg-primary/[0.035] px-2.5 py-2"
+          >
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                This server
+              <p className="px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/80">
+                This server{filteredRealmRows.length ? ` · ${filteredRealmRows.length}` : ""}
               </p>
-              {onCustomEmoji && (
+              {onCustomEmoji && !query && (
                 <button
                   type="button"
                   onClick={() => {
                     setOpen(false);
                     onCustomEmoji();
                   }}
+                  aria-label="Manage server emoji in settings"
+                  title="Manage server emoji in settings"
                   className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
                 >
                   <Settings2 className="h-3 w-3" />
-                  Manage
+                  Settings
                 </button>
               )}
             </div>
@@ -445,9 +454,9 @@ export function GifPicker({
               <p className="flex items-center gap-2 px-0.5 pb-1 text-[11px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading your server's emoji…
               </p>
-            ) : realmRows.length ? (
+            ) : filteredRealmRows.length ? (
               <div className="flex flex-wrap gap-1">
-                {realmRows.map((row) => (
+                {filteredRealmRows.map((row) => (
                   <button
                     key={row.id}
                     type="button"
@@ -465,9 +474,11 @@ export function GifPicker({
               </div>
             ) : (
               <p className="px-0.5 pb-1 text-[11px] text-muted-foreground">
-                {onCustomEmoji
-                  ? "No custom emoji yet — tap Manage to add one."
-                  : "This server has no custom emoji yet."}
+                {query
+                  ? `No server emoji matches “${query.trim()}”.`
+                  : onCustomEmoji
+                    ? "No custom emoji yet — add one from Settings."
+                    : "This server has no custom emoji yet."}
               </p>
             )}
           </div>
@@ -499,6 +510,32 @@ export function GifPicker({
                 </div>
               </div>
             )}
+
+            <div className="mb-2 flex items-center gap-1 overflow-x-auto border-b border-white/5 pb-2">
+              {realmRows.length > 0 && !query && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    serverSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
+                  }
+                  className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[10px] font-semibold text-primary transition hover:border-primary/60"
+                >
+                  Server
+                </button>
+              )}
+              {EMOJI_GROUPS.map((group) => (
+                <button
+                  key={`jump-${group}`}
+                  type="button"
+                  onClick={() =>
+                    sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
+                  }
+                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
 
             <div className="max-h-[45dvh] overflow-y-auto overscroll-contain pr-0.5" role="group" aria-label="Emoji">
               {EMOJI_GROUPS.map((group) => {
@@ -555,20 +592,6 @@ export function GifPicker({
               />
             </div>
 
-            <div className="mt-2 flex items-center gap-1 overflow-x-auto border-t border-white/5 pt-2">
-              {EMOJI_GROUPS.map((group) => (
-                <button
-                  key={`jump-${group}`}
-                  type="button"
-                  onClick={() =>
-                    sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
-                  }
-                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 

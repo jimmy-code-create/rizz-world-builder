@@ -1358,7 +1358,7 @@ function DMPage() {
         </button>
       )}
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
+      <div className="relative z-20 shrink-0">
         <div className="mx-auto w-full max-w-3xl">
           <input
             ref={imageInputRef}

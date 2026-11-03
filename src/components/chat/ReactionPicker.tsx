@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
-import { MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
+import { MAX_REACTIONS_PER_MESSAGE, MORE_REACTIONS, QUICK_REACTIONS } from "@/lib/reactions";
 import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPicker";
 import { cn } from "@/lib/utils";
@@ -91,7 +91,7 @@ export function ReactionPicker({
       </div>
 
       <p className="mt-1.5 px-1 text-[10px] leading-snug text-[#949ba4]">
-        Tap an emoji to react — cat emoji work in every post, comment, Reel and message.
+        Tap an emoji to react — up to {MAX_REACTIONS_PER_MESSAGE} reactions per message.
       </p>
     </div>
   );

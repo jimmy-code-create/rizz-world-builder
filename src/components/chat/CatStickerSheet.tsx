@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 /**
  * The composer's cat button.
  *
- * The RIZZ pack is nine stickers, so it does not need the full emoji browser:
- * a 3×3 sheet puts the whole pack under one thumb. Picking one inserts its
- * shortcode (`:cat_happy:`), which every surface already renders as the image,
- * so a message written here draws the same sticker in a reaction or a badge.
+ * This is the cat button's whole job: the RIZZ cat emoji, and nothing else.
+ * Emoji, this server's emoji, GIFs and stickers live behind the smiley. The
+ * pack is small, so a 3×3 sheet puts all of it under one thumb. Picking one
+ * inserts its shortcode (`:cat_happy:`), which every surface already renders
+ * as the image, so a message written here draws the same cat in a reaction or
+ * a badge.
  */
 export function CatStickerSheet({
   open,
@@ -28,11 +30,11 @@ export function CatStickerSheet({
         hideClose
         className="glass-strong z-[110] rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
       >
-        <SheetTitle className="sr-only">Cat stickers</SheetTitle>
+        <SheetTitle className="sr-only">Cat emojis</SheetTitle>
         <div className="mx-auto mb-3 mt-1 h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
         <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <div>
-            <p className="font-display text-lg font-bold">Cat stickers</p>
+            <p className="font-display text-lg font-bold">Cat emojis</p>
             <p className="text-[11px] text-muted-foreground">The RIZZ pack · tap to drop one in</p>
           </div>
           <CloseButton onClick={() => onOpenChange(false)} />

@@ -5,10 +5,11 @@ import { cn } from "@/lib/utils";
 /**
  * The chat composer, in one row.
  *
- * DM and group chat share this component so the two can never drift: a 44px
- * attach circle, a 44px-tall pill holding the emoji trigger, the textarea and
- * the cat pack trigger, and a 44px lime action circle that is a mic when the
- * box is empty and an arrow when there is something to send.
+ * DM and group chat share this component so the two can never drift: a 40px
+ * attach disc, a 40px-tall pill holding the emoji trigger, the textarea and
+ * the cat trigger, and a 40px lime action disc that is a mic when the box is
+ * empty and an arrow when there is something to send. The row owns its own
+ * solid bar so screens never stack a second `chat-bar` behind it.
  *
  * Everything the composer needs to know about the world arrives as props, which
  * is why the pickers, the attach sheet and the mention popup stay owned by the
@@ -26,7 +27,7 @@ export type ComposerReply = {
 };
 
 /** Five text lines, then the textarea scrolls instead of growing. */
-const MAX_INPUT_HEIGHT = 120;
+const MAX_INPUT_HEIGHT = 112;
 const SLIDE_CANCEL_PX = 70;
 
 function vibrate(ms: number) {
@@ -166,8 +167,11 @@ export function MessageComposer({
   return (
     <div
       className={cn(
-        "chat-bar relative z-20 shrink-0 border-t border-[#1c1c1c] bg-black px-3 pt-2",
-        "pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]",
+        // Solid, not blurred: one opaque bar is cheaper to composite on a phone
+        // than a stack of translucent bars, and it cannot double up with a
+        // screen's own wrapper.
+        "relative z-20 shrink-0 border-t border-[#1c1c1c] bg-[#0a0a0a] px-2.5 pt-1.5",
+        "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
       )}
     >
       <div className="mx-auto w-full max-w-3xl">
@@ -176,7 +180,7 @@ export function MessageComposer({
         {reply ? (
           // 40px strip: a lime bar, the target of the reply, and one line of
           // the message. The whole middle is a jump link on replies.
-          <div className="mb-2 flex h-10 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"
@@ -206,23 +210,23 @@ export function MessageComposer({
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {attach}
 
-          {/* The pill: 44px minimum, 22px radius, and the focus state lives on
+          {/* The pill: 40px minimum, 20px radius, and the focus state lives on
               the wrapper so the ring hugs the whole field, not the caret box. */}
           <div
             className={cn(
-              "relative flex min-w-0 flex-1 items-center rounded-[22px] border transition-colors duration-150",
+              "relative flex min-w-0 flex-1 items-center rounded-[20px] border transition-colors duration-150",
               "motion-reduce:transition-none",
               disabled
                 ? "border-white/[0.08] bg-[#0d0d0d]"
                 : "border-white/[0.14] bg-[#121212] focus-within:border-primary/75 focus-within:ring-[3px] focus-within:ring-primary/[0.16]",
             )}
-            style={{ minHeight: 44 }}
+            style={{ minHeight: 40 }}
           >
             {recording ? (
-              <div className="flex h-11 w-full items-center gap-2.5 px-3" aria-live="polite">
+              <div className="flex h-10 w-full items-center gap-2.5 px-2.5" aria-live="polite">
                 <span className="composer-record-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#ff5d68]" />
                 <span className="text-[13px] font-semibold tabular-nums text-[#f2f2f2]">
                   {formatTimer(recordMs)}
@@ -242,11 +246,11 @@ export function MessageComposer({
                   type="button"
                   onClick={onEmoji}
                   disabled={disabled}
-                  aria-label="Emoji"
-                  title="Emoji"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-primary transition-opacity disabled:opacity-40"
+                  aria-label="Emoji, GIFs and stickers"
+                  title="Emoji, GIFs and stickers"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary transition-opacity disabled:opacity-40"
                 >
-                  <Smile className="h-[22px] w-[22px]" strokeWidth={2} />
+                  <Smile className="h-5 w-5" strokeWidth={2} />
                 </button>
                 <textarea
                   ref={field}
@@ -278,7 +282,7 @@ export function MessageComposer({
                   enterKeyHint="send"
                   aria-label={placeholder}
                   className={cn(
-                    "min-h-11 min-w-0 flex-1 resize-none bg-transparent py-[11px] pr-1 text-[16px] leading-6",
+                    "min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 pr-1 text-[16px] leading-6",
                     "caret-primary placeholder:text-[#8c8c8c] focus:outline-none focus-visible:outline-none",
                     disabled ? "text-[#6f6f6f]" : "text-[#f2f2f2]",
                   )}
@@ -288,11 +292,11 @@ export function MessageComposer({
                   type="button"
                   onClick={onStickers}
                   disabled={disabled}
-                  aria-label="Stickers"
-                  title="Cat stickers"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[#8f8f8f] transition-colors hover:text-[#d6d6d6] disabled:opacity-40"
+                  aria-label="Cat emojis"
+                  title="Cat emojis"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#8f8f8f] transition-colors hover:text-primary disabled:opacity-40"
                 >
-                  <Cat className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                  <Cat className="h-5 w-5" strokeWidth={1.8} />
                 </button>
               </>
             )}
@@ -307,13 +311,13 @@ export function MessageComposer({
               disabled={disabled || sending || !canSendNow}
               aria-label={sending ? "Sending message" : "Send"}
               className={cn(
-                "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0b]",
+                "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0b]",
                 "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
             >
               <span key={canSendNow ? "send" : "idle"} className="composer-action-swap grid place-items-center">
-                <ArrowUp className="h-5 w-5" strokeWidth={2.6} />
+                <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
               </span>
             </button>
           ) : (
@@ -332,14 +336,14 @@ export function MessageComposer({
                 "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-[#0b0b0b]",
                 "transition-[width,height,transform] duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                recording ? "h-14 w-14" : "h-11 w-11",
+                recording ? "h-12 w-12" : "h-10 w-10",
               )}
             >
               <span
                 key={recording ? "rec" : "mic"}
                 className="composer-action-swap grid place-items-center"
               >
-                <Mic className={recording ? "h-6 w-6" : "h-5 w-5"} strokeWidth={2.4} />
+                <Mic className={recording ? "h-5 w-5" : "h-[18px] w-[18px]"} strokeWidth={2.5} />
               </span>
             </button>
           )}

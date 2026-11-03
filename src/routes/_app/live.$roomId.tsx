@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, LogOut, Radio, Video } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, Video } from "lucide-react";
+import { RizzLiveIcon } from "@/components/live/RizzLiveIcon";
 import { Button } from "@/components/ui/button";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 
@@ -41,8 +42,8 @@ function LiveRoomPage() {
 
   return (
     <div className="mx-auto flex min-h-[62dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-10 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-full bg-destructive/15 text-destructive ring-1 ring-destructive/20">
-        <Radio className="h-8 w-8" />
+      <span className="grid h-16 w-16 place-items-center rounded-[1.4rem] border border-primary/30 bg-[radial-gradient(130%_120%_at_30%_0%,rgba(201,255,61,0.2),transparent_62%),linear-gradient(158deg,#171d0b,#0a0a0b)] text-primary shadow-[0_14px_34px_-18px_rgba(201,255,61,0.65)]">
+        <RizzLiveIcon className="h-8 w-8" />
       </span>
 
       <div>
@@ -95,7 +96,7 @@ function LiveRoomPage() {
       {state === "left" && (
         <div className="grid w-full grid-cols-2 gap-2">
           <Button type="button" onClick={() => void join()} className="h-11">
-            <Radio className="h-4 w-4" />
+            <RizzLiveIcon className="h-4 w-4" />
             Rejoin
           </Button>
           <Button asChild variant="outline" className="h-11">

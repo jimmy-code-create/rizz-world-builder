@@ -24,10 +24,11 @@ export type { ReactionPulse };
  *
  * Layout: a single wrapping row of Discord-style pills sit directly under the
  * message, aligned to its side. They are 26px tall with 40px tap areas
- * (invisible padding) so they stay small and cute but easy to hit. Six chips
- * show, then a "+N" chip opens the full list.
+ * (invisible padding) so they stay small and cute but easy to hit. Eight chips
+ * show, then a "+N" chip opens the full list — the same eight-reaction ceiling
+ * one person has on a message.
  */
-const MAX_VISIBLE_CHIPS = 6;
+const MAX_VISIBLE_CHIPS = 8;
 const LONG_PRESS_MS = 320;
 
 /**

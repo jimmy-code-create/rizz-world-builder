@@ -768,7 +768,7 @@ function GroupRoom() {
           </div>
       </div>
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-[#1c1c1c] bg-black px-3 pt-2 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
+      <div className="relative z-20 shrink-0">
         <div className="mx-auto w-full max-w-3xl">
           <input
             ref={imageInputRef}

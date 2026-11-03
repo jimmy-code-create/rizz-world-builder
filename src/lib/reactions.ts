@@ -16,6 +16,16 @@ export type ReactionRow = { message_id: string; user_id: string; emoji: string }
 
 export type ReactionGroup = { emoji: string; count: number; mine: boolean };
 
+/**
+ * One person can put this many reactions on one message or post. The limit is
+ * per person, not per room: eight reaction types on a single message keep the
+ * row useful without turning it into a wall of pills.
+ */
+export const MAX_REACTIONS_PER_MESSAGE = 8;
+
+/** A Purify member sends at most one super reaction per post. */
+export const MAX_SUPER_REACTIONS = 1;
+
 /** Long-press bar: six quick emojis plus a "+" that opens the wider grid. */
 export const QUICK_REACTIONS = ["❤️", "🔥", "😂", "😮", "😢", "👏"] as const;
 

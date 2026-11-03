@@ -4,6 +4,7 @@ import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import {
+  MAX_REACTIONS_PER_MESSAGE,
   dedupeReactionRows,
   fetchReactionRows,
   groupReactionRows,
@@ -130,6 +131,17 @@ export function useChatReactions(
       const mine = previous.some(
         (row) => row.message_id === messageId && row.emoji === emoji && row.user_id === user.id,
       );
+      const mineOnMessage = new Set(
+        previous
+          .filter((row) => row.message_id === messageId && row.user_id === user.id)
+          .map((row) => row.emoji),
+      );
+      // Removing is always allowed. Adding the ninth distinct emoji is not:
+      // the row stays readable and the same rule is enforced by the database.
+      if (!mine && mineOnMessage.size >= MAX_REACTIONS_PER_MESSAGE) {
+        toast.error(`You can add up to ${MAX_REACTIONS_PER_MESSAGE} reactions to one message.`);
+        return false;
+      }
       const optimistic: ReactionRow[] = mine
         ? previous.filter(
             (row) => !(row.message_id === messageId && row.emoji === emoji && row.user_id === user.id),

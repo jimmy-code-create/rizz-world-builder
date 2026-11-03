@@ -13,7 +13,6 @@ import {
   MicOff,
   MonitorUp,
   Music2,
-  Radio,
   ScreenShare,
   Sparkles,
   Users,
@@ -32,6 +31,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { RizzLiveIcon } from "@/components/live/RizzLiveIcon";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
@@ -254,9 +254,9 @@ export function LiveStudioSheet({
         <div className="flex items-start justify-between gap-3">
           <SheetHeader className="min-w-0 text-left">
             <SheetTitle className="flex items-center gap-2 font-display text-xl text-white">
-              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#ff5d68]/35 bg-[#ff5d68]/12 text-[#ff8a91]">
-                <Radio className="h-4 w-4" />
-                <span className="live-dot absolute -right-0.5 -top-0.5 h-2 w-2" />
+              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
+                <RizzLiveIcon className="h-4 w-4" />
+                <span className="live-signal-dot absolute -right-0.5 -top-0.5 h-2 w-2" />
               </span>
               Live
             </SheetTitle>
@@ -632,7 +632,7 @@ export function LiveStudioSheet({
               disabled={!user || busy}
               className="h-12 w-full border-0 bg-primary text-[12px] font-black text-primary-foreground shadow-[0_10px_30px_-12px_var(--brand-signal)]"
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RizzLiveIcon className="h-4 w-4" />}
               {busy
                 ? "Opening the room…"
                 : mode === "camera"

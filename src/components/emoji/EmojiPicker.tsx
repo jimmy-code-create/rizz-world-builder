@@ -32,8 +32,9 @@ export type EmojiPick =
  * nothing else, so the same sheet serves a caption (`<:cat:id>`), a reaction
  * (`ce:<id>`) and a chat message without three copies of this UI.
  *
- * Super-reaction mode (`accent`) narrows the sheet to the RIZZ pack alone —
- * a super reaction is always a cat, never a plain glyph or a realm upload.
+ * Super-reaction mode (`accent`) opens on the RIZZ pack, but every tab stays
+ * available: a super can be a cat, a plain glyph or a realm upload. The mode
+ * changes how a pick is sent, never which emoji are allowed.
  */
 const RIZZ_TAB = "rizz";
 export function EmojiPicker({
@@ -73,7 +74,7 @@ export function EmojiPicker({
     else setQuery("");
   }, [open]);
 
-  // Super mode is the pack and nothing else, so land on it when the switch flips.
+  // Super mode opens on the cat pack, but the other tabs stay selectable.
   useEffect(() => {
     if (accent) setTab(RIZZ_TAB);
   }, [accent]);
@@ -163,28 +164,24 @@ export function EmojiPicker({
           </label>
 
           <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {!accent && (
-              <>
-                <TabChip active={tab === "recent" && !query} onClick={() => { setTab("recent"); setQuery(""); }}>
-                  Recent
-                </TabChip>
-                <TabChip active={tab === "default" && !query} onClick={() => { setTab("default"); setQuery(""); }}>
-                  Default
-                </TabChip>
-                {groups.map((group) => (
-                  <TabChip
-                    key={group.id}
-                    active={tab === group.id && !query}
-                    onClick={() => { setTab(group.id); setQuery(""); }}
-                    title={group.name}
-                  >
-                    {group.name}
-                  </TabChip>
-                ))}
-              </>
-            )}
-            {/* The RIZZ pack always leads the strip last — and in super mode it
-                is the only category on offer. */}
+            <TabChip active={tab === "recent" && !query} onClick={() => { setTab("recent"); setQuery(""); }}>
+              Recent
+            </TabChip>
+            <TabChip active={tab === "default" && !query} onClick={() => { setTab("default"); setQuery(""); }}>
+              Default
+            </TabChip>
+            {groups.map((group) => (
+              <TabChip
+                key={group.id}
+                active={tab === group.id && !query}
+                onClick={() => { setTab(group.id); setQuery(""); }}
+                title={group.name}
+              >
+                {group.name}
+              </TabChip>
+            ))}
+            {/* The RIZZ pack is a tab like any other; in super mode it is simply
+                the one selected first. */}
             <TabChip active={tab === RIZZ_TAB && !query} onClick={() => { setTab(RIZZ_TAB); setQuery(""); }}>
               RIZZ
             </TabChip>

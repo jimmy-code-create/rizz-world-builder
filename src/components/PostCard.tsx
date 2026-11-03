@@ -32,6 +32,7 @@ import {
 } from "@/lib/posts";
 import { usePurify } from "@/lib/purify";
 import { openPurifyPaywall } from "@/lib/purify-paywall";
+import { MAX_REACTIONS_PER_MESSAGE, MAX_SUPER_REACTIONS } from "@/lib/reactions";
 import { hapticReaction } from "@/lib/haptics";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { PollBlock } from "@/components/post/PollBlock";
@@ -270,6 +271,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     hapticReaction();
     const current = qc.getQueryData<Awaited<ReturnType<typeof fetchReactions>>>(["reactions", post.id]) ?? reactions.data ?? [];
     const mine = current.some((reaction) => reaction.emoji === emoji && reaction.user_id === user.id);
+    const mineCount = current.filter((reaction) => reaction.user_id === user.id).length;
+    if (!mine && mineCount >= MAX_REACTIONS_PER_MESSAGE) {
+      toast.error(`You can add up to ${MAX_REACTIONS_PER_MESSAGE} reactions to a post.`);
+      return;
+    }
     reactMut.mutate({ emoji, mine });
   };
 
@@ -300,24 +306,31 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       const previous = qc.getQueryData<PostReactionRow[]>(queryKey) ?? reactions.data ?? [];
       const mineRow = previous.find((reaction) => reaction.emoji === emoji && reaction.user_id === user?.id);
       const wasSuper = mineRow?.kind === "super";
+      // One super per post. Picking a different emoji moves the existing super
+      // instead of stacking a second one; picking the same super removes it.
+      const withoutMySuper = previous.filter(
+        (reaction) => !(reaction.user_id === user?.id && reaction.kind === "super"),
+      );
+      const withoutTarget = withoutMySuper.filter(
+        (reaction) => !(reaction.emoji === emoji && reaction.user_id === user?.id),
+      );
       const next = wasSuper
-        ? previous.filter((reaction) => !(reaction.emoji === emoji && reaction.user_id === user?.id))
-        : mineRow
-          ? previous.map((reaction) =>
-              reaction.emoji === emoji && reaction.user_id === user?.id
-                ? { ...reaction, kind: "super" as const }
-                : reaction,
-            )
-          : [...previous, { emoji, user_id: user?.id ?? "", kind: "super" as const }];
+        ? withoutMySuper
+        : [...withoutTarget, { emoji, user_id: user?.id ?? "", kind: "super" as const }];
       qc.setQueryData(queryKey, next);
-      return { queryKey, previous, delta: wasSuper ? -1 : mineRow ? 0 : 1 };
+      return {
+        queryKey,
+        previous,
+        delta: next.length - previous.length,
+        fresh: !wasSuper,
+      };
     },
     onSuccess: (_data, variables, context) => {
       void qc.invalidateQueries({ queryKey: ["reactions", post.id] });
       bumpFeedReactionCount(context?.delta ?? 0);
-      // A newly-sent super reaction (not an upgrade or a removal) fires the
-      // cat burst over the card.
-      if ((context?.delta ?? 0) > 0) {
+      // Any newly-sent super, including moving it to another emoji, gets the
+      // celebration. Upgrades and removals stay quiet.
+      if (context?.fresh) {
         // The burst starts at the pill row, not the middle of the card.
         const rect = pillsRef.current?.getBoundingClientRect();
         setSuperBurst({
@@ -900,6 +913,19 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         onPick={(pick: EmojiPick) => {
           const key = pick.kind === "unicode" ? pick.value : emojiReactionKey(pick.emoji.id);
           if (superMode && canSendSuper) {
+            const current =
+              qc.getQueryData<PostReactionRow[]>(["reactions", post.id]) ?? reactions.data ?? [];
+            const myRows = current.filter((reaction) => reaction.user_id === user?.id);
+            const mineSuper = myRows.find((reaction) => reaction.kind === "super");
+            const mineThis = myRows.find((reaction) => reaction.emoji === key);
+            // Moving an existing super or upgrading this emoji never adds a
+            // row. A brand-new super at the normal cap has to wait for space.
+            if (!mineSuper && !mineThis && myRows.length >= MAX_REACTIONS_PER_MESSAGE) {
+              toast.error(
+                `You can have up to ${MAX_REACTIONS_PER_MESSAGE} reactions on a post. Remove one first.`,
+              );
+              return;
+            }
             hapticReaction();
             superMut.mutate({ emoji: key });
           } else {
@@ -937,6 +963,9 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 <span className="truncate">Super reaction</span>
                 <span className="shrink-0 rounded-full border border-[var(--super-edge)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--super-paper)]">
                   Purify
+                </span>
+                <span className="shrink-0 text-[9px] font-medium text-muted-foreground">
+                  {MAX_SUPER_REACTIONS} per person
                 </span>
               </span>
               <span

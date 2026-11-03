@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
+import { ReactionKeyGlyph } from "@/components/reactions/ReactionKeyGlyph";
 
 /**
  * The super-reaction celebration.
  *
- * A super reaction is a cat, so the celebration is the cat itself: the sticker
- * pops out of the pill, the ring behind it snaps outward, five sparks scatter,
- * and then the whole thing lifts and fades. It is a one-shot — nothing is left
- * on screen after it lands.
+ * The celebration is the reaction itself. A RIZZ cat pops out as its sticker;
+ * any other pick — a Unicode reaction or a server emoji — pops out as that
+ * glyph, because a super reaction is a louder reaction, not a cat-only one.
+ * The ring behind it snaps outward, five sparks scatter, and the whole thing
+ * lifts and fades. It is a one-shot: nothing is left on screen after it lands.
  *
  * The card flash is CSS on the card (PostCard toggles it), so readers who ask
  * for reduced motion still get the acknowledgement without any travel.
@@ -27,7 +29,7 @@ function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** A super pick is always a cat shortcode; anything else still gets a face. */
+/** Cats have a sticker; every other key is drawn by ReactionKeyGlyph. */
 function catFor(key: string) {
   return CAT_EMOJI_MANIFEST.find((entry) => entry.shortcode === key) ?? null;
 }
@@ -97,8 +99,8 @@ export function SuperReactionBurst({
               className="h-24 w-24 select-none object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
             />
           ) : (
-            <span className="grid h-24 w-24 place-items-center rounded-full bg-[#8b7cf6] text-4xl font-black text-white">
-              {burst.key.slice(0, 2)}
+            <span className="grid h-24 w-24 place-items-center rounded-[2rem] border border-white/15 bg-[#111113]/95 text-6xl shadow-[0_10px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm">
+              <ReactionKeyGlyph reactionKey={burst.key} />
             </span>
           )}
         </span>

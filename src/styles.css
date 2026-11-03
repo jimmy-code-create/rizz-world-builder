@@ -2472,6 +2472,21 @@ button:active > .motion-icon {
   65% { opacity: 0.72; box-shadow: 0 0 0 6px rgb(255 93 104 / 0); }
   100% { opacity: 1; box-shadow: 0 0 0 0 rgb(255 93 104 / 0); }
 }
+/* The launch control's own signal dot: lime, not the on-air red used inside a
+   room. It is the "you can start one" cue, not "one is live". */
+.live-signal-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: var(--brand-signal, #c9ff3d);
+  box-shadow: 0 0 0 0 rgb(201 255 61 / 0.45);
+  animation: live-signal-pulse 2.2s ease-out infinite;
+}
+@keyframes live-signal-pulse {
+  0%, 18% { opacity: 1; box-shadow: 0 0 0 0 rgb(201 255 61 / 0.45); }
+  68% { opacity: 0.8; box-shadow: 0 0 0 5px rgb(201 255 61 / 0); }
+  100% { opacity: 1; box-shadow: 0 0 0 0 rgb(201 255 61 / 0); }
+}
 .live-fab__halo {
   animation: live-fab-halo 2.4s ease-out infinite;
 }
@@ -2481,9 +2496,11 @@ button:active > .motion-icon {
 }
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
+  .live-signal-dot,
   .live-fab__halo { animation: none; }
 }
 [data-reduced-motion="true"] .live-dot,
+[data-reduced-motion="true"] .live-signal-dot,
 [data-reduced-motion="true"] .live-fab__halo {
   animation: none;
 }

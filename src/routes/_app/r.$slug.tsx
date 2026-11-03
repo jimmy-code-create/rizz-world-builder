@@ -156,7 +156,7 @@ import { LevelsSheet } from "@/components/chat/LevelsSheet";
 import { VoiceChannelMusic } from "@/components/chat/VoiceChannelMusic";
 import { ScheduleDialog } from "@/components/chat/ScheduleDialog";
 import { PollDialog } from "@/components/chat/PollDialog";
-import { RealmEmojiPicker } from "@/components/chat/RealmEmojiPicker";
+import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
 import { ReactionRoleDialog } from "@/components/chat/ReactionRoleDialog";
 import { RealmGamesHub } from "@/components/realms/RealmGamesHub";
 import { RealmMusicHub } from "@/components/realms/RealmMusicHub";
@@ -299,8 +299,8 @@ function RealmPage() {
   } | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
   const [realmGamesOpen, setRealmGamesOpen] = useState(false);
@@ -2552,15 +2552,6 @@ function RealmPage() {
         }}
       />
       <PollDialog open={pollOpen} onOpenChange={setPollOpen} realmId={c.id} roomId={slashRoomId} />
-      <RealmEmojiPicker
-        open={emojiOpen}
-        onOpenChange={setEmojiOpen}
-        realmId={c.id}
-        canManage={canModerate}
-        onPick={(token) =>
-          setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `)
-        }
-      />
       <ReactionRoleDialog
         open={!!reactionRoleMessageId}
         onOpenChange={(open) => {
@@ -2612,9 +2603,9 @@ function RealmPage() {
       />
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
-        <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        <div className="relative z-20 shrink-0">
           {myWriteBlocked && (
-            <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
+            <p className="mx-auto w-full max-w-3xl px-3 pt-2 text-center text-[11px] text-muted-foreground">
               Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A
               moderator can switch it back on.
             </p>
@@ -2653,8 +2644,8 @@ function RealmPage() {
                 setCaret(nextCaret);
               }}
               onSend={() => void handleSend()}
-              onEmoji={() => setEmojiOpen(true)}
-              onStickers={() => setGifOpen(true)}
+              onEmoji={() => setGifOpen(true)}
+              onStickers={() => setCatOpen(true)}
               disabled={!joined || roomLockedForMe || myWriteBlocked}
               disabledHint={composerBlock ?? "You can't send messages here"}
               placeholder={composerBlock ?? "Message"}
@@ -2755,15 +2746,35 @@ function RealmPage() {
               }}
               onFocus={() => scrollChatToLatest(messageListRef.current)}
             />
+            {/* One picker for everything that is not a RIZZ cat: Unicode and
+                this server's emoji in categories, GIFs and stickers. Emoji
+                management lives in Settings → Custom emoji, not in the picker. */}
             <GifPicker
               hideTrigger
               open={gifOpen}
               onOpenChange={setGifOpen}
               realmId={c.id}
+              initialTab="emoji"
               onSelect={(marker) =>
                 setBody((current) => `${current}${current ? " " : ""}${marker}`)
               }
-              onCustomEmoji={joined ? () => setEmojiOpen(true) : undefined}
+              onCustomEmoji={
+                canModerate
+                  ? () =>
+                      nav({
+                        to: "/r/$slug/settings",
+                        params: { slug },
+                        search: { section: "emoji" },
+                      })
+                  : undefined
+              }
+            />
+            <CatStickerSheet
+              open={catOpen}
+              onOpenChange={setCatOpen}
+              onPick={(shortcode) =>
+                setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${shortcode} `)
+              }
             />
           </div>
         </div>

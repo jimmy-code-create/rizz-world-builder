@@ -146,10 +146,10 @@ await check("a photo caption is never parsed as a slash command", () => {
 
 await check("a photo can be sent with no text at all", () => {
   assert.match(realm, /if \(!user \|\| \(!body\.trim\(\) && !imageFile\)\) return;/);
-  assert.match(
-    realm,
-    /disabled=\{!joined \|\| \(!body\.trim\(\) && !imageFile\) \|\| sending/,
-  );
+  // The row closes only for permission reasons; a photo alone makes the send
+  // action live, which is the behaviour this guard is protecting.
+  assert.match(realm, /canSend=\{Boolean\(body\.trim\(\) \|\| imageFile\)\}/);
+  assert.match(realm, /disabled=\{!joined \|\| roomLockedForMe \|\| myWriteBlocked\}/);
   assert.match(realm, /if \(!file\.type\.startsWith\("image\/"\)\)/);
   assert.match(realm, /chatUploadLimitBytes\(myProfile\)/);
 });
@@ -175,30 +175,28 @@ await check("every chat composer opens the same attach sheet", () => {
   }
 });
 
-await check("chat composers share the one 44px row", () => {
+await check("chat composers share the one compact row", () => {
   assert.match(gif, /triggerClassName\?: string/);
   assert.match(gif, /className=\{`shrink-0 text-primary \$\{triggerClassName \?\? ""\}`\}/);
-  assert.match(realm, /triggerClassName="h-11 w-11"/, "the picker matches a 44px row");
   assert.match(attach, /appearance === "circle"/, "the attach disc has no circle variant");
-  assert.match(attach, /border-\[rgba\(255,255,255,0\.14\)\] bg-\[#171717\]/, "the disc is not #171717");
+  assert.match(attach, /border-\[rgba\(255,255,255,0\.12\)\] bg-\[#141414\]/, "the disc is not the compact ink disc");
   const chatComposer = read("src/components/chat/MessageComposer.tsx");
   assert.match(dm, /<MessageComposer/, "DM does not use the shared composer");
   assert.match(group, /<MessageComposer/, "groups do not use it either");
-  assert.match(dm, /appearance="circle"/, "DM's attach is not the 44px disc");
+  assert.match(dm, /appearance="circle"/, "DM's attach is not the disc");
   assert.match(group, /appearance="circle"/, "the group attach does not match");
-  assert.match(chatComposer, /minHeight: 44/, "the input pill is not 44px tall");
-  assert.match(chatComposer, /rounded-\[22px\]/, "the pill is not 22px radius");
-  assert.match(chatComposer, /h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/, "the action is not a 44px lime circle");
+  assert.match(chatComposer, /minHeight: 40/, "the input pill is not 40px tall");
+  assert.match(chatComposer, /rounded-\[20px\]/, "the pill is not 20px radius");
+  assert.match(chatComposer, /h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/, "the action is not a 40px lime circle");
   assert.match(
     chatComposer,
     /aria-label=\{recording \? "Release to send voice message" : "Voice message"\}/,
     "the mic lost its label",
   );
-  assert.match(chatComposer, /aria-label="Stickers"/, "the cat lost its label");
-  assert.match(chatComposer, /aria-label="Emoji"/, "the smiley lost its label");
+  assert.match(chatComposer, /aria-label="Cat emojis"/, "the cat lost its label");
+  assert.match(chatComposer, /aria-label="Emoji, GIFs and stickers"/, "the smiley lost its label");
   assert.match(chatComposer, /SLIDE_CANCEL_PX/, "the mic cannot slide to cancel");
   assert.match(chatComposer, /focus-within:ring-primary\/\[0\.16\]/, "no lime focus ring");
-  assert.match(realm, /className="h-11 w-11 shrink-0 border-0 bg-primary/);
   assert.match(composer, /triggerClassName=\{compact \? "h-9 w-9" : "h-10 w-10"\}/);
 });
 
