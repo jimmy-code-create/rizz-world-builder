@@ -1,8 +1,1 @@
-Get started by following one of our React Native quick start guides
-Follow the React Native guide to configure your project and create the codemagic.yaml file.
-Save the codemagic.yaml file to the project root folder.
-Push the added file to the repository. From command line:
-git add codemagic.yaml
-git commit -m 'Add first workflow'
-git push
-Click the Check for configuration file button in the top right corner.
+Add first workflow
