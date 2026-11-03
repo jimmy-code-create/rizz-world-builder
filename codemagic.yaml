@@ -1,1 +1,18 @@
-
+workflows:
+  android-apk:
+    name: Android APK
+    instance_type: linux_x2
+    max_build_duration: 30
+    working_directory: mobile
+    environment:
+      node: 22
+      java: 21
+    scripts:
+      - name: Install deps
+        script: npm install --legacy-peer-deps
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build debug APK
+        script: cd android && chmod +x gradlew && ./gradlew assembleDebug
+    artifacts:
+      - mobile/android/app/build/outputs/**/*.apk
