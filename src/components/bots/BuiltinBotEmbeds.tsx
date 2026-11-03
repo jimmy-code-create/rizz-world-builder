@@ -20,14 +20,7 @@ import {
   type TemplatePreviewVars,
 } from "@/lib/bot-templates";
 
-/**
- * Realm settings → Bots → built-in bot embeds.
- *
- * One row per built-in bot with an inline editor: the same form as webhook
- * embeds, the real variables chips, a live preview rendered by the very
- * <Embed> the chat shows, "Send test" to a picked channel, and "Reset to
- * default". Owners/admins only (the RPCs re-check server-side).
- */
+/** Realm settings → Bots → built-in bot embeds. */
 export function BuiltinBotEmbeds({
   realmId,
   realmName,
@@ -56,11 +49,13 @@ export function BuiltinBotEmbeds({
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string>(defaultRoomId ?? "");
-  const [me, setMe] = useState<{ display_name?: string | null; username?: string | null; avatar_url?: string | null } | null>(null);
+  const [me, setMe] = useState<{
+    display_name?: string | null;
+    username?: string | null;
+    avatar_url?: string | null;
+  } | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
-  // Preview context: the caller as "the user", real realm/channel/count where
-  // possible, so the card looks exactly like what the bot will post.
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -103,6 +98,11 @@ export function BuiltinBotEmbeds({
       memberCount: String(memberCount ?? 1),
       date: new Date().toISOString(),
       channel: room?.name ?? "general",
+      partner: "the person you picked",
+      partnerAvatar:
+        me?.avatar_url && me?.avatar_url !== previewVars?.partnerAvatar
+          ? me?.avatar_url
+          : "https://esm.sh/https://cdn.jsdelivr.net/npm/just-bird-nope@1/placeholder.svg",
     };
   }, [textRooms, roomId, defaultRoomId, me, memberCount, realmName]);
 
@@ -146,7 +146,9 @@ export function BuiltinBotEmbeds({
       const fallback = await resetBotEmbedTemplate(bot.bot_id, realmId);
       await qc.invalidateQueries({ queryKey: botTemplatesKey(realmId) });
       setDraft(fallback ?? emptyEmbed());
-      toast.success(fallback ? `${bot.name} is back to the default card` : `${bot.name} posts plain text again`);
+      toast.success(
+        fallback ? `${bot.name} is back to the default card` : `${bot.name} posts plain text again`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't reset this embed");
     } finally {
@@ -203,7 +205,9 @@ export function BuiltinBotEmbeds({
               ? "Custom embed"
               : bot.name.trim().toUpperCase() === "WELCOME"
                 ? "Default welcome card"
-                : "Plain text";
+                : bot.name.trim().toUpperCase() === "WEDDING"
+                  ? "Default wedding card"
+                  : "Plain text";
             return (
               <div key={bot.bot_id} className="rounded-2xl border border-white/10 glass p-3">
                 <div className="flex min-h-11 items-center gap-3">

@@ -1,15 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeEmbed, type EmbedData } from "@/lib/embeds";
 
-/**
- * Per-bot embed templates (public.bot_templates).
- *
- * A built-in bot's next message in a realm renders its template with variables
- * substituted server-side. Without a row the bot keeps posting plain text —
- * except WELCOME, which falls back to the built-in welcome card. The editor in
- * Realm settings → Bots uses the helpers here for fetch/save/reset/test and
- * the exact same substitution the server does, so the preview never lies.
- */
+/** Per-bot embed templates (public.bot_templates). */
 
 export type BotEmbedTemplate = {
   bot_id: string;
@@ -79,9 +71,14 @@ export async function sendBotEmbedTest(botId: string, realmId: string, roomId: s
 
 /** Which variables actually fill in when this bot posts. */
 export function templateVarsFor(botName: string): readonly string[] {
-  return botName.trim().toUpperCase() === "WELCOME"
-    ? ["{user}", "{username}", "{userAvatar}", "{realm}", "{memberCount}", "{date}", "{channel}"]
-    : ["{realm}", "{memberCount}", "{date}", "{channel}"];
+  const name = botName.trim().toUpperCase();
+  if (name === "WELCOME") {
+    return ["{user}", "{username}", "{userAvatar}", "{realm}", "{memberCount}", "{date}", "{channel}"];
+  }
+  if (name === "WEDDING") {
+    return ["{user}", "{username}", "{userAvatar}", "{partner}", "{partnerAvatar}", "{realm}", "{date}"];
+  }
+  return ["{realm}", "{memberCount}", "{date}", "{channel}"];
 }
 
 export type TemplatePreviewVars = {
@@ -92,13 +89,18 @@ export type TemplatePreviewVars = {
   memberCount: string;
   date: string;
   channel: string;
+  partner: string;
+  partnerAvatar: string;
 };
 
 function substitute(text: string, vars: TemplatePreviewVars): string {
-  return text.replace(/\{(user|username|userAvatar|realm|memberCount|date|channel)\}/g, (token, key: keyof TemplatePreviewVars) => {
-    const value = vars[key];
-    return value ? value : token;
-  });
+  return text.replace(
+    /\\{(user|username|userAvatar|realm|memberCount|date|channel|partner|partnerAvatar)\\}/g,
+    (token, key: keyof TemplatePreviewVars) => {
+      const value = vars[key];
+      return value ? value : token;
+    },
+  );
 }
 
 function swapStrings<T>(value: T, vars: TemplatePreviewVars): T {
