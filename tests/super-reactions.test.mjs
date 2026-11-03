@@ -95,19 +95,31 @@ await check("super mode is visible while picking", () => {
   assert.ok(picker.includes("<Sparkles"), "super mode leaves no mark on the sheet");
   assert.ok(card.includes("accent={superMode && canSendSuper}"), "the post card never passes the accent");
   assert.ok(card.includes("linear-gradient(120deg,rgba(180,124,255,0.3)"), "the switch is not the pill's gradient");
-  assert.ok(pills.includes("super-reaction-in"), "a super pill does not pop in");
-  assert.ok(styles.includes("super-reaction-in"), "the pop-in keyframes are missing");
-  assert.ok(pills.includes('"h-7 gap-1 px-2 text-[12px]"'), "pills do not share one height");
-  assert.ok(!pills.includes("h-8 gap-1"), "a super pill is still taller than a normal one");
-  assert.ok(!pills.includes("text-[20px]"), "a super glyph is still larger than a normal one");
-  assert.ok(pills.includes('className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}'), "glyphs are not one size");
+  assert.ok(pills.includes('"h-[30px] gap-1.5 px-2.5 text-[12px]"'), "pills do not share one 30px height");
+  assert.ok(pills.includes("#8b7cf6"), "a super pill is not violet");
+  assert.ok(pills.includes(">\n                Super\n              </span>"), "a super pill has no Super label");
+  assert.ok(pills.includes("overflow-x-auto"), "the pill row does not scroll sideways");
+  assert.ok(!pills.includes("flex-wrap"), "the pill row still wraps");
+  assert.ok(pills.includes("onAdd"), "there is no trailing add-reaction pill");
+  assert.ok(pills.includes("AnimatedCount"), "counts snap instead of rolling");
+  assert.ok(styles.includes(".reaction-pill-row"), "the scroll row has no scrollbar rule");
 });
 
-await check("the super burst cat actually performs", () => {
-  assert.ok(burst.includes('animate="loop"'), "the burst cat is still a frozen frame");
-  assert.ok(burst.includes("super-burst-cat-body"), "the cat has no idle motion layer");
-  assert.ok(styles.includes("super-burst-cat-bob"), "the idle layer has no keyframes");
-  assert.ok(styles.includes("super-burst-streak"), "the launch has no speed streaks");
+await check("the super burst leaves the pill, not the middle of the card", () => {
+  assert.ok(burst.includes("super-ring"), "no violet ring leaves the pill");
+  assert.ok(burst.includes("super-particle"), "nothing floats up from the pill");
+  assert.ok(burst.includes("navigator.vibrate(20)"), "the super reaction does not buzz");
+  assert.ok(burst.includes("PawPrint"), "the floating marks are not paws");
+  assert.ok(styles.includes("@keyframes super-ring"), "the ring keyframes are missing");
+  assert.ok(styles.includes("@keyframes super-particle"), "the particle keyframes are missing");
+  assert.ok(styles.includes("@keyframes super-card-flash"), "the card has no violet flash");
+  assert.ok(card.includes("super-card-flash"), "the post card never applies the flash");
+  assert.ok(burst.includes("reducedMotion()"), "reduced motion keeps the full burst");
+  assert.ok(
+    styles.includes("prefers-reduced-motion: reduce") && styles.includes("super-particle"),
+    "the particles ignore the reduced-motion preference",
+  );
+  assert.ok(!burst.includes("CatEmoji"), "the old cat leap is still mounted");
 });
 
 await check("the composer keeps one emoji control", () => {

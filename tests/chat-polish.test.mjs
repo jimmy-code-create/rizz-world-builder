@@ -113,12 +113,15 @@ await check("jump-to-message is a fading wash, not a ring", async () => {
 });
 
 await check("sending keeps the phone keyboard open and typing follows", async () => {
+  const shared = read("components/chat/MessageComposer.tsx");
+  // The send control is a plain button inside the shared composer: it never has
+  // a mousedown that steals focus, and the composer refocuses the field after a
+  // send for the browsers that blur it anyway.
+  assert.ok(!shared.includes("onMouseDown"), "the send control takes focus on mousedown");
+  assert.match(shared, /field\.current\?\.focus\(\{ preventScroll: true \}\)/);
   for (const [name, source] of [["dm", dm], ["group", group]]) {
-    assert.match(
-      source,
-      /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/,
-      `${name} send does not take focus from the composer`,
-    );
+    assert.match(source, /<MessageComposer/, `${name} does not use the shared composer`);
+    assert.match(source, /textareaRef=\{composerRef\}/, `${name} does not hand over its field`);
     assert.match(
       source,
       /const keepComposerFocused = \(\) => \{\s*composerRef\.current\?\.focus\(\{ preventScroll: true \}\);/,
@@ -135,7 +138,15 @@ await check("sending keeps the phone keyboard open and typing follows", async ()
 await check("clicking a composer lands on the newest message", async () => {
   for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
     assert.ok(source.includes("scrollChatToLatest("), `${name} uses the shared jump`);
-    assert.match(source, /onClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/, `${name} jumps on click`);
+    if (name === "realm") {
+      assert.match(source, /onClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/, `${name} jumps on click`);
+    } else {
+      assert.match(
+        source,
+        /onTextareaClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/,
+        `${name} jumps on click`,
+      );
+    }
   }
   const helper = read("lib/chat-scroll.ts");
   assert.match(helper, /scroller\.scrollTop = scroller\.scrollHeight/, "it scrolls to the bottom");

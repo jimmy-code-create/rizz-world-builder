@@ -195,9 +195,12 @@ await check("animated RIZZ emoji are locked to a still pack without Purify", () 
     assert.match(source, /<Lock/);
     assert.match(source, /animate=\{locked \? "static" : "hover"\}/);
   }
-  // A super-reaction celebration stays animated for every viewer.
+  // The celebration is a ring and a handful of paw particles now, so it is not
+  // gated art: every viewer sees it, Purify member or not.
   const burst = read("src/components/reactions/SuperReactionBurst.tsx");
-  assert.match(burst, /<CatEmoji name=\{cat\} size=\{132\} animate="loop" label="Super reaction" preview \/>/);
+  assert.match(burst, /super-ring/);
+  assert.match(burst, /super-particle/);
+  assert.ok(!burst.includes("CatEmoji"), "the celebration is gated art again");
 });
 
 await check("the preview strip is real components, not a video", () => {

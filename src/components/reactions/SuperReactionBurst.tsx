@@ -1,135 +1,29 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Sparkles } from "lucide-react";
-import { CatEmoji } from "@/components/emoji/CatEmoji";
-import { catNameForShortcode, type CatEmojiName } from "@/components/emoji/cat-emoji-manifest";
-import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
-import { customReactionId, useEmojiLookup, type EmojiRow } from "@/lib/emoji-shared";
+import { useEffect, useState } from "react";
+import { PawPrint, Sparkles } from "lucide-react";
 
 /**
- * The super-reaction celebration: when someone sends a super reaction the RIZZ
- * cat leaps in over the post, wiggles, fires the emoji outward as sparks and
- * dashes off. Pure transform/opacity keyframes, ~2.3s, one-shot — no JS loop,
- * no timers past the unmount timeout, and it never blocks a tap
- * (pointer-events: none).
+ * The super-reaction celebration.
+ *
+ * It used to be a full-size cat leaping across the card, which read as its own
+ * event instead of a louder version of a reaction. Now the applause starts at
+ * the pill that was tapped: a violet ring pulses out of it, five paw/sparkle
+ * marks drift up about 70px and fade in a second, and the card flashes its
+ * border violet. The flash is CSS on the card (PostCard toggles it), so readers
+ * who ask for reduced motion still get the acknowledgement without any travel.
  */
-export type SuperBurst = { key: string; seq: number };
-
-const LIFETIME_MS = 2300;
-
-/** Pick the sticker that matches the reaction's mood. */
-function catForKey(key: string): CatEmojiName {
-  // A pack shortcode (`:cat_happy:`) is the reaction itself — draw it.
-  const direct = key.startsWith(":") ? catNameForShortcode(key) : null;
-  if (direct) return direct;
-  const k = key.toLowerCase();
-  if (/[❤🩷💜🥰😍💔]/.test(k)) return "cat_happy";
-  if (/[😂🤣😆]/.test(k)) return "cat_happy";
-  if (/[🔥🚀😤]/.test(k)) return "cat_angry";
-  if (/[😮😲😱]/.test(k)) return "cat_surprise";
-  if (/[😎🆒]/.test(k)) return "cat_hm";
-  if (/[😴🛌]/.test(k)) return "cat_sleepy";
-  if (/[🤨🧐]/.test(k)) return "cat_hm";
-  if (/[🎵🎶🎧]/.test(k)) return "cat_hm";
-  if (/[🎮🏆]/.test(k)) return "cat_clap";
-  if (/[😢😭]/.test(k)) return "cat_cry";
-  if (/[👋✋]/.test(k)) return "cat_happy";
-  if (/[🤔💭]/.test(k)) return "cat_hm";
-  return "cat_hm";
-}
-
-type Spark = {
-  x: number;
-  y: number;
-  size: number;
-  delay: number;
-  kind: "reaction" | "star";
+export type SuperBurst = {
+  key: string;
+  seq: number;
+  /** Where the pill was when it was tapped, in viewport pixels. */
+  at?: { x: number; y: number } | null;
 };
 
-function buildSparks(reactionCount: number): Spark[] {
-  const total = 14;
-  const sparks: Spark[] = [];
-  for (let i = 0; i < total; i += 1) {
-    const angle = (i / total) * Math.PI * 2 + Math.random() * 0.5;
-    const distance = 96 + Math.random() * 84;
-    sparks.push({
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance - 12,
-      size: 14 + Math.random() * 12,
-      delay: 60 + Math.random() * 420,
-      kind: i < reactionCount ? "reaction" : "star",
-    });
-  }
-  return sparks;
-}
+const LIFETIME_MS = 1150;
+const PARTICLES = [-1, 1, -0.4, 0.6, 0];
 
-function BurstScene({ reactionKey }: { reactionKey: string }) {
-  const id = customReactionId(reactionKey);
-  const lookup = useEmojiLookup(id ? [id] : []);
-  const emoji = id ? lookup.data?.find((row: EmojiRow) => row.id === id) : undefined;
-  const sparks = useMemo(() => buildSparks(6), []);
-  const cat = useMemo(() => catForKey(reactionKey), [reactionKey]);
-
-  return (
-    <div className="super-burst-scene pointer-events-none fixed inset-0 z-[90] grid place-items-center overflow-hidden">
-      {/* Ambient glow */}
-      <div
-        className="super-burst-glow absolute h-64 w-64 rounded-full"
-        style={{
-          background:
-            "radial-gradient(closest-side, rgba(180,124,255,0.5), rgba(200,255,61,0.18) 55%, transparent 75%)",
-        }}
-      />
-      {/* Expanding ring */}
-      <div className="super-burst-ring absolute h-40 w-40 rounded-full border-2 border-[var(--super-violet)]" />
-      {/* The RIZZ cat: the face keeps playing its own expression loop while the
-          body bobs and the whole cat leaps in and out. Two transform layers,
-          so the entrance/exit never fights the idle motion. */}
-      <div className="super-burst-cat relative grid place-items-center">
-        <div className="super-burst-cat-body relative grid place-items-center">
-          <span className="super-burst-streak super-burst-streak--left" aria-hidden="true" />
-          <span className="super-burst-streak super-burst-streak--right" aria-hidden="true" />
-          {/* A super reaction is already a Purify-only send, so the celebration
-              itself stays animated for every viewer. */}
-          <CatEmoji name={cat} size={132} animate="loop" label="Super reaction" preview />
-          <span className="absolute -bottom-3 grid h-11 w-11 place-items-center rounded-full border border-[var(--super-edge)] bg-[var(--super-ink)] shadow-[0_0_18px_var(--super-shadow)] backdrop-blur">
-            {emoji ? (
-              <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-7 w-7" />
-            ) : (
-              <UnicodeGlyph value={reactionKey} className="text-[26px]" size={26} />
-            )}
-          </span>
-        </div>
-      </div>
-      {/* Label */}
-      <span className="super-burst-label absolute top-[calc(50%+96px)] rounded-full border border-[var(--super-edge-soft)] bg-[var(--super-ink-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--super-paper)] backdrop-blur">
-        Super
-      </span>
-      {/* Sparks */}
-      {sparks.map((spark, index) => (
-        <span
-          key={index}
-          className="super-burst-spark absolute grid place-items-center"
-          style={
-            {
-              "--sx": `${spark.x}px`,
-              "--sy": `${spark.y}px`,
-              animationDelay: `${spark.delay}ms`,
-              fontSize: `${spark.size}px`,
-            } as React.CSSProperties
-          }
-        >
-          {spark.kind === "star" ? (
-            <Sparkles className="h-[1em] w-[1em]" aria-hidden="true" />
-          ) : emoji ? null : (
-            <UnicodeGlyph value={reactionKey} className="text-[1.2em]" size={20} />
-          )}
-          {spark.kind === "reaction" && emoji ? (
-            <EmojiGlyph emoji={emoji} shortcode={emoji.shortcode} className="h-[1.2em] w-[1.2em]" />
-          ) : null}
-        </span>
-      ))}
-    </div>
-  );
+function reducedMotion() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 export function SuperReactionBurst({
@@ -139,15 +33,59 @@ export function SuperReactionBurst({
   burst: SuperBurst | null;
   onDone: () => void;
 }) {
-  const doneRef = useRef(onDone);
-  doneRef.current = onDone;
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    if (!burst) return;
-    const timer = window.setTimeout(() => doneRef.current(), LIFETIME_MS);
+    if (!burst) {
+      setPoint(null);
+      return;
+    }
+    if (reducedMotion()) {
+      // The card flash is the whole acknowledgement under reduced motion.
+      onDone();
+      return;
+    }
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(20);
+    }
+    setPoint(
+      burst.at ?? {
+        x: typeof window === "undefined" ? 0 : window.innerWidth / 2,
+        y: typeof window === "undefined" ? 0 : window.innerHeight * 0.6,
+      },
+    );
+    const timer = window.setTimeout(onDone, LIFETIME_MS);
     return () => window.clearTimeout(timer);
-  }, [burst?.seq]); // eslint-disable-line react-hooks/exhaustive-deps
+    // `onDone` is intentionally out of the deps: the burst identity is the seq.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [burst?.seq]);
 
-  if (!burst) return null;
-  return <BurstScene key={burst.seq} reactionKey={burst.key} />;
+  if (!burst || !point) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[120] overflow-hidden" aria-hidden="true">
+      <div className="absolute" style={{ left: point.x, top: point.y }}>
+        <span className="super-ring absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#8b7cf6]" />
+        {PARTICLES.map((drift, index) => (
+          <span
+            key={`${burst.seq}-${index}`}
+            className="super-particle absolute -translate-x-1/2 -translate-y-1/2 text-[#a78bfa]"
+            style={{
+              // A little sideways spread so five marks do not read as a column.
+              ["--drift" as string]: `${drift * 26}px`,
+              animationDelay: `${index * 70}ms`,
+            }}
+          >
+            {index % 2 === 0 ? (
+              <PawPrint className="h-3.5 w-3.5 drop-shadow-[0_1px_6px_rgba(139,124,246,0.55)]" />
+            ) : (
+              <Sparkles className="h-3 w-3 drop-shadow-[0_1px_6px_rgba(139,124,246,0.55)]" />
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
+
+export default SuperReactionBurst;

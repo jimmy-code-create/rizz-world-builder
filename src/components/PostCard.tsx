@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles } from "lucide-react";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPills";
+import { AnimatedCount } from "@/components/ui/animated-count";
 import { SuperReactionBurst, type SuperBurst } from "@/components/reactions/SuperReactionBurst";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
 import { emojiReactionKey } from "@/lib/emoji-shared";
@@ -317,7 +318,15 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       // A newly-sent super reaction (not an upgrade or a removal) fires the
       // cat burst over the card.
       if ((context?.delta ?? 0) > 0) {
-        setSuperBurst({ key: variables.emoji, seq: Date.now() });
+        // The burst starts at the pill row, not the middle of the card.
+        const rect = pillsRef.current?.getBoundingClientRect();
+        setSuperBurst({
+          key: variables.emoji,
+          seq: Date.now(),
+          at: rect ? { x: rect.left + Math.min(rect.width / 2, 96), y: rect.top + rect.height / 2 } : null,
+        });
+        setSuperFlash(true);
+        window.setTimeout(() => setSuperFlash(false), 720);
       }
     },
     onError: (e: Error, _variables, context) => {
@@ -352,6 +361,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
   const [reactPickerOpen, setReactPickerOpen] = useState(false);
   const [superMode, setSuperMode] = useState(false);
   const [superBurst, setSuperBurst] = useState<SuperBurst | null>(null);
+  // The card edge answers a super reaction with a 0.7s violet flash. It is the
+  // reduced-motion version of the burst too, so it always runs.
+  const [superFlash, setSuperFlash] = useState(false);
+  const pillsRef = useRef<HTMLDivElement | null>(null);
   const [initialReactionTab, setInitialReactionTab] = useState<string | null>(null);
 
   const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
@@ -521,7 +534,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={goToPost}
-      className="feed-post-card relative isolate mb-2 cursor-pointer overflow-hidden rounded-2xl"
+      className={cn(
+        "feed-post-card relative isolate mb-2 cursor-pointer overflow-hidden rounded-2xl",
+        superFlash && "super-card-flash",
+      )}
     >
       <header className="flex items-center gap-2.5 p-3 pb-2">
         <AuthorAvatarLink post={post} initial={initial} />
@@ -761,12 +777,14 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       )}
 
       {reactionGroups.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+        <div ref={pillsRef} className="flex items-center px-3 pb-2">
           {/* One pill row for every surface: a unicode reaction draws its glyph,
-              a custom one draws its image, and a long-press opens who reacted. */}
+              a custom one draws its image, long-press opens who reacted, and the
+              trailing plus pill is the way to add the first one. */}
           <ReactionPills
             groups={reactionGroups}
             onToggle={toggleReaction}
+            onAdd={() => setReactPickerOpen(true)}
             onShowReactors={(key) => {
               setInitialReactionTab(key);
               setReactionsSheetOpen(true);
@@ -786,7 +804,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
             <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
           </motion.span>
-          <span className="text-xs font-medium">{formatCount(likeCount)}</span>
+          <AnimatedCount value={likeCount} format={formatCount} className="text-xs font-medium" />
         </Button>
         <Button
           variant="ghost"
@@ -796,7 +814,11 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
           className="h-8 px-2.5 relative gap-1.5 rounded-full text-muted-foreground touch-manipulation before:absolute before:-inset-y-1.5 before:inset-x-0"
         >
           <MessageCircle className="h-4 w-4" />
-          <span className="text-xs font-medium">{formatCount(post.comment_count)}</span>
+          <AnimatedCount
+            value={post.comment_count ?? 0}
+            format={formatCount}
+            className="text-xs font-medium"
+          />
         </Button>
         <Button
           variant="ghost"

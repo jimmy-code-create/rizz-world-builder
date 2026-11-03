@@ -2,8 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft, BarChart3 } from "lucide-react";
+import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft, BarChart3, Smile } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
+import { MessageComposer } from "@/components/chat/MessageComposer";
+import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
+import { EmojiPicker } from "@/components/emoji/EmojiPicker";
+import { emojiToken } from "@/lib/emoji-shared";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { ChatPollCard } from "@/components/chat/PollCard";
 import { asChatPollCard } from "@/lib/chat-polls";
@@ -26,7 +30,7 @@ import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/lib/toast";
@@ -91,6 +95,9 @@ function GroupRoom() {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrolledGroupIdRef = useRef<string | null>(null);
   const [caret, setCaret] = useState(0);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const [olderMessages, setOlderMessages] = useState<Awaited<ReturnType<typeof fetchGroupMessages>>>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -761,38 +768,8 @@ function GroupRoom() {
           </div>
       </div>
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-[#1c1c1c] bg-black px-3 pt-2 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
         <div className="mx-auto w-full max-w-3xl">
-          {imagePreview && (
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-              <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
-              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Photo compresses before upload</span>
-              <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          {replyTo && (
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.06] px-2.5 py-1.5">
-              <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-semibold">
-                  {replyTo.author ? `@${replyTo.author}` : "Replying"}
-                </p>
-                <p className="truncate text-[10px] text-muted-foreground">{replyTo.body || "Photo"}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReplyTo(null)}
-                aria-label="Cancel reply"
-                className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-          <div className="flex gap-2">
-          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))} />
           <input
             ref={imageInputRef}
             type="file"
@@ -808,46 +785,49 @@ function GroupRoom() {
             hidden
             onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
-          <ChatAttachButton
-            className="h-9 w-9"
-            disabled={uploadingImage}
-            actions={[
-              { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-              { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-              { id: "poll", label: "Poll", hint: "Ask the group", icon: BarChart3, onSelect: () => setPollOpen(true), disabled: uploadingImage },
-            ]}
-          />
-          {/* The mention popup anchors to this wrapper, so it opens above the
-              composer instead of the nearest positioned ancestor. */}
-          <div className="relative min-w-0 flex-1">
-            <Textarea
-              ref={composerRef}
-              value={body}
-              onChange={(e) => {
-                setBody(e.target.value);
-                setCaret(e.target.selectionStart ?? e.target.value.length);
-              }}
-              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              // Tapping the composer means “I'm replying to the now”: land on
-              // the newest message, including after the keyboard resizes the list.
-              onClick={(e) => {
-                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
-                scrollChatToLatest(messagesListRef.current);
-              }}
-              onFocus={() => scrollChatToLatest(messagesListRef.current)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-              placeholder="Message"
-              maxLength={GROUP_MESSAGE_LIMIT}
-              rows={1}
-              enterKeyHint="send"
-              className="composer-input min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
-            />
-            <MentionAutocomplete
+          <MessageComposer
+            value={body}
+            onChange={(next, nextCaret) => {
+              setBody(next);
+              setCaret(nextCaret);
+            }}
+            onSend={() => void send()}
+            onEmoji={() => setEmojiOpen(true)}
+            onStickers={() => setCatOpen(true)}
+            placeholder="Message"
+            maxLength={GROUP_MESSAGE_LIMIT}
+            textareaRef={composerRef}
+            sending={sendMessage.isPending || uploadingImage}
+            canSend={Boolean(body.trim() || imageFile)}
+            allowVoice={false}
+            above={imagePreview ? (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Photo compresses before upload</span>
+                <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+            reply={replyTo ? {
+              label: `Replying to ${replyTo.author ? `@${replyTo.author}` : "them"}`,
+              preview: replyTo.body || "Photo",
+              onCancel: () => setReplyTo(null),
+            } : null}
+            attach={<ChatAttachButton
+              appearance="circle"
+              label="Attach"
+              disabled={uploadingImage}
+              actions={[
+                { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+                { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+                { id: "gif", label: "GIF", hint: "Emoji and stickers", icon: Smile, onSelect: () => setGifOpen(true) },
+                { id: "poll", label: "Poll", hint: "Ask the group", icon: BarChart3, onSelect: () => setPollOpen(true), disabled: uploadingImage },
+              ]}
+            />}
+            // The mention popup anchors to the composer's own wrapper, so it
+            // opens above the field instead of the nearest positioned ancestor.
+            mentions={<MentionAutocomplete
               value={body}
               caret={caret}
               memberIds={(members.data ?? []).map((member: any) => member.user_id as string)}
@@ -859,19 +839,34 @@ function GroupRoom() {
                 const el = composerRef.current;
                 if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
               }}
-            />
-          </div>
-          <Button
-            onClick={() => void send()}
-            onMouseDown={(event) => event.preventDefault()}
-            disabled={(!body.trim() && !imageFile) || sendMessage.isPending || uploadingImage}
-            size="icon"
-            className="bg-primary text-primary-foreground border-0 shadow-md"
-            aria-label={sendMessage.isPending ? "Sending message" : "Send message"}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-          </div>
+            />}
+            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+            onTextareaClick={(e) => {
+              setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+              scrollChatToLatest(messagesListRef.current);
+            }}
+            onFocus={() => scrollChatToLatest(messagesListRef.current)}
+          />
+          <EmojiPicker
+            open={emojiOpen}
+            onOpenChange={setEmojiOpen}
+            title="Add emoji"
+            onPick={(pick) => {
+              const token = pick.kind === "unicode" ? pick.value : emojiToken(pick.emoji);
+              setBody((current) => `${current}${token}`.slice(0, GROUP_MESSAGE_LIMIT));
+            }}
+          />
+          <CatStickerSheet
+            open={catOpen}
+            onOpenChange={setCatOpen}
+            onPick={(shortcode) => setBody((current) => `${current}${shortcode}`.slice(0, GROUP_MESSAGE_LIMIT))}
+          />
+          <GifPicker
+            open={gifOpen}
+            onOpenChange={setGifOpen}
+            hideTrigger
+            onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, GROUP_MESSAGE_LIMIT))}
+          />
         </div>
       </div>
 

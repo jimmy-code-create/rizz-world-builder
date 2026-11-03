@@ -203,6 +203,10 @@ export function GifPicker({
   realmId,
   onCustomEmoji,
   triggerClassName,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+  initialTab,
 }: {
   onSelect: (marker: string) => void;
   /** A realm passes its id so its own emoji and stickers show up in this picker. */
@@ -211,12 +215,19 @@ export function GifPicker({
   onCustomEmoji?: () => void;
   /** Match the trigger to the composer it sits in (a 44px row, a 36px row). */
   triggerClassName?: string;
+  /** Controlled mode: the composer's cat button opens the sheet itself. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  initialTab?: PickerTab;
 }) {
   // GIFs are a Purify feature; emoji and stickers stay free for everyone.
   const { allowed } = usePurify();
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<PickerTab>("emoji");
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  const [tab, setTab] = useState<PickerTab>(initialTab ?? "emoji");
   const [query, setQuery] = useState("");
   const [gifResults, setGifResults] = useState<GifResult[]>([]);
   const [stickers, setStickers] = useState<Sticker[]>([]);
@@ -316,23 +327,35 @@ export function GifPicker({
     setVisibleCount(36);
   };
 
+  // A controlled open (the composer's cat button) can ask for a tab, and the
+  // sheet should feel like it opened on that tab rather than flipping.
+  useEffect(() => {
+    if (!open || !initialTab) return;
+    setTab(initialTab);
+    setQuery("");
+    setError("");
+    setVisibleCount(36);
+  }, [open, initialTab]);
+
   // A bottom sheet, not a small popover: on a phone the picker gets the whole
   // width, a drag handle to dismiss it and a scrolling body, which is the part
   // of Discord's picker people actually use.
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={t("emoji_picker")}
-          title={t("emoji_picker")}
-          className={`shrink-0 text-primary ${triggerClassName ?? ""}`}
-        >
-          <Smile className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
+      {hideTrigger ? null : (
+        <SheetTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={t("emoji_picker")}
+            title={t("emoji_picker")}
+            className={`shrink-0 text-primary ${triggerClassName ?? ""}`}
+          >
+            <Smile className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent
         side="bottom"
         className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"

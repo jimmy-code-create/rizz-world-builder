@@ -2321,105 +2321,118 @@ button:active > .motion-icon {
 }
 [data-reduced-motion="true"] .super-reaction-in { animation: none !important; }
 
-/* The super-reaction celebration: the RIZZ cat leaps over the post, fires the
-   emoji outward as sparks and dashes off. Transform/opacity only so the burst
-   stays on the GPU. */
-@keyframes super-burst-cat {
-  0% { transform: scale(0.15) rotate(-32deg) translateY(52px); opacity: 0; }
-  12% { transform: scale(1.22) rotate(8deg) translateY(-10px); opacity: 1; }
-  22% { transform: scale(0.92) rotate(-5deg) translateY(4px); }
-  34% { transform: scale(1.1) rotate(4deg) translateY(-4px); }
-  46% { transform: scale(1) rotate(0deg) translateY(0); }
-  60% { transform: scale(1.04) rotate(-2deg) translateY(-8px); }
-  74% { transform: scale(1) rotate(2deg) translateY(0); }
-  86% { transform: scale(1.02) rotate(0deg) translateY(-3px); opacity: 1; }
-  100% { transform: scale(0.35) translate(92px, -150px) rotate(32deg); opacity: 0; }
+/* ============ SUPER REACTION BURST ============ */
+/* The celebration starts where the pill was tapped: a violet ring leaves the
+   pill, five paw/sparkle marks drift up ~70px and fade, and the card flashes
+   its border. Transform and opacity only, so the whole thing stays on the GPU. */
+@keyframes super-ring {
+  0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.35); }
+  70% { opacity: 0.35; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4.4); }
 }
-.super-burst-cat {
-  animation: super-burst-cat 2300ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+.super-ring {
+  animation: super-ring 760ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   will-change: transform, opacity;
 }
-/* The idle layer: a light bob and rock while the face runs its expression
-   loop. Kept separate from the entrance so neither transform cancels the
-   other. */
-@keyframes super-burst-cat-bob {
-  0%, 100% { transform: translateY(0) rotate(-2.5deg) scale(1); }
-  30% { transform: translateY(-5px) rotate(2deg) scale(1.015); }
-  65% { transform: translateY(1px) rotate(2.5deg) scale(0.99); }
+@keyframes super-particle {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateY(2px) scale(0.55); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--drift, 0px)), -50%) translateY(-70px) scale(1.05); }
 }
-.super-burst-cat-body {
-  animation: super-burst-cat-bob 680ms ease-in-out infinite;
-  will-change: transform;
-}
-/* Two speed streaks appear as the cat launches away, so the exit reads as
-   motion instead of a fade. */
-@keyframes super-burst-streak {
-  0%, 58% { opacity: 0; scale: 0.5; }
-  70% { opacity: 0.85; scale: 1; }
-  88%, 100% { opacity: 0; scale: 1.5; }
-}
-.super-burst-streak {
-  position: absolute;
-  top: 50%;
-  width: 42px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, #c8ff3d);
-  animation: super-burst-streak 2300ms ease-out both;
-  pointer-events: none;
-}
-.super-burst-streak--left {
-  left: -54px;
-  rotate: -16deg;
-  transform-origin: right center;
-}
-.super-burst-streak--right {
-  right: -54px;
-  rotate: 16deg;
-  transform-origin: left center;
-  background: linear-gradient(270deg, transparent, #c8ff3d);
-}
-@keyframes super-burst-glow {
-  0% { opacity: 0; transform: scale(0.3); }
-  22% { opacity: 0.85; transform: scale(1); }
-  65% { opacity: 0.45; transform: scale(1.15); }
-  100% { opacity: 0; transform: scale(1.4); }
-}
-.super-burst-glow {
-  animation: super-burst-glow 2300ms ease-out both;
+.super-particle {
+  animation: super-particle 1000ms cubic-bezier(0.18, 0.7, 0.3, 1) both;
   will-change: transform, opacity;
 }
-@keyframes super-burst-ring {
-  0% { opacity: 0.8; transform: scale(0.35); }
-  100% { opacity: 0; transform: scale(2.6); }
+/* The card border flash is the reduced-motion path too: no travel, just a
+   violet edge for 0.7s. */
+@keyframes super-card-flash {
+  0% { box-shadow: inset 0 0 0 2px rgba(139, 124, 246, 0.95); }
+  55% { box-shadow: inset 0 0 0 2px rgba(139, 124, 246, 0.55); }
+  100% { box-shadow: inset 0 0 0 2px rgba(139, 124, 246, 0); }
 }
-.super-burst-ring {
-  animation: super-burst-ring 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  will-change: transform, opacity;
-}
-@keyframes super-burst-spark {
-  0% { opacity: 0; transform: translate(0, 0) scale(0.3); }
-  12% { opacity: 1; transform: translate(calc(var(--sx) * 0.25), calc(var(--sy) * 0.25)) scale(1); }
-  100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.6) rotate(140deg); }
-}
-.super-burst-spark {
-  animation: super-burst-spark 1150ms cubic-bezier(0.15, 0.6, 0.35, 1) both;
-  will-change: transform, opacity;
-}
-@keyframes super-burst-label {
-  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
-  25% { opacity: 1; transform: translateY(0) scale(1); }
-  78% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-10px); }
-}
-.super-burst-label {
-  animation: super-burst-label 2300ms ease-out both;
-  will-change: transform, opacity;
+.super-card-flash {
+  animation: super-card-flash 700ms ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .super-burst-scene { display: none !important; }
+  .super-ring,
+  .super-particle { animation: none !important; opacity: 0 !important; }
 }
-[data-reduced-motion="true"] .super-burst-scene { display: none !important; }
+[data-reduced-motion="true"] .super-ring,
+[data-reduced-motion="true"] .super-particle {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+/* ============ COUNTS ============ */
+/* A changed number pops once, on top of the rolling digit. */
+@keyframes count-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.count-pop {
+  animation: count-pop 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .count-pop { animation: none !important; }
+}
+[data-reduced-motion="true"] .count-pop { animation: none !important; }
+
+/* Reaction pill rows scroll sideways and keep the scrollbar out of the design. */
+.reaction-pill-row {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.reaction-pill-row::-webkit-scrollbar { display: none; }
+
+/* ============ COMPOSER ============ */
+/* The action button swaps mic and arrow with a 150ms cross-fade and a small
+   pop; under reduced motion the icon just changes. */
+@keyframes composer-action-swap {
+  0% { opacity: 0; transform: scale(0.9); }
+  60% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.composer-action-swap {
+  animation: composer-action-swap 150ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-action-swap { animation: none !important; }
+}
+[data-reduced-motion="true"] .composer-action-swap { animation: none !important; }
+@keyframes composer-record-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.composer-record-dot { animation: composer-record-dot 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .composer-record-dot { animation: none !important; }
+}
+[data-reduced-motion="true"] .composer-record-dot { animation: none !important; }
+
+/* ============ LIVE VIEWER ============ */
+/* Hearts drift up the right edge and fade; comments slide in from the left. */
+@keyframes live-heart-float {
+  0% { opacity: 0; transform: translateY(0) scale(0.6) rotate(-8deg); }
+  15% { opacity: 1; transform: translateY(-24px) scale(1) rotate(4deg); }
+  70% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-190px) scale(1.1) rotate(-10deg); }
+}
+.live-heart-float {
+  animation: live-heart-float 1800ms ease-out both;
+  will-change: transform, opacity;
+}
+@keyframes live-comment-in {
+  0% { opacity: 0; transform: translateX(-14px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.live-comment-in { animation: live-comment-in 260ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .live-heart-float { animation: none !important; opacity: 0 !important; }
+  .live-comment-in { animation: none !important; }
+}
+[data-reduced-motion="true"] .live-heart-float { animation: none !important; opacity: 0 !important; }
+[data-reduced-motion="true"] .live-comment-in { animation: none !important; }
 
 /* ============ LIVE ROOM ============ */
 /* One pulse for every "on air" dot: the shell, the studio and the audience

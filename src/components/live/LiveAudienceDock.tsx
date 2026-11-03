@@ -7,6 +7,7 @@ import {
   Mic,
   MicOff,
   Music2,
+  PawPrint,
   Radio,
   Send,
   Sparkles,
@@ -26,6 +27,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/lib/toast";
 import { LIVE_SOUND_BEDS, liveModeLabel, liveSoundBedLabel } from "@/lib/live-studio";
 import type { LiveRoomState } from "@/components/live/useLiveRoom";
 
@@ -58,6 +62,39 @@ export function LiveAudienceDock({
   const liveCall = call?.kind === "live" ? call : null;
   const [open, setOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  // Pinning a bounty: a host-only action, chosen from the host's own open
+  // bounties. The pin itself rides the live broadcast, so it disappears with
+  // the room instead of needing a table.
+  const { user } = useAuth();
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinRows, setPinRows] = useState<Array<{ id: string; title: string; prize_paws: number | null }>>([]);
+
+  useEffect(() => {
+    if (!pinOpen || !live.isHost || !user?.id) return;
+    let cancelled = false;
+    setPinLoading(true);
+    supabase
+      .from("drops")
+      .select("id, title, prize_paws")
+      .eq("creator_id", user.id)
+      .eq("state", "open")
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setPinRows([]);
+          toast.error(error.message);
+        } else {
+          setPinRows((data ?? []) as Array<{ id: string; title: string; prize_paws: number | null }>);
+        }
+        setPinLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pinOpen, live.isHost, user?.id]);
   const [note, setNote] = useState("");
   const [chatBody, setChatBody] = useState("");
   const [unseen, setUnseen] = useState(0);
@@ -184,6 +221,19 @@ export function LiveAudienceDock({
             >
               <Music2 className="h-3 w-3" />
               {liveSoundBedLabel(live.settings.soundBed)}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPinOpen(true)}
+              aria-pressed={Boolean(live.pinnedBounty)}
+              className={`inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-semibold transition-colors ${
+                live.pinnedBounty
+                  ? "border-primary/45 bg-primary/10 text-primary"
+                  : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <PawPrint className="h-3 w-3" />
+              {live.pinnedBounty ? "Bounty pinned" : "Pin bounty"}
             </button>
             <button
               type="button"
@@ -485,6 +535,70 @@ export function LiveAudienceDock({
   return (
     <>
       {variant === "rail" ? rail : mobileDock}
+      <Sheet open={pinOpen} onOpenChange={setPinOpen}>
+        <SheetContent
+          side="bottom"
+          className="z-[160] max-h-[80dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#100d17] pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display text-xl">Pin a bounty</SheetTitle>
+            <SheetDescription>
+              The card sits over your stream with a Claim button until you clear it.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-3 space-y-2">
+            {live.pinnedBounty ? (
+              <button
+                type="button"
+                onClick={() => {
+                  live.pinBounty(null);
+                  setPinOpen(false);
+                }}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] text-[12px] font-semibold text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" /> Clear the pinned bounty
+              </button>
+            ) : null}
+            {pinLoading ? (
+              <p className="py-6 text-center text-xs text-muted-foreground">Loading your bounties…</p>
+            ) : null}
+            {!pinLoading && pinRows.length === 0 ? (
+              <p className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-6 text-center text-xs text-muted-foreground">
+                No open bounties right now. Post one from Drops, then pin it here.
+              </p>
+            ) : null}
+            {pinRows.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => {
+                  if (!user) return;
+                  live.pinBounty({
+                    id: row.id,
+                    title: row.title,
+                    paws: Number(row.prize_paws ?? 0),
+                    hostId: user.id,
+                  });
+                  setPinOpen(false);
+                  toast.success("Pinned to your stream");
+                }}
+                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left transition-colors hover:border-primary/35 hover:bg-primary/[0.06]"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+                  <PawPrint className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-semibold">{row.title}</span>
+                  <span className="block text-[10px] tabular-nums text-muted-foreground">
+                    {Number(row.prize_paws ?? 0)} Paws
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
       <Sheet open={requestOpen} onOpenChange={setRequestOpen}>
         <SheetContent
           side="bottom"

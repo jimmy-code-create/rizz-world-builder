@@ -22,6 +22,14 @@ export type LiveChatMessage = {
   system?: boolean;
 };
 
+/** A bounty the host pinned over the stream. Ephemeral, like the chat. */
+export type LivePinnedBounty = {
+  id: string;
+  title: string;
+  paws: number;
+  hostId: string;
+};
+
 export type LiveJoinRequest = {
   userId: string;
   name: string;
@@ -48,6 +56,7 @@ type LiveRequestPayload = {
 
 type LiveStagePayload = { ids?: string[] };
 type LiveTargetPayload = { userId?: string };
+type LivePinPayload = { bounty?: LivePinnedBounty | null; hostId?: string | null };
 
 const MAX_CHAT_MESSAGES = 120;
 const MAX_REQUEST_NOTE = 140;
@@ -80,6 +89,12 @@ export function useLiveRoom() {
   const [requested, setRequested] = useState(false);
   const [ready, setReady] = useState(false);
   const [ambienceMuted, setAmbienceMuted] = useState(false);
+  // Room-wide, not per viewer: a heart anyone taps is a heart the whole room
+  // sees, which is what makes the count on the host pill feel alive.
+  const [heartCount, setHeartCount] = useState(0);
+  const [pinnedBounty, setPinnedBounty] = useState<LivePinnedBounty | null>(null);
+  const pinnedRef = useRef<LivePinnedBounty | null>(null);
+  pinnedRef.current = pinnedBounty;
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const stageRef = useRef<string[]>([]);
@@ -137,6 +152,8 @@ export function useLiveRoom() {
     setRequested(false);
     setReady(false);
     setAmbienceMuted(false);
+    setHeartCount(0);
+    setPinnedBounty(null);
   }, [roomId, call?.hostId]);
 
   // The database knows the host and any real speakers. Broadcast state is
@@ -261,6 +278,21 @@ export function useLiveRoom() {
         stageRef.current = next;
         setStageIds(next);
       })
+      .on("broadcast", { event: "pin" }, ({ payload }) => {
+        const pin = payload as LivePinPayload;
+        if (pin.hostId !== hostIdRef.current) return;
+        setPinnedBounty(pin.bounty ?? null);
+      })
+      .on("broadcast", { event: "heart" }, () => {
+        setHeartCount((count) => count + 1);
+      })
+      .on("broadcast", { event: "join" }, ({ payload }) => {
+        const joiner = payload as { name?: string; userId?: string };
+        if (!joiner?.userId || joiner.userId === selfIdRef.current) return;
+        // The viewer screen shows these in lime, so a room filling up reads as
+        // activity instead of silence.
+        pushSystem(`${cleanName(joiner.name, "Someone")} joined`);
+      })
       .on("broadcast", { event: "hello" }, () => {
         if (!isHostRef.current) return;
         channel.send({
@@ -277,12 +309,25 @@ export function useLiveRoom() {
           event: "hello",
           payload: { userId: selfIdRef.current },
         }).catch(() => {});
+        channel.send({
+          type: "broadcast",
+          event: "join",
+          payload: { userId: selfIdRef.current, name: selfName },
+        }).catch(() => {});
         if (isHostRef.current) {
           channel.send({
             type: "broadcast",
             event: "stage",
             payload: { ids: stageRef.current, hostId: hostIdRef.current },
           }).catch(() => {});
+          // A late viewer needs the pin as well as the stage.
+          if (pinnedRef.current) {
+            channel.send({
+              type: "broadcast",
+              event: "pin",
+              payload: { bounty: pinnedRef.current, hostId: hostIdRef.current },
+            }).catch(() => {});
+          }
         }
       });
 
@@ -291,7 +336,7 @@ export function useLiveRoom() {
       setReady(false);
       void supabase.removeChannel(channel);
     };
-  }, [roomId, user?.id, pushMessage, pushSystem]);
+  }, [roomId, user?.id, pushMessage, pushSystem, selfName]);
 
   // A room can sit open for a while. The heartbeat lets a viewer who joined
   // between stage changes catch up without needing a database row.
@@ -444,6 +489,26 @@ export function useLiveRoom() {
     [roomId, user?.id, selfName, selfAvatar, pushMessage],
   );
 
+  /** Host only: pin (or clear) a bounty over the stream for every viewer. */
+  const pinBounty = useCallback(
+    (bounty: LivePinnedBounty | null) => {
+      if (!isHost) return;
+      pinnedRef.current = bounty;
+      setPinnedBounty(bounty);
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "pin",
+        payload: { bounty, hostId: hostIdRef.current },
+      }).catch(() => {});
+    },
+    [isHost],
+  );
+
+  const sendHeart = useCallback(() => {
+    setHeartCount((count) => count + 1);
+    channelRef.current?.send({ type: "broadcast", event: "heart", payload: { at: Date.now() } }).catch(() => {});
+  }, []);
+
   const copyInvite = useCallback(async () => {
     if (!roomId) return;
     const link = `${window.location.origin}/live/${roomId}`;
@@ -474,6 +539,10 @@ export function useLiveRoom() {
     stageIds,
     stageSet,
     isOnStage,
+    heartCount,
+    sendHeart,
+    pinnedBounty,
+    pinBounty,
     requests,
     requested,
     ambienceMuted,

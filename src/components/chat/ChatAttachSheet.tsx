@@ -32,11 +32,14 @@ export function ChatAttachButton({
   disabled,
   className,
   label = "Add to your message",
+  appearance = "tile",
 }: {
   actions: ChatAttachAction[];
   disabled?: boolean;
   className?: string;
   label?: string;
+  /** `circle` is the chat composer's 44px disc; `tile` is the squared frame. */
+  appearance?: "tile" | "circle";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -56,15 +59,23 @@ export function ChatAttachButton({
         disabled={disabled}
         aria-label={label}
         className={cn(
-          "group grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground disabled:opacity-40",
+          appearance === "circle"
+            ? "group grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[rgba(255,255,255,0.14)] bg-[#171717] text-[#d6d6d6] transition-colors hover:border-white/25 hover:bg-[#1f1f1f] hover:text-white disabled:opacity-40"
+            : "group grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground disabled:opacity-40",
           className,
         )}
       >
-        {/* A squared frame inside the squared button: the plus always sits in
-            a box, at 44px and at the 36px DM size alike. */}
-        <span className="grid h-6 w-6 place-items-center rounded-md border border-white/10 bg-white/[0.06] transition-colors group-hover:border-white/20">
-          <Plus className="h-4 w-4" />
-        </span>
+        {appearance === "circle" ? (
+          // The composer's attach is a plain disc: no nested frame, a plus with
+          // rounded caps at the visual weight of the send arrow.
+          <Plus className="h-5 w-5" strokeWidth={2} strokeLinecap="round" />
+        ) : (
+          // A squared frame inside the squared button: the plus always sits in
+          // a box, at 44px and at the 36px DM size alike.
+          <span className="grid h-6 w-6 place-items-center rounded-md border border-white/10 bg-white/[0.06] transition-colors group-hover:border-white/20">
+            <Plus className="h-4 w-4" />
+          </span>
+        )}
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>

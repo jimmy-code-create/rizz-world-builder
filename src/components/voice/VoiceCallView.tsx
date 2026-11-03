@@ -58,6 +58,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
 import { LiveAudienceDock } from "@/components/live/LiveAudienceDock";
+import { LiveViewerStage } from "@/components/live/LiveViewerStage";
 import { LiveAmbience } from "@/components/live/LiveAmbience";
 import { useLiveRoom } from "@/components/live/useLiveRoom";
 import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
@@ -435,6 +436,11 @@ export const VoiceCallView = memo(function VoiceCallView() {
   } = useVoiceCallContext();
   const liveRoom = useLiveRoom();
   const isLive = call?.kind === "live";
+  // The viewer stage needs the host's face and name, not just their id.
+  const liveHostParticipant = useMemo(
+    () => participants.find((participant) => participant.user_id === call?.hostId) ?? null,
+    [participants, call?.hostId],
+  );
 
   // Sharing is a Set so the per-tile check stays O(1). Speaking levels are
   // read inside <SpeakingTiles> only, so an audio tick never re-renders the
@@ -802,6 +808,36 @@ export const VoiceCallView = memo(function VoiceCallView() {
         aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
+        {/* An audience member is not a call participant: they get the viewer
+            stage, not a grid with a deafen button. Guests the host brought on
+            stage keep the call UI, because they now have a camera and a mic. */}
+        {isLive && !liveRoom.isHost && !liveRoom.isOnStage ? (
+          <LiveViewerStage
+            live={liveRoom}
+            title={call?.channelName ?? "Live"}
+            host={{
+              id: liveHostParticipant?.user_id ?? call?.hostId ?? null,
+              name:
+                liveHostParticipant?.user?.display_name ||
+                liveHostParticipant?.user?.username ||
+                "Host",
+              username: liveHostParticipant?.user?.username ?? "host",
+              avatarUrl: liveHostParticipant?.user?.avatar_url ?? null,
+            }}
+            hostStream={videosByPeer.get(call?.hostId ?? "") ?? null}
+            viewers={participants
+              .filter((participant) => participant.user_id !== call?.hostId)
+              .slice(0, 3)
+              .map((participant) => ({
+                id: participant.user_id,
+                name:
+                  participant.user?.display_name || participant.user?.username || "Viewer",
+                avatarUrl: participant.user?.avatar_url ?? null,
+              }))}
+            onClose={closeView}
+          />
+        ) : (
+        <>
         <header className="relative flex shrink-0 items-center gap-2 border-b border-white/5 px-3 pb-2.5 pt-3 sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4">
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -1686,6 +1722,8 @@ export const VoiceCallView = memo(function VoiceCallView() {
             </div>
           </SheetContent>
         </Sheet>
+        </>
+        )}
       </div>
     </FullScreenLayer>
   );

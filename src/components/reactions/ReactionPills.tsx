@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { customReactionId, emojiMapOf, emojiReactionKey, useEmojiLookup } from "@/lib/emoji-shared";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
+import { AnimatedCount } from "@/components/ui/animated-count";
 import type { SharedEmoji } from "@/lib/emoji-shared";
 
 export type SharedReactionGroup = {
@@ -16,23 +17,35 @@ export type SharedReactionGroup = {
   mineSuper?: boolean;
 };
 
+/** Super reactions are violet in every surface: pill, ring and card flash. */
+const SUPER = "#8b7cf6";
+
 /**
  * One pill row for the whole app.
  *
  * Posts, comments, chats and reels all end up here: a unicode pill draws its
  * glyph, a `ce:<id>` pill draws the custom image, and both show the same count
- * and the same "mine" ring. Long-press opens who reacted.
+ * and the same "mine" fill. The row is a single line that scrolls sideways
+ * instead of wrapping, so a popular post never pushes its own caption down.
+ *
+ * Order is fixed: supers first, then the biggest reaction, then the rest —
+ * and the plus pill always sits last. Long-press opens who reacted.
  */
 export function ReactionPills({
   groups,
   onToggle,
   onShowReactors,
+  onAdd,
+  addLabel = "Add a reaction",
   className,
   compact = false,
 }: {
   groups: SharedReactionGroup[];
   onToggle: (key: string) => void;
   onShowReactors?: (key: string) => void;
+  /** The trailing plus pill. Omitted where reactions are read-only. */
+  onAdd?: () => void;
+  addLabel?: string;
   className?: string;
   compact?: boolean;
 }) {
@@ -44,7 +57,18 @@ export function ReactionPills({
   const map = useMemo(() => emojiMapOf(lookup.data), [lookup.data]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  if (!groups.length) return null;
+  // Supers lead, then the loudest. Sorted here too, so a caller that hands over
+  // rows in query order still gets one predictable row.
+  const ordered = useMemo(
+    () =>
+      [...groups].sort(
+        (a, b) =>
+          Number((b.superCount ?? 0) > 0) - Number((a.superCount ?? 0) > 0) || b.count - a.count,
+      ),
+    [groups],
+  );
+
+  if (!groups.length && !onAdd) return null;
 
   const start = (key: string) => {
     if (!onShowReactors) return;
@@ -56,12 +80,17 @@ export function ReactionPills({
   };
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-      {groups.map((group) => {
+    <div
+      className={cn(
+        "reaction-pill-row flex items-center gap-1.5 overflow-x-auto pb-0.5",
+        compact ? "py-0" : "py-0.5",
+        className,
+      )}
+    >
+      {ordered.map((group) => {
         const id = customReactionId(group.key);
         const emoji = id ? map.get(id) : undefined;
-        const superCount = group.superCount ?? 0;
-        const isSuper = superCount > 0;
+        const isSuper = (group.superCount ?? 0) > 0;
         return (
           <button
             key={group.key}
@@ -75,19 +104,30 @@ export function ReactionPills({
               onShowReactors?.(group.key);
             }}
             aria-pressed={group.mine}
-            className={cn(
-              "inline-flex items-center rounded-full border transition-transform duration-150 active:scale-90 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              compact ? "h-5 gap-0.5 px-1 text-[10px]" : "h-7 gap-1 px-2 text-[12px]",
+            aria-label={`${group.count} ${group.key}${isSuper ? " super" : ""} reaction${group.mine ? ", yours" : ""}`}
+            style={
               isSuper
-                ? "border-[var(--super-violet-soft)] super-reaction-pill text-foreground shadow-[0_0_20px_var(--super-shadow)] ring-1 ring-inset ring-white/10"
+                ? { borderColor: group.mine ? SUPER : `${SUPER}99`, backgroundColor: group.mine ? `${SUPER}40` : `${SUPER}26` }
+                : undefined
+            }
+            className={cn(
+              "inline-flex shrink-0 items-center rounded-full border transition-[transform,background-color,border-color,color] duration-[250ms] ease-out active:scale-95 motion-reduce:transition-none",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              compact ? "h-6 gap-1 px-2 text-[11px]" : "h-[30px] gap-1.5 px-2.5 text-[12px]",
+              isSuper
+                ? "font-bold"
                 : group.mine
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
-              isSuper && group.mine && "ring-primary/50",
-              isSuper && !compact && "super-reaction-in",
+                  ? "border-primary/80 bg-primary/[0.12] font-semibold text-primary hover:bg-primary/[0.18]"
+                  : "border-white/[0.14] bg-[#1a1a1a] font-semibold text-[#dcdcdc] hover:border-white/25 hover:bg-[#202020]",
             )}
           >
-            {id ? (
+            {isSuper ? (
+              <Sparkles
+                className={compact ? "h-3 w-3" : "h-3.5 w-3.5"}
+                style={{ color: group.mine ? "#e3d7ff" : "#c9b8ff" }}
+                aria-hidden="true"
+              />
+            ) : id ? (
               <EmojiGlyph
                 emoji={emoji}
                 shortcode={emoji?.shortcode ?? "emoji"}
@@ -96,26 +136,54 @@ export function ReactionPills({
             ) : (
               <UnicodeGlyph
                 value={group.key}
-                className={compact ? "text-[14px]" : "text-[16px]"}
-                size={compact ? 14 : 16}
+                className={compact ? "text-[13px]" : "text-[15px]"}
+                size={compact ? 13 : 15}
               />
             )}
             {isSuper ? (
-              <Sparkles
-                className={compact ? "h-2 w-2 text-[var(--super-paper)]" : "h-2.5 w-2.5 text-[var(--super-paper)]"}
-                aria-hidden="true"
-              />
+              <span
+                className="text-[10px] font-black uppercase tracking-[0.08em]"
+                style={{ color: group.mine ? "#e3d7ff" : "#c9b8ff" }}
+              >
+                Super
+              </span>
             ) : null}
-            <span
-              className={cn("tabular-nums", isSuper ? "font-bold text-[var(--super-paper)]" : "font-semibold")}
-            >
-              {group.count}
-            </span>
+            <AnimatedCount
+              value={group.count}
+              format={(next) => formatReactionCount(next)}
+              className={cn(
+                "text-[11px] font-bold leading-none",
+                isSuper ? "text-[#efe8ff]" : "",
+              )}
+            />
           </button>
         );
       })}
+
+      {onAdd ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label={addLabel}
+          title={addLabel}
+          className={cn(
+            "grid shrink-0 place-items-center rounded-full border border-white/[0.14] bg-[#1a1a1a] text-[#cfcfcf] transition-[transform,background-color,border-color,color] duration-250 ease-out hover:border-white/25 hover:bg-[#202020] hover:text-white active:scale-95 motion-reduce:transition-none",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            compact ? "h-6 w-6" : "h-[30px] w-[30px]",
+          )}
+        >
+          <Plus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   );
+}
+
+/** The count never shows more than four digits inside a pill. */
+function formatReactionCount(value: number) {
+  if (value < 1000) return String(value);
+  if (value < 10_000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${Math.round(value / 1000)}K`;
 }
 
 /**
