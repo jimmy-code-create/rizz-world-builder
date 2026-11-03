@@ -8,6 +8,8 @@ import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import { useAuth } from "@/lib/auth";
 import { useGameBot, useGameOverlayUI } from "@/lib/game-bot";
 import { GAME_CATEGORIES, GAME_LIBRARY, type GameEntry } from "@/lib/game-library";
+import { Badge, GameRankBadge } from "@/components/badges/Badge";
+import { formatPlaytime, useArcadePlayMs } from "@/lib/games/arcade-record";
 
 export const Route = createFileRoute("/_app/games")({
   head: () => ({ meta: [{ title: "Games · RIZZ" }] }),
@@ -37,6 +39,39 @@ function Logo({ icon, emoji, size = "h-7 w-7", text = "text-base" }: { icon?: st
  * or from the in-call list here. Outside a call the cards point you to a voice
  * channel first.
  */
+/**
+ * Time played, and the sticker it has earned, on the hub itself.
+ *
+ * The arcade record lives on the device, so this strip is the one place the
+ * number and the badge are both visible before a profile is opened.
+ */
+function ArcadeRankStrip() {
+  const ms = useArcadePlayMs();
+  const unlocked = ms >= 3_600_000;
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <span className={unlocked ? "" : "opacity-45 grayscale"}>
+        {unlocked ? (
+          <GameRankBadge size={32} />
+        ) : (
+          <Badge type="game_rookie" size={32} progress={ms / 3_600_000} noTooltip />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-sm font-bold">
+          {unlocked ? "Your arcade rank" : "Your first arcade sticker"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <span className="tabular-nums">{formatPlaytime(ms)}</span> played on this device
+          {unlocked
+            ? " · ranks climb at 1h, 10h and 50h"
+            : ` · ${formatPlaytime(3_600_000 - ms)} to Arcade Rookie`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GamesPage() {
   const { call, openView } = useVoiceCallContext();
   const { user } = useAuth();
@@ -107,6 +142,8 @@ function GamesPage() {
           ? "Tap a game to launch your own GAME BOT session. Everyone in the call can join yours without losing their own game."
           : "Games play together in voice. Join a voice channel in a realm, then launch anything here."}
       </p>
+
+      <ArcadeRankStrip />
 
       {!inCall && (
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/[0.07] p-3">

@@ -35,6 +35,7 @@ const room = read("components/live/useLiveRoom.ts");
 const dock = read("components/live/LiveAudienceDock.tsx");
 const callView = read("components/voice/VoiceCallView.tsx");
 const ambience = read("components/live/LiveAmbience.tsx");
+const hostStage = read("components/live/LiveHostStage.tsx");
 const styles = read("styles.css");
 
 await check("the Live entry point was rebuilt, not just tinted", () => {
@@ -110,6 +111,20 @@ await check("wanna come live is a styled request with a note", () => {
   assert.match(dock, /Not yet/, "the host can decline");
   assert.match(dock, /Requests on|Requests off/, "the host can close requests");
   assert.match(dock, /Mute yourself|Unmute yourself/, "the host can mute from the dock");
+});
+
+await check("the host gets the broadcast stage, not a voice-call grid", () => {
+  assert.match(callView, /isLive && liveRoom\.isHost \?/, "the host branch is missing");
+  assert.ok(callView.includes("<LiveHostStage"), "the host never reaches the broadcast stage");
+  assert.ok(!hostStage.includes("CallControls"), "the host still gets the call controls");
+  assert.match(hostStage, /live\.pinnedBounty/, "the pinned bounty is missing");
+  assert.match(hostStage, /live\.requests/, "join requests are missing");
+  assert.match(hostStage, /wants to come on/, "requests have no action row");
+  assert.match(hostStage, /live\.sendChat/, "the host cannot chat");
+  assert.match(hostStage, /live\.sendHeart/, "the host cannot send hearts");
+  assert.match(hostStage, /onToggleMute/, "no mic control");
+  assert.match(hostStage, /onToggleScreenShare/, "no screen control");
+  assert.match(hostStage, /onEnd/, "no end control");
 });
 
 await check("live is not the realm bot surface", () => {

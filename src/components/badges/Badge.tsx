@@ -6,26 +6,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { formatPlaytime, useArcadePlayMs } from "@/lib/games/arcade-record";
 
 /**
- * Profile badges, redrawn as one family.
+ * Profile badges, drawn as one family of flat stickers.
  *
- * Every badge is a single inline `<svg>` — no sprite fetch, no emoji, no image
- * files — and every badge obeys the same construction rules:
+ * The previous set was five different silhouettes (shield, gem, wreath, crown,
+ * wave) each with its own gradient, gloss and glow. At 16px that read as five
+ * unrelated coins. This set is deliberately the opposite:
  *
- *  - a silhouette drawn on the 24 grid with round joins and a 1u hairline rim
- *    of white at 55%, so the edge reads the same on shield, gem, star, paw and
- *    crown;
- *  - one two-tone gradient in *user space* (lit at y=3, deep at y=21), so a
- *    multi-part silhouette like the paw shares a single light source instead of
- *    every toe lighting itself;
- *  - a top-edge highlight clipped to the silhouette — the "inner highlight"
- *    that stops a dark-bottom gradient from looking like flat paint;
- *  - one small outer glow, sized off the rendered px, never a drop shadow.
+ *  - **One shared shape.** Every mark is the same die-cut rounded square, in
+ *    the same place on the 24 grid. A row of badges reads as a sheet of
+ *    stickers, not a drawer of medals.
+ *  - **Flat colour.** One solid body, one solid lower shade, one ink outline,
+ *    one cream paper edge, one hard offset shadow. No gradients, no gloss, no
+ *    blur, no glow — a sticker printed in two inks.
+ *  - **A collected corner.** The cream quarter-disc in the bottom-right is the
+ *    lifted edge of the sticker. It is part of the shared shape, so it lines up
+ *    across a row.
+ *  - **One bold glyph.** Filled or 2.4u strokes, never thinner, so it survives
+ *    the 16px name row.
  *
- * Sizes are honest: 16, 20 and 28 are the three the UI uses, and the inner icon
- * is deliberately one idea each (a check, a sparkle, a pad) so nothing mushes
- * at the small end.
+ * The arcade ranks use the same sticker: the only addition is a small playtime
+ * meter above the lifted corner, which is how "how much have they played"
+ * reads at a glance without a number.
  */
 export type BadgeType = "verified" | "premium" | "early_member" | "top_paws" | "creator";
 
@@ -38,94 +42,142 @@ export const BADGE_TYPES: readonly BadgeType[] = [
   "creator",
 ] as const;
 
+/** Arcade ranks, earned from time played rather than from a purchase. */
+export type GameBadgeType = "game_rookie" | "game_fiend" | "game_legend";
+
+export const GAME_BADGE_TYPES: readonly GameBadgeType[] = [
+  "game_rookie",
+  "game_fiend",
+  "game_legend",
+] as const;
+
 type BadgeDef = {
   /** Short label shown in the tooltip and used as the accessible name. */
   label: string;
   /** Second tooltip line — what the badge is *for*. */
   hint: string;
-  /** Two-tone gradient: the lit top, the deep bottom. */
-  from: string;
-  to: string;
-  /** Outer glow, also the accent to use beside the mark. */
-  glow: string;
-  /** Silhouette on the 24 grid (one or more shapes; painted in user space). */
-  shape: ReactNode;
-  /** Inner icon — filled white unless stated. */
-  glyph?: ReactNode;
+  /** Flat body colour. */
+  color: string;
+  /** Flat lower-third shade, a darker mix of the body. */
+  shade: string;
+  /** Glyph and meter colour: ink on light stickers, paper on dark ones. */
+  ink: string;
+  /** Silhouette-internal glyph, drawn around (12, 11). */
+  glyph: ReactNode;
+  /** Arcade ranks carry a playtime meter above the lifted corner. */
+  meter?: boolean;
 };
 
-const BADGES: Record<BadgeType, BadgeDef> = {
+/** The one shape: a 17.6×18.4 die-cut rounded square. */
+const PAPER = { x: 3.2, y: 2.8, width: 17.6, height: 18.4, rx: 6.4 };
+const BODY = { x: 4.9, y: 4.5, width: 14.2, height: 15, rx: 4.9 };
+const METER = { x: 6.4, y: 16.6, width: 11.2, height: 1.7 };
+/** The lifted corner: the bottom-right quarter of the body. */
+const LIFT = "M19.1 19.5 H14.2 A4.9 4.9 0 0 1 19.1 14.6 Z";
+
+const BADGES: Record<BadgeType | GameBadgeType, BadgeDef> = {
   verified: {
     label: "Verified",
     hint: "A real, checked account",
-    from: "#8ec8ff",
-    to: "#2563eb",
-    glow: "rgba(59,130,246,0.55)",
-    shape: (
-      <path d="M12 2.6 L19.5 5.3 V11.6 C19.5 16.1 16.4 19.6 12 21.3 C7.6 19.6 4.5 16.1 4.5 11.6 V5.3 Z" />
-    ),
+    color: "#3B82F6",
+    shade: "#1D4ED8",
+    ink: "#F4F1E7",
     glyph: (
-      <path d="M8.5 12.2 L11 14.7 L15.6 9.7" fill="none" strokeWidth={2.1} />
+      <path d="M8.4 11.4 10.8 13.8 15.6 8.9" fill="none" strokeWidth={2.4} />
     ),
   },
   premium: {
     label: "Premium",
     hint: "RIZZ Plus, active",
-    from: "#e3c4ff",
-    to: "#7c3aed",
-    glow: "rgba(139,92,246,0.55)",
-    shape: <path d="M8 4.6 H16 L20.4 9.5 L12 20.6 L3.6 9.5 Z" />,
+    color: "#8B5CF6",
+    shade: "#6D28D9",
+    ink: "#F4F1E7",
     glyph: (
-      <path
-        d="M12 7.2 Q12.6 10.8 16.2 11.4 Q12.6 12 12 15.6 Q11.4 12 7.8 11.4 Q11.4 10.8 12 7.2 Z"
-        strokeWidth={0}
-      />
+      <path d="M12 6.4c.6 2.9 2.3 4.6 5.2 5.2-2.9.6-4.6 2.3-5.2 5.2-.6-2.9-2.3-4.6-5.2-5.2 2.9-.6 4.6-2.3 5.2-5.2Z" />
     ),
   },
   early_member: {
-    label: "Early member",
-    hint: "Joined before it was big",
-    from: "#ffe6a1",
-    to: "#d97706",
-    glow: "rgba(245,158,11,0.5)",
-    shape: (
-      <path d="M12 2.3 L15.29 7.47 L21.23 9 L17.33 13.73 L17.7 19.85 L12 17.6 L6.3 19.85 L6.67 13.73 L2.77 9 L8.71 7.47 Z" />
+    label: "Early Member",
+    hint: "Joined in RIZZ's first 30 days",
+    color: "#C9FF3D",
+    shade: "#9CC72C",
+    ink: "#14180A",
+    glyph: (
+      <g>
+        <path d="M12 17.2V10.2" fill="none" strokeWidth={2.6} strokeLinecap="round" />
+        <path d="M12 12.8C9.3 12.9 7.6 11.4 7.4 8.7c2.7.1 4.4 1.5 4.6 4.1Z" />
+        <path d="M12 11.5c2.5.1 4.1-1.3 4.3-3.8-2.5.1-4.1 1.4-4.3 3.8Z" />
+      </g>
     ),
-    // The star is the icon; a second mark inside it would only mush at 16px.
   },
   top_paws: {
-    label: "Top paws",
-    hint: "Top of this week's earners",
-    from: "#b7f5d9",
-    to: "#0f9d6f",
-    glow: "rgba(16,185,129,0.5)",
-    shape: (
-      <>
-        <circle cx="7.5" cy="8.4" r="2.7" />
-        <circle cx="12" cy="6.5" r="2.8" />
-        <circle cx="16.5" cy="8.4" r="2.7" />
-        <path d="M12 11.7 c3.3 0 5.8 2.2 5.8 4.6 0 2.2-1.8 3.5-4.3 3.5 h-3 c-2.5 0-4.3-1.3-4.3-3.5 0-2.4 2.5-4.6 5.8-4.6 Z" />
-      </>
-    ),
+    label: "Top Paws",
+    hint: "The biggest Paws earner",
+    color: "#FFC93C",
+    shade: "#E0A015",
+    ink: "#241703",
     glyph: (
-      <path
-        d="M12 13.7 c2.2 0 3.6 1.4 3.6 2.7 0 1.2-1.1 1.9-2.7 1.9 h-1.8 c-1.6 0-2.7-.7-2.7-1.9 0-1.3 1.4-2.7 3.6-2.7 Z"
-        strokeWidth={0}
-      />
+      <g>
+        <path d="M12 16.9c2.5 0 4.2-1.3 4.2-3 0-1.5-1.4-2.3-2.9-2.7l-1.3-.4-1.3.4C9.2 11.6 7.8 12.4 7.8 13.9c0 1.7 1.7 3 4.2 3Z" />
+        <circle cx="8.5" cy="9.4" r="1.5" />
+        <circle cx="12" cy="8.2" r="1.6" />
+        <circle cx="15.5" cy="9.4" r="1.5" />
+      </g>
     ),
   },
   creator: {
     label: "Creator",
-    hint: "Posts and gets watched",
-    from: "#ffb8c8",
-    to: "#e11d48",
-    glow: "rgba(244,63,94,0.5)",
-    shape: <path d="M4.4 8.3 L7.8 11.6 L12 5.8 L16.2 11.6 L19.6 8.3 L18.3 17.7 H5.7 Z" />,
+    hint: "Publishes to the realms",
+    color: "#FF5D6C",
+    shade: "#D93A4A",
+    ink: "#F4F1E7",
+    glyph: <path d="M9.5 7.6 16.4 11.9 9.5 16.2Z" strokeWidth={1.4} />,
+  },
+  game_rookie: {
+    label: "Arcade Rookie",
+    hint: "Played 1+ hour on the arcade",
+    color: "#2DD4BF",
+    shade: "#0F9E8C",
+    ink: "#04241F",
+    meter: true,
     glyph: (
-      <g strokeWidth={0}>
-        <circle cx="12" cy="14.6" r="1.7" />
-        <circle cx="8.2" cy="15.6" r="1.1" />
-        <circle cx="15.8" cy="15.6" r="1.1" />
+      <g>
+        <rect x="6.2" y="6.3" width="11.6" height="7" rx="3.5" fill="none" strokeWidth={1.9} />
+        <path d="M9.1 8.9v2.6M7.8 10.2h2.6" fill="none" strokeWidth={1.7} strokeLinecap="round" />
+        <circle cx="14.4" cy="9.4" r=".95" strokeWidth={0} />
+        <circle cx="15.9" cy="10.8" r=".95" strokeWidth={0} />
+      </g>
+    ),
+  },
+  game_fiend: {
+    label: "Arcade Fiend",
+    hint: "Played 10+ hours on the arcade",
+    color: "#6366F1",
+    shade: "#4338CA",
+    ink: "#F4F1E7",
+    meter: true,
+    glyph: (
+      <g>
+        <rect x="6.2" y="6.3" width="11.6" height="7" rx="3.5" fill="none" strokeWidth={1.9} />
+        <path d="M9.1 8.9v2.6M7.8 10.2h2.6" fill="none" strokeWidth={1.7} strokeLinecap="round" />
+        <circle cx="14.4" cy="9.4" r=".95" strokeWidth={0} />
+        <circle cx="15.9" cy="10.8" r=".95" strokeWidth={0} />
+      </g>
+    ),
+  },
+  game_legend: {
+    label: "Arcade Legend",
+    hint: "Played 50+ hours on the arcade",
+    color: "#FFC24B",
+    shade: "#E09612",
+    ink: "#2A1A02",
+    meter: true,
+    glyph: (
+      <g>
+        <rect x="6.2" y="6.3" width="11.6" height="7" rx="3.5" fill="none" strokeWidth={1.9} />
+        <path d="M9.1 8.9v2.6M7.8 10.2h2.6" fill="none" strokeWidth={1.7} strokeLinecap="round" />
+        <circle cx="14.4" cy="9.4" r=".95" strokeWidth={0} />
+        <circle cx="15.9" cy="10.8" r=".95" strokeWidth={0} />
       </g>
     ),
   },
@@ -133,13 +185,15 @@ const BADGES: Record<BadgeType, BadgeDef> = {
 
 export type BadgeProps = {
   /** Which badge to draw. */
-  type: BadgeType;
+  type: BadgeType | GameBadgeType;
   /** Rendered square size in px — 16, 20 and 28 are the sizes the UI uses. */
   size?: number;
   /** Overrides the tooltip label and the accessible name. */
   label?: string;
   /** Extra tooltip line under the label. */
   hint?: string;
+  /** Arcade meter fill, 0–1. Ignored by marks without a meter. */
+  progress?: number;
   className?: string;
   style?: CSSProperties;
   /** Suppress the tooltip on surfaces that already explain the badge. */
@@ -157,22 +211,20 @@ export function Badge({
   size = 20,
   label,
   hint,
+  progress = 1,
   className,
   style,
   noTooltip = false,
 }: BadgeProps) {
-  // Gradient ids are per instance: several badges of the same type sit in the
-  // same pill, and duplicate ids in one document are a coin toss about which
-  // one wins.
+  // The lifted corner needs a clip path in some browsers; ids are per instance
+  // because several badges of the same type share one pill.
   const uid = useId().replace(/:/g, "");
   const def = BADGES[type];
   const name = label ?? def.label;
   const sub = hint ?? def.hint;
   const px = Math.max(16, Math.round(size));
-  const bodyId = `bzg-${type}-${uid}`;
-  const fill = `url(#f-${bodyId})`;
-  const shine = `url(#h-${bodyId})`;
-  const clip = `url(#c-${bodyId})`;
+  const clip = `url(#c-${uid})`;
+  const filled = Math.max(0, Math.min(1, progress));
 
   const art = (
     <svg
@@ -181,43 +233,61 @@ export function Badge({
       height={px}
       focusable="false"
       aria-hidden={noTooltip ? undefined : true}
-      style={{ filter: `drop-shadow(0 0 ${(px * 0.11).toFixed(2)}px ${def.glow})`, ...style }}
+      style={style}
     >
       <defs>
-        {/* One light source for every badge, in user space so a multi-part
-            silhouette (the paw) lights as a single object. */}
-        <linearGradient id={`f-${bodyId}`} gradientUnits="userSpaceOnUse" x1="0" y1="3" x2="0" y2="21">
-          <stop offset="0%" stopColor={def.from} />
-          <stop offset="100%" stopColor={def.to} />
-        </linearGradient>
-        <linearGradient id={`h-${bodyId}`} gradientUnits="userSpaceOnUse" x1="0" y1="2.5" x2="0" y2="13">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
-          <stop offset="60%" stopColor="#ffffff" stopOpacity="0.07" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-        <clipPath id={`c-${bodyId}`}>{def.shape}</clipPath>
+        <clipPath id={`c-${uid}`}>
+          <rect {...BODY} />
+        </clipPath>
       </defs>
 
-      {/* Body: two-tone fill, hairline rim, then the top-edge highlight. */}
-      <g
-        fill={fill}
-        stroke="rgba(255,255,255,0.55)"
-        strokeWidth={1}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      >
-        {def.shape}
+      {/* A hard offset shadow, not a blur: the sticker sits on the page. */}
+      <rect {...PAPER} y={PAPER.y + 1} fill="#07070A" opacity="0.55" />
+      {/* The cream die-cut edge every sticker has. */}
+      <rect {...PAPER} fill="#F4F1E7" />
+      {/* Flat body, flat lower shade. */}
+      <rect {...BODY} fill={def.color} />
+      <g clipPath={clip}>
+        <rect x={BODY.x} y={13.6} width={BODY.width} height={BODY.height} fill={def.shade} />
       </g>
-      <g clipPath={clip} fill={shine} stroke="none">
-        <rect x="0" y="0" width="24" height="24" />
-      </g>
+      {/* The lifted corner, in paper. */}
+      <path d={LIFT} fill="#E2DCCB" stroke="#0B0B0B" strokeWidth={1.4} strokeLinejoin="round" />
+      {/* One ink outline around the body. */}
+      <rect {...BODY} fill="none" stroke="#0B0B0B" strokeWidth={1.9} />
 
-      {/* Inner icon: white, one idea, sized to survive 16px. Filled glyphs
-          (sparkle, paw pad, crown stones) inherit the fill; stroked ones like
-          the check declare their own. */}
-      <g fill="#ffffff" stroke="#ffffff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      {/* Plain glyph: one idea, no detail that dies at 16px. */}
+      <g
+        fill={def.ink}
+        stroke={def.ink}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         {def.glyph}
       </g>
+
+      {/* Arcade playtime meter: three dots' worth of width, filled by rank. */}
+      {def.meter ? (
+        <>
+          <rect
+            x={METER.x}
+            y={METER.y}
+            width={METER.width}
+            height={METER.height}
+            rx={METER.height / 2}
+            fill="#0B0B0B"
+            opacity="0.22"
+          />
+          <rect
+            x={METER.x}
+            y={METER.y}
+            width={Math.max(METER.height, METER.width * filled)}
+            height={METER.height}
+            rx={METER.height / 2}
+            fill={def.ink}
+          />
+        </>
+      ) : null}
     </svg>
   );
 
@@ -272,18 +342,54 @@ export function Badge({
 export { Badge as ProfileBadge };
 
 /**
+ * The arcade rank, read from the device's play record.
+ *
+ * Games are device-local, so this badge is too — the same rule the existing
+ * Game Champ badge follows. It renders nothing until the first hour so a new
+ * account never sees an empty rank.
+ */
+export function GameRankBadge({
+  size = 20,
+  className,
+  noTooltip = false,
+}: {
+  size?: number;
+  className?: string;
+  noTooltip?: boolean;
+}) {
+  const ms = useArcadePlayMs();
+  const hours = ms / 3_600_000;
+  const type: GameBadgeType | null =
+    hours >= 50 ? "game_legend" : hours >= 10 ? "game_fiend" : hours >= 1 ? "game_rookie" : null;
+  if (!type) return null;
+  const nextRank = type === "game_rookie" ? "10h" : type === "game_fiend" ? "50h" : null;
+  const progress =
+    type === "game_legend" ? 1 : type === "game_fiend" ? (hours - 10) / 40 : (hours - 1) / 9;
+  return (
+    <Badge
+      type={type}
+      size={size}
+      className={className}
+      noTooltip={noTooltip}
+      progress={progress}
+      hint={`${formatPlaytime(ms)} played${nextRank ? ` · next rank at ${nextRank}` : " · top rank"}`}
+    />
+  );
+}
+
+/**
  * Which catalog slug draws which mark.
  *
  * The name row carries four slugs — `verified`, `streamer`, `bounty-hunter`,
- * `purify` — so the map is chosen to give that row four *different* new marks
+ * `purify` — so the map is chosen to give that row four *different* stickers
  * instead of mixing old art with new in one pill:
  *
- *   verified / no-cap         → shield (the blue check it has always been)
- *   purify                    → gem    (the purple gem it has always been)
- *   streamer / verified_creator → crown (a creator is a creator)
- *   og / founder              → star   (early members)
- *   bounty-hunter / top-rizzler / top_paws → paw (the top earner)
- *   premium / plus            → gem
+ *   verified / no-cap         → check
+ *   purify                    → sparkle
+ *   streamer / verified_creator → play
+ *   og / founder              → sprout
+ *   bounty-hunter / top-rizzler / top_paws → paw
+ *   premium / plus            → sparkle
  *
  * Anything not listed keeps the sprite badge, so a retired or unknown award
  * still renders instead of silently disappearing from a profile.

@@ -43,6 +43,7 @@ export function MessageComposer({
   attach,
   above,
   mentions,
+  overlay,
   reply,
   disabled = false,
   disabledHint = "You can't send messages here",
@@ -61,6 +62,7 @@ export function MessageComposer({
   /** Groups have no voice notes yet: the action stays a send arrow. */
   allowVoice = true,
   onKeyUp,
+  onKeyDown,
   onTextareaClick,
   onFocus,
 }: {
@@ -76,6 +78,8 @@ export function MessageComposer({
   above?: ReactNode;
   /** The mention popup, rendered inside the pill's positioning context. */
   mentions?: ReactNode;
+  /** Anything else that anchors above the field, e.g. the realm slash menu. */
+  overlay?: ReactNode;
   reply?: ComposerReply | null;
   disabled?: boolean;
   /** Why the composer is closed: shown in place of the placeholder. */
@@ -95,6 +99,8 @@ export function MessageComposer({
   canSend?: boolean;
   allowVoice?: boolean;
   onKeyUp?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** Runs before the composer's own Enter-to-send, for slash menus and the like. */
+  onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onTextareaClick?: (event: React.MouseEvent<HTMLTextAreaElement>) => void;
   onFocus?: () => void;
 }) {
@@ -253,6 +259,8 @@ export function MessageComposer({
                   onClick={onTextareaClick}
                   onFocus={onFocus}
                   onKeyDown={(event) => {
+                    onKeyDown?.(event);
+                    if (event.defaultPrevented) return;
                     // Desktop: Enter sends, Shift+Enter breaks the line.
                     // Phones keep Enter as a newline — the action button sends.
                     if (
@@ -289,6 +297,7 @@ export function MessageComposer({
               </>
             )}
             {mentions}
+            {overlay}
           </div>
 
           {(!allowVoice || canSendNow) && !recording ? (

@@ -779,12 +779,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       {reactionGroups.length > 0 && (
         <div ref={pillsRef} className="flex items-center px-3 pb-2">
           {/* One pill row for every surface: a unicode reaction draws its glyph,
-              a custom one draws its image, long-press opens who reacted, and the
-              trailing plus pill is the way to add the first one. */}
+              a custom one draws its image, and long-press opens who reacted. */}
           <ReactionPills
             groups={reactionGroups}
             onToggle={toggleReaction}
-            onAdd={() => setReactPickerOpen(true)}
             onShowReactors={(key) => {
               setInitialReactionTab(key);
               setReactionsSheetOpen(true);

@@ -59,6 +59,7 @@ import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
 import { LiveAudienceDock } from "@/components/live/LiveAudienceDock";
 import { LiveViewerStage } from "@/components/live/LiveViewerStage";
+import { LiveHostStage } from "@/components/live/LiveHostStage";
 import { LiveAmbience } from "@/components/live/LiveAmbience";
 import { useLiveRoom } from "@/components/live/useLiveRoom";
 import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
@@ -808,10 +809,66 @@ export const VoiceCallView = memo(function VoiceCallView() {
         aria-hidden={!viewOpen}
         style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)" }}
       >
-        {/* An audience member is not a call participant: they get the viewer
-            stage, not a grid with a deafen button. Guests the host brought on
-            stage keep the call UI, because they now have a camera and a mic. */}
-        {isLive && !liveRoom.isHost && !liveRoom.isOnStage ? (
+        {/* A live room is not a call: the host gets the broadcast stage with
+            their stream as the page, the audience gets the viewer stage, and
+            only guests brought on stage keep a call UI with a camera and mic. */}
+        {isLive && liveRoom.isHost ? (
+          <>
+          <LiveHostStage
+            live={liveRoom}
+            title={call?.channelName ?? "Live"}
+            host={{
+              id: user?.id ?? "host",
+              name:
+                participants.find((participant) => participant.user_id === user?.id)?.user
+                  ?.display_name ||
+                participants.find((participant) => participant.user_id === user?.id)?.user
+                  ?.username ||
+                "Host",
+              username:
+                participants.find((participant) => participant.user_id === user?.id)?.user
+                  ?.username ?? "host",
+              avatarUrl:
+                participants.find((participant) => participant.user_id === user?.id)?.user
+                  ?.avatar_url ?? null,
+            }}
+            cameraStream={localCameraStream}
+            screenStream={localScreenStream}
+            viewers={participants
+              .filter((participant) => participant.user_id !== user?.id)
+              .slice(0, 3)
+              .map((participant) => ({
+                id: participant.user_id,
+                name:
+                  participant.user?.display_name || participant.user?.username || "Viewer",
+                avatarUrl: participant.user?.avatar_url ?? null,
+              }))}
+            guests={liveRoom.stageIds
+              .filter((id) => id !== user?.id)
+              .map((id) => {
+                const guest = participants.find((participant) => participant.user_id === id);
+                return {
+                  id,
+                  name: guest?.user?.display_name || guest?.user?.username || "Guest",
+                  stream: videosByPeer.get(id) ?? null,
+                };
+              })}
+            muted={muted}
+            cameraOn={cameraOn}
+            sharingScreen={sharingScreen}
+            screenSupported={screenSupported}
+            onToggleMute={toggleMute}
+            onToggleCamera={toggleCamera}
+            onToggleScreenShare={toggleScreenShareSafe}
+            onOpenSettings={openSettings}
+            onMinimize={closeView}
+            onEnd={leaveCall}
+          />
+          {/* The sound bed plays on the host's device too, so it cannot live
+              inside the voice-call branch. */}
+          <LiveAmbience bed={liveRoom.settings.soundBed} muted={liveRoom.ambienceMuted} />
+          </>
+        ) : isLive && !liveRoom.isOnStage ? (
           <LiveViewerStage
             live={liveRoom}
             title={call?.channelName ?? "Live"}

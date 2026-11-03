@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { customReactionId, emojiMapOf, emojiReactionKey, useEmojiLookup } from "@/lib/emoji-shared";
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
@@ -17,8 +17,20 @@ export type SharedReactionGroup = {
   mineSuper?: boolean;
 };
 
-/** Super reactions are violet in every surface: pill, ring and card flash. */
-const SUPER = "#8b7cf6";
+/**
+ * Every super reaction wears its own colour.
+ *
+ * The hue comes from the reaction key, so one cat is always aqua and another
+ * always rose — the same way a chat tag keeps its colour — and a row of two
+ * supers reads as two different reactions instead of one violet block.
+ */
+function superHue(key: string) {
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) % 360;
+  }
+  return hash;
+}
 
 /**
  * One pill row for the whole app.
@@ -28,24 +40,21 @@ const SUPER = "#8b7cf6";
  * and the same "mine" fill. The row is a single line that scrolls sideways
  * instead of wrapping, so a popular post never pushes its own caption down.
  *
- * Order is fixed: supers first, then the biggest reaction, then the rest —
- * and the plus pill always sits last. Long-press opens who reacted.
+ * Order is fixed: supers first, then the biggest reaction, then the rest.
+ * A super pill is still just a pill — its glyph, its count and its own colour.
+ * No sparkle, no label, no trailing plus: reactions are added from the picker
+ * that each surface already owns. Long-press opens who reacted.
  */
 export function ReactionPills({
   groups,
   onToggle,
   onShowReactors,
-  onAdd,
-  addLabel = "Add a reaction",
   className,
   compact = false,
 }: {
   groups: SharedReactionGroup[];
   onToggle: (key: string) => void;
   onShowReactors?: (key: string) => void;
-  /** The trailing plus pill. Omitted where reactions are read-only. */
-  onAdd?: () => void;
-  addLabel?: string;
   className?: string;
   compact?: boolean;
 }) {
@@ -68,7 +77,7 @@ export function ReactionPills({
     [groups],
   );
 
-  if (!groups.length && !onAdd) return null;
+  if (!groups.length) return null;
 
   const start = (key: string) => {
     if (!onShowReactors) return;
@@ -91,6 +100,7 @@ export function ReactionPills({
         const id = customReactionId(group.key);
         const emoji = id ? map.get(id) : undefined;
         const isSuper = (group.superCount ?? 0) > 0;
+        const hue = isSuper ? superHue(group.key) : 0;
         return (
           <button
             key={group.key}
@@ -105,9 +115,15 @@ export function ReactionPills({
             }}
             aria-pressed={group.mine}
             aria-label={`${group.count} ${group.key}${isSuper ? " super" : ""} reaction${group.mine ? ", yours" : ""}`}
+            title={isSuper ? `Super reaction · ${group.count}` : undefined}
             style={
               isSuper
-                ? { borderColor: group.mine ? SUPER : `${SUPER}99`, backgroundColor: group.mine ? `${SUPER}40` : `${SUPER}26` }
+                ? {
+                    borderColor: `hsl(${hue} 85% 66% / ${group.mine ? 0.92 : 0.68})`,
+                    backgroundColor: `hsl(${hue} 72% ${group.mine ? 24 : 17}%)`,
+                    color: `hsl(${hue} 92% 84%)`,
+                    boxShadow: `inset 0 0 0 1px hsl(${hue} 85% 80% / 0.16), 0 0 18px hsl(${hue} 90% 60% / 0.2)`,
+                  }
                 : undefined
             }
             className={cn(
@@ -115,19 +131,13 @@ export function ReactionPills({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               compact ? "h-6 gap-1 px-2 text-[11px]" : "h-[30px] gap-1.5 px-2.5 text-[12px]",
               isSuper
-                ? "font-bold"
+                ? "font-bold super-reaction-in"
                 : group.mine
                   ? "border-primary/80 bg-primary/[0.12] font-semibold text-primary hover:bg-primary/[0.18]"
                   : "border-white/[0.14] bg-[#1a1a1a] font-semibold text-[#dcdcdc] hover:border-white/25 hover:bg-[#202020]",
             )}
           >
-            {isSuper ? (
-              <Sparkles
-                className={compact ? "h-3 w-3" : "h-3.5 w-3.5"}
-                style={{ color: group.mine ? "#e3d7ff" : "#c9b8ff" }}
-                aria-hidden="true"
-              />
-            ) : id ? (
+            {id ? (
               <EmojiGlyph
                 emoji={emoji}
                 shortcode={emoji?.shortcode ?? "emoji"}
@@ -140,41 +150,14 @@ export function ReactionPills({
                 size={compact ? 13 : 15}
               />
             )}
-            {isSuper ? (
-              <span
-                className="text-[10px] font-black uppercase tracking-[0.08em]"
-                style={{ color: group.mine ? "#e3d7ff" : "#c9b8ff" }}
-              >
-                Super
-              </span>
-            ) : null}
             <AnimatedCount
               value={group.count}
               format={(next) => formatReactionCount(next)}
-              className={cn(
-                "text-[11px] font-bold leading-none",
-                isSuper ? "text-[#efe8ff]" : "",
-              )}
+              className="text-[11px] font-bold leading-none"
             />
           </button>
         );
       })}
-
-      {onAdd ? (
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={addLabel}
-          title={addLabel}
-          className={cn(
-            "grid shrink-0 place-items-center rounded-full border border-white/[0.14] bg-[#1a1a1a] text-[#cfcfcf] transition-[transform,background-color,border-color,color] duration-250 ease-out hover:border-white/25 hover:bg-[#202020] hover:text-white active:scale-95 motion-reduce:transition-none",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            compact ? "h-6 w-6" : "h-[30px] w-[30px]",
-          )}
-        >
-          <Plus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden="true" />
-        </button>
-      ) : null}
     </div>
   );
 }

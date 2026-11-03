@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { PawPrint, Sparkles } from "lucide-react";
+import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
 
 /**
  * The super-reaction celebration.
  *
- * It used to be a full-size cat leaping across the card, which read as its own
- * event instead of a louder version of a reaction. Now the applause starts at
- * the pill that was tapped: a violet ring pulses out of it, five paw/sparkle
- * marks drift up about 70px and fade in a second, and the card flashes its
- * border violet. The flash is CSS on the card (PostCard toggles it), so readers
- * who ask for reduced motion still get the acknowledgement without any travel.
+ * A super reaction is a cat, so the celebration is the cat itself: the sticker
+ * pops out of the pill, the ring behind it snaps outward, five sparks scatter,
+ * and then the whole thing lifts and fades. It is a one-shot — nothing is left
+ * on screen after it lands.
+ *
+ * The card flash is CSS on the card (PostCard toggles it), so readers who ask
+ * for reduced motion still get the acknowledgement without any travel.
  */
 export type SuperBurst = {
   key: string;
@@ -18,12 +19,17 @@ export type SuperBurst = {
   at?: { x: number; y: number } | null;
 };
 
-const LIFETIME_MS = 1150;
-const PARTICLES = [-1, 1, -0.4, 0.6, 0];
+const LIFETIME_MS = 1500;
+const PARTICLES = [-1, 1, -0.45, 0.6, 0];
 
 function reducedMotion() {
   if (typeof window === "undefined" || !window.matchMedia) return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** A super pick is always a cat shortcode; anything else still gets a face. */
+function catFor(key: string) {
+  return CAT_EMOJI_MANIFEST.find((entry) => entry.shortcode === key) ?? null;
 }
 
 export function SuperReactionBurst({
@@ -62,27 +68,40 @@ export function SuperReactionBurst({
 
   if (!burst || !point) return null;
 
+  const cat = catFor(burst.key);
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[120] overflow-hidden" aria-hidden="true">
       <div className="absolute" style={{ left: point.x, top: point.y }}>
         <span className="super-ring absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#8b7cf6]" />
+
+        <span className="super-cat-halo absolute h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+
         {PARTICLES.map((drift, index) => (
           <span
             key={`${burst.seq}-${index}`}
-            className="super-particle absolute -translate-x-1/2 -translate-y-1/2 text-[#a78bfa]"
+            className="super-particle absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#c9b8ff]"
             style={{
-              // A little sideways spread so five marks do not read as a column.
-              ["--drift" as string]: `${drift * 26}px`,
-              animationDelay: `${index * 70}ms`,
+              ["--drift" as string]: `${drift * 42}px`,
+              animationDelay: `${index * 55}ms`,
             }}
-          >
-            {index % 2 === 0 ? (
-              <PawPrint className="h-3.5 w-3.5 drop-shadow-[0_1px_6px_rgba(139,124,246,0.55)]" />
-            ) : (
-              <Sparkles className="h-3 w-3 drop-shadow-[0_1px_6px_rgba(139,124,246,0.55)]" />
-            )}
-          </span>
+          />
         ))}
+
+        <span className="super-cat absolute -translate-x-1/2 -translate-y-1/2">
+          {cat ? (
+            <img
+              src={cat.src}
+              alt=""
+              draggable={false}
+              className="h-24 w-24 select-none object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+            />
+          ) : (
+            <span className="grid h-24 w-24 place-items-center rounded-full bg-[#8b7cf6] text-4xl font-black text-white">
+              {burst.key.slice(0, 2)}
+            </span>
+          )}
+        </span>
       </div>
     </div>
   );

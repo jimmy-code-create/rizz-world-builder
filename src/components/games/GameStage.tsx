@@ -1,6 +1,7 @@
 import { Gamepad2 } from "lucide-react";
 import { BuiltinSurface } from "@/components/games/registry";
 import { isValidGameUrl, type GameEntry } from "@/lib/activities";
+import { useArcadeSession } from "@/lib/games/arcade-record";
 
 /**
  * One surface for every game, wherever it runs.
@@ -29,6 +30,10 @@ export function GameStage({
   fullscreen?: boolean;
   className?: string;
 }) {
+  // Every game surface (instant play and the in-call stage) passes through
+  // here, so this is the one place the arcade can credit visible playtime.
+  useArcadeSession(entry?.id ?? null, Boolean(entry));
+
   if (!entry) {
     return (
       <div

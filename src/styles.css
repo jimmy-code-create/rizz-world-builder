@@ -2304,15 +2304,6 @@ button:active > .motion-icon {
   45% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
-.super-reaction-pill {
-  background: linear-gradient(
-    120deg,
-    rgba(180, 124, 255, 0.32),
-    rgba(124, 77, 255, 0.18) 48%,
-    rgba(236, 72, 153, 0.22)
-  );
-}
-
 .super-reaction-in {
   animation: super-reaction-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
@@ -2323,8 +2314,8 @@ button:active > .motion-icon {
 
 /* ============ SUPER REACTION BURST ============ */
 /* The celebration starts where the pill was tapped: a violet ring leaves the
-   pill, five paw/sparkle marks drift up ~70px and fade, and the card flashes
-   its border. Transform and opacity only, so the whole thing stays on the GPU. */
+   pill, the cat sticker itself pops out, five sparks scatter, and the cat lifts
+   and fades. Transform and opacity only, so the whole thing stays on the GPU. */
 @keyframes super-ring {
   0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.35); }
   70% { opacity: 0.35; }
@@ -2343,6 +2334,33 @@ button:active > .motion-icon {
   animation: super-particle 1000ms cubic-bezier(0.18, 0.7, 0.3, 1) both;
   will-change: transform, opacity;
 }
+/* The sticker pops, holds for a beat, then leaves upward. */
+@keyframes super-cat {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35) rotate(-14deg); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(4deg); }
+  38% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  62% { opacity: 1; transform: translate(-50%, -50%) translateY(-8px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-96px) scale(0.82); }
+}
+.super-cat {
+  animation: super-cat 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  will-change: transform, opacity;
+}
+@keyframes super-cat-halo {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  25% { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+}
+.super-cat-halo {
+  background: radial-gradient(
+    circle,
+    rgba(139, 124, 246, 0.55),
+    rgba(139, 124, 246, 0.14) 55%,
+    transparent 72%
+  );
+  animation: super-cat-halo 900ms ease-out both;
+  will-change: transform, opacity;
+}
 /* The card border flash is the reduced-motion path too: no travel, just a
    violet edge for 0.7s. */
 @keyframes super-card-flash {
@@ -2355,10 +2373,14 @@ button:active > .motion-icon {
 }
 @media (prefers-reduced-motion: reduce) {
   .super-ring,
-  .super-particle { animation: none !important; opacity: 0 !important; }
+  .super-particle,
+  .super-cat,
+  .super-cat-halo { animation: none !important; opacity: 0 !important; }
 }
 [data-reduced-motion="true"] .super-ring,
-[data-reduced-motion="true"] .super-particle {
+[data-reduced-motion="true"] .super-particle,
+[data-reduced-motion="true"] .super-cat,
+[data-reduced-motion="true"] .super-cat-halo {
   animation: none !important;
   opacity: 0 !important;
 }

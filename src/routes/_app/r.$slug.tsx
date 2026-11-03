@@ -76,7 +76,6 @@ import {
   MicOff,
   Pencil,
   Search,
-  Send,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -103,6 +102,7 @@ import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { compressChatImage } from "@/lib/chat-media";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
+import { MessageComposer } from "@/components/chat/MessageComposer";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
@@ -260,7 +260,7 @@ function RealmPage() {
   const [newRoomKind, setNewRoomKind] = useState<RealmRoomKind>("text");
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [caret, setCaret] = useState(0);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -300,6 +300,7 @@ function RealmPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
   const [realmGamesOpen, setRealmGamesOpen] = useState(false);
@@ -2603,7 +2604,7 @@ function RealmPage() {
       />
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
-        <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
+        <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
           {myWriteBlocked && (
             <p className="mx-auto mb-2 w-full max-w-3xl text-center text-[11px] text-muted-foreground">
               Writing is off in {activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A
@@ -2611,28 +2612,6 @@ function RealmPage() {
             </p>
           )}
           <div className="mx-auto w-full max-w-3xl">
-            {imagePreview && (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  Photo compresses before upload
-                </span>
-                <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            <div className="flex gap-2">
-            {/* One composer control for every emoji: standard, this server's own,
-                GIFs and stickers. The second smiley button is gone. */}
-            <GifPicker
-              realmId={c.id}
-              triggerClassName="h-11 w-11"
-              onSelect={(marker) =>
-                setBody((current) => `${current}${current ? " " : ""}${marker}`)
-              }
-              onCustomEmoji={joined ? () => setEmojiOpen(true) : undefined}
-            />
             <input
               ref={imageInputRef}
               type="file"
@@ -2654,115 +2633,130 @@ function RealmPage() {
                 event.currentTarget.value = "";
               }}
             />
-            {/* Discord's `+`: one sheet for photo, camera, poll and schedule,
-                instead of a bare `+` or a photo-only icon. */}
-            <ChatAttachButton
-              disabled={!!composerBlock}
-              actions={[
-                { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-                { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-                { id: "poll", label: "Poll", hint: "Ask the room", icon: BarChart3, onSelect: () => setPollOpen(true) },
-                { id: "schedule", label: "Schedule", hint: "Send later", icon: CalendarClock, onSelect: () => setScheduleOpen(true), disabled: !body.trim() },
-              ]}
-            />
-            {/* The slider and the mention popup both anchor to the input wrapper, so
-              they can never end up on opposite sides of the composer. */}
-            <div className="relative min-w-0 flex-1">
-              <AnimatePresence>
-                {slashMenuOpen && (
-                  <div className="absolute inset-x-0 bottom-full z-40 mb-2">
-                    <SlashCommandMenu
-                      commands={slashMatches}
-                      activeIndex={slashActive}
-                      emptyHint={slashHint}
-                      onHover={setSlashIndex}
-                      onSelect={pickSlashCommand}
-                    />
+            {/* The realm wears the same composer as a DM: one attach circle, one
+                pill, one action circle. The realm's own picker keeps the GIFs and
+                stickers and opens from the cat button. */}
+            <MessageComposer
+              value={body}
+              onChange={(next, nextCaret) => {
+                setBody(next);
+                setSlashHidden(false);
+                setSlashIndex(0);
+                setCaret(nextCaret);
+              }}
+              onSend={() => void handleSend()}
+              onEmoji={() => setEmojiOpen(true)}
+              onStickers={() => setGifOpen(true)}
+              disabled={!joined || roomLockedForMe || myWriteBlocked}
+              disabledHint={composerBlock ?? "You can't send messages here"}
+              placeholder={composerBlock ?? "Message"}
+              maxLength={500}
+              textareaRef={inputRef}
+              sending={sending}
+              canSend={Boolean(body.trim() || imageFile)}
+              allowVoice={false}
+              above={
+                imagePreview ? (
+                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                    <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                      Photo compresses before upload
+                    </span>
+                    <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                )}
-              </AnimatePresence>
-              <Input
-                ref={inputRef}
-                value={body}
-                onChange={(e) => {
-                  setBody(e.target.value);
-                  setSlashHidden(false);
-                  setSlashIndex(0);
-                  setCaret(e.target.selectionStart ?? e.target.value.length);
-                }}
-                onKeyUp={(e) => setCaret((e.target as HTMLInputElement).selectionStart ?? 0)}
-                // Tapping the composer means “I'm replying to the now”: land on
-                // the newest message instead of leaving the reader scrolled up.
-                onClick={(e) => {
-                  setCaret((e.target as HTMLInputElement).selectionStart ?? 0);
-                  scrollChatToLatest(messageListRef.current);
-                }}
-                onFocus={() => scrollChatToLatest(messageListRef.current)}
-                onKeyDown={(e) => {
-                  // Arrow keys and Enter belong to the slash menu while it has rows;
-                  // the no-match hint does not steal Enter, so the message still sends.
-                  if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-                    e.preventDefault();
-                    setSlashIndex((current) =>
-                      wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
-                    );
-                    return;
-                  }
-                  if (
-                    slashMatchCount > 0 &&
-                    (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
-                  ) {
-                    e.preventDefault();
-                    const chosen = slashMatches[slashActive] ?? slashMatches[0];
-                    if (chosen) pickSlashCommand(chosen);
-                    return;
-                  }
-                  if (slashMenuOpen && e.key === "Escape") {
-                    e.preventDefault();
-                    setSlashHidden(true);
-                    return;
-                  }
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    window.matchMedia("(pointer: fine)").matches
-                  ) {
-                    e.preventDefault();
-                    void handleSend();
-                  }
-                }}
-                placeholder={composerBlock ?? "Message"}
-                disabled={!joined || sending || roomLockedForMe || myWriteBlocked}
-                maxLength={500}
-                className="composer-input glass border-white/10"
-              />
-              <MentionAutocomplete
-                value={body}
-                caret={caret}
-                memberIds={(members.data ?? []).map((member) => member.user_id)}
-                emptyHint="No realm member matches that name."
-                onPick={(username) => {
-                  const next = replaceMention(body, caret, username);
-                  setBody(next.value);
-                  setCaret(next.caret);
-                  const el = inputRef.current;
-                  if (el)
-                    requestAnimationFrame(() => {
-                      el.focus();
-                      el.setSelectionRange(next.caret, next.caret);
-                    });
-                }}
-              />
-            </div>
-            <Button
-              onClick={handleSend}
-              disabled={!joined || (!body.trim() && !imageFile) || sending || roomLockedForMe || myWriteBlocked}
-              size="icon"
-              className="h-11 w-11 shrink-0 border-0 bg-primary text-primary-foreground shadow-md"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-            </div>
+                ) : null
+              }
+              attach={
+                <ChatAttachButton
+                  appearance="circle"
+                  disabled={!!composerBlock}
+                  actions={[
+                    { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+                    { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+                    { id: "poll", label: "Poll", hint: "Ask the room", icon: BarChart3, onSelect: () => setPollOpen(true) },
+                    { id: "schedule", label: "Schedule", hint: "Send later", icon: CalendarClock, onSelect: () => setScheduleOpen(true), disabled: !body.trim() },
+                  ]}
+                />
+              }
+              mentions={
+                <MentionAutocomplete
+                  value={body}
+                  caret={caret}
+                  memberIds={(members.data ?? []).map((member) => member.user_id)}
+                  emptyHint="No realm member matches that name."
+                  onPick={(username) => {
+                    const next = replaceMention(body, caret, username);
+                    setBody(next.value);
+                    setCaret(next.caret);
+                    const el = inputRef.current;
+                    if (el)
+                      requestAnimationFrame(() => {
+                        el.focus();
+                        el.setSelectionRange(next.caret, next.caret);
+                      });
+                  }}
+                />
+              }
+              overlay={
+                <AnimatePresence>
+                  {slashMenuOpen && (
+                    <div className="absolute inset-x-0 bottom-full z-40 mb-2">
+                      <SlashCommandMenu
+                        commands={slashMatches}
+                        activeIndex={slashActive}
+                        emptyHint={slashHint}
+                        onHover={setSlashIndex}
+                        onSelect={pickSlashCommand}
+                      />
+                    </div>
+                  )}
+                </AnimatePresence>
+              }
+              onKeyDown={(e) => {
+                // Arrow keys and Enter belong to the slash menu while it has rows;
+                // the no-match hint does not steal Enter, so the message still sends.
+                if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                  e.preventDefault();
+                  setSlashIndex((current) =>
+                    wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
+                  );
+                  return;
+                }
+                if (
+                  slashMatchCount > 0 &&
+                  (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
+                ) {
+                  e.preventDefault();
+                  const chosen = slashMatches[slashActive] ?? slashMatches[0];
+                  if (chosen) pickSlashCommand(chosen);
+                  return;
+                }
+                if (slashMenuOpen && e.key === "Escape") {
+                  e.preventDefault();
+                  setSlashHidden(true);
+                }
+              }}
+              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              // Tapping the composer means “I'm replying to the now”: land on
+              // the newest message instead of leaving the reader scrolled up.
+              onTextareaClick={(e) => {
+                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+                scrollChatToLatest(messageListRef.current);
+              }}
+              onFocus={() => scrollChatToLatest(messageListRef.current)}
+            />
+            <GifPicker
+              hideTrigger
+              open={gifOpen}
+              onOpenChange={setGifOpen}
+              realmId={c.id}
+              onSelect={(marker) =>
+                setBody((current) => `${current}${current ? " " : ""}${marker}`)
+              }
+              onCustomEmoji={joined ? () => setEmojiOpen(true) : undefined}
+            />
           </div>
         </div>
       )}

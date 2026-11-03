@@ -119,6 +119,8 @@ await check("sending keeps the phone keyboard open and typing follows", async ()
   // send for the browsers that blur it anyway.
   assert.ok(!shared.includes("onMouseDown"), "the send control takes focus on mousedown");
   assert.match(shared, /field\.current\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(realm, /<MessageComposer/, "the realm does not use the shared composer");
+  assert.match(realm, /textareaRef=\{inputRef\}/, "the realm does not hand over its field");
   for (const [name, source] of [["dm", dm], ["group", group]]) {
     assert.match(source, /<MessageComposer/, `${name} does not use the shared composer`);
     assert.match(source, /textareaRef=\{composerRef\}/, `${name} does not hand over its field`);
@@ -138,15 +140,11 @@ await check("sending keeps the phone keyboard open and typing follows", async ()
 await check("clicking a composer lands on the newest message", async () => {
   for (const [name, source] of [["dm", dm], ["group", group], ["realm", realm]]) {
     assert.ok(source.includes("scrollChatToLatest("), `${name} uses the shared jump`);
-    if (name === "realm") {
-      assert.match(source, /onClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/, `${name} jumps on click`);
-    } else {
-      assert.match(
-        source,
-        /onTextareaClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/,
-        `${name} jumps on click`,
-      );
-    }
+    assert.match(
+      source,
+      /onTextareaClick=\{\(e\) => \{[\s\S]{0,200}?scrollChatToLatest\(/,
+      `${name} jumps on click`,
+    );
   }
   const helper = read("lib/chat-scroll.ts");
   assert.match(helper, /scroller\.scrollTop = scroller\.scrollHeight/, "it scrolls to the bottom");

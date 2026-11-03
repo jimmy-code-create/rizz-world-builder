@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchBlocked } from "@/lib/social";
-import { Smile, UserPlus, Check, Undo2, Sparkles } from "lucide-react";
+import { Smile, UserPlus, Check, Undo2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 import { ReactionKeyGlyph } from "@/components/reactions/ReactionKeyGlyph";
@@ -18,7 +18,7 @@ export type PostReactionUser = {
   emoji: string;
   user_id: string;
   created_at?: string;
-  /** A Purify super reaction draws a spark beside the glyph. */
+  /** Supers are stored and read, but the row shows the reaction itself. */
   kind?: "normal" | "super";
   user?: {
     id: string;
@@ -310,14 +310,6 @@ export function PostReactionsSheet({
                       <ReactionKeyGlyph reactionKey={item.emoji} className="h-4 w-4 text-base" />
                     </span>
                   )}
-                  {item.kind === "super" ? (
-                    <span
-                      title="Super reaction"
-                      className="pointer-events-none absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-[#2a1b3d] text-[#d9bcff] shadow"
-                    >
-                      <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
-                    </span>
-                  ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1">

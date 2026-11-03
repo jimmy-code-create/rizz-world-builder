@@ -4,8 +4,12 @@ import {
   BADGE_TYPES,
   Badge,
   BadgePill,
+  GAME_BADGE_TYPES,
+  GameRankBadge,
   type BadgeType,
+  type GameBadgeType,
 } from "@/components/badges/Badge";
+import { formatPlaytime, useArcadePlayMs } from "@/lib/games/arcade-record";
 
 /**
  * /badge-preview — the redrawn profile badges, everywhere they have to work.
@@ -24,6 +28,13 @@ export const Route = createFileRoute("/badge-preview")({
 });
 
 const SIZES = [16, 20, 28] as const;
+
+/** Each rank is shown part-way through its own band. */
+const DEMO_PROGRESS: Record<GameBadgeType, number> = {
+  game_rookie: 0.3,
+  game_fiend: 0.55,
+  game_legend: 1,
+};
 
 /** The profile card's purple-to-navy wash, so the marks are judged in place. */
 const DARK_SURFACE = "linear-gradient(160deg, #2c1a63 0%, #182052 52%, #0c1026 100%)";
@@ -123,6 +134,24 @@ function Surface({ dark, title, note }: { dark: boolean; title: string; note: st
               ))}
             </Fragment>
           ))}
+
+          {/* Arcade ranks: same sticker, plus the playtime meter. */}
+          {GAME_BADGE_TYPES.map((type) => (
+            <Fragment key={type}>
+              <span
+                className="flex items-center gap-1.5 text-xs font-semibold"
+                style={{ color: dark ? "#f4f1e7" : "#17171b" }}
+              >
+                <Badge type={type} size={16} progress={DEMO_PROGRESS[type]} noTooltip />
+                <span className="truncate">{type.replace("game_", "arcade ")}</span>
+              </span>
+              {SIZES.map((px) => (
+                <span key={px} className="flex justify-center">
+                  <Badge type={type} size={px} progress={DEMO_PROGRESS[type]} />
+                </span>
+              ))}
+            </Fragment>
+          ))}
         </div>
 
         {/* The pill, next to a name, at both usable sizes. */}
@@ -155,6 +184,67 @@ function Surface({ dark, title, note }: { dark: boolean; title: string; note: st
   );
 }
 
+/** The live arcade rank, next to the three rungs it climbs. */
+function ArcadeRanks() {
+  const ms = useArcadePlayMs();
+  const hours = ms / 3_600_000;
+  const current =
+    hours >= 50
+      ? "Arcade Legend"
+      : hours >= 10
+        ? "Arcade Fiend"
+        : hours >= 1
+          ? "Arcade Rookie"
+          : "No rank yet";
+  const rungs = [
+    { type: "game_rookie" as const, at: "1h", hint: "An hour in the arcade" },
+    { type: "game_fiend" as const, at: "10h", hint: "Ten hours, no regrets" },
+    { type: "game_legend" as const, at: "50h", hint: "Fifty hours. A local legend." },
+  ];
+
+  return (
+    <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={hours >= 1 ? "" : "opacity-45 grayscale"}>
+          <GameRankBadge size={32} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+            Arcade ranks · this device
+          </p>
+          <p className="font-display text-sm font-bold">{current}</p>
+          <p className="text-xs text-white/55 tabular-nums">{formatPlaytime(ms)} played</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {rungs.map((rung) => (
+          <div key={rung.type} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+            <div className="flex items-center gap-2">
+              <Badge type={rung.type} size={28} progress={DEMO_PROGRESS[rung.type]} />
+              <span className="min-w-0">
+                <span className="block text-xs font-bold">
+                  {rung.type === "game_rookie"
+                    ? "Rookie"
+                    : rung.type === "game_fiend"
+                      ? "Fiend"
+                      : "Legend"}
+                </span>
+                <span className="block text-[10px] text-white/45">{rung.at}+ played</span>
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] text-white/55">{rung.hint}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-white/50">
+        The meter fills through the current band; the hint on the mark carries the exact time. Games
+        keep their record on the device, so playtime badges do too — the same rule as Game Champ.
+      </p>
+    </section>
+  );
+}
+
 function BadgePreviewPage() {
   return (
     <main className="min-h-screen w-full bg-[#0a0b14] px-4 py-10 text-[#f4f1e7] sm:px-6 lg:px-10">
@@ -164,21 +254,22 @@ function BadgePreviewPage() {
         </p>
         <h1 className="mt-2 font-display text-2xl font-black sm:text-3xl">Profile badges</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
-          Five marks, one construction rule: two-tone gradient in a single light direction, a
-          hairline rim, a top-edge highlight, and a small glow. Hover (or long-press) a mark for
-          its label. Every surface draws them through one component — profile card, full profile,
-          feed, forum rows and the profile preview — and any badge the family has no mark for
-          keeps its sprite.
+          Five profile marks and three arcade ranks, all cut from one sticker: the same die-cut
+          rounded square, one flat body and one flat shade, an ink outline, a cream paper edge, and
+          a lifted bottom-right corner. No gradients, no gloss, no glow. The arcade ranks add a
+          playtime meter and climb at 1h, 10h and 50h on the device. Hover (or long-press) a mark
+          for its label.
         </p>
 
-        {/* A shared spec strip, so the "same style" rule is visible at once. */}
+        {/* A shared spec strip, so the "same sticker" rule is visible at once. */}
         <div className="mt-6 flex flex-wrap gap-2">
           {[
             "Inline SVG · no image files, no emoji",
-            "1u hairline rim · round joins",
-            "One gradient in user space (y 3 → 21)",
-            "Clipped top highlight",
-            "Glow scales with the px size",
+            "One shared die-cut shape",
+            "Flat body + flat lower shade",
+            "1.9u ink outline · cream paper edge",
+            "Hard offset shadow, never a blur",
+            "Arcade meter · 1h / 10h / 50h",
             "16 / 20 / 28 tested",
           ].map((item) => (
             <span
@@ -203,6 +294,8 @@ function BadgePreviewPage() {
           />
         </div>
 
+        <ArcadeRanks />
+
         <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
             Type reference
@@ -216,7 +309,7 @@ function BadgePreviewPage() {
                 <Badge type={type} size={28} />
                 <Badge type={type} size={20} noTooltip />
                 <Badge type={type} size={16} noTooltip />
-                <span className="ml-auto h-2 w-2 rounded-full" style={{ background: type === "verified" ? "#3b82f6" : type === "premium" ? "#8b5cf6" : type === "early_member" ? "#f59e0b" : type === "top_paws" ? "#10b981" : "#f43f5e" }} />
+                <span className="ml-auto h-2 w-2 rounded-full" style={{ background: type === "verified" ? "#3B82F6" : type === "premium" ? "#8B5CF6" : type === "early_member" ? "#C9FF3D" : type === "top_paws" ? "#FFC93C" : "#FF5D6C" }} />
               </div>
             ))}
           </div>
