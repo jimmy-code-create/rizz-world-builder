@@ -16,3 +16,4 @@ workflows:
         script: cd android && chmod +x gradlew && ./gradlew assembleDebug
     artifacts:
       - mobile/android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.apk
