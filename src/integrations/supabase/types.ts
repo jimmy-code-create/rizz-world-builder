@@ -1237,7 +1237,6 @@ export type Database = {
           description: string | null
           escrow_state: string
           expires_at: string
-          heading_color: string
           id: string
           media_url: string | null
           min_trust: string
@@ -1269,7 +1268,6 @@ export type Database = {
           description?: string | null
           escrow_state?: string
           expires_at: string
-          heading_color?: string
           id?: string
           media_url?: string | null
           min_trust?: string
@@ -1301,7 +1299,6 @@ export type Database = {
           description?: string | null
           escrow_state?: string
           expires_at?: string
-          heading_color?: string
           id?: string
           media_url?: string | null
           min_trust?: string
@@ -5679,7 +5676,6 @@ export type Database = {
       post_paws_bounty: {
         Args: {
           _description: string
-          _heading_color?: string
           _hours: number
           _media_url?: string
           _min_trust?: string
@@ -6016,7 +6012,7 @@ export type Database = {
         }
         Returns: Json
       }
-      take_bounty: { Args: { _drop_id: string }; Returns: Json }
+      take_bounty: { Args: { _drop_id: string; _note?: string }; Returns: Json }
       timeout_realm_member: {
         Args: {
           _minutes: number

@@ -1,21 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false">
   <!--
-    RIZZ badge sprite — the minted-mark set.
+    RIZZ badge sprite — the minted-mark set, premium edition.
 
     One construction rule for all twenty emblems, so a row of three beside a
     name reads as a collection rather than twenty unrelated stickers:
 
-      1. Silhouette on the 24 grid, 1.5-2px optical margin, drawn with a
-         same-colour round-join stroke so every corner in the set shares one
-         radius. Never a second silhouette floating free.
-      2. Tier material: a single light-to-dark gradient lit from the top left
-         (6,3 -> 17,21.5), one hue family per emblem. No third highlight, no
-         gloss band, no filter.
-      3. Engraved rim: an inset outline of the same silhouette at 12-18% ink,
-         so the mark looks pressed rather than printed.
-      4. One ink glyph, negative-space style: strokes never thinner than 1.7
+      1. Minted bevel: every silhouette sits on a near-black base drawn one
+         step larger (wide round-join stroke), so the mark reads as a coin
+         stamped out of dark glass rather than a flat sticker.
+      2. Deep body: a three-stop gradient lit from the top left (6,3 ->
+         17,21.5) — one hue family per emblem, mid tone up top, near-black at
+         the bottom. Tier hue: lime (signal), azure (Verified), gold
+         (legendary/mythic), ember, violet, mint, magenta, bronze, steel.
+      3. Glass gloss: the top of the silhouette carries a white fade clipped
+         to the shape, so the deep body keeps a lit face instead of flat paint.
+      4. Engraved rim: an inset outline of the silhouette in white at ~15%.
+      5. One bright glyph: white or lime ink, strokes never thinner than 1.7
          and never smaller than 5px across, so it survives a 20px name row.
-      5. One specular arc at the top left, white at 45-60%.
+      6. One specular arc at the top left.
 
     Silhouette families stay distinct: hexagon (Newcomer), star (Rising Star),
     bubble (Chatterbox, Voice), crescent (Night Owl), medallion (Meme Lord,
@@ -25,337 +27,504 @@
     (HypeSquad), octagon (RIZZ Team), four-point sparkle (Main Character),
     gem (The Rizz), and crystalline water orbit (Purify).
 
-    Gradient ids are unique per symbol: the sprite is inlined into the page and
-    the share canvas extracts one symbol at a time.
+    Every id is unique per symbol: the sprite is inlined into the page and the
+    share canvas extracts one symbol at a time, so defs never cross symbols.
   -->
-  <!-- Newcomer: a soft hexagon, the quiet first mark. A sprout for day one. -->
+  <!-- Newcomer: a steel hexagon, the quiet first mark. A lime sprout for day one. -->
   <symbol id="rookie" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-rookie" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F5FBFF"/>
-        <stop offset="1" stop-color="#7892AA"/>
+      <linearGradient id="bg-rookie" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#AEC7DC"/>
+        <stop offset=".55" stop-color="#54718C"/>
+        <stop offset="1" stop-color="#131E2A"/>
       </linearGradient>
+      <linearGradient id="gl-rookie" x1="0" y1="2.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-rookie"><path d="M12 2.8 19.97 7.4v9.2L12 21.2 4.03 16.6V7.4Z"/></clipPath>
     </defs>
-    <path d="M12 2.8 19.97 7.4v9.2L12 21.2 4.03 16.6V7.4Z" fill="url(#bzg-rookie)" stroke="url(#bzg-rookie)" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M12 4.8 18.23 8.4v7.2L12 19.2 5.77 15.6V8.4Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".15" stroke-width=".8" stroke-linejoin="round"/>
-    <path d="M12 18.4V12.6" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 13.2C9.1 13.4 7.3 11.8 7.1 9c3 .1 4.7 1.6 4.9 4.2Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M12 14.3c2.9.1 4.8-1.4 5-4.2-3 .1-4.7 1.6-5 4.2Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M8.6 6.6A8.7 8.7 0 0 1 12.4 4.6" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 2.8 19.97 7.4v9.2L12 21.2 4.03 16.6V7.4Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round"/>
+    <path d="M12 2.8 19.97 7.4v9.2L12 21.2 4.03 16.6V7.4Z" fill="url(#bg-rookie)" stroke="url(#bg-rookie)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-rookie)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-rookie)"/></g>
+    <path d="M12 4.8 18.23 8.4v7.2L12 19.2 5.77 15.6V8.4Z" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width=".8" stroke-linejoin="round"/>
+    <path d="M12 18.4V12.6" fill="none" stroke="#F4F7FA" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12 13.2C9.1 13.4 7.3 11.8 7.1 9c3 .1 4.7 1.6 4.9 4.2Z" fill="#C6FF1A"/>
+    <path d="M12 14.3c2.9.1 4.8-1.4 5-4.2-3 .1-4.7 1.6-5 4.2Z" fill="#C6FF1A"/>
+    <path d="M8.6 6.6A8.7 8.7 0 0 1 12.4 4.6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Rising Star: a sharp five-point star with an ink sparkle at its heart. -->
+  <!-- Rising Star: a gold star, glass top, an ink sparkle at its heart. -->
   <symbol id="rising-star" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-star" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF1A8"/>
-        <stop offset=".48" stop-color="#D8F35D"/>
-        <stop offset="1" stop-color="#79B900"/>
+      <linearGradient id="bg-star" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F5EA8E"/>
+        <stop offset=".5" stop-color="#A9C93B"/>
+        <stop offset="1" stop-color="#31470A"/>
       </linearGradient>
+      <linearGradient id="gl-star" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".32"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-star"><path d="M12 2.6 14.47 8.9 21.23 9.3 15.99 13.6 17.7 20.15 12 16.5 6.3 20.15 8.01 13.6 2.77 9.3 9.53 8.9Z"/></clipPath>
     </defs>
-    <path d="M12 2.6 14.47 8.9 21.23 9.3 15.99 13.6 17.7 20.15 12 16.5 6.3 20.15 8.01 13.6 2.77 9.3 9.53 8.9Z" fill="url(#bzg-star)" stroke="url(#bzg-star)" stroke-width="1.2" stroke-linejoin="round"/>
-    <path d="M12 9.55 12.85 11.15 14.45 12 12.85 12.85 12 14.45 11.15 12.85 9.55 12 11.15 11.15Z" fill="#FFFDF1" fill-opacity=".96"/>
-    <path d="M7.9 5.35 10.1 7.7" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="1" stroke-linecap="round"/>
+    <path d="M12 2.6 14.47 8.9 21.23 9.3 15.99 13.6 17.7 20.15 12 16.5 6.3 20.15 8.01 13.6 2.77 9.3 9.53 8.9Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M12 2.6 14.47 8.9 21.23 9.3 15.99 13.6 17.7 20.15 12 16.5 6.3 20.15 8.01 13.6 2.77 9.3 9.53 8.9Z" fill="url(#bg-star)" stroke="url(#bg-star)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-star)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-star)"/></g>
+    <path d="M12 9.55 12.85 11.15 14.45 12 12.85 12.85 12 14.45 11.15 12.85 9.55 12 11.15 11.15Z" fill="#FFFDF1" fill-opacity=".97"/>
+    <path d="M7.9 5.35 10.1 7.7" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1" stroke-linecap="round"/>
   </symbol>
-  <!-- Chatterbox: one speech bubble, three dots, no tail noise. -->
+  <!-- Chatterbox: a steel-blue speech bubble, three bright dots. -->
   <symbol id="smooth-talker" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-talker" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F5F7FF"/>
-        <stop offset="1" stop-color="#8291B2"/>
+      <linearGradient id="bg-talker" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#B7C4DE"/>
+        <stop offset=".55" stop-color="#5D6F94"/>
+        <stop offset="1" stop-color="#161D2E"/>
       </linearGradient>
+      <linearGradient id="gl-talker" x1="0" y1="3.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".28"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-talker">
+        <path d="M2.6 8.3c0-2.43 1.97-4.4 4.4-4.4h10c2.43 0 4.4 1.97 4.4 4.4v4.1c0 2.43-1.97 4.4-4.4 4.4H7c-2.43 0-4.4-1.97-4.4-4.4Z"/>
+      </clipPath>
     </defs>
-    <rect x="2.6" y="3.9" width="18.8" height="12.9" rx="4.4" fill="url(#bzg-talker)"/>
-    <path d="M8.15 15.9 6.2 20.1 12.15 16.2Z" fill="url(#bzg-talker)"/>
-    <rect x="3.95" y="5.25" width="16.1" height="10.2" rx="3.2" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".14" stroke-width=".8"/>
-    <circle cx="7.6" cy="10.35" r="1.5" fill="var(--bz-ink,#0B0B0B)"/>
-    <circle cx="12" cy="10.35" r="1.5" fill="var(--bz-ink,#0B0B0B)"/>
-    <circle cx="16.4" cy="10.35" r="1.5" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M5.4 7.3A4.8 4.8 0 0 1 8.8 4.9" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
+    <g fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round">
+      <rect x="2.6" y="3.9" width="18.8" height="12.9" rx="4.4"/>
+      <path d="M8.15 15.9 6.2 20.1 12.15 16.2Z"/>
+    </g>
+    <g fill="url(#bg-talker)">
+      <rect x="2.6" y="3.9" width="18.8" height="12.9" rx="4.4"/>
+      <path d="M8.15 15.9 6.2 20.1 12.15 16.2Z"/>
+    </g>
+    <g clip-path="url(#cp-talker)"><rect x="0" y="3" width="24" height="10" fill="url(#gl-talker)"/></g>
+    <path d="M3.95 5.25h16.1v9.2H3.95Z" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width=".8"/>
+    <circle cx="7.6" cy="10.35" r="1.5" fill="#F2F5FA"/>
+    <circle cx="12" cy="10.35" r="1.5" fill="#F2F5FA"/>
+    <circle cx="16.4" cy="10.35" r="1.5" fill="#F2F5FA"/>
+    <path d="M5.4 7.3A4.8 4.8 0 0 1 8.8 4.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Night Owl: a crescent whose two arcs meet at real horn tips, with the
-       night sky sitting in the hollow. -->
+  <!-- Night Owl: a deep-indigo crescent with stars sitting in the hollow. -->
   <symbol id="night-owl" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-owl" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E8F3FF"/>
-        <stop offset="1" stop-color="#657DA7"/>
+      <linearGradient id="bg-owl" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#93ABDC"/>
+        <stop offset=".55" stop-color="#45578F"/>
+        <stop offset="1" stop-color="#0E1430"/>
       </linearGradient>
+      <linearGradient id="gl-owl" x1="0" y1="2.8" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".28"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-owl"><path d="M19.24 5.86A9.5 9.5 0 1 0 17.23 19.93 7.4 7.4 0 1 1 19.24 5.86Z"/></clipPath>
     </defs>
-    <path d="M19.24 5.86A9.5 9.5 0 1 0 17.23 19.93 7.4 7.4 0 1 1 19.24 5.86Z" fill="url(#bzg-owl)" stroke="url(#bzg-owl)" stroke-width=".7" stroke-linejoin="round"/>
-    <path d="M15.2 8 15.9 9.5 17.4 10.2 15.9 10.9 15.2 12.4 14.5 10.9 13 10.2 14.5 9.5Z" fill="var(--bz-lime,#C6FF1A)"/>
-    <path d="M18.7 13.4 19.1 14.4 20.1 14.8 19.1 15.2 18.7 16.2 18.3 15.2 17.3 14.8 18.3 14.4Z" fill="#fff" fill-opacity=".9"/>
-    <path d="M14.6 16.2 14.9 17 15.7 17.3 14.9 17.6 14.6 18.4 14.3 17.6 13.5 17.3 14.3 17 14.6 16.2Z" fill="#fff" fill-opacity=".6"/>
-    <path d="M5.2 8.7A9.4 9.4 0 0 1 8.4 4.6" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M19.24 5.86A9.5 9.5 0 1 0 17.23 19.93 7.4 7.4 0 1 1 19.24 5.86Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M19.24 5.86A9.5 9.5 0 1 0 17.23 19.93 7.4 7.4 0 1 1 19.24 5.86Z" fill="url(#bg-owl)" stroke="url(#bg-owl)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-owl)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-owl)"/></g>
+    <path d="M15.2 8 15.9 9.5 17.4 10.2 15.9 10.9 15.2 12.4 14.5 10.9 13 10.2 14.5 9.5Z" fill="#C6FF1A"/>
+    <path d="M18.7 13.4 19.1 14.4 20.1 14.8 19.1 15.2 18.7 16.2 18.3 15.2 17.3 14.8 18.3 14.4Z" fill="#fff" fill-opacity=".92"/>
+    <path d="M14.6 16.2 14.9 17 15.7 17.3 14.9 17.6 14.6 18.4 14.3 17.6 13.5 17.3 14.3 17 14.6 16.2Z" fill="#fff" fill-opacity=".62"/>
+    <path d="M5.2 8.7A9.4 9.4 0 0 1 8.4 4.6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Meme Lord: a coral medallion, laughing — squint eyes, open grin. -->
+  <!-- Meme Lord: a deep-coral medallion, laughing — bright eyes, cream grin. -->
   <symbol id="meme-lord" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-meme" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFD0A4"/>
-        <stop offset=".48" stop-color="#FF8060"/>
-        <stop offset="1" stop-color="#CE3346"/>
+      <linearGradient id="bg-meme" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFA288"/>
+        <stop offset=".5" stop-color="#C93A4C"/>
+        <stop offset="1" stop-color="#3B0812"/>
       </linearGradient>
+      <linearGradient id="gl-meme" x1="0" y1="2.3" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-meme"><circle cx="12" cy="12" r="9.7"/></clipPath>
     </defs>
-    <circle cx="12" cy="12" r="9.7" fill="url(#bzg-meme)" stroke="url(#bzg-meme)" stroke-width="1.2"/>
-    <circle cx="12" cy="12" r="8.1" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".8"/>
-    <path d="M6.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.9" stroke-linecap="round"/>
-    <path d="M13.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="1.9" stroke-linecap="round"/>
-    <path d="M7.2 12.4h9.6a4.8 4.8 0 0 1-9.6 0Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M8.1 13.1h7.8" fill="none" stroke="#fff" stroke-opacity=".94" stroke-width="1.25" stroke-linecap="round"/>
-    <path d="M7.6 5.5A9.2 9.2 0 0 1 12.2 3.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="9.7" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7"/>
+    <circle cx="12" cy="12" r="9.7" fill="url(#bg-meme)" stroke="url(#bg-meme)" stroke-width=".6"/>
+    <g clip-path="url(#cp-meme)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-meme)"/></g>
+    <circle cx="12" cy="12" r="8.1" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width=".8"/>
+    <path d="M6.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="#FFF1E4" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M13.9 9.6q1.6-1.7 3.2 0" fill="none" stroke="#FFF1E4" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M7.2 12.4h9.6a4.8 4.8 0 0 1-9.6 0Z" fill="#FFF1E4"/>
+    <path d="M8.1 13.1h7.8" fill="none" stroke="#4A0C18" stroke-opacity=".9" stroke-width="1.25" stroke-linecap="round"/>
+    <path d="M7.6 5.5A9.2 9.2 0 0 1 12.2 3.4" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Top Rizzler: shield, engraved rim, ink crown on a base bar. -->
+  <!-- Top Rizzler: a gold shield, engraved rim, ink crown on a base bar. -->
   <symbol id="top-rizzler" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-crown" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF0A7"/>
-        <stop offset="1" stop-color="#D59517"/>
+      <linearGradient id="bg-crown" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F6D584"/>
+        <stop offset=".55" stop-color="#B07B14"/>
+        <stop offset="1" stop-color="#332004"/>
       </linearGradient>
+      <linearGradient id="gl-crown" x1="0" y1="2.2" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-crown"><path d="M12 2.2 20.4 5.2v6.1c0 5.1-3.5 8.8-8.4 10.6-4.9-1.8-8.4-5.5-8.4-10.6V5.2Z"/></clipPath>
     </defs>
-    <path d="M12 2.2 20.4 5.2v6.1c0 5.1-3.5 8.8-8.4 10.6-4.9-1.8-8.4-5.5-8.4-10.6V5.2Z" fill="url(#bzg-crown)" stroke="url(#bzg-crown)" stroke-width="1.2" stroke-linejoin="round"/>
-    <path d="M12 4.1 18.5 6.5v4.7c0 3.9-2.6 6.9-6.5 8.4-3.9-1.5-6.5-4.5-6.5-8.4V6.5Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85" stroke-linejoin="round"/>
-    <path d="M7.3 14.8 6.8 8.7 10 11.3 12 7.9 14 11.3 17.2 8.7 16.7 14.8Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".9" stroke-linejoin="round"/>
-    <rect x="7.6" y="15.5" width="8.8" height="1.5" rx=".75" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M5.5 7.6A9 9 0 0 1 8.4 4.4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 2.2 20.4 5.2v6.1c0 5.1-3.5 8.8-8.4 10.6-4.9-1.8-8.4-5.5-8.4-10.6V5.2Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M12 2.2 20.4 5.2v6.1c0 5.1-3.5 8.8-8.4 10.6-4.9-1.8-8.4-5.5-8.4-10.6V5.2Z" fill="url(#bg-crown)" stroke="url(#bg-crown)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-crown)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-crown)"/></g>
+    <path d="M12 4.1 18.5 6.5v4.7c0 3.9-2.6 6.9-6.5 8.4-3.9-1.5-6.5-4.5-6.5-8.4V6.5Z" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width=".85" stroke-linejoin="round"/>
+    <path d="M7.3 14.8 6.8 8.7 10 11.3 12 7.9 14 11.3 17.2 8.7 16.7 14.8Z" fill="#180F02" stroke="#180F02" stroke-width=".9" stroke-linejoin="round"/>
+    <rect x="7.6" y="15.5" width="8.8" height="1.5" rx=".75" fill="#180F02"/>
+    <path d="M5.5 7.6A9 9 0 0 1 8.4 4.4" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Verified: an angular azure shield, cleanly cut around a crisp check. -->
+  <!-- Verified: an azure shield with a bevel rim and a crisp check. -->
   <symbol id="verified" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-verified" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#B9F3FF"/>
-        <stop offset=".42" stop-color="#39B9F5"/>
-        <stop offset="1" stop-color="#1769C9"/>
+      <linearGradient id="bg-verified" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#7FD2FF"/>
+        <stop offset=".45" stop-color="#1D7FDB"/>
+        <stop offset="1" stop-color="#052A52"/>
       </linearGradient>
+      <linearGradient id="gl-verified" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".34"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-verified"><path d="M12 2.55 20.1 5.5v6.12c0 4.85-3.15 8.3-8.1 10.06-4.95-1.76-8.1-5.21-8.1-10.06V5.5Z"/></clipPath>
     </defs>
-    <path d="M12 2.55 20.1 5.5v6.12c0 4.85-3.15 8.3-8.1 10.06-4.95-1.76-8.1-5.21-8.1-10.06V5.5Z" fill="url(#bzg-verified)" stroke="#7AD8FF" stroke-opacity=".78" stroke-width="1" stroke-linejoin="round"/>
-    <path d="M12 4.45 18.25 6.7v4.92c0 3.8-2.35 6.52-6.25 8.1-3.9-1.58-6.25-4.3-6.25-8.1V6.7Z" fill="none" stroke="#06447D" stroke-opacity=".27" stroke-width=".9" stroke-linejoin="round"/>
-    <path d="m7.55 12.15 3.05 3.05 6.2-6.25" fill="none" stroke="#06447D" stroke-opacity=".42" stroke-width="3.15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M12 2.55 20.1 5.5v6.12c0 4.85-3.15 8.3-8.1 10.06-4.95-1.76-8.1-5.21-8.1-10.06V5.5Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M12 2.55 20.1 5.5v6.12c0 4.85-3.15 8.3-8.1 10.06-4.95-1.76-8.1-5.21-8.1-10.06V5.5Z" fill="url(#bg-verified)" stroke="#8ED9FF" stroke-opacity=".8" stroke-width=".9" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-verified)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-verified)"/></g>
+    <path d="M12 4.45 18.25 6.7v4.92c0 3.8-2.35 6.52-6.25 8.1-3.9-1.58-6.25-4.3-6.25-8.1V6.7Z" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width=".9" stroke-linejoin="round"/>
+    <path d="m7.55 12.15 3.05 3.05 6.2-6.25" fill="none" stroke="#042A50" stroke-opacity=".55" stroke-width="3.15" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="m7.45 11.65 3.1 3.05 6.35-6.35" fill="none" stroke="#F4FDFF" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.15 7.05 10.2 5.5" fill="none" stroke="#fff" stroke-opacity=".74" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M6.15 7.05 10.2 5.5" fill="none" stroke="#fff" stroke-opacity=".78" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- 7 Day Streak: one flame, an ink core, nothing else. -->
+  <!-- 7 Day Streak: a deep-ember flame with a bright core. -->
   <symbol id="streak-7" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-streak7" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFE7A1"/>
-        <stop offset=".52" stop-color="#FFAA35"/>
-        <stop offset="1" stop-color="#ED5B22"/>
+      <linearGradient id="bg-streak7" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFC46B"/>
+        <stop offset=".52" stop-color="#DE5416"/>
+        <stop offset="1" stop-color="#431004"/>
       </linearGradient>
+      <linearGradient id="gl-streak7" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".28"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-streak7"><path d="M12.4 2.1c.6 3.1 2.7 4.8 4.3 6.8 1.6 2.1 2.8 4 2.8 6.2 0 4.2-3.3 7-7.5 7s-7.5-2.8-7.5-7c0-3.4 2.1-6 4.1-8.1 1.4-1.5 3.3-3 3.8-4.9Z"/></clipPath>
     </defs>
-    <path d="M12.4 2.1c.6 3.1 2.7 4.8 4.3 6.8 1.6 2.1 2.8 4 2.8 6.2 0 4.2-3.3 7-7.5 7s-7.5-2.8-7.5-7c0-3.4 2.1-6 4.1-8.1 1.4-1.5 3.3-3 3.8-4.9Z" fill="url(#bzg-streak7)" stroke="url(#bzg-streak7)" stroke-width="1" stroke-linejoin="round"/>
-    <path d="M12.2 6.6c.4 1.9 1.6 3 2.6 4.2 1 1.2 1.7 2.3 1.7 3.6 0 2.9-2 5-4.5 5s-4.5-2.1-4.5-5c0-2.1 1.3-3.7 2.5-5 .9-1 2-2 2.2-2.8Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".13" stroke-width=".8"/>
-    <path d="M12.2 12.1c.25 1.15.9 1.85 1.4 2.5.55.7.85 1.35.85 2.05a2.45 2.45 0 0 1-4.9 0c0-1 .55-1.8 1.2-2.5.55-.65 1.15-1.2 1.45-2.05Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M8.6 8.6A7.2 7.2 0 0 1 11.4 5.6" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12.4 2.1c.6 3.1 2.7 4.8 4.3 6.8 1.6 2.1 2.8 4 2.8 6.2 0 4.2-3.3 7-7.5 7s-7.5-2.8-7.5-7c0-3.4 2.1-6 4.1-8.1 1.4-1.5 3.3-3 3.8-4.9Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M12.4 2.1c.6 3.1 2.7 4.8 4.3 6.8 1.6 2.1 2.8 4 2.8 6.2 0 4.2-3.3 7-7.5 7s-7.5-2.8-7.5-7c0-3.4 2.1-6 4.1-8.1 1.4-1.5 3.3-3 3.8-4.9Z" fill="url(#bg-streak7)" stroke="url(#bg-streak7)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-streak7)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-streak7)"/></g>
+    <path d="M12.2 6.6c.4 1.9 1.6 3 2.6 4.2 1 1.2 1.7 2.3 1.7 3.6 0 2.9-2 5-4.5 5s-4.5-2.1-4.5-5c0-2.1 1.3-3.7 2.5-5 .9-1 2-2 2.2-2.8Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width=".8"/>
+    <path d="M12.2 12.1c.25 1.15.9 1.85 1.4 2.5.55.7.85 1.35.85 2.05a2.45 2.45 0 0 1-4.9 0c0-1 .55-1.8 1.2-2.5.55-.65 1.15-1.2 1.45-2.05Z" fill="#FFEFD4"/>
+    <path d="M8.6 8.6A7.2 7.2 0 0 1 11.4 5.6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- 30 Day Streak: the flame family, held in a hex crest so it never reads
-       as the Meme Lord medallion at name-row size. -->
+  <!-- 30 Day Streak: the ember flame held in a hex crest, so it never reads as
+       the Meme Lord medallion at name-row size. -->
   <symbol id="streak-30" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-streak30" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFD28A"/>
-        <stop offset=".48" stop-color="#FF7148"/>
-        <stop offset="1" stop-color="#B91F35"/>
+      <linearGradient id="bg-streak30" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FF9E68"/>
+        <stop offset=".5" stop-color="#BC2C1B"/>
+        <stop offset="1" stop-color="#380808"/>
       </linearGradient>
+      <linearGradient id="gl-streak30" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-streak30"><path d="M12 2.6 20.14 7.3v9.4L12 21.4 3.86 16.7V7.3Z"/></clipPath>
     </defs>
-    <path d="M12 2.6 20.14 7.3v9.4L12 21.4 3.86 16.7V7.3Z" fill="url(#bzg-streak30)" stroke="url(#bzg-streak30)" stroke-width="1.4" stroke-linejoin="round"/>
-    <path d="M12 4.4 18.58 8.2v7.6L12 19.6 5.42 15.8V8.2Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".18" stroke-width=".85" stroke-linejoin="round"/>
-    <path d="M12.2 7.2c.35 1.9 1.45 2.95 2.3 4.05.85 1.05 1.4 2.05 1.4 3.1 0 2.5-1.8 4.25-3.9 4.25s-3.9-1.75-3.9-4.25c0-1.65 1-2.95 1.95-4.05.75-.85 1.8-1.9 2.15-3.1Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M17.2 7.8 17.6 8.8 18.6 9.2 17.6 9.6 17.2 10.6 16.8 9.6 15.8 9.2 16.8 8.8Z" fill="#fff" fill-opacity=".85"/>
-    <path d="M6.9 9.8 7.2 10.6 8 10.9 7.2 11.2 6.9 12 6.6 11.2 5.8 10.9 6.6 10.6Z" fill="#fff" fill-opacity=".55"/>
-    <path d="M6.1 7.7A9 9 0 0 1 9.2 4.7" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 2.6 20.14 7.3v9.4L12 21.4 3.86 16.7V7.3Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round"/>
+    <path d="M12 2.6 20.14 7.3v9.4L12 21.4 3.86 16.7V7.3Z" fill="url(#bg-streak30)" stroke="url(#bg-streak30)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-streak30)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-streak30)"/></g>
+    <path d="M12 4.4 18.58 8.2v7.6L12 19.6 5.42 15.8V8.2Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".85" stroke-linejoin="round"/>
+    <path d="M12.2 7.2c.35 1.9 1.45 2.95 2.3 4.05.85 1.05 1.4 2.05 1.4 3.1 0 2.5-1.8 4.25-3.9 4.25s-3.9-1.75-3.9-4.25c0-1.65 1-2.95 1.95-4.05.75-.85 1.8-1.9 2.15-3.1Z" fill="#FFEFDA"/>
+    <path d="M17.2 7.8 17.6 8.8 18.6 9.2 17.6 9.6 17.2 10.6 16.8 9.6 15.8 9.2 16.8 8.8Z" fill="#fff" fill-opacity=".9"/>
+    <path d="M6.9 9.8 7.2 10.6 8 10.9 7.2 11.2 6.9 12 6.6 11.2 5.8 10.9 6.6 10.6Z" fill="#C6FF1A" fill-opacity=".9"/>
+    <path d="M6.1 7.7A9 9 0 0 1 9.2 4.7" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Streamer: a live beacon tower with magenta signal arcs and a lit crown. -->
+  <!-- Streamer: a live beacon tower, magenta signal arcs, a lit gold crown. -->
   <symbol id="streamer" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-stream" x1="5" y1="2.8" x2="18.5" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFE5F4"/>
-        <stop offset=".45" stop-color="#F56BAF"/>
-        <stop offset="1" stop-color="#A92D82"/>
+      <linearGradient id="bg-stream" x1="5" y1="2.8" x2="18.5" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFA0D6"/>
+        <stop offset=".45" stop-color="#BC2A88"/>
+        <stop offset="1" stop-color="#370A31"/>
       </linearGradient>
-      <linearGradient id="bzg-stream-live" x1="16.8" y1="4.5" x2="20" y2="8.4" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFE7AD"/>
+      <linearGradient id="bg-stream-live" x1="16.8" y1="4.5" x2="20" y2="8.4" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFE9B0"/>
         <stop offset="1" stop-color="#FF584F"/>
       </linearGradient>
+      <linearGradient id="gl-stream" x1="0" y1="7.6" x2="0" y2="15" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".26"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-stream"><path d="M12 7.3 5.25 20.1h13.5Z"/></clipPath>
     </defs>
     <!-- The broadcast arcs sit above the tower, so the mark's box was 1.5 high
          in its 24 grid. The whole stamp moves down instead of redrawing it. -->
     <g transform="translate(0 1.5)">
-      <path d="M12 7.3 5.25 20.1h13.5Z" fill="url(#bzg-stream)" stroke="#D74B9A" stroke-width=".8" stroke-linejoin="round"/>
-      <path d="m12 7.3-1.15 12.8h7.9Z" fill="#7F205F" fill-opacity=".22"/>
-      <path d="M8.15 14.55h7.7M6.65 17.35h10.7" fill="none" stroke="#592044" stroke-opacity=".68" stroke-width="1.15" stroke-linecap="round"/>
-      <path d="M12 8.25v10.85M7.1 19.4h9.8" fill="none" stroke="#FFF2FA" stroke-opacity=".84" stroke-width="1" stroke-linecap="round"/>
-      <path d="M8.1 6.45a5.4 5.4 0 0 1 0-4.1M15.9 6.45a5.4 5.4 0 0 0 0-4.1" fill="none" stroke="#F7B8DD" stroke-width="1.35" stroke-linecap="round"/>
-      <path d="M5.25 7.15a8.85 8.85 0 0 1 0-6.3M18.75 7.15a8.85 8.85 0 0 0 0-6.3" fill="none" stroke="#D65AA3" stroke-opacity=".85" stroke-width="1.15" stroke-linecap="round"/>
-      <circle cx="12" cy="5.9" r="2.05" fill="url(#bzg-stream-live)" stroke="#FFF1D5" stroke-width=".8"/>
+      <path d="M12 7.3 5.25 20.1h13.5Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7" stroke-linejoin="round"/>
+      <path d="M12 7.3 5.25 20.1h13.5Z" fill="url(#bg-stream)" stroke="#FF7CC0" stroke-opacity=".7" stroke-width=".7" stroke-linejoin="round"/>
+      <g clip-path="url(#cp-stream)"><rect x="0" y="7" width="24" height="8" fill="url(#gl-stream)"/></g>
+      <path d="m12 7.3-1.15 12.8h7.9Z" fill="#2A0722" fill-opacity=".4"/>
+      <path d="M8.15 14.55h7.7M6.65 17.35h10.7" fill="none" stroke="#4A1138" stroke-opacity=".85" stroke-width="1.15" stroke-linecap="round"/>
+      <path d="M12 8.25v10.85M7.1 19.4h9.8" fill="none" stroke="#FFF2FA" stroke-opacity=".9" stroke-width="1" stroke-linecap="round"/>
+      <path d="M8.1 6.45a5.4 5.4 0 0 1 0-4.1M15.9 6.45a5.4 5.4 0 0 0 0-4.1" fill="none" stroke="#FFB8DE" stroke-width="1.35" stroke-linecap="round"/>
+      <path d="M5.25 7.15a8.85 8.85 0 0 1 0-6.3M18.75 7.15a8.85 8.85 0 0 0 0-6.3" fill="none" stroke="#E565B4" stroke-opacity=".9" stroke-width="1.15" stroke-linecap="round"/>
+      <circle cx="12" cy="5.9" r="2.05" fill="url(#bg-stream-live)" stroke="#FFF3DC" stroke-width=".8"/>
       <circle cx="12" cy="5.9" r=".65" fill="#FFFDF8"/>
-      <path d="M6.9 18.8 9.1 14.5" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width=".8" stroke-linecap="round"/>
+      <path d="M6.9 18.8 9.1 14.5" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width=".8" stroke-linecap="round"/>
     </g>
   </symbol>
-  <!-- Bounty Hunter: a folded contract with a stamped gold reward coin. -->
+  <!-- Bounty Hunter: a bronze contract with a bright gold reward coin. -->
   <symbol id="bounty-hunter" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-bounty" x1="5" y1="3" x2="18.5" y2="21" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFE0A1"/>
-        <stop offset=".48" stop-color="#F47752"/>
-        <stop offset="1" stop-color="#A82D54"/>
+      <linearGradient id="bg-bounty" x1="5" y1="3" x2="18.5" y2="21" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFC489"/>
+        <stop offset=".48" stop-color="#B04A28"/>
+        <stop offset="1" stop-color="#320A0E"/>
       </linearGradient>
-      <linearGradient id="bzg-bounty-gold" x1="9" y1="8" x2="15" y2="16" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF4B4"/>
+      <linearGradient id="bg-bounty-gold" x1="9" y1="8" x2="15" y2="16" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF6C0"/>
         <stop offset=".55" stop-color="#FFC94E"/>
-        <stop offset="1" stop-color="#D98222"/>
+        <stop offset="1" stop-color="#B96D15"/>
       </linearGradient>
+      <linearGradient id="gl-bounty" x1="0" y1="3" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".26"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-bounty"><path d="M5.1 3.1h9.45l4.35 4.25v12.55c0 .58-.47 1.05-1.05 1.05H6.15c-.58 0-1.05-.47-1.05-1.05Z"/></clipPath>
     </defs>
-    <path d="M5.1 3.1h9.45l4.35 4.25v12.55c0 .58-.47 1.05-1.05 1.05H6.15c-.58 0-1.05-.47-1.05-1.05Z" fill="url(#bzg-bounty)" stroke="#C34A46" stroke-width=".9" stroke-linejoin="round"/>
-    <path d="M14.55 3.25v3.2c0 .55.45 1 1 1h3.1Z" fill="#FFE5B7" fill-opacity=".76" stroke="#C34A46" stroke-opacity=".52" stroke-width=".65" stroke-linejoin="round"/>
-    <path d="M7.35 8.75h6.2M7.35 11.35h5.1M7.35 14h3.1" fill="none" stroke="#702B43" stroke-opacity=".72" stroke-width="1.2" stroke-linecap="round"/>
-    <circle cx="16.55" cy="16.2" r="4.05" fill="url(#bzg-bounty-gold)" stroke="#FFF0B5" stroke-width=".8"/>
-    <circle cx="16.55" cy="16.2" r="3.15" fill="none" stroke="#9D4D25" stroke-opacity=".45" stroke-width=".65"/>
-    <path d="M17.9 14.85c-.38-.32-.84-.48-1.36-.48-.83 0-1.36.37-1.36.92 0 .58.54.82 1.38 1.03.83.21 1.37.46 1.37 1.06 0 .63-.58 1.04-1.47 1.04-.62 0-1.15-.2-1.59-.58M16.47 13.7v4.9" fill="none" stroke="#713B22" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.2 4.65h4.15" fill="none" stroke="#FFF6DD" stroke-opacity=".8" stroke-width=".8" stroke-linecap="round"/>
+    <path d="M5.1 3.1h9.45l4.35 4.25v12.55c0 .58-.47 1.05-1.05 1.05H6.15c-.58 0-1.05-.47-1.05-1.05Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M5.1 3.1h9.45l4.35 4.25v12.55c0 .58-.47 1.05-1.05 1.05H6.15c-.58 0-1.05-.47-1.05-1.05Z" fill="url(#bg-bounty)" stroke="#FF9A62" stroke-opacity=".55" stroke-width=".7" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-bounty)"><rect x="0" y="2.6" width="24" height="9" fill="url(#gl-bounty)"/></g>
+    <path d="M14.55 3.25v3.2c0 .55.45 1 1 1h3.1Z" fill="#FFE7BC" fill-opacity=".82" stroke="#7A2A18" stroke-opacity=".5" stroke-width=".65" stroke-linejoin="round"/>
+    <path d="M7.35 8.75h6.2M7.35 11.35h5.1M7.35 14h3.1" fill="none" stroke="#FFE9CB" stroke-opacity=".85" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="16.55" cy="16.2" r="4.05" fill="url(#bg-bounty-gold)" stroke="#FFF3BC" stroke-width=".8"/>
+    <circle cx="16.55" cy="16.2" r="3.15" fill="none" stroke="#7E4310" stroke-opacity=".5" stroke-width=".65"/>
+    <path d="M17.9 14.85c-.38-.32-.84-.48-1.36-.48-.83 0-1.36.37-1.36.92 0 .58.54.82 1.38 1.03.83.21 1.37.46 1.37 1.06 0 .63-.58 1.04-1.47 1.04-.62 0-1.15-.2-1.59-.58M16.47 13.7v4.9" fill="none" stroke="#6E3A14" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.2 4.65h4.15" fill="none" stroke="#FFF6DD" stroke-opacity=".85" stroke-width=".8" stroke-linecap="round"/>
   </symbol>
-  <!-- Game Champ: a controller, ink d-pad, one lime button. -->
+  <!-- Game Champ: a violet controller, ink d-pad, one lime button. -->
   <symbol id="game-champ" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-game" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#E3D9FF"/>
-        <stop offset=".5" stop-color="#927AFF"/>
-        <stop offset="1" stop-color="#4930B9"/>
+      <linearGradient id="bg-game" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#C6B2FF"/>
+        <stop offset=".5" stop-color="#6B43D8"/>
+        <stop offset="1" stop-color="#1B0B45"/>
       </linearGradient>
+      <linearGradient id="gl-game" x1="0" y1="4.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-game">
+        <path d="M2.8 9.5c0-2.54 2.06-4.6 4.6-4.6h9.2c2.54 0 4.6 2.06 4.6 4.6v2.2c0 2.54-2.06 4.6-4.6 4.6H7.4c-2.54 0-4.6-2.06-4.6-4.6Z"/>
+        <circle cx="5.8" cy="16.1" r="3.4"/>
+        <circle cx="18.2" cy="16.1" r="3.4"/>
+      </clipPath>
     </defs>
-    <rect x="2.8" y="4.9" width="18.4" height="11.4" rx="4.6" fill="url(#bzg-game)" stroke="url(#bzg-game)" stroke-width="1.2"/>
-    <circle cx="5.8" cy="16.1" r="3.4" fill="url(#bzg-game)" stroke="url(#bzg-game)" stroke-width="1.2"/>
-    <circle cx="18.2" cy="16.1" r="3.4" fill="url(#bzg-game)" stroke="url(#bzg-game)" stroke-width="1.2"/>
-    <rect x="4.1" y="6.2" width="15.8" height="8.8" rx="3.2" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".14" stroke-width=".8"/>
-    <rect x="5.4" y="10.45" width="4.4" height="1.5" rx=".5" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="6.85" y="9" width="1.5" height="4.4" rx=".5" fill="var(--bz-ink,#0B0B0B)"/>
-    <circle cx="15.9" cy="10.2" r="1.05" fill="var(--bz-ink,#0B0B0B)"/>
-    <circle cx="17.4" cy="12.3" r="1.05" fill="var(--bz-lime,#C6FF1A)"/>
-    <path d="M5.6 7.3A5 5 0 0 1 8.6 5.9" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <g fill="#0A0C10" stroke="#0A0C10" stroke-width="2.8" stroke-linejoin="round">
+      <rect x="2.8" y="4.9" width="18.4" height="11.4" rx="4.6"/>
+      <circle cx="5.8" cy="16.1" r="3.4"/>
+      <circle cx="18.2" cy="16.1" r="3.4"/>
+    </g>
+    <g fill="url(#bg-game)" stroke="url(#bg-game)" stroke-width=".6">
+      <rect x="2.8" y="4.9" width="18.4" height="11.4" rx="4.6"/>
+      <circle cx="5.8" cy="16.1" r="3.4"/>
+      <circle cx="18.2" cy="16.1" r="3.4"/>
+    </g>
+    <g clip-path="url(#cp-game)"><rect x="0" y="4.4" width="24" height="8" fill="url(#gl-game)"/></g>
+    <rect x="4.1" y="6.2" width="15.8" height="8.8" rx="3.2" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width=".8"/>
+    <rect x="5.4" y="10.45" width="4.4" height="1.5" rx=".5" fill="#12061F"/>
+    <rect x="6.85" y="9" width="1.5" height="4.4" rx=".5" fill="#12061F"/>
+    <circle cx="15.9" cy="10.2" r="1.05" fill="#F2ECFF"/>
+    <circle cx="17.4" cy="12.3" r="1.05" fill="#C6FF1A"/>
+    <path d="M5.6 7.3A5 5 0 0 1 8.6 5.9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Early Member: a gold wreath with a bold numeral one. -->
+  <!-- Early Member: a gold medallion wreath with a bold numeral one. -->
   <symbol id="og" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-og" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF0B7"/>
-        <stop offset=".5" stop-color="#E9B94A"/>
-        <stop offset="1" stop-color="#A86A14"/>
+      <linearGradient id="bg-og" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FCE9A0"/>
+        <stop offset=".5" stop-color="#C28B1F"/>
+        <stop offset="1" stop-color="#3B2403"/>
       </linearGradient>
+      <linearGradient id="gl-og" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-og"><circle cx="12" cy="12" r="9.6"/></clipPath>
     </defs>
-    <circle cx="12" cy="12" r="9.6" fill="url(#bzg-og)" stroke="url(#bzg-og)" stroke-width="1"/>
-    <circle cx="12" cy="12" r="7.7" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".2" stroke-width=".85"/>
-    <path d="M10.25 8.7 12.35 7.45v9.1M10.15 16.75h4.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.5 10.6c.15-1 .5-1.9 1.05-2.75M17.5 10.6c-.15-1-.5-1.9-1.05-2.75" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".58" stroke-width="1.1" stroke-linecap="round"/>
-    <path d="M5.5 8.8A9.6 9.6 0 0 1 8.4 5.2" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="9.6" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7"/>
+    <circle cx="12" cy="12" r="9.6" fill="url(#bg-og)" stroke="url(#bg-og)" stroke-width=".6"/>
+    <g clip-path="url(#cp-og)"><rect x="0" y="2.2" width="24" height="10" fill="url(#gl-og)"/></g>
+    <circle cx="12" cy="12" r="7.7" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width=".85"/>
+    <path d="M10.25 8.7 12.35 7.45v9.1M10.15 16.75h4.8" fill="none" stroke="#221302" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.5 10.6c.15-1 .5-1.9 1.05-2.75M17.5 10.6c-.15-1-.5-1.9-1.05-2.75" fill="none" stroke="#221302" stroke-opacity=".7" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M5.5 8.8A9.6 9.6 0 0 1 8.4 5.2" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- HypeSquad Bravery: a diamond, ink bolt — never a second shield. -->
+  <!-- HypeSquad Bravery: a lime diamond, ink bolt — never a second shield. -->
   <symbol id="hypesquad-bravery" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-hype" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F2FFA8"/>
-        <stop offset=".48" stop-color="#C8F25C"/>
-        <stop offset="1" stop-color="#69B52F"/>
+      <linearGradient id="bg-hype" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#E6FF92"/>
+        <stop offset=".48" stop-color="#88C31A"/>
+        <stop offset="1" stop-color="#1D3103"/>
       </linearGradient>
+      <linearGradient id="gl-hype" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-hype"><path d="M12 2.6 21.4 12 12 21.4 2.6 12Z"/></clipPath>
     </defs>
-    <path d="M12 2.6 21.4 12 12 21.4 2.6 12Z" fill="url(#bzg-hype)" stroke="url(#bzg-hype)" stroke-width="1.4" stroke-linejoin="round"/>
-    <path d="M12 5.5 18.5 12 12 18.5 5.5 12Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".14" stroke-width=".8"/>
-    <path d="M13.9 5.6 8.2 12.5h3.1l-1.1 5.9 5.7-7.5h-3Z" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M6.7 8.5 9.2 6" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M12 2.6 21.4 12 12 21.4 2.6 12Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round"/>
+    <path d="M12 2.6 21.4 12 12 21.4 2.6 12Z" fill="url(#bg-hype)" stroke="url(#bg-hype)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-hype)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-hype)"/></g>
+    <path d="M12 5.5 18.5 12 12 18.5 5.5 12Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/>
+    <path d="M13.9 5.6 8.2 12.5h3.1l-1.1 5.9 5.7-7.5h-3Z" fill="#0D1602"/>
+    <path d="M6.7 8.5 9.2 6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Verified Creator: mint tile, play mark, an ink seal at the corner. -->
+  <!-- Verified Creator: a mint tile, play mark, an ink seal at the corner. -->
   <symbol id="verified-creator" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-creator" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#D8FFF0"/>
-        <stop offset=".5" stop-color="#59D6B2"/>
-        <stop offset="1" stop-color="#218C91"/>
+      <linearGradient id="bg-creator" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#9BF0D4"/>
+        <stop offset=".5" stop-color="#27A98A"/>
+        <stop offset="1" stop-color="#05302A"/>
       </linearGradient>
+      <linearGradient id="gl-creator" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-creator"><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6"/></clipPath>
     </defs>
-    <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6" fill="url(#bzg-creator)" stroke="url(#bzg-creator)" stroke-width="1.2"/>
-    <rect x="4.15" y="4.15" width="15.7" height="15.7" rx="4.3" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".85"/>
-    <path d="M9.4 7.45 16.65 12 9.4 16.55Z" fill="var(--bz-ink,#0B0B0B)" stroke="var(--bz-ink,#0B0B0B)" stroke-width=".85" stroke-linejoin="round"/>
-    <circle cx="17.5" cy="17.5" r="3.5" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M15.9 17.5 17.1 18.7 19.1 16.4" fill="none" stroke="#CDFFE8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M6.6 6.4A6 6 0 0 1 9.9 4.5" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
+    <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.8"/>
+    <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6" fill="url(#bg-creator)" stroke="url(#bg-creator)" stroke-width=".6"/>
+    <g clip-path="url(#cp-creator)"><rect x="0" y="2.2" width="24" height="10" fill="url(#gl-creator)"/></g>
+    <rect x="4.15" y="4.15" width="15.7" height="15.7" rx="4.3" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".85"/>
+    <path d="M9.4 7.45 16.65 12 9.4 16.55Z" fill="#04231C" stroke="#04231C" stroke-width=".85" stroke-linejoin="round"/>
+    <circle cx="17.5" cy="17.5" r="3.5" fill="#04231C"/>
+    <path d="M15.9 17.5 17.1 18.7 19.1 16.4" fill="none" stroke="#B8FFE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6.6 6.4A6 6 0 0 1 9.9 4.5" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
   <!-- RIZZ Team: an octagon of rising bars — build in public. -->
   <symbol id="rizzz-team" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-team" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F3FFA9"/>
-        <stop offset=".52" stop-color="#B7EC56"/>
-        <stop offset="1" stop-color="#4EAFA5"/>
+      <linearGradient id="bg-team" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#ECFF99"/>
+        <stop offset=".52" stop-color="#9BCC2B"/>
+        <stop offset="1" stop-color="#173C2C"/>
       </linearGradient>
+      <linearGradient id="gl-team" x1="0" y1="2.4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-team"><path d="M21.14 15.79 15.79 21.14H8.21L2.86 15.79V8.21L8.21 2.86h7.58l5.35 5.35Z"/></clipPath>
     </defs>
-    <path d="M21.14 15.79 15.79 21.14H8.21L2.86 15.79V8.21L8.21 2.86h7.58l5.35 5.35Z" fill="url(#bzg-team)" stroke="url(#bzg-team)" stroke-width="1.4" stroke-linejoin="round"/>
-    <path d="M19.39 15.06 15.06 19.39H8.94L4.61 15.06V8.94L8.94 4.61h6.12l4.33 4.33Z" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".15" stroke-width=".8" stroke-linejoin="round"/>
-    <rect x="7.2" y="13.4" width="2.5" height="4.6" rx=".6" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="10.75" y="10.4" width="2.5" height="7.6" rx=".6" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="14.3" y="7.4" width="2.5" height="10.6" rx=".6" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M7.2 6.3A8.4 8.4 0 0 1 10.5 4.2" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M21.14 15.79 15.79 21.14H8.21L2.86 15.79V8.21L8.21 2.86h7.58l5.35 5.35Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round"/>
+    <path d="M21.14 15.79 15.79 21.14H8.21L2.86 15.79V8.21L8.21 2.86h7.58l5.35 5.35Z" fill="url(#bg-team)" stroke="url(#bg-team)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-team)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-team)"/></g>
+    <path d="M19.39 15.06 15.06 19.39H8.94L4.61 15.06V8.94L8.94 4.61h6.12l4.33 4.33Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".8" stroke-linejoin="round"/>
+    <rect x="7.2" y="13.4" width="2.5" height="4.6" rx=".6" fill="#0E1B10"/>
+    <rect x="10.75" y="10.4" width="2.5" height="7.6" rx=".6" fill="#0E1B10"/>
+    <rect x="14.3" y="7.4" width="2.5" height="10.6" rx=".6" fill="#0E1B10"/>
+    <path d="M7.2 6.3A8.4 8.4 0 0 1 10.5 4.2" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- Main Character: one tall four-point sparkle, plus two small ones. -->
+  <!-- Main Character: one tall gold sparkle, plus two small ones. -->
   <symbol id="main-character" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-main" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFFDE2"/>
-        <stop offset=".52" stop-color="#D8F56B"/>
-        <stop offset="1" stop-color="#86C944"/>
+      <linearGradient id="bg-main" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#FFF3B4"/>
+        <stop offset=".52" stop-color="#CBB63E"/>
+        <stop offset="1" stop-color="#3B3405"/>
       </linearGradient>
+      <linearGradient id="gl-main" x1="0" y1="2.2" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".32"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-main"><path d="M12 2.2 14.55 9.45 21.8 12 14.55 14.55 12 21.8 9.45 14.55 2.2 12 9.45 9.45Z"/></clipPath>
     </defs>
-    <path d="M12 2.2 14.55 9.45 21.8 12 14.55 14.55 12 21.8 9.45 14.55 2.2 12 9.45 9.45Z" fill="url(#bzg-main)" stroke="url(#bzg-main)" stroke-width="1" stroke-linejoin="round"/>
+    <path d="M12 2.2 14.55 9.45 21.8 12 14.55 14.55 12 21.8 9.45 14.55 2.2 12 9.45 9.45Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.7" stroke-linejoin="round"/>
+    <path d="M12 2.2 14.55 9.45 21.8 12 14.55 14.55 12 21.8 9.45 14.55 2.2 12 9.45 9.45Z" fill="url(#bg-main)" stroke="url(#bg-main)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-main)"><rect x="0" y="2" width="24" height="10" fill="url(#gl-main)"/></g>
     <circle cx="12" cy="12" r="1.5" fill="#fff"/>
-    <path d="M18.6 5.3 19.3 6.9 20.9 7.6 19.3 8.3 18.6 9.9 17.9 8.3 16.3 7.6 17.9 6.9Z" fill="#fff" fill-opacity=".9"/>
-    <path d="M5.6 16.4 6.1 17.5 7.2 18 6.1 18.5 5.6 19.6 5.1 18.5 4 18 5.1 17.5Z" fill="#fff" fill-opacity=".55"/>
+    <path d="M18.6 5.3 19.3 6.9 20.9 7.6 19.3 8.3 18.6 9.9 17.9 8.3 16.3 7.6 17.9 6.9Z" fill="#fff" fill-opacity=".92"/>
+    <path d="M5.6 16.4 6.1 17.5 7.2 18 6.1 18.5 5.6 19.6 5.1 18.5 4 18 5.1 17.5Z" fill="#fff" fill-opacity=".6"/>
   </symbol>
-  <!-- Voice of the Realms: a cyan pill bubble, ink waveform. -->
+  <!-- Voice of the Realms: a cyan pill bubble, bright waveform. -->
   <symbol id="voice-of-realm" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-voice" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#D8FBFF"/>
-        <stop offset=".5" stop-color="#64D2E8"/>
-        <stop offset="1" stop-color="#238BB8"/>
+      <linearGradient id="bg-voice" x1="6" y1="3" x2="17" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#A9F0FF"/>
+        <stop offset=".5" stop-color="#2FA8CC"/>
+        <stop offset="1" stop-color="#04283C"/>
       </linearGradient>
+      <linearGradient id="gl-voice" x1="0" y1="3.2" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".28"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-voice">
+        <path d="M2.5 10.2c0-3.76 3.04-6.8 6.8-6.8h5.4c3.76 0 6.8 3.04 6.8 6.8v0c0 3.76-3.04 6.8-6.8 6.8H9.3c-3.76 0-6.8-3.04-6.8-6.8Z"/>
+      </clipPath>
     </defs>
-    <rect x="2.5" y="3.4" width="19" height="13.6" rx="6.8" fill="url(#bzg-voice)"/>
-    <path d="M7.6 16.2 6.2 21 12 16.7Z" fill="url(#bzg-voice)"/>
-    <rect x="4" y="4.9" width="16" height="10.6" rx="5.3" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".8"/>
-    <rect x="6.9" y="9.4" width="2" height="3.2" rx="1" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="10.15" y="7.8" width="2" height="6.4" rx="1" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="13.4" y="6.6" width="2" height="8.8" rx="1" fill="var(--bz-ink,#0B0B0B)"/>
-    <rect x="16.65" y="8.8" width="2" height="4.4" rx="1" fill="var(--bz-ink,#0B0B0B)"/>
-    <path d="M5.4 6.4A5.6 5.6 0 0 1 8.8 4.6" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".9" stroke-linecap="round"/>
+    <g fill="#0A0C10" stroke="#0A0C10" stroke-width="2.9" stroke-linejoin="round">
+      <rect x="2.5" y="3.4" width="19" height="13.6" rx="6.8"/>
+      <path d="M7.6 16.2 6.2 21 12 16.7Z"/>
+    </g>
+    <g fill="url(#bg-voice)">
+      <rect x="2.5" y="3.4" width="19" height="13.6" rx="6.8"/>
+      <path d="M7.6 16.2 6.2 21 12 16.7Z"/>
+    </g>
+    <g clip-path="url(#cp-voice)"><rect x="0" y="3" width="24" height="10" fill="url(#gl-voice)"/></g>
+    <rect x="4" y="4.9" width="16" height="10.6" rx="5.3" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/>
+    <rect x="6.9" y="9.4" width="2" height="3.2" rx="1" fill="#F0FDFF"/>
+    <rect x="10.15" y="7.8" width="2" height="6.4" rx="1" fill="#F0FDFF"/>
+    <rect x="13.4" y="6.6" width="2" height="8.8" rx="1" fill="#F0FDFF"/>
+    <rect x="16.65" y="8.8" width="2" height="4.4" rx="1" fill="#F0FDFF"/>
+    <path d="M5.4 6.4A5.6 5.6 0 0 1 8.8 4.6" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width=".9" stroke-linecap="round"/>
   </symbol>
-  <!-- The Rizz: a brilliant-cut gem, three facets, one sparkle. -->
+  <!-- The Rizz: a brilliant-cut gem, deep facets, one sparkle. -->
   <symbol id="the-rizz" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-rizz" x1="5" y1="2.5" x2="18" y2="21.5" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#FFF4BD"/>
-        <stop offset=".45" stop-color="#75DDF2"/>
-        <stop offset="1" stop-color="#8D52E8"/>
+      <linearGradient id="bg-rizz" x1="5" y1="2.5" x2="18" y2="21.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F8ECA8"/>
+        <stop offset=".45" stop-color="#4FC2E6"/>
+        <stop offset="1" stop-color="#4A1B9E"/>
       </linearGradient>
+      <linearGradient id="gl-rizz" x1="0" y1="2.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-rizz"><path d="M8.4 3.2h7.2l5.8 6L12 21.6 2.6 9.2Z"/></clipPath>
     </defs>
-    <path d="M8.4 3.2h7.2l5.8 6L12 21.6 2.6 9.2Z" fill="url(#bzg-rizz)" stroke="url(#bzg-rizz)" stroke-width="1" stroke-linejoin="round"/>
-    <path d="M8.4 3.2 12 9.2l3.6-6Z" fill="var(--bz-ink,#0B0B0B)" fill-opacity=".22"/>
-    <path d="M2.6 9.2 12 9.2 12 21.6Z" fill="#fff" fill-opacity=".26"/>
-    <path d="M21.4 9.2 12 9.2 12 21.6Z" fill="var(--bz-ink,#0B0B0B)" fill-opacity=".18"/>
-    <path d="M2.6 9.2h18.8" fill="none" stroke="var(--bz-ink,#0B0B0B)" stroke-opacity=".16" stroke-width=".9"/>
-    <path d="M7.3 5.2 8 6.8 9.6 7.5 8 8.2 7.3 9.8 6.6 8.2 5 7.5 6.6 6.8Z" fill="#fff" fill-opacity=".9"/>
+    <path d="M8.4 3.2h7.2l5.8 6L12 21.6 2.6 9.2Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M8.4 3.2h7.2l5.8 6L12 21.6 2.6 9.2Z" fill="url(#bg-rizz)" stroke="url(#bg-rizz)" stroke-width=".6" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-rizz)"><rect x="0" y="2.6" width="24" height="9" fill="url(#gl-rizz)"/></g>
+    <path d="M8.4 3.2 12 9.2l3.6-6Z" fill="#0B0616" fill-opacity=".4"/>
+    <path d="M2.6 9.2 12 9.2 12 21.6Z" fill="#fff" fill-opacity=".3"/>
+    <path d="M21.4 9.2 12 9.2 12 21.6Z" fill="#0B0616" fill-opacity=".32"/>
+    <path d="M2.6 9.2h18.8" fill="none" stroke="#0B0616" stroke-opacity=".4" stroke-width=".9"/>
+    <path d="M7.3 5.2 8 6.8 9.6 7.5 8 8.2 7.3 9.8 6.6 8.2 5 7.5 6.6 6.8Z" fill="#fff" fill-opacity=".92"/>
   </symbol>
   <!-- Purify: a faceted cleansing-water crystal caught in a violet orbit. -->
   <symbol id="purify" viewBox="0 0 24 24">
     <defs>
-      <linearGradient id="bzg-purify" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#F5E8FF"/>
-        <stop offset=".44" stop-color="#B66AFF"/>
-        <stop offset="1" stop-color="#6928C9"/>
+      <linearGradient id="bg-purify" x1="5.2" y1="2.8" x2="18.8" y2="21.6" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#E9C8FF"/>
+        <stop offset=".44" stop-color="#9140EA"/>
+        <stop offset="1" stop-color="#2A0858"/>
       </linearGradient>
+      <linearGradient id="gl-purify" x1="0" y1="2.6" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff" stop-opacity=".3"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="cp-purify"><path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z"/></clipPath>
     </defs>
-    <path d="M3.15 12c0-3.2 3.95-5.8 8.85-5.8s8.85 2.6 8.85 5.8-3.95 5.8-8.85 5.8S3.15 15.2 3.15 12Z" transform="rotate(-27 12 12)" fill="none" stroke="#9E57E8" stroke-opacity=".82" stroke-width="1.35"/>
-    <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="url(#bzg-purify)" stroke="#E9D5FF" stroke-opacity=".82" stroke-width=".9" stroke-linejoin="round"/>
-    <path d="m12 2.9 2.45 5.35L12 20.95 9.55 8.25Z" fill="#F7EFFF" fill-opacity=".3"/>
-    <path d="m6.05 8.15 5.95.1 5.95-.1M6.7 14.45 12 12.9l5.3 1.55" fill="none" stroke="#5A249F" stroke-opacity=".54" stroke-width=".8" stroke-linejoin="round"/>
-    <path d="m8.05 8.15 3.95 4.75 3.95-4.75" fill="none" stroke="#FFF8FF" stroke-opacity=".84" stroke-width=".9" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="19.1" cy="6.05" r="1.45" fill="#E9D5FF" stroke="#7638C6" stroke-width=".7"/>
-    <path d="M4.75 8.55A7.8 7.8 0 0 1 8.4 5.5" fill="none" stroke="#fff" stroke-opacity=".78" stroke-width=".95" stroke-linecap="round"/>
+    <path d="M3.15 12c0-3.2 3.95-5.8 8.85-5.8s8.85 2.6 8.85 5.8-3.95 5.8-8.85 5.8S3.15 15.2 3.15 12Z" transform="rotate(-27 12 12)" fill="none" stroke="#B06CF5" stroke-opacity=".85" stroke-width="1.35"/>
+    <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="#0A0C10" stroke="#0A0C10" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M12 2.9 18.25 8.2l-.95 6.3L12 21.1l-5.3-6.6-.95-6.3Z" fill="url(#bg-purify)" stroke="#EBD3FF" stroke-opacity=".85" stroke-width=".8" stroke-linejoin="round"/>
+    <g clip-path="url(#cp-purify)"><rect x="0" y="2.4" width="24" height="9" fill="url(#gl-purify)"/></g>
+    <path d="m12 2.9 2.45 5.35L12 20.95 9.55 8.25Z" fill="#FBF3FF" fill-opacity=".34"/>
+    <path d="m6.05 8.15 5.95.1 5.95-.1M6.7 14.45 12 12.9l5.3 1.55" fill="none" stroke="#3A0C74" stroke-opacity=".6" stroke-width=".8" stroke-linejoin="round"/>
+    <path d="m8.05 8.15 3.95 4.75 3.95-4.75" fill="none" stroke="#FFF8FF" stroke-opacity=".88" stroke-width=".9" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="19.1" cy="6.05" r="1.45" fill="#EBD3FF" stroke="#6A2CB8" stroke-width=".7"/>
+    <path d="M4.75 8.55A7.8 7.8 0 0 1 8.4 5.5" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width=".95" stroke-linecap="round"/>
   </symbol>
 </svg>
