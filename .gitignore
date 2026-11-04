@@ -40,3 +40,6 @@ dist-ssr
 *.sln
 *.sw?
 package-lock.json
+
+# Stop Render from building the nested duplicate app tree that causes src/src/ paths
+rizz-world-builder/
