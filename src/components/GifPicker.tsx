@@ -370,8 +370,14 @@ export function GifPicker({
           <span className="h-1 w-10 rounded-full bg-white/25" />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="flex items-center gap-2 font-display text-base font-bold">
+            <Smile className="h-4 w-4 text-primary" /> Pick something
+          </p>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-white/10">✕</button>
+        </div>
         <div
-          className="mb-3 flex gap-1 rounded-xl border border-white/10 bg-black/20 p-1"
+          className="mb-3 flex gap-1 rounded-full border border-white/10 bg-black/30 p-1"
           role="tablist"
           aria-label="Media type"
         >

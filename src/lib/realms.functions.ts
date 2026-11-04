@@ -43,7 +43,7 @@ const updateRealmDetailsServer = createServerFn({ method: "POST" })
     }
     const description = data.description ? sanitizeLine(data.description, REALM_DESCRIPTION_MAX) : null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
 
     // Permissions are enforced here, not only in the UI: owner or mod only.
     const { data: realmRow, error: realmError } = await supabaseAdmin
