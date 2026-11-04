@@ -13,7 +13,7 @@ function LinkText({ text }: { text: string }) {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="break-all text-[#c8ff3d] hover:underline"
+            className="break-all text-primary hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             {part}
@@ -62,13 +62,13 @@ export function Embed({
     // message text sits above them and the card reads as one solid panel
     // instead of a second bubble floating in the conversation.
     <article
-      className="w-full overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]"
+      className="w-full overflow-hidden rounded-lg border border-border bg-surface-2"
       style={{ borderLeft: `3px solid ${color}` }}
     >
       <div className="flex min-w-0 gap-3 p-3">
         <div className="min-w-0 flex-1">
           {embed.author && (embed.author.name || embed.author.icon_url) && (
-            <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#f2efe6]">
+            <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground">
               {embed.author.icon_url && isHttpsUrl(embed.author.icon_url) && (
                 <img
                   src={embed.author.icon_url}
@@ -88,7 +88,7 @@ export function Embed({
             </p>
           )}
           {embed.title && (
-            <p className="mt-1 text-sm font-bold leading-snug text-[#f2efe6]">
+            <p className="mt-1 text-sm font-bold leading-snug text-foreground">
               {embed.url ? (
                 <SafeLink href={embed.url} className="hover:underline">
                   {embed.title}
@@ -99,14 +99,14 @@ export function Embed({
             </p>
           )}
           {embed.description && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-[#f2efe6]/90">
+            <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground/80">
               <LinkText text={embed.description} />
             </p>
           )}
           {blockFields.map((f, i) => (
             <div key={`b-${i}`} className="mt-2">
-              <p className="text-xs font-bold text-[#f2efe6]">{f.name}</p>
-              <p className="whitespace-pre-wrap break-words text-[13px] text-[#f2efe6]/85">
+              <p className="text-xs font-bold text-foreground">{f.name}</p>
+              <p className="whitespace-pre-wrap break-words text-[13px] text-foreground/80">
                 <LinkText text={f.value} />
               </p>
             </div>
@@ -115,8 +115,8 @@ export function Embed({
             <div className="mt-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
               {inlineFields.map((f, i) => (
                 <div key={`f-${i}`} className="min-w-0">
-                  <p className="truncate text-xs font-bold text-[#f2efe6]">{f.name}</p>
-                  <p className="whitespace-pre-wrap break-words text-[13px] text-[#f2efe6]/85">
+                  <p className="truncate text-xs font-bold text-foreground">{f.name}</p>
+                  <p className="whitespace-pre-wrap break-words text-[13px] text-foreground/80">
                     <LinkText text={f.value} />
                   </p>
                 </div>
@@ -131,7 +131,7 @@ export function Embed({
                   event.stopPropagation();
                   onAction?.(embed.button!);
                 }}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#c8ff3d]/40 bg-[#c8ff3d]/10 px-3 text-[12.5px] font-semibold text-[#c8ff3d] transition-colors hover:bg-[#c8ff3d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c8ff3d]"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 {embed.button.label || "Say hi"}
               </button>

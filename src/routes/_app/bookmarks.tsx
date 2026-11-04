@@ -47,12 +47,12 @@ function BookmarksPage() {
       {q.data && q.data.length > 0 && (
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search saved posts…" className="pl-9 glass border-white/10" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search saved posts…" className="pl-9 glass border-border" />
         </div>
       )}
       {q.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {q.data && q.data.length === 0 && (
-        <div className="glass rounded-3xl border border-white/5 p-10 text-center">
+        <div className="glass rounded-3xl border border-border p-10 text-center">
           <Bookmark className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Nothing saved yet. Tap the bookmark icon on any post.</p>
           <Button asChild className="bg-primary text-primary-foreground font-semibold"><Link to="/explore"><Compass className="mr-2 h-4 w-4" /> Discover posts</Link></Button>

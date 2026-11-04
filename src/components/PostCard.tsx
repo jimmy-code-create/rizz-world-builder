@@ -547,7 +547,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             <span className="truncate">@{post.author?.username} · {timeAgo(post.created_at)}</span>
             {(post as any).edited_at && <span className="text-[10px] italic">· edited</span>}
             {post.visibility === "close_friends" && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/15 px-1.5 text-[9px] font-semibold text-emerald-300">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 text-[9px] font-semibold text-emerald-700">
                 <Lock className="h-2.5 w-2.5" /> Close friends
               </span>
             )}
@@ -564,7 +564,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-strong border-white/10">
+          <DropdownMenuContent align="end" className="glass-strong">
             <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
               <LinkIcon className="mr-2 h-4 w-4" /> Copy link
             </DropdownMenuItem>
@@ -736,7 +736,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <RizzVideoPlayer src={post.media_url} label={`Video by @${post.author?.username ?? "creator"}`} />
             )
           ) : (
-            <div className="relative w-full overflow-hidden flex items-center justify-center bg-white/[0.02]">
+            <div className="relative flex w-full items-center justify-center overflow-hidden bg-surface-2">
               {!imageLoaded && (
                 <div
                   className="absolute inset-0 skeleton-shimmer animate-shimmer-sweep min-h-[180px] motion-reduce:animate-none"
@@ -791,7 +791,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
         </div>
       )}
 
-      <footer className="flex h-11 items-center gap-1 px-3.5 border-t border-white/5 mt-1">
+      <footer className="mt-1 flex h-11 items-center gap-1 border-t border-border px-3.5">
         <Button
           variant="ghost"
           size="sm"
@@ -856,7 +856,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </AnimatePresence>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong">
           <DialogTitle className="font-display">Report this post</DialogTitle>
           <DialogDescription>Tell us what's wrong. Our team will review.</DialogDescription>
           <div className="grid grid-cols-2 gap-2 pt-2">
@@ -864,7 +864,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
               <button
                 key={r}
                 onClick={() => setReportReason(r)}
-                className={`text-sm rounded-xl px-3 py-2 border transition-colors ${reportReason === r ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/5"}`}
+                className={`rounded-xl border px-3 py-2 text-sm transition-colors ${reportReason === r ? "border-primary bg-primary/10" : "border-border hover:bg-surface-2"}`}
               >
                 {r}
               </button>
@@ -878,10 +878,10 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong">
           <DialogTitle className="font-display">Edit caption</DialogTitle>
           <DialogDescription>Refine your post. The original media stays the same.</DialogDescription>
-          <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="bg-transparent border-white/10" />
+          <Textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 2000))} rows={5} className="border-border bg-transparent" />
           <p className="text-[10px] text-muted-foreground text-right">{caption.length}/2000</p>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
@@ -923,7 +923,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                 "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 superMode && purify.allowed
                   ? "border-[var(--super-violet-soft)] bg-[linear-gradient(120deg,rgba(180,124,255,0.3),rgba(124,77,255,0.18)_60%,rgba(236,72,153,0.2))] shadow-[0_0_18px_rgba(180,124,255,0.28)] ring-1 ring-inset ring-white/10"
-                  : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]",
+                  : "border-border bg-surface-2 hover:bg-surface-3",
                 !purify.allowed && "opacity-60",
               )}
             >
@@ -944,7 +944,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                   "h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors",
                   superMode && purify.allowed
                     ? "bg-[var(--super-violet-soft)]"
-                    : "bg-white/15",
+                    : "bg-surface-3",
                 )}
               >
                 <span
@@ -984,7 +984,7 @@ function CommentsThread({ postId }: { postId: string }) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="overflow-hidden border-t border-white/5 bg-black/20"
+      className="overflow-hidden border-t border-border bg-surface-2/60"
     >
       <CommentSection postId={postId} compact showToolbar={false} />
     </motion.div>

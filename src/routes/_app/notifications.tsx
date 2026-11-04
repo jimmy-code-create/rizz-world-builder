@@ -300,7 +300,7 @@ function NotificationsPage() {
       <p className="text-sm text-muted-foreground mb-4">{t("notif_subtitle")}</p>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
-        <TabsList className="no-scrollbar glass w-full max-w-full justify-start overflow-x-auto border border-white/5">
+        <TabsList className="no-scrollbar glass w-full max-w-full justify-start overflow-x-auto border border-border">
           <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
           <TabsTrigger value="unread">{t("tab_unread")}</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
@@ -348,7 +348,7 @@ function NotificationsPage() {
             const mention = mentionTarget(n);
             const mentionRealmSlug =
               mention?.kind === "realm" ? (realmSlugs.data?.get(mention.realmId) ?? null) : null;
-            const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
+            const shell = `glass rounded-2xl p-4 border ${n.read ? "border-border" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
             const inner = (
               <>
                 <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/15 flex items-center justify-center">

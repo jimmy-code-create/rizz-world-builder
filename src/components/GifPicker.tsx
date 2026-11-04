@@ -358,15 +358,15 @@ export function GifPicker({
       )}
       <SheetContent
         side="bottom"
-        className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
+        className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl p-0 [&>button]:hidden"
       >
         <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
         <div className="flex shrink-0 justify-center pb-1 pt-2.5" aria-hidden="true">
-          <span className="h-1 w-10 rounded-full bg-white/25" />
+          <span className="h-1 w-10 rounded-full bg-border" />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1">
         <div
-          className="mb-3 flex gap-1 rounded-xl border border-white/10 bg-black/20 p-1"
+          className="mb-3 flex gap-1 rounded-xl border border-border bg-surface-2 p-1"
           role="tablist"
           aria-label="Media type"
         >
@@ -386,7 +386,7 @@ export function GifPicker({
               className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition ${
                 tab === value
                   ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -412,7 +412,7 @@ export function GifPicker({
                     : "Search GIFs"
               }
               aria-label={`Search ${tab === "gifs" ? "GIFs" : tab}`}
-              className="h-9 border-white/10 bg-black/20 pl-9 text-sm"
+              className="h-9 border-border bg-card pl-9 text-sm"
             />
           </div>
         ) : null}
@@ -422,7 +422,7 @@ export function GifPicker({
           // button next to this picker. They now sit inside the emoji tab, so a
           // composer has one control and every emoji — standard, custom, GIFs,
           // stickers — is behind it. "Manage" still opens the full editor.
-          <div className="mb-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2">
+          <div className="mb-2.5 rounded-xl border border-border bg-surface-2 px-2.5 py-2">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 This server
@@ -434,7 +434,7 @@ export function GifPicker({
                     setOpen(false);
                     onCustomEmoji();
                   }}
-                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground"
                 >
                   <Settings2 className="h-3 w-3" />
                   Manage
@@ -455,7 +455,7 @@ export function GifPicker({
                       onSelect(`:${row.name}:`);
                       setOpen(false);
                     }}
-                    className="grid h-9 w-9 place-items-center rounded-lg transition hover:scale-110 hover:bg-white/10"
+                    className="grid h-9 w-9 place-items-center rounded-lg transition hover:scale-110 hover:bg-surface-3"
                     title={`:${row.name}:`}
                     aria-label={`Add :${row.name}:`}
                   >
@@ -489,7 +489,7 @@ export function GifPicker({
                         onSelect(item.emoji);
                         setOpen(false);
                       }}
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-lg transition hover:scale-110 hover:bg-white/10"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-lg transition hover:scale-110 hover:bg-surface-3"
                       aria-label={`Add ${item.name} emoji`}
                       title={item.name}
                     >
@@ -511,7 +511,7 @@ export function GifPicker({
                       sectionRefs.current[group] = node;
                     }}
                   >
-                    <p className="sticky top-0 z-10 bg-[#150f22]/95 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    <p className="sticky top-0 z-10 bg-card/95 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                       {group}
                     </p>
                     <div className="grid grid-cols-8 gap-0.5 sm:grid-cols-9">
@@ -523,7 +523,7 @@ export function GifPicker({
                             onSelect(item.emoji);
                             setOpen(false);
                           }}
-                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           aria-label={`Add ${item.name} emoji`}
                           title={item.name}
                         >
@@ -555,7 +555,7 @@ export function GifPicker({
               />
             </div>
 
-            <div className="mt-2 flex items-center gap-1 overflow-x-auto border-t border-white/5 pt-2">
+            <div className="mt-2 flex items-center gap-1 overflow-x-auto border-t border-border pt-2">
               {EMOJI_GROUPS.map((group) => (
                 <button
                   key={`jump-${group}`}
@@ -563,7 +563,7 @@ export function GifPicker({
                   onClick={() =>
                     sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
                   }
-                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
+                  className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
                 >
                   {group}
                 </button>
@@ -591,7 +591,7 @@ export function GifPicker({
         {tab === "gifs" && allowed && (
           <>
             {!apiKey ? (
-              <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">
+              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
                 <Image className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
                 <p className="text-sm font-semibold">Search GIFs</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -616,7 +616,7 @@ export function GifPicker({
                           onSelect(GIF_MARKER(gif.images.fixed_width.url));
                           setOpen(false);
                         }}
-                        className="overflow-hidden rounded-lg bg-black/20 transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="overflow-hidden rounded-lg bg-surface-2 transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label={`Add GIF: ${gif.title || "animated GIF"}`}
                       >
                         <img
@@ -672,14 +672,14 @@ export function GifPicker({
                   className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
                     selectedPack === pack.id
                       ? "border-primary/50 bg-primary/15 text-foreground"
-                      : "border-white/10 text-muted-foreground hover:bg-white/5"
+                      : "border-border text-muted-foreground hover:bg-surface-2"
                   }`}
                 >
                   {pack.label}
                 </button>
               ))}
             </div>
-            <div className="grid max-h-[45dvh] grid-cols-5 gap-1 overflow-y-auto overscroll-contain rounded-xl bg-black/10 p-1">
+            <div className="grid max-h-[45dvh] grid-cols-5 gap-1 overflow-y-auto overscroll-contain rounded-xl bg-surface-2 p-1">
               {stickers.length > 0 &&
                 filteredStickers.slice(0, visibleCount).map((sticker) => (
                   <button
@@ -689,7 +689,7 @@ export function GifPicker({
                       onSelect(STICKER_MARKER(sticker.src));
                       setOpen(false);
                     }}
-                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition hover:scale-105 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition hover:scale-105 hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label={`Add ${sticker.label}`}
                     title={sticker.label}
                   >

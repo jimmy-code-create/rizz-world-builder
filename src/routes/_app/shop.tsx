@@ -107,7 +107,7 @@ function ShopPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-16">
-      <header className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0e0e10] p-5 sm:p-6">
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6">
         <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           <Sparkles className="h-3 w-3" aria-hidden="true" />
           Paws shop
@@ -121,14 +121,14 @@ function ShopPage() {
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] font-bold text-[#ff2d3f]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-bold text-primary">
             <PawPrint className="h-3.5 w-3.5" aria-hidden="true" />
             {formatNumber(balance)}
             <span className="font-medium text-muted-foreground">Paws</span>
           </span>
           <Link
             to="/drops"
-            className="rounded-full border border-white/10 px-3 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+            className="rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
           >
             Earn more
           </Link>
@@ -136,7 +136,7 @@ function ShopPage() {
       </header>
 
       <Tabs defaultValue={EFFECT_CATEGORIES[0].type} className="mt-4">
-        <TabsList className="h-auto w-full justify-start gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 rounded-xl border border-border bg-surface-2 p-1">
           {EFFECT_CATEGORIES.map((category) => (
             <TabsTrigger
               key={category.type}
@@ -160,14 +160,14 @@ function ShopPage() {
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="h-56 animate-pulse rounded-2xl border border-white/[0.07] bg-white/[0.03]"
+                    className="h-56 animate-pulse rounded-2xl border border-border bg-surface-2"
                   />
                 ))}
               </div>
             )}
 
             {catalogue.isError && (
-              <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-[13px] text-muted-foreground">
+              <p className="rounded-xl border border-border bg-surface-2 p-4 text-[13px] text-muted-foreground">
                 The shop couldn&apos;t load. Pull to refresh and try again.
               </p>
             )}
@@ -183,7 +183,7 @@ function ShopPage() {
                         key={effect.slug}
                         type="button"
                         onClick={() => setOpenSlug(effect.slug)}
-                        className="group overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e0e10] text-left transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="group overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <EffectThumb
                           effect={effect}
@@ -208,12 +208,12 @@ function ShopPage() {
                                 <Check className="h-3 w-3" /> Worn
                               </span>
                             ) : isOwned ? (
-                              <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-bold text-muted-foreground">
+                              <span className="rounded-full border border-border px-2 py-1 text-[10px] font-bold text-muted-foreground">
                                 Owned
                               </span>
                             ) : (
                               <span className="flex flex-col items-end gap-0.5">
-                                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#ff2d3f]">
+                                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-primary">
                                   <PawPrint className="h-3 w-3" />
                                   {formatNumber(effect.paw_price)}
                                 </span>
@@ -233,7 +233,7 @@ function ShopPage() {
             )}
 
             {!catalogue.isLoading && !catalogue.isError && effects.length === 0 && (
-              <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-[13px] text-muted-foreground">
+              <p className="rounded-xl border border-border bg-surface-2 p-4 text-[13px] text-muted-foreground">
                 The shelves are being restocked. Check back in a moment.
               </p>
             )}
@@ -242,7 +242,7 @@ function ShopPage() {
       </Tabs>
 
       <Dialog open={!!staged} onOpenChange={(open) => !open && setOpenSlug(null)}>
-        <DialogContent className="max-h-[92dvh] gap-0 overflow-y-auto rounded-2xl border-white/10 bg-[#0e0e10] p-0 sm:max-w-md">
+        <DialogContent className="max-h-[92dvh] gap-0 overflow-y-auto rounded-2xl border-border bg-card p-0 sm:max-w-md">
           {staged && (
             <>
               <DialogTitle className="sr-only">{staged.name} preview</DialogTitle>
@@ -276,17 +276,17 @@ function ShopPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2.5">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {state(staged).owned ? "In your collection" : "Price"}
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-[13px] font-bold text-[#ff2d3f]">
+                    <span className="inline-flex items-center gap-1 text-[13px] font-bold text-primary">
                       <PawPrint className="h-3.5 w-3.5" />
                       {formatNumber(staged.paw_price)}
                     </span>
                     {staged.price_cents > 0 && (
-                      <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                         {formatCardPrice(staged.price_cents)} card
                       </span>
                     )}
@@ -303,7 +303,7 @@ function ShopPage() {
                       variant="outline"
                       onClick={() => remove.mutate(staged)}
                       disabled={remove.isPending}
-                      className="h-11 w-full border-white/15 font-bold"
+                      className="h-11 w-full border-border font-bold"
                     >
                       Remove from profile
                     </Button>
@@ -383,7 +383,7 @@ function EffectThumb({
               src={avatarSrc}
               alt=""
               aria-hidden="true"
-              className="h-8 w-8 shrink-0 rounded-full object-cover ring-2 ring-[#131315]"
+              className="h-8 w-8 shrink-0 rounded-full object-cover ring-2 ring-card"
             />
             <div className="min-w-0">
               <p className="truncate text-[11px] font-bold text-foreground">Your profile</p>
@@ -445,7 +445,7 @@ function PreviewStage({
         <p className="line-clamp-2 text-[12.5px] leading-5 text-foreground/80">
           {profile?.bio || "This is how your bio sits under the effect."}
         </p>
-        <div className="grid grid-cols-3 divide-x divide-white/[0.06] rounded-xl border border-white/[0.08] bg-white/[0.03] py-2 text-center">
+        <div className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-surface-2 py-2 text-center">
           {[
             { label: "Posts", value: 128 },
             { label: "Followers", value: 4200 },

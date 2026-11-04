@@ -36,7 +36,7 @@ function SharedPostCard({ postId }: { postId: string }) {
     return (
       <div
         aria-hidden="true"
-        className="h-[7.5rem] w-full animate-pulse rounded-xl border border-[#22222a] bg-[#0f0f11]"
+        className="h-[7.5rem] w-full animate-pulse rounded-xl border border-border bg-surface-2"
       />
     );
   }
@@ -57,12 +57,12 @@ function SharedPostCardView({ post }: { post: FeedPost }) {
     <Link
       to="/p/$postId"
       params={{ postId: post.id }}
-      className="block overflow-hidden rounded-xl border border-[#22222a] bg-[#0f0f11] text-left transition-colors hover:border-[#34343d] hover:bg-[#131316] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      className="block overflow-hidden rounded-xl border border-border bg-surface-2 text-left transition-colors hover:border-foreground/20 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       aria-label={`Open ${isVideo ? "reel" : "post"} by ${authorName}`}
     >
       <div className="flex items-center gap-2 px-3 pt-2.5">
-        {isVideo ? <Film className="h-3.5 w-3.5 shrink-0 text-[#c8ff3d]" /> : <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[#c8ff3d]" />}
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#c8ff3d]">
+        {isVideo ? <Film className="h-3.5 w-3.5 shrink-0 text-primary" /> : <ImageIcon className="h-3.5 w-3.5 shrink-0 text-primary" />}
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
           {isVideo ? "Reel" : "Post"}
         </span>
       </div>
@@ -103,7 +103,7 @@ function SharedPostCardView({ post }: { post: FeedPost }) {
         <div className="mt-2 flex items-center gap-2">
           <Avatar className="h-5 w-5 shrink-0">
             <AvatarImage src={post.author?.avatar_url ?? undefined} alt="" />
-            <AvatarFallback className="bg-white/10 text-[9px] font-bold">
+            <AvatarFallback className="bg-surface-2 text-[9px] font-bold">
               {authorName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>

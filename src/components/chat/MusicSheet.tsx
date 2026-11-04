@@ -78,8 +78,8 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="glass-strong z-[170] flex w-full flex-col gap-0 border-white/10 p-0 sm:max-w-md">
-        <SheetHeader className="shrink-0 border-b border-white/10 px-4 py-3 text-left">
+      <SheetContent side="right" className="glass-strong z-[170] flex w-full flex-col gap-0 border-border p-0 sm:max-w-md">
+        <SheetHeader className="shrink-0 border-b border-border px-4 py-3 text-left">
           <SheetTitle className="flex items-center gap-2 font-display text-base">
             <Music className="h-4 w-4 text-primary" /> Music
           </SheetTitle>
@@ -119,7 +119,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
                   <Button
                     size="sm"
                     variant="outline"
-                    className="glass h-9 shrink-0 gap-1.5 border-white/10 text-xs"
+                    className="glass h-9 shrink-0 gap-1.5 border-border text-xs"
                     onClick={() => onRetryNowPlaying?.()}
                   >
                     <Play className="h-3.5 w-3.5" /> Retry
@@ -128,7 +128,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
                   <Button
                     size="sm"
                     variant="outline"
-                    className="glass h-9 w-9 shrink-0 border-white/10 !px-0"
+                    className="glass h-9 w-9 shrink-0 border-border !px-0"
                     disabled={!nowPlaying.canToggle}
                     onClick={() => onToggleNowPlaying?.()}
                     aria-label={nowPlaying.singing ? "Pause music" : "Play music"}
@@ -152,20 +152,20 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
               placeholder="Add a song…"
               aria-label="Add a song"
               maxLength={120}
-              className="h-11 flex-1 rounded-full border-[#2a2a2e] bg-[#141416] text-sm"
+              className="h-11 flex-1 rounded-full border-border bg-card text-sm"
             />
             <Button
               type="button"
               disabled={adding || !addTitle.trim()}
               onClick={() => void addSong()}
               aria-label="Queue song"
-              className="h-11 w-11 shrink-0 rounded-full bg-[#c8ff3d] !px-0 text-[#0b0b0c] hover:bg-[#c8ff3d]/90 disabled:opacity-50"
+              className="h-11 w-11 shrink-0 rounded-full bg-primary !px-0 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
 
-          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-surface-2 px-3 py-2.5">
             <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="flex-1 space-y-1">
               <div className="flex items-center justify-between text-[11px]">
@@ -196,7 +196,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
               <Button
                 size="sm"
                 variant="outline"
-                className="glass h-8 gap-1.5 border-white/10 text-xs"
+                className="glass h-8 gap-1.5 border-border text-xs"
                 disabled={!!busy || tracks.length === 0}
                 onClick={() => void run("skip")}
               >
@@ -206,7 +206,7 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
               <Button
                 size="sm"
                 variant="outline"
-                className="glass h-8 gap-1.5 border-white/10 text-xs"
+                className="glass h-8 gap-1.5 border-border text-xs"
                 disabled={!!busy || tracks.length === 0}
                 onClick={() => void run("stop")}
               >
@@ -233,8 +233,8 @@ export function MusicSheet({ open, onOpenChange, realmId, roomId, nowPlaying, on
 
           <div className="mt-3 space-y-2">
             {tracks.map((track, index) => (
-              <div key={track.id} className="flex items-center gap-3 rounded-2xl border border-white/10 glass p-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black/30 font-display text-xs font-bold text-muted-foreground">
+              <div key={track.id} className="flex items-center gap-3 rounded-2xl border border-border glass p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-3 font-display text-xs font-bold text-muted-foreground">
                   {index === 0 ? "▶" : track.position}
                 </span>
                 {track.artwork_url && (

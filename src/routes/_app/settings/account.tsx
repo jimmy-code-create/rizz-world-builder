@@ -81,14 +81,14 @@ function AccountSettingsPage() {
               navigator.clipboard.writeText(user.id);
               toast.success(t("user_id_copied"));
             }}
-            className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5"
+            className="flex w-full items-center gap-2 rounded-xl border border-border glass-strong px-3 py-2 text-sm hover:bg-surface-2"
           >
             <Copy className="h-4 w-4" /> {t("copy_user_id")}
           </button>
-          <button onClick={exportData} className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5">
+          <button onClick={exportData} className="flex w-full items-center gap-2 rounded-xl border border-border glass-strong px-3 py-2 text-sm hover:bg-surface-2">
             <Download className="h-4 w-4" /> {t("download_data")}
           </button>
-          <button onClick={clearLocalCache} className="flex w-full items-center gap-2 rounded-xl border border-white/10 glass-strong px-3 py-2 text-sm hover:bg-white/5">
+          <button onClick={clearLocalCache} className="flex w-full items-center gap-2 rounded-xl border border-border glass-strong px-3 py-2 text-sm hover:bg-surface-2">
             <Trash2 className="h-4 w-4" /> {t("clear_cache")}
           </button>
         </div>

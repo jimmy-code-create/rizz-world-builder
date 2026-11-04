@@ -62,7 +62,7 @@ function QuestEmblem({
       } ${
         done
           ? "border-primary/35 bg-primary/[0.14] text-primary"
-          : "border-white/10 bg-white/[0.04] text-foreground/80"
+          : "border-border bg-surface-2 text-foreground/80"
       }`}
     >
       {/* Sheen: keeps the flat tile from reading as an empty grey box. */}
@@ -83,7 +83,7 @@ function QuestEmblem({
 
 /** The one button recipe for the bounty page: square corners, 40px tall. */
 const ACTION_BUTTON =
-  "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3.5 text-xs font-bold text-foreground transition-colors hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+  "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3.5 text-xs font-bold text-foreground transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
 export const Route = createFileRoute("/_app/drops")({
   head: () => ({ meta: [{ title: "Bounties · RIZZ" }] }),
@@ -491,7 +491,7 @@ function DropsPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-center"
+              className="rounded-xl border border-border bg-surface-2 px-3 py-1.5 text-center"
             >
               <p className="font-mono text-sm font-bold leading-none">{formatNumber(stat.value)}</p>
               <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
@@ -518,7 +518,7 @@ function DropsPage() {
               className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${
                 onlyMine === tab.id
                   ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                  : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
               }`}
             >
               <tab.icon className="h-3.5 w-3.5" />
@@ -552,14 +552,14 @@ function DropsPage() {
                 className={`inline-flex min-h-8 shrink-0 snap-start items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold transition-colors ${
                   selected
                     ? "border-primary/45 bg-primary/15 text-primary"
-                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                    : "border-border bg-surface-2 text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 }`}
               >
                 <Hash className="h-3 w-3" />
                 {tag}
                 <span
                   className={`rounded-full px-1.5 text-[10px] ${
-                    selected ? "bg-primary/15" : "bg-white/[0.06]"
+                    selected ? "bg-primary/15" : "bg-surface-3"
                   }`}
                 >
                   {count}
@@ -616,7 +616,7 @@ function DropsPage() {
             <Button
               variant="outline"
               onClick={() => setTagFilter(null)}
-              className="mt-3 glass border-white/10"
+              className="mt-3 glass border-border"
             >
               Clear tag filter
             </Button>
@@ -651,7 +651,7 @@ function DropsPage() {
           </span>
         </div>
         <div
-          className="h-2 overflow-hidden rounded-full bg-white/5"
+          className="h-2 overflow-hidden rounded-full bg-surface-2"
           role="progressbar"
           aria-label="Quests completed"
           aria-valuenow={questsDone}
@@ -670,7 +670,7 @@ function DropsPage() {
             return (
               <div
                 key={quest.id}
-                className={`glass flex items-center gap-3 rounded-2xl border border-white/5 p-4 ${done ? "opacity-80" : ""}`}
+                className={`glass flex items-center gap-3 rounded-2xl border border-border p-4 ${done ? "opacity-80" : ""}`}
               >
                 <QuestEmblem icon={Icon} done={done} />
                 <div className="min-w-0 flex-1">

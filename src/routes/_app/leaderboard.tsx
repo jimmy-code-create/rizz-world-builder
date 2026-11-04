@@ -46,7 +46,7 @@ function RankDelta({ rank, prevRank }: { rank: number; prevRank: number | null }
       aria-label={up ? `Up ${n} since last period` : `Down ${n} since last period`}
       title={up ? `Up ${n}` : `Down ${n}`}
       className={`flex shrink-0 items-center gap-0.5 text-[11px] font-bold tabular-nums ${
-        up ? "text-[#c8ff3d]" : "text-[#ff6a55]"
+        up ? "text-primary" : "text-destructive"
       }`}
     >
       <span aria-hidden>{up ? "▲" : "▼"}</span>
@@ -191,10 +191,10 @@ function LeaderboardPage() {
               role="tab"
               aria-selected={selected}
               onClick={() => setPeriod(p.value)}
-              className={`flex min-h-[44px] flex-1 items-center justify-center rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+              className={`flex min-h-[44px] flex-1 items-center justify-center rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 selected
-                  ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
-                  : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground"
               }`}
             >
               {p.label}
@@ -218,10 +218,10 @@ function LeaderboardPage() {
               role="radio"
               aria-checked={selected}
               onClick={() => setFollowingOnly(o.value)}
-              className={`flex min-h-[44px] flex-1 items-center justify-center rounded-full border text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+              className={`flex min-h-[44px] flex-1 items-center justify-center rounded-full border text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 selected
-                  ? "border-[#c8ff3d]/60 bg-white/5 text-foreground"
-                  : "border-[#2a2a2e] text-muted-foreground"
+                  ? "border-primary/40 bg-surface-2 text-foreground"
+                  : "border-border text-muted-foreground"
               }`}
             >
               {o.label}
@@ -329,17 +329,17 @@ function LeaderboardPage() {
         <button
           type="button"
           onClick={scrollToMe}
-          className="sticky bottom-0 z-10 mx-auto mb-2 flex min-h-[44px] w-full max-w-md items-center justify-center gap-1.5 rounded-2xl border border-[#c8ff3d]/40 bg-[#141416]/95 px-4 text-sm font-medium text-foreground shadow-xl backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+          className="sticky bottom-0 z-10 mx-auto mb-2 flex min-h-[44px] w-full max-w-md items-center justify-center gap-1.5 rounded-2xl border border-primary/40 bg-card/95 px-4 text-sm font-medium text-foreground shadow-xl backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {me.above ? (
             <span>
-              You&apos;re <span className="font-bold text-[#c8ff3d]">#{me.rank}</span>
+              You&apos;re <span className="font-bold text-primary">#{me.rank}</span>
               <span className="text-muted-foreground"> · {formatNumber(me.gap)} Paws to pass </span>
               <span className="font-semibold">@{me.above.username}</span>
             </span>
           ) : (
             <span>
-              You&apos;re <span className="font-bold text-[#c8ff3d]">#{me.rank}</span>
+              You&apos;re <span className="font-bold text-primary">#{me.rank}</span>
               <span className="text-muted-foreground"> · top of the board</span>
             </span>
           )}
@@ -349,7 +349,7 @@ function LeaderboardPage() {
         <button
           type="button"
           onClick={() => setEarnOpen(true)}
-          className="sticky bottom-0 z-10 mx-auto mb-2 flex min-h-[44px] w-full max-w-md items-center justify-center gap-1.5 rounded-2xl border border-[#2a2a2e] bg-[#141416]/95 px-4 text-sm text-muted-foreground shadow-xl backdrop-blur"
+          className="sticky bottom-0 z-10 mx-auto mb-2 flex min-h-[44px] w-full max-w-md items-center justify-center gap-1.5 rounded-2xl border border-border bg-card/95 px-4 text-sm text-muted-foreground shadow-xl backdrop-blur"
         >
           You&apos;re unranked — earn Paws to join the board
         </button>
@@ -368,7 +368,7 @@ function LeaderboardPage() {
         <SheetContent
           side="bottom"
           hideClose
-          className="mx-auto w-full max-w-md rounded-t-3xl border-white/10 glass-strong"
+          className="mx-auto w-full max-w-md rounded-t-3xl border-border glass-strong"
         >
           <div className="flex items-center gap-3">
             <SheetTitle className="flex-1 font-display text-lg">How to earn Paws</SheetTitle>
@@ -380,10 +380,10 @@ function LeaderboardPage() {
             {EARN_ROWS.map((e) => (
               <li
                 key={e.action}
-                className="flex min-h-[44px] items-center justify-between rounded-xl px-3 hover:bg-white/5"
+                className="flex min-h-[44px] items-center justify-between rounded-xl px-3 hover:bg-surface-2"
               >
                 <span className="text-sm text-foreground">{e.action}</span>
-                <span className="font-display font-bold text-[#c8ff3d]">{e.points}</span>
+                <span className="font-display font-bold text-primary">{e.points}</span>
               </li>
             ))}
           </ul>
@@ -416,14 +416,14 @@ function PodiumSpot({
       type="button"
       onClick={() => onOpen(row.id)}
       aria-label={`Rank ${place}: ${name}`}
-      className={`flex min-h-[44px] flex-col items-center gap-1 rounded-2xl border px-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+      className={`flex min-h-[44px] flex-col items-center gap-1 rounded-2xl border px-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         tall
-          ? "border-[#c8ff3d]/60 bg-[#c8ff3d]/10 pb-4 pt-3"
-          : "border-[#2a2a2e] bg-card pb-3 pt-2.5"
+          ? "border-primary/40 bg-primary/10 pb-4 pt-3"
+          : "border-border bg-card pb-3 pt-2.5"
       }`}
     >
       {tall ? (
-        <Crown className="h-6 w-6 text-[#c8ff3d]" aria-hidden />
+        <Crown className="h-6 w-6 text-primary" aria-hidden />
       ) : (
         <span className="font-display text-sm font-bold text-muted-foreground">#{place}</span>
       )}
@@ -435,7 +435,7 @@ function PodiumSpot({
       <span className="w-full truncate text-sm font-bold text-foreground">{name}</span>
       <span className="w-full truncate text-[11px] text-muted-foreground">@{row.username}</span>
       <span className="flex items-center gap-1.5">
-        <span className="font-display text-base font-bold text-[#c8ff3d]">
+        <span className="font-display text-base font-bold text-primary">
           {formatNumber(row.score)}
         </span>
         <RankDelta rank={row.rank} prevRank={row.prevRank} />
@@ -462,10 +462,10 @@ function BoardRowCard({
         type="button"
         onClick={() => onOpen(row.id)}
         aria-label={`Rank ${row.rank}: ${name}`}
-        className={`flex h-16 w-full items-center gap-3 rounded-2xl border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+        className={`flex h-16 w-full items-center gap-3 rounded-2xl border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
           isMe
-            ? "border-[#c8ff3d] bg-[#c8ff3d]/10"
-            : "border-[#2a2a2e] bg-card hover:bg-white/[0.04]"
+            ? "border-primary bg-primary/10"
+            : "border-border bg-card hover:bg-surface-2"
         }`}
       >
         <span className="w-8 shrink-0 text-center font-display text-base font-bold text-muted-foreground">
@@ -488,7 +488,7 @@ function BoardRowCard({
           <span className="block truncate text-xs text-muted-foreground">@{row.username}</span>
         </span>
         <RankDelta rank={row.rank} prevRank={row.prevRank} />
-        <span className="shrink-0 font-display text-base font-bold text-[#c8ff3d]">
+        <span className="shrink-0 font-display text-base font-bold text-primary">
           {formatNumber(row.score)}
         </span>
       </button>

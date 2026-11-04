@@ -51,6 +51,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-rizz-pink: var(--brand-signal);
   --color-rizz-violet: var(--brand-paper-dim);
   --color-rizz-cyan: var(--brand-signal);
@@ -169,6 +172,12 @@
   --rizz-glow: color-mix(in srgb, var(--brand-signal) 30%, transparent);
   --surface-bar: rgb(10 10 11 / 0.94);
   --surface-bubble: rgb(19 19 21 / 0.96);
+  /* Raised surfaces. These drive the `bg-surface-*` utilities used by the
+     shell, menus and cards, so hover and selected states stay visible in
+     every theme instead of assuming a dark translucent paper. */
+  --surface: var(--brand-ink-2);
+  --surface-2: var(--brand-ink-3);
+  --surface-3: #25252a;
 
   /* Chat rhythm. Every spacing value a message uses lives here, so the whole
      list can be re-tuned from one place — Discord's numbers: ~3px between two
@@ -311,41 +320,48 @@
 }
 
 [data-mode="light"] {
-  /* Paper mode: a warm off-white sheet with ink text. Ink becomes the accent
-     here (lime on paper fails AA), so buttons and links stay legible. */
+  /* White mode: the same clean sheet as the welcome and login flow. Pure white
+     cards sit on a warm off-white canvas, ink becomes the primary action colour
+     (acid lime is too light for text on white) and lime stays as the highlight. */
   --profile-banner-fallback: radial-gradient(
       120% 150% at 14% -10%,
-      rgba(21, 21, 26, 0.12) 0%,
-      rgba(21, 21, 26, 0.04) 34%,
-      transparent 64%
+      rgba(201, 255, 61, 0.26) 0%,
+      rgba(201, 255, 61, 0.08) 38%,
+      transparent 66%
     ),
-    linear-gradient(152deg, #eae5d7 0%, #ded9ca 52%, #d2cdbe 100%);
-  --background: #f2efe6;
+    linear-gradient(152deg, #f7f6f2 0%, #eeede7 52%, #e4e2da 100%);
+  --background: #f7f6f2;
   --foreground: #15151a;
-  --card: #fffdf7;
+  --card: #ffffff;
   --card-foreground: #15151a;
-  --popover: #fffdf7;
+  --popover: #ffffff;
   --popover-foreground: #15151a;
   --primary: #15151a;
-  --primary-foreground: #f4f1e7;
-  --secondary: #e6e2d6;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f0eb;
   --secondary-foreground: #15151a;
-  --muted: #e9e5da;
-  --muted-foreground: #55524a;
-  --accent: #e6e2d6;
+  --muted: #f1f0eb;
+  --muted-foreground: #6f6c64;
+  --accent: #efeee9;
   --accent-foreground: #15151a;
-  --border: color-mix(in srgb, #15151a 14%, transparent);
-  --input: color-mix(in srgb, #15151a 10%, transparent);
+  --border: #e6e3db;
+  --input: #dedbd2;
   --ring: #15151a;
   /* Destructive stays legible on paper (AA), unlike the neon dark-mode red. */
   --destructive: #b8391f;
-  --destructive-foreground: #fffdf7;
+  --destructive-foreground: #ffffff;
   --rizz-pink: #15151a;
-  --rizz-violet: #55524a;
+  --rizz-violet: #6f6c64;
   --rizz-cyan: #15151a;
   --rizz-glow: transparent;
-  --surface-bar: rgb(255 253 247 / 0.94);
-  --surface-bubble: rgb(255 253 247 / 0.96);
+  --surface-bar: rgb(255 255 255 / 0.94);
+  --surface-bubble: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f3ef;
+  --surface-3: #ebe9e3;
+  --shadow-1: 0 1px 2px rgb(21 21 26 / 0.06), 0 8px 28px -26px rgb(21 21 26 / 0.35);
+  --shadow-2: 0 18px 42px -30px rgb(21 21 26 / 0.38), 0 2px 6px -3px rgb(21 21 26 / 0.08);
+  --shadow-line: inset 0 1px 0 rgb(255 255 255 / 0.9);
   /* Same six names, darkened for the light surface (still 4.5:1). */
   --chat-name-1: oklch(0.52 0.19 25);
   --chat-name-2: oklch(0.50 0.13 60);
@@ -355,11 +371,11 @@
   --chat-name-6: oklch(0.50 0.18 330);
   /* Forum surfaces flip with the mode; the hairlines darken instead of
      lightening. */
-  --forum-surface: #fffdf7;
+  --forum-surface: #ffffff;
   --forum-surface-raised: #ffffff;
-  --forum-surface-sunken: #eae6db;
-  --forum-border: color-mix(in srgb, #15151a 14%, transparent);
-  --forum-shadow: 0 1px 2px rgb(21 21 26 / 0.12);
+  --forum-surface-sunken: #f1f0eb;
+  --forum-border: #e6e3db;
+  --forum-shadow: 0 1px 2px rgb(21 21 26 / 0.06);
   --forum-shadow-hover: 0 0 0 1px color-mix(in srgb, #15151a 10%, transparent);
   --forum-thread-line: color-mix(in srgb, #15151a 18%, transparent);
   --forum-pinned: oklch(0.62 0.16 80);
@@ -401,6 +417,9 @@
   --input: color-mix(in srgb, #f7f5ee 11%, transparent);
   --surface-bar: rgb(0 0 0 / 0.95);
   --surface-bubble: rgb(11 11 12 / 0.96);
+  --surface: #0b0b0c;
+  --surface-2: #141416;
+  --surface-3: #1c1c1f;
   --sidebar: #060607;
   --sidebar-accent: #16161a;
   --forum-surface: #0b0b0c;
@@ -1398,6 +1417,20 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   transform: translateZ(0);
   backface-visibility: hidden;
 }
+[data-mode="light"] .nightclub-canvas {
+  /* On white the same 12% ink dot grid would read as a checkerboard. Keep the
+     texture, soften it, and add one barely-there lime wash so the canvas feels
+     lit rather than grey. */
+  background-image:
+    radial-gradient(110% 62% at 50% -18%, rgba(201, 255, 61, 0.16) 0%, transparent 68%),
+    radial-gradient(color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1.5px);
+  background-size: auto, 22px 22px;
+}
+[data-mode="light"] :is(.glass, .glass-strong) {
+  /* Many surfaces still add `border-white/10` for a dark card. On white that
+     turns the hairline invisible; the token border keeps every panel defined. */
+  border-color: var(--border) !important;
+}
 .nc-orb, .nc-beam, .nc-grain { display: none; }
 .nc-orb {
   position: absolute; border-radius: 9999px; opacity: 0.35;
@@ -1586,8 +1619,9 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
   /* One flat surface, one hairline border. No tinted corner gradients. */
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--brand-ink-2);
-  box-shadow: var(--shadow-line);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shadow-1);
   transition:
     transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
     border-color 220ms ease,
@@ -1596,22 +1630,6 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 .feed-post-card:focus,
 .feed-post-card:focus-visible {
   outline: none;
-}
-/* A feed card is an ink surface in every mode: its background is the fixed
-   --brand-ink-2 above, so it can't inherit the page's text palette. In Paper
-   mode --foreground flips to ink and the display name and caption used to
-   render black-on-black (only the muted handle stayed visible). Re-declare the
-   ink palette *inside* the card so the name, caption, handle and footer stay
-   light, tags stay lime, while the paper "Suggested for you" panel beside it
-   keeps its dark text. */
-[data-mode="light"] .feed-post-card {
-  color: var(--brand-paper);
-  --foreground: var(--brand-paper);
-  --muted-foreground: var(--brand-paper-dim);
-  --primary: var(--brand-signal);
-  --primary-foreground: var(--brand-signal-ink);
-  --border: color-mix(in srgb, var(--brand-paper) 13%, transparent);
-  --ring: var(--brand-signal);
 }
 .rizz-claim-cat {
   display: inline-grid;
@@ -1657,11 +1675,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 }
 /* Focus-within removed: only explicit keyboard :focus-visible rings on controls may show */
 .post-media-frame {
-  border-block: 1px solid var(--brand-line);
+  border-block: 1px solid var(--border);
 }
 .feed-post-card > footer {
-  background: var(--brand-ink-2);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-paper) 5%, transparent);
+  background: var(--card);
+  box-shadow: inset 0 1px 0 var(--border);
 }
 .feed-post-card > footer > button {
   height: 2rem;
@@ -1672,7 +1690,7 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
     color 160ms ease,
     transform 160ms ease;
 }  .feed-post-card > footer > button:hover {
-  background-color: color-mix(in srgb, var(--brand-paper) 7%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 7%, transparent);
   color: var(--foreground);
 }
 .feed-post-card > footer > button:active {
@@ -1681,7 +1699,7 @@ body.focus-mode aside nav a[data-focus-dim="1"] { opacity: 0.5; }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .feed-post-card:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--brand-paper) 24%, transparent);
+    border-color: color-mix(in srgb, var(--foreground) 22%, transparent);
     box-shadow: var(--shadow-2);
   }
 }

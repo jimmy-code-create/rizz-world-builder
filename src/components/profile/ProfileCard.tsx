@@ -521,7 +521,7 @@ export function ProfileCard({
   if (d.deleted) {
     return (
       <div className="p-6 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#1c1c1f] text-2xl">?</div>
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-surface-2 text-2xl">?</div>
         <p className="mt-3 text-sm font-semibold text-foreground">This account is gone</p>
         <p className="mt-1 text-xs text-muted-foreground">The user was deleted or deactivated.</p>
       </div>
@@ -534,7 +534,7 @@ export function ProfileCard({
   if (d.blockedViewer && !isSelf) {
     return (
       <div className="p-6 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#1c1c1f] text-2xl font-bold text-muted-foreground">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-surface-2 text-2xl font-bold text-muted-foreground">
           {hintName.charAt(0).toUpperCase()}
         </div>
         <p className="mt-3 text-sm font-semibold text-foreground">Not available</p>
@@ -634,7 +634,7 @@ export function ProfileCard({
             <>
               {statusPill}
               {d.blockedByViewer && (
-                <span className="mt-1.5 inline-flex rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-muted-foreground">
+                <span className="mt-1.5 inline-flex rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
                   You blocked this account
                 </span>
               )}
@@ -683,7 +683,7 @@ export function ProfileCard({
                 <button
                   type="button"
                   aria-label="Profile options"
-                  className="grid h-11 w-11 place-items-center rounded-full bg-black/40 text-[#f2efe6] backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
@@ -721,13 +721,13 @@ export function ProfileCard({
             </span>
           </>
         }
-        surface={cardBanner.profileBackground ? cardBanner.surface : "#141416"}
+        surface={cardBanner.profileBackground ? cardBanner.surface : "var(--card)"}
         gutter="16px"
       />
 
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {d.blockedByViewer && !isSelf ? (
-          <div className="mt-3 rounded-xl bg-[#1c1c1f] p-4 text-center" style={{ borderRadius: 12 }}>
+          <div className="mt-3 rounded-xl bg-surface-2 p-4 text-center" style={{ borderRadius: 12 }}>
             <p className="text-sm font-semibold text-foreground">@{d.username} is blocked</p>
             <p className="mt-1 text-xs text-muted-foreground">Unblock to see their banner, photo and status.</p>
             <Button
@@ -741,14 +741,14 @@ export function ProfileCard({
           <>
             {/* Inner panel: the bio, then the two dates people actually look for.
                 The realm role lives up by the handle so it is not repeated here. */}
-            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+            <div className="mt-3 rounded-2xl border border-border bg-card p-3.5">
               {d.bio ? (
                 <>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">About me</p>
                   <div className={`mt-1 whitespace-pre-wrap text-sm font-normal leading-relaxed text-foreground/90 ${bioExpanded ? "" : "line-clamp-3"}`}>
                     <MarkdownText text={d.bio} renderPlainText={renderBioPlain} />
                     {!bioExpanded && d.bio.length > 180 && (
-                      <button type="button" onClick={() => setBioExpanded(true)} className="mt-0.5 min-h-[44px] text-xs font-semibold text-[#c8ff3d] hover:underline">
+                      <button type="button" onClick={() => setBioExpanded(true)} className="mt-0.5 min-h-[44px] text-xs font-semibold text-primary hover:underline">
                         more
                       </button>
                     )}
@@ -758,11 +758,11 @@ export function ProfileCard({
                 <p className="text-sm text-muted-foreground">{isSelf ? "Tell people who you are — edit your profile to add a bio." : "No bio yet."}</p>
               )}
               {(joinDate || realmJoinedAt) && (
-                <div className="mt-3.5 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-3">
+                <div className="mt-3.5 grid grid-cols-2 gap-3 border-t border-border pt-3">
                   {joinDate && (
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Member since</p>
-                      <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-medium text-[#f2efe6]">
+                      <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
                         <img src="/brand/rizz-cat-logo.svg" alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
                         {joinDate}
                       </p>
@@ -771,7 +771,7 @@ export function ProfileCard({
                   {realmJoinedAt && (
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">In this realm</p>
-                      <p className="mt-1 truncate text-sm font-medium text-[#f2efe6]">Joined {realmJoinedAt}</p>
+                      <p className="mt-1 truncate text-sm font-medium text-foreground">Joined {realmJoinedAt}</p>
                     </div>
                   )}
                 </div>
@@ -783,16 +783,16 @@ export function ProfileCard({
               <p className="text-[12px] font-bold uppercase tracking-wide text-foreground">Activity</p>
               <span className="text-[10px] text-muted-foreground">Lifetime</span>
             </div>
-            <div className="mt-1.5 grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-white/[0.035] p-1 text-center">
+            <div className="mt-1.5 grid grid-cols-4 gap-1 rounded-2xl border border-border bg-surface-2 p-1 text-center">
               <div className="rounded-xl py-2">
-                <p className="truncate font-display text-base font-bold tabular-nums text-[#c8ff3d]">{formatCount(d.pawBalance)}</p>
+                <p className="truncate font-display text-base font-bold tabular-nums text-primary">{formatCount(d.pawBalance)}</p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paws</p>
               </div>
               <div className="rounded-xl py-2">
                 <p className="truncate font-display text-base font-bold tabular-nums text-foreground">
                   {d.rank != null ? `#${d.rank}` : "—"}
                   {d.rank != null && d.rank <= 10 && (
-                    <Trophy aria-hidden="true" className="ml-0.5 inline h-3.5 w-3.5 -translate-y-px text-[#c8ff3d]" />
+                    <Trophy aria-hidden="true" className="ml-0.5 inline h-3.5 w-3.5 -translate-y-px text-primary" />
                   )}
                 </p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Rank</p>
@@ -801,7 +801,7 @@ export function ProfileCard({
                 type="button"
                 onClick={() => setListMode("followers")}
                 aria-label={`See ${d.followers} followers`}
-                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <p className="truncate font-display text-base font-bold tabular-nums text-foreground">{formatCount(d.followers)}</p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Followers</p>
@@ -810,7 +810,7 @@ export function ProfileCard({
                 type="button"
                 onClick={() => setListMode("following")}
                 aria-label={`See ${d.following} following`}
-                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#c8ff3d]"
+                className="min-h-11 rounded-xl py-2 transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <p className="truncate font-display text-base font-bold tabular-nums text-foreground">{formatCount(d.following)}</p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Following</p>
@@ -822,9 +822,9 @@ export function ProfileCard({
               <div className="mt-2.5 flex min-h-[44px] items-center gap-2">
                 <span className="flex -space-x-2">
                   {d.mutualPreview.map((m) => (
-                    <Avatar key={m.id} className="h-6 w-6 ring-2 ring-[#141416]">
+                    <Avatar key={m.id} className="h-6 w-6 ring-2 ring-card">
                       <AvatarImage src={m.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-[#1c1c1f] text-[9px] font-bold text-[#f2efe6]">
+                      <AvatarFallback className="bg-surface-2 text-[9px] font-bold text-foreground">
                         {(m.display_name || m.username || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -843,7 +843,7 @@ export function ProfileCard({
                 <Button
                   asChild
                   variant="outline"
-                  className="h-11 flex-1 border-[#c8ff3d]/40 bg-[#c8ff3d]/10 text-[#c8ff3d] hover:bg-[#c8ff3d]/20 hover:text-[#c8ff3d]"
+                  className="h-11 flex-1 border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                 >
                   <Link to="/settings/profile" onClick={() => close()}>
                     <Pencil className="h-4 w-4" /> Edit profile
@@ -854,7 +854,7 @@ export function ProfileCard({
                   <Button
                     type="button"
                     onClick={() => { close(); void nav({ to: "/dm/$userId", params: { userId } }); }}
-                    className="h-11 flex-1 bg-[#c8ff3d] text-[#0b0b0c] hover:bg-[#c8ff3d]/90"
+                    className="h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     <MessageCircle className="h-4 w-4" /> Message
                   </Button>
@@ -887,7 +887,7 @@ export function ProfileCard({
             <Button
               asChild
               variant="outline"
-              className="mt-2 h-11 w-full justify-between border-white/10 bg-white/[0.03] text-[#f2efe6] hover:bg-white/[0.07]"
+              className="mt-2 h-11 w-full justify-between border-border bg-surface-2 text-foreground hover:bg-surface-3"
             >
               <Link to="/u/$username" params={{ username: d.username }} onClick={() => close()}>
                 View full profile
@@ -902,13 +902,13 @@ export function ProfileCard({
       <Dialog open={listMode !== null} onOpenChange={(open) => { if (!open) setListMode(null); }}>
         <DialogContent
           hideClose
-          className="left-0 right-0 top-auto bottom-0 max-h-[76dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+          className="left-0 right-0 top-auto bottom-0 max-h-[76dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-border bg-card p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[340px] sm:max-w-[340px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
         >
           <DialogTitle className="sr-only">{listMode === "followers" ? "Followers" : "Following"}</DialogTitle>
-          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden="true" />
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" aria-hidden="true" />
           <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-base font-bold text-[#f2efe6]">
+              <h3 className="font-display text-base font-bold text-foreground">
                 {listMode === "followers" ? "Followers" : "Following"}
               </h3>
               <CloseButton aria-label="Close list" onClick={() => setListMode(null)} />
@@ -916,15 +916,15 @@ export function ProfileCard({
             {listQuery.isLoading ? (
               <div className="mt-3 space-y-2" aria-busy="true">
                 {[0, 1, 2, 3].map((row) => (
-                  <div key={row} className="h-14 animate-pulse rounded-2xl bg-white/5" />
+                  <div key={row} className="h-14 animate-pulse rounded-2xl bg-surface-2" />
                 ))}
               </div>
             ) : listQuery.isError ? (
-              <p role="alert" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
+              <p role="alert" className="mt-4 rounded-2xl border border-border bg-surface-2 p-4 text-center text-sm text-muted-foreground">
                 Couldn&apos;t load this list. Try again in a moment.
               </p>
             ) : (listQuery.data ?? []).length === 0 ? (
-              <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
+              <p className="mt-4 rounded-2xl border border-border bg-surface-2 p-4 text-center text-sm text-muted-foreground">
                 {listMode === "followers" ? "No followers yet." : "Not following anyone yet."}
               </p>
             ) : (
@@ -938,16 +938,16 @@ export function ProfileCard({
                         close();
                         void nav({ to: "/u/$username", params: { username: row.username ?? row.id } });
                       }}
-                      className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                      className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl p-2 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={row.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-[#1c1c1f] text-sm font-bold text-[#f2efe6]">
+                        <AvatarFallback className="bg-surface-2 text-sm font-bold text-foreground">
                           {(row.display_name || row.username || "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-[#f2efe6]">
+                        <span className="block truncate text-sm font-semibold text-foreground">
                           {row.display_name || row.username || "Member"}
                         </span>
                         {row.username && <span className="block truncate text-xs text-muted-foreground">@{row.username}</span>}
@@ -995,10 +995,10 @@ export function ProfileCardDialog({
     <Dialog open={open} onOpenChange={handleChange}>
       <DialogContent
         hideClose
-        className="left-0 right-0 top-auto bottom-0 max-h-[90dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-white/10 bg-[#141416] p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[400px] sm:max-w-[400px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        className="left-0 right-0 top-auto bottom-0 max-h-[90dvh] w-full translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl border-border bg-card p-0 sm:left-1/2 sm:right-auto sm:top-1/2 sm:bottom-auto sm:w-[400px] sm:max-w-[400px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
       >
         <DialogTitle className="sr-only">Profile</DialogTitle>
-        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/25 sm:hidden" aria-hidden />
+        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" aria-hidden />
         {user && (
           <ProfileCard
             userId={user.userId}

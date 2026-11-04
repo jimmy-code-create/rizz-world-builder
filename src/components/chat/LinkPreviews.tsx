@@ -82,7 +82,7 @@ export function MessageLinkPreviews({
     <div className="mt-1 flex w-full max-w-[20rem] flex-col gap-1.5">
       {previews.map((preview) =>
         "loading" in preview ? (
-          <div key={preview.url} className="h-[4.5rem] w-full rounded-2xl border border-white/5 glass skeleton-shimmer" />
+          <div key={preview.url} className="h-[4.5rem] w-full rounded-2xl border border-border glass skeleton-shimmer" />
         ) : preview.ok ? (
           <PreviewCard
             key={preview.url}
@@ -98,11 +98,11 @@ export function MessageLinkPreviews({
       <MediaViewer open={!!viewer} src={viewer ?? ""} alt="" onClose={() => setViewer(null)} />
 
       <Sheet open={!!confirming} onOpenChange={(next) => { if (!next) setConfirming(null); }}>
-        <SheetContent side="bottom" className="glass-strong rounded-t-3xl border-white/10 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]">
+        <SheetContent side="bottom" className="glass-strong rounded-t-3xl border-border pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]">
           <SheetTitle className="font-display text-lg">Leaving RIZZ</SheetTitle>
           <SheetDescription className="sr-only">Confirm before opening an external link</SheetDescription>
           <div className="mt-3 space-y-4">
-            <div className="min-w-0 rounded-2xl border border-white/5 glass p-3">
+            <div className="min-w-0 rounded-2xl border border-border glass p-3">
               <p className="truncate text-sm font-semibold">{confirming?.title || confirming?.domain}</p>
               <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Globe className="h-3.5 w-3.5 shrink-0" />
@@ -115,12 +115,12 @@ export function MessageLinkPreviews({
                 </p>
               )}
             </div>
-            <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-white/5 px-3">
+            <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-border px-3">
               <Checkbox checked={dontAsk} onCheckedChange={(value) => setDontAsk(value === true)} aria-label="Don't ask again" />
               <span className="text-sm">Don't ask again</span>
             </label>
             <div className="flex gap-2">
-              <Button variant="ghost" className="h-12 flex-1 glass border-white/10" onClick={() => setConfirming(null)}>
+              <Button variant="ghost" className="h-12 flex-1 glass border-border" onClick={() => setConfirming(null)}>
                 Cancel
               </Button>
               <Button className="h-12 flex-1 gap-2 bg-primary text-primary-foreground" onClick={confirmOpen}>
@@ -171,11 +171,11 @@ export function ExternalLinkGuard() {
 
   return (
     <Sheet open={!!pending} onOpenChange={(next) => { if (!next) setPending(null); }}>
-      <SheetContent side="bottom" className="glass-strong rounded-t-3xl border-white/10 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]">
+      <SheetContent side="bottom" className="glass-strong rounded-t-3xl border-border pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]">
         <SheetTitle className="font-display text-lg">Leaving RIZZ</SheetTitle>
         <SheetDescription className="sr-only">Confirm before opening an external link</SheetDescription>
         <div className="mt-3 space-y-4">
-          <div className="min-w-0 rounded-2xl border border-white/5 glass p-3">
+          <div className="min-w-0 rounded-2xl border border-border glass p-3">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Globe className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{domain}</span>
@@ -187,12 +187,12 @@ export function ExternalLinkGuard() {
               </p>
             )}
           </div>
-          <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-white/5 px-3">
+          <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-border px-3">
             <Checkbox checked={dontAsk} onCheckedChange={(value) => setDontAsk(value === true)} aria-label="Don't ask again" />
             <span className="text-sm">Don't ask again</span>
           </label>
           <div className="flex gap-2">
-            <Button variant="ghost" className="h-12 flex-1 glass border-white/10" onClick={() => setPending(null)}>
+            <Button variant="ghost" className="h-12 flex-1 glass border-border" onClick={() => setPending(null)}>
               Cancel
             </Button>
             <Button
@@ -239,11 +239,11 @@ function PreviewCard({
   const risky = isSuspiciousDomain(preview.domain);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-white/5 glass">
+    <div className="relative w-full overflow-hidden rounded-2xl border border-border glass">
       <button
         type="button"
         onClick={isImage ? onViewImage : onOpen}
-        className="block w-full min-h-[48px] text-left transition-colors hover:bg-white/5 active:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        className="block w-full min-h-[48px] text-left transition-colors hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
         aria-label={isImage ? `View image from ${preview.domain}` : `Open ${preview.title || preview.domain}`}
       >
         {preview.imageUrl && (

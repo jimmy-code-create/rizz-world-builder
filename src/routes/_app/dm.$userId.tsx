@@ -867,14 +867,14 @@ function DMPage() {
         />
       )}
       <div
-        className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-border px-4 pb-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
         <Link
           to="/dms"
           aria-label="Back to messages"
           title="Back to messages"
-          className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -915,7 +915,7 @@ function DMPage() {
             to="/call/$userId"
             params={{ userId }}
             search={{ video: false }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 transition hover:bg-emerald-400/20"
           >
             <Phone className="h-3.5 w-3.5" />
             Call in progress · Join
@@ -935,7 +935,7 @@ function DMPage() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="More" className="text-muted-foreground"><MoreVertical className="h-5 w-5" /></Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-strong border-white/10">
+          <DropdownMenuContent align="end" className="glass-strong border-border">
             <DropdownMenuItem asChild>
               <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>View profile</Link>
             </DropdownMenuItem>
@@ -979,9 +979,9 @@ function DMPage() {
         </div>
 
       {searchOpen && (
-        <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
+        <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
+          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-border h-8" />
           <CloseButton onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="h-8 w-8 min-h-0 min-w-0" />
         </div>
       )}
@@ -1065,7 +1065,7 @@ function DMPage() {
                   ))}
                   {startsGroup && !deliveryStatus && (
                     <div className="flex w-full justify-center py-0.5">
-                      <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                         {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                       </span>
                     </div>
@@ -1236,7 +1236,7 @@ function DMPage() {
                         role="button"
                         tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
-                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-white/25 pl-2 text-[11px] text-muted-foreground line-clamp-2"
+                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-foreground/20 pl-2 text-[11px] text-muted-foreground line-clamp-2"
                       >
                         <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
                       </span>
@@ -1351,14 +1351,14 @@ function DMPage() {
       {showJump && (
         <button
           onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}
-          className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-30 grid h-11 w-11 place-items-center rounded-full chat-bar border border-white/10 shadow-sm active:scale-95"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-30 grid h-11 w-11 place-items-center rounded-full chat-bar border border-border shadow-sm active:scale-95"
           aria-label="Scroll to latest"
         >
           <ArrowDown className="h-4 w-4" />
         </button>
       )}
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-border px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
         <div className="mx-auto w-full max-w-3xl">
           <input
             ref={imageInputRef}
@@ -1408,7 +1408,7 @@ function DMPage() {
             }}
             onFocus={() => scrollChatToLatest(scrollRef.current)}
             above={imagePreview ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-2 p-2">
                 <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Image compressed before upload</span>
                 <Button

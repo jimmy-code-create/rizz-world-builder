@@ -69,8 +69,8 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
   });
 
   return (
-    <aside className="hidden h-full w-[320px] shrink-0 flex-col border-r border-white/10 bg-[var(--surface)]/60 lg:flex">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+    <aside className="hidden h-full w-[320px] shrink-0 flex-col border-r border-border bg-[var(--surface)]/60 lg:flex">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <p className="font-display text-sm font-bold tracking-tight">Messages</p>
         <Link to="/dms" className="text-[11px] font-semibold text-primary hover:underline">
           New
@@ -80,7 +80,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
         {threads.isLoading && (
           <div className="space-y-2 p-3">
             {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="h-14 animate-pulse rounded-xl bg-white/5" />
+              <div key={row} className="h-14 animate-pulse rounded-xl bg-surface-2" />
             ))}
           </div>
         )}
@@ -101,7 +101,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
               to="/dm/$userId"
               params={{ userId: thread.other.id }}
               className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${
-                active ? "bg-white/10" : "hover:bg-white/5"
+                active ? "bg-surface-3" : "hover:bg-surface-2"
               }`}
             >
               <Avatar className="h-10 w-10 shrink-0">
@@ -125,7 +125,7 @@ export function DmThreadRail({ activeId }: { activeId: string }) {
                 </p>
               </div>
               {thread.unread > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
                   {thread.unread}
                 </span>
               )}

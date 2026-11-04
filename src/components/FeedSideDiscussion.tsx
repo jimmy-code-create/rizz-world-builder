@@ -27,7 +27,7 @@ export function FeedSideDiscussion({
     return (
       <div className="space-y-4">
         {/* Desktop Discussion Helper Card */}
-        <div className="glass rounded-3xl p-5 border border-white/10">
+        <div className="glass rounded-3xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2 text-primary">
             <MessageSquare className="h-4 w-4" />
             <h3 className="text-sm font-display font-bold text-foreground">
@@ -43,7 +43,7 @@ export function FeedSideDiscussion({
         <FollowSuggestions />
 
         {/* Gen Z Creator Tip */}
-        <div className="glass rounded-3xl p-5 border border-white/5">
+        <div className="glass rounded-3xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <h4 className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">
@@ -62,9 +62,9 @@ export function FeedSideDiscussion({
   const postAuthor = activePost.author?.display_name || activePost.author?.username || "creator";
 
   return (
-    <div className="glass-strong rounded-3xl border border-white/10 overflow-hidden flex flex-col h-[calc(100dvh-6rem)] sticky top-6 shadow-2xl">
+    <div className="glass-strong rounded-3xl border border-border overflow-hidden flex flex-col h-[calc(100dvh-6rem)] sticky top-6 shadow-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <InteractiveAvatar
             src={activePost.author?.avatar_url}
@@ -85,7 +85,7 @@ export function FeedSideDiscussion({
 
       {/* Post Caption Preview */}
       {activePost.caption && (
-        <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/5 text-xs text-muted-foreground line-clamp-3">
+        <div className="px-4 py-2.5 bg-surface-2 border-b border-border text-xs text-muted-foreground line-clamp-3">
           &ldquo;{activePost.caption}&rdquo;
         </div>
       )}

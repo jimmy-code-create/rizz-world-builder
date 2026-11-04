@@ -331,16 +331,16 @@ export function ProfilePreviewDialog({
         // the sheet keeps one height while the row arrives instead of growing
         // upward under the thumb.
         <div className="animate-pulse" aria-hidden="true">
-          <div className="aspect-[3/1] w-full bg-white/[0.06]" />
+          <div className="aspect-[3/1] w-full bg-surface-2" />
           <div className="px-3.5 pb-4 pt-2.5">
-            <div className="-mt-9 ml-1 h-16 w-16 rounded-full bg-white/10 ring-[5px] ring-[#111214]" />
-            <div className="mt-2 h-5 w-32 rounded bg-white/[0.06]" />
-            <div className="mt-2 h-3.5 w-24 rounded bg-white/[0.06]" />
-            <div className="mt-3 h-11 w-full rounded-xl bg-white/[0.05]" />
-            <div className="mt-2 h-11 w-full rounded-xl bg-white/[0.05]" />
-            <div className="mt-2 h-24 w-full rounded-2xl bg-white/[0.04]" />
-            <div className="mt-2 h-10 w-full rounded-2xl bg-white/[0.03]" />
-            <div className="mt-2 h-24 w-full rounded-2xl bg-white/[0.04]" />
+            <div className="-mt-9 ml-1 h-16 w-16 rounded-full bg-surface-2 ring-[5px] ring-card" />
+            <div className="mt-2 h-5 w-32 rounded bg-surface-2" />
+            <div className="mt-2 h-3.5 w-24 rounded bg-surface-2" />
+            <div className="mt-3 h-11 w-full rounded-xl bg-surface-2" />
+            <div className="mt-2 h-11 w-full rounded-xl bg-surface-2" />
+            <div className="mt-2 h-24 w-full rounded-2xl bg-surface-2" />
+            <div className="mt-2 h-10 w-full rounded-2xl bg-card" />
+            <div className="mt-2 h-24 w-full rounded-2xl bg-surface-2" />
           </div>
         </div>
       )}
@@ -454,7 +454,7 @@ export function ProfilePreviewDialog({
             avatarDecoration={wornEffects.data?.avatar_decoration?.slug ?? null}
             profileEffect={wornEffects.data?.profile_effect?.slug ?? null}
             effectOnce
-            surface={previewBanner?.profileBackground ? previewBanner.surface : "#111214"}
+            surface={previewBanner?.profileBackground ? previewBanner.surface : "var(--card)"}
             gutter="14px"
             compact
             onBannerPointerDown={beginSheetDrag}
@@ -482,7 +482,7 @@ export function ProfilePreviewDialog({
                     variant="outline"
                     aria-label={following.data ? "Unfollow" : "Follow"}
                     title={following.data ? "Unfollow" : "Follow"}
-                    className={`h-11 shrink-0 gap-1.5 border-white/15 px-3 text-[13px] font-bold transition-colors active:bg-white/[0.1] ${following.data ? "bg-white/[0.06] text-foreground" : "text-foreground hover:bg-white/[0.06]"}`}
+                    className={`h-11 shrink-0 gap-1.5 border-border px-3 text-[13px] font-bold transition-colors active:bg-surface-3 ${following.data ? "bg-surface-2 text-foreground" : "text-foreground hover:bg-surface-2"}`}
                   >
                     {following.data ? (
                       <UserCheck className="h-4 w-4" />
@@ -500,7 +500,7 @@ export function ProfilePreviewDialog({
                     mood={knockMood}
                     variant="button"
                     label="Knock"
-                    className="h-11 shrink-0 gap-1.5 border-white/15 px-3 text-[13px] font-bold text-foreground hover:bg-white/[0.06]"
+                    className="h-11 shrink-0 gap-1.5 border-border px-3 text-[13px] font-bold text-foreground hover:bg-surface-2"
                   />
                 )}
               </div>
@@ -509,12 +509,12 @@ export function ProfilePreviewDialog({
             <Button
               onClick={handleViewProfile}
               variant="outline"
-              className="h-11 w-full border-white/15 bg-white/[0.02] text-[13px] font-bold text-foreground transition-colors hover:bg-white/[0.06] active:bg-white/[0.1]"
+              className="h-11 w-full border-border bg-surface-2 text-[13px] font-bold text-foreground transition-colors hover:bg-surface-2 active:bg-surface-3"
             >
               View Full Profile
             </Button>
 
-            <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+            <section className="rounded-2xl border border-border bg-card p-3.5">
               <div className="flex items-center gap-1.5">
                 <UserRound
                   className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -535,7 +535,7 @@ export function ProfilePreviewDialog({
             </section>
 
             {/* Member since: one compact, clearly separate row. */}
-            <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2.5">
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-2 px-3.5 py-2.5">
               <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <p className="min-w-0 truncate text-[12px] text-muted-foreground">
                 Member since{" "}
@@ -551,7 +551,7 @@ export function ProfilePreviewDialog({
                 </h4>
                 <span className="text-[10px] text-muted-foreground">Lifetime</span>
               </div>
-              <div className="grid grid-cols-4 divide-x divide-white/[0.06] rounded-2xl border border-white/10 bg-white/[0.035] py-2.5 text-center">
+              <div className="grid grid-cols-4 divide-x divide-border rounded-2xl border border-border bg-surface-2 py-2.5 text-center">
                 {(
                   [
                     { id: "posts", label: "Posts", value: p.post_count, Icon: Hash, accent: false },
@@ -582,7 +582,7 @@ export function ProfilePreviewDialog({
                     <Icon
                       className={
                         accent
-                          ? "mx-auto h-3 w-3 text-[#ff2d3f]"
+                          ? "mx-auto h-3 w-3 text-primary"
                           : "mx-auto h-3 w-3 text-muted-foreground/80"
                       }
                       aria-hidden="true"
@@ -590,7 +590,7 @@ export function ProfilePreviewDialog({
                     <p
                       className={
                         accent
-                          ? "mt-1 truncate font-display text-[15px] font-bold leading-none tabular-nums text-[#ff2d3f]"
+                          ? "mt-1 truncate font-display text-[15px] font-bold leading-none tabular-nums text-primary"
                           : "mt-1 truncate font-display text-[15px] font-bold leading-none tabular-nums text-foreground"
                       }
                     >
@@ -646,7 +646,7 @@ export function ProfilePreviewDialog({
               setDismissing(false);
               onOpenChange(false);
             }}
-            className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-[#0b0b0c] pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+            className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-card pb-[max(env(safe-area-inset-bottom),0.5rem)]"
             style={
               previewBanner?.profileBackground
                 ? { background: previewBanner.profileBackground }
@@ -692,7 +692,7 @@ export function ProfilePreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
-        className="popout-card gap-0 overflow-hidden rounded-2xl border-white/[0.06] bg-[#111214] p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
+        className="popout-card gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 shadow-2xl sm:w-[400px] sm:max-w-[400px]"
         style={
           previewBanner?.profileBackground
             ? { background: previewBanner.profileBackground }

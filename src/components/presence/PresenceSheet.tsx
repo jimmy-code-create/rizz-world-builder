@@ -173,10 +173,10 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       <SheetContent
         side="bottom"
         hideClose
-        className="mx-auto flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-3xl border-white/10 glass-strong p-0 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:max-w-sm sm:rounded-3xl sm:mb-4"
+        className="mx-auto flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-3xl border-border glass-strong p-0 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:max-w-sm sm:rounded-3xl sm:mb-4"
       >
         {/* Sticky chrome: handle + title + close stay pinned while content scrolls. */}
-        <div className="sticky top-0 z-10 shrink-0 bg-[#141416]/95 backdrop-blur">
+        <div className="sticky top-0 z-10 shrink-0 bg-card/95 backdrop-blur">
           <div className="mx-auto mb-2 mt-2.5 h-1.5 w-10 rounded-full bg-muted-foreground/40" aria-hidden />
           <div className="flex items-center gap-3 px-4 pb-2">
             {editorOpen && (
@@ -184,7 +184,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 type="button"
                 onClick={() => setEditorOpen(false)}
                 aria-label="Back to status"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[#f2efe6]/70 hover:bg-white/10 hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -216,18 +216,18 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                       role="radio"
                       aria-checked={selected}
                       onClick={() => void choose(entry.value)}
-                      className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                      className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <StatusIcon status={entry.value} size={18} />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-[#f2efe6]">{entry.label}</span>
+                        <span className="block text-sm font-medium text-foreground">{entry.label}</span>
                         {DESCRIPTIONS[entry.value] && (
                           <span className="block truncate text-xs text-muted-foreground">
                             {DESCRIPTIONS[entry.value]}
                           </span>
                         )}
                       </span>
-                      {selected && <Check className="h-4 w-4 shrink-0 text-[#c8ff3d]" aria-label="Selected" />}
+                      {selected && <Check className="h-4 w-4 shrink-0 text-primary" aria-label="Selected" />}
                     </button>
                   );
                 })}
@@ -241,7 +241,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               <button
                 type="button"
                 onClick={() => setEditorOpen(true)}
-                className="mt-2 flex min-h-[44px] w-full items-center gap-3 rounded-xl border border-[#2a2a2e] bg-[#141416] px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                className="mt-2 flex min-h-[44px] w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {custom && (custom.emoji || custom.text) ? (
                   <>
@@ -262,7 +262,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                           void clearCustom();
                         }
                       }}
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-surface-2 hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
                     </span>
@@ -290,7 +290,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   onClick={() => setEmojiOpen((v) => !v)}
                   aria-label="Pick status emoji"
                   aria-expanded={emojiOpen}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#2a2a2e] bg-[#141416] text-[#c8ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border bg-card text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {emoji ? <StatusEmoji emoji={emoji} size={22} /> : <Smile className="h-5 w-5" />}
                 </button>
@@ -301,13 +301,13 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   maxLength={STATUS_TEXT_MAX}
                   placeholder="What's happening?"
                   aria-label="Status text"
-                  className="h-11 flex-1 rounded-full border-[#2a2a2e] bg-[#141416] focus-visible:ring-[#c8ff3d]"
+                  className="h-11 flex-1 rounded-full border-border bg-card focus-visible:ring-primary"
                 />
               </div>
               {/* Emoji picker expands inline under the input: in normal flow,
                   max-height with its own scroll, so no sheet edge can clip it. */}
               {emojiOpen && (
-                <div className="mt-2 max-h-[220px] overflow-y-auto rounded-2xl border border-[#2a2a2e] bg-[#141416] p-2">
+                <div className="mt-2 max-h-[220px] overflow-y-auto rounded-2xl border border-border bg-card p-2">
                   <p className="px-1 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Cat emojis
                   </p>
@@ -328,8 +328,8 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                         aria-selected={emoji === glyph}
                         aria-label={`Emoji ${glyph}`}
                         onClick={() => pickEmoji(glyph)}
-                        className={`grid min-h-[44px] min-w-[44px] place-items-center rounded-xl text-2xl leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
-                          emoji === glyph ? "bg-[#c8ff3d]/20 ring-1 ring-[#c8ff3d]" : "hover:bg-white/10"
+                        className={`grid min-h-[44px] min-w-[44px] place-items-center rounded-xl text-2xl leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          emoji === glyph ? "bg-primary/10 ring-1 ring-primary" : "hover:bg-surface-2"
                         }`}
                       >
                         <span aria-hidden>{glyph}</span>
@@ -350,7 +350,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                       setText(q.text);
                       void doSave(q.emoji, q.text, expiry);
                     }}
-                    className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#2a2a2e] bg-[#1c1c1f] px-3 text-[13px] text-[#f2efe6] transition-colors hover:border-[#c8ff3d]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d]"
+                    className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 text-[13px] text-foreground transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <StatusEmoji emoji={q.emoji} size={16} />
                     {q.text}
@@ -371,10 +371,10 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                       role="radio"
                       aria-checked={selected}
                       onClick={() => setExpiry(o.value)}
-                      className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8ff3d] ${
+                      className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         selected
-                          ? "border-[#c8ff3d] bg-[#c8ff3d]/15 text-[#c8ff3d]"
-                          : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {o.label}
@@ -408,7 +408,7 @@ export function PresenceSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                   type="button"
                   disabled={saving}
                   onClick={() => void doSave()}
-                  className="h-11 flex-1 bg-[#c8ff3d] text-[#0b0b0c] hover:bg-[#c8ff3d]/90"
+                  className="h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {savedTick ? (
                     <span className="flex items-center gap-1.5">

@@ -166,7 +166,7 @@ export function MessageComposer({
   return (
     <div
       className={cn(
-        "chat-bar relative z-20 shrink-0 border-t border-[#1c1c1c] bg-black px-3 pt-2",
+        "chat-bar relative z-20 shrink-0 border-t border-border bg-background/95 px-3 pt-2 backdrop-blur",
         "pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]",
       )}
     >
@@ -176,7 +176,7 @@ export function MessageComposer({
         {reply ? (
           // 40px strip: a lime bar, the target of the reply, and one line of
           // the message. The whole middle is a jump link on replies.
-          <div className="mb-2 flex h-10 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="mb-2 flex h-10 items-stretch overflow-hidden rounded-lg border border-border bg-surface-2">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"
@@ -187,7 +187,7 @@ export function MessageComposer({
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
                 {reply.label}
               </span>
-              <span className="truncate text-[11px] leading-tight text-[#bdbdbd]">
+              <span className="truncate text-[11px] leading-tight text-muted-foreground">
                 {reply.preview}
               </span>
             </button>
@@ -199,7 +199,7 @@ export function MessageComposer({
                 field.current?.focus({ preventScroll: true });
               }}
               aria-label="Cancel reply"
-              className="grid w-10 shrink-0 place-items-center text-[#8f8f8f] transition-colors hover:text-white"
+              className="grid w-10 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -216,21 +216,21 @@ export function MessageComposer({
               "relative flex min-w-0 flex-1 items-center rounded-[22px] border transition-colors duration-150",
               "motion-reduce:transition-none",
               disabled
-                ? "border-white/[0.08] bg-[#0d0d0d]"
-                : "border-white/[0.14] bg-[#121212] focus-within:border-primary/75 focus-within:ring-[3px] focus-within:ring-primary/[0.16]",
+                ? "border-border bg-surface-2"
+                : "border-input bg-card focus-within:border-primary/60 focus-within:ring-[3px] focus-within:ring-primary/15",
             )}
             style={{ minHeight: 44 }}
           >
             {recording ? (
               <div className="flex h-11 w-full items-center gap-2.5 px-3" aria-live="polite">
                 <span className="composer-record-dot h-2.5 w-2.5 shrink-0 rounded-full bg-[#ff5d68]" />
-                <span className="text-[13px] font-semibold tabular-nums text-[#f2f2f2]">
+                <span className="text-[13px] font-semibold tabular-nums text-foreground">
                   {formatTimer(recordMs)}
                 </span>
                 <span
                   className={cn(
                     "ml-auto truncate text-[11px]",
-                    sliding ? "font-bold text-[#ff8a91]" : "text-[#8c8c8c]",
+                    sliding ? "font-bold text-[#ff8a91]" : "text-muted-foreground",
                   )}
                 >
                   {sliding ? "Release to cancel" : "Slide to cancel"}
@@ -279,8 +279,8 @@ export function MessageComposer({
                   aria-label={placeholder}
                   className={cn(
                     "min-h-11 min-w-0 flex-1 resize-none bg-transparent py-[11px] pr-1 text-[16px] leading-6",
-                    "caret-primary placeholder:text-[#8c8c8c] focus:outline-none focus-visible:outline-none",
-                    disabled ? "text-[#6f6f6f]" : "text-[#f2f2f2]",
+                    "caret-primary placeholder:text-muted-foreground focus:outline-none focus-visible:outline-none",
+                    disabled ? "text-muted-foreground/60" : "text-foreground",
                   )}
                   style={{ maxHeight: MAX_INPUT_HEIGHT }}
                 />
@@ -290,7 +290,7 @@ export function MessageComposer({
                   disabled={disabled}
                   aria-label="Stickers"
                   title="Cat stickers"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[#8f8f8f] transition-colors hover:text-[#d6d6d6] disabled:opacity-40"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 >
                   <Cat className="h-[22px] w-[22px]" strokeWidth={1.8} />
                 </button>
@@ -307,7 +307,7 @@ export function MessageComposer({
               disabled={disabled || sending || !canSendNow}
               aria-label={sending ? "Sending message" : "Send"}
               className={cn(
-                "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-[#0b0b0b]",
+                "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground",
                 "transition-transform duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
@@ -329,7 +329,7 @@ export function MessageComposer({
               aria-label={recording ? "Release to send voice message" : "Voice message"}
               aria-pressed={recording}
               className={cn(
-                "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-[#0b0b0b]",
+                "grid shrink-0 touch-none place-items-center rounded-full bg-primary text-primary-foreground",
                 "transition-[width,height,transform] duration-150 active:scale-[0.94] motion-reduce:transition-none",
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 recording ? "h-14 w-14" : "h-11 w-11",

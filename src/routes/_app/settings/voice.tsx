@@ -132,7 +132,7 @@ function VoiceAndSoundPage() {
           onChange={(value) => update({ master: value })}
         />
 
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/5 pt-4">
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
           <label htmlFor="sound-muted" className="min-w-0">
             <span className="block text-sm font-semibold">{t("voice_mute_all")}</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
@@ -150,7 +150,7 @@ function VoiceAndSoundPage() {
           type="button"
           variant="outline"
           onClick={testSound}
-          className="mt-4 min-h-11 w-full gap-2 border-white/10 bg-white/5"
+          className="mt-4 min-h-11 w-full gap-2 border-border bg-surface-2"
         >
           <Volume1 className="h-4 w-4" /> {t("voice_test_sound")}
         </Button>
@@ -279,7 +279,7 @@ function VoiceAndSoundPage() {
           {(realms.data ?? []).slice(0, 12).map((realm) => {
             const override = settings.realmOverrides[realm.id];
             return (
-              <li key={realm.id} className="rounded-2xl border border-white/5 bg-white/[0.02] p-3">
+              <li key={realm.id} className="rounded-2xl border border-border bg-surface-2 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate text-sm font-semibold">{realm.name}</span>
                   <span className="shrink-0 text-xs font-bold tabular-nums">
@@ -456,10 +456,10 @@ function DevicePicker({
         onValueChange={(next) => onChange(next === "default" ? null : next)}
         disabled={disabled}
       >
-        <SelectTrigger className="mt-1.5 h-11 border-white/10 bg-white/5">
+        <SelectTrigger className="mt-1.5 h-11 border-border bg-surface-2">
           <SelectValue placeholder={fallback} />
         </SelectTrigger>
-        <SelectContent className="glass-strong border-white/10">
+        <SelectContent className="glass-strong border-border">
           <SelectItem value="default">{fallback}</SelectItem>
           {devices.map((device, index) => (
             <SelectItem key={device.deviceId || `device-${index}`} value={device.deviceId}>
@@ -553,7 +553,7 @@ function MicLiveMeter({
   const isAboveThreshold = level >= Math.round(sensitivity * 100);
 
   return (
-    <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
+    <div className="mt-3 rounded-2xl border border-border bg-surface-2 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
           <Activity className="h-3.5 w-3.5 text-primary" /> Live Mic Level
@@ -563,7 +563,7 @@ function MicLiveMeter({
           size="sm"
           variant={active ? "outline" : "default"}
           onClick={active ? stop : start}
-          className={`h-7 px-2.5 text-xs rounded-lg ${active ? "glass border-white/10 text-muted-foreground" : "bg-primary text-primary-foreground shadow-sm"}`}
+          className={`h-7 px-2.5 text-xs rounded-lg ${active ? "glass border-border text-muted-foreground" : "bg-primary text-primary-foreground shadow-sm"}`}
         >
           {active ? "Stop test" : "Test mic"}
         </Button>
@@ -576,7 +576,7 @@ function MicLiveMeter({
         />
         {/* Speaking threshold marker */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-white/70 shadow-sm"
+          className="absolute top-0 bottom-0 w-0.5 bg-foreground/70 shadow-sm"
           style={{ left: `${Math.round(sensitivity * 100)}%` }}
           title={`Activation threshold: ${Math.round(sensitivity * 100)}%`}
         />

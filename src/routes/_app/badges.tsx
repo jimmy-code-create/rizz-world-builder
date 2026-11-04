@@ -270,7 +270,7 @@ export function BadgesPage() {
     <div className="badges-page w-full space-y-6">
       {/* Header: collection metrics, progress and a rarity strip, so the page
           reads like a collector's shelf instead of a plain grid. */}
-      <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-white/10 p-6">
+      <div className="glass relative space-y-5 overflow-hidden rounded-3xl border border-border p-6">
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -304,7 +304,7 @@ export function BadgesPage() {
 
         {/* Progress bar */}
         <div className="relative space-y-1.5">
-          <Progress value={progressPct} className="h-2 bg-white/5" />
+          <Progress value={progressPct} className="h-2 bg-surface-2" />
           <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
             <span>{t("novice_collector")}</span>
             <span>
@@ -317,7 +317,7 @@ export function BadgesPage() {
 
         {/* Rarity strip: one dot per badge you own, out of that tier's total. */}
         {rarityRows.length > 0 && (
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.07] pt-4">
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4">
             {rarityRows.map((row) => (
               <div key={row.tier} className="flex items-center gap-2">
                 <span
@@ -360,7 +360,7 @@ export function BadgesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search_badges")}
-                className="pl-9 h-10 rounded-xl bg-white/[0.03] border-white/10 text-xs"
+                className="pl-9 h-10 rounded-xl bg-surface-2 border-border text-xs"
               />
             </div>
 
@@ -387,7 +387,7 @@ export function BadgesPage() {
                   className={`shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition border ${
                     filter === id
                       ? "border-primary/50 bg-primary/15 text-primary"
-                      : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
+                      : "border-border bg-surface-2 text-muted-foreground hover:text-foreground hover:bg-surface-2"
                   }`}
                 >
                   {label}
@@ -416,8 +416,8 @@ export function BadgesPage() {
                     isSelected
                       ? "border-primary/60 bg-primary/[0.07]"
                       : hasIt
-                        ? "border-white/10 bg-white/[0.03] hover:border-white/20"
-                        : "border-white/[0.07] bg-white/[0.015] hover:border-white/15"
+                        ? "border-border bg-surface-2 hover:border-foreground/20"
+                        : "border-border bg-surface-2 hover:border-foreground/20"
                   }`}
                 >
                   <div className="relative flex items-center justify-between gap-2">
@@ -441,7 +441,7 @@ export function BadgesPage() {
                       </span>
                     ) : !hasIt ? (
                       <span
-                        className="grid h-5 w-5 place-items-center rounded-full border border-white/10 bg-black/30"
+                        className="grid h-5 w-5 place-items-center rounded-full border border-border bg-black/30"
                         title="Locked"
                       >
                         <Lock className="h-2.5 w-2.5 text-white/45" />
@@ -466,7 +466,7 @@ export function BadgesPage() {
 
                   {progress && !hasIt && (
                     <div className="relative mt-2 w-full">
-                      <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
+                      <div className="h-1 overflow-hidden rounded-full bg-surface-3">
                         <div
                           className="h-full rounded-full transition-[width] duration-500"
                           style={{ width: `${Math.min(100, progress.pct)}%`, backgroundColor: b.color }}
@@ -491,7 +491,7 @@ export function BadgesPage() {
           </div>
 
           {filteredBadges.length === 0 && (
-            <div className="glass rounded-2xl p-8 border border-white/5 text-center text-xs text-muted-foreground">
+            <div className="glass rounded-2xl p-8 border border-border text-center text-xs text-muted-foreground">
               {t("no_badges_match")}
             </div>
           )}
@@ -500,8 +500,8 @@ export function BadgesPage() {
         {/* Right Pane: Dynamic Badge Inspector on Wide Screens */}
         <aside className="lg:col-span-5 xl:col-span-4 sticky top-6 space-y-4">
           {active ? (
-            <div className="glass-strong rounded-3xl p-6 border border-white/10 space-y-5 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="glass-strong rounded-3xl p-6 border border-border space-y-5 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border pb-4">
                 <div className="flex items-center gap-2">
                   <BadgesMark className="h-4 w-4 text-primary" />
                   <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">
@@ -515,7 +515,7 @@ export function BadgesPage() {
 
               {/* Art panel, Discord sheet style: the mark big and alone on a soft
                   pedestal, an uppercase title, then state + rarity on one line. */}
-              <div className="relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] py-8">
+              <div className="relative grid place-items-center overflow-hidden rounded-2xl border border-border bg-surface-2 py-8">
                 <div className="relative flex flex-col items-center gap-4 text-center">
                   <BadgeMark
                     slug={active.slug}
@@ -539,7 +539,7 @@ export function BadgesPage() {
                             : t("unlocked_owned")
                           : t("locked_achiever")}
                       </span>
-                      <span className="h-1 w-1 rounded-full bg-white/30" aria-hidden="true" />
+                      <span className="h-1 w-1 rounded-full bg-border" aria-hidden="true" />
                       <span
                         className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]"
                         style={{
@@ -559,7 +559,7 @@ export function BadgesPage() {
               </div>
 
               {/* How to earn: one labelled card, like Discord's badge sheet. */}
-              <div className="space-y-2.5 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="space-y-2.5 rounded-2xl border border-border bg-surface-2 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   How to earn
                 </p>
@@ -584,7 +584,7 @@ export function BadgesPage() {
                           : `${activeProgress.target - activeProgress.current} to go`}
                       </span>
                     </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
                       <div
                         className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${Math.min(100, activeProgress.pct)}%` }}
@@ -600,7 +600,7 @@ export function BadgesPage() {
               </div>
 
               {/* Rarity & stats */}
-              <div className="space-y-1 border-t border-white/10 pt-3 text-xs">
+              <div className="space-y-1 border-t border-border pt-3 text-xs">
                 <div className="flex items-center justify-between py-1 text-muted-foreground">
                   <span>{t("badge_tier")}</span>
                   <span className="flex items-center gap-1.5 font-medium capitalize text-foreground">
@@ -638,7 +638,7 @@ export function BadgesPage() {
                     variant="outline"
                     disabled={sharing}
                     onClick={() => void handleShare()}
-                    className="h-11 w-full gap-2 border-white/10 bg-white/[0.04] text-xs hover:bg-white/[0.08] disabled:opacity-60"
+                    className="h-11 w-full gap-2 border-border bg-surface-2 text-xs hover:bg-surface-3 disabled:opacity-60"
                   >
                     <Share2 className="h-3.5 w-3.5" />
                     {sharing ? t("making_image") : t("share")}
@@ -680,7 +680,7 @@ export function BadgesPage() {
               </div>
             </div>
           ) : (
-            <div className="glass rounded-3xl p-6 border border-white/10 text-center text-xs text-muted-foreground">
+            <div className="glass rounded-3xl p-6 border border-border text-center text-xs text-muted-foreground">
               {t("select_badge")}
             </div>
           )}
@@ -688,9 +688,9 @@ export function BadgesPage() {
       </div>
 
       {adminCheck.data === true && (
-        <div className="glass rounded-3xl p-5 border border-white/10 space-y-4">
+        <div className="glass rounded-3xl p-5 border border-border space-y-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8A8A8E]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
               Admin
             </p>
             <h2 className="font-display text-base font-bold mt-0.5">Award a badge</h2>
@@ -704,12 +704,12 @@ export function BadgesPage() {
             const dbRow = (all.data ?? []).find((b) => b.slug === entry.slug);
             const glow = dbRow?.color ?? entry.glow;
             return (
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/10 bg-[#1c1c1f]">
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2 p-3">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-border bg-surface-2">
                   <BadgeMark slug={entry.slug} size={34} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#f2efe6]">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-foreground">
                     {dbRow?.name ?? entry.name}
                     <span
                       className="rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
@@ -737,10 +737,10 @@ export function BadgesPage() {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setGrantSlug(dbBadge.slug)}
-                  className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f] ${
+                  className={`min-h-[44px] rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     selected
-                      ? "border-[#ff2d3f] bg-[#ff2d3f]/15 text-[#ff2d3f]"
-                      : "border-[#2a2a2e] text-muted-foreground hover:text-foreground"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {entry?.name ?? dbBadge.name}
@@ -761,13 +761,13 @@ export function BadgesPage() {
               placeholder="@username"
               aria-label="Username to award"
               maxLength={40}
-              className="h-11 flex-1 rounded-full border-[#2a2a2e] bg-[#141416]"
+              className="h-11 flex-1 rounded-full border-border bg-card"
             />
             <Button
               type="button"
               disabled={granting || !grantUser.trim()}
               onClick={() => void awardBadge()}
-              className="h-11 rounded-full bg-[#ff2d3f] px-5 text-sm font-bold text-white hover:bg-[#ff2d3f]/90 disabled:opacity-50"
+              className="h-11 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {granting ? "Awarding…" : "Award"}
             </Button>

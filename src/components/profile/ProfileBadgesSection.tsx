@@ -98,7 +98,7 @@ export function ProfileBadgesSection({
             type="button"
             onClick={() => setEditing((open) => !open)}
             aria-expanded={editing}
-            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {editing ? (
               <>
@@ -114,10 +114,10 @@ export function ProfileBadgesSection({
       </div>
 
       {loading ? (
-        <div className="h-8 w-48 animate-pulse rounded-full bg-white/5" aria-hidden="true" />
+        <div className="h-8 w-48 animate-pulse rounded-full bg-surface-2" aria-hidden="true" />
       ) : showcase.length ? (
         <div
-          className="inline-flex max-w-full shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap rounded-full border border-white/[0.07] bg-white/[0.055] px-1.5 py-0.5"
+          className="inline-flex max-w-full shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap rounded-full border border-border bg-surface-2 px-1.5 py-0.5"
           role="group"
           aria-label="Showcased badges"
         >
@@ -147,7 +147,7 @@ export function ProfileBadgesSection({
       )}
 
       {isOwner && editing && (
-        <div className="glass mt-2.5 space-y-2.5 rounded-2xl border border-white/10 p-3">
+        <div className="glass mt-2.5 space-y-2.5 rounded-2xl border border-border p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               Showcased on your profile
@@ -172,10 +172,10 @@ export function ProfileBadgesSection({
                   className={`group relative flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${
                     on
                       ? "border-primary/60 bg-primary/10"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
+                      : "border-border bg-surface-2 hover:border-foreground/25 hover:bg-surface-3"
                   } ${atCap ? "opacity-70" : ""}`}
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-[#101116]">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface-2">
                     <BadgeMark slug={badge.slug} size={24} />
                   </span>
                   <span className="min-w-0 flex-1">

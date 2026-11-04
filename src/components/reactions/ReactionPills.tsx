@@ -134,7 +134,7 @@ export function ReactionPills({
                 ? "font-bold super-reaction-in"
                 : group.mine
                   ? "border-primary/80 bg-primary/[0.12] font-semibold text-primary hover:bg-primary/[0.18]"
-                  : "border-white/[0.14] bg-[#1a1a1a] font-semibold text-[#dcdcdc] hover:border-white/25 hover:bg-[#202020]",
+                  : "border-border bg-surface-2 font-semibold text-foreground hover:border-foreground/25 hover:bg-surface-3",
             )}
           >
             {id ? (
@@ -197,7 +197,7 @@ export function ReactionTray({
   return (
     <>
       {open ? (
-        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-card px-1.5 py-1 shadow-xl backdrop-blur">
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card px-1.5 py-1 shadow-xl backdrop-blur">
           {quick.map((glyph) => (
             <button
               key={glyph}
@@ -216,7 +216,7 @@ export function ReactionTray({
             type="button"
             onClick={() => setPickerOpen(true)}
             aria-label="More reactions"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] text-muted-foreground hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground"
           >
             <Plus className="h-4 w-4" />
           </button>

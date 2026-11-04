@@ -22,7 +22,7 @@ export function PinnedBar({
   if (!pins.length) return null;
   const current = pins[index % pins.length];
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-white/5 bg-white/[0.03] px-3 py-1.5">
+    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-2 px-3 py-1.5">
       <button
         type="button"
         onClick={() => onJump(current)}
@@ -37,7 +37,7 @@ export function PinnedBar({
       <button
         type="button"
         onClick={onOpenList}
-        className="shrink-0 rounded-full bg-white/[0.06] px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:bg-white/10"
+        className="shrink-0 rounded-full bg-surface-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:bg-surface-3"
         aria-label="Show all pinned messages"
       >
         {index + 1} of {pins.length}
@@ -62,7 +62,7 @@ export function PinBadge() {
 export function SystemLine({ text }: { text: string }) {
   return (
     <div className="flex justify-center py-1">
-      <span className="flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1 text-[10px] font-medium text-muted-foreground">
+      <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-[10px] font-medium text-muted-foreground">
         <Pin className="h-3 w-3" />
         {text}
       </span>
@@ -92,7 +92,7 @@ export function PinnedListSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="glass-strong rounded-t-3xl border-white/10 max-h-[85dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
+        className="glass-strong rounded-t-3xl border-border max-h-[85dvh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
       >
         <SheetTitle className="font-display text-lg">Pinned messages</SheetTitle>
         <SheetDescription className="text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ export function PinnedListSheet({
 
         <div className="mt-4 space-y-2">
           {pins.map((pin) => (
-            <div key={pin.id} className="flex items-start gap-3 rounded-2xl border border-white/5 glass p-3">
+            <div key={pin.id} className="flex items-start gap-3 rounded-2xl border border-border glass p-3">
               <button
                 type="button"
                 onClick={() => onJump(pin)}
@@ -131,7 +131,7 @@ export function PinnedListSheet({
                   size="sm"
                   disabled={unpinningId === pin.message_id}
                   onClick={() => onUnpin(pin)}
-                  className="h-12 shrink-0 gap-1.5 glass border-white/10 text-destructive"
+                  className="h-12 shrink-0 gap-1.5 glass border-border text-destructive"
                 >
                   <PinOff className="h-3.5 w-3.5" /> Unpin
                 </Button>
@@ -139,7 +139,7 @@ export function PinnedListSheet({
             </div>
           ))}
           {pins.length === 0 && (
-            <div className="rounded-2xl border border-white/5 glass p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border glass p-6 text-center text-sm text-muted-foreground">
               <Pin className="mx-auto mb-2 h-5 w-5" />
               Pinned messages show up here for everyone in the realm.
             </div>
@@ -149,7 +149,7 @@ export function PinnedListSheet({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl glass border border-white/10 text-sm font-medium hover:bg-white/5 active:scale-[0.99] transition-all"
+          className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl glass border border-border text-sm font-medium hover:bg-surface-2 active:scale-[0.99] transition-all"
         >
           Close
         </button>

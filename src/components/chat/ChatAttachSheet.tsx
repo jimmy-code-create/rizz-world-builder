@@ -60,8 +60,8 @@ export function ChatAttachButton({
         aria-label={label}
         className={cn(
           appearance === "circle"
-            ? "group grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[rgba(255,255,255,0.14)] bg-[#171717] text-[#d6d6d6] transition-colors hover:border-white/25 hover:bg-[#1f1f1f] hover:text-white disabled:opacity-40"
-            : "group grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground disabled:opacity-40",
+            ? "group grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-muted-foreground transition-colors hover:border-foreground/25 hover:bg-surface-3 hover:text-foreground disabled:opacity-40"
+            : "group grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-surface-2 text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-surface-3 hover:text-foreground disabled:opacity-40",
           className,
         )}
       >
@@ -72,7 +72,7 @@ export function ChatAttachButton({
         ) : (
           // A squared frame inside the squared button: the plus always sits in
           // a box, at 44px and at the 36px DM size alike.
-          <span className="grid h-6 w-6 place-items-center rounded-md border border-white/10 bg-white/[0.06] transition-colors group-hover:border-white/20">
+          <span className="grid h-6 w-6 place-items-center rounded-md border border-border bg-surface-3 transition-colors group-hover:border-foreground/20">
             <Plus className="h-4 w-4" />
           </span>
         )}
@@ -82,10 +82,10 @@ export function ChatAttachButton({
         <SheetContent
           side="bottom"
           hideClose
-          className="glass-strong max-h-[78dvh] rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
+          className="glass-strong max-h-[78dvh] rounded-t-3xl border-border pb-[max(env(safe-area-inset-bottom),0.75rem)]"
         >
           <SheetTitle className="sr-only">Attachments</SheetTitle>
-          <div className="mx-auto mb-3 mt-1 h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
+          <div className="mx-auto mb-3 mt-1 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
 
           <div className="px-4">
             <div className="mb-3 flex items-center justify-between">
@@ -94,7 +94,7 @@ export function ChatAttachButton({
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -107,9 +107,9 @@ export function ChatAttachButton({
                   type="button"
                   onClick={() => run(action)}
                   disabled={action.disabled}
-                  className="group flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.07] bg-white/[0.035] px-2 text-center transition-colors hover:border-white/15 hover:bg-white/[0.07] active:scale-[0.98] disabled:opacity-40"
+                  className="group flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface-2 px-2 text-center transition-colors hover:border-foreground/20 hover:bg-surface-3 active:scale-[0.98] disabled:opacity-40"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-foreground transition-colors group-hover:border-white/20">
+                  <span className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface-3 text-foreground transition-colors group-hover:border-foreground/20">
                     <action.icon className="h-[18px] w-[18px]" />
                   </span>
                   <span className="text-[11px] font-semibold leading-tight">{action.label}</span>

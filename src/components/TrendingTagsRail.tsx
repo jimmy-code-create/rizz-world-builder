@@ -23,10 +23,10 @@ export function TrendingTagsRail() {
   if (!data || data.length < 2) return null;
   return (
     <div data-focus-hide className="py-2">
-      <div className="flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[var(--brand-ink-2)] px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-3 py-2.5 shadow-sm sm:px-4 sm:py-3">
         <div className="flex shrink-0 items-center gap-1.5">
-          <TrendingUp className="h-3.5 w-3.5 text-[var(--brand-signal)]" strokeWidth={2.5} />
-          <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--brand-signal)]">
+          <TrendingUp className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+          <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
             Trending
           </span>
         </div>
@@ -36,11 +36,11 @@ export function TrendingTagsRail() {
               key={t.tag}
               to="/tag/$tag"
               params={{ tag: t.tag }}
-              className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.05] pl-2.5 pr-1 text-[11px] font-medium text-[var(--brand-paper)] transition-colors hover:border-white/20 hover:bg-white/10"
+              className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-surface-2 pl-2.5 pr-1 text-[11px] font-medium text-foreground transition-colors hover:bg-surface-3"
             >
-              <Hash className="h-3 w-3 shrink-0 text-[var(--brand-signal)]" strokeWidth={2.5} />
+              <Hash className="h-3 w-3 shrink-0 text-primary" strokeWidth={2.5} />
               <span className="max-w-[8.5rem] truncate">{t.tag}</span>
-              <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-[var(--brand-paper-dim)]">
+              <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-card px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-muted-foreground">
                 {formatCount(t.post_count)}
               </span>
             </Link>

@@ -351,13 +351,13 @@ function RealmsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="glass h-9 border-white/10 text-xs"
+              className="glass h-9 border-border text-xs"
               onClick={() => setJoinOpen(true)}
             >
               <KeyRound className="h-3.5 w-3.5 mr-1.5" />
               Join by code
             </Button>
-            <DialogContent className="glass-strong border-white/10">
+            <DialogContent className="glass-strong border-border">
               <DialogHeader>
                 <DialogTitle className="font-display">Join a realm</DialogTitle>
               </DialogHeader>
@@ -369,11 +369,11 @@ function RealmsPage() {
                     void runPreview(e.target.value);
                   }}
                   maxLength={200}
-                  className="glass border-white/10"
+                  className="glass border-border"
                   autoFocus
                 />
                 {preview && (
-                  <div className="rounded-xl border border-white/10 glass p-3 text-sm">
+                  <div className="rounded-xl border border-border glass p-3 text-sm">
                     {preview.status === "valid" && (
                       <p className="font-medium">
                         ✨ {preview.realm_name} —{" "}
@@ -416,7 +416,7 @@ function RealmsPage() {
               </DialogHeader>
               <div className="grid grid-cols-1 gap-3">
                 <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/[0.06] p-3 transition-colors hover:bg-sky-400/[0.1]">
-                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-400/20 to-blue-600/20">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-sky-400/20 to-blue-600/20">
                     {iconPreview ? (
                       <img src={iconPreview} alt="Realm icon preview" className="h-full w-full object-cover" />
                     ) : (
@@ -463,14 +463,14 @@ function RealmsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={30}
-                  className="glass h-11 border-white/10"
+                  className="glass h-11 border-border"
                 />
                 <Textarea
                   placeholder="Description — what is this realm about? (optional)"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   maxLength={160}
-                  className="glass border-white/10 min-h-20"
+                  className="glass border-border min-h-20"
                 />
                 <div className="flex gap-2">
                   {(["text", "announcement", "voice"] as const).map((k) => {
@@ -481,7 +481,7 @@ function RealmsPage() {
                         type="button"
                         onClick={() => setKind(k)}
                         className={`flex-1 p-3 rounded-xl border transition-all min-h-11 ${
-                          kind === k ? "border-primary bg-primary/10" : "border-white/10 glass"
+                          kind === k ? "border-primary bg-primary/10" : "border-border glass"
                         }`}
                       >
                         <Icon className="h-4 w-4 mx-auto mb-1" />
@@ -495,7 +495,7 @@ function RealmsPage() {
                     type="button"
                     onClick={() => setIsPublic(true)}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${
-                      isPublic ? "border-primary bg-primary/10" : "border-white/10 glass"
+                      isPublic ? "border-primary bg-primary/10" : "border-border glass"
                     }`}
                   >
                     <Globe className="h-4 w-4" />
@@ -505,7 +505,7 @@ function RealmsPage() {
                     type="button"
                     onClick={() => setIsPublic(false)}
                     className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all min-h-11 ${
-                      !isPublic ? "border-primary bg-primary/10" : "border-white/10 glass"
+                      !isPublic ? "border-primary bg-primary/10" : "border-border glass"
                     }`}
                   >
                     <Lock className="h-4 w-4" />
@@ -518,7 +518,7 @@ function RealmsPage() {
                     type="color"
                     value={accent}
                     onChange={(e) => setAccent(e.target.value)}
-                    className="h-11 w-14 rounded-md bg-transparent border border-white/10"
+                    className="h-11 w-14 rounded-md bg-transparent border border-border"
                   />
                 </div>
                 <Button
@@ -541,7 +541,7 @@ function RealmsPage() {
           <span className="text-xs font-mono text-muted-foreground">{myRows.length} joined</span>
         </div>
 
-        <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-0.5">
+        <div className="inline-flex rounded-full border border-border bg-surface-2 p-0.5">
           {(["public", "private"] as const).map((scope) => {
             const active = realmScope === scope;
             const Icon = scope === "public" ? Globe : Lock;
@@ -563,7 +563,7 @@ function RealmsPage() {
                 <span
                   className={cn(
                     "rounded-full px-1.5 text-[10px] font-bold tabular-nums",
-                    active ? "bg-black/20" : "bg-white/10",
+                    active ? "bg-primary-foreground/20" : "bg-transparent",
                   )}
                 >
                   {scopeCounts[scope]}
@@ -576,7 +576,7 @@ function RealmsPage() {
         {myMemberships.isLoading && <div className="h-24 animate-pulse rounded-3xl glass" />}
 
         {!myMemberships.isLoading && myShown.length === 0 && (
-          <div className="glass rounded-3xl border border-white/5 p-6 text-center text-sm text-muted-foreground">
+          <div className="glass rounded-3xl border border-border p-6 text-center text-sm text-muted-foreground">
             {realmScope === "public"
               ? "You haven't joined a public realm yet. Join an official room below or use a code."
               : "No private realms yet. Create one and invite people with a code."}
@@ -590,7 +590,7 @@ function RealmsPage() {
             return (
               <div
                 key={realm.id}
-                className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]"
+                className="glass relative overflow-hidden rounded-3xl border border-border p-5 transition-colors hover:border-primary/50 hover:bg-surface-2"
               >
                 <Link
                   to="/r/$slug"
@@ -600,7 +600,7 @@ function RealmsPage() {
                 />
 
                 {realm.cover_url ? (
-                  <div className="pointer-events-none relative z-10 -mx-5 -mt-5 mb-3 h-24 overflow-hidden bg-white/5">
+                  <div className="pointer-events-none relative z-10 -mx-5 -mt-5 mb-3 h-24 overflow-hidden bg-surface-2">
                     <img
                       src={realm.cover_url}
                       alt=""
@@ -637,7 +637,7 @@ function RealmsPage() {
                     </h3>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{realm.topic || "—"}</p>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-foreground/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider rounded-full border border-border bg-surface-2 px-2 py-0.5 text-foreground/80">
                     {membership.role}
                   </span>
                 </div>
@@ -652,7 +652,7 @@ function RealmsPage() {
       </section>
 
       {/* Discover */}
-      <section className="space-y-3 border-t border-white/10 pt-4">
+      <section className="space-y-3 border-t border-border pt-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-display text-lg font-bold">Discover realms</h2>
           <span className="text-xs font-mono text-muted-foreground">
@@ -670,14 +670,14 @@ function RealmsPage() {
             placeholder="Search realms by name, topic or slug"
             aria-label="Search realms"
             maxLength={80}
-            className="glass h-11 border-white/10 pl-9 pr-9"
+            className="glass h-11 border-border pl-9 pr-9"
           />
           {search ? (
             <button
               type="button"
               onClick={() => setSearch("")}
               aria-label="Clear realm search"
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-surface-3 hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -699,7 +699,7 @@ function RealmsPage() {
                 return (
                   <div
                     key={realm.id}
-                    className="relative overflow-hidden rounded-3xl border border-white/10 bg-card/60"
+                    className="relative overflow-hidden rounded-3xl border border-border bg-card/60"
                   >
                     <div className="relative h-28 overflow-hidden">
                       {realm.cover_url ? (
@@ -754,7 +754,7 @@ function RealmsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="glass h-8 border-white/10 px-3 text-xs"
+                              className="glass h-8 border-border px-3 text-xs"
                             >
                               Open
                             </Button>
@@ -786,10 +786,10 @@ function RealmsPage() {
             return (
               <div
                 key={realm.id}
-                className="glass relative overflow-hidden rounded-3xl border border-white/10 p-5 transition-colors hover:border-primary/50 hover:bg-white/[0.04]"
+                className="glass relative overflow-hidden rounded-3xl border border-border p-5 transition-colors hover:border-primary/50 hover:bg-surface-2"
               >
                 {realm.cover_url ? (
-                  <div className="-mx-5 -mt-5 mb-3 h-24 overflow-hidden bg-white/5">
+                  <div className="-mx-5 -mt-5 mb-3 h-24 overflow-hidden bg-surface-2">
                     <img
                       src={realm.cover_url}
                       alt=""
@@ -838,7 +838,7 @@ function RealmsPage() {
         </div>
 
         {!realms.isLoading && publicRealms.length === 0 && shownFeatured.length === 0 && (
-          <div className="glass rounded-3xl border border-white/5 p-8 text-center">
+          <div className="glass rounded-3xl border border-border p-8 text-center">
             {term ? (
               <>
                 <h3 className="font-display text-base font-bold text-foreground">No realms match “{search.trim()}”</h3>
@@ -848,7 +848,7 @@ function RealmsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setSearch("")}
-                  className="mt-3 glass h-9 border-white/10 text-xs"
+                  className="mt-3 glass h-9 border-border text-xs"
                 >
                   Clear search
                 </Button>

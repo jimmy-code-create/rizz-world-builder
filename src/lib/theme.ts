@@ -10,11 +10,51 @@ export type Density = "comfy" | "compact";
  * near-black and borders carry the separation that shadows used to.
  */
 export const THEME_MODES: { id: ThemeMode; label: string; hint: string }[] = [
-  { id: "dark", label: "Dark", hint: "Ink black with acid lime (default)" },
-  { id: "light", label: "Light", hint: "Warm paper, ink text" },
+  { id: "light", label: "Light", hint: "White canvas, ink text (default)" },
+  { id: "dark", label: "Dark", hint: "Ink black with acid lime" },
   { id: "amoled", label: "AMOLED black", hint: "True black for OLED screens" },
   { id: "auto", label: "Auto", hint: "Follow the device setting" },
 ];
+
+/**
+ * Theme mode preference.
+ *
+ * ThemeProvider used to read `profile.theme_mode` first, which means every
+ * account created under the old dark default stayed dark even after the app
+ * moved to the white welcome flow. A member who has not made an explicit choice
+ * in Appearance now gets the white canvas; the first save records their choice
+ * and from then on the stored mode (profile or device) wins.
+ */
+export const THEME_CHOICE_KEY = "rizz.theme-choice";
+
+export function preferredThemeMode(profileMode?: string | null): ThemeMode {
+  if (typeof localStorage === "undefined") return "light";
+  const stored = localStorage.getItem("rizz.mode") as ThemeMode | null;
+  const hasChosen = localStorage.getItem(THEME_CHOICE_KEY) === "1";
+  if (hasChosen) {
+    if (stored === "light" || stored === "dark" || stored === "amoled" || stored === "auto") {
+      return stored;
+    }
+    if (
+      profileMode === "light" ||
+      profileMode === "dark" ||
+      profileMode === "amoled" ||
+      profileMode === "auto"
+    ) {
+      return profileMode;
+    }
+  }
+  return "light";
+}
+
+export function rememberThemeChoice() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(THEME_CHOICE_KEY, "1");
+  } catch {
+    /* storage off: the in-memory theme still applies for this session */
+  }
+}
 
 export const THEME_PRESETS: { id: ThemePreset; name: string; desc: string; colors: string[] }[] = [
   { id: "nightclub", name: "Ink", desc: "Near-black ink + acid lime (default)", colors: ["#0a0a0b", "#c9ff3d", "#f4f1e7"] },

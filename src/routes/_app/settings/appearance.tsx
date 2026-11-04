@@ -6,7 +6,16 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { THEME_MODES, THEME_PRESETS, applyTheme, type ThemePreset, type ThemeMode, type Density } from "@/lib/theme";
+import {
+  THEME_MODES,
+  THEME_PRESETS,
+  applyTheme,
+  preferredThemeMode,
+  rememberThemeChoice,
+  type ThemePreset,
+  type ThemeMode,
+  type Density,
+} from "@/lib/theme";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
 
 export const Route = createFileRoute("/_app/settings/appearance")({
@@ -18,7 +27,7 @@ function AppearanceSettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const { t } = useI18n();
   const [preset, setPreset] = useState<ThemePreset>((profile?.theme_preset as ThemePreset) || "nightclub");
-  const [mode, setMode] = useState<ThemeMode>((profile?.theme_mode as ThemeMode) || "dark");
+  const [mode, setMode] = useState<ThemeMode>(() => preferredThemeMode(profile?.theme_mode));
   const [density, setDensity] = useState<Density>((profile?.ui_density as Density) || "comfy");
   const [reduced, setReduced] = useState<boolean>(!!profile?.reduced_motion);
   /* A picker that changes something local confirms it right here, next to the
@@ -34,7 +43,7 @@ function AppearanceSettingsPage() {
   useEffect(() => {
     if (!profile) return;
     setPreset((profile.theme_preset as ThemePreset) || "nightclub");
-    setMode((profile.theme_mode as ThemeMode) || "dark");
+    setMode(preferredThemeMode(profile.theme_mode));
     setDensity((profile.ui_density as Density) || "comfy");
     setReduced(!!profile.reduced_motion);
   }, [profile]);
@@ -48,6 +57,14 @@ function AppearanceSettingsPage() {
     if (next.mode) setMode(next.mode);
     if (next.density) setDensity(next.density);
     if (next.reduced !== undefined) setReduced(next.reduced);
+    if (next.mode) {
+      rememberThemeChoice();
+      try {
+        localStorage.setItem("rizz.mode", next.mode);
+      } catch {
+        /* storage off: applyTheme still updates this session */
+      }
+    }
     applyTheme(newPreset, newMode, newDensity, newReduced);
     if (!user) return;
     await supabase
@@ -71,7 +88,7 @@ function AppearanceSettingsPage() {
           {savedAt ? (
             <span
               role="status"
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--brand-signal)]"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700"
             >
               <Check className="h-3 w-3" aria-hidden /> {t("appearance_saved")}
             </span>
@@ -86,16 +103,16 @@ function AppearanceSettingsPage() {
                 <button
                   key={t.id}
                   onClick={() => saveAppearance({ preset: t.id })}
-                  className={`relative rounded-[10px] border p-3 text-left transition-colors ${active ? "border-[var(--brand-signal)]" : "border-border hover:border-[color-mix(in_srgb,var(--brand-paper)_28%,transparent)]"}`}
+                  className={`relative rounded-[10px] border p-3 text-left transition-colors ${active ? "border-primary ring-1 ring-primary/15" : "border-border hover:border-foreground/25"}`}
                 >
                   <div className="mb-2 flex gap-1">
                     {t.colors.map((c) => (
-                      <span key={c} className="h-5 w-5 rounded-full ring-1 ring-white/10" style={{ background: c }} />
+                      <span key={c} className="h-5 w-5 rounded-full ring-1 ring-border" style={{ background: c }} />
                     ))}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">{t.name}</span>
-                    {active && <Check className="h-3.5 w-3.5 text-[var(--brand-signal)]" />}
+                    {active && <Check className="h-3.5 w-3.5 text-primary" />}
                   </div>
                   <p className="text-[10px] text-muted-foreground">{t.desc}</p>
                 </button>

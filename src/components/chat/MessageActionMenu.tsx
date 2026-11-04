@@ -208,7 +208,7 @@ export function MessageActionMenu({
       onClick={() => setView("reactions")}
       aria-label="Add reaction"
       title="Add reaction"
-      className="grid h-7 w-7 shrink-0 place-items-center rounded text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
     >
       <SmilePlus className="h-4 w-4" aria-hidden="true" />
     </button>
@@ -225,13 +225,13 @@ export function MessageActionMenu({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-[13px] font-semibold leading-[18px] text-white">
+        <p className="flex items-baseline gap-1.5 text-[13px] font-semibold leading-[18px] text-foreground">
           <span className="truncate">{preview.author}</span>
           {preview.time && (
-            <span className="shrink-0 text-[11px] font-normal text-[#949ba4]">{preview.time}</span>
+            <span className="shrink-0 text-[11px] font-normal text-muted-foreground">{preview.time}</span>
           )}
         </p>
-        <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
+        <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-foreground/85">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
@@ -239,7 +239,7 @@ export function MessageActionMenu({
     </div>
   ) : reactionBar ? (
     <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-1">
-      <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#949ba4]">
+      <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         Message actions
       </span>
       {reactionButton}
@@ -270,7 +270,7 @@ export function MessageActionMenu({
         return (
           <Fragment key={`${action.label}-${index}`}>
             {startsDanger && index > 0 && (
-              <div aria-hidden className="my-1 h-px bg-white/[0.06]" />
+              <div aria-hidden className="my-1 h-px bg-border" />
             )}
             <button
               ref={index === 0 ? firstActionRef : undefined}
@@ -280,16 +280,16 @@ export function MessageActionMenu({
                 dense ? "min-h-8" : "min-h-11"
               } ${
                 action.destructive
-                  ? "text-[#f23f43] hover:bg-[#da373c] hover:text-white"
-                  : "text-[#dbdee1] hover:bg-white/[0.08] hover:text-white"
+                  ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  : "text-foreground/85 hover:bg-surface-2 hover:text-foreground"
               }`}
             >
               <Icon
                 aria-hidden="true"
                 className={`h-4 w-4 shrink-0 ${
                   action.destructive
-                    ? "text-[#f23f43] group-hover:text-white"
-                    : "text-[#b5bac1] transition-colors group-hover:text-white"
+                    ? "text-destructive group-hover:text-destructive"
+                    : "text-muted-foreground transition-colors group-hover:text-foreground"
                 }`}
                 strokeWidth={2}
               />
@@ -299,7 +299,7 @@ export function MessageActionMenu({
         );
       })}
       {actions.length === 0 && (
-        <p className="px-2 py-3 text-[13px] text-[#949ba4]">No actions available</p>
+        <p className="px-2 py-3 text-[13px] text-muted-foreground">No actions available</p>
       )}
     </div>
   );
@@ -355,19 +355,19 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="action-sheet z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="action-sheet z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-border bg-card px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
               <SheetTitle>Message actions</SheetTitle>
             </SheetHeader>
-            <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-white/20" />
+            <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-border" />
             {showingReactions ? (
               reactionsView
             ) : (
               <>
                 {previewHeader}
-                {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
+                {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-border" />}
                 {renderActions(false)}
               </>
             )}
@@ -398,14 +398,14 @@ export function MessageActionMenu({
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className={`relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
+        className={`relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-border bg-card p-1.5 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
         {showingReactions ? (
           reactionsView
         ) : (
           <>
             {previewHeader}
-            {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
+            {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-border" />}
             {renderActions(true)}
           </>
         )}

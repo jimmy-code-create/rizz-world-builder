@@ -49,7 +49,7 @@ function ArcadeRankStrip() {
   const ms = useArcadePlayMs();
   const unlocked = ms >= 3_600_000;
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-surface-2 p-3">
       <span className={unlocked ? "" : "opacity-45 grayscale"}>
         {unlocked ? (
           <GameRankBadge size={32} />
@@ -119,7 +119,7 @@ function GamesPage() {
         Activities
       </p>
       <div className="mt-1 flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-[#f2efe6]">Games</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">Games</h1>
         {call ? (
           <button
             type="button"
@@ -132,7 +132,7 @@ function GamesPage() {
             </span>
           </button>
         ) : (
-          <span className="shrink-0 rounded-full border border-white/10 px-3 py-1.5 font-display text-xs font-semibold text-muted-foreground">
+          <span className="shrink-0 rounded-full border border-border px-3 py-1.5 font-display text-xs font-semibold text-muted-foreground">
             Not in call
           </span>
         )}
@@ -222,7 +222,7 @@ function GamesPage() {
             .map((session) => (
               <div
                 key={session.sessionId}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2 p-3"
               >
                 <Logo icon={session.game.icon} emoji={session.game.emoji} size="h-10 w-10" />
                 <span className="min-w-0 flex-1">
@@ -273,7 +273,7 @@ function GamesPage() {
             className={`shrink-0 rounded-full px-4 py-2 font-display text-sm font-semibold tracking-tight transition-colors ${
               category === c.id
                 ? "bg-primary text-primary-foreground"
-                : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                : "bg-surface-2 text-muted-foreground hover:bg-surface-3"
             }`}
           >
             <span className="mr-1.5">{c.icon}</span>
@@ -294,8 +294,8 @@ function GamesPage() {
               key={g.id}
               type="button"
               onClick={() => play(g)}
-              className={`group relative overflow-hidden rounded-2xl border bg-[#121216] text-left transition-all active:scale-[0.98] ${
-                active ? "border-primary/70 ring-2 ring-primary/40" : "border-white/10 hover:border-primary/50"
+              className={`group relative overflow-hidden rounded-2xl border bg-card text-left transition-all active:scale-[0.98] ${
+                active ? "border-primary/70 ring-2 ring-primary/40" : "border-border hover:border-primary/50"
               }`}
             >
               <div className="relative h-24 w-full overflow-hidden sm:h-28">
@@ -325,7 +325,7 @@ function GamesPage() {
                 )}
               </div>
               <div className="p-3 pt-2">
-                <p className="truncate font-display text-sm font-bold tracking-tight text-[#f2efe6]">
+                <p className="truncate font-display text-sm font-bold tracking-tight text-foreground">
                   {g.name}
                 </p>
                 <p className="text-[10px] font-semibold text-primary/80">{g.players} players</p>
@@ -336,14 +336,14 @@ function GamesPage() {
         })}
       </div>
       {filtered.length === 0 && (
-        <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center font-display text-sm text-muted-foreground">
+        <p className="mt-3 rounded-2xl border border-border bg-surface-2 p-4 text-center font-display text-sm text-muted-foreground">
           No games match “{query}”.
         </p>
       )}
 
       <Link
         to="/bots/developer"
-        className="mt-3 flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/10 font-display text-sm font-semibold text-muted-foreground hover:text-foreground"
+        className="mt-3 flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-border font-display text-sm font-semibold text-muted-foreground hover:text-foreground"
       >
         <Gamepad2 className="h-4 w-4" /> Build your own? See developer tools
       </Link>

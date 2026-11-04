@@ -62,7 +62,7 @@ export function CommentComposer({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-white/10 bg-black/15",
+        "shrink-0 border-t border-border bg-surface-2/60",
         compact ? "px-3 py-2" : "p-3",
       )}
     >
@@ -78,7 +78,7 @@ export function CommentComposer({
             type="button"
             onClick={onCancelReply}
             aria-label="Cancel reply"
-            className="grid h-5 w-5 shrink-0 place-items-center rounded transition-colors hover:bg-white/10 hover:text-foreground"
+            className="grid h-5 w-5 shrink-0 place-items-center rounded transition-colors hover:bg-surface-2 hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -94,7 +94,7 @@ export function CommentComposer({
                 onChange(`${value}${value ? " " : ""}${marker}`.slice(0, maxLength))
               }
             />
-            <div className="flex min-w-0 flex-1 items-end gap-1 rounded-xl border border-white/10 bg-black/25 pl-1.5 pr-1">
+            <div className="flex min-w-0 flex-1 items-end gap-1 rounded-xl border border-border bg-card pl-1.5 pr-1">
               <Avatar className="my-1.5 h-6 w-6 shrink-0 ring-1 ring-white/10">
                 <AvatarImage src={avatarSrc} alt="" />
                 <AvatarFallback className="bg-primary/20 text-[10px] font-bold text-primary">

@@ -462,7 +462,7 @@ function GroupRoom() {
 
   if (group.isLoading) return <div className="h-40 rounded-2xl skeleton-shimmer" />;
   if (!group.data) return (
-    <div className="text-center py-20 glass rounded-3xl border border-white/5">
+    <div className="text-center py-20 glass rounded-3xl border border-border">
       <h2 className="font-display text-xl font-bold">Group not found</h2>
       <p className="text-sm text-muted-foreground mt-1">You may need an invite link to join.</p>
       <Link to="/groups" className="inline-block mt-4 text-sm text-primary">← Back to groups</Link>
@@ -475,7 +475,7 @@ function GroupRoom() {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
-        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-border px-4 pb-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       >
         <Link to="/groups"><ArrowLeft className="h-5 w-5" /></Link>
@@ -499,11 +499,11 @@ function GroupRoom() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Members" className="text-muted-foreground hover:text-foreground"><Users className="h-5 w-5" /></Button>
           </SheetTrigger>
-          <SheetContent className="glass-strong border-white/10">
+          <SheetContent className="glass-strong border-border">
             <SheetTitle className="font-display">Members</SheetTitle>
             <div className="mt-4 space-y-2">
               {(members.data ?? []).map((m: any) => (
-                <Link key={m.user_id} to="/u/$username" params={{ username: m.user?.username ?? "" }} className="flex min-h-12 items-center gap-3 p-2 rounded-xl hover:bg-white/5">
+                <Link key={m.user_id} to="/u/$username" params={{ username: m.user?.username ?? "" }} className="flex min-h-12 items-center gap-3 p-2 rounded-xl hover:bg-surface-2">
                   <AvatarWithStatus status={presence.statusOf(m.user_id)} dotSize={11}>
                     <Avatar className="h-9 w-9"><AvatarImage src={m.user?.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{(m.user?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                   </AvatarWithStatus>
@@ -514,7 +514,7 @@ function GroupRoom() {
                 </Link>
               ))}
               {!isOwner && (
-                <Button onClick={leave} variant="outline" className="w-full glass border-white/10 text-destructive mt-4 gap-2"><LogOut className="h-4 w-4" /> Leave group</Button>
+                <Button onClick={leave} variant="outline" className="w-full glass border-border text-destructive mt-4 gap-2"><LogOut className="h-4 w-4" /> Leave group</Button>
               )}
             </div>
           </SheetContent>
@@ -747,7 +747,7 @@ function GroupRoom() {
                       <button
                         onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url })}
                         disabled={sendMessage.isPending}
-                        className="mt-0.5 text-[10px] text-amber-200/80 hover:text-amber-100"
+                        className="mt-0.5 text-[10px] text-amber-600 hover:text-amber-500"
                       >
                         Not sent · tap to retry
                       </button>
@@ -768,7 +768,7 @@ function GroupRoom() {
           </div>
       </div>
 
-      <div className="chat-bar relative z-20 shrink-0 border-t border-[#1c1c1c] bg-black px-3 pt-2 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-border bg-background/95 px-3 pt-2 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
         <div className="mx-auto w-full max-w-3xl">
           <input
             ref={imageInputRef}
@@ -801,7 +801,7 @@ function GroupRoom() {
             canSend={Boolean(body.trim() || imageFile)}
             allowVoice={false}
             above={imagePreview ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-2 p-2">
                 <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Photo compresses before upload</span>
                 <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
@@ -893,11 +893,11 @@ function GroupRoom() {
       <PollDialog open={pollOpen} onOpenChange={setPollOpen} groupId={id} />
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong border-border">
           <DialogTitle className="font-display text-xl">Invite to {g.name}</DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">Friends-only · expires in 7 days. Recipients must mutually follow a current member.</p>
           <div className="mt-3 flex gap-2">
-            <Input value={inviteUrl} readOnly className="glass border-white/10 font-mono text-xs" />
+            <Input value={inviteUrl} readOnly className="glass border-border font-mono text-xs" />
             <Button onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Copied"); }} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md"><Copy className="h-4 w-4" /></Button>
           </div>
         </DialogContent>

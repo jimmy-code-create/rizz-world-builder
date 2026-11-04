@@ -130,14 +130,14 @@ function BotDirectoryPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search bots…"
-          className="h-11 border-white/10 glass pl-9"
+          className="h-11 border-border glass pl-9"
         />
       </div>
 
       {directory.isLoading && (
         <div className="space-y-2" aria-busy="true">
           {[0, 1, 2].map((row) => (
-            <div key={row} className="h-20 animate-pulse rounded-2xl bg-white/5" />
+            <div key={row} className="h-20 animate-pulse rounded-2xl bg-surface-2" />
           ))}
         </div>
       )}
@@ -162,7 +162,7 @@ function BotDirectoryPage() {
       {!directory.isLoading && !directory.isError && (
         <ul className="space-y-3">
           {bots.length === 0 && (
-            <li className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
+            <li className="rounded-2xl border border-border bg-surface-2 p-4 text-sm text-muted-foreground">
               No bots match that search.
             </li>
           )}
@@ -172,7 +172,7 @@ function BotDirectoryPage() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(index * 0.03, 0.2) }}
-              className="rounded-3xl border border-white/10 glass p-4"
+              className="rounded-3xl border border-border glass p-4"
             >
               <div className="flex items-start gap-3">
                 <Avatar className="h-12 w-12 shrink-0 ring-1 ring-white/10">
@@ -214,7 +214,7 @@ function BotDirectoryPage() {
                             disabled={ratingBusy === bot.bot_id}
                             aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
                             onClick={() => void rate(bot, star)}
-                            className="grid h-6 w-6 place-items-center rounded-md transition-colors hover:bg-white/10 disabled:opacity-50"
+                            className="grid h-6 w-6 place-items-center rounded-md transition-colors hover:bg-surface-3 disabled:opacity-50"
                           >
                             <Star
                               aria-hidden="true"
@@ -236,7 +236,7 @@ function BotDirectoryPage() {
                         <span
                           key={command.name}
                           title={command.description}
-                          className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-foreground/80"
+                          className="rounded-full border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-foreground/80"
                         >
                           /{command.name}
                         </span>
@@ -265,7 +265,7 @@ function BotDirectoryPage() {
       )}
 
       <Dialog open={!!installingBot} onOpenChange={(open) => { if (!open) setInstallingBot(null); }}>
-        <DialogContent className="glass-strong border-white/10">
+        <DialogContent className="glass-strong border-border">
           <DialogHeader>
             <DialogTitle className="font-display">
               Add {installingBot?.name ?? "bot"} to a realm
@@ -273,9 +273,9 @@ function BotDirectoryPage() {
           </DialogHeader>
 
           {realms.isLoading ? (
-            <div className="h-20 animate-pulse rounded-2xl bg-white/5" aria-busy="true" />
+            <div className="h-20 animate-pulse rounded-2xl bg-surface-2" aria-busy="true" />
           ) : (realms.data ?? []).length === 0 ? (
-            <p className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+            <p className="rounded-2xl border border-border bg-surface-2 p-3 text-xs text-muted-foreground">
               You cannot add bots anywhere yet. You need to own or moderate a realm, or the realm
               owner has to switch on “Allow all members to add bots”.
             </p>
@@ -287,7 +287,7 @@ function BotDirectoryPage() {
                   type="button"
                   disabled={busyRealmId === realm.id}
                   onClick={() => void install(realm)}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-left transition-colors hover:border-primary/40 disabled:opacity-60"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-border bg-surface-2 px-3 text-left transition-colors hover:border-primary/40 disabled:opacity-60"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{realm.name}</p>

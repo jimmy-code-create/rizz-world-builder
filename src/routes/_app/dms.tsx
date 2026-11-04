@@ -449,7 +449,7 @@ function DMsPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 flex items-center gap-2 rounded-2xl glass border border-white/10 p-2"
+          className="mb-4 flex items-center gap-2 rounded-2xl glass border border-border p-2"
         >
           <CloseButton
             onClick={exitSelection}
@@ -485,7 +485,7 @@ function DMsPage() {
               variant="outline"
               size="sm"
               onClick={() => setGroupSheetOpen(true)}
-              className="glass border-white/10 h-9 rounded-xl gap-1.5 shrink-0 text-xs"
+              className="glass border-border h-9 rounded-xl gap-1.5 shrink-0 text-xs"
             >
               <Plus className="h-3.5 w-3.5" /> New group
             </Button>
@@ -807,7 +807,7 @@ function DMsPage() {
       <Sheet open={groupSheetOpen} onOpenChange={setGroupSheetOpen}>
         <SheetContent
           side="bottom"
-          className="glass-strong border-white/10 rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
+          className="glass-strong border-border rounded-t-3xl pb-[max(env(safe-area-inset-bottom),1rem)]"
         >
           <SheetHeader className="text-left">
             <SheetTitle className="font-display text-xl">New group</SheetTitle>
@@ -818,7 +818,7 @@ function DMsPage() {
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
-                className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden glass border border-white/10 grid place-items-center"
+                className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden glass border border-border grid place-items-center"
                 aria-label="Add a group photo"
               >
                 {photoPreview ? (
@@ -872,7 +872,7 @@ function DMsPage() {
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value.slice(0, 40))}
                 placeholder="e.g. The Group Chat"
-                className="mt-1 glass border-white/10"
+                className="mt-1 glass border-border"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {groupName.trim() ? `${groupName.trim().length}/40` : "Required"}
@@ -898,18 +898,18 @@ function DMsPage() {
                   value={memberQuery}
                   onChange={(e) => setMemberQuery(e.target.value)}
                   placeholder="Search people you have DMs with…"
-                  className="pl-9 h-10 glass border-white/10"
+                  className="pl-9 h-10 glass border-border"
                 />
               </div>
 
               {memberCandidates.length === 0 ? (
-                <p className="mt-2 rounded-xl border border-white/5 px-3 py-4 text-center text-[11px] text-muted-foreground">
+                <p className="mt-2 rounded-xl border border-border px-3 py-4 text-center text-[11px] text-muted-foreground">
                   {memberQuery
                     ? "Nobody here matches that name."
                     : "People you have a DM with show up here. Start a conversation first."}
                 </p>
               ) : (
-                <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain rounded-xl border border-white/5 p-1">
+                <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain rounded-xl border border-border p-1">
                   {memberCandidates.map((person) => {
                     const isSelected = selectedSet.has(person.id);
                     const full = selected.length >= MAX_GROUP_PICKS && !isSelected;
@@ -921,7 +921,7 @@ function DMsPage() {
                         onClick={() => toggleSelected(person.id)}
                         aria-pressed={isSelected}
                         className={`flex w-full min-h-12 items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-40 ${
-                          isSelected ? "bg-primary/10" : "hover:bg-white/5"
+                          isSelected ? "bg-primary/10" : "hover:bg-surface-2"
                         }`}
                       >
                         <Avatar className="h-9 w-9 shrink-0">
@@ -953,7 +953,7 @@ function DMsPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl glass border border-white/5 p-3">
+            <div className="rounded-2xl glass border border-border p-3">
               <p className="text-xs text-muted-foreground">
                 {selected.length
                   ? `${selected.length} selected · ${MAX_GROUP_PICKS - selected.length} spot${MAX_GROUP_PICKS - selected.length === 1 ? "" : "s"} left`
@@ -965,7 +965,7 @@ function DMsPage() {
                   return (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 pl-1 pr-2 py-1 text-xs"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 border border-border pl-1 pr-2 py-1 text-xs"
                     >
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={person?.avatar_url ?? undefined} />

@@ -61,7 +61,7 @@ export function FollowSuggestions() {
   if (!data || data.length === 0) return null;
 
   return (
-    <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-white/5">
+    <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-border">
       <div className="flex items-center gap-2 mb-3">
         <Users className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-display font-bold tracking-tight">{t("suggested_for_you")}</h3>

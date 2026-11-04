@@ -76,7 +76,7 @@ function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; co
   const size = compact ? "h-9 w-9" : "h-11 w-11";
   return (
     <div
-      className="mt-1.5 animate-in fade-in-0 zoom-in-95 rounded-xl border border-white/10 bg-black/40 p-1"
+      className="mt-1.5 animate-in fade-in-0 zoom-in-95 rounded-xl border border-border bg-card p-1"
       data-comment-reaction-tray
     >
       <div className="flex flex-wrap items-center gap-0.5">
@@ -87,7 +87,7 @@ function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; co
             onClick={() => onPick(emoji)}
             aria-label={`React with ${emoji}`}
             className={cn(
-              "grid shrink-0 place-items-center rounded-md transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
+              "grid shrink-0 place-items-center rounded-md transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
               size,
             )}
           >
@@ -100,7 +100,7 @@ function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; co
           aria-expanded={showMore}
           aria-label={showMore ? "Fewer reactions" : "More reactions"}
           className={cn(
-            "grid shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
+            "grid shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
             size,
           )}
         >
@@ -109,14 +109,14 @@ function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; co
       </div>
       {showMore && (
         <>
-          <div className="mt-1 grid grid-cols-8 gap-0.5 border-t border-white/5 pt-1">
+          <div className="mt-1 grid grid-cols-8 gap-0.5 border-t border-border pt-1">
             {MORE_REACTIONS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => onPick(emoji)}
                 aria-label={`React with ${emoji}`}
-                className="grid h-8 w-8 place-items-center rounded transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                className="grid h-8 w-8 place-items-center rounded transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
               >
                 <AnimatedEmoji emoji={emoji} size={17} motion="hover" />
               </button>
@@ -124,7 +124,7 @@ function ReactionTray({ onPick, compact }: { onPick: (emoji: string) => void; co
           </div>
           {/* The shared pack: search + recents, same component as posts,
               Reels and Messages. */}
-          <div className="mt-1 border-t border-white/5 pt-1.5">
+          <div className="mt-1 border-t border-border pt-1.5">
             <RizzEmojiPanel compact onPick={onPick} columns={8} />
           </div>
         </>
@@ -187,7 +187,7 @@ const CommentNodeView = memo(function CommentNodeView({
               compact ? "h-8 w-7 text-[10px]" : "h-9 w-8 text-[11px]",
               voted
                 ? "border-primary/50 bg-primary/15 text-primary"
-                : "border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/20 hover:text-foreground",
+                : "border-border bg-surface-2 text-muted-foreground hover:border-foreground/20 hover:text-foreground",
             )}
           >
             <ChevronUp className={cn("motion-icon", compact ? "h-3 w-3" : "h-3.5 w-3.5")} />
@@ -200,7 +200,7 @@ const CommentNodeView = memo(function CommentNodeView({
             {deleted ? (
               <span
                 aria-hidden="true"
-                className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-dashed border-white/20 text-[10px] text-muted-foreground"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-dashed border-foreground/20 text-[10px] text-muted-foreground"
               >
                 ×
               </span>
@@ -265,7 +265,7 @@ const CommentNodeView = memo(function CommentNodeView({
                     "flex h-6 items-center gap-1 rounded-full border px-1.5 text-[11px] leading-none transition",
                     group.mine
                       ? "border-primary/45 bg-primary/15 text-foreground"
-                      : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:text-foreground",
+                      : "border-border bg-surface-2 text-muted-foreground hover:border-foreground/20 hover:text-foreground",
                     !signedIn && "cursor-default",
                   )}
                 >
@@ -353,7 +353,7 @@ const CommentNodeView = memo(function CommentNodeView({
       {children.length > 0 && !collapsed && (
         <div
           className={cn(
-            "border-l border-white/[0.08]",
+            "border-l border-border",
             depth < MAX_COMMENT_INDENT_DEPTH ? "ml-2 pl-2.5" : "ml-0 pl-0",
           )}
         >

@@ -232,7 +232,7 @@ export function ProfileHeader({
             )}
             <Avatar className="relative z-[1] h-full w-full">
               <AvatarImage src={avatarSrc} />
-              <AvatarFallback className="bg-[var(--brand-ink-3,#1c1c1f)] font-semibold text-[var(--brand-paper,#f4f1e7)]">
+              <AvatarFallback className="bg-surface-2 font-semibold text-foreground">
                 {initial}
               </AvatarFallback>
             </Avatar>
@@ -286,7 +286,7 @@ export function ProfileHeader({
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
-                <h1 className="min-w-0 truncate font-display text-[clamp(20px,5.4cqw,28px)] font-bold leading-tight tracking-tight text-[#f2efe6]">
+                <h1 className="min-w-0 truncate font-display text-[clamp(20px,5.4cqw,28px)] font-bold leading-tight tracking-tight text-foreground">
                   <Nameplate name={displayName} className="block truncate" />
                 </h1>
                 {featuredBadge && (

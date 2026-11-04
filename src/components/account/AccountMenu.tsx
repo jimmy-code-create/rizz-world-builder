@@ -233,7 +233,7 @@ export function AccountMenu({
 
   const custom = selfPresence.customStatus;
   const rowCls =
-    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]";
+    "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   const countChip = (value: number) =>
     value > 0 ? (
@@ -250,8 +250,8 @@ export function AccountMenu({
       className={cn(
         "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
         danger
-          ? "border-[#ff5d5d]/25 bg-[#ff5d5d]/10 text-[#ff5d5d]"
-          : "border-white/[0.07] bg-white/[0.04] text-muted-foreground",
+          ? "border-destructive/25 bg-destructive/10 text-destructive"
+          : "border-border bg-surface-2 text-muted-foreground",
       )}
     >
       <Icon className="h-3.5 w-3.5" />
@@ -295,7 +295,7 @@ export function AccountMenu({
     }
     return (
       <DropdownMenuItem key={to + label} asChild className="p-0 focus:bg-transparent">
-        <Link to={to} params={params as never} aria-label={ariaLabel} className={cn(rowCls, "focus:bg-white/[0.06]")}>
+        <Link to={to} params={params as never} aria-label={ariaLabel} className={cn(rowCls, "focus:bg-surface-2")}>
           {linkInner(Icon, label, count)}
         </Link>
       </DropdownMenuItem>
@@ -311,7 +311,7 @@ export function AccountMenu({
     opts?: { danger?: boolean; ariaLabel?: string },
   ) => {
     const cls = opts?.danger
-      ? "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#ff5d5d] transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+      ? "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-destructive transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       : rowCls;
     if (isMobile) {
       return (
@@ -329,11 +329,11 @@ export function AccountMenu({
           onAction();
         }}
         aria-label={opts?.ariaLabel ?? label}
-        className={cn("cursor-pointer focus:bg-white/[0.06]", opts?.danger && "focus:text-[#ff5d5d]")}
+        className={cn("cursor-pointer focus:bg-surface-2", opts?.danger && "focus:text-destructive")}
       >
         <span className="flex w-full items-center gap-3 px-3 py-0 text-sm">
           {rowIcon(Icon, opts?.danger)}
-          <span className={cn("min-w-0 flex-1 truncate text-left", opts?.danger && "text-[#ff5d5d]")}>{label}</span>
+          <span className={cn("min-w-0 flex-1 truncate text-left", opts?.danger && "text-destructive")}>{label}</span>
         </span>
       </DropdownMenuItem>
     );
@@ -341,7 +341,7 @@ export function AccountMenu({
 
   // Desktop groups its rows into two columns, so separators are a phone-only
   // device there; the columns get headings and a hairline divider instead.
-  const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-[#2a2a2e]" /> : null;
+  const sep = isMobile ? <div aria-hidden className="my-1 h-px bg-border" /> : null;
 
   const sectionLabel = (label: string) => (
     <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -356,7 +356,7 @@ export function AccountMenu({
         type="button"
         onClick={openCard}
         aria-label={`Open your profile card, @${username}`}
-        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-[#2a2a2e] bg-white/[0.03] text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+        className="col-span-2 block w-full overflow-hidden rounded-2xl border border-border bg-surface-2 text-left transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="relative block h-28 w-full overflow-hidden md:h-40" aria-hidden>
           <span
@@ -370,35 +370,35 @@ export function AccountMenu({
             className="absolute inset-0"
             style={{ background: "radial-gradient(130% 100% at 12% 0%, rgba(200,255,61,0.20), transparent 62%)" }}
           />
-          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#141416] to-transparent" />
+          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface-2 to-transparent" />
         </span>
         <span className="flex items-center gap-3 px-3">
           <span className="relative -mt-6 inline-flex shrink-0">
-            <Avatar className="relative z-[1] h-12 w-12 rounded-full ring-2 ring-[#141416]">
+            <Avatar className="relative z-[1] h-12 w-12 rounded-full ring-2 ring-card">
               <AvatarImage src={profile?.avatar_url ?? undefined} className="object-cover" />
-              <AvatarFallback className="rounded-full bg-[#1c1c1f] text-base font-bold text-[#f2efe6]">
+              <AvatarFallback className="rounded-full bg-surface-2 text-base font-bold text-foreground">
                 {initial}
               </AvatarFallback>
             </Avatar>
             <AvatarStatusBadge emoji={custom?.emoji} size={14} />
-            <span className="absolute -bottom-0.5 -right-0.5 z-10 grid place-items-center rounded-full bg-[#141416] p-[2px]">
+            <span className="absolute -bottom-0.5 -right-0.5 z-10 grid place-items-center rounded-full bg-card p-[2px]">
               <StatusIcon status={selfPresence.status} size={16} />
             </span>
           </span>
           <span className="min-w-0 flex-1 py-2">
-            <span className="block truncate text-sm font-bold text-[#f2efe6]">{displayName}</span>
+            <span className="block truncate text-sm font-bold text-foreground">{displayName}</span>
             <span className="block truncate text-xs text-muted-foreground">@{username}</span>
             <CustomStatusLine status={custom} className="mt-0.5 text-xs text-muted-foreground" />
           </span>
         </span>
         {/* Three labelled counts instead of one run-on line, so the numbers read
             as a stat block and each one is skimmable. */}
-        <span className="flex items-stretch gap-2 border-t border-white/[0.06] px-3 py-2.5">
+        <span className="flex items-stretch gap-2 border-t border-border px-3 py-2.5">
           {menuQuery.isLoading ? (
             <>
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
-              <span className="h-9 flex-1 animate-pulse rounded-lg bg-white/10" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-surface-2" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-surface-2" aria-hidden />
+              <span className="h-9 flex-1 animate-pulse rounded-lg bg-surface-2" aria-hidden />
               <span className="sr-only">Loading stats</span>
             </>
           ) : (
@@ -407,14 +407,14 @@ export function AccountMenu({
                 <span className="font-mono text-sm font-bold text-[#ff2d3f]">{formatCount(stats?.pawBalance ?? 0)}</span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paws</span>
               </span>
-              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
+              <span className="w-px self-stretch bg-border" aria-hidden />
               <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.followers ?? 0)}</span>
+                <span className="font-mono text-sm font-bold text-foreground">{formatCount(stats?.followers ?? 0)}</span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Followers</span>
               </span>
-              <span className="w-px self-stretch bg-white/[0.07]" aria-hidden />
+              <span className="w-px self-stretch bg-border" aria-hidden />
               <span className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="font-mono text-sm font-bold text-[#f2efe6]">{formatCount(stats?.badges ?? 0)}</span>
+                <span className="font-mono text-sm font-bold text-foreground">{formatCount(stats?.badges ?? 0)}</span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Badges</span>
               </span>
             </>
@@ -453,7 +453,7 @@ export function AccountMenu({
           </span>
         </button>
         {statusExpanded && (
-          <div className="mt-0.5 space-y-0.5 rounded-xl border border-[#2a2a2e] bg-black/40 p-1">
+          <div className="mt-0.5 space-y-0.5 rounded-xl border border-border bg-surface-2 p-1">
             {PRESENCE_STATUSES.map((entry) => {
               const selected = selfPresence.status === entry.value;
               return (
@@ -468,11 +468,11 @@ export function AccountMenu({
                     });
                     setStatusExpanded(false);
                   }}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <StatusIcon status={entry.value} size={18} />
                   <span className="min-w-0 flex-1">
-                    <span className={cn("block text-sm", selected ? "font-semibold text-[#f2efe6]" : "text-muted-foreground")}>
+                    <span className={cn("block text-sm", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>
                       {entry.label}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">{entry.hint}</span>
@@ -484,10 +484,10 @@ export function AccountMenu({
             <button
               type="button"
               onClick={openStatusSheet}
-              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Smile className="h-4 w-4 shrink-0 text-[#ff2d3f]" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-sm text-[#f2efe6]">
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                 {custom && (custom.emoji || custom.text)
                   ? `${custom.emoji ?? ""} ${custom.text ?? ""}`.trim()
                   : "Set a custom status"}
@@ -513,7 +513,7 @@ export function AccountMenu({
                       );
                     }
                   }}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-[#f2efe6]"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-surface-3 hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </span>
@@ -541,7 +541,7 @@ export function AccountMenu({
       <div
         className={cn(
           "space-y-0.5",
-          !isMobile && "col-start-2 row-start-3 self-start border-l border-white/[0.06] pl-2",
+          !isMobile && "col-start-2 row-start-3 self-start border-l border-border pl-2",
         )}
       >
         {!isMobile && sectionLabel("More")}
@@ -560,7 +560,7 @@ export function AccountMenu({
           />
         </button>
         {accountsExpanded && (
-          <div className="mt-0.5 space-y-0.5 rounded-xl border border-[#2a2a2e] bg-black/40 p-1">
+          <div className="mt-0.5 space-y-0.5 rounded-xl border border-border bg-surface-2 p-1">
             {accounts.slice(0, MAX_SAVED_ACCOUNTS).map((entry) => {
               const isCurrent = entry.id === userId;
               return (
@@ -570,16 +570,16 @@ export function AccountMenu({
                   disabled={isCurrent}
                   onClick={() => void doSwitchAccount(entry)}
                   aria-label={isCurrent ? `${entry.username}, current account` : `Switch to ${entry.username}`}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08] disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-surface-3 disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage src={entry.avatarUrl ?? undefined} />
-                    <AvatarFallback className="bg-[#1c1c1f] text-xs font-bold text-[#f2efe6]">
+                    <AvatarFallback className="bg-surface-2 text-xs font-bold text-foreground">
                       {entry.displayName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-[#f2efe6]">{entry.displayName}</span>
+                    <span className="block truncate text-sm text-foreground">{entry.displayName}</span>
                     <span className="block truncate text-xs text-muted-foreground">@{entry.username}</span>
                   </span>
                   {isCurrent && (
@@ -593,7 +593,7 @@ export function AccountMenu({
             <button
               type="button"
               onClick={() => void doSwitchAccount()}
-              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {rowIcon(UserPlus)}
               Add account
@@ -601,30 +601,30 @@ export function AccountMenu({
           </div>
         )}
         {actionRow("copy-link", Link2, "Copy profile link", () => void copyLink())}
-        {!isMobile && <DropdownMenuSeparator className="my-1 bg-[#2a2a2e]" />}
+        {!isMobile && <DropdownMenuSeparator className="my-1 bg-border" />}
         {destRow("/settings", undefined, Settings, "Settings")}
         {actionRow("help", HelpCircle, "Help & feedback", () => closeThen(() => setHelpOpen(true)))}
       </div>
 
       {/* Group 4: sign out, pinned to the bottom of the panel */}
-      <div className={cn(!isMobile && "col-span-2 mt-1 border-t border-white/[0.06] pt-1")}>
+      <div className={cn(!isMobile && "col-span-2 mt-1 border-t border-border pt-1")}>
         {confirmSignOut ? (
           <div className="flex min-h-12 items-center justify-between gap-2 px-3" role="alert">
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#ff5d5d]">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-destructive">
               Sign out of @{username}?
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => void doSignOut()}
-                className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-[#ff5d5d] transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+                className="min-h-11 rounded-lg bg-[#ff5d5d]/20 px-3 text-xs font-bold text-destructive transition-colors hover:bg-[#ff5d5d]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Sign out
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmSignOut(false)}
-                className="min-h-11 rounded-lg bg-white/5 px-3 text-xs text-muted-foreground transition-colors hover:text-[#f2efe6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff2d3f]"
+                className="min-h-11 rounded-lg bg-surface-2 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Cancel
               </button>
@@ -640,9 +640,9 @@ export function AccountMenu({
     </div>
   ) : (
     <div className="space-y-2 p-1" role="status" aria-label="Loading account">
-      <div className="h-11 animate-pulse rounded-xl bg-white/5" />
-      <div className="h-11 animate-pulse rounded-xl bg-white/5" />
-      <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+      <div className="h-11 animate-pulse rounded-xl bg-surface-2" />
+      <div className="h-11 animate-pulse rounded-xl bg-surface-2" />
+      <div className="h-11 animate-pulse rounded-xl bg-surface-2" />
     </div>
   );
 
@@ -694,7 +694,7 @@ export function AccountMenu({
           >
             <SheetContent
               side="bottom"
-              className="account-sheet max-h-[85dvh] overflow-y-auto rounded-t-3xl border-white/10 bg-[#141416] px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+              className="account-sheet max-h-[85dvh] overflow-y-auto rounded-t-3xl border-border bg-card px-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
             >
               <SheetTitle className="sr-only">Your account</SheetTitle>
               <div
@@ -711,7 +711,7 @@ export function AccountMenu({
                   dragStart.current = null;
                 }}
               >
-                <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-white/25" aria-hidden />
+                <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-border" aria-hidden />
                 {body}
               </div>
             </SheetContent>
@@ -735,7 +735,7 @@ export function AccountMenu({
             align="end"
             sideOffset={12}
             collisionPadding={12}
-            className="max-h-[min(85dvh,46rem)] w-[540px] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl border border-[#2a2a2e] bg-[#141416] p-2.5 shadow-[0_28px_80px_-20px_rgba(0,0,0,0.9)]"
+            className="max-h-[min(85dvh,46rem)] w-[540px] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-3xl border border-border bg-card p-2.5 shadow-[0_28px_80px_-20px_rgba(0,0,0,0.9)]"
           >
             {body}
           </DropdownMenuContent>
@@ -758,22 +758,22 @@ export function AccountMenu({
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent
           hideClose
-          className="w-[calc(100vw-2rem)] max-w-sm gap-0 overflow-hidden rounded-3xl border-white/10 bg-[#141416] p-0"
+          className="w-[calc(100vw-2rem)] max-w-sm gap-0 overflow-hidden rounded-3xl border-border bg-card p-0"
         >
           <DialogTitle className="sr-only">Help and feedback</DialogTitle>
           <div className="flex items-center justify-between gap-2 px-4 pt-4">
-            <h3 className="font-display text-base font-bold text-[#f2efe6]">Help & feedback</h3>
+            <h3 className="font-display text-base font-bold text-foreground">Help & feedback</h3>
             <CloseButton aria-label="Close help" onClick={() => setHelpOpen(false)} />
           </div>
           <div className="space-y-1 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
-            <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-muted-foreground">
-              Press <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-[#f2efe6]">?</kbd>{" "}
+            <p className="rounded-2xl border border-border bg-surface-2 p-3 text-sm text-muted-foreground">
+              Press <kbd className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-foreground">?</kbd>{" "}
               anywhere for keyboard shortcuts.
             </p>
             <Link
               to="/bots/developer"
               onClick={() => setHelpOpen(false)}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-surface-2"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -783,7 +783,7 @@ export function AccountMenu({
             <Link
               to="/settings/account"
               onClick={() => setHelpOpen(false)}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-[#f2efe6] transition-colors hover:bg-white/[0.06]"
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-surface-2"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />

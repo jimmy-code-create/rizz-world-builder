@@ -353,7 +353,7 @@ function ProfileSettingsPage() {
                 hidden
                 onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0], "avatar")}
               />
-              <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 glass-strong px-4 py-2 text-sm font-medium hover:bg-white/5">
+              <span className="inline-flex items-center gap-2 rounded-xl border border-border glass-strong px-4 py-2 text-sm font-medium hover:bg-surface-2">
                 <Upload className="h-4 w-4" /> Upload a photo
               </span>
             </label>
@@ -377,7 +377,7 @@ function ProfileSettingsPage() {
                     aria-checked={active}
                     onClick={() => void chooseAvatar(avatar.url)}
                     className={`relative aspect-square overflow-hidden rounded-full border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                      active ? "border-primary shadow-md" : "border-white/10 hover:border-white/30"
+                      active ? "border-primary shadow-md" : "border-border hover:border-foreground/30"
                     }`}
                   >
                     <img
@@ -402,7 +402,7 @@ function ProfileSettingsPage() {
             <Input
               value={profile.username ?? ""}
               readOnly
-              className="mt-1 border-white/10 bg-transparent text-muted-foreground"
+              className="mt-1 border-border bg-transparent text-muted-foreground"
             />
           </div>
 
@@ -411,7 +411,7 @@ function ProfileSettingsPage() {
             <Input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value.slice(0, 40))}
-              className="mt-1 border-white/10 bg-transparent"
+              className="mt-1 border-border bg-transparent"
             />
           </div>
 
@@ -421,7 +421,7 @@ function ProfileSettingsPage() {
               value={bio}
               onChange={(e) => setBio(e.target.value.slice(0, 240))}
               rows={3}
-              className="mt-1 resize-none border-white/10 bg-transparent"
+              className="mt-1 resize-none border-border bg-transparent"
             />
             <p className="mt-1 text-[10px] text-muted-foreground">{240 - bio.length} chars left</p>
           </div>
@@ -484,7 +484,7 @@ function ProfileSettingsPage() {
                 type="color"
                 value={accent}
                 onChange={(e) => setAccent(e.target.value)}
-                className="h-10 w-16 cursor-pointer rounded-lg border border-white/10 bg-transparent"
+                className="h-10 w-16 cursor-pointer rounded-lg border border-border bg-transparent"
               />
               <span className="font-mono text-sm">{accent}</span>
             </div>
@@ -531,7 +531,7 @@ function ProfileSettingsPage() {
                   className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40 ${
                     active
                       ? "border-primary bg-primary/10 text-foreground"
-                      : "border-white/10 bg-transparent hover:bg-white/5"
+                      : "border-border bg-transparent hover:bg-surface-2"
                   }`}
                 >
                   <CustomEmoji name={emoji} className="h-5 w-5 shrink-0" />
@@ -565,7 +565,7 @@ function ProfileSettingsPage() {
       <SettingsCard className="space-y-2">
         <Label className="text-xs text-muted-foreground">Live preview</Label>
         <div
-          className="overflow-hidden rounded-3xl border border-white/10 bg-[#141416]"
+          className="overflow-hidden rounded-3xl border border-border bg-card"
           style={
             previewBanner.profileBackground
               ? { background: previewBanner.profileBackground }
@@ -598,17 +598,17 @@ function ProfileSettingsPage() {
         </p>
       </SettingsCard>
 
-      <nav className="overflow-hidden rounded-2xl border border-white/5 glass">
+      <nav className="overflow-hidden rounded-2xl border border-border glass">
         {parts.map((row, index) => (
           <button
             key={row.id}
             type="button"
             onClick={() => openPart(row.id)}
-            className={`flex min-h-[60px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
-              index > 0 ? "border-t border-white/5" : ""
+            className={`flex min-h-[60px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+              index > 0 ? "border-t border-border" : ""
             }`}
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.06] text-primary">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-primary">
               {row.icon}
             </span>
             <span className="min-w-0 flex-1">

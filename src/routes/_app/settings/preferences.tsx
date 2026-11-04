@@ -64,7 +64,7 @@ function PreferencesSettingsPage() {
             <Label htmlFor="mention-highlight-color" className="text-sm font-medium">{t("pref_mention_color")}</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">{t("pref_mention_color_desc")}</p>
           </div>
-          <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+          <label className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2">
             {/* The preview uses the exact chip recipe the chats use, so what you
                 pick here is what you get in DMs, groups and realms. */}
             <span
@@ -107,12 +107,12 @@ function PreferencesSettingsPage() {
                 className={`flex min-h-9 items-center gap-2 rounded-lg border px-2 text-xs font-medium transition-colors ${
                   active
                     ? "border-primary/60 bg-primary/10 text-foreground"
-                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                    : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span
                   aria-hidden="true"
-                  className="h-3.5 w-3.5 rounded-full border border-white/20"
+                  className="h-3.5 w-3.5 rounded-full border border-foreground/30"
                   style={{ background: preset.value }}
                 />
                 {preset.label}
@@ -143,7 +143,7 @@ function PreferencesSettingsPage() {
           <select
             value={["auto", "en", "fr"].includes(prefs.language) ? prefs.language : "auto"}
             onChange={(e) => updatePref("language", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-white/10 glass bg-transparent px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-xl border border-border glass bg-transparent px-3 py-2 text-sm"
           >
             <option value="auto">{t("language_auto")}</option>
             <option value="en">{t("language_english")}</option>

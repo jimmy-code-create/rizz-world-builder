@@ -222,14 +222,14 @@ export function PostReactionsSheet({
   const content = (
     <div className="flex flex-col h-full max-h-[80vh] overflow-hidden">
       {/* Tabs bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-white/10 px-4 py-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-border px-4 py-2.5 shrink-0">
         <button
           type="button"
           onClick={() => setSelectedTab("all")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
             selectedTab === "all"
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5"
+              : "glass border border-border text-muted-foreground hover:text-foreground hover:bg-surface-2"
           }`}
         >
           <span>{t("all_reactions")}</span>
@@ -244,7 +244,7 @@ export function PostReactionsSheet({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
               selectedTab === emoji
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "glass border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5"
+                : "glass border border-border text-muted-foreground hover:text-foreground hover:bg-surface-2"
             }`}
           >
             <ReactionKeyGlyph reactionKey={emoji} className="h-4 w-4 text-[15px]" />
@@ -276,7 +276,7 @@ export function PostReactionsSheet({
           return (
             <div
               key={`${item.user_id}-${item.emoji}-${idx}`}
-              className="flex min-h-[56px] items-center justify-between gap-3 p-2.5 rounded-xl border border-white/5 bg-card/40 hover:bg-white/[0.04] transition-colors"
+              className="flex min-h-[56px] items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-surface-2 hover:bg-surface-2 transition-colors"
             >
               <Link
                 to="/u/$username"
@@ -326,7 +326,7 @@ export function PostReactionsSheet({
                 <button
                   type="button"
                   onClick={() => void handleRemoveOwnReaction(item)}
-                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive px-2.5 py-1 rounded-lg border border-white/10 hover:border-destructive/40 transition-colors"
+                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive px-2.5 py-1 rounded-lg border border-border hover:border-destructive/40 transition-colors"
                 >
                   Remove
                 </button>
@@ -337,7 +337,7 @@ export function PostReactionsSheet({
                   onClick={() => void handleToggleFollow(item.user_id)}
                   className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 gap-1 ${
                     isFollowing
-                      ? "glass border-white/10 text-muted-foreground hover:text-foreground"
+                      ? "glass border-border text-muted-foreground hover:text-foreground"
                       : "bg-primary text-primary-foreground border-0 shadow-sm"
                   }`}
                 >
@@ -362,8 +362,8 @@ export function PostReactionsSheet({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="glass-strong z-[100] rounded-t-3xl border-white/10 p-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
-          <SheetHeader className="p-4 pr-12 border-b border-white/10 flex flex-row items-center justify-between">
+        <SheetContent side="bottom" className="glass-strong z-[100] rounded-t-3xl border-border p-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
+          <SheetHeader className="p-4 pr-12 border-b border-border flex flex-row items-center justify-between">
             <SheetTitle className="font-display text-base font-bold flex items-center gap-2">
               <Smile className="h-4 w-4 text-primary" /> {t("reactions")} ({reactions.length})
             </SheetTitle>
@@ -376,8 +376,8 @@ export function PostReactionsSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong border-white/10 max-w-md w-full p-0 overflow-hidden">
-        <DialogHeader className="p-4 pr-12 border-b border-white/10">
+      <DialogContent className="glass-strong border-border max-w-md w-full p-0 overflow-hidden">
+        <DialogHeader className="p-4 pr-12 border-b border-border">
           <DialogTitle className="font-display text-base font-bold flex items-center gap-2">
             <Smile className="h-4 w-4 text-primary" /> {t("reactions")} ({reactions.length})
           </DialogTitle>

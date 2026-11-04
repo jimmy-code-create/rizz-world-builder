@@ -217,11 +217,11 @@ function AppShellSkeleton() {
       className="relative flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-background md:pl-64"
       aria-hidden
     >
-      <div className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/5 bg-card/60 md:block" />
+      <div className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card/60 md:block" />
       <div className="flex-1 space-y-3 p-4">
-        <div className="h-10 w-40 animate-pulse rounded-xl bg-white/[0.05]" />
-        <div className="h-32 animate-pulse rounded-3xl bg-white/[0.035]" />
-        <div className="h-44 animate-pulse rounded-3xl bg-white/[0.035]" />
+        <div className="h-10 w-40 animate-pulse rounded-xl bg-surface-2" />
+        <div className="h-32 animate-pulse rounded-3xl bg-surface-2" />
+        <div className="h-44 animate-pulse rounded-3xl bg-surface-2" />
       </div>
     </div>
   );
@@ -410,7 +410,7 @@ export function AppShell() {
 
   return (
     <div
-      className={`relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
+      className={`rizz-app relative flex h-dvh min-h-0 w-full flex-col overflow-hidden ${isConversation ? "" : "md:pl-64"}`}
     >
       {!isConversation && (
         <Suspense fallback={null}>
@@ -536,7 +536,7 @@ export function AppShell() {
       {/* Mobile top bar */}
       {!isConversation && (
         <header
-          className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-border px-3 pb-2.5"
+          className="chat-bar md:hidden z-30 relative flex shrink-0 items-center gap-2 border-b border-border px-3 pb-2.5 shadow-[0_10px_30px_-28px_rgba(21,21,26,0.55)]"
           style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 0.5rem)" }}
         >
           <Link
@@ -611,7 +611,7 @@ export function AppShell() {
 
       {/* Mobile bottom nav — 5 items, center FAB with 48px min touch height */}
       {!isConversation && (
-        <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+        <nav className="md:hidden z-30 shrink-0 border-t border-border bg-card/90 px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] shadow-[0_-10px_30px_-26px_rgba(21,21,26,0.5)] backdrop-blur-md">
           <div className="flex items-center justify-between gap-1">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
@@ -634,7 +634,7 @@ export function AppShell() {
                 className="flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
                 aria-label="New post"
               >
-                <div className="h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-[#c8ff3d] text-[#0a0a0b] flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring">
+                <div className="flex h-12 w-12 min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[var(--brand-signal)] text-[var(--brand-signal-ink)] shadow-[0_10px_24px_-12px_rgba(122,168,15,0.65)] ring-4 ring-background transition-transform hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
                   <Plus className="h-6 w-6 stroke-[2.5]" />
                 </div>
               </button>
@@ -847,13 +847,13 @@ export function AppShell() {
       </Sheet>
 
       <AlertDialog open={mobileSignOutConfirm} onOpenChange={setMobileSignOutConfirm}>
-        <AlertDialogContent className="glass-strong border-white/10 rounded-2xl max-w-sm">
+        <AlertDialogContent className="glass-strong rounded-2xl max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">{t("sign_out_title")}</AlertDialogTitle>
             <AlertDialogDescription>{t("sign_out_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
-            <AlertDialogCancel className="h-10 rounded-xl glass border-white/10">
+            <AlertDialogCancel className="h-10 rounded-xl glass">
               {t("cancel")}
             </AlertDialogCancel>
             <AlertDialogAction

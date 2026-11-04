@@ -137,7 +137,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-3xl p-4 md:p-5 mb-6 border border-white/5"
+      className="glass rounded-3xl p-4 md:p-5 mb-6 border border-border"
     >
       <div className="flex gap-3">
         <UserAvatar src={profile?.avatar_url} fallback={initial} size="md" className="shrink-0" />
@@ -186,7 +186,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <img
                 src={imagePreview}
                 alt="Attached image preview"
-                className="h-28 w-auto max-w-full rounded-2xl border border-white/10 object-cover"
+                className="h-28 w-auto max-w-full rounded-2xl border border-border object-cover"
               />
               {mut.isPending && (
                 <div className="absolute inset-0 grid place-items-center rounded-2xl bg-black/50 text-xs font-semibold">
@@ -208,7 +208,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
           )}
 
           {pollOn && (
-            <div className="mt-3 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mt-3 space-y-2 rounded-2xl border border-border bg-surface-2 p-3">
               <input
                 value={pollQuestion}
                 onChange={(e) => setPollQuestion(e.target.value.slice(0, 200))}
@@ -221,11 +221,11 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                     value={o}
                     onChange={(e) => setPollOptions((p) => p.map((v, j) => (j === i ? e.target.value.slice(0, 80) : v)))}
                     placeholder={tf("poll_option", { n: i + 1 })}
-                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
+                    className="flex-1 min-w-0 rounded-lg border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
                   />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => setPollOptions((p) => p.filter((_, j) => j !== i))}
-                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label={t("remove_option")}>
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-surface-3" aria-label={t("remove_option")}>
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -234,14 +234,14 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <div className="flex flex-wrap items-center gap-2">
                 {pollOptions.length < 4 && (
                   <button type="button" onClick={() => setPollOptions((p) => [...p, ""])}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5">
+                    className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:bg-surface-2">
                     <Plus className="h-3 w-3" /> {t("add_option")}
                   </button>
                 )}
                 <select
                   value={pollHours}
                   onChange={(e) => setPollHours(Number(e.target.value))}
-                  className="rounded-full border border-white/10 bg-transparent px-2.5 py-1 text-xs outline-none"
+                  className="rounded-full border border-border bg-transparent px-2.5 py-1 text-xs outline-none"
                 >
                   <option value={6}>{t("poll_6h")}</option>
                   <option value={24}>{t("poll_1d")}</option>
@@ -253,7 +253,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
             <div className="flex items-center gap-1">
               <input
                 ref={fileRef}
@@ -269,7 +269,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${imageFile ? "text-primary bg-white/5" : "text-primary"}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-2 ${imageFile ? "text-primary bg-surface-2" : "text-primary"}`}
                 aria-label="Attach an image"
                 aria-pressed={!!imageFile}
               >
@@ -279,7 +279,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}
-                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5 ${pollOn ? "text-primary bg-white/5" : "text-primary"}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-2 ${pollOn ? "text-primary bg-surface-2" : "text-primary"}`}
                 aria-label={t("add_poll")}
               >
                 <BarChart3 className="h-5 w-5" />
@@ -287,8 +287,8 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               <button
                 type="button"
                 onClick={() => setVisibility((v) => (v === "public" ? "close_friends" : "public"))}
-                className={`flex h-9 items-center gap-1 rounded-full px-2 text-[11px] font-medium hover:bg-white/5 ${
-                  visibility === "close_friends" ? "text-emerald-300" : "text-muted-foreground"
+                className={`flex h-9 items-center gap-1 rounded-full px-2 text-[11px] font-medium hover:bg-surface-2 ${
+                  visibility === "close_friends" ? "text-emerald-700" : "text-muted-foreground"
                 }`}
                 aria-label={t("audience_toggle")}
               >

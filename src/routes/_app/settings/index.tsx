@@ -84,7 +84,7 @@ function SettingsHubPage() {
             if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
             else nav({ to: "/feed" });
           }}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -93,7 +93,7 @@ function SettingsHubPage() {
 
       <Link
         to="/settings/profile"
-        className="flex items-center gap-3.5 rounded-2xl border border-white/5 glass p-3.5 transition-colors hover:bg-white/5"
+        className="flex items-center gap-3.5 rounded-2xl border border-border glass p-3.5 transition-colors hover:bg-surface-2"
       >
         <Avatar className="h-12 w-12 ring-2 ring-primary/40">
           <AvatarImage src={profile.avatar_url ?? undefined} />
@@ -109,7 +109,7 @@ function SettingsHubPage() {
       <button
         type="button"
         onClick={() => setStatusOpen(true)}
-        className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-white/5 glass px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+        className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-border glass px-4 py-2.5 text-left transition-colors hover:bg-surface-2"
       >
         <AvatarWithStatus status={presence.status} dotSize={11}>
           <Avatar className="h-10 w-10">
@@ -127,16 +127,16 @@ function SettingsHubPage() {
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
 
-      <nav className="overflow-hidden rounded-2xl border border-white/5 glass">
+      <nav className="overflow-hidden rounded-2xl border border-border glass">
         {SECTIONS.map((section, index) => (
           <Link
             key={section.to}
             to={section.to}
-            className={`flex min-h-[56px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/5 ${
-              index > 0 ? "border-t border-white/5" : ""
+            className={`flex min-h-[56px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2 ${
+              index > 0 ? "border-t border-border" : ""
             }`}
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.06] text-primary">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-primary">
               <section.icon className="h-4.5 w-4.5" />
             </span>
             <span className="min-w-0 flex-1">

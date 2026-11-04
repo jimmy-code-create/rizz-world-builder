@@ -389,7 +389,7 @@ function ProfilePage() {
         <p className="mt-2 text-sm text-muted-foreground">Check your connection and try again.</p>
         <Button
           variant="outline"
-          className="mt-5 glass border-white/10"
+          className="mt-5 glass border-border"
           onClick={() => profileQ.refetch()}
         >
           Try again
@@ -444,7 +444,7 @@ function ProfilePage() {
             variant="outline"
             size="icon"
             aria-label="Share profile"
-            className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+            className="h-9 w-9 border-border bg-card hover:bg-surface-3"
             onClick={() => void shareProfile()}
           >
             <Share2 className="h-4 w-4" />
@@ -467,8 +467,8 @@ function ProfilePage() {
             className={cn(
               "h-9 px-3 text-[12.5px] font-bold",
               isFollowing
-                ? "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
-                : "border-white/15 bg-transparent text-foreground hover:bg-white/[0.06]",
+                ? "border-border bg-surface-2 text-foreground hover:bg-surface-3"
+                : "border-border bg-transparent text-foreground hover:bg-surface-2",
             )}
           >
             {isFollowing ? "Following" : "Follow"}
@@ -481,7 +481,7 @@ function ProfilePage() {
               mood={knockMood}
               variant="button"
               label="Knock"
-              className="h-9 shrink-0 gap-1.5 border-white/15 px-3 text-[12.5px] font-bold text-foreground hover:bg-white/[0.06]"
+              className="h-9 shrink-0 gap-1.5 border-border px-3 text-[12.5px] font-bold text-foreground hover:bg-surface-2"
             />
           )}
           <DropdownMenu>
@@ -490,7 +490,7 @@ function ProfilePage() {
                 variant="outline"
                 size="icon"
                 aria-label="More profile options"
-                className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                className="h-9 w-9 border-border bg-card hover:bg-surface-3"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -513,7 +513,7 @@ function ProfilePage() {
           variant="outline"
           size="icon"
           aria-label="Share profile"
-          className="h-9 w-9 border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+          className="h-9 w-9 border-border bg-card hover:bg-surface-3"
           onClick={() => void shareProfile()}
         >
           <Share2 className="h-4 w-4" />
@@ -610,7 +610,7 @@ function ProfilePage() {
           {headerActions}
         </div>
 
-        <div className="mt-3 grid grid-cols-4 divide-x divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm">
+        <div className="mt-3 grid grid-cols-4 divide-x divide-border overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm">
           <StatCell
             label="Posts"
             value={formatNumber(posts.data?.length ?? 0)}
@@ -629,7 +629,7 @@ function ProfilePage() {
           <button
             type="button"
             onClick={() => nav({ to: "/drops" })}
-            className="px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+            className="px-3 py-2.5 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
           >
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
               Paws
@@ -646,7 +646,7 @@ function ProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 backdrop-blur-sm"
+            className="mt-4 rounded-2xl border border-border bg-card p-4 backdrop-blur-sm"
             aria-label="About me"
           >
             <div className="flex items-center justify-between gap-3">
@@ -745,7 +745,7 @@ function ProfilePage() {
         )}
 
           <div className="relative z-20 mt-4">
-          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/[0.07] bg-transparent p-0">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
             {[
               { value: "main", label: "Main" },
               { value: "activity", label: "Activity" },
@@ -812,8 +812,8 @@ function ProfilePage() {
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       active
-                        ? "border-white/15 bg-white/[0.09] text-foreground"
-                        : "border-white/[0.06] bg-transparent text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                        ? "border-border bg-surface-3 text-foreground"
+                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-2 hover:text-foreground",
                     )}
                   >
                     <tab.icon className="h-3.5 w-3.5" />
@@ -897,7 +897,7 @@ function ProfilePage() {
                           key={c.id}
                           to="/r/$slug"
                           params={{ slug: c.slug }}
-                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-white/5"
+                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-surface-2"
                         >
                           <div className="flex items-center gap-3">
                             <div
@@ -940,7 +940,7 @@ function ProfilePage() {
                           key={g.id}
                           to="/g/$id"
                           params={{ id: g.id }}
-                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-white/5"
+                          className="block min-h-[56px] rounded-xl glass p-3 transition-colors hover:bg-surface-2"
                         >
                           <div className="flex items-center gap-3">
                             {g.icon_url ? (
@@ -984,7 +984,7 @@ function ProfilePage() {
           <TabsContent value="activity" className="mt-4">
             <section
               aria-label="Lifetime activity"
-              className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 backdrop-blur-sm"
+              className="rounded-2xl border border-border bg-card p-4 backdrop-blur-sm"
             >
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -1000,9 +1000,9 @@ function ProfilePage() {
                     key={id}
                     type="button"
                     onClick={() => openActivity(id)}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-left transition-colors hover:border-white/15 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-border hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-muted-foreground">
+                    <span className="grid h-7 w-7 place-items-center rounded-lg border border-border bg-surface-2 text-muted-foreground">
                       <Icon className="h-3.5 w-3.5" />
                     </span>
                     <p className="mt-2 font-display text-lg font-bold leading-none tabular-nums text-foreground">
@@ -1018,7 +1018,7 @@ function ProfilePage() {
 
             <section
               aria-label="Recent activity"
-              className="mt-3 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm"
+              className="mt-3 overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm"
             >
               <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
                 <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -1037,14 +1037,14 @@ function ProfilePage() {
                     : "No public activity yet."}
                 </p>
               ) : (
-                <ul className="mt-1 divide-y divide-white/[0.05]">
+                <ul className="mt-1 divide-y divide-border">
                   {recentActivity.map((item) => {
                     const Icon =
                       item.kind === "reel" ? Film : item.kind === "group" ? Users : Hash;
                     const when = relativeTime(item.at);
                     return (
                       <li key={item.id} className="flex items-center gap-3 px-4 py-3">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-muted-foreground">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-muted-foreground">
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -1119,7 +1119,7 @@ function StatCell({
     <button
       type="button"
       onClick={onClick}
-      className="px-3 py-2.5 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      className="px-3 py-2.5 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
     >
       {content}
     </button>
@@ -1128,9 +1128,9 @@ function StatCell({
 
 function EmptyState({ label, hint, icon }: { label: string; hint?: string; icon?: ReactNode }) {
   return (
-    <div className="glass rounded-2xl border border-white/[0.06] p-10 text-center">
+    <div className="glass rounded-2xl border border-border p-10 text-center">
       {icon && (
-        <span className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-muted-foreground">
+        <span className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full border border-border bg-surface-2 text-muted-foreground">
           {icon}
         </span>
       )}
@@ -1189,7 +1189,7 @@ export function PawsBreakdown({
 
       <div className="glass rounded-3xl p-5 grid gap-3 sm:grid-cols-2">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+          <div key={stat.label} className="rounded-2xl border border-border bg-surface-2 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {stat.label}
             </p>
@@ -1206,13 +1206,13 @@ export function PawsBreakdown({
             <PawPrint className="h-4 w-4 text-primary" />
           </div>
           {loading ? (
-            <div className="mt-3 h-20 animate-pulse rounded-2xl bg-white/5" />
+            <div className="mt-3 h-20 animate-pulse rounded-2xl bg-surface-2" />
           ) : ledger.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
               No Paws activity yet. Claim a bounty to start earning.
             </p>
           ) : (
-            <ul className="mt-2 divide-y divide-white/5">
+            <ul className="mt-2 divide-y divide-border">
               {ledger.slice(0, 8).map((row) => (
                 <li key={row.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <div className="min-w-0">
