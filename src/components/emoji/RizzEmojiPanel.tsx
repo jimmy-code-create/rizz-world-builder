@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useEmojiPreferences } from '../lib/emoji-recents';
-import { emojiCategory, search, withSkinTone } from '../lib/emoji-data';
+import { useEmojiPreferences } from '@/lib/emoji-recents';
+import { emojiCategory, search, withSkinTone } from '@/lib/emoji-data';
 
 interface RizzEmojiPanelProps {
   realmKey?: string;
