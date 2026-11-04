@@ -1,1 +1,0 @@
-REVOKE EXECUTE ON FUNCTION public.extract_hashtags() FROM PUBLIC, anon, authenticated;
