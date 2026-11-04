@@ -841,6 +841,10 @@
   margin-top: var(--chat-gap-same);
   padding: 0.125rem var(--chat-side-padding);
   border-radius: 0.5rem;
+  /* Off-screen rows skip layout and paint. The intrinsic size keeps the
+     scrollbar honest until each row is measured on first scroll. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
 }
 /* The first row in the list, and the first row after a date separator, gets the
    group gap so a divider never looks glued to the message under it. */

@@ -97,7 +97,7 @@ import {
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { EditRealmSheet } from "@/components/realms/EditRealmSheet";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { compressChatImage } from "@/lib/chat-media";
@@ -137,7 +137,12 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { BotBadge } from "@/components/bots/BotBadge";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
 import { RealmBotsSheet } from "@/components/bots/RealmBotsSheet";
-import { filterSlashCommands, insertSlashCommand, parseSlashCommand } from "@/lib/bot-commands";
+import {
+  filterSlashCommands,
+  insertSlashCommand,
+  parseSlashCommand,
+  type RealmSlashCommand,
+} from "@/lib/bot-commands";
 import { runBotCommand, useRealmSlashCommands } from "@/lib/bots";
 import { moderateDeleteMessage, reportRealmMessage } from "@/lib/realm-settings";
 import { useMentionLabels } from "@/lib/mention-tokens";
@@ -190,9 +195,10 @@ const CREATABLE_ROOM_KINDS: RealmRoomKind[] = ["text", "announcement", "voice", 
 
 /** Member lists paginate instead of mounting every row of a big realm at once. */
 const MEMBER_PAGE_SIZE = 25;
-// Chat renders only the newest window; older messages page in on demand.
-// (Unbounded AnimatePresence lists + per-row presence queries were the realm lag.)
-const MESSAGE_PAGE_SIZE = 80;
+// Chat renders only the newest window; older messages page in on demand. A
+// short window keeps Markdown parsing and DOM work proportional to what is on
+// screen, not to the whole room history.
+const MESSAGE_PAGE_SIZE = 60;
 
 type RealmChannelCall = {
   room: { id: string; realm_room_id: string | null; host_id: string; title: string };
@@ -242,13 +248,12 @@ function RealmPage() {
     enabled: !!realm.data,
   });
   const [joined, setJoined] = useState(false);
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  // Photo attachments, like DMs and groups: preview locally, upload on send.
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  // The draft lives inside RealmComposer. Keeping it out of this 2,800-line
+  // page means a keystroke no longer re-renders the whole transcript.
+  const [pendingMention, setPendingMention] = useState<{
+    username: string;
+    nonce: number;
+  } | null>(null);
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   // Which pane the message menu opens on: the hover smiley goes straight to
   // reactions, every other gesture starts on the actions.
@@ -259,8 +264,6 @@ function RealmPage() {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomKind, setNewRoomKind] = useState<RealmRoomKind>("text");
   const [creatingRoom, setCreatingRoom] = useState(false);
-  const [caret, setCaret] = useState(0);
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -283,10 +286,6 @@ function RealmPage() {
     embeds?: EmbedData[] | null;
   } | null>(null);
   const [botsOpen, setBotsOpen] = useState(false);
-  // Slash-command popup: which row is highlighted, and whether Escape dismissed
-  // it for the text currently in the composer.
-  const [slashIndex, setSlashIndex] = useState(0);
-  const [slashHidden, setSlashHidden] = useState(false);
   // Phase 5: search, levels, threads, scheduling, polls, emoji, reaction roles.
   const [searchOpen, setSearchOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
@@ -297,10 +296,7 @@ function RealmPage() {
     body: string;
     author: string | null;
   } | null>(null);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
-  const [gifOpen, setGifOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
   const [reactionRoleMessageId, setReactionRoleMessageId] = useState<string | null>(null);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
   const [realmGamesOpen, setRealmGamesOpen] = useState(false);
@@ -319,9 +315,16 @@ function RealmPage() {
     queryFn: () => fetchRealmRooms(realm.data!.id),
   });
 
-  const activeRoom = (rooms.data ?? []).find((r) => r.id === activeRoomId) ?? null;
-  const textRooms = (rooms.data ?? []).filter((r) => r.kind !== "voice");
-  const voiceRoomsList = (rooms.data ?? []).filter((r) => r.kind === "voice");
+  const roomsList = useMemo(() => (rooms.data ?? []) as RealmRoom[], [rooms.data]);
+  const activeRoom = useMemo(
+    () => roomsList.find((room) => room.id === activeRoomId) ?? null,
+    [roomsList, activeRoomId],
+  );
+  const textRooms = useMemo(() => roomsList.filter((room) => room.kind !== "voice"), [roomsList]);
+  const voiceRoomsList = useMemo(
+    () => roomsList.filter((room) => room.kind === "voice"),
+    [roomsList],
+  );
 
   // Voice calls live in the root provider so they keep running across pages.
   const {
@@ -331,14 +334,23 @@ function RealmPage() {
     openView: openCallView,
   } = useVoiceCallContext();
   const channelCalls = useRealmVoiceChannels(realm.data?.id);
-  const channelCallsByRoom = new Map<string, RealmChannelCall>(
-    ((channelCalls.data ?? []) as RealmChannelCall[]).map((entry) => [
-      entry.room.realm_room_id ?? "",
-      entry,
-    ]),
+  const channelCallsByRoom = useMemo(
+    () =>
+      new Map<string, RealmChannelCall>(
+        ((channelCalls.data ?? []) as RealmChannelCall[]).map((entry) => [
+          entry.room.realm_room_id ?? "",
+          entry,
+        ]),
+      ),
+    [channelCalls.data],
   );
-  const activeChannelPeople =
-    activeRoom?.kind === "voice" ? (channelCallsByRoom.get(activeRoom.id)?.participants ?? []) : [];
+  const activeChannelPeople = useMemo(
+    () =>
+      activeRoom?.kind === "voice"
+        ? (channelCallsByRoom.get(activeRoom.id)?.participants ?? [])
+        : [],
+    [activeRoom, channelCallsByRoom],
+  );
 
   const roomMessages = useQuery({
     queryKey: ["realm-room-messages", activeRoomId],
@@ -358,6 +370,7 @@ function RealmPage() {
   const canModerate = canModerateRealm(myRole, realm.data?.owner_id, user?.id);
   const endRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const realtimeRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (realm.data && user) {
@@ -367,6 +380,17 @@ function RealmPage() {
 
   useEffect(() => {
     if (!realm.data) return;
+    // A busy realm can deliver a burst of inserts. Coalesce them into one
+    // refetch instead of reloading the whole transcript for every message.
+    const scheduleRefresh = () => {
+      if (realtimeRefreshRef.current) return;
+      realtimeRefreshRef.current = setTimeout(() => {
+        realtimeRefreshRef.current = null;
+        void qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
+        if (activeRoomId)
+          void qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
+      }, 160);
+    };
     const ch = supabase
       .channel(`realm-messages-${realm.data.id}`)
       .on(
@@ -377,19 +401,20 @@ function RealmPage() {
           table: "messages",
           filter: `realm_id=eq.${realm.data.id}`,
         },
-        () => {
-          qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
-          if (activeRoomId)
-            qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
-        },
+        scheduleRefresh,
       )
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, () => {
-        qc.invalidateQueries({ queryKey: ["realm-messages", realm.data!.id] });
-        if (activeRoomId) qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
-      })
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "messages" },
+        scheduleRefresh,
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
+      if (realtimeRefreshRef.current) {
+        clearTimeout(realtimeRefreshRef.current);
+        realtimeRefreshRef.current = null;
+      }
     };
   }, [realm.data, activeRoomId, qc]);
 
@@ -419,25 +444,37 @@ function RealmPage() {
   // Every hook must run before the guards below. Calling them after an early
   // return makes React throw "Rendered more hooks than during the previous
   // render" as soon as the realm query resolves, which blanked this page.
-  const messageRows =
-    activeRoomId && activeRoom?.kind !== "voice"
-      ? (roomMessages.data ?? [])
-      : (messages.data ?? []);
+  const messageRows = useMemo(
+    () =>
+      activeRoomId && activeRoom?.kind !== "voice"
+        ? (roomMessages.data ?? [])
+        : (messages.data ?? []),
+    [activeRoomId, activeRoom, roomMessages.data, messages.data],
+  );
   // Newest window only; the room resets the window when switching channels.
   useEffect(() => {
     setMessageLimit(MESSAGE_PAGE_SIZE);
   }, [activeRoomId]);
-  const visibleRows =
-    messageRows.length > messageLimit
-      ? messageRows.slice(messageRows.length - messageLimit)
-      : messageRows;
+  const visibleRows = useMemo(
+    () =>
+      messageRows.length > messageLimit
+        ? messageRows.slice(messageRows.length - messageLimit)
+        : messageRows,
+    [messageRows, messageLimit],
+  );
   const hiddenCount = messageRows.length - visibleRows.length;
-  const messageIds = messageRows.map((message: { id: string }) => message.id);
-  const reactions = useChatReactions("realm", messageIds, {
-    myMessageIds: messageRows
-      .filter((message: { sender_id: string | null }) => message.sender_id === user?.id)
-      .map((message: { id: string }) => message.id),
-  });
+  const messageIds = useMemo(
+    () => messageRows.map((message: { id: string }) => message.id),
+    [messageRows],
+  );
+  const myMessageIds = useMemo(
+    () =>
+      messageRows
+        .filter((message: { sender_id: string | null }) => message.sender_id === user?.id)
+        .map((message: { id: string }) => message.id),
+    [messageRows, user?.id],
+  );
+  const reactions = useChatReactions("realm", messageIds, { myMessageIds });
   // The welcome card's "Say hi" button opens the new member's profile. All we
   // get is the id, so fetch just enough for the card header; the card loads
   // the rest itself and degrades gracefully when the profile is missing.
@@ -467,15 +504,20 @@ function RealmPage() {
       realmId: realm.data?.id ?? null,
     });
   }
-  // Members and voice participants share one presence request.
-  const presence = usePresenceMap([
-    ...(members.data ?? []).map((member) => member.user_id),
-    ...activeChannelPeople.map((person) => person.user_id),
-  ]);
+  // Members and voice participants share one presence request. Kept in one
+  // array so the presence query key does not churn on unrelated re-renders.
+  const presenceIds = useMemo(
+    () => [
+      ...(members.data ?? []).map((member) => member.user_id),
+      ...activeChannelPeople.map((person) => person.user_id),
+    ],
+    [members.data, activeChannelPeople],
+  );
+  const presence = usePresenceMap(presenceIds);
   // Pins for the channel on screen, live for everyone in the realm.
   const pinned = usePinnedMessages(realm.data?.id, activeRoomId ?? null);
   const pins = pinned.pins;
-  const pinnedIds = new Set(pins.map((pin) => pin.message_id));
+  const pinnedIds = useMemo(() => new Set(pins.map((pin) => pin.message_id)), [pins]);
   const removedPreviews = useHiddenLinkPreviews("realm", messageIds);
   const media = useMediaViewer();
   // Phase 5 data: reaction roles and this realm's custom emoji. Both feed the
@@ -486,8 +528,11 @@ function RealmPage() {
     enabled: !!realm.data,
     queryFn: () => fetchRealmEmoji(realm.data!.id),
   });
-  const emojiByName = new Map((emojiList.data ?? []).map((entry) => [entry.name, entry.url]));
-  const emojiNames = new Set(emojiByName.keys());
+  const emojiByName = useMemo(
+    () => new Map((emojiList.data ?? []).map((entry) => [entry.name, entry.url])),
+    [emojiList.data],
+  );
+  const emojiNames = useMemo(() => new Set(emojiByName.keys()), [emojiByName]);
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
   // Who may type where, shared by the moderation sheet and the composer.
   const channelPermissions = useChannelPermissions(realm.data?.id);
@@ -497,9 +542,11 @@ function RealmPage() {
   const slashRoomId = activeRoomId && activeRoom?.kind !== "voice" ? activeRoomId : null;
   const realmCommands = useRealmSlashCommands(realm.data?.id, slashRoomId);
   // `<@userId>` tokens in any visible message resolve to a username once.
-  const mentionLabels = useMentionLabels(
-    (messageRows as { body?: string }[]).map((row) => row.body),
+  const mentionBodies = useMemo(
+    () => (messageRows as { body?: string }[]).map((row) => row.body),
+    [messageRows],
   );
+  const mentionLabels = useMentionLabels(mentionBodies);
   // Webhook-bot identity rows for messages carrying webhook_bot_id (one query
   // for the visible list; missing table before the migration => empty map).
   const webhookBotIds = useMemo(
@@ -535,29 +582,13 @@ function RealmPage() {
     },
   });
   const webhookBotMap = webhookBots.data ?? {};
-  const slashQuery = parseSlashCommand(body);
-  // The realm's own bot commands first, then the two built-in voice bots: /music
-  // and /game invite MUSIC BOT and GAME BOT into the current voice channel, so a
-  // bot can be brought into a call from any chat.
-  const slashMatches = slashQuery
-    ? filterSlashCommands(
-        [...realmCommands.commands, ...VOICE_BOT_COMMANDS],
-        slashQuery.name,
-      )
-    : [];
-  // The menu only shows while the command word itself is being typed, so the
-  // arguments after the first space never sit under a popup. It also opens when
-  // nothing matches, with a one-line explanation instead of a silent no-op.
-  const slashMenuOpen =
-    !slashHidden && !sending && !realmCommands.isLoading && !!slashQuery && slashQuery.typingName;
-  const slashMatchCount = slashMatches.length;
-  const slashActive = Math.min(slashIndex, Math.max(slashMatchCount - 1, 0));
-  const slashHint =
-    !slashMenuOpen || slashMatchCount > 0
-      ? undefined
-      : slashMatchCount === 0 && !slashQuery?.name
-        ? "No bot commands in this channel yet."
-        : `No command matches "/${slashQuery?.name ?? ""}". Try /music or /game.`;
+  // The realm's own bot commands first, then the two built-in voice bots. The
+  // composer filters this list as you type; the send path only needs the lookup.
+  const slashCommands = useMemo(
+    () => [...realmCommands.commands, ...VOICE_BOT_COMMANDS],
+    [realmCommands.commands],
+  );
+  const photoUploadLimit = chatUploadLimitBytes(myProfile);
 
   // The lock reaches everybody live: realm_rooms is in the realtime publication.
   useEffect(() => {
@@ -650,10 +681,6 @@ function RealmPage() {
   // Every hook has to run before the loading/not-found returns below. React
   // counts hooks per render, and an early return followed by a later hook is
   // error #310 ("rendered more hooks than during the previous render").
-  useEffect(() => () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-  }, [imagePreview]);
-
   if (realm.isLoading) return <div className="h-64 animate-pulse rounded-3xl glass" />;
   if (!realm.data)
     return (
@@ -702,42 +729,7 @@ function RealmPage() {
     }
   };
 
-  /** Puts the chosen command in the composer with exactly one trailing space. */
-  const pickSlashCommand = (command: { name: string }) => {
-    const next = insertSlashCommand(body, command.name);
-    setBody(next);
-    setCaret(next.length);
-    setSlashIndex(0);
-    setSlashHidden(false);
-    const el = inputRef.current;
-    if (el)
-      requestAnimationFrame(() => {
-        el.focus();
-        el.setSelectionRange(next.length, next.length);
-      });
-  };
-
-  const chooseImage = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Choose an image file.");
-      return;
-    }
-    const uploadLimit = chatUploadLimitBytes(myProfile);
-    if (file.size > uploadLimit) {
-      toast.error(`Images must be smaller than ${formatUploadLimit(uploadLimit)} before compression.`);
-      return;
-    }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const clearImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-  };
-
-  const handleSend = async () => {
+  const handleSend = async (body: string, imageFile: File | null): Promise<boolean | void> => {
     if (!user || (!body.trim() && !imageFile)) return;
     if (!joined) {
       toast.error("Join the realm to send messages");
@@ -793,15 +785,10 @@ function RealmPage() {
           description: "Tap its card in the call to pick a game.",
         });
       }
-      setBody("");
-      setCaret(0);
-      setSlashIndex(0);
-      setSlashHidden(false);
-      return;
+      return true;
     }
-    const command = parsed ? slashMatches.find((entry) => entry.name === parsed.name) : undefined;
+    const command = parsed ? slashCommands.find((entry) => entry.name === parsed.name) : undefined;
     if (parsed && command) {
-      setSending(true);
       try {
         const result = await runBotCommand({
           command: parsed.name,
@@ -811,10 +798,6 @@ function RealmPage() {
         });
         if (result.ok) {
           toast.success(`/${command.name} · ${command.bot_name}`);
-          setBody("");
-          setCaret(0);
-          setSlashIndex(0);
-          setSlashHidden(false);
         } else {
           toast.error(result.error ?? `/${command.name} didn't work`);
         }
@@ -822,12 +805,11 @@ function RealmPage() {
         await qc.invalidateQueries({ queryKey: ["realm-messages", c.id] });
         if (slashRoomId)
           await qc.invalidateQueries({ queryKey: ["realm-room-messages", slashRoomId] });
+        return result.ok;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "That command didn't work");
-      } finally {
-        setSending(false);
+        return false;
       }
-      return;
     }
 
     // Music commands are a voice-channel feature, so a text channel never
@@ -838,7 +820,6 @@ function RealmPage() {
       return;
     }
 
-    setSending(true);
     try {
       let attachmentUrl: string | null = null;
       if (imageFile) {
@@ -862,12 +843,10 @@ function RealmPage() {
       } else {
         await sendRealmMessage(c.id, user.id, body.trim(), attachmentUrl);
       }
-      setBody("");
-      clearImage();
+      return true;
     } catch (e: any) {
       toast.error(e.message);
-    } finally {
-      setSending(false);
+      return false;
     }
   };
 
@@ -1031,10 +1010,10 @@ function RealmPage() {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div
-        className="chat-bar relative z-20 flex shrink-0 items-center gap-3 border-b border-white/5 px-4 pb-3"
+        className="chat-bar relative z-20 flex shrink-0 items-center gap-2.5 border-b border-primary/15 px-3 pb-2.5"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
-          boxShadow: `0 0 18px ${c.accent_color}14`,
+          boxShadow: "0 12px 34px -24px rgba(201,255,61,0.65)",
           // The cover is the header's backdrop: an animated GIF keeps moving,
           // and the wash keeps the room name readable over it.
           backgroundImage: c.cover_url
@@ -1047,13 +1026,17 @@ function RealmPage() {
         <Link
           to="/realms"
           aria-label="Back to realms"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/5"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-black/25 text-white/80 transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div
-          className="h-10 w-10 overflow-hidden rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/15"
-          style={{ background: `linear-gradient(135deg, ${c.accent_color || "#38bdf8"}, #2563eb)` }}
+          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-1 ring-primary/25"
+          style={{
+            background: c.accent_color
+              ? `linear-gradient(145deg, ${c.accent_color}, #121214 88%)`
+              : "linear-gradient(145deg, #c9ff3d, #86b81f)",
+          }}
         >
           {c.icon_url ? (
             <img
@@ -1064,38 +1047,49 @@ function RealmPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <Icon className="h-5 w-5 text-white" />
+            <Icon
+              className={`h-5 w-5 ${c.accent_color ? "text-white" : "text-primary-foreground"}`}
+            />
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-display font-bold text-lg leading-tight break-words">{c.name}</h1>
-          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-            <Users className="h-3 w-3" /> {c.member_count}
-          </p>
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-primary">
+              Realm
+            </span>
+            <span className="h-0.5 w-0.5 rounded-full bg-primary/60" />
+            <span className="flex min-w-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.1em] text-white/40">
+              <Users className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{c.member_count} inside</span>
+            </span>
+          </div>
+          <h1 className="truncate font-display text-[19px] font-black leading-[1.02] tracking-[-0.04em] text-white">
+            {c.name}
+          </h1>
         </div>
 
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-black/25 text-white/80 hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
           aria-label="Search messages"
           onClick={() => setSearchOpen(true)}
         >
           <Search className="h-4 w-4" />
         </Button>
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-black/25 text-white/80 hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
           aria-label="Levels"
           onClick={() => setLevelsOpen(true)}
         >
           <Trophy className="h-4 w-4" />
         </Button>
         <Button
-          size="sm"
-          variant="outline"
-          className="glass shrink-0 border-white/10"
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-black/25 text-white/80 hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
           aria-label="Realm options"
           onClick={() => setOptionsOpen(true)}
         >
@@ -1509,7 +1503,7 @@ function RealmPage() {
 
       {joined && rooms.data && rooms.data.length > 0 && (
         <div
-          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-sky-300/10 bg-sky-500/[0.025] px-3 py-2.5 no-scrollbar"
+          className="chat-bar flex shrink-0 items-center gap-2 overflow-x-auto border-y border-primary/10 bg-primary/[0.02] px-3 py-2.5 no-scrollbar"
           style={{ paddingTop: "calc(0.5rem + 0px)" }}
         >
           {(rooms.data as RealmRoom[]).map((room) => {
@@ -1526,12 +1520,12 @@ function RealmPage() {
                 key={room.id}
                 type="button"
                 onClick={() => selectRoom(room.id)}
-                className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors ${
+                className={`flex h-9 min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-bold transition-colors ${
                   inThisCall
                     ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
                     : isActive
-                      ? "border-sky-300/40 bg-sky-400/10 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,.1)]"
-                      : "border-white/10 bg-white/[0.035] text-white/70 hover:border-sky-200/25 hover:text-white"
+                      ? "border-primary/40 bg-primary/10 text-primary shadow-[0_0_20px_rgba(201,255,61,0.12)]"
+                      : "border-white/10 bg-white/[0.035] text-white/60 hover:border-primary/25 hover:text-white"
                 }`}
               >
                 {room.kind === "voice" && people.length > 0 ? (
@@ -1878,12 +1872,20 @@ function RealmPage() {
             </div>
           )}
           {activeRoom?.kind !== "voice" && activeRoom && (
-            <div className="mb-3 flex min-h-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <Hash className="h-3 w-3" />
-              {activeRoom.name}
+            <div className="mb-3 flex min-h-0 items-center gap-2">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Hash className="h-3.5 w-3.5" />
+              </span>
+              <span className="truncate font-display text-[13px] font-black uppercase tracking-[0.12em] text-foreground">
+                {activeRoom.name}
+              </span>
+              <span className="h-px flex-1 bg-primary/10" />
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-primary/60">
+                Channel
+              </span>
             </div>
           )}
-          <AnimatePresence initial={false}>
+          <>
             {hiddenCount > 0 && (
               <div className="flex justify-center pb-2">
                 <button
@@ -2043,10 +2045,8 @@ function RealmPage() {
                 <Fragment key={m.id}>
                   {newDay && <DateSeparator date={m.created_at} />}
                   {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
-                  <motion.div
+                  <div
                     id={`msg-${m.id}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
                     onPointerDown={handleRowPointerDown}
                     onPointerMove={handleRowPointerMove}
                     onPointerUp={clearRowTimer}
@@ -2121,7 +2121,7 @@ function RealmPage() {
                             type="button"
                             data-interactive="true"
                             onClick={handleAuthorClick}
-                            className="font-bold text-sm cursor-pointer hover:underline text-left"
+                            className="text-[13.5px] font-extrabold tracking-[-0.01em] cursor-pointer text-left hover:underline"
                             style={{ color: authorColor }}
                           >
                             {authorName}
@@ -2492,14 +2492,17 @@ function RealmPage() {
                         removed={removedPreviews.hidden.has(m.id)}
                       />
                     </div>
-                  </motion.div>
+                  </div>
                 </Fragment>
               );
             })}
-          </AnimatePresence>
+          </>
           {messages.data?.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-20">
-              No messages yet. Start the convo 🔥
+            <div className="py-20 text-center">
+              <p className="font-display text-2xl font-black tracking-[-0.04em]">
+                No messages yet.
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Start the convo 🔥</p>
             </div>
           )}
           <div ref={endRef} />
@@ -2539,17 +2542,6 @@ function RealmPage() {
         root={threadRoot}
         realmId={c.id}
         roomId={slashRoomId}
-      />
-      <ScheduleDialog
-        open={scheduleOpen}
-        onOpenChange={setScheduleOpen}
-        realmId={c.id}
-        roomId={slashRoomId}
-        body={body}
-        onScheduled={() => {
-          setBody("");
-          setCaret(0);
-        }}
       />
       <PollDialog open={pollOpen} onOpenChange={setPollOpen} realmId={c.id} roomId={slashRoomId} />
       <ReactionRoleDialog
@@ -2596,10 +2588,7 @@ function RealmPage() {
         onOpenChange={(open) => {
           if (!open) setPreviewUser(null);
         }}
-        onMention={(uname) => {
-          setBody((prev) => `${prev ? prev.trim() + " " : ""}@${uname} `);
-          inputRef.current?.focus();
-        }}
+        onMention={(uname) => setPendingMention({ username: uname, nonce: Date.now() })}
       />
 
       {activeRoom?.kind !== "forum" && (activeRoom?.kind !== "voice" || showVoiceChat) && (
@@ -2610,175 +2599,381 @@ function RealmPage() {
               moderator can switch it back on.
             </p>
           )}
-          <div className="mx-auto w-full max-w-3xl">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                chooseImage(event.target.files?.[0] ?? null);
-                event.currentTarget.value = "";
-              }}
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={(event) => {
-                chooseImage(event.target.files?.[0] ?? null);
-                event.currentTarget.value = "";
-              }}
-            />
-            {/* The realm wears the same composer as a DM: one attach circle, one
-                pill, one action circle. The realm's own picker keeps the GIFs and
-                stickers and opens from the cat button. */}
-            <MessageComposer
-              value={body}
-              onChange={(next, nextCaret) => {
-                setBody(next);
-                setSlashHidden(false);
-                setSlashIndex(0);
-                setCaret(nextCaret);
-              }}
-              onSend={() => void handleSend()}
-              onEmoji={() => setGifOpen(true)}
-              onStickers={() => setCatOpen(true)}
-              disabled={!joined || roomLockedForMe || myWriteBlocked}
-              disabledHint={composerBlock ?? "You can't send messages here"}
-              placeholder={composerBlock ?? "Message"}
-              maxLength={500}
-              textareaRef={inputRef}
-              sending={sending}
-              canSend={Boolean(body.trim() || imageFile)}
-              allowVoice={false}
-              above={
-                imagePreview ? (
-                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                    <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
-                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                      Photo compresses before upload
-                    </span>
-                    <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : null
-              }
-              attach={
-                <ChatAttachButton
-                  appearance="circle"
-                  disabled={!!composerBlock}
-                  actions={[
-                    { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-                    { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-                    { id: "poll", label: "Poll", hint: "Ask the room", icon: BarChart3, onSelect: () => setPollOpen(true) },
-                    { id: "schedule", label: "Schedule", hint: "Send later", icon: CalendarClock, onSelect: () => setScheduleOpen(true), disabled: !body.trim() },
-                  ]}
-                />
-              }
-              mentions={
-                <MentionAutocomplete
-                  value={body}
-                  caret={caret}
-                  memberIds={(members.data ?? []).map((member) => member.user_id)}
-                  emptyHint="No realm member matches that name."
-                  onPick={(username) => {
-                    const next = replaceMention(body, caret, username);
-                    setBody(next.value);
-                    setCaret(next.caret);
-                    const el = inputRef.current;
-                    if (el)
-                      requestAnimationFrame(() => {
-                        el.focus();
-                        el.setSelectionRange(next.caret, next.caret);
-                      });
-                  }}
-                />
-              }
-              overlay={
-                <AnimatePresence>
-                  {slashMenuOpen && (
-                    <div className="absolute inset-x-0 bottom-full z-40 mb-2">
-                      <SlashCommandMenu
-                        commands={slashMatches}
-                        activeIndex={slashActive}
-                        emptyHint={slashHint}
-                        onHover={setSlashIndex}
-                        onSelect={pickSlashCommand}
-                      />
-                    </div>
-                  )}
-                </AnimatePresence>
-              }
-              onKeyDown={(e) => {
-                // Arrow keys and Enter belong to the slash menu while it has rows;
-                // the no-match hint does not steal Enter, so the message still sends.
-                if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-                  e.preventDefault();
-                  setSlashIndex((current) =>
-                    wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
-                  );
-                  return;
-                }
-                if (
-                  slashMatchCount > 0 &&
-                  (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
-                ) {
-                  e.preventDefault();
-                  const chosen = slashMatches[slashActive] ?? slashMatches[0];
-                  if (chosen) pickSlashCommand(chosen);
-                  return;
-                }
-                if (slashMenuOpen && e.key === "Escape") {
-                  e.preventDefault();
-                  setSlashHidden(true);
-                }
-              }}
-              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-              // Tapping the composer means “I'm replying to the now”: land on
-              // the newest message instead of leaving the reader scrolled up.
-              onTextareaClick={(e) => {
-                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
-                scrollChatToLatest(messageListRef.current);
-              }}
-              onFocus={() => scrollChatToLatest(messageListRef.current)}
-            />
-            {/* One picker for everything that is not a RIZZ cat: Unicode and
-                this server's emoji in categories, GIFs and stickers. Emoji
-                management lives in Settings → Custom emoji, not in the picker. */}
-            <GifPicker
-              hideTrigger
-              open={gifOpen}
-              onOpenChange={setGifOpen}
-              realmId={c.id}
-              initialTab="emoji"
-              onSelect={(marker) =>
-                setBody((current) => `${current}${current ? " " : ""}${marker}`)
-              }
-              onCustomEmoji={
-                canModerate
-                  ? () =>
-                      nav({
-                        to: "/r/$slug/settings",
-                        params: { slug },
-                        search: { section: "emoji" },
-                      })
-                  : undefined
-              }
-            />
-            <CatStickerSheet
-              open={catOpen}
-              onOpenChange={setCatOpen}
-              onPick={(shortcode) =>
-                setBody((current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${shortcode} `)
-              }
-            />
-          </div>
+          <RealmComposer
+            realmId={c.id}
+            roomId={slashRoomId}
+            memberIds={(members.data ?? []).map((member) => member.user_id)}
+            commands={slashCommands}
+            commandsLoading={realmCommands.isLoading}
+            disabled={!joined || roomLockedForMe || myWriteBlocked}
+            disabledHint={composerBlock ?? "You can't send messages here"}
+            placeholder={composerBlock ?? "Message"}
+            photoUploadLimit={photoUploadLimit}
+            onSend={handleSend}
+            onPoll={() => setPollOpen(true)}
+            onManageEmoji={
+              canModerate
+                ? () =>
+                    nav({
+                      to: "/r/$slug/settings",
+                      params: { slug },
+                      search: { section: "emoji" },
+                    })
+                : undefined
+            }
+            pendingMention={pendingMention}
+            chatScrollRef={messageListRef}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+type RealmComposerProps = {
+  realmId: string;
+  roomId: string | null;
+  memberIds: string[];
+  commands: RealmSlashCommand[];
+  commandsLoading: boolean;
+  disabled: boolean;
+  disabledHint: string;
+  placeholder: string;
+  photoUploadLimit: number;
+  onSend: (text: string, file: File | null) => Promise<boolean | void>;
+  onPoll: () => void;
+  onManageEmoji?: () => void;
+  pendingMention: { username: string; nonce: number } | null;
+  chatScrollRef: { current: HTMLDivElement | null };
+};
+
+/**
+ * The realm's composer, with its draft, slash menu, photo preview and pickers.
+ *
+ * This is deliberately its own component: the draft used to live on the realm
+ * page, so every keystroke re-ran the whole transcript (80 rows of Markdown,
+ * regexes and reaction state). Typing now only touches this subtree.
+ */
+function RealmComposer({
+  realmId,
+  roomId,
+  memberIds,
+  commands,
+  commandsLoading,
+  disabled,
+  disabledHint,
+  placeholder,
+  photoUploadLimit,
+  onSend,
+  onPoll,
+  onManageEmoji,
+  pendingMention,
+  chatScrollRef,
+}: RealmComposerProps) {
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  // Photo attachments, like DMs and groups: preview locally, upload on send.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [caret, setCaret] = useState(0);
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [slashHidden, setSlashHidden] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const slashQuery = parseSlashCommand(body);
+  const slashMatches = slashQuery ? filterSlashCommands(commands, slashQuery.name) : [];
+  // The menu only shows while the command word itself is being typed, so the
+  // arguments after the first space never sit under a popup. It also opens when
+  // nothing matches, with a one-line explanation instead of a silent no-op.
+  const slashMenuOpen =
+    !slashHidden && !sending && !commandsLoading && !!slashQuery && slashQuery.typingName;
+  const slashMatchCount = slashMatches.length;
+  const slashActive = Math.min(slashIndex, Math.max(slashMatchCount - 1, 0));
+  const slashHint =
+    !slashMenuOpen || slashMatchCount > 0
+      ? undefined
+      : slashMatchCount === 0 && !slashQuery?.name
+        ? "No bot commands in this channel yet."
+        : `No command matches "/${slashQuery?.name ?? ""}". Try /music or /game.`;
+
+  useEffect(
+    () => () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    },
+    [imagePreview],
+  );
+
+  // A mention picked from a member's profile opens here, not on the page.
+  useEffect(() => {
+    if (!pendingMention) return;
+    setBody((prev) => `${prev ? `${prev.trimEnd()} ` : ""}@${pendingMention.username} `);
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }, [pendingMention]);
+
+  /** Puts the chosen command in the composer with exactly one trailing space. */
+  const pickSlashCommand = (command: { name: string }) => {
+    const next = insertSlashCommand(body, command.name);
+    setBody(next);
+    setCaret(next.length);
+    setSlashIndex(0);
+    setSlashHidden(false);
+    const el = inputRef.current;
+    if (el)
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(next.length, next.length);
+      });
+  };
+
+  const chooseImage = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.");
+      return;
+    }
+    if (file.size > photoUploadLimit) {
+      toast.error(
+        `Images must be smaller than ${formatUploadLimit(photoUploadLimit)} before compression.`,
+      );
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const submit = async () => {
+    if (disabled || sending) return;
+    setSending(true);
+    try {
+      const sent = await onSend(body, imageFile);
+      if (sent) {
+        setBody("");
+        setCaret(0);
+        setSlashIndex(0);
+        setSlashHidden(false);
+        clearImage();
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(event) => {
+          chooseImage(event.target.files?.[0] ?? null);
+          event.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(event) => {
+          chooseImage(event.target.files?.[0] ?? null);
+          event.currentTarget.value = "";
+        }}
+      />
+      {/* The realm wears the same composer as a DM: one attach circle, one
+          pill, one action circle. The realm's own picker keeps the GIFs and
+          stickers and opens from the cat button. */}
+      <MessageComposer
+        value={body}
+        onChange={(next, nextCaret) => {
+          setBody(next);
+          setSlashHidden(false);
+          setSlashIndex(0);
+          setCaret(nextCaret);
+        }}
+        onSend={() => void submit()}
+        onEmoji={() => setGifOpen(true)}
+        onStickers={() => setCatOpen(true)}
+        disabled={disabled}
+        disabledHint={disabledHint}
+        placeholder={placeholder}
+        maxLength={500}
+        textareaRef={inputRef}
+        sending={sending}
+        canSend={Boolean(body.trim() || imageFile)}
+        allowVoice={false}
+        above={
+          imagePreview ? (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <img
+                src={imagePreview}
+                alt="Photo ready to send"
+                className="h-14 w-14 rounded-lg object-cover"
+              />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                Photo compresses before upload
+              </span>
+              <Button
+                type="button"
+                onClick={clearImage}
+                variant="ghost"
+                size="icon"
+                aria-label="Remove photo"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null
+        }
+        attach={
+          <ChatAttachButton
+            appearance="circle"
+            disabled={disabled}
+            actions={[
+              {
+                id: "photo",
+                label: "Photo",
+                hint: "Your library",
+                icon: ImagePlus,
+                onSelect: () => imageInputRef.current?.click(),
+              },
+              {
+                id: "camera",
+                label: "Camera",
+                hint: "Take a shot",
+                icon: Camera,
+                onSelect: () => cameraInputRef.current?.click(),
+              },
+              {
+                id: "poll",
+                label: "Poll",
+                hint: "Ask the room",
+                icon: BarChart3,
+                onSelect: onPoll,
+              },
+              {
+                id: "schedule",
+                label: "Schedule",
+                hint: "Send later",
+                icon: CalendarClock,
+                onSelect: () => setScheduleOpen(true),
+                disabled: !body.trim(),
+              },
+            ]}
+          />
+        }
+        mentions={
+          <MentionAutocomplete
+            value={body}
+            caret={caret}
+            memberIds={memberIds}
+            emptyHint="No realm member matches that name."
+            onPick={(username) => {
+              const next = replaceMention(body, caret, username);
+              setBody(next.value);
+              setCaret(next.caret);
+              const el = inputRef.current;
+              if (el)
+                requestAnimationFrame(() => {
+                  el.focus();
+                  el.setSelectionRange(next.caret, next.caret);
+                });
+            }}
+          />
+        }
+        overlay={
+          <AnimatePresence>
+            {slashMenuOpen && (
+              <div className="absolute inset-x-0 bottom-full z-40 mb-2">
+                <SlashCommandMenu
+                  commands={slashMatches}
+                  activeIndex={slashActive}
+                  emptyHint={slashHint}
+                  onHover={setSlashIndex}
+                  onSelect={pickSlashCommand}
+                />
+              </div>
+            )}
+          </AnimatePresence>
+        }
+        onKeyDown={(e) => {
+          // Arrow keys and Enter belong to the slash menu while it has rows;
+          // the no-match hint does not steal Enter, so the message still sends.
+          if (slashMatchCount > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+            e.preventDefault();
+            setSlashIndex((current) =>
+              wrapIndex(current + (e.key === "ArrowDown" ? 1 : -1), slashMatches.length),
+            );
+            return;
+          }
+          if (slashMatchCount > 0 && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))) {
+            e.preventDefault();
+            const chosen = slashMatches[slashActive] ?? slashMatches[0];
+            if (chosen) pickSlashCommand(chosen);
+            return;
+          }
+          if (slashMenuOpen && e.key === "Escape") {
+            e.preventDefault();
+            setSlashHidden(true);
+          }
+        }}
+        onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+        // Tapping the composer means “I'm replying to the now”: land on
+        // the newest message instead of leaving the reader scrolled up.
+        onTextareaClick={(e) => {
+          setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+          scrollChatToLatest(chatScrollRef.current);
+        }}
+        onFocus={() => scrollChatToLatest(chatScrollRef.current)}
+      />
+      {/* One picker for everything that is not a RIZZ cat: Unicode and
+          this server's emoji in categories, GIFs and stickers. Emoji
+          management lives in Settings → Custom emoji, not in the picker. */}
+      <GifPicker
+        hideTrigger
+        open={gifOpen}
+        onOpenChange={setGifOpen}
+        realmId={realmId}
+        initialTab="emoji"
+        onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)}
+        onCustomEmoji={onManageEmoji}
+      />
+      <CatStickerSheet
+        open={catOpen}
+        onOpenChange={setCatOpen}
+        onPick={(shortcode) =>
+          setBody(
+            (current) => `${current}${current && !current.endsWith(" ") ? " " : ""}${shortcode} `,
+          )
+        }
+      />
+      <ScheduleDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        realmId={realmId}
+        roomId={roomId}
+        body={body}
+        onScheduled={() => {
+          setBody("");
+          setCaret(0);
+        }}
+      />
     </div>
   );
 }
