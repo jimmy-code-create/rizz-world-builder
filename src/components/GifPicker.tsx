@@ -1,14 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Image, Loader2, Search, Settings2, Smile, Sparkles } from "lucide-react";
-import { fetchRealmEmoji, realmEmojiKey } from "@/lib/realm-emoji";
-import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPicker";
+import { useEffect, useMemo, useState } from "react";
+import { Image, Loader2, Search, Smile, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
+import { rememberEmojiPick, RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
+import { useStickyPickerHeight } from "@/lib/picker-keyboard-height";
+import { cn } from "@/lib/utils";
+
+/**
+ * The composer's media picker.
+ *
+ * One sheet, three tabs. The header is a pill segmented control whose active
+ * indicator slides (a transform, not a re-layout), one search field serves all
+ * three tabs, and the emoji tab is the realm-aware `RizzEmojiPanel` with its own
+ * section rail. GIFs and stickers keep the behaviour they always had.
+ *
+ * The trigger is unchanged, so every composer that already mounts this picker
+ * keeps its exact row: only the panel behind it was rebuilt.
+ */
 
 type GifResult = {
   id: string;
@@ -26,8 +37,12 @@ type Sticker = {
 };
 
 type PickerTab = "emoji" | "gifs" | "stickers";
-type EmojiEntry = { emoji: string; name: string; group: string };
-type RealmEmojiRow = { id: string; name: string; url: string; kind: string };
+
+const TABS: Array<{ id: PickerTab; label: string; icon: typeof Smile }> = [
+  { id: "emoji", label: "Emoji", icon: Smile },
+  { id: "gifs", label: "GIFs", icon: Image },
+  { id: "stickers", label: "Stickers", icon: Sparkles },
+];
 
 const GIF_MARKER = (url: string) => `![gif](${url})`;
 const STICKER_MARKER = (url: string) => `![sticker](${url})`;
@@ -37,197 +52,33 @@ const STICKER_PACKS: { id: Sticker["pack"]; label: string }[] = [
   { id: "kotya", label: "Kotya HD" },
 ];
 
-const EMOJIS: EmojiEntry[] = [
-  ...[
-    ["😀", "grinning"],
-    ["😃", "smiling"],
-    ["😄", "laughing"],
-    ["😁", "beaming"],
-    ["😆", "squinting laugh"],
-    ["😅", "sweat smile"],
-    ["😂", "tears of joy"],
-    ["🤣", "rolling laugh"],
-    ["🥹", "holding back tears"],
-    ["😊", "blush"],
-    ["😇", "halo"],
-    ["🙂", "slight smile"],
-    ["🙃", "upside down"],
-    ["😉", "wink"],
-    ["😍", "heart eyes"],
-    ["🥰", "hearts"],
-    ["😘", "kiss"],
-    ["😗", "kissing"],
-    ["😋", "yum"],
-    ["😛", "tongue"],
-    ["😜", "wink tongue"],
-    ["🤪", "silly"],
-    ["😎", "cool"],
-    ["🤓", "nerd"],
-    ["🧐", "monocle"],
-    ["🤔", "thinking"],
-    ["🫡", "salute"],
-    ["🤭", "gasp"],
-    ["🤫", "shush"],
-    ["🤗", "hug"],
-    ["🫠", "melting"],
-    ["😶", "speechless"],
-    ["😏", "smirk"],
-    ["😴", "sleep"],
-    ["🥳", "party"],
-    ["😭", "crying"],
-    ["😤", "steam"],
-    ["😡", "angry"],
-    ["🤯", "mind blown"],
-    ["💀", "skull"],
-    ["👻", "ghost"],
-    ["🤖", "robot"],
-    ["👀", "eyes"],
-    ["✨", "sparkles"],
-  ].map(([emoji, name]) => ({ emoji, name, group: "Faces" })),
-  ...[
-    ["👋", "wave"],
-    ["🤚", "raised hand"],
-    ["✋", "stop"],
-    ["🖖", "vulcan"],
-    ["👌", "ok"],
-    ["🤌", "pinched fingers"],
-    ["🤏", "pinch"],
-    ["✌️", "peace"],
-    ["🤞", "fingers crossed"],
-    ["🫰", "finger heart"],
-    ["🤟", "love you"],
-    ["🤘", "rock"],
-    ["🤙", "call me"],
-    ["👈", "left"],
-    ["👉", "right"],
-    ["👆", "up"],
-    ["👇", "down"],
-    ["☝️", "point up"],
-    ["👍", "thumbs up"],
-    ["👎", "thumbs down"],
-    ["✊", "fist"],
-    ["👊", "punch"],
-    ["👏", "clap"],
-    ["🙌", "celebrate"],
-    ["🫶", "heart hands"],
-    ["🙏", "please"],
-    ["💪", "strong"],
-    ["🦾", "bionic arm"],
-  ].map(([emoji, name]) => ({ emoji, name, group: "Hands" })),
-  ...[
-    ["❤️", "red heart"],
-    ["🧡", "orange heart"],
-    ["💛", "yellow heart"],
-    ["💚", "green heart"],
-    ["💙", "blue heart"],
-    ["💜", "purple heart"],
-    ["🖤", "black heart"],
-    ["🤍", "white heart"],
-    ["🩷", "pink heart"],
-    ["🩵", "light blue heart"],
-    ["🩶", "grey heart"],
-    ["💔", "broken heart"],
-    ["❤️‍🔥", "heart on fire"],
-    ["💕", "two hearts"],
-    ["💞", "revolving hearts"],
-    ["💘", "cupid"],
-    ["💖", "sparkling heart"],
-    ["💗", "growing heart"],
-    ["💓", "beating heart"],
-    ["💯", "hundred"],
-    ["🔥", "fire"],
-    ["⭐", "star"],
-    ["🌟", "glowing star"],
-    ["💫", "dizzy"],
-    ["🎉", "party popper"],
-    ["🎊", "confetti"],
-    ["🏆", "trophy"],
-    ["👑", "crown"],
-    ["💎", "gem"],
-    ["🌈", "rainbow"],
-  ].map(([emoji, name]) => ({ emoji, name, group: "Vibes" })),
-  ...[
-    ["🐱", "cat"],
-    ["🐈", "cat"],
-    ["🐈‍⬛", "black cat"],
-    ["🐶", "dog"],
-    ["🐻", "bear"],
-    ["🐼", "panda"],
-    ["🦊", "fox"],
-    ["🐸", "frog"],
-    ["🐵", "monkey"],
-    ["🦋", "butterfly"],
-    ["🐧", "penguin"],
-    ["🦄", "unicorn"],
-    ["🐢", "turtle"],
-    ["🐬", "dolphin"],
-    ["🐯", "tiger"],
-    ["🌸", "flower"],
-    ["🌻", "sunflower"],
-    ["🌙", "moon"],
-    ["☀️", "sun"],
-    ["🍀", "clover"],
-  ].map(([emoji, name]) => ({ emoji, name, group: "Nature" })),
-  ...[
-    ["🍕", "pizza"],
-    ["🍔", "burger"],
-    ["🍟", "fries"],
-    ["🍩", "donut"],
-    ["🍓", "strawberry"],
-    ["🍒", "cherries"],
-    ["🍉", "watermelon"],
-    ["🍪", "cookie"],
-    ["☕", "coffee"],
-    ["🧋", "boba"],
-    ["🎂", "cake"],
-    ["🚀", "rocket"],
-    ["🎧", "headphones"],
-    ["🎮", "game"],
-    ["📸", "camera"],
-    ["💸", "money"],
-    ["💰", "cash"],
-    ["💅", "nails"],
-    ["🪩", "disco"],
-    ["💌", "love letter"],
-  ].map(([emoji, name]) => ({ emoji, name, group: "More" })),
-];
-
-/** Section names in display order, derived from the emoji table. */
-const EMOJI_GROUPS = Array.from(new Set(EMOJIS.map((item) => item.group)));
-
-/** The quick-pick row above the sections. */
-const TOP_EMOJIS = EMOJIS.slice(0, 12);
+const SEARCH_PLACEHOLDER: Record<PickerTab, string> = {
+  emoji: "Find the perfect emoji",
+  gifs: "Search GIFs",
+  stickers: "Search this pack",
+};
 
 export function GifPicker({
   onSelect,
   realmId,
+  realmName,
   onCustomEmoji,
   triggerClassName,
-  open: openProp,
-  onOpenChange,
-  hideTrigger = false,
-  initialTab,
 }: {
   onSelect: (marker: string) => void;
-  /** A realm passes its id so its own emoji and stickers show up in this picker. */
+  /** A realm passes its id so its own emoji show up in this picker. */
   realmId?: string;
+  realmName?: string;
   /** Opens the realm's emoji manager (add, upload, remove) for moderators. */
   onCustomEmoji?: () => void;
   /** Match the trigger to the composer it sits in (a 44px row, a 36px row). */
   triggerClassName?: string;
-  /** Controlled mode: the composer's cat button opens the sheet itself. */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  hideTrigger?: boolean;
-  initialTab?: PickerTab;
 }) {
   // GIFs are a Purify feature; emoji and stickers stay free for everyone.
   const { allowed } = usePurify();
   const { t } = useI18n();
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = openProp ?? internalOpen;
-  const setOpen = onOpenChange ?? setInternalOpen;
-  const [tab, setTab] = useState<PickerTab>(initialTab ?? "emoji");
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<PickerTab>("emoji");
   const [query, setQuery] = useState("");
   const [gifResults, setGifResults] = useState<GifResult[]>([]);
   const [stickers, setStickers] = useState<Sticker[]>([]);
@@ -236,17 +87,9 @@ export function GifPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const apiKey = import.meta.env.VITE_GIPHY_API_KEY?.trim();
-  // The realm's own emoji: one query, only while the sheet is open.
-  const realmEmoji = useQuery({
-    queryKey: realmEmojiKey(realmId),
-    enabled: open && !!realmId,
-    queryFn: () => fetchRealmEmoji(realmId!),
-  });
-  const realmRows = ((realmEmoji.data ?? []) as RealmEmojiRow[]).filter((row) => row.kind !== "sticker");
-  const serverSectionRef = useRef<HTMLDivElement | null>(null);
-  // Discord-style sections: the category strip below jumps to a section instead
-  // of making the whole list one long scroll.
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pickerHeight = useStickyPickerHeight();
+  // Tab changes animate; the tablist measures its own width once per open.
+  const indicatorIndex = Math.max(0, TABS.findIndex((entry) => entry.id === tab));
 
   useEffect(() => {
     if (!open || stickers.length) return;
@@ -304,14 +147,6 @@ export function GifPicker({
     };
   }, [apiKey, open, query, tab]);
 
-  const filteredEmojis = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return term
-      ? EMOJIS.filter((item) =>
-          `${item.name} ${item.group} ${item.emoji}`.toLowerCase().includes(term),
-        )
-      : EMOJIS;
-  }, [query]);
   const filteredStickers = useMemo(() => {
     const term = query.trim().toLowerCase();
     return stickers
@@ -320,10 +155,6 @@ export function GifPicker({
         (sticker) => !term || `${sticker.label} ${selectedPack}`.toLowerCase().includes(term),
       );
   }, [query, selectedPack, stickers]);
-  const filteredRealmRows = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return term ? realmRows.filter((row) => row.name.toLowerCase().includes(term)) : realmRows;
-  }, [query, realmRows]);
 
   const changeTab = (next: PickerTab) => {
     setTab(next);
@@ -332,294 +163,135 @@ export function GifPicker({
     setVisibleCount(36);
   };
 
-  // A controlled open (the composer's cat button) can ask for a tab, and the
-  // sheet should feel like it opened on that tab rather than flipping.
-  useEffect(() => {
-    if (!open || !initialTab) return;
-    setTab(initialTab);
-    setQuery("");
-    setError("");
-    setVisibleCount(36);
-  }, [open, initialTab]);
+  const pickEmoji = (token: string, emoji: Parameters<typeof rememberEmojiPick>[0]) => {
+    // The picker stays open: a message is usually a few emoji, not one.
+    onSelect(token);
+    rememberEmojiPick(emoji, realmId);
+  };
 
-  // A bottom sheet, not a small popover: on a phone the picker gets the whole
-  // width, a drag handle to dismiss it and a scrolling body, which is the part
-  // of Discord's picker people actually use.
+  const closeAnd = (marker: string) => {
+    onSelect(marker);
+    setOpen(false);
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      {hideTrigger ? null : (
-        <SheetTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={t("emoji_picker")}
-            title={t("emoji_picker")}
-            className={`shrink-0 text-primary ${triggerClassName ?? ""}`}
-          >
-            <Smile className="h-5 w-5" />
-          </Button>
-        </SheetTrigger>
-      )}
+      <SheetTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("emoji_picker")}
+          title={t("emoji_picker")}
+          className={`shrink-0 text-primary ${triggerClassName ?? ""}`}
+        >
+          <Smile className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
       <SheetContent
         side="bottom"
-        className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
+        data-picker="rizz"
+        // Same height as the last keyboard, so swapping the picker in does not
+        // move the composer or the message list.
+        style={{ height: `min(${pickerHeight}px, 82dvh)` }}
+        className="rizz-picker glass-strong flex flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 [&>button]:hidden"
       >
         <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
-        <div className="flex shrink-0 justify-center pb-1 pt-2.5" aria-hidden="true">
-          <span className="h-1 w-10 rounded-full bg-white/25" />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="flex items-center gap-2 font-display text-base font-bold">
-            <Smile className="h-4 w-4 text-primary" /> Pick something
-          </p>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-white/10">✕</button>
-        </div>
-        <div
-          className="mb-3 flex gap-1 rounded-full border border-white/10 bg-black/30 p-1"
-          role="tablist"
-          aria-label="Media type"
-        >
-          {(
-            [
-              ["emoji", "Emoji", Smile],
-              ["gifs", "GIFs", Image],
-              ["stickers", "Stickers", Sparkles],
-            ] as const
-          ).map(([value, label, Icon]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={tab === value}
-              onClick={() => changeTab(value)}
-              className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-semibold transition ${
-                tab === value
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
+        <div className="rizz-picker__handle" aria-hidden="true">
+          <span />
         </div>
 
-        {tab !== "gifs" || apiKey ? (
-          <div className="relative mb-2.5">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+        <div className="rizz-picker__head">
+          <div className="rizz-seg" role="tablist" aria-label="Media type">
+            <span
+              aria-hidden="true"
+              className="rizz-seg__indicator"
+              style={{
+                width: `${100 / TABS.length}%`,
+                transform: `translateX(${indicatorIndex * 100}%)`,
+              }}
+            />
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => changeTab(id)}
+                className={cn("rizz-seg__btn", tab === id && "rizz-seg__btn--active")}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="rizz-search">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <input
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setVisibleCount(36);
               }}
-              placeholder={
-                tab === "emoji"
-                  ? "Search emoji"
-                  : tab === "stickers"
-                    ? "Search this pack"
-                    : "Search GIFs"
-              }
+              placeholder={SEARCH_PLACEHOLDER[tab]}
               aria-label={`Search ${tab === "gifs" ? "GIFs" : tab}`}
-              className="h-9 border-white/10 bg-black/20 pl-9 text-sm"
+              enterKeyHint="search"
+              className="rizz-search__input"
             />
-          </div>
-        ) : null}
-
-        {tab === "emoji" && realmId && (filteredRealmRows.length > 0 || !query) && (
-          // The realm's own emoji are a section of their own: the chip row below
-          // is the category navigation, so "Server" behaves like Faces or Vibes.
-          // Management is a Settings job; this sheet only inserts emoji.
-          <div
-            ref={serverSectionRef}
-            className="mb-2.5 rounded-xl border border-primary/15 bg-primary/[0.035] px-2.5 py-2"
-          >
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/80">
-                This server{filteredRealmRows.length ? ` · ${filteredRealmRows.length}` : ""}
-              </p>
-              {onCustomEmoji && !query && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    onCustomEmoji();
-                  }}
-                  aria-label="Manage server emoji in settings"
-                  title="Manage server emoji in settings"
-                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-                >
-                  <Settings2 className="h-3 w-3" />
-                  Settings
-                </button>
-              )}
-            </div>
-            {realmEmoji.isLoading ? (
-              <p className="flex items-center gap-2 px-0.5 pb-1 text-[11px] text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading your server's emoji…
-              </p>
-            ) : filteredRealmRows.length ? (
-              <div className="flex flex-wrap gap-1">
-                {filteredRealmRows.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => {
-                      onSelect(`:${row.name}:`);
-                      setOpen(false);
-                    }}
-                    className="grid h-9 w-9 place-items-center rounded-lg transition hover:scale-110 hover:bg-white/10"
-                    title={`:${row.name}:`}
-                    aria-label={`Add :${row.name}:`}
-                  >
-                    <img src={row.url} alt="" loading="lazy" className="h-7 w-7 object-contain" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="px-0.5 pb-1 text-[11px] text-muted-foreground">
-                {query
-                  ? `No server emoji matches “${query.trim()}”.`
-                  : onCustomEmoji
-                    ? "No custom emoji yet — add one from Settings."
-                    : "This server has no custom emoji yet."}
-              </p>
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="rizz-search__clear"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             )}
           </div>
-        )}
+        </div>
 
         {tab === "emoji" && (
-          <div className="flex min-h-0 flex-col">
-            {!query && (
-              <div className="mb-2">
-                <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  Top emoji
+          <RizzEmojiPanel
+            open={open}
+            realmId={realmId}
+            realmName={realmName}
+            query={query}
+            onPick={pickEmoji}
+            onManage={
+              onCustomEmoji
+                ? () => {
+                    setOpen(false);
+                    // Let the sheet's exit animation start before a dialog opens.
+                    window.setTimeout(onCustomEmoji, 90);
+                  }
+                : undefined
+            }
+            className="rizz-picker__body"
+          />
+        )}
+
+        {tab === "gifs" && (
+          <div className="rizz-picker__body overflow-y-auto overscroll-contain px-3 pb-4">
+            {!allowed ? (
+              <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
+                <Sparkles className="mx-auto mb-2 h-6 w-6 text-primary" />
+                <p className="text-sm font-semibold">GIFs come with Purify</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Emoji and sticker packs stay free. Unlock GIFs for {PURIFY_PRICE_LABEL}.
                 </p>
-                <div className="flex gap-1 overflow-x-auto pb-1">
-                  {TOP_EMOJIS.map((item) => (
-                    <button
-                      key={`top-${item.name}`}
-                      type="button"
-                      onClick={() => {
-                        onSelect(item.emoji);
-                        setOpen(false);
-                      }}
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-lg transition hover:scale-110 hover:bg-white/10"
-                      aria-label={`Add ${item.name} emoji`}
-                      title={item.name}
-                    >
-                      {item.emoji}
-                    </button>
-                  ))}
-                </div>
+                <Link
+                  to="/purify"
+                  className="mt-3 inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+                >
+                  Get Purify
+                </Link>
               </div>
-            )}
-
-            <div className="mb-2 flex items-center gap-1 overflow-x-auto border-b border-white/5 pb-2">
-              {realmRows.length > 0 && !query && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    serverSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
-                  }
-                  className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[10px] font-semibold text-primary transition hover:border-primary/60"
-                >
-                  Server
-                </button>
-              )}
-              {EMOJI_GROUPS.map((group) => (
-                <button
-                  key={`jump-${group}`}
-                  type="button"
-                  onClick={() =>
-                    sectionRefs.current[group]?.scrollIntoView({ block: "start", behavior: "smooth" })
-                  }
-                  className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
-
-            <div className="max-h-[45dvh] overflow-y-auto overscroll-contain pr-0.5" role="group" aria-label="Emoji">
-              {EMOJI_GROUPS.map((group) => {
-                const items = filteredEmojis.filter((item) => item.group === group);
-                if (!items.length) return null;
-                return (
-                  <div
-                    key={group}
-                    ref={(node) => {
-                      sectionRefs.current[group] = node;
-                    }}
-                  >
-                    <p className="sticky top-0 z-10 bg-[#150f22]/95 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      {group}
-                    </p>
-                    <div className="grid grid-cols-8 gap-0.5 sm:grid-cols-9">
-                      {items.map((item, index) => (
-                        <button
-                          key={`${item.emoji}-${index}`}
-                          type="button"
-                          onClick={() => {
-                            onSelect(item.emoji);
-                            setOpen(false);
-                          }}
-                          className="grid aspect-square min-h-9 place-items-center rounded-lg text-[1.35rem] transition hover:scale-110 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          aria-label={`Add ${item.name} emoji`}
-                          title={item.name}
-                        >
-                          {item.emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              {!filteredEmojis.length && (
-                <p className="py-8 text-center text-sm text-muted-foreground">No emoji found.</p>
-              )}
-            </div>
-
-            {/* The in-house pack lives in the same sheet as Unicode, GIFs and
-                stickers, so a composer has one control — and it sits last,
-                after every Unicode category. The panel carries its own search
-                and recents; picking inserts a shortcode that every
-                comment/chat renderer draws as the cat. */}
-            <div className="mt-2 rounded-xl border border-primary/20 bg-primary/[0.05] p-2">
-              <RizzEmojiPanel
-                compact
-                columns={8}
-                onPick={(shortcode) => {
-                  onSelect(shortcode);
-                  setOpen(false);
-                }}
-              />
-            </div>
-
-          </div>
-        )}
-
-        {tab === "gifs" && !allowed && (
-          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
-            <Sparkles className="mx-auto mb-2 h-6 w-6 text-primary" />
-            <p className="text-sm font-semibold">GIFs come with Purify</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Emoji and sticker packs stay free. Unlock GIFs for {PURIFY_PRICE_LABEL}.
-            </p>
-            <Link
-              to="/purify"
-              className="mt-3 inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
-            >
-              Get Purify
-            </Link>
-          </div>
-        )}
-
-        {tab === "gifs" && allowed && (
-          <>
-            {!apiKey ? (
+            ) : !apiKey ? (
               <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">
                 <Image className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
                 <p className="text-sm font-semibold">Search GIFs</p>
@@ -630,7 +302,7 @@ export function GifPicker({
               </div>
             ) : (
               <>
-                <div className="grid max-h-[45dvh] grid-cols-3 gap-2 overflow-y-auto">
+                <div className="grid grid-cols-3 gap-2">
                   {loading && (
                     <div className="col-span-3 flex justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -641,11 +313,8 @@ export function GifPicker({
                       <button
                         key={gif.id}
                         type="button"
-                        onClick={() => {
-                          onSelect(GIF_MARKER(gif.images.fixed_width.url));
-                          setOpen(false);
-                        }}
-                        className="overflow-hidden rounded-lg bg-black/20 transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        onClick={() => closeAnd(GIF_MARKER(gif.images.fixed_width.url))}
+                        className="overflow-hidden rounded-lg bg-black/20 transition-transform duration-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label={`Add GIF: ${gif.title || "animated GIF"}`}
                       >
                         <img
@@ -654,6 +323,7 @@ export function GifPicker({
                           width={Number(gif.images.fixed_width.width) || 200}
                           height={Number(gif.images.fixed_width.height) || 112}
                           loading="lazy"
+                          decoding="async"
                           className="aspect-video h-full w-full object-cover"
                         />
                       </button>
@@ -664,10 +334,7 @@ export function GifPicker({
                     </p>
                   )}
                   {error && (
-                    <p
-                      role="status"
-                      className="col-span-3 py-5 text-center text-sm text-destructive"
-                    >
+                    <p role="status" className="col-span-3 py-5 text-center text-sm text-destructive">
                       {error}
                     </p>
                   )}
@@ -682,11 +349,11 @@ export function GifPicker({
                 </a>
               </>
             )}
-          </>
+          </div>
         )}
 
         {tab === "stickers" && (
-          <>
+          <div className="rizz-picker__body overflow-y-auto overscroll-contain px-3 pb-4">
             <div className="mb-2 flex gap-1 overflow-x-auto pb-1" aria-label="Sticker packs">
               {STICKER_PACKS.map((pack) => (
                 <button
@@ -698,27 +365,25 @@ export function GifPicker({
                     setVisibleCount(36);
                     setQuery("");
                   }}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors",
                     selectedPack === pack.id
                       ? "border-primary/50 bg-primary/15 text-foreground"
-                      : "border-white/10 text-muted-foreground hover:bg-white/5"
-                  }`}
+                      : "border-white/10 text-muted-foreground hover:bg-white/5",
+                  )}
                 >
                   {pack.label}
                 </button>
               ))}
             </div>
-            <div className="grid max-h-[45dvh] grid-cols-5 gap-1 overflow-y-auto overscroll-contain rounded-xl bg-black/10 p-1">
+            <div className="grid grid-cols-4 gap-1 rounded-xl bg-black/10 p-1 sm:grid-cols-5">
               {stickers.length > 0 &&
                 filteredStickers.slice(0, visibleCount).map((sticker) => (
                   <button
                     key={sticker.id}
                     type="button"
-                    onClick={() => {
-                      onSelect(STICKER_MARKER(sticker.src));
-                      setOpen(false);
-                    }}
-                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition hover:scale-105 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    onClick={() => closeAnd(STICKER_MARKER(sticker.src))}
+                    className="group grid aspect-square place-items-center overflow-hidden rounded-xl p-1 transition-transform duration-100 hover:scale-105 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label={`Add ${sticker.label}`}
                     title={sticker.label}
                   >
@@ -739,23 +404,24 @@ export function GifPicker({
                         src={sticker.src}
                         alt={sticker.label}
                         loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-contain"
                       />
                     )}
                   </button>
                 ))}
               {!stickers.length && !error && (
-                <div className="col-span-5 flex justify-center py-10">
+                <div className="col-span-4 flex justify-center py-10 sm:col-span-5">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               )}
               {!!stickers.length && !filteredStickers.length && (
-                <p className="col-span-5 py-8 text-center text-sm text-muted-foreground">
+                <p className="col-span-4 py-8 text-center text-sm text-muted-foreground sm:col-span-5">
                   No stickers found.
                 </p>
               )}
               {error && (
-                <p role="status" className="col-span-5 py-8 text-center text-sm text-destructive">
+                <p role="status" className="col-span-4 py-8 text-center text-sm text-destructive sm:col-span-5">
                   {error}
                 </p>
               )}
@@ -775,9 +441,8 @@ export function GifPicker({
               {filteredStickers.length} {filteredStickers.length === 1 ? "sticker" : "stickers"} ·{" "}
               {STICKER_PACKS.find((pack) => pack.id === selectedPack)?.label}
             </p>
-          </>
+          </div>
         )}
-        </div>
       </SheetContent>
     </Sheet>
   );

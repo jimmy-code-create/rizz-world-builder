@@ -1,0 +1,173 @@
+/* Rizz emoji / library picker styles.
+   Targets: 40-44px touch targets, 32px glyphs, 9-column grid, drag handle,
+   reduced-motion safety, and layout/paint containment for isolated panels. */
+
+.rizz-picker {
+  contain: layout paint;
+  isolation: isolate;
+}
+
+.rizz-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.rizz-picker__cell {
+  touch-action: manipulation;
+  cursor: pointer;
+  border-radius: 8px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.rizz-picker__cell:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.rizz-picker__cell:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.rizz-picker__cell[aria-pressed="true"] {
+  background: #2563eb;
+  color: #fff;
+}
+
+.rizz-picker__cell--touchable {
+  min-height: 40px;
+  min-width: 40px;
+}
+
+.rizz-picker__glyph {
+  font-size: 32px;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rizz-picker__drag-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  margin: 8px auto 0;
+  transition: background-color 0.12s ease;
+}
+
+.rizz-picker__drag-handle:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.rizz-picker__search {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.rizz-picker__search:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.rizz-picker__clear {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.rizz-picker__clear:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.rizz-picker__category {
+  contain: layout style;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.rizz-picker__category-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.rizz-picker__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rizz-picker__reaction {
+  touch-action: manipulation;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 22px;
+  line-height: 1;
+  transition: border-color 0.12s ease, transform 0.08s ease;
+}
+
+.rizz-picker__reaction:hover {
+  border-color: #9ca3af;
+}
+
+.rizz-picker__reaction:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.rizz-picker__reaction[aria-pressed="true"] {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.rizz-picker--reduced-motion {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rizz-picker {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .rizz-picker__cell,
+  .rizz-picker__drag-handle,
+  .rizz-picker__search,
+  .rizz-picker__reaction {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .rizz-picker__grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 760px) {
+  .rizz-picker__grid {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+}

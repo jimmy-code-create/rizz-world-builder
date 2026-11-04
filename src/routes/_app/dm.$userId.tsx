@@ -8,12 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Smile, ArrowDown, Search, Mic, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3 } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
-import { MessageComposer } from "@/components/chat/MessageComposer";
-import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
-import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
-import { emojiToken } from "@/lib/emoji-shared";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { ChatPollCard } from "@/components/chat/PollCard";
 import { asChatPollCard } from "@/lib/chat-polls";
@@ -44,9 +41,9 @@ import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
-import { startRecording, uploadVoiceNote } from "@/lib/voice-notes";
+import { startRecording, uploadVoiceNote, formatDuration } from "@/lib/voice-notes";
 import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
-import { compressChatImage, prepareChatImagePreview } from "@/lib/chat-media";
+import { compressChatImage } from "@/lib/chat-media";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
@@ -147,9 +144,6 @@ function DMPage() {
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
   const [recMs, setRecMs] = useState(0);
   const [sendingVoice, setSendingVoice] = useState(false);
-  const [emojiOpen, setEmojiOpen] = useState(false);
-  const [catOpen, setCatOpen] = useState(false);
-  const [gifOpen, setGifOpen] = useState(false);
   // The chat's own wallpaper: a preset or an uploaded background URL.
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
@@ -218,12 +212,6 @@ function DMPage() {
     if (!composer) return;
     composer.style.height = "auto";
     composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
-    // Typing grows the box. Keep the newest message pinned above it instead of
-    // letting the growing composer eat the bottom of the transcript.
-    if (document.activeElement === composer) {
-      const list = scrollRef.current;
-      if (list) list.scrollTop = list.scrollHeight;
-    }
   }, [body]);
 
   // Live elapsed timer while recording
@@ -415,9 +403,11 @@ function DMPage() {
     };
   }, [user, userId]);
 
+  // One typing broadcast every three seconds, not one per keystroke: the peer's
+  // indicator only needs a keep-alive, and each send is a websocket frame.
   const broadcastTyping = () => {
     const now = Date.now();
-    if (now - lastTypingBroadcastAtRef.current < 1000) return;
+    if (now - lastTypingBroadcastAtRef.current < 3000) return;
     lastTypingBroadcastAtRef.current = now;
     presenceCh.current?.send({ type: "broadcast", event: "typing", payload: { user_id: user?.id } });
   };
@@ -429,10 +419,7 @@ function DMPage() {
     const appended = previousIds.length > 0 &&
       previousIds.every((id, index) => currentIds[index] === id);
     if (initialLoad || (appended && wasNearBottomRef.current)) {
-      // Scroll the transcript itself, never the page: `scrollIntoView` could
-      // move the document under an open phone keyboard and dismiss it.
-      const list = scrollRef.current;
-      if (list) list.scrollTop = list.scrollHeight;
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
     }
     previousMessageIdsRef.current = currentIds;
   }, [msgs.data]);
@@ -534,16 +521,8 @@ function DMPage() {
     }
   };
 
-  // Tapping Send must not hand focus to the button: on a phone that closes the
-  // keyboard after every message. The mouse guard below keeps the textarea
-  // focused; this covers browsers that move focus anyway.
-  const keepComposerFocused = () => {
-    composerRef.current?.focus({ preventScroll: true });
-  };
-
   const send = () => {
     if (!user || (!body.trim() && !imageFile) || sendingMessageRef.current) return;
-    keepComposerFocused();
     const composerText = body;
     const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
     // An image with no caption keeps an empty body. Writing “📷 Image” here made
@@ -570,81 +549,52 @@ function DMPage() {
       deleted_at: null,
       delivery_status: "sending",
       attachment_url: imagePreview,
-      // A message being sent cannot carry a link card yet; the type requires
-      // the field, and the server fills it in when the preview resolves.
-      card: null,
     };
     if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);
     void deliverPendingMessage(pendingId, text, composerText);
   };
 
-  /** Drops picked emoji or a cat shortcode at the caret, not at the end. */
-  const insertComposerText = (text: string) => {
-    const field = composerRef.current;
-    const start = field?.selectionStart ?? body.length;
-    const end = field?.selectionEnd ?? body.length;
-    const next = (body.slice(0, start) + text + body.slice(end)).slice(0, MAX_MESSAGE_LENGTH);
-    setBody(next);
-    const nextCaret = Math.min(start + text.length, next.length);
-    setCaret(nextCaret);
-    requestAnimationFrame(() => {
-      const node = composerRef.current;
-      if (!node) return;
-      node.focus({ preventScroll: true });
-      node.setSelectionRange(nextCaret, nextCaret);
-    });
-  };
-
-  // The mic is press-and-hold now: hold to record, release to send, slide left
-  // past 70px to throw the clip away. Starting is one call; stopping is the
-  // same call whether the clip is kept or cancelled.
-  const beginVoiceNote = async () => {
-    if (!user || recording || sendingVoice) return;
-    try {
-      stopRec.current = await startRecording();
-      recStart.current = Date.now();
-      setRecMs(0);
-      setRecording(true);
-    } catch {
-      toast.error("Microphone access denied");
-    }
-  };
-
-  const finishVoiceNote = async (cancelled: boolean) => {
+  const toggleRecord = async () => {
     if (!user) return;
-    const stop = stopRec.current;
-    stopRec.current = null;
-    setRecording(false);
-    if (!stop) return;
-    if (cancelled) {
-      // Stop the recorder and drop the clip; nothing is uploaded.
-      try { await stop(); } catch { /* the clip is being discarded anyway */ }
-      toast.info("Voice note cancelled");
-      return;
-    }
-    setSendingVoice(true);
-    try {
-      const clip = await stop();
-      if (clip.durationMs < 600) { toast.info("Too short — hold a bit longer"); return; }
-      const path = await uploadVoiceNote(user.id, clip);
-      const { error } = await supabase.from("direct_messages").insert({
-        sender_id: user.id,
-        recipient_id: userId,
-        body: "🎤 Voice note",
-        audio_url: path,
-        duration_ms: clip.durationMs,
-      });
-      if (error) throw new Error(error.message);
-      qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Couldn't send that voice note");
-    } finally {
-      setSendingVoice(false);
+    if (recording) {
+      const stop = stopRec.current;
+      stopRec.current = null;
+      setRecording(false);
+      if (!stop) return;
+      setSendingVoice(true);
+      try {
+        const clip = await stop();
+        if (clip.durationMs < 600) { toast.info("Too short — hold a bit longer"); return; }
+        const path = await uploadVoiceNote(user.id, clip);
+        const { error } = await supabase.from("direct_messages").insert({
+          sender_id: user.id,
+          recipient_id: userId,
+          body: "🎤 Voice note",
+          audio_url: path,
+          duration_ms: clip.durationMs,
+        });
+        if (error) throw new Error(error.message);
+        qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      } catch (e: any) {
+        toast.error(e?.message ?? "Couldn't send that voice note");
+      } finally {
+        setSendingVoice(false);
+      }
+    } else {
+      try {
+        stopRec.current = await startRecording();
+        recStart.current = Date.now();
+        setRecMs(0);
+        setRecording(true);
+        if (navigator.vibrate) navigator.vibrate(10);
+      } catch {
+        toast.error("Microphone access denied");
+      }
     }
   };
 
-  const chooseImage = async (file: File | null) => {
+  const chooseImage = (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Choose an image file.");
@@ -657,16 +607,10 @@ function DMPage() {
       );
       return;
     }
-    try {
-      // Decode once into a small preview. A full 12MP photo in an <img> is what
-      // used to exhaust memory on phones right after the native picker closed.
-      const preview = await prepareChatImagePreview(file);
-      imageObjectUrlsRef.current.add(preview);
-      setImageFile(file);
-      setImagePreview(preview);
-    } catch {
-      toast.error("That photo couldn't be prepared. Try a JPG or PNG.");
-    }
+    const preview = URL.createObjectURL(file);
+    imageObjectUrlsRef.current.add(preview);
+    setImageFile(file);
+    setImagePreview(preview);
   };
 
   const scheduleSend = () => {
@@ -1154,7 +1098,6 @@ function DMPage() {
                   onOpenChange={(o) => (o ? openMessageMenu(m.id) : setOpenMsg(null))}
                   initialView={openMsgView}
                   align={mine ? "right" : "left"}
-                  className={pollCard ? "w-full" : undefined}
                   // The row owns long-press; the menu keeps double-tap, keyboard
                   // and right-click. Two racing timers double-vibrated.
                   detectPress={false}
@@ -1285,16 +1228,12 @@ function DMPage() {
                 </MessageActionMenu>
                 )}
                 {deliveryStatus === "failed" ? (
-                  // The message stayed in the thread, so the retry belongs to
-                  // that bubble: a red icon, not a toast that disappears.
                   <button
                     onClick={() => void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)}
                     disabled={sendingMessage}
-                    aria-label="Retry sending"
-                    title="Retry sending"
-                    className="grid h-8 w-8 place-items-center rounded-full text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                    className="text-[10px] text-amber-200/80 hover:text-amber-100"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    Retry
                   </button>
                 ) : deliveryStatus === "sending" ? (
                   <span className="text-[10px] text-muted-foreground">Sending…</span>
@@ -1358,14 +1297,45 @@ function DMPage() {
         </button>
       )}
 
-      <div className="relative z-20 shrink-0">
+      <div className="chat-bar relative z-20 shrink-0 border-t border-white/5 px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)]">
         <div className="mx-auto w-full max-w-3xl">
+          {imagePreview && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+              <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Image compressed before upload</span>
+              <Button
+                type="button"
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                variant="ghost"
+                size="icon"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {replyTo && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl glass border border-white/10 px-3 py-2">
+              <CornerUpLeft className="h-3.5 w-3.5 text-primary shrink-0" />
+              <button onClick={() => jumpToMessage(replyTo.id)} className="flex-1 min-w-0 text-left">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Replying to {replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}
+                </p>
+                <p className="text-xs truncate">{replyTo.body}</p>
+              </button>
+              <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" className="text-muted-foreground shrink-0">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+          <GifPicker onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)} />
           <input
             ref={imageInputRef}
             type="file"
             accept="image/*"
             hidden
-            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
           {/* The camera input is a second element, not `capture` on the first:
               one of them has to open the library and the other the lens. */}
@@ -1375,72 +1345,49 @@ function DMPage() {
             accept="image/*"
             capture="environment"
             hidden
-            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+            onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
-          <MessageComposer
-            value={body}
-            onChange={(next, nextCaret) => {
-              setBody(next);
-              setCaret(nextCaret);
-              broadcastTyping();
-            }}
-            onSend={() => void send()}
-            onEmoji={() => setEmojiOpen(true)}
-            onStickers={() => setCatOpen(true)}
+          <ChatAttachButton
+            className="h-9 w-9"
             disabled={Boolean(blockStatus.data)}
-            disabledHint="You can't send messages here"
-            placeholder="Message"
-            maxLength={MAX_MESSAGE_LENGTH}
-            textareaRef={composerRef}
-            sending={sendingMessage}
-            canSend={Boolean(body.trim() || imageFile)}
-            recording={recording}
-            recordMs={recMs}
-            onRecordStart={() => void beginVoiceNote()}
-            onRecordEnd={() => void finishVoiceNote(false)}
-            onRecordCancel={() => void finishVoiceNote(true)}
-            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            // Tapping the composer means “I'm replying to the now”: land on the
-            // newest message, including after the keyboard resizes the list.
-            onTextareaClick={(e) => {
-              setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
-              scrollChatToLatest(scrollRef.current);
-            }}
-            onFocus={() => scrollChatToLatest(scrollRef.current)}
-            above={imagePreview ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-                <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Image compressed before upload</span>
-                <Button
-                  type="button"
-                  onClick={() => { setImageFile(null); setImagePreview(null); }}
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remove image"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : null}
-            reply={replyTo ? {
-              label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
-              preview: replyTo.body,
-              onCancel: () => setReplyTo(null),
-              onJump: () => jumpToMessage(replyTo.id),
-            } : null}
-            attach={<ChatAttachButton
-              appearance="circle"
-              label="Attach"
-              disabled={Boolean(blockStatus.data)}
-              actions={[
-                { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-                { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-                { id: "gif", label: "GIF", hint: "Emoji and stickers", icon: Smile, onSelect: () => setGifOpen(true) },
-                { id: "poll", label: "Poll", hint: "Ask them", icon: BarChart3, onSelect: () => setPollOpen(true) },
-                { id: "schedule", label: "Schedule", hint: "Send in 10s", icon: Clock, onSelect: scheduleSend, disabled: !body.trim() },
-              ]}
-            />}
-            mentions={<MentionAutocomplete
+            actions={[
+              { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+              { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
+              { id: "poll", label: "Poll", hint: "Ask them", icon: BarChart3, onSelect: () => setPollOpen(true) },
+            ]}
+          />
+          <div className="relative min-w-0 flex-1">
+            <Textarea
+              ref={composerRef}
+              value={body}
+              disabled={blockStatus.data}
+              onChange={(e) => {
+                setBody(e.target.value);
+                setCaret(e.target.selectionStart ?? e.target.value.length);
+                broadcastTyping();
+              }}
+              onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+              // Tapping the composer means “I'm replying to the now”: land on
+              // the newest message, including after the keyboard resizes the
+              // list (the shared helper follows the viewport).
+              onClick={(e) => {
+                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+                scrollChatToLatest(scrollRef.current);
+              }}
+              onFocus={() => scrollChatToLatest(scrollRef.current)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder="Message"
+              maxLength={MAX_MESSAGE_LENGTH}
+              rows={1}
+              enterKeyHint="send"
+              className="composer-input min-h-11 max-h-40 resize-none overflow-y-hidden border-white/10 bg-black/20 py-3"
+            />
+            <MentionAutocomplete
               value={body}
               caret={caret}
               memberIds={userId ? [user?.id, userId].filter(Boolean) as string[] : undefined}
@@ -1452,27 +1399,39 @@ function DMPage() {
                 const el = composerRef.current;
                 if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
               }}
-            />}
-          />
-          <EmojiPicker
-            open={emojiOpen}
-            onOpenChange={setEmojiOpen}
-            title="Add emoji"
-            onPick={(pick) =>
-              insertComposerText(pick.kind === "unicode" ? pick.value : emojiToken(pick.emoji))
-            }
-          />
-          <CatStickerSheet
-            open={catOpen}
-            onOpenChange={setCatOpen}
-            onPick={(shortcode) => insertComposerText(shortcode)}
-          />
-          <GifPicker
-            open={gifOpen}
-            onOpenChange={setGifOpen}
-            hideTrigger
-            onSelect={(marker) => insertComposerText(`${marker} `)}
-          />
+            />
+          </div>
+          {body.trim() || imageFile ? (
+            <>
+              {body.trim() && (
+                <Button onClick={scheduleSend} variant="ghost" size="icon" className="text-muted-foreground" aria-label="Schedule send">
+                  <Clock className="h-4 w-4" />
+                </Button>
+              )}
+              <Button onClick={() => void send()} disabled={blockStatus.data || sendingMessage || (!body.trim() && !imageFile)} size="icon" className="bg-primary text-primary-foreground border-0 shadow-md" aria-label={sendingMessage ? "Sending message" : "Send message"}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={toggleRecord}
+              disabled={blockStatus.data || sendingVoice}
+              size="icon"
+              className={recording ? "min-w-[5.5rem] gap-2 border border-rose-300/30 bg-rose-600 px-3 text-white shadow-[0_6px_22px_-9px_rgba(244,63,94,.8)] hover:bg-rose-500" : "bg-primary text-primary-foreground border-0 shadow-md"}
+              aria-label={recording ? "Stop and send voice note" : "Record voice note"}
+              aria-pressed={recording}
+            >
+              {recording ? (
+                <span className="flex items-center gap-2 text-xs font-semibold tabular-nums">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                  {formatDuration(recMs)}
+                </span>
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          </div>
         </div>
       </div>
 
