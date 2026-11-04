@@ -3,7 +3,8 @@
  *
  * Static checks in the same style as the rest of the suite: the cover column
  * must be additive, the two official realms must be featured from ordinary
- * rows, and discovery must keep both a search and the public/private split.
+ * rows, and discovery must keep both a search and the public/private/owned
+ * filters behind the new two-way switch.
  *
  * Run: node tests/realms-discovery.test.mjs
  */
@@ -43,32 +44,60 @@ await check("covers are an additive realm column", () => {
 await check("both RIZZ-run realms are featured from normal rows", () => {
   assert.ok(officials.includes('name: "Rizz Official"'), "official realm missing");
   assert.ok(officials.includes('name: "Rizz Support"'), "support realm missing");
-  assert.ok(officials.includes("rizz-official") && officials.includes("rizz-support"), "slug match missing");
-  assert.ok(page.includes("Featured official realms"), "featured strip removed");
+  assert.ok(
+    officials.includes("rizz-official") && officials.includes("rizz-support"),
+    "slug match missing",
+  );
+  assert.ok(page.includes("Featured"), "featured strip removed");
+  assert.ok(page.includes("availableCount"), "featured strip lost its available count");
+  assert.ok(page.includes("h-[196px]"), "featured card is not the tall version");
   assert.ok(page.includes("official.matches(realm)"), "rows are not matched to the official list");
   assert.ok(page.includes("featuredIds.has(realm.id)"), "featured realms can repeat in the grid");
+  assert.ok(page.includes("RealmBannerCard"), "banner card component removed");
 });
 
-await check("discovery is searchable and keeps the public/private split", () => {
+await check("discovery is searchable and keeps the three scope chips", () => {
   assert.ok(page.includes('placeholder="Search realms by name, topic or slug"'), "no realm search");
   assert.ok(page.includes("matchesSearch(entry.realm)"), "featured cards ignore the search");
-  assert.ok(page.includes('useState<"public" | "private">("public")'), "no public/private scope");
-  assert.ok(page.includes("scopeCounts[scope]"), "tabs have no counts");
-  assert.ok(page.includes("realmScope === \"public\""), "scope does not filter the list");
+  assert.ok(page.includes("MY_SCOPES"), "no public/private/owned scope chips");
+  assert.ok(page.includes("scopeCounts[key]"), "chips have no counts");
+  assert.ok(page.includes('realmScope === "public"'), "scope does not filter the list");
+  assert.ok(page.includes("setRealmScope(key)"), "scope chips cannot change the filter");
+});
+
+await check("the redesigned screen keeps its tabs and banner dimensions", () => {
+  assert.ok(page.includes('role="tablist"'), "no segmented tab list");
+  assert.ok(page.includes('layoutId="realms-tab-thumb"'), "no sliding active thumb");
+  assert.ok(page.includes("My realms") && page.includes("Discover"), "tab labels missing");
+  assert.ok(page.includes("h-[148px]"), "banner cards are not 148px tall");
+  assert.ok(page.includes("rounded-[24px]"), "banner cards lost their 24px radius");
+  assert.ok(page.includes("RealmJoinAction"), "Open/Join action removed");
 });
 
 await check("animated covers are accepted and shown", () => {
   assert.ok(cover.includes("image/gif,image/webp"), "GIF/WebP covers are rejected");
   assert.ok(cover.includes("uploadRealmCover"), "no cover upload path");
   assert.ok(picker.includes("REALM_COVER_ACCEPT"), "picker does not use the shared accept list");
-  assert.ok(sheet.includes("coverUrl") && sheet.includes("removeCover"), "edit sheet cannot save a cover");
+  assert.ok(
+    sheet.includes("coverUrl") && sheet.includes("removeCover"),
+    "edit sheet cannot save a cover",
+  );
   assert.ok(detail.includes("c.cover_url"), "realm header does not show the cover");
 });
 
 await check("a missing migration does not empty the existing lists", () => {
-  assert.ok(!page.includes('select("id,slug,name,topic,icon_url,cover_url'), "list hard-codes the new column");
-  assert.ok(page.includes('select("*, owner:profiles!realms_owner_id_fkey(username)")'), "list is not select-star");
-  assert.ok(page.includes('select("realm_id, role, realm:realms!realm_members_realm_id_fkey(*)")'), "membership join hard-codes the new column");
+  assert.ok(
+    !page.includes('select("id,slug,name,topic,icon_url,cover_url'),
+    "list hard-codes the new column",
+  );
+  assert.ok(
+    page.includes('select("*, owner:profiles!realms_owner_id_fkey(username)")'),
+    "list is not select-star",
+  );
+  assert.ok(
+    page.includes('select("realm_id, role, realm:realms!realm_members_realm_id_fkey(*)")'),
+    "membership join hard-codes the new column",
+  );
 });
 
 if (process.exitCode) {
