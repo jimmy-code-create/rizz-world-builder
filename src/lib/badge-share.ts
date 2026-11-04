@@ -27,7 +27,10 @@ const LIME = "#c8ff3d";
 const DISPLAY = '"Bricolage Grotesque", sans-serif';
 const SANS = '"Instrument Sans", sans-serif';
 
-function loadImage(src: string, crossOrigin?: string): Promise<HTMLImageElement> {
+function loadImage(
+  src: string,
+  crossOrigin?: HTMLImageElement["crossOrigin"],
+): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     if (crossOrigin) img.crossOrigin = crossOrigin;
