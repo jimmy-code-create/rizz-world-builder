@@ -99,10 +99,7 @@ export function BuiltinBotEmbeds({
       date: new Date().toISOString(),
       channel: room?.name ?? "general",
       partner: "the person you picked",
-      partnerAvatar:
-        me?.avatar_url && me?.avatar_url !== previewVars?.partnerAvatar
-          ? me?.avatar_url
-          : "https://esm.sh/https://cdn.jsdelivr.net/npm/just-bird-nope@1/placeholder.svg",
+      partnerAvatar: me?.avatar_url ?? "",
     };
   }, [textRooms, roomId, defaultRoomId, me, memberCount, realmName]);
 
