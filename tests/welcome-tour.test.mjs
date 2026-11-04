@@ -13,7 +13,7 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding, settings, accountMenu, feed, postCard, settingsProfile] =
+const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding, settings, accountMenu, feed, postCard, settingsProfile, welcomeFlow] =
   await Promise.all([
     read("src/routes/login.tsx"),
     read("src/routes/signup.tsx"),
@@ -29,6 +29,7 @@ const [login, signup, join, tutorial, shell, host, overlay, tourCss, onboarding,
     read("src/routes/_app/feed.tsx"),
     read("src/components/PostCard.tsx"),
     read("src/routes/_app/settings/profile.tsx"),
+    read("src/components/welcome/WelcomeFlow.tsx"),
   ]);
 
 let passed = 0;
@@ -154,6 +155,16 @@ await check("Settings has a way back and previews the joined date", async () => 
   assert.match(settingsProfile, /handleExtra=/, "the live preview prints the handle row detail");
   assert.match(settingsProfile, /Joined \{joined\}/, "the joined month sits beside the handle");
   assert.ok(settingsProfile.includes("/brand/rizz-cat-logo.svg"), "the joined date carries the mark");
+});
+
+await check("the landing page plays the Rizzy cat animation", async () => {
+  assert.match(welcomeFlow, /function LandingCatAnimation/, "the landing animation is missing");
+  assert.match(welcomeFlow, /src=\{CAT_ANIMATION_SRC\}/, "the animated cat video is not wired");
+  assert.match(welcomeFlow, /autoPlay\s+muted\s+loop\s+playsInline/, "the animation does not loop silently");
+  assert.match(welcomeFlow, /prefers-reduced-motion: reduce/, "reduced motion is not respected");
+  assert.match(welcomeFlow, /document\.hidden/, "the animation does not pause offscreen");
+  assert.ok(existsSync(new URL("../public/brand/rizz-cat-animation.mp4", import.meta.url)), "the animation file is missing");
+  assert.ok(existsSync(new URL("../public/brand/rizz-cat-animation-poster.jpg", import.meta.url)), "the animation poster is missing");
 });
 
 console.log(`\n${passed} checks passed.`);

@@ -37,6 +37,83 @@ function Brand() {
   );
 }
 
+const CAT_ANIMATION_SRC = "/brand/rizz-cat-animation.mp4";
+const CAT_ANIMATION_POSTER = "/brand/rizz-cat-animation-poster.jpg";
+
+function LandingCatAnimation({
+  className = "",
+  badge,
+}: {
+  className?: string;
+  badge?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [reducedMotion, setReducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const syncPlayback = () => {
+      if (reducedMotion || document.hidden) {
+        video.pause();
+        return;
+      }
+      void video.play().catch(() => {});
+    };
+
+    syncPlayback();
+    document.addEventListener("visibilitychange", syncPlayback);
+    return () => document.removeEventListener("visibilitychange", syncPlayback);
+  }, [reducedMotion]);
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[2rem] bg-[#c9ff3d] ring-1 ring-[#d8d5cb] shadow-[0_18px_40px_-28px_rgba(20,20,20,0.5)] ${className}`}
+      aria-label="Rizzy, the RIZZ cat, peeking over a black bar"
+    >
+      {reducedMotion ? (
+        <img
+          src={CAT_ANIMATION_POSTER}
+          alt=""
+          className="h-full w-full object-contain"
+          draggable={false}
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          className="h-full w-full object-contain motion-reduce:hidden"
+          src={CAT_ANIMATION_SRC}
+          poster={CAT_ANIMATION_POSTER}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+      )}
+      {badge ? (
+        <span className="pointer-events-none absolute bottom-2 right-2 rounded-full border border-black/10 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white">
+          Rizzy
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function WelcomeSplash() {
   return (
     <div className="rizz-auth-shell grid min-h-dvh place-items-center bg-white">
@@ -129,21 +206,15 @@ export function WelcomeFlow() {
               }}
               className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]"
             >
-              <div className="relative mx-auto mb-6 h-[138px] w-[138px]">
-                <span className="absolute inset-0 rounded-[2.4rem] bg-[#c9ff3d]" />
-                <img
-                  src="/cats/peek.svg"
-                  alt=""
-                  className="absolute -bottom-2 left-1/2 h-[148px] w-[148px] -translate-x-1/2 select-none"
-                  draggable={false}
-                />
-                <span className="absolute -left-[62px] top-4 -rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)]">
+              <div className="relative mx-auto mb-6 w-full max-w-[300px] sm:max-w-[320px]">
+                <LandingCatAnimation className="aspect-[16/11] w-full" />
+                <span className="pointer-events-none absolute -left-1 top-4 -rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)] sm:-left-[62px]">
                   Your feed
                 </span>
-                <span className="absolute -right-[54px] top-1 rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)]">
+                <span className="pointer-events-none absolute -right-1 top-1 rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)] sm:-right-[54px]">
                   Voice
                 </span>
-                <span className="absolute -right-[44px] bottom-2 rotate-3 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)]">
+                <span className="pointer-events-none absolute -right-1 bottom-2 rotate-3 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)] sm:-right-[44px]">
                   DMs
                 </span>
               </div>
@@ -344,15 +415,7 @@ export function WelcomeFlow() {
             </header>
 
             <div className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]">
-              <div className="relative mx-auto mb-6 h-[116px] w-[116px]">
-                <span className="absolute inset-0 rounded-[2rem] bg-[#c9ff3d]" />
-                <img
-                  src="/cats/peek.svg"
-                  alt=""
-                  className="absolute -bottom-2 left-1/2 h-[126px] w-[126px] -translate-x-1/2 select-none"
-                  draggable={false}
-                />
-              </div>
+              <LandingCatAnimation className="mx-auto mb-6 aspect-[16/11] w-full max-w-[260px] sm:max-w-[280px]" />
 
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a877d]">
                 Welcome back
