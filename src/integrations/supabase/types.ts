@@ -1237,6 +1237,7 @@ export type Database = {
           description: string | null
           escrow_state: string
           expires_at: string
+          heading_color: string
           id: string
           media_url: string | null
           min_trust: string
@@ -1268,6 +1269,7 @@ export type Database = {
           description?: string | null
           escrow_state?: string
           expires_at: string
+          heading_color?: string
           id?: string
           media_url?: string | null
           min_trust?: string
@@ -1299,6 +1301,7 @@ export type Database = {
           description?: string | null
           escrow_state?: string
           expires_at?: string
+          heading_color?: string
           id?: string
           media_url?: string | null
           min_trust?: string
@@ -5676,21 +5679,38 @@ export type Database = {
       pick_giveaway_winners: { Args: { _drop: string }; Returns: string[] }
       pin_message: { Args: { _message_id: string }; Returns: undefined }
       ping_presence: { Args: never; Returns: string }
-      post_paws_bounty: {
-        Args: {
-          _description: string
-          _hours: number
-          _media_url?: string
-          _min_trust?: string
-          _premium_only?: boolean
-          _prize: number
-          _proof_type?: string
-          _requirements: string
-          _tags?: string[]
-          _title: string
-        }
-        Returns: Json
-      }
+      post_paws_bounty:
+        | {
+            Args: {
+              _description: string
+              _hours: number
+              _media_url?: string
+              _min_trust?: string
+              _premium_only?: boolean
+              _prize: number
+              _proof_type?: string
+              _requirements: string
+              _tags?: string[]
+              _title: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _description: string
+              _heading_color?: string
+              _hours: number
+              _media_url?: string
+              _min_trust?: string
+              _premium_only?: boolean
+              _prize: number
+              _proof_type?: string
+              _requirements: string
+              _tags?: string[]
+              _title: string
+            }
+            Returns: Json
+          }
       preview_group_invite: {
         Args: { _code: string }
         Returns: {
@@ -5902,6 +5922,10 @@ export type Database = {
         Returns: number
       }
       send_knock: { Args: { _note?: string; _to: string }; Returns: Json }
+      send_paws_tip: {
+        Args: { _amount: number; _note?: string; _to: string }
+        Returns: number
+      }
       send_test_push: { Args: never; Returns: undefined }
       set_bot_command_channel_enabled: {
         Args: {
