@@ -2579,11 +2579,73 @@ html.rizz-light-canvas {
 .welcome-screen-in {
   animation: welcome-screen-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* Rizzy — the landing cat, drawn as SVG. Layers: lean (whole head), bob
+   (the squash of a peeking motion), pupils tracking, a quick blink, mouth
+   opening, and the black bar pulling down. Transform-only; reduced motion
+   keeps it still. */
+.landing-cat-animation .landing-cat-tilt {
+  animation: landing-cat-tilt 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.landing-cat-animation .landing-cat-head {
+  animation: landing-cat-bob 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.landing-cat-animation .landing-cat-pupils {
+  animation: landing-cat-pupils 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.landing-cat-animation .landing-cat-mouth {
+  animation: landing-cat-mouth 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.landing-cat-animation .landing-cat-bar-area {
+  animation: landing-cat-bar-area 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes landing-cat-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-2.4deg); }
+  30% { transform: rotate(2.4deg); }
+  45%, 60% { transform: rotate(0deg); }
+}
+@keyframes landing-cat-bob {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  15%, 30% { transform: translateY(3px) scaleY(0.99); }
+  45%, 60% { transform: translateY(0) scaleY(1); }
+}
+@keyframes landing-cat-pupils {
+  0%, 100% { transform: translate(0, 0) scaleY(1); }
+  15% { transform: translate(-7px, -1.5px) scaleY(1); }
+  30% { transform: translate(7px, -1.5px) scaleY(1); }
+  45%, 60% { transform: translate(0, 0) scaleY(1); }
+  62%, 64% { transform: translate(0, 0) scaleY(0.1); }
+  66%, 100% { transform: translate(0, 0) scaleY(1); }
+}
+@keyframes landing-cat-mouth {
+  0%, 45%, 60%, 100% { transform: translateY(0) scaleY(1); }
+  48%, 52% { transform: translateY(2px) scaleY(1.4); }
+}
+@keyframes landing-cat-bar-area {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  15%, 30% { transform: translateY(6px); opacity: 0.92; }
+  45%, 60% { transform: translateY(0); opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
   .welcome-screen-in {
     animation: none;
   }
+  .landing-cat-animation .landing-cat-tilt,
+  .landing-cat-animation .landing-cat-head,
+  .landing-cat-animation .landing-cat-pupils,
+  .landing-cat-animation .landing-cat-mouth,
+  .landing-cat-animation .landing-cat-bar-area {
+    animation: none;
+  }
 }
 [data-reduced-motion="true"] .welcome-screen-in {
+  animation: none;
+}
+[data-reduced-motion="true"] .landing-cat-animation .landing-cat-tilt,
+[data-reduced-motion="true"] .landing-cat-animation .landing-cat-head,
+[data-reduced-motion="true"] .landing-cat-animation .landing-cat-pupils,
+[data-reduced-motion="true"] .landing-cat-animation .landing-cat-mouth,
+[data-reduced-motion="true"] .landing-cat-animation .landing-cat-bar-area {
   animation: none;
 }

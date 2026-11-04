@@ -37,79 +37,57 @@ function Brand() {
   );
 }
 
-const CAT_ANIMATION_SRC = "/brand/rizz-cat-animation.mp4";
-const CAT_ANIMATION_POSTER = "/brand/rizz-cat-animation-poster.jpg";
-
-function LandingCatAnimation({
-  className = "",
-  badge,
-}: {
-  className?: string;
-  badge?: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [reducedMotion, setReducedMotion] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReducedMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const syncPlayback = () => {
-      if (reducedMotion || document.hidden) {
-        video.pause();
-        return;
-      }
-      void video.play().catch(() => {});
-    };
-
-    syncPlayback();
-    document.addEventListener("visibilitychange", syncPlayback);
-    return () => document.removeEventListener("visibilitychange", syncPlayback);
-  }, [reducedMotion]);
-
+/**
+ * Rizzy, redrawn as vector artwork — the submitted video was only useful as a
+ * motion reference: its lime backdrop was baked in, and at hero size the clip
+ * looked soft and noisy. SVG keeps the character crisp, lets it sit on the
+ * white canvas with no green layer, and the blink/squash/lean cycles read as
+ * motion without a single pixel of footage.
+ */
+function LandingCatAnimation({ className = "" }: { className?: string }) {
   return (
-    <div
-      className={`relative overflow-hidden rounded-[2rem] bg-[#c9ff3d] ring-1 ring-[#d8d5cb] shadow-[0_18px_40px_-28px_rgba(20,20,20,0.5)] ${className}`}
-      aria-label="Rizzy, the RIZZ cat, peeking over a black bar"
-    >
-      {reducedMotion ? (
-        <img
-          src={CAT_ANIMATION_POSTER}
-          alt=""
-          className="h-full w-full object-contain"
-          draggable={false}
+    <div className={className} aria-label="Rizzy, the RIZZ cat, peeking over a black bar">
+      <svg viewBox="0 0 340 235" className="h-full w-full" aria-hidden="true">
+        <defs>
+          <clipPath id="landing-cat-eyes">
+            <ellipse cx="124" cy="118" rx="25" ry="25" />
+            <ellipse cx="216" cy="118" rx="25" ry="25" />
+          </clipPath>
+        </defs>
+
+        <g className="landing-cat-tilt">
+          <path d="M86 104 L94 22 L146 76 Z" fill="#12101A" />
+          <path d="M254 104 L246 22 L194 76 Z" fill="#12101A" />
+          <path d="M98 92 L104 42 L132 80 Z" fill="#C9FF3D" />
+          <path d="M242 92 L236 42 L208 80 Z" fill="#C9FF3D" />
+          <path
+            className="landing-cat-head"
+            d="M170 58c52 0 94 40 94 94 0 5-4 9-9 9H85c-5 0-9-4-9-9 0-54 42-94 94-94z"
+            fill="#12101A"
+          />
+          <path d="M76 138c-5 0-9 4-9 9v7c0 5 4 9 9 9h8v-25h-8z" fill="#12101A" />
+          <path d="M264 138c5 0 9 4 9 9v7c0 5-4 9-9 9h-8v-25h8z" fill="#12101A" />
+        </g>
+
+        <g clipPath="url(#landing-cat-eyes)">
+          <rect x="98" y="92" width="52" height="52" rx="26" fill="#FFFFFF" />
+          <rect x="190" y="92" width="52" height="52" rx="26" fill="#FFFFFF" />
+          <g className="landing-cat-pupils">
+            <circle cx="124" cy="118" r="10" fill="#12101A" />
+            <circle cx="216" cy="118" r="10" fill="#12101A" />
+          </g>
+        </g>
+
+        <path
+          className="landing-cat-mouth"
+          d="M159 150h22l-11 12z"
+          fill="#C9FF3D"
         />
-      ) : (
-        <video
-          ref={videoRef}
-          className="h-full w-full object-contain motion-reduce:hidden"
-          src={CAT_ANIMATION_SRC}
-          poster={CAT_ANIMATION_POSTER}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          aria-hidden="true"
-        />
-      )}
-      {badge ? (
-        <span className="pointer-events-none absolute bottom-2 right-2 rounded-full border border-black/10 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white">
-          Rizzy
-        </span>
-      ) : null}
+
+        <g className="landing-cat-bar-area">
+          <rect x="4" y="198" width="332" height="26" rx="13" fill="#242528" />
+        </g>
+      </svg>
     </div>
   );
 }
@@ -207,7 +185,7 @@ export function WelcomeFlow() {
               className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]"
             >
               <div className="relative mx-auto mb-6 w-full max-w-[300px] sm:max-w-[320px]">
-                <LandingCatAnimation className="aspect-[16/11] w-full" />
+                <LandingCatAnimation className="landing-cat-animation aspect-[340/235] w-full" />
                 <span className="pointer-events-none absolute -left-1 top-4 -rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)] sm:-left-[62px]">
                   Your feed
                 </span>
@@ -415,7 +393,7 @@ export function WelcomeFlow() {
             </header>
 
             <div className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]">
-              <LandingCatAnimation className="mx-auto mb-6 aspect-[16/11] w-full max-w-[260px] sm:max-w-[280px]" />
+              <LandingCatAnimation className="landing-cat-animation mx-auto mb-6 aspect-[340/235] w-full max-w-[260px] sm:max-w-[280px]" />
 
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a877d]">
                 Welcome back

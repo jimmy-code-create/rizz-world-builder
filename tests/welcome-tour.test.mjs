@@ -159,12 +159,17 @@ await check("Settings has a way back and previews the joined date", async () => 
 
 await check("the landing page plays the Rizzy cat animation", async () => {
   assert.match(welcomeFlow, /function LandingCatAnimation/, "the landing animation is missing");
-  assert.match(welcomeFlow, /src=\{CAT_ANIMATION_SRC\}/, "the animated cat video is not wired");
-  assert.match(welcomeFlow, /autoPlay\s+muted\s+loop\s+playsInline/, "the animation does not loop silently");
-  assert.match(welcomeFlow, /prefers-reduced-motion: reduce/, "reduced motion is not respected");
-  assert.match(welcomeFlow, /document\.hidden/, "the animation does not pause offscreen");
-  assert.ok(existsSync(new URL("../public/brand/rizz-cat-animation.mp4", import.meta.url)), "the animation file is missing");
-  assert.ok(existsSync(new URL("../public/brand/rizz-cat-animation-poster.jpg", import.meta.url)), "the animation poster is missing");
+  assert.match(welcomeFlow, /<svg viewBox="0 0 340 235"/, "the cat is not drawn as a vector hero");
+  assert.match(welcomeFlow, /className="landing-cat-pupils"/, "the pupil motion lost its layer");
+  assert.match(welcomeFlow, /className="landing-cat-mouth"/, "the mouth is not animated");
+  assert.match(welcomeFlow, /className="landing-cat-bar-area"/, "the bar motion lost its layer");
+  assert.match(welcomeFlow, /clipPath="url\(#landing-cat-eyes\)"/, "the pupils are not clipped to the eyes");
+  assert.match(welcomeFlow, /aria-label="Rizzy, the RIZZ cat, peeking over a black bar"/);
+  assert.ok(!welcomeFlow.includes("rizz-cat-animation"), "the green video layer must be gone");
+  assert.ok(!welcomeFlow.includes("<video"), "no video tag should remain on the landing page");
+  assert.ok(!welcomeFlow.includes("bg-[#c9ff3d] ring-1"), "the green frame must not return");
+  assert.ok(!existsSync(new URL("../public/brand/rizz-cat-animation.mp4", import.meta.url)), "the low-quality video is still shipped");
+  assert.ok(!existsSync(new URL("../public/brand/rizz-cat-animation-poster.jpg", import.meta.url)), "the video poster is still shipped");
 });
 
 console.log(`\n${passed} checks passed.`);
