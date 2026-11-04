@@ -2487,3 +2487,85 @@ button:active > .motion-icon {
 [data-reduced-motion="true"] .live-fab__halo {
   animation: none;
 }
+
+/* ============ WELCOME + AUTH (paper white) ============
+   The app shell is ink by default. The first-run welcome and every auth screen
+   are intentionally a clean white surface, so the surrounding document colour
+   is switched while they are mounted. This stops the dark page colour showing
+   through overscroll on a phone. */
+html.rizz-light-canvas,
+html.rizz-light-canvas body {
+  background-color: #ffffff;
+}
+html.rizz-light-canvas {
+  color-scheme: light;
+}
+
+/* The welcome flow and AuthCard both sit inside this scope. Tokens are
+   remapped locally, not globally: the feed stays ink while login, sign-up,
+   password reset, username claim and profile setup all read as one light
+   mobile flow. */
+.rizz-auth-shell {
+  --background: #ffffff;
+  --foreground: #15151a;
+  --card: #ffffff;
+  --card-foreground: #15151a;
+  --popover: #ffffff;
+  --popover-foreground: #15151a;
+  --primary: #15151a;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f3ef;
+  --secondary-foreground: #15151a;
+  --muted: #f4f3ef;
+  --muted-foreground: #6f6c64;
+  --accent: #efeee9;
+  --accent-foreground: #15151a;
+  --destructive: #b8391f;
+  --destructive-foreground: #ffffff;
+  --border: #e6e3db;
+  --input: #dedbd2;
+  --ring: #15151a;
+  --brand-paper: #15151a;
+  --brand-paper-dim: #6f6c64;
+  --brand-ink: #ffffff;
+  --brand-ink-2: #ffffff;
+  --brand-ink-3: #f4f3ef;
+  --brand-line: #e6e3db;
+  --surface-bar: rgb(255 255 255 / 0.94);
+  --surface-bubble: #ffffff;
+  color-scheme: light;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.rizz-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rizz-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The first screen and the feature card swap in place rather than sliding the
+   whole document. One short rise keeps it feeling like an app screen. */
+@keyframes welcome-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.welcome-screen-in {
+  animation: welcome-screen-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-screen-in {
+    animation: none;
+  }
+}
+[data-reduced-motion="true"] .welcome-screen-in {
+  animation: none;
+}

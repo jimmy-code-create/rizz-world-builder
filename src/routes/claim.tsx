@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthCard } from "@/components/AuthCard";
-import { AuthErrorBanner, classifyAuthError, type AuthErrorKind } from "@/components/AuthErrorBanner";
+import {
+  AuthErrorBanner,
+  classifyAuthError,
+  type AuthErrorKind,
+} from "@/components/AuthErrorBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +23,28 @@ export const Route = createFileRoute("/claim")({
 
 /** Handles nobody can impersonate or squat on. */
 const RESERVED_USERNAMES = new Set([
-  "admin", "administrator", "root", "support", "help", "rizz", "official",
-  "system", "moderator", "mod", "staff", "api", "feed", "explore", "settings",
-  "notifications", "login", "signup", "claim", "tutorial", "null", "undefined",
+  "admin",
+  "administrator",
+  "root",
+  "support",
+  "help",
+  "rizz",
+  "official",
+  "system",
+  "moderator",
+  "mod",
+  "staff",
+  "api",
+  "feed",
+  "explore",
+  "settings",
+  "notifications",
+  "login",
+  "signup",
+  "claim",
+  "tutorial",
+  "null",
+  "undefined",
 ]);
 
 function ClaimUsernamePage() {
@@ -31,13 +54,17 @@ function ClaimUsernamePage() {
   const [displayName, setDisplayName] = useState("");
   // The dedicated pick: every account chooses its cat the first time it logs in.
   const [avatar, setAvatar] = useState<string>(() =>
-    profile?.avatar_url && isDefaultAvatar(profile.avatar_url) ? profile.avatar_url : DEFAULT_AVATARS[0].url,
+    profile?.avatar_url && isDefaultAvatar(profile.avatar_url)
+      ? profile.avatar_url
+      : DEFAULT_AVATARS[0].url,
   );
   const [busy, setBusy] = useState(false);
   const [errorKind, setErrorKind] = useState<AuthErrorKind | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   // Live availability: debounced exact-match lookup as they type.
-  const [availability, setAvailability] = useState<"idle" | "checking" | "free" | "taken" | "invalid">("idle");
+  const [availability, setAvailability] = useState<
+    "idle" | "checking" | "free" | "taken" | "invalid"
+  >("idle");
 
   useEffect(() => {
     if (loading) return;
@@ -81,7 +108,11 @@ function ClaimUsernamePage() {
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]" role="status" aria-label="Loading account" />
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--brand-signal)]"
+          role="status"
+          aria-label="Loading account"
+        />
       </div>
     );
   }
@@ -109,7 +140,11 @@ function ClaimUsernamePage() {
       const name = displayName.trim().slice(0, 40) || normalized;
       const { data, error } = await supabase
         .from("profiles")
-        .update({ username: normalized, display_name: profile?.display_name || name, avatar_url: avatar })
+        .update({
+          username: normalized,
+          display_name: profile?.display_name || name,
+          avatar_url: avatar,
+        })
         .eq("id", user.id)
         .is("username", null)
         .select("id")
@@ -124,7 +159,12 @@ function ClaimUsernamePage() {
         if (lookupError) throw lookupError;
         if (existing?.username) {
           await refreshProfile();
-          nav({ to: getPostAuthPath({ username: existing.username, tutorial_seen: profile?.tutorial_seen ?? false }) });
+          nav({
+            to: getPostAuthPath({
+              username: existing.username,
+              tutorial_seen: profile?.tutorial_seen ?? false,
+            }),
+          });
           return;
         }
         const { error: insertError } = await supabase
@@ -149,7 +189,9 @@ function ClaimUsernamePage() {
     return (
       <AuthCard title="Claim your @" subtitle="We couldn't load your account yet.">
         <p className="mb-4 text-sm text-destructive">{profileError}</p>
-        <Button className="w-full" variant="outline" onClick={() => void refreshProfile()}>Retry</Button>
+        <Button className="w-full" variant="outline" onClick={() => void refreshProfile()}>
+          Retry
+        </Button>
       </AuthCard>
     );
   }
@@ -158,15 +200,32 @@ function ClaimUsernamePage() {
     <AuthCard
       title="Claim your @"
       subtitle="Choose the username people will use to find you."
-      footer={<>Need a different account? <Link to="/" className="text-primary hover:underline font-medium">Back to RIZZ</Link></>}
+      footer={
+        <p className="text-center">
+          Need a different account?{" "}
+          <Link
+            to="/"
+            className="font-semibold text-[#15151a] underline decoration-[#c9ff3d] decoration-2 underline-offset-4 transition hover:decoration-[#15151a]"
+          >
+            Back to RIZZ
+          </Link>
+        </p>
+      }
     >
       {errorKind && (
-        <AuthErrorBanner kind={errorKind} rawMessage={errorMessage} onRetry={() => setErrorKind(null)} retryLabel="Try another username" />
+        <AuthErrorBanner
+          kind={errorKind}
+          rawMessage={errorMessage}
+          onRetry={() => setErrorKind(null)}
+          retryLabel="Try another username"
+        />
       )}
       <form onSubmit={claim} className="space-y-4">
         <div className="space-y-2">
           <Label>Your avatar</Label>
-          <p className="text-xs text-muted-foreground">Pick the cat that's you. Change it any time in Settings.</p>
+          <p className="text-xs text-muted-foreground">
+            Pick the cat that's you. Change it any time in Settings.
+          </p>
           <div className="grid grid-cols-6 gap-2" role="radiogroup" aria-label="Choose your avatar">
             {DEFAULT_AVATARS.map((option) => {
               const selected = avatar === option.url;
@@ -183,10 +242,15 @@ function ClaimUsernamePage() {
                     "relative aspect-square overflow-hidden rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "ring-2 ring-[var(--ring)] ring-offset-2 ring-offset-background"
-                      : "ring-1 ring-white/10 hover:ring-white/35",
+                      : "ring-1 ring-black/10 hover:ring-black/30",
                   )}
                 >
-                  <img src={option.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  <img
+                    src={option.url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
                 </button>
               );
             })}
@@ -195,7 +259,9 @@ function ClaimUsernamePage() {
         <div className="space-y-2">
           <Label htmlFor="claim-username">Username</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              @
+            </span>
             <Input
               id="claim-username"
               required
@@ -204,36 +270,46 @@ function ClaimUsernamePage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="h-11 border-border bg-secondary pl-7"
+              className="h-[54px] rounded-2xl border-[#e3e0d7] bg-[#f7f6f2] pl-10 pr-4 text-[15px] shadow-none placeholder:text-[#a5a196] focus-visible:border-[#15151a] focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#c9ff3d]/40"
               placeholder="yourname"
               aria-describedby="claim-username-status"
             />
           </div>
           <p id="claim-username-status" role="status" className="text-xs" aria-live="polite">
-            {availability === "checking" && <span className="text-muted-foreground">Checking availability…</span>}
-            {availability === "free" && <span className="font-medium text-[#c8ff3d]">@{username.trim().toLowerCase()} is available</span>}
-            {availability === "taken" && <span className="font-medium text-destructive">That username is taken</span>}
+            {availability === "checking" && (
+              <span className="text-muted-foreground">Checking availability…</span>
+            )}
+            {availability === "free" && (
+              <span className="font-semibold text-[#4d7500]">
+                @{username.trim().toLowerCase()} is available
+              </span>
+            )}
+            {availability === "taken" && (
+              <span className="font-medium text-destructive">That username is taken</span>
+            )}
             {availability === "invalid" && username.trim() && (
               <span className="text-muted-foreground">3–20 chars, letters/numbers/underscore</span>
             )}
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="claim-display">Display name <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Label htmlFor="claim-display">
+            Display name <span className="font-normal text-muted-foreground">(optional)</span>
+          </Label>
           <Input
             id="claim-display"
             maxLength={40}
             autoComplete="nickname"
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="h-11 border-border bg-secondary"
+            className="h-[54px] rounded-2xl border-[#e3e0d7] bg-[#f7f6f2] px-4 text-[15px] shadow-none placeholder:text-[#a5a196] focus-visible:border-[#15151a] focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-[#c9ff3d]/40"
             placeholder="What should people call you?"
           />
         </div>
         <Button
           type="submit"
           disabled={busy || availability === "taken" || availability === "checking"}
-          className="h-11 w-full rounded-[6px] font-semibold"
+          className="h-[54px] w-full rounded-2xl bg-[#15151a] text-[15px] font-semibold text-white shadow-none transition hover:bg-[#2a2a2e] active:scale-[0.99] disabled:opacity-60"
         >
           {busy ? "Saving…" : "Claim username"}
         </Button>
