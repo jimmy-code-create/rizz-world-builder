@@ -139,13 +139,29 @@ export async function sendRealmMessage(
   if (error) throw error;
 }
 
+/**
+ * Membership changes what the emoji picker may offer (join a realm, gain its
+ * emoji; leave it, lose them), so the cached answer is dropped here instead of
+ * waiting out its stale window.
+ */
+const EMOJI_QUERY_KEYS = [["available-emojis"], ["emoji-lookup"], ["joined-realms"], ["shared-emoji"]];
+
+async function forgetEmojiCache() {
+  const { getQueryClient } = await import("@/lib/query-client");
+  const qc = getQueryClient();
+  if (!qc) return;
+  for (const queryKey of EMOJI_QUERY_KEYS) void qc.invalidateQueries({ queryKey });
+}
+
 export async function joinRealm(realmId: string, userId: string) {
   const { error } = await supabase.from("realm_members").insert({ realm_id: realmId, user_id: userId });
   if (error && !error.message.includes("duplicate")) throw error;
+  await forgetEmojiCache();
 }
 
 export async function leaveRealm(realmId: string, userId: string) {
   await supabase.from("realm_members").delete().eq("realm_id", realmId).eq("user_id", userId);
+  await forgetEmojiCache();
 }
 
 export async function isRealmMember(realmId: string, userId: string) {
@@ -201,12 +217,14 @@ export async function createRealm(input: {
 export async function joinRealmPublic(realmId: string): Promise<"joined" | RealmRole> {
   const { data, error } = await supabase.rpc("join_realm", { _realm_id: realmId });
   if (error) throw error;
+  await forgetEmojiCache();
   return (data as string) as "joined" | RealmRole;
 }
 
 export async function leaveRealmSecure(realmId: string) {
   const { error } = await supabase.rpc("leave_realm", { _realm_id: realmId });
   if (error) throw error;
+  await forgetEmojiCache();
 }
 
 export async function createRealmInvite(input: {

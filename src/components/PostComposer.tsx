@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Send, X, Loader2, BarChart3, Globe, Lock, Plus, ImagePlus } from "lucide-react";
@@ -14,6 +14,8 @@ import { useI18n, tf } from "@/lib/i18n";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { confettiBurst } from "@/lib/confetti";
 import { GifPicker } from "@/components/GifPicker";
+import { ComposerInput, type ComposerInputHandle } from "@/components/chat/ComposerInput";
+import { useAvailableEmojis } from "@/lib/emoji-available";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const DRAFT_KEY = "rizz:post-draft";
@@ -36,7 +38,18 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // The caption is a contenteditable field so a custom emoji draws inline; the
+  // stored text is still `<:name:id>` (see ComposerInput).
+  const textareaRef = useRef<ComposerInputHandle | null>(null);
+  const availableEmoji = useAvailableEmojis();
+  const emojiUrlById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const emoji of availableEmoji.data?.private ?? []) map.set(emoji.id, emoji.url);
+    for (const realm of availableEmoji.data?.realms ?? []) {
+      for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+    }
+    return map;
+  }, [availableEmoji.data]);
   const postBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const clearImage = () => {
@@ -142,17 +155,19 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
       <div className="flex gap-3">
         <UserAvatar src={profile?.avatar_url} fallback={initial} size="md" className="shrink-0" />
         <div className="flex-1 min-w-0 relative">
-          <Textarea
+          <ComposerInput
             ref={textareaRef}
-            placeholder={t("drop_placeholder")}
             value={caption}
-            onChange={(e) => {
-              setCaption(e.target.value);
-              setCaret(e.target.selectionStart ?? e.target.value.length);
+            onChange={(next, nextCaret) => {
+              setCaption(next);
+              setCaret(nextCaret);
             }}
-            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            className="bg-transparent border-0 resize-none min-h-[60px] focus-visible:ring-0 text-base placeholder:text-muted-foreground/60 px-0"
+            onKeyUp={() => setCaret(textareaRef.current?.getCaret() ?? 0)}
+            onClick={() => setCaret(textareaRef.current?.getCaret() ?? 0)}
+            resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
+            ariaLabel={t("drop_placeholder")}
+            placeholder={t("drop_placeholder")}
+            className="min-h-[60px] border-0 px-0 text-base placeholder:text-muted-foreground/60 focus-visible:ring-0"
           />
           <MentionAutocomplete
             value={caption}
@@ -163,7 +178,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               setCaret(nc);
               requestAnimationFrame(() => {
                 const ta = textareaRef.current;
-                if (ta) { ta.focus(); ta.setSelectionRange(nc, nc); }
+                if (ta) { ta.focus(); ta.setSelection(nc); }
               });
             }}
           />
@@ -275,7 +290,23 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
               >
                 <ImagePlus className="h-5 w-5" />
               </button>
-              <GifPicker onSelect={(marker) => setCaption((current) => `${current}${current ? " " : ""}${marker}`)} />
+              <GifPicker
+                onSelect={(marker) => {
+                  const parsed = /^<(a?):([A-Za-z0-9_]+):([0-9a-fA-F-]{36})>$/.exec(marker);
+                  if (parsed) {
+                    // A custom emoji lands at the caret and shows immediately.
+                    textareaRef.current?.insertEmoji(marker, {
+                      animated: parsed[1] === "a",
+                      name: parsed[2],
+                      id: parsed[3],
+                      token: marker,
+                    });
+                    setCaption(textareaRef.current?.getValue() ?? caption);
+                    return;
+                  }
+                  setCaption((current) => `${current}${current ? " " : ""}${marker}`);
+                }}
+              />
               <button
                 type="button"
                 onClick={() => setPollOn((p) => !p)}

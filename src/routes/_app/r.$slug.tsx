@@ -1289,6 +1289,7 @@ function RealmPage() {
             name: c.name,
             topic: c.topic ?? null,
             icon_url: c.icon_url ?? null,
+            cover_url: (c as { cover_url?: string | null }).cover_url ?? null,
           }}
         />
       )}
@@ -2270,9 +2271,15 @@ function RealmPage() {
 
                               if (part.name || part.id) {
                                 if (!emojiUrl) {
+                                  // Unknown, removed, or blocked image: a muted
+                                  // chip with the shortcode. Never the uuid.
                                   return (
-                                    <span key={`${si}-${xi}`} className="font-mono text-[0.85em] text-muted-foreground">
-                                      {part.text}
+                                    <span
+                                      key={`${si}-${xi}`}
+                                      className="inline-flex max-w-[9em] items-center truncate rounded bg-white/[0.06] px-1 font-mono text-[0.85em] leading-tight text-muted-foreground"
+                                      title={part.name ? `:${part.name}:` : undefined}
+                                    >
+                                      {part.name ? `:${part.name}:` : ":emoji:"}
                                     </span>
                                   );
                                 }
@@ -2281,6 +2288,7 @@ function RealmPage() {
                                     key={`${si}-${xi}`}
                                     url={emojiUrl}
                                     shortcode={part.name}
+                                    animated={Boolean(joinedEmojiById.get(part.id ?? "")?.animated)}
                                     className={emojiClass}
                                     imageClassName="h-full w-full object-contain"
                                   />
@@ -2524,7 +2532,12 @@ function RealmPage() {
         onOpenChange={setEmojiOpen}
         realmId={c.id}
         canManage={canModerate}
-        onPick={(token) => composerRef.current?.insert(token, { space: true })}
+        onPick={(token) => {
+          // A custom emoji draws inline at the caret; a unicode glyph is text.
+          if (token.startsWith("<")) composerRef.current?.insertEmoji?.(token);
+          else composerRef.current?.insert(token, { space: true });
+          composerRef.current?.focus();
+        }}
       />
       <ReactionRoleDialog
         open={!!reactionRoleMessageId}
@@ -2585,7 +2598,7 @@ function RealmPage() {
           userId={user?.id ?? null}
           joined={joined}
           sending={sending}
-          composerBlock={composerBlock}
+          composerBlock={Boolean(composerBlock)}
           writeBlockedNote={
             myWriteBlocked
               ? `Writing is off in ${activeRoom ? `#${activeRoom.name}` : `#${c.name}`} for you. A moderator can switch it back on.`

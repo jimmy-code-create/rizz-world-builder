@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvailableEmojis } from "@/lib/emoji-available";
 import { RIZZ_REACTIONS } from "@/lib/reactions";
 
 /**
@@ -50,22 +52,57 @@ export function customReactionId(key: string): string | null {
 export const sharedEmojiKey = (realmId?: string | null) =>
   ["shared-emoji", realmId ?? "all"] as const;
 
-/** Every emoji the viewer may use, from every realm they belong to. */
-export function useJoinedEmoji(realmId?: string | null) {
-  return useQuery({
-    queryKey: sharedEmojiKey(realmId),
-    staleTime: 5 * 60_000,
-    queryFn: async (): Promise<SharedEmoji[]> => {
-      const { data, error } = await (supabase.rpc as any)("joined_realm_emoji", {
-        _realm_id: realmId ?? null,
+/**
+ * Every emoji the viewer may use, from every realm they belong to.
+ *
+ * This is a view over `/api/emojis/available`, not a second query: the picker,
+ * the composer and the realm screen all read the same cached answer, so an
+ * emoji uploaded in one place shows up everywhere and a DM (which has no realm
+ * id at all) still sees every realm's emoji. The signature is unchanged so the
+ * screens that already call it keep working.
+ */
+export function useJoinedEmoji(_realmId?: string | null) {
+  const available = useAvailableEmojis();
+
+  const data = useMemo<SharedEmoji[]>(() => {
+    const payload = available.data;
+    if (!payload) return [];
+    const rows: SharedEmoji[] = [];
+    for (const emoji of payload.private) {
+      rows.push({
+        id: emoji.id,
+        realm_id: "",
+        realm_name: "Private",
+        realm_slug: "",
+        shortcode: emoji.name,
+        url: emoji.url,
+        animated: Boolean(emoji.animated),
+        external: true,
       });
-      if (error) return [];
-      return ((data ?? []) as SharedEmoji[]).map((row) => ({
-        ...row,
-        shortcode: String(row.shortcode ?? ""),
-      }));
-    },
-  });
+    }
+    for (const realm of payload.realms) {
+      for (const emoji of realm.emojis) {
+        rows.push({
+          id: emoji.id,
+          realm_id: realm.id,
+          realm_name: realm.name,
+          realm_slug: "",
+          shortcode: emoji.name,
+          url: emoji.url,
+          animated: Boolean(emoji.animated),
+          external: true,
+        });
+      }
+    }
+    return rows;
+  }, [available.data]);
+
+  return {
+    ...available,
+    data,
+    // Marked as an array query for the surfaces that only read `.data`.
+    isLoading: available.isLoading,
+  };
 }
 
 /**
@@ -75,6 +112,11 @@ export function useJoinedEmoji(realmId?: string | null) {
 export async function lookupEmoji(ids: string[]): Promise<EmojiRow[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return [];
+  // `emoji_public` resolves by id with no realm-membership check, which is what
+  // makes an emoji sent in a DM render for the other person. It falls back to
+  // the membership-checked RPC on a database that has not run the migration.
+  const pub = await (supabase.rpc as any)("emoji_public", { _ids: unique });
+  if (!pub.error) return ((pub.data ?? []) as EmojiRow[]).map((row) => ({ ...row, realm_id: "" }));
   const { data, error } = await (supabase.rpc as any)("emoji_lookup", { _ids: unique });
   if (error) return [];
   return (data ?? []) as EmojiRow[];
@@ -105,7 +147,9 @@ export type EmojiTextSegment =
   | { kind: "emoji"; id: string; shortcode: string };
 
 /** `<:shortcode:id>` (stored) and `:shortcode:` (legacy chat), one pass. */
-const TOKEN = /<:([a-z0-9_]{2,32}):([0-9a-fA-F-]{36})>|:([a-z0-9_]{2,32}):/g;
+// `<:name:uuid>` and `<a:name:uuid>` (animated), plus the legacy bare
+// `:name:` shortcode older chat messages still carry.
+const TOKEN = /<a?:([a-z0-9_]{2,32}):([0-9a-fA-F-]{36})>|:([a-z0-9_]{2,32}):/g;
 
 /**
  * Splits any stored text into plain runs and emoji segments. `<:name:id>` always

@@ -212,11 +212,66 @@
   line-height: 1;
   text-transform: uppercase;
   color: var(--muted-foreground);
-}
-
-.emoji-section-head--sticky {
+  /* The sticky header is the only header. It needs an opaque background so a
+     row scrolling under it never shows through. */
   background: var(--background, #0b0c0e);
   border-bottom: 1px solid color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+/* ------------------------------------------------------ custom emoji cells */
+
+/* One square cell, whatever the file's aspect ratio: a tall screenshot stays
+   legible instead of shrinking to a sliver. */
+.emoji-cell--realm .emoji-media {
+  display: grid;
+  height: 34px;
+  width: 34px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.emoji-cell--realm .emoji-media > img,
+.emoji-cell--realm .emoji-media > video {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+/* ------------------------------------------------------- composer inline */
+
+/* An emoji inside the contenteditable composer. Sized in em so it tracks the
+   message font, and inline-block so the caret can sit beside it. */
+.inline-emoji {
+  display: inline-block;
+  height: 1.4em;
+  width: 1.4em;
+  max-height: 1.4em;
+  max-width: 1.4em;
+  object-fit: contain;
+  vertical-align: -0.3em;
+  margin: 0 1px;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+/* The field's placeholder. A contenteditable has no `placeholder` attribute,
+   so the empty state is drawn from the pseudo-element and the `data-placeholder`
+   value the component keeps in sync (no text, no image). */
+.composer-input {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  outline: none;
+}
+
+.composer-input[data-placeholder="true"]::before {
+  content: attr(data-placeholder);
+  color: #8c8c8c;
+  pointer-events: none;
+  user-select: none;
+  /* In flow, but only rendered while the field is empty, so it can never end
+     up in the value the message is built from. */
 }
 
 /* ------------------------------------------------------------- preview */

@@ -45,6 +45,42 @@ export async function uploadRealmEmoji(file: File, userId: string, name: string)
   return data.publicUrl;
 }
 
+/**
+ * A private emoji belongs to one account, not a realm: it is available in DMs,
+ * in every realm chat and in the feed composer, and only its owner can see it.
+ * Same bucket, same uploader-folder rule.
+ */
+export async function uploadPrivateEmoji(file: File, name: string): Promise<string> {
+  const { data: session } = await supabase.auth.getUser();
+  const userId = session.user?.id;
+  if (!userId) throw new Error("Sign in to add an emoji.");
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const path = `${userId}/private-${name}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from(EMOJI_BUCKET).upload(path, file, {
+    cacheControl: "31536000",
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  if (error) throw new Error(error.message || "Couldn't upload that image");
+  return supabase.storage.from(EMOJI_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+export async function savePrivateEmoji(input: {
+  name: string;
+  url: string;
+}): Promise<{ id: string }> {
+  const { data, error } = await (supabase.rpc as any)("save_private_emoji", {
+    _name: input.name,
+    _url: input.url,
+  });
+  if (error) throw new Error(error.message || "Couldn't add that emoji");
+  const result = data as { ok?: boolean; id?: string; error?: string } | null;
+  if (!result?.ok || !result.id) {
+    throw new Error(result?.error || "Couldn't add that emoji");
+  }
+  return { id: result.id };
+}
+
 export async function saveRealmEmoji(input: {
   realmId: string;
   name: string;
@@ -72,7 +108,9 @@ export async function deleteRealmEmoji(id: string): Promise<void> {
  */
 export type EmojiSegment = { text: string; name?: string; id?: string };
 
-const EMOJI_TOKEN = /<:([a-z0-9_]{2,32}):([0-9a-fA-F-]{36})>|:([a-z0-9_]{2,32}):/g;
+// `<:name:uuid>` and `<a:name:uuid>` (animated) are the stored forms; a bare
+// `:name:` is the legacy realm-chat form an older client may still hold.
+const EMOJI_TOKEN = /<a?:([a-z0-9_]{2,32}):([0-9a-fA-F-]{36})>|:([a-z0-9_]{2,32}):/g;
 
 export function splitEmojiSegments(body: string, names: Set<string>): EmojiSegment[] {
   if (!body.includes(":")) return [{ text: body }];

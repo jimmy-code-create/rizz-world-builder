@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type ReactNode, type RefObject } from "react";import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ComposerInput, type ComposerInputHandle } from "@/components/chat/ComposerInput";
+import type { EmojiTokenParts } from "@/lib/emoji-token";
 
 /**
  * The chat composer, in one row.
@@ -49,7 +52,8 @@ export function MessageComposer({
   disabledHint = "You can't send messages here",
   placeholder = "Message",
   maxLength,
-  textareaRef,
+  inputRef,
+  resolveEmoji,
   sending = false,
   recording = false,
   recordMs = 0,
@@ -65,7 +69,9 @@ export function MessageComposer({
   onKeyDown,
   onTextareaClick,
   onPaste,
+  onPasteFiles,
   onFocus,
+  onBlur,
 }: {
   value: string;
   /** The caret is passed along, because the mention popup keys off it. */
@@ -87,7 +93,16 @@ export function MessageComposer({
   disabledHint?: string;
   placeholder?: string;
   maxLength?: number;
-  textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  /**
+   * The field itself. It is a contenteditable div (see ComposerInput) so a
+   * custom emoji can be drawn inline instead of pasting its token as text.
+   */
+  inputRef?: RefObject<ComposerInputHandle | null>;
+  /**
+   * Draws an emoji `data-token` as a picture. The screen owns this because it
+   * may know about a just-uploaded emoji the shared list has not seen yet.
+   */
+  resolveEmoji?: (parts: EmojiTokenParts) => string | null;
   sending?: boolean;
   recording?: boolean;
   recordMs?: number;
@@ -99,15 +114,18 @@ export function MessageComposer({
   canRecord?: boolean;
   canSend?: boolean;
   allowVoice?: boolean;
-  onKeyUp?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyUp?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
   /** Runs before the composer's own Enter-to-send, for slash menus and the like. */
-  onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onTextareaClick?: (event: React.MouseEvent<HTMLTextAreaElement>) => void;
-  onPaste?: (event: ReactClipboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onTextareaClick?: () => void;
+  /** Image paste, kept exactly as it was (the screen uploads the file). */
+  onPaste?: (event: React.ClipboardEvent<Element>) => void;
+  onPasteFiles?: (files: File[]) => void;
   onFocus?: () => void;
+  onBlur?: () => void;
 }) {
-  const localRef = useRef<HTMLTextAreaElement | null>(null);
-  const field = textareaRef ?? localRef;
+  const localRef = useRef<ComposerInputHandle | null>(null);
+  const field = inputRef ?? localRef;
   const pressRef = useRef<{ x: number } | null>(null);
   const [sliding, setSliding] = useState(false);
   const hasText = value.trim().length > 0;
@@ -116,9 +134,10 @@ export function MessageComposer({
   const canSendNow = canSend ?? hasText;
 
   // Auto-grow to five lines, then scroll. `height:auto` first is what lets the
-  // box shrink again after a deletion.
+  // box shrink again after a deletion. The contenteditable measures the same
+  // way a textarea did.
   useEffect(() => {
-    const node = field.current;
+    const node = field.current?.element();
     if (!node) return;
     node.style.height = "auto";
     const next = Math.min(node.scrollHeight, MAX_INPUT_HEIGHT);
@@ -162,7 +181,7 @@ export function MessageComposer({
     onSend();
     // The keyboard must stay up after a send; the screen also refocuses, this
     // covers the browser that blurs the field when the button is pressed.
-    field.current?.focus({ preventScroll: true });
+    field.current?.focus();
   };
 
   return (
@@ -201,7 +220,7 @@ export function MessageComposer({
               onClick={(event) => {
                 event.preventDefault();
                 reply.onCancel();
-                field.current?.focus({ preventScroll: true });
+                field.current?.focus();
               }}
               aria-label="Cancel reply"
               className="grid w-10 shrink-0 place-items-center text-[#8f8f8f] transition-colors hover:text-white"
@@ -253,41 +272,31 @@ export function MessageComposer({
                 >
                   <Smile className="h-5 w-5" strokeWidth={2} />
                 </button>
-                <textarea
+                <ComposerInput
                   ref={field}
                   value={value}
+                  onChange={(next) => onChange(next, next.length)}
                   disabled={disabled}
-                  onChange={(event) =>
-                    onChange(event.target.value, event.target.selectionStart ?? event.target.value.length)
-                  }
                   onKeyUp={onKeyUp}
-                  onClick={onTextareaClick}
-                  onPaste={onPaste}
+                  onClick={() => onTextareaClick?.()}
+                  onPaste={(event) => onPaste?.(event)}
+                  onPasteFiles={onPasteFiles}
                   onFocus={onFocus}
+                  onBlur={onBlur}
+                  onEnter={submit}
+                  resolveEmoji={resolveEmoji}
                   onKeyDown={(event) => {
                     onKeyDown?.(event);
                     if (event.defaultPrevented) return;
-                    // Desktop: Enter sends, Shift+Enter breaks the line.
-                    // Phones keep Enter as a newline — the action button sends.
-                    if (
-                      event.key === "Enter" &&
-                      !event.shiftKey &&
-                      window.matchMedia("(pointer: fine)").matches
-                    ) {
-                      event.preventDefault();
-                      submit();
-                    }
+                    // Enter-to-send lives inside ComposerInput: it knows about
+                    // IME composition and phone keyboards. Slash menus still
+                    // see the key first, through the handler above.
                   }}
                   placeholder={disabled ? disabledHint : placeholder}
+                  ariaLabel={placeholder}
                   maxLength={maxLength}
-                  rows={1}
                   enterKeyHint="send"
-                  aria-label={placeholder}
-                  className={cn(
-                    "min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 pr-1 text-[16px] leading-6",
-                    "caret-primary placeholder:text-[#8c8c8c] focus:outline-none focus-visible:outline-none",
-                    disabled ? "text-[#6f6f6f]" : "text-[#f2f2f2]",
-                  )}
+                  className={disabled ? "text-[#6f6f6f]" : undefined}
                   style={{ maxHeight: MAX_INPUT_HEIGHT }}
                 />
                 <button
@@ -318,7 +327,10 @@ export function MessageComposer({
                 "disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
             >
-              <span key={canSendNow ? "send" : "idle"} className="composer-action-swap grid place-items-center">
+              <span
+                key={canSendNow ? "send" : "idle"}
+                className="composer-action-swap grid place-items-center"
+              >
                 <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
               </span>
             </button>

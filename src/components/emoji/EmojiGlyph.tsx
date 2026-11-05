@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { EmojiRow } from "@/lib/emoji-shared";
@@ -24,8 +25,12 @@ export function EmojiGlyph({
   fallbackClassName?: string;
 }) {
   const reduceMotion = useReducedMotion();
+  // A file can fail after it was resolved (deleted, blocked CDN). Keep the word
+  // and drop the picture, rather than leaving a broken box in the sentence.
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [emoji?.url]);
 
-  if (!emoji) {
+  if (!emoji || failed) {
     return (
       <span
         className={cn(
@@ -51,13 +56,14 @@ export function EmojiGlyph({
       loading="lazy"
       decoding="async"
       draggable={false}
-      className={cn("inline-block h-[1.15em] w-[1.15em] shrink-0 object-contain align-[-0.2em]", className)}
-      onError={(event) => {
-        // The image is gone: swap in the shortcode rather than a broken glyph.
-        const node = event.currentTarget;
-        node.style.display = "none";
-        node.insertAdjacentText("afterend", `:${emoji.shortcode}:`);
-      }}
+      width={20}
+      height={20}
+      // A fixed square box: a tall screenshot is contained, never a sliver.
+      className={cn(
+        "inline-block h-[1.15em] w-[1.15em] shrink-0 object-contain align-[-0.2em]",
+        className,
+      )}
+      onError={() => setFailed(true)}
     />
   );
 }

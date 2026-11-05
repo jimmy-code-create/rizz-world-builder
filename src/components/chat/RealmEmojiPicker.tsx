@@ -1,48 +1,45 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Smile, Sticker, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
+import { deleteRealmEmoji } from "@/lib/realm-emoji";
 import {
-  deleteRealmEmoji,
-  fetchRealmEmoji,
-  realmEmojiKey,
-  saveRealmEmoji,
-  uploadRealmEmoji,
-} from "@/lib/realm-emoji";
+  invalidateAvailableEmojis,
+  useAvailableEmojis,
+  useUploadEmoji,
+} from "@/lib/emoji-available";
+import { EMOJI_DATA } from "@/lib/emoji-data";
 import { toast } from "@/lib/toast";
 
 type RealmEmojiPickerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   realmId: string;
-  /** Inserts `:name:` or emoji char into the composer. */
+  /** Inserts the emoji token into the composer. */
   onPick: (token: string) => void;
   /** Moderators may add and remove emoji for the whole realm. */
   canManage: boolean;
 };
 
-const STANDARD_EMOJIS = [
-  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥹", "😊", "😇", "🙂", "🙃", "😉",
-  "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐",
-  "🤓", "😎", "🥸", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
-  "😖", "😫", "😩", "🥺", "😢", "😭", "😮‍💨", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵",
-  "🥶", "😱", "😨", "😰", "😥", "😓", "🫣", "🤗", "🫡", "🤔", "🫢", "🤭", "🤫", "🤥",
-  "😶", "😐", "😑", "😬", "🫠", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤",
-  "😪", "😵", "😵‍💫", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈",
-  "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖", "🎃",
-  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕",
-  "💞", "💓", "💗", "💖", "💘", "💝", "💟", "🔥", "✨", "🌟", "💫", "💥", "💯", "💢",
-  "👍", "👎", "👊", "✊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💪",
-  "👑", "💎", "🎉", "🎊", "🎈", "🎁", "🏆", "🥇", "🥈", "🥉", "🍕", "🍔", "🍟", "🍻"
-];
-
 /**
- * The realm's emoji picker with comfortable medium-sized emojis and custom realm stickers.
+ * The realm's emoji sheet: search the unicode set or manage this realm's custom
+ * emoji.
+ *
+ * Uploads show the file immediately (the optimistic row is written before the
+ * request leaves), and a failure removes that row and prints the server's own
+ * message. The list itself is the shared `/api/emojis/available` cache, so a
+ * new emoji is in every picker — DM included — without a reload.
  */
-export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManage }: RealmEmojiPickerProps) {
+export function RealmEmojiPicker({
+  open,
+  onOpenChange,
+  realmId,
+  onPick,
+  canManage,
+}: RealmEmojiPickerProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -51,17 +48,18 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const emoji = useQuery({
-    queryKey: realmEmojiKey(realmId),
-    enabled: open && !!realmId,
-    queryFn: () => fetchRealmEmoji(realmId),
-  });
+  const available = useAvailableEmojis();
+  const upload = useUploadEmoji();
+
+  const realmSection = available.data?.realms.find((realm) => realm.id === realmId);
+  const rows = realmSection?.emojis ?? [];
 
   useEffect(() => {
-    if (!open) { setName(""); setAdding(false); }
+    if (!open) {
+      setName("");
+      setAdding(false);
+    }
   }, [open]);
-
-  const rows = emoji.data ?? [];
 
   const addFrom = async (file: File) => {
     const clean = name.trim().toLowerCase();
@@ -69,27 +67,45 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
       toast.error("Names use a-z, 0-9 and _ (2 to 32 characters)");
       return;
     }
-    if (!user) return;
-    setBusy(true);
-    try {
-      const url = await uploadRealmEmoji(file, user.id, clean);
-      await saveRealmEmoji({ realmId, name: clean, url });
-      toast.success(`:${clean}: added`);
-      setName("");
-      setAdding(false);
-      if (fileRef.current) fileRef.current.value = "";
-      await qc.invalidateQueries({ queryKey: realmEmojiKey(realmId) });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't add that emoji");
-    } finally {
-      setBusy(false);
+    if (!/^image\/(png|jpe?g|gif|webp)$/.test(file.type)) {
+      toast.error("Emoji must be a PNG, JPG, GIF or WebP image.");
+      return;
     }
+    if (file.size > 256 * 1024) {
+      toast.error("That image is larger than 256 KB — shrink it and try again.");
+      return;
+    }
+    if (!user) return;
+
+    setBusy(true);
+    setName("");
+    setAdding(false);
+    upload.mutate(
+      {
+        realmId,
+        file,
+        name: clean,
+        animated: /^image\/(gif|webp)$/.test(file.type),
+      },
+      {
+        onSuccess: () => toast.success(`:${clean}: added`),
+        onError: (error) => {
+          // The optimistic tile is already gone (the mutation's onError rolls it
+          // back); the toast carries the server's own reason.
+          toast.error(error instanceof Error ? error.message : "Couldn't add that emoji");
+        },
+        onSettled: () => {
+          setBusy(false);
+          if (fileRef.current) fileRef.current.value = "";
+        },
+      },
+    );
   };
 
   const remove = async (id: string, emojiName: string) => {
     try {
       await deleteRealmEmoji(id);
-      await qc.invalidateQueries({ queryKey: realmEmojiKey(realmId) });
+      invalidateAvailableEmojis(qc);
       toast.success(`:${emojiName}: removed`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't remove that emoji");
@@ -100,19 +116,21 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="glass-strong max-h-[72dvh] rounded-t-3xl border-white/10 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:max-w-md sm:mx-auto"
+        className="glass-strong max-h-[72dvh] rounded-t-3xl border-white/10 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:mx-auto sm:max-w-md"
       >
         <SheetHeader className="px-1 text-left">
           <SheetTitle className="flex items-center justify-between font-display text-base">
             <span className="flex items-center gap-2">
               <Smile className="h-4 w-4 text-primary" /> Emojis
             </span>
-            <div className="flex gap-1 rounded-xl bg-white/[0.06] p-1 border border-white/10">
+            <div className="flex gap-1 rounded-xl border border-white/10 bg-white/[0.06] p-1">
               <button
                 type="button"
                 onClick={() => setTab("standard")}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                  tab === "standard" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-white"
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+                  tab === "standard"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-white"
                 }`}
               >
                 Standard
@@ -120,8 +138,10 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
               <button
                 type="button"
                 onClick={() => setTab("custom")}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-                  tab === "custom" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-white"
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+                  tab === "custom"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-white"
                 }`}
               >
                 <Sticker className="h-3 w-3" /> Custom ({rows.length})
@@ -131,16 +151,19 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
         </SheetHeader>
 
         {tab === "standard" && (
-          <div className="mt-3 grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-[50dvh] overflow-y-auto p-1">
-            {STANDARD_EMOJIS.map((char) => (
+          <div className="mt-3 grid max-h-[50dvh] grid-cols-6 gap-2 overflow-y-auto p-1 sm:grid-cols-8">
+            {EMOJI_DATA.map((entry) => (
               <button
-                key={char}
+                key={entry.char}
                 type="button"
-                onClick={() => { onPick(char); onOpenChange(false); }}
-                className="grid h-12 w-12 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-2xl transition-transform hover:scale-115 active:scale-95 hover:bg-white/10"
-                aria-label={`Emoji ${char}`}
+                onClick={() => {
+                  onPick(entry.char);
+                  onOpenChange(false);
+                }}
+                className="grid h-12 w-12 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-2xl transition-transform hover:scale-105 hover:bg-white/10 active:scale-95"
+                aria-label={entry.name}
               >
-                <span className="leading-none">{char}</span>
+                <span className="leading-none">{entry.char}</span>
               </button>
             ))}
           </div>
@@ -148,40 +171,71 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
 
         {tab === "custom" && (
           <div className="mt-3 space-y-3">
-            {emoji.isLoading && (
+            {available.isLoading && (
               <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading…
               </p>
             )}
-            {!emoji.isLoading && rows.length === 0 && (
+            {!available.isLoading && rows.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                {canManage ? "No custom realm emoji yet — add the first one below." : "This realm has no custom emoji yet."}
+                {canManage
+                  ? "No custom realm emoji yet — add the first one below."
+                  : "This realm has no custom emoji yet."}
               </p>
             )}
 
-            <div className="flex flex-wrap gap-2.5 max-h-[42dvh] overflow-y-auto p-1">
-              {rows.map((entry) => (
-                <span key={entry.id} className="group relative">
-                  <button
-                    type="button"
-                    onClick={() => { onPick(`:${entry.name}:`); onOpenChange(false); }}
-                    className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all hover:bg-white/10 hover:scale-105"
-                    title={`:${entry.name}:`}
-                  >
-                    <img src={entry.url} alt={`:${entry.name}:`} loading="lazy" className="h-10 w-10 object-contain" />
-                  </button>
-                  {canManage && (
+            <div className="flex max-h-[42dvh] flex-wrap gap-2.5 overflow-y-auto p-1">
+              {rows.map((entry) => {
+                const pending = entry.id.startsWith("pending-");
+                return (
+                  <span key={entry.id} className="group relative">
                     <button
                       type="button"
-                      onClick={() => void remove(entry.id, entry.name)}
-                      aria-label={`Remove :${entry.name}:`}
-                      className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 place-items-center rounded-full border border-white/10 bg-background text-destructive group-hover:grid"
+                      onClick={() => {
+                        if (pending) {
+                          toast.info("That emoji is still uploading.");
+                          return;
+                        }
+                        onPick(`<:${entry.name}:${entry.id}>`);
+                        onOpenChange(false);
+                      }}
+                      className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all hover:scale-105 hover:bg-white/10"
+                      title={`:${entry.name}:`}
+                      aria-label={`:${entry.name}:`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      {/* Square cell, object-fit: contain: a tall screenshot
+                          stays readable instead of shrinking to a sliver. */}
+                      <img
+                        src={entry.url}
+                        alt={`:${entry.name}:`}
+                        loading="lazy"
+                        decoding="async"
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 object-contain"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                      {pending ? (
+                        <span className="absolute inset-0 grid place-items-center bg-black/40 text-[10px] font-semibold">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </span>
+                      ) : null}
                     </button>
-                  )}
-                </span>
-              ))}
+                    {canManage && !pending && (
+                      <button
+                        type="button"
+                        onClick={() => void remove(entry.id, entry.name)}
+                        aria-label={`Remove :${entry.name}:`}
+                        className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 place-items-center rounded-full border border-white/10 bg-background text-destructive group-hover:grid"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
             </div>
 
             {canManage && !adding && (
@@ -200,7 +254,9 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
                 <div className="flex gap-2">
                   <Input
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) =>
+                      setName(event.target.value.replace(/[^A-Za-z0-9_]/g, "").toLowerCase())
+                    }
                     placeholder="name (a-z, 0-9, _)"
                     maxLength={32}
                     className="glass border-white/10"
@@ -218,14 +274,14 @@ export function RealmEmojiPicker({ open, onOpenChange, realmId, onPick, canManag
                   <Button
                     size="sm"
                     disabled={busy}
-                    className="bg-primary text-primary-foreground border-0 shadow-md"
+                    className="border-0 bg-primary text-primary-foreground shadow-md"
                     onClick={() => fileRef.current?.click()}
                   >
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Choose image"}
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  PNG, WebP, JPG or GIF up to 3 MB. The name is what people type between colons.
+                  PNG, JPG, GIF or WebP, up to 256 KB. The name is what people see between colons.
                 </p>
               </div>
             )}
