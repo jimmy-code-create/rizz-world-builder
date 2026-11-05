@@ -668,7 +668,7 @@ export function LiveAudienceDock({
               onChange={(event) => setNote(event.target.value.slice(0, 140))}
               rows={3}
               placeholder="I’ve got a hot take / a question / a cat…"
-              className="composer-input mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[12px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[12px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground">
               <span>The host can see who asked and why.</span>

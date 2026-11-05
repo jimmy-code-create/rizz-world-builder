@@ -44,6 +44,8 @@ const postComposer = read("src/components/PostComposer.tsx");
 const dm = read("src/routes/_app/dm.$userId.tsx");
 const group = read("src/routes/_app/g.$id.tsx");
 const css = read("src/components/emoji/picker.css");
+const stylesCss = read("src/styles.css");
+const fieldCss = read("src/components/chat/composer-input.css");
 const migration = read("supabase/migrations/20261119000000_emoji_available_and_index.sql");
 
 await check("the token regex is the documented one, in both directions", () => {
@@ -68,8 +70,8 @@ await check("an emoji in the field is an img[data-token] at 1.4em", () => {
   assert.match(input, /image\.contentEditable = "false"/);
   assert.match(input, /image\.draggable = false/);
   assert.match(input, /className = "inline-emoji"/);
-  assert.match(css, /\.inline-emoji \{[\s\S]*?height: 1\.4em/);
-  assert.match(css, /vertical-align: -0\.3em/);
+  assert.match(fieldCss, /\.inline-emoji \{[\s\S]*?height: 1\.4em/);
+  assert.match(fieldCss, /vertical-align: -0\.3em/);
 });
 
 await check("getValue walks text, IMG, BR and Android's DIVs", () => {
@@ -177,6 +179,29 @@ await check("an upload shows locally, then is replaced by the server row", () =>
   assert.match(available, /removeOptimisticEmoji\(qc, context\.pendingId\)/);
   assert.match(available, /invalidateAvailableEmojis/);
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.save_private_emoji/);
+});
+
+await check("the field draws no inner box of its own (feed + DM)", () => {
+  // The rounded composer owns the border and the focus ring.
+  assert.match(fieldCss, /\[data-composer-input\]\.composer-input:focus-visible[\s\S]*?outline: none/);
+  assert.match(fieldCss, /\[data-composer-input\]\.composer-input:focus-visible[\s\S]*?box-shadow: none/);
+  assert.match(fieldCss, /\[data-composer-input\]\.composer-input:focus-visible[\s\S]*?background: transparent/);
+  // The old rule painted a lime ring on the field itself; it must stay neutral.
+  assert.match(
+    stylesCss,
+    /\[data-composer-input\]\.composer-input:focus-visible \{\s*\n\s*outline: none;\s*\n\s*border: 0;\s*\n\s*box-shadow: none;\s*\n\s*background: transparent;/,
+  );
+  assert.ok(!/composer-input:focus-visible \{[^}]*brand-signal/.test(stylesCss), "the lime ring is gone");
+});
+
+await check("the placeholder reads the text attribute, gated by the empty state", () => {
+  // data-empty is the state, data-placeholder is the text: never the same attr.
+  assert.match(fieldCss, /\[data-empty="true"\]::before/);
+  assert.match(fieldCss, /content: attr\(data-placeholder\)/);
+  assert.ok(!/attr\(data-empty\)/.test(fieldCss), "the placeholder must not print the state");
+  assert.match(input, /const EMPTY_ATTR = "data-empty"/);
+  assert.match(input, /setAttribute\(EMPTY_ATTR, isComposerEmpty\(node\) \? "true" : "false"\)/);
+  assert.ok(!/setAttribute\("data-placeholder"/.test(input), "the text attribute is never overwritten");
 });
 
 await check("the suite runs this file", () => {

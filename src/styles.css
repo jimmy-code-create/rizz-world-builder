@@ -1078,13 +1078,15 @@
   50% { opacity: 0.9; }
 }
 
-/* Composer inputs: a calm accent ring instead of the pink browser outline. */
-.composer-input:focus-visible {
+/* Composer inputs draw nothing of their own: the rounded composer around the
+   field owns the border and the focus highlight (see chat/composer-input.css).
+   This rule used to paint a lime ring + dark fill on the field itself, which on
+   a borderless editable div reads as a stray green box inside the composer. */
+[data-composer-input].composer-input:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--brand-signal) 45%, transparent);
-  box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 4px color-mix(in srgb, var(--brand-signal) 60%, transparent);
+  border: 0;
+  box-shadow: none;
+  background: transparent;
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-media-skeleton { animation: none; }

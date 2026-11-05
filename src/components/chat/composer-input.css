@@ -1,0 +1,59 @@
+/* The editable message field (see ComposerInput.tsx).
+ *
+ * Loaded by the component itself, so the rules are present on every screen that
+ * has a composer (DM, group, realm, feed) whether or not an emoji picker has
+ * been opened on that page.
+ *
+ * Two contracts:
+ *  1. The editable area is invisible. The rounded composer around it owns the
+ *     border and the focus highlight; the field itself draws nothing.
+ *  2. The placeholder is drawn from `data-placeholder` (the text) and only while
+ *     `data-empty="true"`. The two attributes must never be the same one.
+ */
+
+/* Scoped to the field itself: `data-composer-input` is only ever set by
+   ComposerInput, so a plain <textarea> that reuses the `composer-input` class
+   keeps its own border. */
+[data-composer-input].composer-input,
+[data-composer-input].composer-input:hover,
+[data-composer-input].composer-input:focus,
+[data-composer-input].composer-input:focus-visible,
+[data-composer-input].composer-input:focus:focus-visible,
+[data-composer-input].composer-input:active {
+  outline: none;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-composer-input].composer-input {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  outline: none;
+}
+
+[data-composer-input].composer-input[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #8c8c8c;
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* An emoji drawn inside the field. Sized in em so it tracks the text size. */
+.inline-emoji {
+  display: inline-block;
+  height: 1.4em;
+  width: 1.4em;
+  max-height: 1.4em;
+  max-width: 1.4em;
+  object-fit: contain;
+  vertical-align: -0.3em;
+  margin: 0 1px;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
