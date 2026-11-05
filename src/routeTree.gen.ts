@@ -65,11 +65,13 @@ import { Route as AppSettingsVoiceRouteImport } from './routes/_app/settings/voi
 import { Route as AppTagTagRouteImport } from './routes/_app/tag.$tag'
 import { Route as AppUUsernameRouteImport } from './routes/_app/u.$username'
 import { Route as ApiBotCommandRouteImport } from './routes/api.bot.command'
+import { Route as ApiEmojisAvailableRouteImport } from './routes/api.emojis.available'
 import { Route as ApiLinkPreviewImageRouteImport } from './routes/api.link-preview.image'
 import { Route as ApiPurifyCheckoutRouteImport } from './routes/api.purify.checkout'
 import { Route as ApiPurifyWebhookRouteImport } from './routes/api.purify.webhook'
 import { Route as AppRSlugSettingsRouteImport } from './routes/_app/r.$slug_.settings'
 import { Route as ApiBotWebhookBotIdSecretRouteImport } from './routes/api.bot-webhook.$botId.$secret'
+import { Route as ApiEmojisIdImageRouteImport } from './routes/api.emojis.$id.image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -351,6 +353,11 @@ const ApiBotCommandRoute = ApiBotCommandRouteImport.update({
   path: '/command',
   getParentRoute: () => ApiBotRoute,
 } as any)
+const ApiEmojisAvailableRoute = ApiEmojisAvailableRouteImport.update({
+  id: '/api/emojis/available',
+  path: '/api/emojis/available',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLinkPreviewImageRoute = ApiLinkPreviewImageRouteImport.update({
   id: '/image',
   path: '/image',
@@ -377,6 +384,11 @@ const ApiBotWebhookBotIdSecretRoute =
     path: '/api/bot-webhook/$botId/$secret',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiEmojisIdImageRoute = ApiEmojisIdImageRouteImport.update({
+  id: '/api/emojis/$id/image',
+  path: '/api/emojis/$id/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -432,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
+  '/api/emojis/available': typeof ApiEmojisAvailableRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
   '/api/purify/webhook': typeof ApiPurifyWebhookRoute
@@ -439,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
   '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
+  '/api/emojis/$id/image': typeof ApiEmojisIdImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -493,6 +507,7 @@ export interface FileRoutesByTo {
   '/tag/$tag': typeof AppTagTagRoute
   '/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
+  '/api/emojis/available': typeof ApiEmojisAvailableRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
   '/api/purify/webhook': typeof ApiPurifyWebhookRoute
@@ -500,6 +515,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsIndexRoute
   '/r/$slug/settings': typeof AppRSlugSettingsRoute
   '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
+  '/api/emojis/$id/image': typeof ApiEmojisIdImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -557,6 +573,7 @@ export interface FileRoutesById {
   '/_app/tag/$tag': typeof AppTagTagRoute
   '/_app/u/$username': typeof AppUUsernameRoute
   '/api/bot/command': typeof ApiBotCommandRoute
+  '/api/emojis/available': typeof ApiEmojisAvailableRoute
   '/api/link-preview/image': typeof ApiLinkPreviewImageRoute
   '/api/purify/checkout': typeof ApiPurifyCheckoutRoute
   '/api/purify/webhook': typeof ApiPurifyWebhookRoute
@@ -564,6 +581,7 @@ export interface FileRoutesById {
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/r/$slug_/settings': typeof AppRSlugSettingsRoute
   '/api/bot-webhook/$botId/$secret': typeof ApiBotWebhookBotIdSecretRoute
+  '/api/emojis/$id/image': typeof ApiEmojisIdImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -621,6 +639,7 @@ export interface FileRouteTypes {
     | '/tag/$tag'
     | '/u/$username'
     | '/api/bot/command'
+    | '/api/emojis/available'
     | '/api/link-preview/image'
     | '/api/purify/checkout'
     | '/api/purify/webhook'
@@ -628,6 +647,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/r/$slug/settings'
     | '/api/bot-webhook/$botId/$secret'
+    | '/api/emojis/$id/image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -682,6 +702,7 @@ export interface FileRouteTypes {
     | '/tag/$tag'
     | '/u/$username'
     | '/api/bot/command'
+    | '/api/emojis/available'
     | '/api/link-preview/image'
     | '/api/purify/checkout'
     | '/api/purify/webhook'
@@ -689,6 +710,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/r/$slug/settings'
     | '/api/bot-webhook/$botId/$secret'
+    | '/api/emojis/$id/image'
   id:
     | '__root__'
     | '/'
@@ -745,6 +767,7 @@ export interface FileRouteTypes {
     | '/_app/tag/$tag'
     | '/_app/u/$username'
     | '/api/bot/command'
+    | '/api/emojis/available'
     | '/api/link-preview/image'
     | '/api/purify/checkout'
     | '/api/purify/webhook'
@@ -752,6 +775,7 @@ export interface FileRouteTypes {
     | '/_app/settings/'
     | '/_app/r/$slug_/settings'
     | '/api/bot-webhook/$botId/$secret'
+    | '/api/emojis/$id/image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -773,9 +797,11 @@ export interface RootRouteChildren {
   EmbedDrawPartyRoute: typeof EmbedDrawPartyRoute
   JoinRealmCodeRoute: typeof JoinRealmCodeRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiEmojisAvailableRoute: typeof ApiEmojisAvailableRoute
   ApiPurifyCheckoutRoute: typeof ApiPurifyCheckoutRoute
   ApiPurifyWebhookRoute: typeof ApiPurifyWebhookRoute
   ApiBotWebhookBotIdSecretRoute: typeof ApiBotWebhookBotIdSecretRoute
+  ApiEmojisIdImageRoute: typeof ApiEmojisIdImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1172,6 +1198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBotCommandRouteImport
       parentRoute: typeof ApiBotRoute
     }
+    '/api/emojis/available': {
+      id: '/api/emojis/available'
+      path: '/api/emojis/available'
+      fullPath: '/api/emojis/available'
+      preLoaderRoute: typeof ApiEmojisAvailableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/link-preview/image': {
       id: '/api/link-preview/image'
       path: '/image'
@@ -1205,6 +1238,13 @@ declare module '@tanstack/react-router' {
       path: '/api/bot-webhook/$botId/$secret'
       fullPath: '/api/bot-webhook/$botId/$secret'
       preLoaderRoute: typeof ApiBotWebhookBotIdSecretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/emojis/$id/image': {
+      id: '/api/emojis/$id/image'
+      path: '/api/emojis/$id/image'
+      fullPath: '/api/emojis/$id/image'
+      preLoaderRoute: typeof ApiEmojisIdImageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1345,9 +1385,11 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedDrawPartyRoute: EmbedDrawPartyRoute,
   JoinRealmCodeRoute: JoinRealmCodeRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiEmojisAvailableRoute: ApiEmojisAvailableRoute,
   ApiPurifyCheckoutRoute: ApiPurifyCheckoutRoute,
   ApiPurifyWebhookRoute: ApiPurifyWebhookRoute,
   ApiBotWebhookBotIdSecretRoute: ApiBotWebhookBotIdSecretRoute,
+  ApiEmojisIdImageRoute: ApiEmojisIdImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

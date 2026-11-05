@@ -9,14 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type UIEvent as ReactUIEvent,
 } from "react";
-import {
-  Image as ImageIcon,
-  Loader2,
-  Search,
-  Smile,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Image as ImageIcon, Loader2, Search, Smile, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Link } from "@tanstack/react-router";
@@ -139,8 +132,15 @@ export function GifPicker({
   onOpenChange: setControlledOpen,
   hideTrigger = false,
   initialTab = "emoji",
+  keepOpenOnPick = false,
 }: {
   onSelect: (marker: string) => void;
+  /**
+   * Chat composers insert at the caret and want the sheet to stay up, the way
+   * Discord does, so several emoji can be added without reopening it. A post
+   * composer that appends to its text keeps the old close-on-pick behaviour.
+   */
+  keepOpenOnPick?: boolean;
   realmId?: string;
   realmName?: string;
   onCustomEmoji?: () => void;
@@ -155,7 +155,7 @@ export function GifPicker({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? setControlledOpen ?? (() => {}) : setInternalOpen;
+  const setOpen = isControlled ? (setControlledOpen ?? (() => {})) : setInternalOpen;
 
   const [tab, setTab] = useState<PickerTab>(initialTab);
   const [queries, setQueries] = useState<Record<PickerTab, string>>({
@@ -164,14 +164,17 @@ export function GifPicker({
     stickers: "",
   });
   const query = queries[tab];
-  const setQuery = (next: string) =>
-    setQueries((current) => ({ ...current, [tab]: next }));
+  const setQuery = (next: string) => setQueries((current) => ({ ...current, [tab]: next }));
 
   const [snap, setSnap] = useState<SnapPoint>("full");
-  const [dragY, setDragY] = useState(0);
+  // The drag offset is written straight to the sheet element instead of state:
+  // a React render per pointermove is what made the sheet feel sticky on a
+  // phone. Only the start and the end of a drag touch React.
   const [dragging, setDragging] = useState(false);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ startY: number; startSnap: SnapPoint } | null>(null);
   const dragYRef = useRef(0);
+  const dragFrame = useRef(0);
 
   const [gifResults, setGifResults] = useState<GifResult[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
@@ -189,15 +192,18 @@ export function GifPicker({
     stickers: 0,
   });
 
-  const tabIndex = Math.max(0, TABS.findIndex((item) => item.id === tab));
+  const tabIndex = Math.max(
+    0,
+    TABS.findIndex((item) => item.id === tab),
+  );
 
   useEffect(() => {
     if (!open) return;
     setTab(initialTab);
     setSnap("full");
-    setDragY(0);
     dragYRef.current = 0;
     setDragging(false);
+    if (sheetRef.current) sheetRef.current.style.transform = "";
   }, [initialTab, open]);
 
   useEffect(() => {
@@ -262,12 +268,9 @@ export function GifPicker({
     Math.ceil((listView.top + listView.height) / STICKER_ROW_HEIGHT) + STICKER_OVERSCAN,
   );
 
-  const saveScroll = useCallback(
-    (nextTab: PickerTab, value: number) => {
-      scrollPositions.current[nextTab] = value;
-    },
-    [],
-  );
+  const saveScroll = useCallback((nextTab: PickerTab, value: number) => {
+    scrollPositions.current[nextTab] = value;
+  }, []);
 
   const handleListScroll = useCallback(
     (event: ReactUIEvent<HTMLDivElement>) => {
@@ -308,7 +311,7 @@ export function GifPicker({
 
   const closeAnd = (marker: string) => {
     onSelect(marker);
-    setOpen(false);
+    if (!keepOpenOnPick) setOpen(false);
   };
 
   const choosePack = (pack: StickerPack) => {
@@ -321,13 +324,23 @@ export function GifPicker({
     preloadStickerPack(pack);
   };
 
+  const paintDrag = (offset: number) => {
+    const element = sheetRef.current;
+    if (!element) return;
+    // Trailing-edge frame throttle: at most one style write per painted frame.
+    if (dragFrame.current) return;
+    dragFrame.current = window.requestAnimationFrame(() => {
+      dragFrame.current = 0;
+      element.style.transform = offset > 0 ? `translateY(${offset}px)` : "";
+    });
+  };
+
   const onHandlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { startY: event.clientY, startSnap: snap };
     dragYRef.current = 0;
-    setDragY(0);
     setDragging(true);
   };
 
@@ -335,7 +348,7 @@ export function GifPicker({
     if (!dragRef.current) return;
     const next = Math.max(0, event.clientY - dragRef.current.startY);
     dragYRef.current = next;
-    setDragY(next);
+    paintDrag(next);
   };
 
   const finishDrag = () => {
@@ -344,8 +357,16 @@ export function GifPicker({
     dragRef.current = null;
     setDragging(false);
     const distance = dragYRef.current;
+    const element = sheetRef.current;
+    if (dragFrame.current) {
+      window.cancelAnimationFrame(dragFrame.current);
+      dragFrame.current = 0;
+    }
+    if (element) {
+      // Hand the position back to CSS: the snap change animates from here.
+      element.style.transform = "";
+    }
     dragYRef.current = 0;
-    setDragY(0);
 
     if (distance > 140) {
       if (started.startSnap === "full") setSnap("half");
@@ -357,8 +378,7 @@ export function GifPicker({
 
   const sheetStyle: CSSProperties = {
     height: snap === "full" ? "min(86dvh, 720px)" : "min(52dvh, 450px)",
-    transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-    transition: dragging ? "none" : "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)",
+    transition: dragging ? "none" : "height 180ms cubic-bezier(0.22, 1, 0.36, 1)",
   };
 
   return (
@@ -366,9 +386,9 @@ export function GifPicker({
       open={open}
       onOpenChange={(next) => {
         if (!next) {
-          setDragY(0);
           dragYRef.current = 0;
           setDragging(false);
+          if (sheetRef.current) sheetRef.current.style.transform = "";
         }
         setOpen(next);
       }}
@@ -388,6 +408,7 @@ export function GifPicker({
       )}
 
       <SheetContent
+        ref={sheetRef}
         side="bottom"
         hideClose
         style={sheetStyle}
@@ -474,10 +495,7 @@ export function GifPicker({
           </div>
         </div>
 
-        <div
-          key={tab}
-          className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden"
-        >
+        <div key={tab} className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden">
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <RizzEmojiPanel
@@ -580,29 +598,27 @@ export function GifPicker({
               >
                 {filteredStickers.length ? (
                   <div className="relative" style={{ height: stickerTotal }}>
-                    {stickerRows
-                      .slice(stickerStart, stickerEnd + 1)
-                      .map((row, rowOffset) => {
-                        const rowIndex = stickerStart + rowOffset;
-                        return (
-                          <div
-                            key={`${selectedPack}:${rowIndex}`}
-                            className="absolute inset-x-0 top-0 grid grid-cols-4 gap-2"
-                            style={{
-                              height: STICKER_ROW_HEIGHT,
-                              transform: `translateY(${rowIndex * STICKER_ROW_HEIGHT}px)`,
-                            }}
-                          >
-                            {row.map((sticker) => (
-                              <StickerTile
-                                key={sticker.id}
-                                sticker={sticker}
-                                onPick={() => closeAnd(STICKER_MARKER(sticker.src))}
-                              />
-                            ))}
-                          </div>
-                        );
-                      })}
+                    {stickerRows.slice(stickerStart, stickerEnd + 1).map((row, rowOffset) => {
+                      const rowIndex = stickerStart + rowOffset;
+                      return (
+                        <div
+                          key={`${selectedPack}:${rowIndex}`}
+                          className="absolute inset-x-0 top-0 grid grid-cols-4 gap-2"
+                          style={{
+                            height: STICKER_ROW_HEIGHT,
+                            transform: `translateY(${rowIndex * STICKER_ROW_HEIGHT}px)`,
+                          }}
+                        >
+                          {row.map((sticker) => (
+                            <StickerTile
+                              key={sticker.id}
+                              sticker={sticker}
+                              onPick={() => closeAnd(STICKER_MARKER(sticker.src))}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="px-6 py-12 text-center text-sm text-muted-foreground">

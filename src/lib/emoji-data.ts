@@ -720,8 +720,11 @@ export const UNICODE_EMOJI: readonly string[] = EMOJI_DATA.map(
 export const EMOJI_BY_NAME: Record<string, readonly EmojiEntry[]> = EMOJI_DATA.reduce(
   (acc, entry) => {
     const key = entry.name.toLowerCase();
-    acc[key] = acc[key] ?? [];
-    acc[key]!.push(entry);
+    // The record's values are readonly (callers only iterate them); the arrays
+    // being built here are the mutable working copy.
+    const bucket = (acc[key] ??= [] as EmojiEntry[]) as EmojiEntry[];
+    bucket.push(entry);
+    acc[key] = bucket;
     return acc;
   },
   {} as Record<string, readonly EmojiEntry[]>,

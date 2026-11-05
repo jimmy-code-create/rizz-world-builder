@@ -62,9 +62,10 @@ export function RealmEmojiImage({
   }, [visible, failed, url]);
 
   return (
-    <span ref={rootRef} className={cn("inline-grid place-items-center", className)}>
+    <span ref={rootRef} className={cn("emoji-media inline-grid place-items-center", className)}>
       {failed ? (
-        <span className="font-mono text-[0.72em] text-muted-foreground">
+        // A muted chip with the shortcode: never the raw token or a uuid.
+        <span className="max-w-full truncate rounded bg-white/[0.06] px-1 font-mono text-[0.72em] leading-tight text-muted-foreground">
           :{shortcode ?? "emoji"}:
         </span>
       ) : video ? (
@@ -83,11 +84,14 @@ export function RealmEmojiImage({
       ) : (
         <img
           src={url}
-          alt=""
-          aria-hidden="true"
+          alt={shortcode ? `:${shortcode}:` : ""}
+          aria-hidden={shortcode ? undefined : "true"}
+          title={shortcode ? `:${shortcode}:` : undefined}
           loading="lazy"
           decoding="async"
           draggable={false}
+          width={32}
+          height={32}
           onError={() => setFailed(true)}
           className={cn("h-full w-full object-contain", imageClassName)}
         />

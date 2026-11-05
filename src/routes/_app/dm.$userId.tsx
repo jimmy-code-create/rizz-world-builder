@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3 } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
+import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
+import { useAvailableEmojis } from "@/lib/emoji-available";
 import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
 import { PollDialog } from "@/components/chat/PollDialog";
 import { ChatPollCard } from "@/components/chat/PollCard";
@@ -114,7 +116,19 @@ function DMPage() {
   const sendingMessage = sendingCount > 0;
   const [gifOpen, setGifOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
-  const composerRef = useRef<HTMLTextAreaElement>(null);
+  // The field is a contenteditable div (ComposerInput), so a custom emoji draws
+  // as a picture inline instead of pasting its `<:name:id>` token as text.
+  const composerRef = useRef<ComposerInputHandle>(null);
+  // Inline emoji images: the same cached list the picker reads.
+  const availableEmoji = useAvailableEmojis();
+  const emojiUrlById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const emoji of availableEmoji.data?.private ?? []) map.set(emoji.id, emoji.url);
+    for (const realm of availableEmoji.data?.realms ?? []) {
+      for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+    }
+    return map;
+  }, [availableEmoji.data]);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
@@ -131,7 +145,7 @@ function DMPage() {
   // bar never ends up behind the keyboard on a phone.
   useEffect(() => {
     if (!replyTo) return;
-    composerRef.current?.focus({ preventScroll: true });
+    composerRef.current?.focus();
     scrollChatToLatest(scrollRef.current);
   }, [replyTo]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
@@ -210,13 +224,6 @@ function DMPage() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [body, draftKey, draftReady]);
-
-  useEffect(() => {
-    const composer = composerRef.current;
-    if (!composer) return;
-    composer.style.height = "auto";
-    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
-  }, [body]);
 
   // Live elapsed timer while recording
   useEffect(() => {
@@ -558,6 +565,8 @@ function DMPage() {
       deleted_at: null,
       delivery_status: "sending",
       attachment_url: pendingPreview,
+      // No rich card on an optimistic row; the server row replaces it.
+      card: null,
     };
     if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);
@@ -612,7 +621,7 @@ function DMPage() {
         duration_ms: clip.durationMs,
       });
       if (error) throw new Error(error.message);
-      qc.invalidateQueries({ queryKey: ["dm", user.id, userId] });
+      qc.invalidateQueries({ queryKey: ["dm", user!.id, userId] });
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't send that voice note");
     } finally {
@@ -1352,7 +1361,8 @@ function DMPage() {
         onStickers={() => setCatOpen(true)}
         placeholder="Message"
         maxLength={MAX_MESSAGE_LENGTH}
-        textareaRef={composerRef}
+        inputRef={composerRef}
+        resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
         disabled={Boolean(blockStatus.data)}
         disabledHint="You can't message this person"
         sending={sendingVoice}
@@ -1362,9 +1372,9 @@ function DMPage() {
         onRecordStart={() => void beginVoiceNote()}
         onRecordEnd={() => void finishVoiceNote(false)}
         onRecordCancel={() => void finishVoiceNote(true)}
-        onKeyUp={(event) => setCaret((event.target as HTMLTextAreaElement).selectionStart ?? 0)}
-        onTextareaClick={(event) => {
-          setCaret((event.target as HTMLTextAreaElement).selectionStart ?? 0);
+        onKeyUp={() => setCaret(composerRef.current?.getCaret() ?? 0)}
+        onTextareaClick={() => {
+          setCaret(composerRef.current?.getCaret() ?? 0);
           scrollChatToLatest(scrollRef.current);
         }}
         onFocus={() => scrollChatToLatest(scrollRef.current)}
@@ -1413,7 +1423,7 @@ function DMPage() {
               setBody(next.value);
               setCaret(next.caret);
               const el = composerRef.current;
-              if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+              if (el) requestAnimationFrame(() => { el.focus(); el.setSelection(next.caret); });
             }}
           />
         }

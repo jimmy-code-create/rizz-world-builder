@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft, BarChart3, Smile } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
+import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
+import { useAvailableEmojis } from "@/lib/emoji-available";
 import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
 import { EmojiPicker } from "@/components/emoji/EmojiPicker";
 import { emojiToken } from "@/lib/emoji-shared";
@@ -93,7 +95,18 @@ function GroupRoom() {
   // keyboard opens, and the chat settles on the newest message.
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
-  const composerRef = useRef<HTMLTextAreaElement>(null);
+  // Contenteditable field: custom emoji draw inline, see ComposerInput.
+  const composerRef = useRef<ComposerInputHandle>(null);
+  // Inline emoji images: the same cached list the picker reads.
+  const availableEmoji = useAvailableEmojis();
+  const emojiUrlById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const emoji of availableEmoji.data?.private ?? []) map.set(emoji.id, emoji.url);
+    for (const realm of availableEmoji.data?.realms ?? []) {
+      for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+    }
+    return map;
+  }, [availableEmoji.data]);
   const scrolledGroupIdRef = useRef<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -199,7 +212,7 @@ function GroupRoom() {
     const initial = scrolledGroupIdRef.current !== id;
     scrolledGroupIdRef.current = id;
     const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 200;
-    if (initial || nearBottom || document.activeElement === composerRef.current) {
+    if (initial || nearBottom || document.activeElement === composerRef.current?.element()) {
       // Scroll the transcript, not the document: `scrollIntoView` could move
       // the page under an open phone keyboard and dismiss it.
       list.scrollTop = list.scrollHeight;
@@ -239,12 +252,11 @@ function GroupRoom() {
   }, [body, draftKey, draftReady]);
 
   useEffect(() => {
-    const composer = composerRef.current;
+    // Typing grows the box (MessageComposer measures the field itself). Keep
+    // the newest message pinned above it instead of letting the growing
+    // composer eat the bottom of the transcript.
+    const composer = composerRef.current?.element();
     if (!composer) return;
-    composer.style.height = "auto";
-    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
-    // Typing grows the box. Keep the newest message pinned above it instead of
-    // letting the growing composer eat the bottom of the transcript.
     if (document.activeElement === composer) {
       const list = messagesListRef.current;
       if (list) list.scrollTop = list.scrollHeight;
@@ -292,7 +304,7 @@ function GroupRoom() {
   // Discord does — otherwise the reply sits behind the keyboard on a phone.
   useEffect(() => {
     if (!replyTo) return;
-    composerRef.current?.focus({ preventScroll: true });
+    composerRef.current?.focus();
     scrollChatToLatest(messagesListRef.current);
   }, [replyTo]);
 
@@ -300,7 +312,7 @@ function GroupRoom() {
   // keyboard after every message. The mouse guard below keeps the textarea
   // focused; this covers browsers that move focus anyway.
   const keepComposerFocused = () => {
-    composerRef.current?.focus({ preventScroll: true });
+    composerRef.current?.focus();
   };
 
   const send = async () => {
@@ -799,7 +811,8 @@ function GroupRoom() {
             onStickers={() => setCatOpen(true)}
             placeholder="Message"
             maxLength={GROUP_MESSAGE_LIMIT}
-            textareaRef={composerRef}
+            inputRef={composerRef}
+            resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
             sending={uploadingImage}
             canSend={Boolean(body.trim() || imageFile)}
             allowVoice={false}
@@ -840,12 +853,12 @@ function GroupRoom() {
                 setBody(next.value);
                 setCaret(next.caret);
                 const el = composerRef.current;
-                if (el) requestAnimationFrame(() => { el.focus(); el.setSelectionRange(next.caret, next.caret); });
+                if (el) requestAnimationFrame(() => { el.focus(); el.setSelection(next.caret); });
               }}
             />}
-            onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-            onTextareaClick={(e) => {
-              setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+            onKeyUp={() => setCaret(composerRef.current?.getCaret() ?? 0)}
+            onTextareaClick={() => {
+              setCaret(composerRef.current?.getCaret() ?? 0);
               scrollChatToLatest(messagesListRef.current);
             }}
             onFocus={() => scrollChatToLatest(messagesListRef.current)}

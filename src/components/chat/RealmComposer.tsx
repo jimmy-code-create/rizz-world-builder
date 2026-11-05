@@ -3,19 +3,16 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import {
-  BarChart3,
-  CalendarClock,
-  Camera,
-  ImagePlus,
-  Send,
-  X,
-} from "lucide-react";
+import { BarChart3, CalendarClock, Camera, ImagePlus, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageComposer } from "@/components/chat/MessageComposer";
+import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
+import { useAvailableEmojis } from "@/lib/emoji-available";
+import { parseEmojiToken, type EmojiTokenParts } from "@/lib/emoji-token";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocomplete";
 import { SlashCommandMenu, wrapIndex } from "@/components/bots/SlashCommandMenu";
@@ -32,6 +29,8 @@ import { AnimatePresence } from "framer-motion";
 
 export type RealmComposerHandle = {
   insert: (text: string, options?: { space?: boolean }) => void;
+  /** A custom emoji token, drawn inline at the saved caret. */
+  insertEmoji?: (token: string) => void;
   clear: () => void;
   focus: () => void;
 };
@@ -88,33 +87,75 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     const [gifOpen, setGifOpen] = useState(false);
     const [catOpen, setCatOpen] = useState(false);
 
-    const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const inputRef = useRef<ComposerInputHandle | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+
+    /**
+     * One source for the inline images the composer draws: the same cached list
+     * the picker reads, plus any pending upload (a local blob) so an emoji is
+     * visible the instant it is added.
+     */
+    const available = useAvailableEmojis();
+    const emojiById = useMemo(() => {
+      const map = new Map<string, string>();
+      for (const emoji of available.data?.private ?? []) map.set(emoji.id, emoji.url);
+      for (const realm of available.data?.realms ?? []) {
+        for (const emoji of realm.emojis) map.set(emoji.id, emoji.url);
+      }
+      return map;
+    }, [available.data]);
+
+    const resolveEmoji = useCallback(
+      (parts: EmojiTokenParts) => emojiById.get(parts.id) ?? null,
+      [emojiById],
+    );
 
     useImperativeHandle(
       ref,
       () => ({
         insert: (text: string, options?: { space?: boolean }) => {
-          setBody((prev) => {
-            const needsLeading = options?.space && prev && !prev.endsWith(" ");
-            const needsTrailing = options?.space;
-            return `${prev}${needsLeading ? " " : ""}${text}${needsTrailing ? " " : ""}`;
-          });
-          requestAnimationFrame(() => {
-            inputRef.current?.focus();
-          });
+          // A token becomes a picture in the field; a mention or a slash
+          // command is plain text. Either way the message still carries the
+          // token, never the image.
+          const parsed = parseEmojiToken(text);
+          const el = inputRef.current;
+          if (el) {
+            if (options?.space) el.insertText(" ");
+            if (parsed) el.insertEmoji(text, parsed);
+            else el.insertText(text);
+            if (options?.space) el.insertText(" ");
+            el.focus();
+            // The composer is controlled from `body`; take the field's value so
+            // the screen's `value` prop never overwrites what was just typed.
+            setBody(el.getValue());
+          } else {
+            setBody((prev) => {
+              const needsLeading = options?.space && prev && !prev.endsWith(" ");
+              const needsTrailing = options?.space;
+              return `${prev}${needsLeading ? " " : ""}${text}${needsTrailing ? " " : ""}`;
+            });
+            requestAnimationFrame(() => inputRef.current?.focus());
+          }
         },
         clear: () => {
           setBody("");
+          inputRef.current?.clear();
           clearAttachments();
         },
         focus: () => {
           inputRef.current?.focus();
         },
+        insertEmoji: (token: string) => {
+          const parsed = parseEmojiToken(token);
+          inputRef.current?.insertEmoji(token, parsed);
+          const next = inputRef.current?.getValue() ?? body;
+          setBody(next);
+          setCaret(next.length);
+        },
       }),
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [previews],
+      [body, previews],
     );
 
     useEffect(() => {
@@ -152,7 +193,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     }, [previews]);
 
     const handlePaste = useCallback(
-      (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      (e: React.ClipboardEvent<Element>) => {
         const items = e.clipboardData?.items;
         if (!items) return;
         const pastedFiles: File[] = [];
@@ -190,7 +231,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       setSlashHidden(false);
       requestAnimationFrame(() => {
         inputRef.current?.focus();
-        inputRef.current?.setSelectionRange(next.length, next.length);
+        inputRef.current?.setSelection(next.length);
       });
     };
 
@@ -215,7 +256,8 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     };
 
     const disabled = composerBlock || !!writeBlockedNote;
-    const disabledHint = writeBlockedNote || (!joined ? "Join realm to send messages" : "Chat locked");
+    const disabledHint =
+      writeBlockedNote || (!joined ? "Join realm to send messages" : "Chat locked");
     const placeholder = disabled ? disabledHint : `Message #${realmName || "chat"}`;
 
     return (
@@ -258,7 +300,8 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
           disabledHint={disabledHint}
           placeholder={placeholder}
           maxLength={2000}
-          textareaRef={inputRef}
+          inputRef={inputRef}
+          resolveEmoji={resolveEmoji}
           sending={sending}
           canSend={Boolean(body.trim() || attachments.length)}
           allowVoice={false}
@@ -267,12 +310,11 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
             previews.length > 0 ? (
               <div className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
                 {previews.map((preview, i) => (
-                  <div key={i} className="relative h-14 w-14 overflow-hidden rounded-lg border border-white/10">
-                    <img
-                      src={preview}
-                      alt="Attachment"
-                      className="h-full w-full object-cover"
-                    />
+                  <div
+                    key={i}
+                    className="relative h-14 w-14 overflow-hidden rounded-lg border border-white/10"
+                  >
+                    <img src={preview} alt="Attachment" className="h-full w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeAttachment(i)}
@@ -346,7 +388,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
                 setCaret(next.caret);
                 requestAnimationFrame(() => {
                   inputRef.current?.focus();
-                  inputRef.current?.setSelectionRange(next.caret, next.caret);
+                  inputRef.current?.setSelection(next.caret);
                 });
               }}
             />
@@ -385,9 +427,9 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
               setSlashHidden(true);
             }
           }}
-          onKeyUp={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-          onTextareaClick={(e) => {
-            setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
+          onKeyUp={() => setCaret(inputRef.current?.getCaret() ?? 0)}
+          onTextareaClick={() => {
+            setCaret(inputRef.current?.getCaret() ?? 0);
             onInputFocus?.();
           }}
           onFocus={onInputFocus}
@@ -400,7 +442,27 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
           onOpenChange={setGifOpen}
           realmId={realmId}
           initialTab="emoji"
-          onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`)}
+          keepOpenOnPick={false}
+          onSelect={(marker) => {
+            // Custom emoji (and cat shortcodes) go in as pictures at the caret,
+            // not appended to the end of the draft. GIF and sticker markers are
+            // still plain legacy text.
+            const parsed = parseEmojiToken(marker);
+            if (parsed) {
+              inputRef.current?.insertEmoji(marker, parsed);
+              const next = inputRef.current?.getValue() ?? body;
+              setBody(next);
+              setCaret(next.length);
+              return;
+            }
+            if (marker.startsWith(":") && !marker.startsWith(":cat")) {
+              inputRef.current?.insertText(marker);
+              const next = inputRef.current?.getValue() ?? body;
+              setBody(next);
+              return;
+            }
+            setBody((current) => `${current}${current ? " " : ""}${marker}`);
+          }}
           onCustomEmoji={onManageEmoji}
         />
         <CatStickerSheet
