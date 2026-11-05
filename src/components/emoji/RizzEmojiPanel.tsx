@@ -8,18 +8,49 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useEmojiPreferences } from '@/lib/emoji-recents';
-import { emojiCategory, search, withSkinTone } from '@/lib/emoji-data';
+import { useEmojiPreferences, recordEmojiUse } from '@/lib/emoji-recents';
+import {
+  type EmojiEntry,
+  emojiCategory,
+  search,
+  withSkinTone,
+} from '@/lib/emoji-data';
+
+type EmojiInput =
+  | string
+  | { native?: string; unicode?: string; id?: string };
 
 interface RizzEmojiPanelProps {
+  open?: boolean;
   realmKey?: string;
-  onEmoji: (emoji: string) => void;
+  realmId?: string;
+  realmName?: string;
+  query?: string;
+  onPick?: (token: string, emoji: EmojiInput) => void;
+  onEmoji?: (emoji: string) => void;
   onClose?: () => void;
+  onManage?: () => void;
   mode?: 'normal' | 'reactions';
+  className?: string;
+}
+
+export function rememberEmojiPick(
+  emoji: EmojiInput,
+  realmId?: string,
+): void {
+  const token =
+    typeof emoji === 'string'
+      ? emoji
+      : emoji.native || emoji.unicode || emoji.id || '';
+  if (token) {
+    recordEmojiUse(token, realmId);
+  }
 }
 
 export function RizzEmojiPanel({
   realmKey,
+  realmId,
+  onPick,
   onEmoji,
   onClose,
   mode = 'normal',
@@ -33,11 +64,14 @@ export function RizzEmojiPanel({
   const results = search(query);
 
   const insertEmoji = useCallback(
-    (emoji: string) => {
-      onEmoji(emoji);
-      setSelected(emoji);
+    (token: string, emoji?: EmojiInput) => {
+      if (token) {
+        onEmoji?.(token);
+        setSelected?.(token);
+        onPick?.(token, emoji ?? token);
+      }
     },
-    [onEmoji],
+    [onEmoji, onPick],
   );
 
   const clearSearch = useCallback(() => {
@@ -55,6 +89,13 @@ export function RizzEmojiPanel({
   const recentEmoji = prefs.recents.slice(0, 12);
   const favoriteEmoji = prefs.favorites.slice(0, 12);
 
+  const onSelectEmoji = (
+    token: string,
+    emoji: EmojiInput,
+  ) => {
+    insertEmoji(token, emoji);
+  };
+
   return (
     <div role="dialog" aria-modal="true" aria-label="Emoji picker">
       <div aria-labelledby={`${id}-label`}>
@@ -65,7 +106,7 @@ export function RizzEmojiPanel({
           ref={searchRef}
           type="search"
           placeholder="Find the perfect emoji"
-          value={query}
+          value={query ?? ''}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search emoji"
         />
@@ -78,30 +119,29 @@ export function RizzEmojiPanel({
 
       <section aria-label="Top emoji">
         <h3>Top emoji</h3>
-        <ul>
-          {topEmoji.map((emoji) => (
-            <li key={emoji}>
-              <button
-                type="button"
-                aria-label={emoji}
-                onClick={() => insertEmoji(emoji)}
-              >
-                {emoji}
-              </button>
-            </li>
-          ))}
+        <ul>            {topEmoji.map((emoji: string) => (
+              <li key={emoji}>
+                <button
+                  type="button"
+                  aria-label={emoji}
+                  onClick={() => onSelectEmoji(emoji, emoji)}
+                >
+                  {emoji}
+                </button>
+              </li>
+            ))}
         </ul>
       </section>
 
       <section aria-label="Recently used">
         <h3>Recently used</h3>
         <ul>
-          {recentEmoji.map((emoji) => (
+          {recentEmoji.map((emoji: string) => (
             <li key={emoji}>
               <button
                 type="button"
                 aria-label={emoji}
-                onClick={() => insertEmoji(emoji)}
+                onClick={() => onSelectEmoji(emoji, emoji)}
               >
                 {emoji}
               </button>
@@ -113,12 +153,12 @@ export function RizzEmojiPanel({
       <section aria-label="Favorites">
         <h3>Favorites</h3>
         <ul>
-          {favoriteEmoji.map((emoji) => (
+          {favoriteEmoji.map((emoji: string) => (
             <li key={emoji}>
               <button
                 type="button"
                 aria-label={emoji}
-                onClick={() => insertEmoji(emoji)}
+                onClick={() => onSelectEmoji(emoji, emoji)}
               >
                 {emoji}
               </button>
@@ -127,8 +167,8 @@ export function RizzEmojiPanel({
         </ul>
       </section>
 
-      {realmKey && realmKey.length > 0 ? (
-        <section aria-label={`Emoji for ${realmKey}`}>
+      {(realmKey && realmKey.length > 0) || (realmId && realmId.length > 0) ? (
+        <section aria-label={`Emoji for ${realmKey ?? realmId}`}>
           <h3>Realm emoji</h3>
           <ul>
             {results.slice(0, 12).map((entry) => (
@@ -136,7 +176,7 @@ export function RizzEmojiPanel({
                 <button
                   type="button"
                   aria-label={entry.name}
-                  onClick={() => insertEmoji(entry.char)}
+                  onClick={() => onSelectEmoji(entry.char, entry.char)}
                 >
                   {entry.char}
                 </button>
@@ -148,22 +188,21 @@ export function RizzEmojiPanel({
 
       <section aria-label="Categories">
         <h3>Categories</h3>
-        <ul>
-          {results.map((entry) => {
-            const cat = emojiCategory(entry.char);
-            if (!cat) return null;
-            return (
-              <li key={entry.char}>
-                <button
-                  type="button"
-                  aria-label={entry.name}
-                  onClick={() => insertEmoji(entry.char)}
-                >
-                  {entry.char}
-                </button>
-              </li>
-            );
-          })}
+        <ul>            {results.map((entry) => {
+              const cat = emojiCategory(entry.char);
+              if (!cat) return null;
+              return (
+                <li key={entry.char}>
+                  <button
+                    type="button"
+                    aria-label={entry.name}
+                    onClick={() => onSelectEmoji(entry.char, entry.char)}
+                  >
+                    {entry.char}
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       </section>
 

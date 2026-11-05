@@ -53,4 +53,12 @@ export function usePickerKeyboardHeight(initialHeight?: number): number {
 
 export const PICKER_MIN_HEIGHT = 220;
 export const PICKER_MAX_HEIGHT = 520;
+export function useStickyPickerHeight(defaultFallback = 360): number {
+  const measured = usePickerKeyboardHeight();
+  if (measured > 0) {
+    return Math.min(Math.max(measured, PICKER_MIN_HEIGHT), PICKER_MAX_HEIGHT);
+  }
+  return defaultFallback;
+}
+
 export const PICKER_KEYBOARD_RESERVE = 12;
