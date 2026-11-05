@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 export type EmojiPrefRecord = {
   top: string[];
   recents: string[];
@@ -6,25 +8,30 @@ export type EmojiPrefRecord = {
 };
 
 const PREFS_KEY = 'rizz:emoji-prefs:v1';
-const PREFS_VERSION = 1;
 
 function defaultPrefs(): EmojiPrefRecord {
   return { top: [], recents: [], favorites: [], updatedAt: 0 };
 }
 
+let cachedRaw: string | null = null;
+let cachedSnapshot: EmojiPrefRecord = defaultPrefs();
+
 function readPrefs(): EmojiPrefRecord {
   try {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFS_KEY) : null;
     if (!raw) return defaultPrefs();
+    if (raw === cachedRaw) return cachedSnapshot;
     const parsed = JSON.parse(raw) as Partial<EmojiPrefRecord>;
     const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0;
     if (updatedAt <= 0) return defaultPrefs();
-    return {
+    cachedRaw = raw;
+    cachedSnapshot = {
       top: Array.isArray(parsed.top) ? parsed.top.filter((v): v is string => typeof v === 'string' && v.length > 0).slice(0, 12) : [],
       recents: Array.isArray(parsed.recents) ? parsed.recents.filter((v): v is string => typeof v === 'string' && v.length > 0).slice(0, 60) : [],
       favorites: Array.isArray(parsed.favorites) ? parsed.favorites.filter((v): v is string => typeof v === 'string' && v.length > 0).slice(0, 60) : [],
       updatedAt,
     };
+    return cachedSnapshot;
   } catch {
     return defaultPrefs();
   }
@@ -33,7 +40,11 @@ function readPrefs(): EmojiPrefRecord {
 function writePrefs(prefs: EmojiPrefRecord): void {
   try {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    const raw = JSON.stringify(prefs);
+    cachedRaw = raw;
+    cachedSnapshot = prefs;
+    window.localStorage.setItem(PREFS_KEY, raw);
+    window.dispatchEvent(new Event('rizz-emoji-prefs-change'));
   } catch {
     // LocalStorage may be unavailable; prefs are best-effort.
   }
@@ -43,25 +54,28 @@ function subscribe(callback: () => void): (() => void) {
   if (typeof window === 'undefined') {
     return () => {};
   }
-  window.addEventListener('storage', () => callback());
-  return () => window.removeEventListener('storage', () => callback());
+  const handler = () => callback();
+  window.addEventListener('storage', handler);
+  window.addEventListener('rizz-emoji-prefs-change', handler);
+  return () => {
+    window.removeEventListener('storage', handler);
+    window.removeEventListener('rizz-emoji-prefs-change', handler);
+  };
 }
 
-export function useEmojiPreferences() {
-  const prefs = readPrefs();
-  const snapshot = useSyncExternalStore(
+export function useEmojiPreferences(): EmojiPrefRecord {
+  return useSyncExternalStore(
     subscribe,
-    () => prefs,
-    () => defaultPrefs(),
+    readPrefs,
+    defaultPrefs,
   );
-  return snapshot;
 }
 
 export function recordEmojiUse(emoji: string, realmKey?: string): void {
   if (typeof emoji !== 'string' || emoji.length === 0) return;
   const prefs = readPrefs();
   const recents = [emoji, ...prefs.recents.filter((v) => v !== emoji)].slice(0, 60);
-  const favorites = prefs.favorites.includes(emoji) ? prefs.favorites : prefs.favorites;
+  const favorites = prefs.favorites;
   const top = computeTopEmojiList({
     ...prefs,
     recents,
