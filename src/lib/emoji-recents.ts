@@ -9,21 +9,26 @@ export type EmojiPrefRecord = {
 
 const PREFS_KEY = 'rizz:emoji-prefs:v1';
 
-function defaultPrefs(): EmojiPrefRecord {
-  return { top: [], recents: [], favorites: [], updatedAt: 0 };
-}
+// Stable singleton so useSyncExternalStore never sees changing object references
+const DEFAULT_PREFS: EmojiPrefRecord = Object.freeze({
+  top: [],
+  recents: [],
+  favorites: [],
+  updatedAt: 0,
+});
 
 let cachedRaw: string | null = null;
-let cachedSnapshot: EmojiPrefRecord = defaultPrefs();
+let cachedSnapshot: EmojiPrefRecord = DEFAULT_PREFS;
 
 function readPrefs(): EmojiPrefRecord {
+  if (typeof window === 'undefined') return DEFAULT_PREFS;
   try {
-    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PREFS_KEY) : null;
-    if (!raw) return defaultPrefs();
+    const raw = window.localStorage.getItem(PREFS_KEY);
+    if (!raw) return DEFAULT_PREFS;
     if (raw === cachedRaw) return cachedSnapshot;
     const parsed = JSON.parse(raw) as Partial<EmojiPrefRecord>;
     const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0;
-    if (updatedAt <= 0) return defaultPrefs();
+    if (updatedAt <= 0) return DEFAULT_PREFS;
     cachedRaw = raw;
     cachedSnapshot = {
       top: Array.isArray(parsed.top) ? parsed.top.filter((v): v is string => typeof v === 'string' && v.length > 0).slice(0, 12) : [],
@@ -33,7 +38,7 @@ function readPrefs(): EmojiPrefRecord {
     };
     return cachedSnapshot;
   } catch {
-    return defaultPrefs();
+    return DEFAULT_PREFS;
   }
 }
 
@@ -67,7 +72,7 @@ export function useEmojiPreferences(): EmojiPrefRecord {
   return useSyncExternalStore(
     subscribe,
     readPrefs,
-    defaultPrefs,
+    () => DEFAULT_PREFS,
   );
 }
 
