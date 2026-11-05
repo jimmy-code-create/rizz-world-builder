@@ -70,20 +70,25 @@ export async function deleteRealmEmoji(id: string): Promise<void> {
  * `:name:` expansion for the message renderer: returns the segments of `body`
  * so the caller can swap known names for their image and leave the rest alone.
  */
-export type EmojiSegment = { text: string; name?: string };
+export type EmojiSegment = { text: string; name?: string; id?: string };
 
-const EMOJI_TOKEN = /:([a-z0-9_]{2,32}):/g;
+const EMOJI_TOKEN = /<:([a-z0-9_]{2,32}):([0-9a-fA-F-]{36})>|:([a-z0-9_]{2,32}):/g;
 
 export function splitEmojiSegments(body: string, names: Set<string>): EmojiSegment[] {
-  if (!names.size || !body.includes(":")) return [{ text: body }];
+  if (!body.includes(":")) return [{ text: body }];
   const segments: EmojiSegment[] = [];
   let cursor = 0;
   EMOJI_TOKEN.lastIndex = 0;
   for (const match of body.matchAll(EMOJI_TOKEN)) {
     const index = match.index ?? 0;
     if (index > cursor) segments.push({ text: body.slice(cursor, index) });
-    if (names.has(match[1])) segments.push({ text: match[0], name: match[1] });
-    else segments.push({ text: match[0] });
+    if (match[2]) {
+      segments.push({ text: match[0], name: match[1], id: match[2] });
+    } else if (names.has(match[3] ?? "")) {
+      segments.push({ text: match[0], name: match[3] });
+    } else {
+      segments.push({ text: match[0] });
+    }
     cursor = index + match[0].length;
   }
   if (cursor < body.length) segments.push({ text: body.slice(cursor) });

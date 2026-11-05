@@ -8,6 +8,7 @@ import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPi
 import { AnimatedCount } from "@/components/ui/animated-count";
 import { SuperReactionBurst, type SuperBurst } from "@/components/reactions/SuperReactionBurst";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { emojiReactionKey } from "@/lib/emoji-shared";
 import { cn, formatCount } from "@/lib/utils";
 import { getActiveLanguage, useI18n, tf, formatRelativeTime } from "@/lib/i18n";
@@ -662,7 +663,7 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
                     if (p.url) {
                       return <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-words">{p.text}</a>;
                     }
-                    return <span key={i}>{p.text}</span>;
+                    return <EmojiText key={i} text={p.text} />;
                   })}
                 />)}
           </div>

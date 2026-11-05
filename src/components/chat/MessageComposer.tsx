@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type ReactNode, type RefObject } from "react";import { ArrowUp, Cat, Mic, Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -65,6 +64,7 @@ export function MessageComposer({
   onKeyUp,
   onKeyDown,
   onTextareaClick,
+  onPaste,
   onFocus,
 }: {
   value: string;
@@ -103,6 +103,7 @@ export function MessageComposer({
   /** Runs before the composer's own Enter-to-send, for slash menus and the like. */
   onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onTextareaClick?: (event: React.MouseEvent<HTMLTextAreaElement>) => void;
+  onPaste?: (event: ReactClipboardEvent<HTMLTextAreaElement>) => void;
   onFocus?: () => void;
 }) {
   const localRef = useRef<HTMLTextAreaElement | null>(null);
@@ -261,6 +262,7 @@ export function MessageComposer({
                   }
                   onKeyUp={onKeyUp}
                   onClick={onTextareaClick}
+                  onPaste={onPaste}
                   onFocus={onFocus}
                   onKeyDown={(event) => {
                     onKeyDown?.(event);

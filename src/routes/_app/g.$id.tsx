@@ -45,6 +45,7 @@ import { MentionAutocomplete, replaceMention } from "@/components/MentionAutocom
 import { renderGifSegments } from "@/lib/gif-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { MarkdownText } from "@/components/MarkdownText";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { scrollChatToLatest } from "@/lib/chat-scroll";
 import { MessageRow } from "@/components/chat/MessageRow";
@@ -117,8 +118,10 @@ function GroupRoom() {
       if (!user) throw new Error("Sign in to send a message");
       return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null });
     },
-    onMutate: async ({ text, retryId, attachmentUrl }) => {
-      await qc.cancelQueries({ queryKey: messageKey });
+    onMutate: ({ text, retryId, attachmentUrl }) => {
+      // Paint the optimistic row now; cancelling the in-flight query can happen
+      // in the background and must never delay the composer.
+      void qc.cancelQueries({ queryKey: messageKey });
       const optimisticId = retryId ?? `pending-${crypto.randomUUID()}`;
       const optimistic = {
         id: optimisticId,
@@ -711,7 +714,7 @@ function GroupRoom() {
                                             ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} className="font-medium text-primary hover:underline">{p.text}</Link>
                                             : p.url
                                               ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" className="break-words text-primary hover:underline">{p.text}</a>
-                                              : <span key={`${si}-${pi}`}>{p.text}</span>
+                                              : <EmojiText key={`${si}-${pi}`} text={p.text} />
                                     )
                                   }
                                 />
@@ -797,7 +800,7 @@ function GroupRoom() {
             placeholder="Message"
             maxLength={GROUP_MESSAGE_LIMIT}
             textareaRef={composerRef}
-            sending={sendMessage.isPending || uploadingImage}
+            sending={uploadingImage}
             canSend={Boolean(body.trim() || imageFile)}
             allowVoice={false}
             above={imagePreview ? (

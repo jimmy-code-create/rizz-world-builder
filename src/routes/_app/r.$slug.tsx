@@ -167,6 +167,8 @@ import { setGameBotHidden } from "@/lib/call-bots";
 import { setMusicBotDismissed } from "@/components/voice/MusicBotInCall";
 import { rolesForMessage, useReactionRoles } from "@/lib/reaction-roles";
 import { fetchRealmEmoji, realmEmojiKey, splitEmojiSegments } from "@/lib/realm-emoji";
+import { useJoinedEmoji } from "@/lib/emoji-shared";
+import { RealmEmojiImage } from "@/components/emoji/RealmEmojiImage";
 import { emojiTextClass } from "@/lib/text-size";
 import { RealmForum } from "@/components/forum/RealmForum";
 
@@ -472,6 +474,13 @@ function RealmPage() {
   });
   const emojiByName = new Map((emojiList.data ?? []).map((entry) => [entry.name, entry.url]));
   const emojiNames = new Set(emojiByName.keys());
+  // Tokens written by the shared picker are `<:name:id>`, so a message can use
+  // an emoji from any realm the viewer belongs to — not only this channel's.
+  const joinedEmoji = useJoinedEmoji();
+  const joinedEmojiById = useMemo(
+    () => new Map((joinedEmoji.data ?? []).map((row) => [row.id, row])),
+    [joinedEmoji.data],
+  );
   const [lockingRoomId, setLockingRoomId] = useState<string | null>(null);
   // Who may type where, shared by the moderation sheet and the composer.
   const channelPermissions = useChannelPermissions(realm.data?.id);
@@ -2242,9 +2251,9 @@ function RealmPage() {
                             }
                             const parts = splitEmojiSegments(seg.value, emojiNames);
                             const hasText = parts.some(
-                              (p) => !p.name && p.text && p.text.trim().length > 0,
+                              (p) => !p.name && !p.id && p.text && p.text.trim().length > 0,
                             );
-                            const emojiCount = parts.filter((p) => p.name).length;
+                            const emojiCount = parts.filter((p) => p.name || p.id).length;
                             const isJumboji = !hasText && emojiCount > 0;
                             const emojiClass = isJumboji
                               ? emojiCount <= 3
@@ -2252,16 +2261,33 @@ function RealmPage() {
                                 : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain"
                               : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
 
-                            return parts.map((part, xi) =>
-                              part.name ? (
-                                <img
-                                  key={`${si}-${xi}`}
-                                  src={emojiByName.get(part.name)}
-                                  alt={part.name}
-                                  title={`:${part.name}:`}
-                                  className={emojiClass}
-                                />
-                              ) : (
+                            return parts.map((part, xi) => {
+                              const emojiUrl = part.id
+                                ? joinedEmojiById.get(part.id)?.url
+                                : part.name
+                                  ? emojiByName.get(part.name)
+                                  : undefined;
+
+                              if (part.name || part.id) {
+                                if (!emojiUrl) {
+                                  return (
+                                    <span key={`${si}-${xi}`} className="font-mono text-[0.85em] text-muted-foreground">
+                                      {part.text}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <RealmEmojiImage
+                                    key={`${si}-${xi}`}
+                                    url={emojiUrl}
+                                    shortcode={part.name}
+                                    className={emojiClass}
+                                    imageClassName="h-full w-full object-contain"
+                                  />
+                                );
+                              }
+
+                              return (
                                 <MarkdownText
                                   key={`${si}-${xi}`}
                                   text={part.text}
@@ -2373,8 +2399,8 @@ function RealmPage() {
                                     })
                                   }
                                 />
-                              ),
-                            );
+                              );
+                            });
                           })}
                           {/* Bot embed cards sit under any text content. A card
                         button ("👋 Say hi") waves at the message and opens

@@ -17,6 +17,23 @@ export const CATEGORIES = [
 
 export type EmojiCategory = (typeof CATEGORIES)[number];
 
+/**
+ * The rail's unicode sections. `id` is stable enough to store in a URL or a
+ * saved scroll position; `label` is deliberately short because it sits in a
+ * thumb-sized rail chip, while `category` keeps the full dataset key.
+ */
+export const EMOJI_CATEGORIES = [
+  { id: "smileys", label: "Smileys", category: "Smileys & Emotion", icon: "😀" },
+  { id: "people", label: "People", category: "People & Body", icon: "👋" },
+  { id: "animals", label: "Animals", category: "Animals & Nature", icon: "🐻" },
+  { id: "food", label: "Food", category: "Food & Drink", icon: "🍕" },
+  { id: "activities", label: "Activities", category: "Activities", icon: "🎉" },
+  { id: "travel", label: "Travel", category: "Travel & Places", icon: "✈️" },
+  { id: "objects", label: "Objects", category: "Objects", icon: "💡" },
+  { id: "symbols", label: "Symbols", category: "Symbols", icon: "💯" },
+  { id: "flags", label: "Flags", category: "Flags", icon: "🏁" },
+] as const;
+
 export interface EmojiEntry {
   char: string;
   name: string;
@@ -683,6 +700,10 @@ export const search = (query: string): readonly EmojiEntry[] => {
       entry.char.includes(q),
   );
 };
+
+/** Search the unicode catalogue, capped so the virtual list never gets a wall. */
+export const searchUnicodeEmoji = (query: string, limit = 240): readonly EmojiEntry[] =>
+  search(query).slice(0, Math.max(1, limit));
 
 export const realmEmojiKeyFor = (realmKey?: string): string | null => {
   if (!realmKey) return null;

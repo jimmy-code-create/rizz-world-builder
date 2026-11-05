@@ -197,13 +197,20 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     const submit = async () => {
       if (composerBlock || sending) return;
       if (!body.trim() && !attachments.length) return;
-      const success = await onSend({ text: body, files: attachments });
-      if (success) {
-        setBody("");
-        setCaret(0);
-        setSlashIndex(0);
-        setSlashHidden(false);
-        clearAttachments();
+      // Clear the row before the network round trip. The draft comes back only
+      // if the send actually failed, so typing the next message never waits on
+      // Supabase.
+      const outgoingBody = body;
+      const outgoingFiles = attachments;
+      setBody("");
+      setCaret(0);
+      setSlashIndex(0);
+      setSlashHidden(false);
+      clearAttachments();
+      const success = await onSend({ text: outgoingBody, files: outgoingFiles });
+      if (!success) {
+        setBody((current) => (current ? current : outgoingBody));
+        if (outgoingFiles.length) addFiles(outgoingFiles);
       }
     };
 
