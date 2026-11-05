@@ -38,54 +38,89 @@ function Brand() {
 }
 
 /**
- * Rizzy, redrawn as vector artwork — the submitted video was only useful as a
- * motion reference: its lime backdrop was baked in, and at hero size the clip
- * looked soft and noisy. SVG keeps the character crisp, lets it sit on the
- * white canvas with no green layer, and the blink/squash/lean cycles read as
- * motion without a single pixel of footage.
+ * Rizzy — the provided SVG piece, wired in as the landing hero. A rise-up
+ * entrance, breathing, ear twitches, look-arounds, blinks, nose sniffs, and
+ * the DMs chip that slides along the bar to meet the cat's gaze. Fully
+ * vector, so it stays crisp at any size and carries no green layer.
  */
 function LandingCatAnimation({ className = "" }: { className?: string }) {
   return (
-    <div className={className} aria-label="Rizzy, the RIZZ cat, peeking over a black bar">
-      <svg viewBox="0 0 340 235" className="h-full w-full" aria-hidden="true">
+    <div
+      className={`landing-cat-animation ${className}`}
+      role="img"
+      aria-label="Rizz cat peeking over a ledge, glancing at the Your feed, Voice and DMs chips"
+    >
+      <svg viewBox="0 0 360 226" className="h-full w-full" aria-hidden="true">
         <defs>
-          <clipPath id="landing-cat-eyes">
-            <ellipse cx="124" cy="118" rx="25" ry="25" />
-            <ellipse cx="216" cy="118" rx="25" ry="25" />
+          <clipPath id="landing-cat-ledge">
+            <rect x="-20" y="0" width="400" height="167" />
           </clipPath>
         </defs>
 
-        <g className="landing-cat-tilt">
-          <path d="M86 104 L94 22 L146 76 Z" fill="#12101A" />
-          <path d="M254 104 L246 22 L194 76 Z" fill="#12101A" />
-          <path d="M98 92 L104 42 L132 80 Z" fill="#C9FF3D" />
-          <path d="M242 92 L236 42 L208 80 Z" fill="#C9FF3D" />
-          <path
-            className="landing-cat-head"
-            d="M170 58c52 0 94 40 94 94 0 5-4 9-9 9H85c-5 0-9-4-9-9 0-54 42-94 94-94z"
-            fill="#12101A"
-          />
-          <path d="M76 138c-5 0-9 4-9 9v7c0 5 4 9 9 9h8v-25h-8z" fill="#12101A" />
-          <path d="M264 138c5 0 9 4 9 9v7c0 5-4 9-9 9h-8v-25h8z" fill="#12101A" />
+        {/* Your feed chip — mirrored in the artwork with a slight tilt */}
+        <g transform="rotate(-6 79 79)">
+          <g className="landing-cat-pill landing-cat-pill-1">
+            <rect x="40" y="65" width="78" height="28" rx="14" fill="#FFFFFF" stroke="#E3E0D6" strokeWidth="1" />
+            <text x="79" y="79" textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="700" fill="#14121C">
+              Your feed
+            </text>
+          </g>
         </g>
-
-        <g clipPath="url(#landing-cat-eyes)">
-          <rect x="98" y="92" width="52" height="52" rx="26" fill="#FFFFFF" />
-          <rect x="190" y="92" width="52" height="52" rx="26" fill="#FFFFFF" />
-          <g className="landing-cat-pupils">
-            <circle cx="124" cy="118" r="10" fill="#12101A" />
-            <circle cx="216" cy="118" r="10" fill="#12101A" />
+        <g transform="rotate(5 290 70)">
+          <g className="landing-cat-pill landing-cat-pill-2">
+            <rect x="262" y="56" width="56" height="28" rx="14" fill="#FFFFFF" stroke="#E3E0D6" strokeWidth="1" />
+            <text x="290" y="70" textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="700" fill="#14121C">
+              Voice
+            </text>
           </g>
         </g>
 
-        <path
-          className="landing-cat-mouth"
-          d="M159 150h22l-11 12z"
-          fill="#C9FF3D"
-        />
+        {/* The cat rises from behind the ledge line */}
+        <g clipPath="url(#landing-cat-ledge)">
+          <g className="landing-cat-rise">
+            <g className="landing-cat-breathe">
+              <g className="landing-cat-ear landing-cat-ear-left">
+                <path d="M124 62 L154 92 L118 120 Z" fill="#14121C" />
+                <path d="M131 78 L146 96 L128 111 Z" fill="#BAF23A" />
+              </g>
+              <g className="landing-cat-ear landing-cat-ear-right">
+                <path d="M236 62 L206 92 L242 120 Z" fill="#14121C" />
+                <path d="M229 78 L214 96 L232 111 Z" fill="#BAF23A" />
+              </g>
+              <path
+                d="M107 165 C109 118 140 88 180 88 C220 88 251 118 253 165 Z"
+                fill="#14121C"
+              />
+              <g className="landing-cat-eyes">
+                <circle cx="146" cy="132" r="18" fill="#FFFFFF" />
+                <circle cx="214" cy="132" r="18" fill="#FFFFFF" />
+                <g className="landing-cat-pupils">
+                  <circle cx="146" cy="132" r="8" fill="#14121C" />
+                  <circle cx="148.5" cy="129.5" r="2.2" fill="#FFFFFF" />
+                  <circle cx="214" cy="132" r="8" fill="#14121C" />
+                  <circle cx="216.5" cy="129.5" r="2.2" fill="#FFFFFF" />
+                </g>
+              </g>
+              <path
+                className="landing-cat-nose"
+                d="M172 155 L188 155 L180 164 Z"
+                fill="#BAF23A"
+              />
+              <rect className="landing-cat-paw" x="103" y="147" width="24" height="18" rx="7" fill="#14121C" />
+              <rect className="landing-cat-paw" x="233" y="147" width="24" height="18" rx="7" fill="#14121C" />
+            </g>
+          </g>
+        </g>
 
-        <g className="landing-cat-bar-area">
-          <rect x="4" y="198" width="332" height="26" rx="13" fill="#242528" />
+        {/* The bar, and the DMs chip that slides along it toward the cat */}
+        <g className="landing-cat-bar">
+          <rect x="58" y="186" width="250" height="19" rx="9.5" fill="#23232B" />
+        </g>
+        <g className="landing-cat-chip">
+          <rect x="262" y="181" width="46" height="29" rx="14.5" fill="#FFFFFF" stroke="#E3E0D6" strokeWidth="1" />
+          <text x="285" y="195.5" textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="700" fill="#14121C">
+            DMs
+          </text>
         </g>
       </svg>
     </div>
@@ -185,7 +220,7 @@ export function WelcomeFlow() {
               className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]"
             >
               <div className="relative mx-auto mb-6 w-full max-w-[300px] sm:max-w-[320px]">
-                <LandingCatAnimation className="landing-cat-animation aspect-[340/235] w-full" />
+                <LandingCatAnimation className="landing-cat-animation aspect-[360/226] w-full" />
                 <span className="pointer-events-none absolute -left-1 top-4 -rotate-6 rounded-full border border-[#ebe8df] bg-white px-3 py-1 text-[10px] font-bold shadow-[0_8px_22px_-12px_rgba(20,20,20,0.35)] sm:-left-[62px]">
                   Your feed
                 </span>
@@ -393,7 +428,7 @@ export function WelcomeFlow() {
             </header>
 
             <div className="flex flex-1 flex-col justify-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+22px)]">
-              <LandingCatAnimation className="landing-cat-animation mx-auto mb-6 aspect-[340/235] w-full max-w-[260px] sm:max-w-[280px]" />
+              <LandingCatAnimation className="landing-cat-animation mx-auto mb-6 aspect-[360/226] w-full max-w-[260px] sm:max-w-[280px]" />
 
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a877d]">
                 Welcome back

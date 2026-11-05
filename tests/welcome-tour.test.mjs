@@ -159,12 +159,23 @@ await check("Settings has a way back and previews the joined date", async () => 
 
 await check("the landing page plays the Rizzy cat animation", async () => {
   assert.match(welcomeFlow, /function LandingCatAnimation/, "the landing animation is missing");
-  assert.match(welcomeFlow, /<svg viewBox="0 0 340 235"/, "the cat is not drawn as a vector hero");
+  assert.match(welcomeFlow, /<svg viewBox="0 0 360 226"/, "the cat is not drawn as a vector hero");
   assert.match(welcomeFlow, /className="landing-cat-pupils"/, "the pupil motion lost its layer");
-  assert.match(welcomeFlow, /className="landing-cat-mouth"/, "the mouth is not animated");
-  assert.match(welcomeFlow, /className="landing-cat-bar-area"/, "the bar motion lost its layer");
-  assert.match(welcomeFlow, /clipPath="url\(#landing-cat-eyes\)"/, "the pupils are not clipped to the eyes");
-  assert.match(welcomeFlow, /aria-label="Rizzy, the RIZZ cat, peeking over a black bar"/);
+  assert.match(welcomeFlow, /className="landing-cat-ear landing-cat-ear-left"/, "the left ear twitch is gone");
+  assert.match(welcomeFlow, /className="landing-cat-ear landing-cat-ear-right"/, "the right ear twitch is gone");
+  assert.match(welcomeFlow, /className="landing-cat-nose"/, "the nose sniff is gone");
+  assert.match(welcomeFlow, /className="landing-cat-pill landing-cat-pill-1"/, "the Your feed pill regressed");
+  assert.match(welcomeFlow, /className="landing-cat-pill landing-cat-pill-2"/, "the Voice pill regressed");
+  assert.match(welcomeFlow, /className="landing-cat-chip"/, "the DMs chip that slides to the cat lost its layer");
+  assert.match(welcomeFlow, /className="landing-cat-bar"/, "the bar no longer fades in");
+  assert.match(welcomeFlow, /className="landing-cat-rise"/, "the cat no longer rises from behind the ledge");
+  assert.match(welcomeFlow, /className="landing-cat-breathe"/, "the breathing squash is gone");
+  assert.match(welcomeFlow, /className="landing-cat-eyes"/, "the blink layer is gone");
+  assert.match(welcomeFlow, /clipPath="url\(#landing-cat-ledge\)"/, "the cat is not clipped at the ledge line");
+  assert.match(welcomeFlow, /Your feed/, "the Your feed chip is missing");
+  assert.match(welcomeFlow, /DMs/, "the DMs chip is missing");
+  assert.match(welcomeFlow, /Voice/, "the Voice chip is missing");
+  assert.match(welcomeFlow, /aria-label="Rizz cat peeking over a ledge, glancing at the Your feed, Voice and DMs chips"/);
   assert.ok(!welcomeFlow.includes("rizz-cat-animation"), "the green video layer must be gone");
   assert.ok(!welcomeFlow.includes("<video"), "no video tag should remain on the landing page");
   assert.ok(!welcomeFlow.includes("bg-[#c9ff3d] ring-1"), "the green frame must not return");
