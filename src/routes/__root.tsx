@@ -120,6 +120,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
       { name: "google-site-verification", content: "Qo3UlzmrXku0PoMCwb7XmNvNccBK04bs9krIT-qONcU" },
       { name: "author", content: "RIZZ" },
+      { name: "keywords", content: "RIZZ, rizzup, Gen Z social app, realms, voice rooms, chat stories, reels, creators, social network" },
+      { name: "robots", content: "index, follow, max-image-preview:large" },
+      { name: "application-name", content: "RIZZ" },
       { name: "theme-color", content: "#0a0a0b" },
       { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
       { property: "og:description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
@@ -127,8 +130,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "RIZZ — Your feed. Your server. Your world." },
       { name: "twitter:description", content: "RIZZ is the social app for Gen Z creators: live feeds, realms, voice rooms, drops and badges. Post, chat and build your world in real time." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/699b5572-eb29-4322-a686-f1b3656e11ce/id-preview-9af0433e--8c1d6350-a504-41aa-84c2-cfa287920a20.lovable.app-1783644221729.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/699b5572-eb29-4322-a686-f1b3656e11ce/id-preview-9af0433e--8c1d6350-a504-41aa-84c2-cfa287920a20.lovable.app-1783644221729.png" },
+      { property: "og:site_name", content: "RIZZ" },
+      { name: "twitter:site", content: "@rizzup" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -145,6 +148,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            { "@type": "Organization", name: "RIZZ", url: "https://rizzup.space", logo: "https://rizzup.space/brand/rizz-cat-logo.svg" },
+            { "@type": "WebSite", name: "RIZZ", url: "https://rizzup.space" },
+          ],
+        }),
       },
     ],
   }),

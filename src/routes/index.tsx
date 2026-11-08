@@ -12,12 +12,18 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "RIZZ — Your feed. Your server. Your world." },
-      {
-        name: "description",
-        content:
-          "RIZZ is a feed with a live realm behind every profile: posts, reels, voice rooms, Messages and chat stories in one place.",
-      },
+      { name: "description", content: "RIZZ is the Gen-Z social app: posts, reels, realms, voice rooms, DMs and chat stories in one place. Join free at rizzup.space." },
+      { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
+      { property: "og:description", content: "RIZZ is the Gen-Z social app: posts, reels, realms, voice rooms, DMs and chat stories in one place. Join free at rizzup.space." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://rizzup.space/" },
+      { property: "og:image", content: "https://rizzup.space/og-banner.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://rizzup.space/og-banner.jpg" },
     ],
+    links: [{ rel: "canonical", href: "https://rizzup.space/" }],
   }),
 });
 
