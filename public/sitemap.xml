@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://rizzapp.onrender.com/</loc>
+    <loc>https://rizzup.space/</loc>
   </url>
   <url>
-    <loc>https://rizzapp.onrender.com/feed</loc>
+    <loc>https://rizzup.space/feed</loc>
   </url>
   <url>
-    <loc>https://rizzapp.onrender.com/login</loc>
+    <loc>https://rizzup.space/login</loc>
   </url>
   <url>
-    <loc>https://rizzapp.onrender.com/signup</loc>
+    <loc>https://rizzup.space/signup</loc>
   </url>
 </urlset>
