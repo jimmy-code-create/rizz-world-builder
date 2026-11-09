@@ -33,6 +33,8 @@ import { useI18n, formatRelativeTime, formatFullDate } from "@/lib/i18n";
 import { RizzCat } from "@/components/RizzCat";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
 import { fetchCommentTargets, isGenericTitle } from "@/lib/notifications";
+import { aggregateNotifications, type AggregatedCard, type NotifEvent } from "@/lib/notifications-aggregation";
+import { NotificationRow } from "@/components/notifications/NotificationRow";
 
 export const Route = createFileRoute("/_app/notifications")({
   head: () => ({ meta: [{ title: "Notifications · RIZZ" }] }),
@@ -167,14 +169,27 @@ function NotificationsPage() {
 
   const markAll = async () => {
     if (!user) return;
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", user.id)
-      .eq("read", false);
-    qc.invalidateQueries({ queryKey: ["notifications"] });
+    const previous = items.data ?? [];
+    // Optimistic update in the TanStack Query cache.
+    const optimistic = previous.map((n) => ({ ...n, read: true }));
+    qc.setQueryData(["notifications", user!.id], optimistic);
     qc.invalidateQueries({ queryKey: ["unread-notifs"] });
     toast.success("All caught up");
+    try {
+      // Batch mark-all-read: a single update touches every unread row at once.
+      await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    } catch (error) {
+      // Roll back the optimistic cache on error.
+      qc.setQueryData(["notifications", user!.id], previous);
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't mark all as read",
+      );
+    }
   };
 
   const filtered = useMemo(() => {
@@ -185,6 +200,25 @@ function NotificationsPage() {
     if (tab === "bounties") return list.filter((n: any) => String(n.type).startsWith("bounty"));
     return list.filter((n: any) => n.type === tab || (tab === "like" && n.type === "reaction"));
   }, [items.data, tab]);
+
+  // Convert DB rows into aggregation events and collapse them into cards for
+  // the "All" tab. Other tabs keep their existing per-row rendering unchanged.
+  const allEvents = useMemo<NotifEvent[]>(() => {
+    return (items.data ?? []).map((n: any) => ({
+      id: n.id,
+      resource_id: n.post_id ?? null,
+      type: n.type,
+      actor: n.actor?.username ?? null,
+      created_at: n.created_at,
+      body: n.body ?? null,
+      target_url: n.post_id ? `/p/${n.post_id}` : null,
+      ...(n.is_test ? { is_test: true } : {}),
+    }));
+  }, [items.data]);
+
+  const allCards = useMemo<AggregatedCard[]>(() => {
+    return aggregateNotifications(allEvents);
+  }, [allEvents]);
 
   const unreadCount = (items.data ?? []).filter((n: any) => !n.read).length;
 
@@ -340,9 +374,20 @@ function NotificationsPage() {
             </Link>
           ))}
 
-        {tab !== "messages" &&
-          filtered.map((n: any) => {
-            const Icon = ICON[n.type] ?? Bell;
+        {tab !== "messages" ? (
+          tab === "all" ? (
+            <>
+              {allCards.map((card) => (
+                <NotificationRow
+                  key={card.id}
+                  card={card}
+                  target_url={card.target_url}
+                />
+              ))}
+            </>
+          ) : (
+            filtered.map((n: any) => {
+              const Icon = ICON[n.type] ?? Bell;
             const target = forumTarget(n);
             const comment = commentTargets.data?.get(n.id) ?? null;
             const mention = mentionTarget(n);
@@ -455,7 +500,9 @@ function NotificationsPage() {
                 )}
               </motion.div>
             );
-          })}
+          })
+          )
+        ) : null}
       </div>
 
       {tab === "messages" && (unreadDms.data ?? []).length === 0 && (
