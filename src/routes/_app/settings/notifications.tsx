@@ -3,7 +3,6 @@ import { Bell } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 import { SettingsSubPage } from "@/components/settings/SettingsSubPage";
-import { TestNotificationsPanel } from "@/components/notifications/TestNotificationsPanel";
 
 export const Route = createFileRoute("/_app/settings/notifications")({
   head: () => ({ meta: [{ title: "Notifications · Settings · RIZZ" }] }),
@@ -19,7 +18,6 @@ function NotificationsSettingsPage() {
       icon={<Bell className="h-5 w-5" />}
     >
       <PushNotificationSettings />
-      <TestNotificationsPanel />
     </SettingsSubPage>
   );
 }
