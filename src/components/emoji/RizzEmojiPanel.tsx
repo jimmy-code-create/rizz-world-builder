@@ -784,7 +784,7 @@ export function RizzEmojiPanel({
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Find the perfect emoji"
-              className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.05] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
+              className="h-10 w-full rounded-[10px] border border-white/[0.08] bg-white/[0.04] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-white/25"
               autoFocus={mode === "reactions"}
             />
             {searchValue && (
@@ -801,6 +801,7 @@ export function RizzEmojiPanel({
         </div>
       )}
 
+      <div className="flex min-h-0 flex-1">
       <div className="emoji-rail shrink-0" role="tablist" aria-label="Emoji categories">
         {railItems.map((item) => {
           const selected = !searching && activeSection === item.id;
@@ -859,32 +860,59 @@ export function RizzEmojiPanel({
             if (isPrivate && !items.length) {
               return (
                 <section key={entry.section.id}>
-                  <div className="emoji-section-head sticky top-0 z-20 flex items-center justify-between gap-3 px-4">
+                  <div className="emoji-section-head sticky top-0 z-20">
                     <span className="truncate">{entry.section.label}</span>
-                  </div>
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <p className="min-w-0 flex-1 text-[11px] leading-tight text-muted-foreground">
-                      Your own emoji, usable in every chat.
-                    </p>
                     <button
                       type="button"
                       onClick={() => addInputRef.current?.click()}
-                      className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full border border-white/12 px-3 text-[11px] font-semibold text-primary"
+                      className="emoji-section-add"
                     >
                       <Plus className="h-3 w-3" /> Add
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => addInputRef.current?.click()}
+                    className="m-3 flex w-[calc(100%-1.5rem)] items-center gap-2.5 rounded-[10px] border border-dashed border-white/15 px-3 py-3 text-left text-[11px] leading-tight text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Plus className="h-4 w-4 shrink-0 text-primary" />
+                    <span>
+                      <span className="block font-semibold text-foreground">Add your own emoji</span>
+                      Use it in every chat, caption and comment.
+                    </span>
+                  </button>
                 </section>
               );
             }
             return (
               <section key={entry.section.id}>
                 {/* One header per section, sticky on the real header. */}
-                <div className="emoji-section-head sticky top-0 z-20 flex h-[32px] items-center justify-between gap-3 px-4">
+                <div className="emoji-section-head sticky top-0 z-20">
                   <span className="truncate">{entry.section.label}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground/70">
-                    {items.length}
-                  </span>
+                  {isPrivate ? (
+                    <span className="flex shrink-0 items-center gap-1">
+                      {onManage ? (
+                        <button
+                          type="button"
+                          onClick={onManage}
+                          className="emoji-section-manage"
+                        >
+                          Manage
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => addInputRef.current?.click()}
+                        className="emoji-section-add"
+                      >
+                        <Plus className="h-3 w-3" /> Add
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="shrink-0 tabular-nums text-muted-foreground/60">
+                      {items.length}
+                    </span>
+                  )}
                 </div>
                 <div
                   className="relative"
@@ -893,7 +921,7 @@ export function RizzEmojiPanel({
                   {rows.map((row, index) => (
                     <div
                       key={`${entry.section.id}:${startRow + index}`}
-                      className="rizz-emoji-grid absolute inset-x-0 px-3"
+                      className="rizz-emoji-grid absolute inset-x-0 px-2"
                       style={{
                         height: ROW_HEIGHT,
                         top: (startRow + index) * ROW_HEIGHT,
@@ -904,26 +932,6 @@ export function RizzEmojiPanel({
                     </div>
                   ))}
                 </div>
-                {isPrivate && items.length > 0 ? (
-                  <div className="px-4 pb-2">
-                    <button
-                      type="button"
-                      onClick={() => addInputRef.current?.click()}
-                      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/12 px-3 text-[11px] font-semibold text-primary"
-                    >
-                      <Plus className="h-3 w-3" /> Add private emoji
-                    </button>
-                    {onManage ? (
-                      <button
-                        type="button"
-                        onClick={onManage}
-                        className="ml-2 inline-flex min-h-8 items-center rounded-full px-3 text-[11px] font-semibold text-muted-foreground"
-                      >
-                        Manage realm emoji
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
               </section>
             );
           })}
@@ -934,6 +942,7 @@ export function RizzEmojiPanel({
             </div>
           )}
         </div>
+      </div>
       </div>
 
       <input
@@ -963,7 +972,7 @@ export function RizzEmojiPanel({
               placeholder="name (a-z, 0-9, _)"
               maxLength={32}
               autoFocus
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 text-sm outline-none focus:border-primary/60"
+              className="h-10 w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-3 text-sm outline-none focus:border-white/25"
             />
             <div className="flex w-full gap-2">
               <button

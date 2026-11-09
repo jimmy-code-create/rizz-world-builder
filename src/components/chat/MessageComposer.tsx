@@ -233,15 +233,15 @@ export function MessageComposer({
         <div className="flex items-center gap-1.5">
           {attach}
 
-          {/* The pill: 40px minimum, 20px radius, and the focus state lives on
-              the wrapper so the ring hugs the whole field, not the caret box. */}
+          {/* The pill: 40px minimum, 20px radius. Focus is the caret plus a
+              quiet neutral border — no lime box around the field. */}
           <div
             className={cn(
               "relative flex min-w-0 flex-1 items-center rounded-[20px] border transition-colors duration-150",
               "motion-reduce:transition-none",
               disabled
                 ? "border-white/[0.08] bg-[#0d0d0d]"
-                : "border-white/[0.14] bg-[#121212] focus-within:border-primary/75 focus-within:ring-[3px] focus-within:ring-primary/[0.16]",
+                : "border-white/[0.14] bg-[#121212] focus-within:border-white/25",
             )}
             style={{ minHeight: 40 }}
           >

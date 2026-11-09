@@ -63,13 +63,13 @@ await check("ComposerInput is the field, and it is contenteditable", () => {
   }
 });
 
-await check("an emoji in the field is an img[data-token] at 1.4em", () => {
+await check("an emoji in the field is an img[data-token] at the shared size", () => {
   assert.match(input, /image\.dataset\.token = parts\.token/);
   assert.match(input, /image\.contentEditable = "false"/);
   assert.match(input, /image\.draggable = false/);
   assert.match(input, /className = "inline-emoji"/);
-  assert.match(css, /\.inline-emoji \{[\s\S]*?height: 1\.4em/);
-  assert.match(css, /vertical-align: -0\.3em/);
+  assert.match(css, /\.inline-emoji \{[\s\S]*?height: var\(--emoji-size/);
+  assert.match(css, /vertical-align: -0\.2em/);
 });
 
 await check("getValue walks text, IMG, BR and Android's DIVs", () => {

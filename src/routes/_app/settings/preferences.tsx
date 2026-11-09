@@ -139,6 +139,34 @@ function PreferencesSettingsPage() {
         </div>
 
         <div>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="emoji-size" className="text-xs text-muted-foreground">
+              Emoji size · {Math.round(prefs.emojiScale * 100)}%
+            </Label>
+            <span
+              aria-hidden="true"
+              className="grid h-9 w-9 place-items-center rounded-[10px] border border-white/10 bg-white/[0.04] leading-none"
+              style={{ fontSize: `${Math.round(21 * prefs.emojiScale)}px` }}
+            >
+              😎
+            </span>
+          </div>
+          <input
+            id="emoji-size"
+            type="range"
+            min={0.75}
+            max={1.6}
+            step={0.05}
+            value={prefs.emojiScale}
+            onChange={(e) => updatePref("emojiScale", parseFloat(e.target.value))}
+            className="mt-1 w-full accent-primary"
+          />
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            One size for every emoji — chats, captions, comments and the picker.
+          </p>
+        </div>
+
+        <div>
           <Label className="text-xs text-muted-foreground">{t("language_setting")}</Label>
           <select
             value={["auto", "en", "fr"].includes(prefs.language) ? prefs.language : "auto"}

@@ -236,7 +236,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                     value={o}
                     onChange={(e) => setPollOptions((p) => p.map((v, j) => (j === i ? e.target.value.slice(0, 80) : v)))}
                     placeholder={tf("poll_option", { n: i + 1 })}
-                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
+                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-white/25"
                   />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => setPollOptions((p) => p.filter((_, j) => j !== i))}

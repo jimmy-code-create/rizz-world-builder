@@ -11,6 +11,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { parseEmojiToken, splitEmojiTokens, type EmojiTokenParts } from "@/lib/emoji-token";
+import { renderGifSegments } from "@/lib/gif-content";
 
 /**
  * The message field, with custom emoji drawn where they are typed.
@@ -90,6 +91,40 @@ function isEmojiNode(node: Node): node is HTMLImageElement {
   );
 }
 
+/** A GIF/sticker picked from the sheet, drawn as media until it is sent. */
+function isMediaNode(node: Node): node is HTMLElement {
+  return node.nodeType === 1 && (node as HTMLElement).dataset.mediaToken !== undefined;
+}
+
+function createMediaElement(marker: string, url: string, isSticker: boolean): HTMLElement {
+  const label = isSticker ? "Sticker" : "GIF";
+  if (/\.(webm|mp4)(\?|#|$)/i.test(url)) {
+    const video = document.createElement("video");
+    video.dataset.mediaToken = marker;
+    video.src = url;
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.contentEditable = "false";
+    video.draggable = false;
+    video.className = "inline-media";
+    video.setAttribute("aria-label", label);
+    return video;
+  }
+  const image = document.createElement("img");
+  image.dataset.mediaToken = marker;
+  image.src = url;
+  image.alt = label;
+  image.loading = "eager";
+  image.decoding = "async";
+  image.draggable = false;
+  image.contentEditable = "false";
+  image.className = "inline-media";
+  return image;
+}
+
 function createEmojiImage(parts: EmojiTokenParts, src: string | null): HTMLImageElement {
   const image = document.createElement("img");
   image.dataset.token = parts.token;
@@ -136,6 +171,10 @@ export function readComposerValue(root: Node): string {
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     const element = node as HTMLElement;
+    if (isMediaNode(element)) {
+      out += element.dataset.mediaToken ?? "";
+      return;
+    }
     if (isEmojiNode(element)) {
       out += element.dataset.token ?? "";
       return;
@@ -163,7 +202,9 @@ export function readComposerValue(root: Node): string {
 export function isComposerEmpty(root: Node): boolean {
   const text = readComposerValue(root);
   if (text.length > 0) return false;
-  return !(root as HTMLElement).querySelector?.("img[data-token]");
+  return !(root as HTMLElement).querySelector?.(
+    "img[data-token], img[data-media-token], video[data-media-token]",
+  );
 }
 
 export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>(
@@ -291,16 +332,33 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
       [caretToEnd, emit, syncPlaceholder],
     );
 
-    /** The token string as a run of text nodes and emoji images. */
+    /**
+     * The token string as text, emoji pictures and GIF/sticker media.
+     * A picked GIF used to sit in the field as `![gif](…)`; the whole point of
+     * the picker is that you see the thing you chose, so the marker becomes a
+     * media element immediately and is written back on read.
+     */
     const nodesForText = useCallback((text: string): Node[] => {
       const nodes: Node[] = [];
-      for (const piece of splitEmojiTokens(text)) {
-        if (piece.kind === "text") {
-          nodes.push(document.createTextNode(piece.text));
+      for (const segment of renderGifSegments(text)) {
+        if (segment.isGif || segment.isSticker) {
+          nodes.push(
+            createMediaElement(
+              segment.marker ?? `![${segment.isSticker ? "sticker" : "gif"}](${segment.value})`,
+              segment.value,
+              segment.isSticker,
+            ),
+          );
           continue;
         }
-        const src = resolveRef.current?.(piece) ?? null;
-        nodes.push(createEmojiImage(piece, src));
+        for (const piece of splitEmojiTokens(segment.value)) {
+          if (piece.kind === "text") {
+            nodes.push(document.createTextNode(piece.text));
+            continue;
+          }
+          const src = resolveRef.current?.(piece) ?? null;
+          nodes.push(createEmojiImage(piece, src));
+        }
       }
       return nodes;
     }, []);
@@ -519,7 +577,7 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
             if (
               end === text.nodeValue?.length &&
               previous &&
-              isEmojiNode(previous) &&
+              (isEmojiNode(previous) || isMediaNode(previous)) &&
               chars.slice(0, end).trim() === ""
             ) {
               previous.remove();

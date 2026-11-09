@@ -91,8 +91,7 @@ export function ReactionPills({
   return (
     <div
       className={cn(
-        "reaction-pill-row flex items-center gap-1.5 overflow-x-auto pb-0.5",
-        compact ? "py-0" : "py-0.5",
+        "reaction-pill-row -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-1",
         className,
       )}
     >
@@ -122,19 +121,19 @@ export function ReactionPills({
                     borderColor: `hsl(${hue} 85% 66% / ${group.mine ? 0.92 : 0.68})`,
                     backgroundColor: `hsl(${hue} 72% ${group.mine ? 24 : 17}%)`,
                     color: `hsl(${hue} 92% 84%)`,
-                    boxShadow: `inset 0 0 0 1px hsl(${hue} 85% 80% / 0.16), 0 0 18px hsl(${hue} 90% 60% / 0.2)`,
+                    boxShadow: `inset 0 0 0 1px hsl(${hue} 85% 80% / 0.14), 0 0 12px hsl(${hue} 90% 60% / 0.16)`,
                   }
                 : undefined
             }
             className={cn(
-              "inline-flex shrink-0 items-center rounded-full border transition-[transform,background-color,border-color,color] duration-[250ms] ease-out active:scale-95 motion-reduce:transition-none",
+              "reaction-chip inline-flex shrink-0 items-center rounded-[10px] border bg-clip-padding transition-[transform,background-color,border-color,color] duration-[220ms] ease-out active:scale-[0.96] motion-reduce:transition-none",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              compact ? "h-6 gap-1 px-2 text-[11px]" : "h-[30px] gap-1.5 px-2.5 text-[12px]",
+              compact ? "h-[23px] gap-1 pl-1.5 pr-1.5 text-[10.5px]" : "h-[27px] gap-1.5 pl-2 pr-2 text-[11.5px]",
               isSuper
                 ? "font-bold super-reaction-in"
                 : group.mine
-                  ? "border-primary/80 bg-primary/[0.12] font-semibold text-primary hover:bg-primary/[0.18]"
-                  : "border-white/[0.14] bg-[#1a1a1a] font-semibold text-[#dcdcdc] hover:border-white/25 hover:bg-[#202020]",
+                  ? "border-primary/45 bg-primary/[0.10] font-semibold text-primary hover:bg-primary/[0.16]"
+                  : "border-white/[0.10] bg-white/[0.05] font-semibold text-[#e6e6e6] hover:border-white/20 hover:bg-white/[0.08]",
             )}
           >
             {id ? (
@@ -150,10 +149,11 @@ export function ReactionPills({
                 size={compact ? 13 : 15}
               />
             )}
+            <span aria-hidden="true" className="h-2.5 w-px shrink-0 bg-current opacity-20" />
             <AnimatedCount
               value={group.count}
               format={(next) => formatReactionCount(next)}
-              className="text-[11px] font-bold leading-none"
+              className="text-[10.5px] font-bold leading-none tabular-nums"
             />
           </button>
         );
