@@ -51,7 +51,7 @@ const SEARCH_PLACEHOLDER: Record<PickerTab, string> = {
   stickers: "Search this pack",
 };
 
-const STICKER_ROW_HEIGHT = 92;
+const STICKER_ROW_HEIGHT = 108;
 const STICKER_OVERSCAN = 3;
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -256,7 +256,7 @@ export function GifPicker({
     );
   }, [packStickers, query, selectedPack]);
 
-  const stickerRows = useMemo(() => chunk(filteredStickers, 4), [filteredStickers]);
+  const stickerRows = useMemo(() => chunk(filteredStickers, 3), [filteredStickers]);
   const stickerTotal = stickerRows.length * STICKER_ROW_HEIGHT;
 
   const stickerStart = Math.max(
@@ -412,7 +412,7 @@ export function GifPicker({
         side="bottom"
         hideClose
         style={sheetStyle}
-        className="glass-strong flex flex-col gap-0 overflow-hidden rounded-t-3xl border-t border-white/10 bg-[#121212] p-0"
+        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-t border-white/[0.08] bg-[#0e0f10] p-0 shadow-[0_-18px_50px_-18px_rgba(0,0,0,0.8)]"
       >
         <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
 
@@ -437,7 +437,7 @@ export function GifPicker({
           <div className="h-1 w-10 rounded-full bg-white/25" aria-hidden="true" />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 px-4 pb-2">
+        <div className="flex shrink-0 items-end gap-1 px-4">
           <div className="rizz-seg min-w-0 flex-1" role="tablist" aria-label="Picker tabs">
             <span
               className="rizz-seg__indicator"
@@ -453,7 +453,7 @@ export function GifPicker({
                 onClick={() => setTab(id)}
                 className="rizz-seg__btn"
               >
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 <span>{label}</span>
               </button>
             ))}
@@ -462,14 +462,14 @@ export function GifPicker({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+            className="mb-1 grid h-8 w-8 shrink-0 place-items-center rounded-[9px] text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="shrink-0 px-4 pb-2">
+        <div className="shrink-0 px-4 py-2">
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -480,7 +480,7 @@ export function GifPicker({
               onChange={(event) => setQuery(event.target.value)}
               placeholder={SEARCH_PLACEHOLDER[tab]}
               aria-label={SEARCH_PLACEHOLDER[tab]}
-              className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.05] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
+              className="h-10 w-full rounded-[10px] border border-white/[0.08] bg-white/[0.04] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-white/25"
             />
             {query && (
               <button
@@ -603,7 +603,7 @@ export function GifPicker({
                       return (
                         <div
                           key={`${selectedPack}:${rowIndex}`}
-                          className="absolute inset-x-0 top-0 grid grid-cols-4 gap-2"
+                          className="absolute inset-x-0 top-0 grid grid-cols-3 gap-2"
                           style={{
                             height: STICKER_ROW_HEIGHT,
                             transform: `translateY(${rowIndex * STICKER_ROW_HEIGHT}px)`,
@@ -639,7 +639,7 @@ function StickerTile({ sticker, onPick }: { sticker: Sticker; onPick: () => void
     <button
       type="button"
       onClick={onPick}
-      className="sticker-card h-[84px] w-full"
+      className="sticker-card h-[100px] w-full"
       aria-label={sticker.label}
     >
       <StickerMedia sticker={sticker} />

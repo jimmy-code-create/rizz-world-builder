@@ -150,7 +150,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-3xl p-4 md:p-5 mb-6 border border-white/5"
+      className="glass mb-6 rounded-3xl border border-white/5 p-4 transition-colors focus-within:border-white/15 md:p-5"
     >
       <div className="flex gap-3">
         <UserAvatar src={profile?.avatar_url} fallback={initial} size="md" className="shrink-0" />
@@ -236,7 +236,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
                     value={o}
                     onChange={(e) => setPollOptions((p) => p.map((v, j) => (j === i ? e.target.value.slice(0, 80) : v)))}
                     placeholder={tf("poll_option", { n: i + 1 })}
-                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-primary/50"
+                    className="flex-1 min-w-0 rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-white/25"
                   />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => setPollOptions((p) => p.filter((_, j) => j !== i))}

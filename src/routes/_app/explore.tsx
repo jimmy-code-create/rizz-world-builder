@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { fetchTrendingTags } from "@/lib/hashtags";
 import { formatNumber } from "@/lib/formatters";
+import { LiveNowRail } from "@/components/live/LiveNowRail";
 
 const RECENT_KEY = "rizz:recent-search";
 function loadRecent(): string[] {
@@ -87,6 +88,8 @@ function ExplorePage() {
           </button>
         )}
       </div>
+
+      <LiveNowRail />
 
       {!q && recent.length > 0 && (
         <section className="mb-4">
