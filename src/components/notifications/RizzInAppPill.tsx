@@ -16,36 +16,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { haptic } from "@/lib/haptics";
+import {
+  dispatchInAppNotification,
+  subscribeToInAppNotifications,
+  type InAppNotification,
+} from "@/lib/in-app-notifications";
 import { useRouter } from "@tanstack/react-router";
-
-export type InAppNotification = {
-  id: string;
-  type: "dm" | "mention" | "reaction" | "paws_gift" | "voice_room";
-  actor: string | null;
-  body: string | null;
-  target_url: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  is_test?: boolean;
-};
-
-// ---------------------------------------------------------------------------
-// Pub/sub bridge: lets the service worker (via a message listener in __root.tsx)
-// push a notification into the pill queue without the two modules importing
-// each other. The pill component subscribes on mount.
-// ---------------------------------------------------------------------------
-const subscribers = new Set<(notification: InAppNotification) => void>();
-
-export function subscribeToInAppNotifications(
-  callback: (notification: InAppNotification) => void,
-) {
-  subscribers.add(callback);
-  return () => subscribers.delete(callback);
-}
-
-export function dispatchInAppNotification(notification: InAppNotification) {
-  subscribers.forEach((callback) => callback(notification));
-}
 
 const TYPE_ICON: Record<InAppNotification["type"], React.ElementType> = {
   dm: MessageCircle,
@@ -116,11 +92,41 @@ export function RizzInAppPill() {
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Accept in-app notifications pushed by the service worker via postMessage.
+  // Subscribe to the in-app notification bridge so test pills from the
+  // settings panel and SW-posted messages both land in the pill queue.
   useEffect(() => {
     return subscribeToInAppNotifications((notification) => {
       setQueue((prev) => [...prev, notification]);
     });
+  }, []);
+
+  // Listen for service worker postMessage: when a push arrives while a visible
+  // client exists, the SW posts SHOW_IN_APP_PILL instead of showing an OS
+  // notification, so the pill renders it (never both at once).
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data ?? {};
+      if (data.type === "SHOW_IN_APP_PILL" && data.notification) {
+        dispatchInAppNotification({
+          id: String(
+            data.notification.tag ?? data.notification.title ?? Date.now(),
+          ),
+          type: "dm",
+          actor: data.notification.title
+            ? String(data.notification.title)
+            : null,
+          body: data.notification.body ?? null,
+          target_url: data.notification.data?.url ?? null,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          is_test: data.notification.data?.type === "test",
+        });
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("message", onMessage);
+      return () => window.removeEventListener("message", onMessage);
+    }
   }, []);
 
   const clearTimer = useCallback(() => {
