@@ -416,7 +416,7 @@ export function TestNotificationsPanel() {
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">In-app pill</h3>
               <p className="text-[11px] text-muted-foreground">Fires a pill via the same bridge the service worker uses.</p>
               <div className="grid grid-cols-2 gap-2">
-                {[ "dm", "mention", "reaction", "paws_gift", "voice_room" ] as const].map((type) => (
+                {([ "dm", "mention", "reaction", "paws_gift", "voice_room" ] as const).map((type) => (
                   <Button
                     key={type}
                     onClick={() => firePill(type)}
