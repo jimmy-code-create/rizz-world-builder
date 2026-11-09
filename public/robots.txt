@@ -1,3 +1,15 @@
 User-agent: *
 Allow: /
+
+# Private, member-only surfaces stay out of the index.
+Disallow: /api/
+Disallow: /dm/
+Disallow: /g/
+Disallow: /settings
+Disallow: /admin/
+Disallow: /join/
+Disallow: /join-realm/
+Disallow: /reset-password
+
+Host: rizzup.space
 Sitemap: https://rizzup.space/sitemap.xml

@@ -542,6 +542,128 @@
     line-height: 1.55;
     color: var(--brand-paper-dim);
   }
+
+  /* Brand masthead: logo + lowercase wordmark on the one place the landing page
+     allows a gradient. Everything below it stays ink + flat lime. */
+  .brand-banner {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-bottom: 1px solid var(--brand-line);
+    background:
+      radial-gradient(
+        52% 110% at 10% -5%,
+        rgba(201, 255, 61, 0.95) 0%,
+        rgba(201, 255, 61, 0.35) 32%,
+        transparent 68%
+      ),
+      radial-gradient(
+        46% 100% at 92% 0%,
+        rgba(124, 58, 237, 0.85) 0%,
+        rgba(124, 58, 237, 0.3) 40%,
+        transparent 70%
+      ),
+      radial-gradient(70% 120% at 78% 118%, rgba(255, 95, 162, 0.5) 0%, transparent 65%),
+      linear-gradient(112deg, #0a0a0b 0%, #14101d 38%, #251046 68%, #0a0a0b 100%);
+  }
+
+  .brand-banner::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(244, 241, 231, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244, 241, 231, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(70% 90% at 50% 40%, #000 15%, transparent 78%);
+    mask-image: radial-gradient(70% 90% at 50% 40%, #000 15%, transparent 78%);
+    pointer-events: none;
+  }
+
+  .brand-banner__inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(230px, 34vw, 380px);
+    padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 48px);
+  }
+
+  .brand-banner__lockup {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2.4vw, 30px);
+    margin: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .brand-banner__logo {
+    width: clamp(64px, 9vw, 118px);
+    height: auto;
+    filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.45));
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .brand-banner__word {
+    font-family: var(--font-display);
+    font-size: clamp(78px, 15.5vw, 196px);
+    font-weight: 800;
+    line-height: 0.78;
+    letter-spacing: -0.075em;
+    color: var(--brand-paper);
+    text-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .brand-banner__smile {
+    position: absolute;
+    right: clamp(18px, 5vw, 54px);
+    bottom: clamp(18px, 4vw, 38px);
+    width: clamp(34px, 4.5vw, 54px);
+    color: var(--brand-signal);
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+    pointer-events: none;
+  }
+
+  .brand-banner.is-smiling .brand-banner__smile {
+    animation: rizz-smile 2.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .brand-banner.is-smiling .brand-banner__logo {
+    transform: rotate(-4deg) translateY(-2px);
+  }
+
+  @keyframes rizz-smile {
+    0% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.9);
+    }
+    14% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    72% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-4px) scale(1.04);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-banner__logo {
+      transition: none;
+    }
+    .brand-banner.is-smiling .brand-banner__smile {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
   .rule {
     height: 1px;
     background: var(--border);

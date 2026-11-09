@@ -1,18 +1,40 @@
 {
-  "name": "RIZZ",
+  "id": "/",
+  "name": "RIZZ (Rizzup)",
   "short_name": "RIZZ",
-  "description": "Chat, stories, and real-time connections.",
+  "description": "RIZZ, also known as Rizzup: a free social app with feeds, realms, voice rooms, DMs and 24-hour chat stories.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0b",
   "theme_color": "#0a0a0b",
+  "categories": ["social", "communication"],
   "icons": [
     {
       "src": "/brand/rizz-cat-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
