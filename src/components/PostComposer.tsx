@@ -150,7 +150,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void } = {}) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-3xl p-4 md:p-5 mb-6 border border-white/5"
+      className="glass mb-6 rounded-3xl border border-white/5 p-4 transition-colors focus-within:border-white/15 md:p-5"
     >
       <div className="flex gap-3">
         <UserAvatar src={profile?.avatar_url} fallback={initial} size="md" className="shrink-0" />

@@ -81,7 +81,8 @@ type ComposerInputProps = {
 };
 
 const ZERO_WIDTH = "\u200b";
-const PLACEHOLDER_ATTR = "data-placeholder";
+/** Empty state only; the placeholder text itself stays in `data-placeholder`. */
+const EMPTY_ATTR = "data-empty";
 
 function isEmojiNode(node: Node): node is HTMLImageElement {
   return (
@@ -269,7 +270,7 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
     const syncPlaceholder = useCallback(() => {
       const node = rootRef.current;
       if (!node) return;
-      node.setAttribute(PLACEHOLDER_ATTR, isComposerEmpty(node) ? "true" : "false");
+      node.setAttribute(EMPTY_ATTR, isComposerEmpty(node) ? "true" : "false");
     }, []);
 
     const saveRange = useCallback(() => {
@@ -654,6 +655,7 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
         spellCheck
         enterKeyHint={enterKeyHint}
         data-placeholder={placeholder}
+        data-empty={value ? "false" : "true"}
         data-composer-input="true"
         className={cn(
           "composer-input min-h-10 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words bg-transparent py-2 pr-1 text-[16px] leading-6",
