@@ -8,7 +8,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -20,14 +20,6 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
 import { isQuickReturn, markAppActive } from "@/lib/app-activity";
-
-// Dynamically imported only after client hydration — never evaluated during SSR,
-// which avoids any module-level TDZ issues with window/document access.
-const RizzInAppPill = lazy(() =>
-  import("@/components/notifications/RizzInAppPill").then(
-    (mod) => ({ default: mod.RizzInAppPill }),
-  ),
-);
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -290,10 +282,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // Only mount client-side UI (like the in-app notification pill) after
-  // hydration to avoid any server-side rendering issues with window/document.
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => setIsClient(true), []);
 
   useEffect(() => {
     markAppActive();
@@ -325,13 +313,6 @@ function RootComponent() {
             {/* One shared reactor peek for every reaction chip in the app. */}
             <ReactorPeekProvider>
               <Outlet />
-              {/* In-app notification pill: fixed top-center, zero layout shift, app-wide.
-                   Lazily loaded only after client hydration — never evaluated during SSR. */}
-              {isClient && (
-                <Suspense fallback={null}>
-                  <RizzInAppPill />
-                </Suspense>
-              )}
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
