@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   dispatchInAppNotification,
   type InAppNotification,
-} from "@/components/notifications/RizzInAppPill";
+} from "@/lib/in-app-notifications";
 import { playNotificationPing } from "@/lib/notification-sound";
 import { haptic } from "@/lib/haptics";
 import { sendTestPush } from "@/lib/push";

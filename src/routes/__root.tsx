@@ -8,7 +8,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -19,8 +19,15 @@ import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
-import { RizzInAppPill, dispatchInAppNotification } from "@/components/notifications/RizzInAppPill";
 import { isQuickReturn, markAppActive } from "@/lib/app-activity";
+
+// Dynamically imported only after client hydration — never evaluated during SSR,
+// which avoids any module-level TDZ issues with window/document access.
+const RizzInAppPill = lazy(() =>
+  import("@/components/notifications/RizzInAppPill").then(
+    (mod) => ({ default: mod.RizzInAppPill }),
+  ),
+);
 
 function NotFoundComponent() {
   useEffect(() => {
@@ -309,31 +316,6 @@ function RootComponent() {
     });
   }, []);
 
-  // Service worker -> in-app pill bridge. When a push arrives while a visible
-  // client exists, the SW posts a SHOW_IN_APP_PILL message instead of showing an
-  // OS notification, so the pill renders it (never both at once).
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const data = event.data ?? {};
-      if (data.type === "SHOW_IN_APP_PILL" && data.notification) {
-        dispatchInAppNotification({
-          id: String(data.notification.tag ?? data.notification.title ?? Date.now()),
-          type: "dm",
-          actor: data.notification.title ? String(data.notification.title) : null,
-          body: data.notification.body ?? null,
-          target_url: data.notification.data?.url ?? null,
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-          is_test: data.notification.data?.type === "test",
-        });
-      }
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("message", onMessage);
-      return () => window.removeEventListener("message", onMessage);
-    }
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -344,8 +326,12 @@ function RootComponent() {
             <ReactorPeekProvider>
               <Outlet />
               {/* In-app notification pill: fixed top-center, zero layout shift, app-wide.
-                   Mounted only after client hydration. */}
-              {isClient && <RizzInAppPill />}
+                   Lazily loaded only after client hydration — never evaluated during SSR. */}
+              {isClient && (
+                <Suspense fallback={null}>
+                  <RizzInAppPill />
+                </Suspense>
+              )}
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
