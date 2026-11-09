@@ -8,7 +8,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -283,6 +283,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Only mount client-side UI (like the in-app notification pill) after
+  // hydration to avoid any server-side rendering issues with window/document.
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => setIsClient(true), []);
 
   useEffect(() => {
     markAppActive();
@@ -339,8 +343,9 @@ function RootComponent() {
             {/* One shared reactor peek for every reaction chip in the app. */}
             <ReactorPeekProvider>
               <Outlet />
-              {/* In-app notification pill: fixed top-center, zero layout shift, app-wide. */}
-              <RizzInAppPill />
+              {/* In-app notification pill: fixed top-center, zero layout shift, app-wide.
+                   Mounted only after client hydration. */}
+              {isClient && <RizzInAppPill />}
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
