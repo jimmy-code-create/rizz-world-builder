@@ -42,7 +42,7 @@ export async function enablePushNotifications(userId: string) {
     : await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Allow notifications in your browser settings to enable push.");
 
-  const registration = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+  const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   const readyRegistration = await navigator.serviceWorker.ready;
   const target = readyRegistration.active ? readyRegistration : registration;
   const subscription = await target.pushManager.getSubscription()

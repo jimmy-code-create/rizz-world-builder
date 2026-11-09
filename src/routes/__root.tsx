@@ -19,6 +19,7 @@ import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
+import { RizzInAppPill, dispatchInAppNotification } from "@/components/notifications/RizzInAppPill";
 import { isQuickReturn, markAppActive } from "@/lib/app-activity";
 
 function NotFoundComponent() {
@@ -299,9 +300,34 @@ function RootComponent() {
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
-    void navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch((error) => {
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
       console.warn("RIZZ service worker registration failed", error);
     });
+  }, []);
+
+  // Service worker -> in-app pill bridge. When a push arrives while a visible
+  // client exists, the SW posts a SHOW_IN_APP_PILL message instead of showing an
+  // OS notification, so the pill renders it (never both at once).
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data ?? {};
+      if (data.type === "SHOW_IN_APP_PILL" && data.notification) {
+        dispatchInAppNotification({
+          id: String(data.notification.tag ?? data.notification.title ?? Date.now()),
+          type: "dm",
+          actor: data.notification.title ? String(data.notification.title) : null,
+          body: data.notification.body ?? null,
+          target_url: data.notification.data?.url ?? null,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          is_test: data.notification.data?.type === "test",
+        });
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("message", onMessage);
+      return () => window.removeEventListener("message", onMessage);
+    }
   }, []);
 
   return (
@@ -313,6 +339,8 @@ function RootComponent() {
             {/* One shared reactor peek for every reaction chip in the app. */}
             <ReactorPeekProvider>
               <Outlet />
+              {/* In-app notification pill: fixed top-center, zero layout shift, app-wide. */}
+              <RizzInAppPill />
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
