@@ -540,7 +540,7 @@ function ChatStoriesPage() {
                 rows={3}
                 disabled={isGenerating}
                 placeholder="A midnight elevator stops on a floor that shouldn't exist…"
-                className="w-full resize-y rounded-xl border border-border/70 bg-card/70 px-3 py-3 text-sm outline-none transition placeholder:text-muted-foreground/65 focus:border-white/25 focus:ring-2 focus:ring-white/10 disabled:opacity-60"
+                className="w-full resize-y rounded-xl border border-border/70 bg-card/70 px-3 py-3 text-sm outline-none transition placeholder:text-muted-foreground/65 focus:border-primary/70 focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
               />
               <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>At least 4 characters</span>

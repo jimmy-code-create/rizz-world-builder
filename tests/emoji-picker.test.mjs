@@ -169,8 +169,8 @@ await check("picking writes through the same storage format messages already use
   assert.match(data, /export const realmEmojiKeyFor = \(realmId: string, name: string\) => `r:\$\{realmId\}:\$\{name\}`/);
 });
 
-await check("custom emoji use the shared size variable and jumbo when alone", () => {
-  assert.ok(realm.includes("chat-inline-emoji"));
+await check("custom emoji stay inline at 1.375em and jumbo when alone", () => {
+  assert.ok(realm.includes("h-[1.375em] w-[1.375em] align-[-0.2em]"));
   assert.match(realm, /const isJumboji = !hasText && emojiCount > 0;/);
   assert.match(realm, /inline-block h-12 w-12 align-middle/);
   assert.match(realm, /emojiTextClass\(bodyText, "chat"\)/);

@@ -1,5 +1,6 @@
 # Roadmap
 
+- [x] Replace homepage SEO share banner with a clean RIZZ wordmark on a gradient background.
 - [x] Fix Render build collision by separating the standalone production launcher from Nitro server-entry discovery.
 - [ ] Restore chat/feed permissions and reduce retry-driven lag.
 - [ ] Remove uploaded posts, reels, stories, messages, and media records requested by the user.

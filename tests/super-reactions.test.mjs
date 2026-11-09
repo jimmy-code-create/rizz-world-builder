@@ -100,9 +100,9 @@ await check("super mode is visible while picking", () => {
   assert.ok(picker.includes("<Sparkles"), "super mode leaves no mark on the sheet");
   assert.ok(card.includes("accent={superMode && canSendSuper}"), "the post card never passes the accent");
   assert.ok(card.includes("linear-gradient(120deg,rgba(180,124,255,0.3)"), "the switch is not the pill's gradient");
-  assert.ok(pills.includes('"h-[27px] gap-1.5 pl-2 pr-2 text-[11.5px]"'), "reaction chips do not share one height");
+  assert.ok(pills.includes('"h-[30px] gap-1.5 px-2.5 text-[12px]"'), "pills do not share one 30px height");
   assert.ok(pills.includes("hsl(${hue} 85% 66%"), "a super pill has no generated colour");
-  assert.ok(pills.includes("rounded-[10px]"), "reaction chips do not share one squircle shape");
+  assert.ok(pills.includes("rounded-full"), "super reactions are not pills");
   assert.ok(!pills.includes(">\n                Super\n              </span>"), "a super pill carries the old Super label");
   assert.ok(pills.includes("overflow-x-auto"), "the pill row does not scroll sideways");
   assert.ok(!pills.includes("flex-wrap"), "the pill row still wraps");

@@ -5,7 +5,6 @@ import { useAuth } from "@/lib/auth";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { StoriesStrip } from "@/components/StoriesStrip";
-import { LiveNowRail } from "@/components/live/LiveNowRail";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -177,8 +176,6 @@ function FeedPage() {
             )}
           </div>
         </div>
-
-        <LiveNowRail />
 
         <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
         <div data-tour="stories" className="scroll-mt-24">

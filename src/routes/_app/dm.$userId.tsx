@@ -1359,7 +1359,7 @@ function DMPage() {
         onSend={send}
         onEmoji={() => setGifOpen(true)}
         onStickers={() => setCatOpen(true)}
-        placeholder={other.data?.username ? `Message ${other.data.username}` : "Message"}
+        placeholder="Message"
         maxLength={MAX_MESSAGE_LENGTH}
         inputRef={composerRef}
         resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}

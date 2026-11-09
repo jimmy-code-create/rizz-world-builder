@@ -2260,7 +2260,7 @@ function RealmPage() {
                               ? emojiCount <= 3
                                 ? "inline-block h-12 w-12 align-middle mx-1 my-0.5 object-contain"
                                 : "inline-block h-8 w-8 align-middle mx-0.5 my-0.5 object-contain"
-                              : "inline-block align-[-0.2em] mx-0.5 object-contain chat-inline-emoji";
+                              : "inline-block h-[1.375em] w-[1.375em] align-[-0.2em] mx-0.5 object-contain";
 
                             return parts.map((part, xi) => {
                               const emojiUrl = part.id

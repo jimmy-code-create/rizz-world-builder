@@ -5,8 +5,8 @@ import { AnimatedEmoji } from "@/components/motion/AnimatedEmoji";
 
 const SIZES = {
   sm: "h-6 gap-1 px-2 text-[11px]",
-  md: "h-7 gap-1.5 px-2.5 text-xs",
-  lg: "h-8 gap-2 px-3 text-sm",
+  md: "gap-1.5 px-2.5 py-1 text-xs",
+  lg: "gap-2 px-3 py-1.5 text-sm",
 } as const;
 
 /**
@@ -52,15 +52,15 @@ export function ReactionChipButton({
       aria-pressed={mine}
       aria-describedby={peek.describedBy}
       onClick={peek.guardClick(onToggle)}
-      title={title ?? "Hold to see who reacted"}
+      title={title}
       {...peek.triggerProps}
       className={cn(
-        "inline-flex shrink-0 select-none items-center rounded-[10px] border bg-clip-padding transition-colors",
+        "inline-flex shrink-0 select-none items-center rounded-full border transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         SIZES[size],
         mine
-          ? "border-primary/50 bg-primary/10 text-foreground"
-          : "border-white/10 bg-white/[0.05] text-muted-foreground hover:border-white/20 hover:bg-white/[0.08]",
+          ? "border-[var(--brand-signal)] bg-[color-mix(in_srgb,var(--brand-signal)_22%,transparent)] text-foreground"
+          : "border-border bg-card text-muted-foreground hover:bg-secondary",
         className,
       )}
     >

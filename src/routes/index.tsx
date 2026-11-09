@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { MessageSquare, Mic, Rss, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -7,104 +7,23 @@ import { MediaFrame } from "@/components/MediaFrame";
 import { useAuth } from "@/lib/auth";
 import { getPostAuthPath } from "@/lib/onboarding";
 
-const faqs = [
-  {
-    q: "What is Rizzup?",
-    a: "Rizzup is the nickname and web address for RIZZ, a free social app that combines a feed, topic realms, live voice rooms, DMs and 24-hour chat stories in one place.",
-  },
-  {
-    q: "What is the official Rizzup website?",
-    a: "The official RIZZ site is rizzup.space — look for the lime RIZZ cat logo. RIZZ is not affiliated with other apps or services that use a similar name.",
-  },
-  {
-    q: "Is Rizzup a dating app?",
-    a: "No. Rizzup (RIZZ) is a social app for feeds, realms, voice rooms and group chats, not a dating app or a follower-growth service.",
-  },
-  {
-    q: "What does “rizz” mean?",
-    a: "Rizz is Gen Z slang for charisma or charm. RIZZ (Rizzup) is also the name of this social app: a place to post, reply, join a realm and hop into voice, not a dictionary entry.",
-  },
-  {
-    q: "Is RIZZ free to join?",
-    a: "Yes. RIZZ is free to join at rizzup.space — no card required. Pick a username, then post, reply, message and join a voice room from your browser.",
-  },
-  {
-    q: "What can you do on RIZZ?",
-    a: "Share photos, reels, polls and timed drops, reply in threads, build a realm with channels and roles, start a voice room, send DMs and voice notes, play games and earn badges.",
-  },
-  {
-    q: "Do I need to install an app?",
-    a: "No. RIZZ runs in your browser and can be installed as a progressive web app on your phone's home screen. Open rizzup.space to start.",
-  },
-  {
-    q: "How do I find RIZZ online?",
-    a: "Search for Rizzup or RIZZ social app, or go directly to rizzup.space. The official site is the one at rizzup.space with the lime RIZZ cat logo.",
-  },
-];
-
-const PAGE_TITLE = "Rizzup (RIZZ) — free social app for feeds, realms & voice";
-const PAGE_DESCRIPTION =
-  "Rizzup (RIZZ) is the free social app for Gen Z: a feed, realms, live voice rooms, DMs, games and 24-hour chat stories. Join at rizzup.space.";
-const OG_IMAGE_ALT =
-  "The RIZZ cat logo beside the lowercase rizz wordmark on a lime, violet and ink gradient.";
-
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: PAGE_TITLE },
-      { name: "description", content: PAGE_DESCRIPTION },
-      { property: "og:title", content: PAGE_TITLE },
-      { property: "og:description", content: PAGE_DESCRIPTION },
+      { title: "RIZZ — Your feed. Your server. Your world." },
+      { name: "description", content: "RIZZ is the Gen-Z social app: posts, reels, realms, voice rooms, DMs and chat stories in one place. Join free at rizzup.space." },
+      { property: "og:title", content: "RIZZ — Your feed. Your server. Your world." },
+      { property: "og:description", content: "RIZZ is the Gen-Z social app: posts, reels, realms, voice rooms, DMs and chat stories in one place. Join free at rizzup.space." },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://rizzup.space/" },
-      { property: "og:image", content: "https://rizzup.space/og-banner.jpg" },
-      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image", content: "https://rizzup.space/rizz-gradient-og.jpg" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: OG_IMAGE_ALT },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: PAGE_TITLE },
-      { name: "twitter:description", content: PAGE_DESCRIPTION },
-      { name: "twitter:image", content: "https://rizzup.space/og-banner.jpg" },
-      { name: "twitter:image:alt", content: OG_IMAGE_ALT },
+      { name: "twitter:image", content: "https://rizzup.space/rizz-gradient-og.jpg" },
     ],
     links: [{ rel: "canonical", href: "https://rizzup.space/" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "@id": "https://rizzup.space/#faq",
-          mainEntity: faqs.map((item) => ({
-            "@type": "Question",
-            name: item.q,
-            acceptedAnswer: { "@type": "Answer", text: item.a },
-          })),
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "@id": "https://rizzup.space/#webpage",
-          url: "https://rizzup.space/",
-          name: PAGE_TITLE,
-          description: PAGE_DESCRIPTION,
-          isPartOf: { "@id": "https://rizzup.space/#website" },
-          about: { "@id": "https://rizzup.space/#organization" },
-          inLanguage: "en",
-          primaryImageOfPage: {
-            "@type": "ImageObject",
-            url: "https://rizzup.space/og-banner.jpg",
-            width: 1200,
-            height: 630,
-          },
-        }),
-      },
-    ],
   }),
 });
 
@@ -131,27 +50,23 @@ function Index() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <SiteNav />
-      <BrandBanner />
 
       {/* ---- Hero: asymmetric split, type left, a real product crop right ---- */}
-      <section aria-labelledby="hero-title" className="shell-gutter pt-10 pb-14 md:pt-20 md:pb-24">
+      <section className="shell-gutter pt-10 pb-14 md:pt-20 md:pb-24">
         <div className="mx-auto grid max-w-[1400px] gap-10 lg:grid-cols-12 lg:gap-14">
           <div className="lg:col-span-7">
             <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--brand-signal)]">
-              Rizzup · feed + realms + voice
+              Feed + realms + voice
             </p>
-            <h2 id="hero-title" className="type-display">
+            <h1 className="type-display">
               Your feed.
               <br />
               Your server.
               <br />
               Your world.
-            </h2>
+            </h1>
             {/* Two lines on a phone. The headline already carries the message. */}
-            <p className="type-lead mt-6 max-w-lg">
-              RIZZ, also known as Rizzup, is the social app where you post once, take it to the
-              replies, then to voice.
-            </p>
+            <p className="type-lead mt-6 max-w-lg">Post once, argue in the replies, then take it to voice.</p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link to="/signup">
                 <Button size="lg" className="h-12 rounded-[6px] px-7 text-base font-semibold">
@@ -303,37 +218,9 @@ function Index() {
         </div>
       </section>
 
-      {/* ---- FAQ: the brand answers, in the same language people search with ---- */}
-      <section aria-labelledby="faq-title" className="shell-gutter shell-section border-t border-border">
-        <div className="mx-auto max-w-[920px]">
-          <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--brand-signal)]">
-            FAQ
-          </p>
-          <h2 id="faq-title" className="type-title mt-4">
-            Rizzup, explained.
-          </h2>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            New here? These are the questions people ask before they claim a username.
-          </p>
-          <dl className="mt-10 border-t border-border">
-            {faqs.map((item) => (
-              <div
-                key={item.q}
-                className="border-b border-border py-6 md:grid md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10"
-              >
-                <dt className="font-display text-lg font-semibold">{item.q}</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground md:mt-0">
-                  {item.a}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
       <footer className="shell-gutter border-t border-border py-8">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 text-[13px] text-muted-foreground">
-          <span>RIZZ (Rizzup) — built by people who post too much.</span>
+          <span>RIZZ — built by people who post too much.</span>
           <div className="flex items-center gap-5">
             <Link to="/login" className="hover:text-foreground">
               Log in
@@ -348,92 +235,11 @@ function Index() {
   );
 }
 
-/**
- * The masthead: the cat mark and the wordmark and nothing else, on the same
- * lime-to-violet wash as the social card. Typing "rizzup" anywhere on the page
- * earns a small smile in the corner.
- */
-function BrandBanner() {
-  const smiling = useRizzupSmile();
-
-  return (
-    <section
-      aria-labelledby="brand-banner-title"
-      className={`brand-banner${smiling ? " is-smiling" : ""}`}
-    >
-      <div className="brand-banner__inner">
-        <h1 id="brand-banner-title" className="brand-banner__lockup">
-          <img
-            src="/brand/rizz-cat-logo.svg"
-            alt=""
-            width={112}
-            height={112}
-            className="brand-banner__logo"
-          />
-          <span aria-hidden="true" className="brand-banner__word">
-            rizz
-          </span>
-          <span className="sr-only">
-            RIZZ, also known as Rizzup — the social app for feeds, realms and voice rooms.
-          </span>
-        </h1>
-        <span aria-hidden="true" className="brand-banner__smile">
-          <svg viewBox="0 0 48 26" fill="none" className="h-auto w-full">
-            <path
-              d="M7 6c3 7.5 9.2 12 17 12s14-4.5 17-12"
-              stroke="currentColor"
-              strokeWidth="3.2"
-              strokeLinecap="round"
-            />
-            <circle cx="16" cy="11" r="1.5" fill="currentColor" />
-            <circle cx="32" cy="11" r="1.5" fill="currentColor" />
-          </svg>
-        </span>
-      </div>
-    </section>
-  );
-}
-
-/** Listens for the brand name as a typed sequence, then lets it fade. */
-function useRizzupSmile() {
-  const [smiling, setSmiling] = useState(false);
-
-  useEffect(() => {
-    let typed = "";
-    let timer: number | undefined;
-
-    const trigger = () => {
-      setSmiling(true);
-      if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => setSmiling(false), 2800);
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) return;
-      typed = (typed + event.key.toLowerCase()).slice(-6);
-      if (typed === "rizzup") {
-        typed = "";
-        trigger();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    if (/rizzup/i.test(`${window.location.search}${window.location.hash}`)) trigger();
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      if (timer) window.clearTimeout(timer);
-    };
-  }, []);
-
-  return smiling;
-}
-
 function SiteNav() {
   return (
     <header className="shell-gutter sticky top-0 z-20 border-b border-border bg-background">
       <nav className="mx-auto flex max-w-[1400px] items-center justify-between py-4">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="RIZZ (Rizzup) home">
+        <Link to="/" className="flex items-center gap-2.5" aria-label="RIZZ home">
           <img src="/brand/rizz-cat-logo.svg" alt="" className="h-7 w-7 shrink-0" />
           <span className="font-display text-lg font-bold tracking-tight">RIZZ</span>
         </Link>

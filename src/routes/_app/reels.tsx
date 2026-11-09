@@ -472,10 +472,8 @@ function ReelsPage() {
             // watched fought twenty others for bandwidth on a phone.
             preload={
               index === activeIndex
-                ? dataSaverOn()
-                  ? "metadata"
-                  : "auto"
-                : !dataSaverOn() && Math.abs(index - (activeIndex < 0 ? 0 : activeIndex)) <= 1
+                ? "auto"
+                : Math.abs(index - (activeIndex < 0 ? 0 : activeIndex)) <= 1
                   ? "metadata"
                   : "none"
             }
@@ -491,13 +489,6 @@ function ReelsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-/** Reels honour Data saver without remounting the list. */
-function dataSaverOn() {
-  return (
-    typeof document !== "undefined" && document.documentElement.classList.contains("data-saver")
   );
 }
 
@@ -583,14 +574,6 @@ function ReelItem({
   const qc = useQueryClient();
   const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLVideoElement>(null);
-  // A backgrounded tab should not keep decoding a full-screen video.
-  useEffect(() => {
-    const pauseWhenHidden = () => {
-      if (document.hidden) ref.current?.pause();
-    };
-    document.addEventListener("visibilitychange", pauseWhenHidden);
-    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
-  }, []);
   const externalLink =
     post.media_type === "video" && post.media_url
       ? parseExternalReelLink(post.media_url)

@@ -59,10 +59,8 @@ export function EmojiGlyph({
       width={20}
       height={20}
       // A fixed square box: a tall screenshot is contained, never a sliver.
-      // The box is the user's emoji size, shared by every surface; cn/twMerge
-      // lets a caller that needs a fixed chip glyph (h-4 w-4) override it.
       className={cn(
-        "inline-block h-[var(--emoji-size)] w-[var(--emoji-size)] shrink-0 object-contain align-[-0.2em]",
+        "inline-block h-[1.15em] w-[1.15em] shrink-0 object-contain align-[-0.2em]",
         className,
       )}
       onError={() => setFailed(true)}
@@ -96,10 +94,7 @@ export function UnicodeGlyph({
     );
   }
   return (
-    <span
-      aria-hidden="true"
-      className={cn("inline-block text-[length:var(--emoji-size)] leading-none", className)}
-    >
+    <span aria-hidden="true" className={cn("inline-block text-[1.05em] leading-none", className)}>
       {value}
     </span>
   );

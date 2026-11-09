@@ -139,52 +139,6 @@ function PreferencesSettingsPage() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="emoji-size" className="text-xs text-muted-foreground">
-              Emoji size · {Math.round(prefs.emojiScale * 100)}%
-            </Label>
-            {prefs.emojiScale !== 1 && (
-              <button
-                type="button"
-                onClick={() => updatePref("emojiScale", 1)}
-                className="text-[10px] font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                Reset
-              </button>
-            )}
-          </div>
-          {/* A number alone means nothing here, so the preview is an actual
-              message bubble rendered with the live --emoji-scale variable. */}
-          <div className="mt-2 flex items-end gap-2" aria-hidden="true">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-[9px] font-bold text-muted-foreground">
-              You
-            </span>
-            <span className="rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.05] px-3 py-2 text-[13px] leading-none text-foreground">
-              this set is{" "}
-              <span
-                className="inline-block align-[-0.15em] leading-none"
-                style={{ fontSize: "calc(15px * var(--emoji-scale, 1))" }}
-              >
-                😎
-              </span>
-            </span>
-          </div>
-          <input
-            id="emoji-size"
-            type="range"
-            min={0.75}
-            max={1.6}
-            step={0.05}
-            value={prefs.emojiScale}
-            onChange={(e) => updatePref("emojiScale", parseFloat(e.target.value))}
-            className="mt-2 w-full accent-primary"
-          />
-          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-            One size for every emoji — chats, captions, comments and the picker.
-          </p>
-        </div>
-
-        <div>
           <Label className="text-xs text-muted-foreground">{t("language_setting")}</Label>
           <select
             value={["auto", "en", "fr"].includes(prefs.language) ? prefs.language : "auto"}

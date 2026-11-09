@@ -9,8 +9,6 @@ export type Prefs = {
   colorBlind: boolean;
   mentionColor: string;
   textScale: number; // 0.92 - 1.2
-  /** Emoji size multiplier. One value for every emoji, in every surface. */
-  emojiScale: number; // 0.75 - 1.6
   /** Set the moment someone moves the text-size slider, so their choice is never migrated again. */
   textScaleCustom?: boolean;
   language: string;
@@ -30,7 +28,6 @@ export const DEFAULT_PREFS: Prefs = {
   colorBlind: false,
   mentionColor: "#5865f2",
   textScale: 0.92,
-  emojiScale: 1,
   language: "auto",
   linkPreviews: true,
 };
@@ -43,7 +40,6 @@ export function loadPrefs(): Prefs {
   try {
     const stored = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as Partial<Prefs>;
     const merged = { ...DEFAULT_PREFS, ...stored };
-    if (typeof stored.emojiScale !== "number") merged.emojiScale = DEFAULT_PREFS.emojiScale;
     // New users get 92%. Existing users who never touched the slider still sit on
     // the old 90% default and are moved up; anyone who chose their own size keeps it.
     if (
@@ -62,20 +58,7 @@ export function loadPrefs(): Prefs {
 export function applyPrefs(p: Prefs) {
   if (typeof document === "undefined") return;
   document.documentElement.style.fontSize = `${Math.round(p.textScale * 100)}%`;
-  // One emoji size for the whole app: captions, comments, chat, the composer
-  // and the picker all read the same variable, so nothing drifts per screen.
-  const emojiScale = Number.isFinite(p.emojiScale)
-    ? Math.min(1.6, Math.max(0.75, p.emojiScale))
-    : 1;
-  document.documentElement.style.setProperty("--emoji-scale", String(emojiScale));
-  document.documentElement.style.setProperty(
-    "--emoji-size",
-    `${(1.15 * emojiScale).toFixed(3)}em`,
-  );
   document.documentElement.classList.toggle("focus-mode", p.focusMode);
-  // Reels and any other media surface read this class when choosing a preload
-  // window, so Data saver does not need a second settings store.
-  document.documentElement.classList.toggle("data-saver", p.dataSaver);
   document.documentElement.classList.toggle("color-blind", p.colorBlind);
   document.documentElement.style.setProperty("--rizz-mention-color", p.mentionColor);
   document.documentElement.lang = resolveHtmlLanguage(p.language);
