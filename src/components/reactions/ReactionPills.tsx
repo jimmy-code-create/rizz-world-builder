@@ -5,6 +5,7 @@ import { customReactionId, emojiMapOf, emojiReactionKey, useEmojiLookup } from "
 import { EmojiGlyph, UnicodeGlyph } from "@/components/emoji/EmojiGlyph";
 import { EmojiPicker, type EmojiPick } from "@/components/emoji/EmojiPicker";
 import { AnimatedCount } from "@/components/ui/animated-count";
+import { toast } from "@/lib/toast";
 import type { SharedEmoji } from "@/lib/emoji-shared";
 
 export type SharedReactionGroup = {
@@ -114,7 +115,11 @@ export function ReactionPills({
             }}
             aria-pressed={group.mine}
             aria-label={`${group.count} ${group.key}${isSuper ? " super" : ""} reaction${group.mine ? ", yours" : ""}`}
-            title={isSuper ? `Super reaction · ${group.count}` : undefined}
+            title={
+              isSuper
+                ? `Super reaction · ${group.count} · hold to see who reacted`
+                : "Hold to see who reacted"
+            }
             style={
               isSuper
                 ? {
@@ -188,6 +193,20 @@ export function ReactionTray({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Hover titles never appear on a phone, so the long-press reactors gesture
+  // gets one visible hint the first time someone goes looking for more.
+  const openPicker = () => {
+    try {
+      if (!localStorage.getItem("rizz:reaction-hint")) {
+        localStorage.setItem("rizz:reaction-hint", "1");
+        toast.info("Hold a reaction to see who reacted");
+      }
+    } catch {
+      // Private mode: skip the hint rather than break the picker.
+    }
+    setPickerOpen(true);
+  };
+
   const choosePick = (pick: EmojiPick) => {
     if (pick.kind === "unicode") onPick(pick.value);
     else onPick(emojiReactionKey(pick.emoji.id));
@@ -214,7 +233,7 @@ export function ReactionTray({
           ))}
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={openPicker}
             aria-label="More reactions"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] text-muted-foreground hover:text-foreground"
           >

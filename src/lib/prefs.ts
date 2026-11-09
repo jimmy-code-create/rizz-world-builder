@@ -73,6 +73,9 @@ export function applyPrefs(p: Prefs) {
     `${(1.15 * emojiScale).toFixed(3)}em`,
   );
   document.documentElement.classList.toggle("focus-mode", p.focusMode);
+  // Reels and any other media surface read this class when choosing a preload
+  // window, so Data saver does not need a second settings store.
+  document.documentElement.classList.toggle("data-saver", p.dataSaver);
   document.documentElement.classList.toggle("color-blind", p.colorBlind);
   document.documentElement.style.setProperty("--rizz-mention-color", p.mentionColor);
   document.documentElement.lang = resolveHtmlLanguage(p.language);

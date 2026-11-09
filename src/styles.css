@@ -2539,6 +2539,18 @@ button:active > .motion-icon {
   68% { opacity: 0.8; box-shadow: 0 0 0 5px rgb(201 255 61 / 0); }
   100% { opacity: 1; box-shadow: 0 0 0 0 rgb(201 255 61 / 0); }
 }
+/* Accent roles, written down so a new surface cannot invent a fifth meaning:
+   --accent-brand  logo and wordmark only
+   --accent-action primary buttons and "start" affordances (lime)
+   --accent-live   on air only — never a normal button (red)
+   --accent-focus  keyboard focus, deliberately neutral so it never competes */
+:root {
+  --accent-brand: #c9ff3d;
+  --accent-action: #c9ff3d;
+  --accent-live: #ff5d68;
+  --accent-focus: #d9d9de;
+}
+
 /* The Live orb: a lens with one slow arc of light. The arc is a masked conic
    gradient so it stays a hairline at any size, and the halo is the pulse. */
 .live-orb {
@@ -2584,6 +2596,22 @@ button:active > .motion-icon {
   to {
     transform: rotate(360deg);
   }
+}
+/* On air, the same orb speaks the room's colour instead of the launch colour. */
+.live-orb--on-air .live-orb__sweep {
+  background: conic-gradient(
+    from 140deg,
+    transparent 0deg,
+    transparent 226deg,
+    rgb(255 93 104 / 0.08) 250deg,
+    rgb(255 93 104 / 0.9) 286deg,
+    rgb(255 93 104 / 0.08) 312deg,
+    transparent 330deg
+  );
+}
+.live-orb--on-air .live-signal-dot {
+  background: var(--accent-live);
+  animation-name: live-dot-pulse;
 }
 .live-fab__halo {
   animation: live-fab-halo 2.4s ease-out infinite;

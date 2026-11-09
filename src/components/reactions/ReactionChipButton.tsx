@@ -52,7 +52,7 @@ export function ReactionChipButton({
       aria-pressed={mine}
       aria-describedby={peek.describedBy}
       onClick={peek.guardClick(onToggle)}
-      title={title}
+      title={title ?? "Hold to see who reacted"}
       {...peek.triggerProps}
       className={cn(
         "inline-flex shrink-0 select-none items-center rounded-[10px] border bg-clip-padding transition-colors",
