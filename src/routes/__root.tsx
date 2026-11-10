@@ -19,6 +19,7 @@ import { AppLoader } from "@/components/AppLoader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallProvider";
 import { GameOverlayHost } from "@/components/voice/GameOverlay";
+import { GiftOverlayPlayer } from "@/components/gifts/GiftOverlayPlayer";
 import { isQuickReturn, markAppActive } from "@/lib/app-activity";
 
 function NotFoundComponent() {
@@ -316,6 +317,10 @@ function RootComponent() {
             </ReactorPeekProvider>
             {/* GAME BOT overlay: games play over the app while you're in a call */}
             <GameOverlayHost />
+            {/* Full-screen luxury gift flex player: subscribes to the gift-drop
+                bridge and renders takeovers when a gift lands. Mounted once here
+                so it lives across navigation and portals to document.body. */}
+            <GiftOverlayPlayer />
           </VoiceCallProvider>
           <Toaster />
         </ThemeProvider>
