@@ -765,6 +765,28 @@
   height: var(--chat-header-icon);
   stroke-width: 1.75;
 }
+/* One call door, both call types visible. */
+.chat-header__action-pair {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.chat-header__action-pair svg {
+  width: 20px;
+  height: 20px;
+}
+.chat-header__live {
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+.chat-header__live[data-live="false"] {
+  opacity: 0.68;
+}
+.chat-header__live[data-live="false"]:hover {
+  opacity: 1;
+}
 .chat-header__live[data-live="true"] {
   color: var(--primary);
 }

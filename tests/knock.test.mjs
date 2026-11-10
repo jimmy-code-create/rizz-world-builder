@@ -96,11 +96,12 @@ await check("one knock per door, not a mash button", async () => {
 });
 
 await check("the controls sit wherever a name does", async () => {
-  assert.ok(
-    dmRoute.includes('aria-label="Live now, tap to knock"'),
-    "the DM header carries the live knock mark",
-  );
-  assert.ok(dmRoute.includes("sendKnock(userId)"), "the live mark knocks without another sheet");
+  assert.ok(dmRoute.includes('"Live now, tap to knock"'), "the live mark keeps its aria label");
+  assert.ok(dmRoute.includes('"Knock"'), "and the mark is still a knock when they are away");
+  assert.ok(dmRoute.includes("sendHeaderKnock"), "the header mark knocks without another sheet");
+  assert.ok(dmRoute.includes("sendKnock(userId)"), "the tap sends the real knock");
+  assert.ok(dmRoute.includes("chat-header__action-pair"), "the call door shows voice and video");
+  assert.ok(dmRoute.includes("<Video"), "a video-call icon is visible");
   assert.ok(preview.includes("<KnockButton"), "the profile card has the knock");
   assert.ok(profilePage.includes("<KnockButton"), "and so does the full profile");
   // The subline is status first; the live mark itself is the doorbell.

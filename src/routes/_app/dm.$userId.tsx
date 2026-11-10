@@ -943,9 +943,9 @@ function DMPage() {
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
-  /** The live mark is also the door: one tap knocks, no sheet in between. */
-  const sendLiveKnock = async () => {
-    if (!user || !peerLive || knocking || knockCooldown) return;
+  /** The broadcast mark is the door: one tap knocks, no sheet in between. */
+  const sendHeaderKnock = async () => {
+    if (!user || knocking || knockCooldown) return;
     setKnocking(true);
     setKnockRipple((current) => current + 1);
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -1105,12 +1105,12 @@ function DMPage() {
                 params={{ username: other.data?.username ?? "" }}
                 className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <p className="truncate font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
+                <p className="truncate font-display text-base font-bold leading-tight tracking-[-0.01em]">
                   {peerName}
                 </p>
               </Link>
               <div
-                className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] leading-tight"
+                className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-tight"
                 aria-live={peerTyping ? "polite" : undefined}
               >
                 <StatusIcon status={peerStatus} size={12} className="shrink-0 opacity-90" />
@@ -1132,14 +1132,12 @@ function DMPage() {
           <div className="chat-header__actions">
             <button
               type="button"
-              onClick={() => void sendLiveKnock()}
-              aria-label="Live now, tap to knock"
-              aria-hidden={!peerLive}
-              tabIndex={peerLive ? 0 : -1}
+              onClick={() => void sendHeaderKnock()}
+              aria-label={peerLive ? "Live now, tap to knock" : "Knock"}
               data-live={peerLive ? "true" : "false"}
-              disabled={!peerLive || knocking || knockCooldown}
-              title={peerLive ? "Knock" : undefined}
-              className={`chat-header__action chat-header__live ${peerLive ? "" : "invisible"}`}
+              disabled={knocking || knockCooldown}
+              title={peerLive ? "Knock — live now" : "Knock"}
+              className="chat-header__action chat-header__live"
             >
               <Podcast aria-hidden="true" />
               {knockRipple > 0 && (
@@ -1151,11 +1149,14 @@ function DMPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label="Call options"
-                  title="Call"
+                  aria-label="Voice or video call"
+                  title="Voice or video call"
                   className="chat-header__action"
                 >
-                  <Phone aria-hidden="true" />
+                  <span className="chat-header__action-pair" aria-hidden="true">
+                    <Phone />
+                    <Video />
+                  </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
