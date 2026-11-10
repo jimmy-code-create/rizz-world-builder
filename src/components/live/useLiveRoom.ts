@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { updateParticipant } from "@/lib/voice";
+import { dispatchGiftDrop } from "@/lib/gift-drop-bridge";
 import { useVoiceCallContext } from "@/components/voice/VoiceCallProvider";
 import {
   LIVE_DEFAULT_SETTINGS,
@@ -286,6 +287,18 @@ export function useLiveRoom() {
       .on("broadcast", { event: "heart" }, () => {
         setHeartCount((count) => count + 1);
       })
+      // A luxury gift flex landed in the room: every viewer plays the
+      // full-screen overlay through the shared gift-drop bridge.
+      .on("broadcast", { event: "gift" }, ({ payload }) => {
+        const drop = payload as {
+          slug?: string;
+          sender?: string;
+          receiver?: string;
+          message?: string | null;
+        };
+        if (!drop?.slug || !drop?.sender || !drop?.receiver) return;
+        dispatchGiftDrop(drop.slug, drop.sender, drop.receiver, drop.message ?? null);
+      })
       .on("broadcast", { event: "join" }, ({ payload }) => {
         const joiner = payload as { name?: string; userId?: string };
         if (!joiner?.userId || joiner.userId === selfIdRef.current) return;
@@ -554,6 +567,13 @@ export function useLiveRoom() {
     cancelAsk,
     approve,
     decline,
+    /** Send a custom broadcast event on the live room channel. */
+    sendBroadcast: useCallback(
+      (event: string, payload: unknown) => {
+        channelRef.current?.send({ type: "broadcast", event, payload }).catch(() => {});
+      },
+      [],
+    ),
     sendChat,
     copyInvite,
     toggleAmbience: () => setAmbienceMuted((value) => !value),

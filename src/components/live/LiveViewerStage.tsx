@@ -19,6 +19,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/lib/toast";
 import { PAWS_TIP_PRESETS, sendPawsTip } from "@/lib/paws-tips";
+import { dispatchGiftDrop } from "@/lib/gift-drop-bridge";
+import { GIFT_CATALOG } from "@/lib/gift-catalog";
 import type { LiveRoomState } from "@/components/live/useLiveRoom";
 
 type ViewerPerson = {
@@ -174,6 +176,33 @@ export function LiveViewerStage({
       setTipOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't send that tip");
+    } finally {
+      setTipping(false);
+    }
+  };
+
+  const sendLuxuryGift = async (gift: (typeof GIFT_CATALOG)[number]) => {
+    if (!hostId || !user?.id) return;
+    setTipping(true);
+    try {
+      await sendPawsTip({
+        to: hostId,
+        amount: gift.pawsPrice,
+        note: `Luxury gift · ${gift.name}`,
+      });
+      // Broadcast the flex so every viewer in the room plays the overlay.
+      void live.sendBroadcast("gift", {
+        slug: gift.slug,
+        sender: user.id,
+        receiver: hostId,
+        message: `Sent you a ${gift.name}`,
+      });
+      // Local flex for the sender too.
+      dispatchGiftDrop(gift.slug, user.id, hostId, `Sent you a ${gift.name}`);
+      toast.success(`Sent ${gift.name} to ${host.name}`);
+      setTipOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't send that flex");
     } finally {
       setTipping(false);
     }
@@ -432,6 +461,27 @@ export function LiveViewerStage({
                 {amount}
               </button>
             ))}
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60 mb-3">
+              Luxury Flexes
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {GIFT_CATALOG.map((gift) => (
+                <button
+                  key={gift.slug}
+                  type="button"
+                  onClick={() => void sendLuxuryGift(gift)}
+                  disabled={tipping}
+                  aria-label={`Send ${gift.name} (${gift.pawsPrice} Paws)`}
+                  className="flex flex-col items-center gap-1 h-16 rounded-2xl border border-white/10 bg-black/40 px-2 py-2 text-xs font-black transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <span className="text-[24px]">{gift.emoji}</span>
+                  <span className="truncate text-[10px] leading-tight text-white">{gift.name}</span>
+                  <span className="text-[10px] text-[#c9ff3d]">{gift.pawsPrice}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <Button
             type="button"
