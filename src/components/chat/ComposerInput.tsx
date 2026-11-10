@@ -93,7 +93,7 @@ function isEmojiNode(node: Node): node is HTMLImageElement {
 }
 
 /** A GIF/sticker picked from the sheet, drawn as media until it is sent. */
-function isMediaNode(node: Node): node is HTMLElement {
+function isMediaNode(node: Node): node is HTMLImageElement | HTMLVideoElement {
   return node.nodeType === 1 && (node as HTMLElement).dataset.mediaToken !== undefined;
 }
 

@@ -110,7 +110,8 @@ await check("the live launch mark is a RIZZ signal, not a red icon", () => {
   assert.ok(live.includes("RizzLiveIcon"), "the launch control still uses the old icon");
   assert.ok(!live.includes("Radio"), "the lucide radio icon is still imported");
   assert.ok(live.includes("live-signal-dot"), "the launch control has no lime signal dot");
-  assert.ok(liveIcon.includes("<circle") && liveIcon.includes("strokeLinecap"), "the mark is not drawn");
+  assert.match(liveIcon, /from "lucide-react"/, "the mark is not a Lucide icon");
+  assert.match(liveIcon, /RadioTower/, "the mark is not the broadcast tower");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserAvatar, InteractiveAvatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { UserPlus, Sparkles, Users } from "lucide-react";
+import { InteractiveAvatar } from "@/components/ui/avatar";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,13 +30,12 @@ export function FollowSuggestions() {
         .limit(40);
       const interests = new Set((profile?.interests ?? []).map((item) => item.toLowerCase()));
       return (profs ?? [])
-        .map((person) => ({
-          ...person,
-          interestScore: (person.interests ?? []).reduce(
-            (score, interest) => score + (interests.has(interest.toLowerCase()) ? 1 : 0),
-            0,
-          ),
-        }))
+        .map((person) => {
+          const sharedInterests = (person.interests ?? []).filter((interest: string) =>
+            interests.has(interest.toLowerCase()),
+          );
+          return { ...person, sharedInterests, interestScore: sharedInterests.length };
+        })
         .sort((left, right) => right.interestScore - left.interestScore || right.paw_balance - left.paw_balance)
         .slice(0, 5);
     },
@@ -61,36 +59,65 @@ export function FollowSuggestions() {
   if (!data || data.length === 0) return null;
 
   return (
-    <div data-focus-hide className="glass rounded-3xl p-4 mb-4 border border-white/5">
-      <div className="flex items-center gap-2 mb-3">
-        <Users className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-display font-bold tracking-tight">{t("suggested_for_you")}</h3>
+    <div
+      data-focus-hide
+      className="mb-4 overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#0e0e11] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9ff3d]" />
+          <h3 className="truncate font-display text-[14px] font-bold tracking-[-0.01em] text-zinc-100">
+            {t("suggested_for_you")}
+          </h3>
+        </div>
+        <span className="shrink-0 font-mono text-[10px] tabular-nums tracking-[0.12em] text-zinc-600">
+          {String(data.length).padStart(2, "0")}
+        </span>
       </div>
-      <div className="space-y-2">
+
+      <div className="divide-y divide-white/[0.045] px-2 py-1">
         {data.map((p: any) => {
           const initial = (p.display_name || p.username || "?").charAt(0).toUpperCase();
+          const shared = (p.sharedInterests ?? []).slice(0, 2);
           return (
-            <div key={p.id} className="flex items-center gap-3">
+            <div
+              key={p.id}
+              className="group flex items-center gap-2.5 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/[0.025]"
+            >
               <InteractiveAvatar
                 src={p.avatar_url}
                 fallback={initial}
-                size="sm"
+                size={36}
                 userId={p.id}
                 username={p.username}
+                className="ring-1 ring-white/10"
               />
-              <Link to="/u/$username" params={{ username: p.username }} className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{p.display_name || p.username}</p>
-                <p className="text-xs text-muted-foreground truncate">@{p.username} · {p.paw_balance} Paws</p>
+              <Link to="/u/$username" params={{ username: p.username }} className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold text-zinc-100">
+                  {p.display_name || p.username}
+                </p>
+                <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px]">
+                  <span className="truncate text-zinc-500">@{p.username}</span>
+                  {shared.length > 0 && (
+                    <>
+                      <span aria-hidden className="text-zinc-700">
+                        ·
+                      </span>
+                      <span className="truncate text-[#c9ff3d]/70">{shared.join(" / ")}</span>
+                    </>
+                  )}
+                </div>
               </Link>
-              <Button
-                size="sm"
+              <button
+                type="button"
                 onClick={() => followMut.mutate(p.id)}
                 disabled={followMut.isPending}
-                className="bg-primary text-primary-foreground border-0 h-8 px-3 shadow-md"
+                aria-label={`Follow @${p.username}`}
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/10 px-2.5 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-[#c9ff3d]/40 hover:bg-[#c9ff3d]/10 hover:text-[#c9ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60 disabled:opacity-40"
               >
-                <UserPlus className="h-3.5 w-3.5 mr-1" />
+                <Plus className="h-3 w-3" strokeWidth={2.25} aria-hidden="true" />
                 Follow
-              </Button>
+              </button>
             </div>
           );
         })}
