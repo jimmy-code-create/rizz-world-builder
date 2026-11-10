@@ -1,39 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import {
-  AlertTriangle,
-  AtSign,
-  Ban,
-  Bell,
-  CheckCheck,
-  Clock,
-  Coins,
-  Hand,
-  Hash,
-  Heart,
-  MessageCircle,
-  MessagesSquare,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldX,
-  Smile,
-  Undo2,
-  Upload,
-  UserPlus,
-} from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/lib/toast";
-import { useI18n, formatRelativeTime, formatFullDate } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
 import { RizzCat } from "@/components/RizzCat";
-import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
-import { fetchCommentTargets, isGenericTitle } from "@/lib/notifications";
-import { aggregateNotifications, type AggregatedCard, type NotifEvent } from "@/lib/notifications-aggregation";
+import { fetchCommentTargets, type CommentTarget } from "@/lib/notifications";
+import {
+  aggregateNotifications,
+  type AggregatedCard,
+  type NotifEvent,
+} from "@/lib/notifications-aggregation";
 import { NotificationRow } from "@/components/notifications/NotificationRow";
 
 export const Route = createFileRoute("/_app/notifications")({
@@ -41,93 +20,114 @@ export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
 });
 
-const ICON: Record<string, any> = {
-  like: Heart,
-  comment: MessageCircle,
-  follow: UserPlus,
-  reaction: Smile,
-  mention: AtSign,
-  // Forum notifications: a reply to your thread, or a new post in a tag you follow.
-  forum_reply: MessagesSquare,
-  forum_tag: Hash,
-  // Bounties: one icon per event, so the inbox reads at a glance.
-  bounty_taken: Hand,
-  bounty_released: Undo2,
-  bounty_submitted: Upload,
-  bounty_paid: Coins,
-  bounty_rejected: Undo2,
-  bounty_cancelled: Ban,
-  bounty_warned: AlertTriangle,
-  bounty_auto_blocked: ShieldAlert,
-  bounty_appeal_filed: ShieldAlert,
-  bounty_warning_upheld: ShieldCheck,
-  bounty_warning_rejected: ShieldX,
-  bounty_fee_charged: Coins,
-  bounty_deadline_missed: Clock,
+type HubTab = "all" | "interactions" | "loot";
+type DmThread = {
+  id: string;
+  body: string;
+  created_at: string;
+  sender: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+  count: number;
 };
 
-/**
- * One sentence per notification type. The map is exhaustive on purpose and is
- * checked against the database's writers by the bounty test suite: a type that
- * is missing here silently renders as "reacted to your post".
- */
-const NOTIF_COPY: Record<string, string> = {
-  like: "notif_liked",
-  comment: "notif_commented",
-  follow: "notif_followed",
-  mention: "notif_mentioned",
-  forum_reply: "notif_forum_reply",
-  forum_tag: "notif_forum_tag",
-  reaction: "notif_reacted",
-  bounty_taken: "notif_bounty_taken",
-  bounty_released: "notif_bounty_released",
-  bounty_submitted: "notif_bounty_submitted",
-  bounty_paid: "notif_bounty_paid",
-  bounty_rejected: "notif_bounty_rejected",
-  bounty_cancelled: "notif_bounty_cancelled",
-  bounty_warned: "notif_bounty_warned",
-  bounty_auto_blocked: "notif_bounty_auto_blocked",
-  bounty_appeal_filed: "notif_bounty_appeal_filed",
-  bounty_warning_upheld: "notif_bounty_warning_upheld",
-  bounty_warning_rejected: "notif_bounty_warning_rejected",
-  bounty_fee_charged: "notif_bounty_fee_charged",
-  bounty_deadline_missed: "notif_bounty_deadline_missed",
-};
+const TABS: Array<{ id: HubTab; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "interactions", label: "Mentions & DMs" },
+  { id: "loot", label: "Loot & Hype" },
+];
 
-/**
- * Forum notifications carry where they came from — the realm slug, the channel
- * and the thread — so tapping one opens that thread instead of the forum root.
- */
-function forumTarget(n: any): { slug: string; room: string; post: string } | null {
-  const data = n?.data as { realm_slug?: string; room_id?: string; post_id?: string } | null;
-  if (!data?.realm_slug || !data?.room_id || !data?.post_id) return null;
+const INTERACTION_TYPES = new Set([
+  "dm",
+  "message",
+  "mention",
+  "group_mention",
+  "voice_room",
+  "call",
+]);
+
+const LOOT_TYPES = new Set([
+  "paws_gift",
+  "gift",
+  "badge",
+  "badge_unlock",
+  "follow",
+  "reaction",
+  "story_reaction",
+  "like",
+  "comment",
+  "super_reaction",
+]);
+
+function inTab(type: string, tab: HubTab): boolean {
+  if (tab === "all") return true;
+  if (tab === "interactions") return INTERACTION_TYPES.has(type);
+  if (type.startsWith("bounty")) return true;
+  return LOOT_TYPES.has(type);
+}
+
+function notificationData(n: Record<string, unknown>): Record<string, unknown> {
+  return n.data && typeof n.data === "object" ? (n.data as Record<string, unknown>) : {};
+}
+
+function forumTarget(n: Record<string, unknown>): { slug: string; room: string; post: string } | null {
+  const data = notificationData(n);
+  if (
+    typeof data.realm_slug !== "string" ||
+    typeof data.room_id !== "string" ||
+    typeof data.post_id !== "string"
+  ) {
+    return null;
+  }
   return { slug: data.realm_slug, room: data.room_id, post: data.post_id };
 }
 
-/**
- * A mention knows exactly which message it came from: the trigger stores
- * `message_id` plus the realm or group it belongs to. Tapping the row opens
- * that conversation on that message, which the chat then highlights.
- */
-function mentionTarget(
-  n: any,
-):
+function mentionTarget(n: Record<string, unknown>):
   | { kind: "group"; groupId: string; messageId: string }
   | { kind: "realm"; realmId: string; messageId: string }
   | null {
-  const data = n?.data as {
-    source?: string;
-    message_id?: string;
-    group_id?: string;
-    realm_id?: string;
-  } | null;
-  if (!data?.message_id) return null;
-  if (data.source === "group" && data.group_id) {
+  const data = notificationData(n);
+  if (typeof data.message_id !== "string") return null;
+  if (data.source === "group" && typeof data.group_id === "string") {
     return { kind: "group", groupId: data.group_id, messageId: data.message_id };
   }
-  if (data.source === "realm" && data.realm_id) {
+  if (data.source === "realm" && typeof data.realm_id === "string") {
     return { kind: "realm", realmId: data.realm_id, messageId: data.message_id };
   }
+  return null;
+}
+
+function talkTarget(n: Record<string, unknown>, realmSlugs: Map<string, string>): string | null {
+  const data = notificationData(n);
+  const direct = typeof data.url === "string" && data.url.startsWith("/") ? data.url : null;
+  if (direct) return direct;
+
+  const mention = mentionTarget(n);
+  if (mention?.kind === "group") {
+    return `/g/${mention.groupId}?message=${mention.messageId}`;
+  }
+  if (mention?.kind === "realm") {
+    const slug = realmSlugs.get(mention.realmId);
+    if (slug) return `/r/${slug}?message=${mention.messageId}`;
+  }
+
+  const forum = forumTarget(n);
+  if (forum) {
+    return `/r/${forum.slug}?room=${forum.room}&post=${forum.post}`;
+  }
+
+  if (n.type === "dm" || n.type === "message") {
+    const sender = data.sender_id ?? n.actor_id;
+    if (typeof sender === "string") return `/dm/${sender}`;
+  }
+  if (n.type === "follow" && typeof (n.actor as { username?: string } | null)?.username === "string") {
+    return `/u/${(n.actor as { username: string }).username}`;
+  }
+  if (typeof n.post_id === "string") return `/p/${n.post_id}`;
+  if (typeof n.type === "string" && n.type.startsWith("bounty")) return "/drops";
   return null;
 }
 
@@ -135,11 +135,12 @@ function NotificationsPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<
-    "all" | "unread" | "messages" | "like" | "comment" | "follow" | "mention" | "bounties"
-  >("all");
+  const [tab, setTab] = useState<HubTab>("all");
+  const itemsKey = ["notifications", user?.id] as const;
+  const dmKey = ["notif-unread-dms", user?.id] as const;
+
   const items = useQuery({
-    queryKey: ["notifications", user?.id],
+    queryKey: itemsKey,
     queryFn: async () => {
       const { data } = await supabase
         .from("notifications")
@@ -154,7 +155,7 @@ function NotificationsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const ch = supabase
+    const channel = supabase
       .channel("notifs-live")
       .on(
         "postgres_changes",
@@ -163,69 +164,14 @@ function NotificationsPage() {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(ch);
+      supabase.removeChannel(channel);
     };
   }, [user, qc]);
 
-  const markAll = async () => {
-    if (!user) return;
-    const previous = items.data ?? [];
-    // Optimistic update in the TanStack Query cache.
-    const optimistic = previous.map((n) => ({ ...n, read: true }));
-    qc.setQueryData(["notifications", user!.id], optimistic);
-    qc.invalidateQueries({ queryKey: ["unread-notifs"] });
-    toast.success("All caught up");
-    try {
-      // Batch mark-all-read: a single update touches every unread row at once.
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-    } catch (error) {
-      // Roll back the optimistic cache on error.
-      qc.setQueryData(["notifications", user!.id], previous);
-      toast.error(
-        error instanceof Error ? error.message : "Couldn't mark all as read",
-      );
-    }
-  };
-
-  const filtered = useMemo(() => {
-    const list = items.data ?? [];
-    if (tab === "all") return list;
-    if (tab === "unread") return list.filter((n: any) => !n.read);
-    // Bounties are one lifecycle, not seven types: every event belongs here.
-    if (tab === "bounties") return list.filter((n: any) => String(n.type).startsWith("bounty"));
-    return list.filter((n: any) => n.type === tab || (tab === "like" && n.type === "reaction"));
-  }, [items.data, tab]);
-
-  // Convert DB rows into aggregation events and collapse them into cards for
-  // the "All" tab. Other tabs keep their existing per-row rendering unchanged.
-  const allEvents = useMemo<NotifEvent[]>(() => {
-    return (items.data ?? []).map((n: any) => ({
-      id: n.id,
-      resource_id: n.post_id ?? null,
-      type: n.type,
-      actor: n.actor?.username ?? null,
-      created_at: n.created_at,
-      body: n.body ?? null,
-      target_url: n.post_id ? `/p/${n.post_id}` : null,
-      ...(n.is_test ? { is_test: true } : {}),
-    }));
-  }, [items.data]);
-
-  const allCards = useMemo<AggregatedCard[]>(() => {
-    return aggregateNotifications(allEvents);
-  }, [allEvents]);
-
-  const unreadCount = (items.data ?? []).filter((n: any) => !n.read).length;
-
-  // Discord's inbox has messages in it, not just likes: the unread DM threads
-  // live here with a direct link to the exact message that is waiting.
+  // Unread DMs are not rows in `notifications`; they are their own inbox lane.
+  // Collapsing by sender here means one card per conversation, not per message.
   const unreadDms = useQuery({
-    queryKey: ["notif-unread-dms", user?.id],
+    queryKey: dmKey,
     enabled: !!user,
     queryFn: async () => {
       const { data } = await supabase
@@ -242,23 +188,9 @@ function NotificationsPage() {
         body: string;
         created_at: string;
         sender_id: string;
-        sender: {
-          id: string;
-          username: string | null;
-          display_name: string | null;
-          avatar_url: string | null;
-        } | null;
+        sender: DmThread["sender"] | null;
       };
-      const seen = new Map<
-        string,
-        {
-          id: string;
-          body: string;
-          created_at: string;
-          sender: NonNullable<UnreadDmRow["sender"]>;
-          count: number;
-        }
-      >();
+      const seen = new Map<string, DmThread>();
       for (const row of (data ?? []) as UnreadDmRow[]) {
         if (!row.sender) continue;
         const existing = seen.get(row.sender_id);
@@ -276,12 +208,11 @@ function NotificationsPage() {
     },
   });
 
-  // Mentions only store ids; the realm link needs the slug.
   const mentionRealmIds = useMemo(
     () => [
       ...new Set(
         (items.data ?? [])
-          .map((n: any) => mentionTarget(n))
+          .map((n: Record<string, unknown>) => mentionTarget(n))
           .filter(
             (target): target is { kind: "realm"; realmId: string; messageId: string } =>
               target?.kind === "realm",
@@ -304,218 +235,254 @@ function NotificationsPage() {
     },
   });
 
-  // The trigger behind a "commented on your post" notification only writes the
-  // label "New Comment", so the comment itself is recovered here and the row
-  // becomes a link to the post it belongs to.
   const commentTargets = useQuery({
     queryKey: ["notification-comment-targets", user?.id, (items.data ?? []).length],
-    queryFn: () => fetchCommentTargets(items.data ?? []),
-    enabled: !!user && (items.data ?? []).some((n: any) => n.type === "comment"),
+    queryFn: () => fetchCommentTargets((items.data ?? []) as Parameters<typeof fetchCommentTargets>[0]),
+    enabled: !!user && (items.data ?? []).some((n: { type?: string }) => n.type === "comment"),
     staleTime: 30_000,
   });
 
+  const notificationEvents = useMemo<NotifEvent[]>(() => {
+    const slugMap = realmSlugs.data ?? new Map<string, string>();
+    const comments = commentTargets.data ?? new Map<string, CommentTarget>();
+    return (items.data ?? []).map((n: Record<string, unknown>) => {
+      const data = notificationData(n);
+      const actor = n.actor as {
+        username?: string | null;
+        display_name?: string | null;
+        avatar_url?: string | null;
+      } | null;
+      const comment = typeof n.id === "string" ? comments.get(n.id) : null;
+      const target =
+        comment && typeof n.post_id === "string"
+          ? `/p/${n.post_id}?comment=${comment.commentId}`
+          : talkTarget(n, slugMap);
+      const resource =
+        (typeof n.post_id === "string" ? n.post_id : null) ??
+        (typeof data.conversation_id === "string" ? data.conversation_id : null) ??
+        (typeof data.group_id === "string" ? data.group_id : null) ??
+        (typeof data.realm_channel_id === "string" ? data.realm_channel_id : null) ??
+        (typeof data.realm_id === "string" ? data.realm_id : null) ??
+        (typeof data.message_id === "string" ? data.message_id : null) ??
+        (typeof n.id === "string" ? n.id : null);
+
+      return {
+        id: String(n.id),
+        resource_id: resource,
+        type: String(n.type ?? "notification"),
+        actor: actor?.username ?? null,
+        actor_name: actor?.display_name ?? null,
+        actor_avatar_url: actor?.avatar_url ?? null,
+        created_at: String(n.created_at ?? new Date().toISOString()),
+        body: comment?.body ?? (typeof n.body === "string" ? n.body : null),
+        target_url: target,
+        read: n.read === true,
+        is_test: n.is_test === true,
+      };
+    });
+  }, [items.data, realmSlugs.data, commentTargets.data]);
+
+  const dmEvents = useMemo<NotifEvent[]>(
+    () =>
+      (unreadDms.data ?? []).map((dm) => ({
+        id: `dm:${dm.sender.id}`,
+        resource_id: dm.sender.id,
+        type: "dm",
+        actor: dm.sender.username,
+        actor_name: dm.sender.display_name,
+        actor_avatar_url: dm.sender.avatar_url,
+        created_at: dm.created_at,
+        body: dm.body,
+        target_url: `/dm/${dm.sender.id}?message=${dm.id}`,
+        read: false,
+        weight: dm.count,
+      })),
+    [unreadDms.data],
+  );
+
+  const cards = useMemo<AggregatedCard[]>(() => {
+    const events = [...dmEvents, ...notificationEvents]
+      .filter((event) => inTab(event.type, tab))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return aggregateNotifications(events);
+  }, [dmEvents, notificationEvents, tab]);
+
+  const loading = items.isLoading || unreadDms.isLoading;
+
+  const unreadCount =
+    (items.data ?? []).filter((n: { read?: boolean }) => !n.read).length +
+    (unreadDms.data ?? []).reduce((total, dm) => total + dm.count, 0);
+
+  const markAll = useCallback(async () => {
+    if (!user) return;
+    const previousItems = items.data ?? [];
+    const previousDms = unreadDms.data ?? [];
+    qc.setQueryData(itemsKey, previousItems.map((n: Record<string, unknown>) => ({ ...n, read: true })));
+    qc.setQueryData(dmKey, []);
+    qc.invalidateQueries({ queryKey: ["unread-notifs"] });
+    toast.success("All caught up");
+    let results: [
+      { error: { message: string } | null },
+      { error: { message: string } | null },
+    ];
+    try {
+      results = await Promise.all([
+        supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("user_id", user.id)
+          .eq("read", false),
+        supabase
+          .from("direct_messages")
+          .update({ read: true })
+          .eq("recipient_id", user.id)
+          .eq("read", false),
+      ]);
+    } catch (error) {
+      qc.setQueryData(itemsKey, previousItems);
+      qc.setQueryData(dmKey, previousDms);
+      toast.error(error instanceof Error ? error.message : "Couldn't mark all as read");
+      return;
+    }
+
+    const [notifResult, dmResult] = results;
+    if (notifResult.error) {
+      qc.setQueryData(itemsKey, previousItems);
+      toast.error(notifResult.error.message);
+    } else {
+      void qc.invalidateQueries({ queryKey: ["notifications"] });
+    }
+    if (dmResult.error) {
+      qc.setQueryData(dmKey, previousDms);
+      toast.error(dmResult.error.message);
+    } else {
+      void qc.invalidateQueries({ queryKey: dmKey });
+    }
+  }, [user, items.data, unreadDms.data, qc, itemsKey, dmKey]);
+
+  const markCardRead = useCallback(
+    (card: AggregatedCard) => {
+      if (!user) return;
+      const notificationIds = card.eventIds.filter((id) => !id.startsWith("dm:"));
+      if (notificationIds.length) {
+        const previous = items.data ?? [];
+        qc.setQueryData(
+          itemsKey,
+          previous.map((n: Record<string, unknown>) =>
+            notificationIds.includes(String(n.id)) ? { ...n, read: true } : n,
+          ),
+        );
+        void supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("user_id", user.id)
+          .in("id", notificationIds)
+          .then(({ error }) => {
+            if (error) qc.setQueryData(itemsKey, previous);
+          });
+      }
+      if (card.type === "dm" && card.resource_id) {
+        const previousDms = unreadDms.data ?? [];
+        qc.setQueryData(
+          dmKey,
+          previousDms.filter((dm) => dm.sender.id !== card.resource_id),
+        );
+        void supabase
+          .from("direct_messages")
+          .update({ read: true })
+          .eq("recipient_id", user.id)
+          .eq("sender_id", card.resource_id)
+          .eq("read", false)
+          .then(({ error }) => {
+            if (error) qc.setQueryData(dmKey, previousDms);
+          });
+      }
+      qc.invalidateQueries({ queryKey: ["unread-notifs"] });
+    },
+    [user, items.data, unreadDms.data, qc, itemsKey, dmKey],
+  );
+
   return (
-    <div>
-      <div className="flex items-end justify-between gap-3 mb-1">
-        <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Bell className="h-7 w-7 text-primary" /> {t("notifications")}
-          {unreadCount > 0 && (
-            <span className="text-xs font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-              {unreadCount}
-            </span>
-          )}
-        </h1>
-        {unreadCount > 0 && (
-          <Button onClick={markAll} size="sm" variant="ghost" className="text-xs gap-1.5">
-            <CheckCheck className="h-3.5 w-3.5" /> {t("mark_all_read")}
-          </Button>
-        )}
-      </div>
-      <p className="text-sm text-muted-foreground mb-4">{t("notif_subtitle")}</p>
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="mb-4">
-        <TabsList className="no-scrollbar glass w-full max-w-full justify-start overflow-x-auto border border-white/5">
-          <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
-          <TabsTrigger value="unread">{t("tab_unread")}</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="like">{t("tab_likes")}</TabsTrigger>
-          <TabsTrigger value="comment">{t("tab_comments")}</TabsTrigger>
-          <TabsTrigger value="follow">{t("tab_follows")}</TabsTrigger>
-          <TabsTrigger value="mention">{t("tab_mentions")}</TabsTrigger>
-          <TabsTrigger value="bounties">Bounties</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="space-y-2">
-        {tab === "messages" &&
-          (unreadDms.data ?? []).map((dm) => (
-            <Link
-              key={dm.sender.id}
-              to="/dm/$userId"
-              params={{ userId: dm.sender.id }}
-              search={{ message: dm.id }}
-              className="glass flex w-full items-center gap-3 rounded-2xl border border-primary/40 bg-card p-4 text-left"
-            >
-              <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={dm.sender.avatar_url ?? undefined} alt="" />
-                <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
-                  {(dm.sender.display_name || dm.sender.username || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">
-                  {dm.sender.display_name || dm.sender.username}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">{dm.body}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
-                {dm.count}
+    <div className="mx-auto w-full max-w-2xl pb-6">
+      <header className="mb-3 flex items-start justify-between gap-3 px-1 sm:px-0">
+        <div className="min-w-0">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            Inbox
+          </p>
+          <h1 className="mt-1 flex items-center gap-2 font-display text-[24px] font-bold tracking-[-0.03em] text-zinc-100 sm:text-[28px]">
+            <Bell className="h-6 w-6 text-[#c9ff3d]" strokeWidth={1.75} />
+            {t("notifications")}
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-[#c9ff3d] px-2 py-0.5 font-mono text-[10px] font-bold text-black">
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
-            </Link>
-          ))}
+            )}
+          </h1>
+        </div>
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={() => void markAll()}
+            className="mt-1 inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 transition-colors hover:border-[#c9ff3d]/35 hover:text-[#c9ff3d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9ff3d]/60"
+          >
+            <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+            {t("mark_all_read")}
+          </button>
+        )}
+      </header>
 
-        {tab !== "messages" ? (
-          tab === "all" ? (
-            <>
-              {allCards.map((card) => (
-                <NotificationRow
-                  key={card.id}
-                  card={card}
-                  target_url={card.target_url}
-                />
-              ))}
-            </>
-          ) : (
-            filtered.map((n: any) => {
-              const Icon = ICON[n.type] ?? Bell;
-            const target = forumTarget(n);
-            const comment = commentTargets.data?.get(n.id) ?? null;
-            const mention = mentionTarget(n);
-            const mentionRealmSlug =
-              mention?.kind === "realm" ? (realmSlugs.data?.get(mention.realmId) ?? null) : null;
-            const shell = `glass rounded-2xl p-4 border ${n.read ? "border-white/5" : "border-primary/40 bg-card"} flex items-center gap-3 w-full text-left`;
-            const inner = (
-              <>
-                <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/15 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm flex-1 min-w-0">
-                    {n.actor?.username ? (
-                      <ProfilePreviewTrigger
-                        username={n.actor.username}
-                        className="font-bold hover:underline"
-                      >
-                        @{n.actor.username}
-                      </ProfilePreviewTrigger>
-                    ) : (
-                      <span className="font-bold">@someone</span>
-                    )}{" "}
-                    {t(NOTIF_COPY[n.type] ?? "notif_reacted")}
-                    {(n.type === "mention" || n.type === "forum_reply" || n.type === "forum_tag") &&
-                      n.body && (
-                        <span className="block text-xs text-muted-foreground truncate mt-0.5">
-                          “{n.body}”
-                        </span>
-                      )}
-                    {comment && (
-                      <span className="block text-xs text-foreground/90 truncate mt-0.5">
-                        “{comment.body}”
-                      </span>
-                    )}
-                    {comment?.postCaption && (
-                      <span className="block text-[11px] text-muted-foreground truncate">
-                        on “{comment.postCaption}”
-                      </span>
-                    )}
-                    {!comment && n.type !== "mention" && n.title && !isGenericTitle(n.title) && (
-                      <span className="block text-xs text-muted-foreground truncate mt-0.5">
-                        {n.title}
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    className="text-[10px] text-muted-foreground mt-0.5"
-                    title={formatFullDate(n.created_at)}
-                  >
-                    {formatRelativeTime(n.created_at)}
-                  </p>
-                </div>
-              </>
-            );
+      <div className="sticky top-0 z-20 -mx-3 border-b border-white/5 bg-black/80 px-3 py-2 backdrop-blur-md sm:-mx-0 sm:px-0">
+        <div role="tablist" aria-label="Notification filters" className="no-scrollbar flex gap-1.5 overflow-x-auto">
+          {TABS.map((item) => {
+            const active = tab === item.id;
             return (
-              <motion.div
-                key={n.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(item.id)}
+                className={
+                  active
+                    ? "shrink-0 rounded-full bg-[#c9ff3d] px-3 py-1.5 text-[11px] font-bold text-black"
+                    : "shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200"
+                }
               >
-                {mention?.kind === "group" ? (
-                  <Link
-                    to="/g/$id"
-                    params={{ id: mention.groupId }}
-                    search={{ message: mention.messageId }}
-                    className={shell}
-                  >
-                    {inner}
-                  </Link>
-                ) : mention && mentionRealmSlug ? (
-                  <Link
-                    to="/r/$slug"
-                    params={{ slug: mentionRealmSlug }}
-                    search={{ message: mention.messageId }}
-                    className={shell}
-                  >
-                    {inner}
-                  </Link>
-                ) : target ? (
-                  <Link
-                    to="/r/$slug"
-                    params={{ slug: target.slug }}
-                    search={{ room: target.room, post: target.post }}
-                    className={shell}
-                  >
-                    {inner}
-                  </Link>
-                ) : comment ? (
-                  <Link
-                    to="/p/$postId"
-                    params={{ postId: n.post_id }}
-                    search={{ comment: comment.commentId }}
-                    className={shell}
-                  >
-                    {inner}
-                  </Link>
-                ) : typeof n.type === "string" && n.type.startsWith("bounty") ? (
-                  // Every bounty event happens on one board, so they all land
-                  // there — the card for this bounty is the next move anyway.
-                  <Link to="/drops" className={shell}>
-                    {inner}
-                  </Link>
-                ) : n.post_id ? (
-                  <Link to="/p/$postId" params={{ postId: n.post_id }} className={shell}>
-                    {inner}
-                  </Link>
-                ) : (
-                  <div className={shell}>{inner}</div>
-                )}
-              </motion.div>
+                {item.label}
+              </button>
             );
-          })
-          )
-        ) : null}
+          })}
+        </div>
       </div>
 
-      {tab === "messages" && (unreadDms.data ?? []).length === 0 && (
-        <div className="glass rounded-3xl p-8 text-center">
-          <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
-          <p className="text-sm text-muted-foreground">No unread messages</p>
-        </div>
-      )}
+      <div className="mt-3 space-y-1.5">
+        {loading && cards.length === 0
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 rounded-xl border border-transparent p-3.5"
+              >
+                <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-zinc-800" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3 w-3/4 animate-pulse rounded bg-zinc-800" />
+                  <div className="h-2.5 w-1/3 animate-pulse rounded bg-zinc-800/70" />
+                </div>
+              </div>
+            ))
+          : cards.map((card) => (
+              <NotificationRow
+                key={card.id}
+                card={card}
+                target_url={card.target_url}
+                onTap={markCardRead}
+              />
+            ))}
+      </div>
 
-      {tab !== "messages" && filtered.length === 0 && (
-        <div className="glass rounded-3xl p-8 text-center">
-          <RizzCat mood="sleepy" size={112} className="mx-auto mb-1" />
-          <p className="text-sm text-muted-foreground">
+      {!loading && cards.length === 0 && (
+        <div className="mt-8 rounded-[18px] border border-white/[0.08] bg-[#0e0e11] p-8 text-center">
+          <RizzCat mood="sleepy" size={104} className="mx-auto mb-1" />
+          <p className="text-sm text-zinc-500">
             {tab === "all" ? t("empty_all") : t("empty_tab")}
           </p>
         </div>

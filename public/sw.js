@@ -1,5 +1,7 @@
-const CACHE_NAME = "rizz-shell-v1";
+const CACHE_NAME = "rizz-shell-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/rizz-pwa.svg"];
+const DEFAULT_ICON = "/brand/rizz-cat-logo.svg";
+const DEFAULT_BADGE = "/brand/badge-mono-96.png";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -46,56 +48,89 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch {
-    payload = { title: "RIZZ", body: event.data.text() };
-  }
+function safePath(value, fallback = "/") {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : fallback;
+}
 
-  // Call cancel: close any matching notification instead of showing one.
-  if (payload.type === "call_cancel") {
+function safeAsset(value, fallback) {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : fallback;
+}
+
+function safeImage(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  return (value.startsWith("/") && !value.startsWith("//")) || value.startsWith("https://")
+    ? value
+    : fallback;
+}
+
+function readPayload(event) {
+  if (!event.data) return null;
+  try {
+    const parsed = event.data.json();
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return { title: "RIZZ", body: event.data.text() };
+  }
+}
+
+self.addEventListener("push", (event) => {
+  const payload = readPayload(event);
+  if (!payload) return;
+
+  const payloadData =
+    payload.data && typeof payload.data === "object" ? payload.data : {};
+  const type = String(payloadData.type || payload.type || "message");
+  const url = safePath(payloadData.url ?? payload.url, "/");
+  const tag = String(payload.tag || `${type}:${url}`).slice(0, 64);
+
+  // Call cancel: remove the ringing notification instead of showing another.
+  if (type === "call_cancel") {
     event.waitUntil(
-      self.registration.getNotifications({ tag: payload.tag }).then((notifications) =>
+      self.registration.getNotifications({ tag }).then((notifications) =>
         notifications.forEach((notification) => notification.close()),
       ),
     );
     return;
   }
 
-  // Structured payload fields (see backend-sql/10_push.sql send_push payload shape):
-  // title, body, icon, badge, tag, renotify, data.url, data.type, data.actions, image.
-  const title = payload.title || "RIZZ";
+  const icon = safeImage(payloadData.actor_avatar_url || payload.icon, DEFAULT_ICON);
+  const badge = safeAsset(payload.badge, DEFAULT_BADGE);
+  const data = { ...payloadData, url, type };
+  const configuredActions = Array.isArray(payload.actions) ? payload.actions : [];
+  const actions = configuredActions
+    .filter((action) => action && typeof action.action === "string" && typeof action.title === "string")
+    .slice(0, 2);
   const options = {
-    body: payload.body || "You have a new notification.",
-    icon: payload.icon || "/rizz-pwa.svg",
-    badge: payload.badge || "/rizz-pwa.svg",
-    tag: payload.tag || "rizz-notification",
+    body: String(payload.body || "You have a new notification.").slice(0, 180),
+    icon,
+    badge,
+    tag,
     renotify: payload.renotify !== false,
     requireInteraction: Boolean(payload.requireInteraction),
-    actions: payload.actions || [],
-    data: {
-      url: payload.url || "/",
-      type: payload.type || "message",
-      ...(payload.data || {}),
-    },
-    // Optional rich-media image banner. No image generator exists in the repo yet,
-    // so this is left unset unless the payload explicitly carries one. TODO: wire
-    // up an image generator here when one exists (payload.image).
-    ...(payload.image ? { image: payload.image } : {}),
+    actions,
+    data,
+    ...(safeImage(payload.image, "")
+      ? { image: safeImage(payload.image, "") }
+      : {}),
   };
+  const title = String(payload.title || "RIZZ").slice(0, 80);
 
-  // If a focused/visible client exists, do NOT show the OS notification. Tell the
-  // client to show the in-app pill instead so there is never a duplicate alert.
+  // If a visible client exists, hand the payload to the in-app island instead
+  // of showing an OS banner. This is the only duplicate-suppression path.
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const visibleClient =
         clients.find((client) => client.visibilityState === "visible") ||
         clients.find((client) => client.focused);
       if (visibleClient) {
-        visibleClient.postMessage({ type: "SHOW_IN_APP_PILL", notification: payload });
+        visibleClient.postMessage({
+          type: "SHOW_IN_APP_PILL",
+          notification: { ...payload, ...options, title, data },
+        });
         return;
       }
       return self.registration.showNotification(title, options);
@@ -106,7 +141,11 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
   event.notification.close();
-  let path = typeof data.url === "string" ? data.url : "/";
+
+  // A dismiss action closes the notification and does not navigate.
+  if (event.action === "dismiss") return;
+
+  let path = safePath(data.url, "/");
   if (data.call_id) {
     const callUrl = new URL(path, self.location.origin);
     callUrl.searchParams.set("callId", data.call_id);
@@ -118,8 +157,10 @@ self.addEventListener("notificationclick", (event) => {
     url.searchParams.set("callId", data.call_id);
     path = url.pathname + url.search;
   }
+
   const target = new URL(path, self.location.origin);
   if (target.origin !== self.location.origin) return;
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
       for (const client of windows) {

@@ -95,10 +95,15 @@ export async function sendTestPush() {
       await reg.showNotification("RIZZ notifications are ready 🔔", {
         body: "Test notification delivered to your device!",
         icon: "/brand/rizz-cat-logo.svg",
-        badge: "/brand/rizz-cat-logo.svg",
+        badge: "/brand/badge-mono-96.png",
         tag: "rizz-test",
-        data: { url: "/settings" },
-      });
+        renotify: true,
+        data: { url: "/settings", type: "test" },
+        actions: [
+          { action: "open", title: "Open" },
+          { action: "dismiss", title: "Dismiss" },
+        ],
+      } as NotificationOptions & { renotify?: boolean });
       return;
     }
   }

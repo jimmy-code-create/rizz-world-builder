@@ -1,51 +1,48 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import {
-  MessageCircle,
   AtSign,
-  Smile,
-  Gift,
-  Mic,
-  X,
-  ChevronRight,
+  Coins,
+  Flame,
+  MessageSquare,
+  Radio,
+  type LucideIcon,
 } from "lucide-react";
+import { useRouter } from "@tanstack/react-router";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { haptic } from "@/lib/haptics";
+import { formatRelativeTime } from "@/lib/i18n";
 import {
-  dispatchInAppNotification,
   subscribeToInAppNotifications,
   type InAppNotification,
 } from "@/lib/in-app-notifications";
-import { useRouter } from "@tanstack/react-router";
 
-const TYPE_ICON: Record<InAppNotification["type"], React.ElementType> = {
-  dm: MessageCircle,
-  mention: AtSign,
-  reaction: Smile,
-  paws_gift: Gift,
-  voice_room: Mic,
-};
-
-const TYPE_LABEL: Record<InAppNotification["type"], string> = {
-  dm: "Message",
-  mention: "Mention",
-  reaction: "Reaction",
-  paws_gift: "Paws gift",
-  voice_room: "Voice room",
-};
-
-/** Sound throttle: one chime per 1.5s max. */
-let lastChimeAt = 0;
+const PILL_LIFETIME_MS = 4000;
+const EXIT_MS = 300;
+const HAPTIC_PATTERN = [25, 40, 25];
 const CHIME_THROTTLE_MS = 1500;
 
-/** Haptic pattern for a new in-app notification. */
-const HAPTIC_PATTERN = [25, 40, 25];
+type PillMeta = {
+  icon: LucideIcon;
+  badge: string;
+  tag: string;
+};
 
+const TYPE_META: Record<InAppNotification["type"], PillMeta> = {
+  dm: { icon: MessageSquare, badge: "bg-emerald-500 text-white", tag: "DM" },
+  mention: { icon: AtSign, badge: "bg-violet-500 text-white", tag: "MENTION" },
+  reaction: { icon: Flame, badge: "bg-[#ff6b5e] text-white", tag: "REACTION" },
+  paws_gift: { icon: Coins, badge: "bg-amber-400 text-black", tag: "GIFT" },
+  voice_room: { icon: Radio, badge: "bg-[#c9ff3d] text-black", tag: "LIVE" },
+};
+
+let lastChimeAt = 0;
+let audioContext: AudioContext | null = null;
+
+/** One short, zero-download mechanical pop. */
 function playChime(): void {
   if (typeof window === "undefined") return;
   const now = Date.now();
@@ -56,77 +53,118 @@ function playChime(): void {
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return;
-  const ac = new Ctor();
-  if (ac.state === "suspended") {
-    void ac.resume().catch(() => undefined);
+
+  try {
+    if (!audioContext) audioContext = new Ctor();
+    if (audioContext.state === "suspended") {
+      void audioContext.resume().catch(() => undefined);
+    }
+    const start = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, start);
+    oscillator.frequency.exponentialRampToValueAtTime(1320, start + 0.06);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.08, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.06);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.07);
+  } catch {
+    // Audio is a nicety; permission or device failures must not break the pill.
   }
-  const nowSec = ac.currentTime;
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(880, nowSec);
-  osc.frequency.exponentialRampToValueAtTime(1320, nowSec + 0.06);
-  gain.gain.setValueAtTime(0.0001, nowSec);
-  gain.gain.exponentialRampToValueAtTime(0.08, nowSec + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, nowSec + 0.06);
-  osc.connect(gain).connect(ac.destination);
-  osc.start(nowSec);
-  osc.stop(nowSec + 0.09);
 }
 
-function transitionConfig(reducedMotion: boolean) {
-  return reducedMotion
-    ? { duration: 0.2 }
-    : { type: "spring" as const, stiffness: 400, damping: 30 };
+function vibrate(pattern: number | number[]): void {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    // Vibration is best-effort.
+  }
+}
+
+function toPillType(value: unknown): InAppNotification["type"] {
+  switch (value) {
+    case "mention":
+    case "group_mention":
+      return "mention";
+    case "reaction":
+    case "story_reaction":
+    case "like":
+      return "reaction";
+    case "paws_gift":
+    case "gift":
+      return "paws_gift";
+    case "voice_room":
+    case "call":
+      return "voice_room";
+    case "dm":
+    case "message":
+    default:
+      return "dm";
+  }
+}
+
+/** Service-worker payload → the same shape the test bridge dispatches. */
+function pillFromPush(payload: Record<string, unknown>): InAppNotification {
+  const data = (payload.data ?? {}) as Record<string, unknown>;
+  const type = toPillType(data.type ?? payload.type);
+  const actor =
+    typeof data.actor_username === "string"
+      ? data.actor_username
+      : typeof data.actor === "string"
+        ? data.actor
+        : null;
+  const target =
+    typeof data.url === "string"
+      ? data.url
+      : typeof payload.url === "string"
+        ? payload.url
+        : null;
+  const avatar =
+    typeof data.actor_avatar_url === "string"
+      ? data.actor_avatar_url
+      : typeof payload.icon === "string"
+        ? payload.icon
+        : null;
+
+  return {
+    id:
+      typeof payload.tag === "string"
+        ? payload.tag
+        : `${type}-${Date.now()}`,
+    type,
+    actor,
+    body: typeof payload.body === "string" ? payload.body : null,
+    target_url: target,
+    avatar_url: avatar,
+    created_at:
+      typeof data.created_at === "string" ? data.created_at : new Date().toISOString(),
+    is_test: data.type === "test" || payload.type === "test",
+  };
 }
 
 export function RizzInAppPill() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [queue, setQueue] = useState<InAppNotification[]>([]);
-  const [showing, setShowing] = useState<InAppNotification | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pausedRef = useRef(false);
+  const [current, setCurrent] = useState<InAppNotification | null>(null);
+  const [dismissing, setDismissing] = useState(false);
+  const currentRef = useRef<InAppNotification | null>(null);
   const dismissingRef = useRef(false);
-  const pressStartRef = useRef<{ y: number; time: number } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deadlineRef = useRef(0);
+  const remainingRef = useRef(PILL_LIFETIME_MS);
+  const draggedRef = useRef(false);
+  const dismissRef = useRef<() => void>(() => undefined);
   const reducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Subscribe to the in-app notification bridge so test pills from the
-  // settings panel and SW-posted messages both land in the pill queue.
   useEffect(() => {
-    return subscribeToInAppNotifications((notification) => {
-      setQueue((prev) => [...prev, notification]);
-    });
-  }, []);
-
-  // Listen for service worker postMessage: when a push arrives while a visible
-  // client exists, the SW posts SHOW_IN_APP_PILL instead of showing an OS
-  // notification, so the pill renders it (never both at once).
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const data = event.data ?? {};
-      if (data.type === "SHOW_IN_APP_PILL" && data.notification) {
-        dispatchInAppNotification({
-          id: String(
-            data.notification.tag ?? data.notification.title ?? Date.now(),
-          ),
-          type: "dm",
-          actor: data.notification.title
-            ? String(data.notification.title)
-            : null,
-          body: data.notification.body ?? null,
-          target_url: data.notification.data?.url ?? null,
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-          is_test: data.notification.data?.type === "test",
-        });
-      }
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("message", onMessage);
-      return () => window.removeEventListener("message", onMessage);
-    }
+    setMounted(true);
   }, []);
 
   const clearTimer = useCallback(() => {
@@ -136,195 +174,189 @@ export function RizzInAppPill() {
     }
   }, []);
 
-  const startTimer = useCallback(() => {
-    clearTimer();
-    if (showing && !pausedRef.current && !dismissingRef.current) {
-      timerRef.current = setTimeout(dismissCurrent, 4000);
-    }
-  }, [showing, clearTimer, dismissCurrent]);
-
   const dismissCurrent = useCallback(() => {
-    if (dismissingRef.current) return;
+    if (!currentRef.current || dismissingRef.current) return;
     dismissingRef.current = true;
+    setDismissing(true);
     clearTimer();
-    setShowing(null);
-    // Let the exit animation finish before allowing the next pill.
-    setTimeout(() => {
+    currentRef.current = null;
+    setCurrent(null);
+    window.setTimeout(() => {
       dismissingRef.current = false;
-    }, reducedMotion ? 200 : 300);
-  }, [clearTimer, dismissingRef, reducedMotion, setShowing]);
+      setDismissing(false);
+    }, reducedMotion ? 200 : EXIT_MS);
+  }, [clearTimer, reducedMotion]);
 
-  const showNext = useCallback(() => {
-    clearTimer();
-    if (queue.length === 0) {
-      setShowing(null);
-      return;
-    }
-    const next = queue[0];
-    setQueue((prev) => prev.slice(1));
-    setShowing(next);
-    // Haptic + chime once per pill, chime throttled to once per 1.5s.
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      try {
-        navigator.vibrate(HAPTIC_PATTERN);
-      } catch {
-        // Vibration blocked by OS/browser; never breaks the tap.
-      }
-    }
-    playChime();
-    startTimer();
-  }, [queue, clearTimer, startTimer, playChime]);
+  dismissRef.current = dismissCurrent;
 
-  useEffect(() => {
-    if (!showing && queue.length > 0 && !dismissingRef.current) {
-      showNext();
-    }
-    return clearTimer;
-  }, [showing, queue, showNext, clearTimer]);
-
-  const handleTap = useCallback(
-    (event: React.MouseEvent, notification: InAppNotification) => {
-      // Ignore taps that were really swipes.
-      if (pressStartRef.current) {
-        const deltaY = event.clientY - pressStartRef.current.y;
-        if (deltaY < -20) {
-          pressStartRef.current = null;
-          dismissCurrent();
-          return;
-        }
-        pressStartRef.current = null;
-      }
-      const url = notification.target_url;
-      dismissCurrent();
-      if (url && typeof url === "string" && url.startsWith("/")) {
-        void router.navigate({ to: url }).catch(() => undefined);
-      }
-    },
-    [dismissCurrent, router],
-  );
-
-  const handleDismiss = useCallback(
-    (event: React.MouseEvent) => {
-      event.stopPropagation();
-      pressStartRef.current = null;
-      dismissCurrent();
-    },
-    [dismissCurrent],
-  );
-
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent) => {
-      pressStartRef.current = { y: event.clientY, time: Date.now() };
-      pausedRef.current = true;
+  const startTimer = useCallback(
+    (duration = PILL_LIFETIME_MS) => {
       clearTimer();
+      if (!currentRef.current) return;
+      const ms = Math.max(0, duration);
+      remainingRef.current = ms;
+      deadlineRef.current = Date.now() + ms;
+      timerRef.current = setTimeout(() => dismissRef.current(), ms);
     },
     [clearTimer],
   );
 
-  const handlePointerUp = useCallback(
-    (event: React.PointerEvent) => {
-      if (!pressStartRef.current) return;
-      const deltaY = event.clientY - pressStartRef.current.y;
-      const wasSwipe = deltaY < -20;
-      pressStartRef.current = null;
-      pausedRef.current = false;
-      if (wasSwipe) {
-        dismissCurrent();
-        return;
-      }
-      startTimer();
-    },
-    [dismissCurrent, startTimer],
-  );
-
-  const handlePointerLeave = useCallback(() => {
-    pausedRef.current = false;
-    startTimer();
-  }, [startTimer]);
-
-  const handleMouseEnter = useCallback(() => {
-    pausedRef.current = true;
+  const pauseTimer = useCallback(() => {
+    if (!currentRef.current) return;
+    remainingRef.current = Math.max(0, deadlineRef.current - Date.now());
     clearTimer();
   }, [clearTimer]);
 
-  const handleMouseLeave = useCallback(() => {
-    pausedRef.current = false;
-    startTimer();
+  const resumeTimer = useCallback(() => {
+    if (!currentRef.current) return;
+    startTimer(remainingRef.current || PILL_LIFETIME_MS);
   }, [startTimer]);
 
-  const containerStyle: React.CSSProperties = {
-    position: "fixed",
-    top: "max(8px, env(safe-area-inset-top))",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "100%",
-    maxWidth: "440px",
-    pointerEvents: "none",
-    zIndex: 200,
-    display: "flex",
-    justifyContent: "center",
-  };
+  // Local bridge: test panel and other app surfaces.
+  useEffect(() => subscribeToInAppNotifications((notification) => {
+    setQueue((prev) => [...prev, notification]);
+  }), []);
 
-  if (!showing) return null;
+  // Service worker pushes while the app is visible.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as {
+        type?: string;
+        notification?: Record<string, unknown>;
+      } | null;
+      if (data?.type !== "SHOW_IN_APP_PILL" || !data.notification) return;
+      setQueue((prev) => [...prev, pillFromPush(data.notification!)]);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
 
-  const Icon = TYPE_ICON[showing.type];
-  const transition = transitionConfig(reducedMotion);
-  const slide = reducedMotion ? 0 : -20;
+  // Advance the queue only after the previous pill's exit is finished.
+  useEffect(() => {
+    if (current || dismissing || queue.length === 0) return;
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    currentRef.current = next;
+    setCurrent(next);
+  }, [queue, current, dismissing]);
+
+  // Arm the lifetime timer, haptic, and chime for each new pill.
+  useEffect(() => {
+    if (!current) return;
+    remainingRef.current = PILL_LIFETIME_MS;
+    startTimer(PILL_LIFETIME_MS);
+    vibrate(HAPTIC_PATTERN);
+    playChime();
+    return clearTimer;
+  }, [current, startTimer, clearTimer]);
+
+  const handleTap = useCallback(() => {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
+    const notification = currentRef.current;
+    if (!notification) return;
+    const url = notification.target_url;
+    dismissCurrent();
+    if (url && typeof url === "string" && url.startsWith("/")) {
+      router.history.push(url);
+    }
+  }, [dismissCurrent, router]);
+
+  const meta = current ? TYPE_META[current.type] : null;
+  const Icon = meta?.icon ?? MessageSquare;
+
+  if (!mounted) return null;
+
+  const transition = reducedMotion
+    ? { duration: 0.2 }
+    : { type: "spring" as const, stiffness: 450, damping: 32 };
 
   return createPortal(
-    <div style={containerStyle} className="pointer-events-none">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="pill"
-          initial={{ opacity: 0, y: slide }}
-          animate={{ opacity: 1, y: 0, transition }}
-          exit={{ opacity: 0, y: slide, transition }}
-          onClick={(event) => handleTap(event, showing)}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerLeave}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          className={cn(
-            "pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/10 bg-card/95 backdrop-blur-md px-3.5 py-2.5 text-left shadow-xl",
-            !reducedMotion && "animate-in fade-in slide-in-from-top-4",
-          )}
+    <div
+      className="pointer-events-none fixed inset-x-0 top-2 z-[9999] mx-auto w-[calc(100%-24px)] max-w-[390px]"
+      style={{ top: "max(0.5rem, env(safe-area-inset-top))" }}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {current && meta ? (
+          <motion.div
+            key={current.id}
+          initial={reducedMotion ? { opacity: 0 } : { y: -60, opacity: 0, scale: 0.95 }}
+          animate={reducedMotion ? { opacity: 1 } : { y: 0, opacity: 1, scale: 1 }}
+          exit={reducedMotion ? { opacity: 0 } : { y: -60, opacity: 0, scale: 0.92 }}
+          transition={transition}
+          drag={reducedMotion ? false : "y"}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0.25, bottom: 0 }}
+          onDragStart={() => {
+            draggedRef.current = false;
+            pauseTimer();
+          }}
+          onDrag={(_, info) => {
+            if (info.offset.y < -10) draggedRef.current = true;
+            if (info.offset.y < -20) dismissCurrent();
+          }}
+          onDragEnd={(_, info) => {
+            if (info.offset.y < -20) dismissCurrent();
+            else resumeTimer();
+            // Let a real click after the drag settle before accepting taps again.
+            window.setTimeout(() => {
+              draggedRef.current = false;
+            }, 0);
+          }}
+          onPointerDown={pauseTimer}
+          onPointerUp={resumeTimer}
+          onPointerLeave={resumeTimer}
+          onMouseEnter={pauseTimer}
+          onMouseLeave={resumeTimer}
+          onClick={handleTap}
+          role="status"
+          aria-live="polite"
+          className="pointer-events-auto flex w-full items-center gap-3 rounded-2xl border border-white/12 bg-zinc-950/90 p-2.5 pl-3 pr-3 text-left shadow-[0_8px_32px_rgba(0,0,0,0.85)] backdrop-blur-2xl"
         >
-          <div className="shrink-0 h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Icon />
+          <div className="relative h-[38px] w-[38px] shrink-0">
+            <Avatar className="h-[38px] w-[38px] ring-1 ring-white/10">
+              <AvatarImage src={current.avatar_url ?? undefined} alt="" />
+              <AvatarFallback className="bg-zinc-800 text-[11px] font-bold text-zinc-100">
+                {(current.actor || "R").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={cn(
+                "absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full ring-2 ring-zinc-950",
+                meta.badge,
+              )}
+            >
+              <Icon size={10} strokeWidth={2.4} aria-hidden="true" />
+            </span>
           </div>
+
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              {showing.actor && (
-                <span className="text-xs font-semibold text-foreground truncate">
-                  @{showing.actor}
-                </span>
-              )}
-              <Badge variant="outline" className="text-[10px] leading-none shrink-0">
-                {TYPE_LABEL[showing.type]}
-              </Badge>
-              {showing.is_test && (
-                <Badge variant="outline" className="text-[10px] leading-none shrink-0 text-muted-foreground border-white/20">
-                  test
-                </Badge>
-              )}
+            <div className="flex items-center">
+              <span className="truncate text-xs font-bold tracking-tight text-white">
+                {current.actor ? `@${current.actor}` : "RIZZ"}
+              </span>
+              <span className="ml-1.5 shrink-0 font-mono text-[10px] font-medium text-lime-400">
+                {current.is_test ? "TEST" : meta.tag}
+              </span>
             </div>
-            {showing.body && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5 leading-snug">
-                {showing.body}
-              </p>
-            )}
+            <p className="mt-0.5 truncate text-xs font-normal leading-tight text-zinc-300">
+              {current.body || "New notification"}
+            </p>
           </div>
-          <button
-            type="button"
-            aria-label="Dismiss"
-            onClick={handleDismiss}
-            className="shrink-0 p-1 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground ml-2" />
-        </motion.div>
+
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <span className="font-mono text-[10px] text-zinc-400">
+              {formatRelativeTime(current.created_at)}
+            </span>
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-[#c9ff3d] shadow-[0_0_6px_rgba(201,255,61,0.9)]"
+            />
+          </div>
+          </motion.div>
+        ) : null}
       </AnimatePresence>
     </div>,
     document.body,

@@ -5,14 +5,20 @@ import {
   type VapidKeys,
 } from "@block65/webcrypto-web-push";
 
+type PushAction = { action: string; title: string };
+
 type PushNotice = {
-  type?: "message" | "group_mention" | "call" | "call_cancel" | "test";
+  type?: string;
   title?: string;
   body?: string;
   url?: string;
   tag?: string;
   icon?: string;
+  badge?: string;
   image?: string;
+  renotify?: boolean;
+  data?: Record<string, unknown>;
+  actions?: PushAction[];
   call_id?: string;
   requireInteraction?: boolean;
 };
@@ -75,17 +81,45 @@ function isAllowedPushEndpoint(endpoint: string) {
   }
 }
 
+function safePath(value: unknown, fallback = "/") {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : fallback;
+}
+
+function safeImage(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  return (value.startsWith("/") && !value.startsWith("//")) || value.startsWith("https://")
+    ? value
+    : fallback;
+}
+
 function safeNotice(input: PushNotice): PushNotice {
-  const url = input.url?.startsWith("/") && !input.url.startsWith("//")
-    ? input.url
-    : "/";
+  const data = input.data && typeof input.data === "object" ? input.data : {};
+  // Structured payloads (DM, call, test) carry the richer type in `data`.
+  const type = String(data.type || input.type || "message").slice(0, 32);
+  const url = safePath(input.url ?? data.url, "/");
+  const actions = Array.isArray(input.actions)
+    ? input.actions
+        .filter((action) => action && typeof action.action === "string" && typeof action.title === "string")
+        .slice(0, 2)
+    : [];
   return {
-    type: input.type,
+    type,
     title: (input.title || "RIZZ").slice(0, 80),
     body: (input.body || "You have a new notification.").slice(0, 180),
     url,
-    tag: (input.tag || "rizz-notification").slice(0, 64),
-    icon: "/rizz-pwa.svg",
+    tag: (input.tag || `rizz:${type}`).slice(0, 64),
+    icon: safeImage(input.icon, "/brand/rizz-cat-logo.svg"),
+    badge: safePath(input.badge, "/brand/badge-mono-96.png"),
+    renotify: input.renotify !== false,
+    data: {
+      ...data,
+      url,
+      type,
+      ...(input.call_id ? { call_id: input.call_id.slice(0, 64) } : {}),
+    },
+    actions,
     call_id: input.call_id?.slice(0, 64),
     requireInteraction: Boolean(input.requireInteraction),
   };
@@ -408,7 +442,9 @@ async function handleTts(request: Request, env: Env) {
     });
   } catch (error) {
     if (error instanceof GeminiError) {
-      const retry = error.retryAfter ? { "retry-after": error.retryAfter } : {};
+      const retry: Record<string, string> = error.retryAfter
+        ? { "retry-after": error.retryAfter }
+        : {};
       return json(
         { error: error.status === 429 ? "Gemini is rate-limiting requests. Try again shortly." : "Gemini could not generate this audio." },
         error.status === 429 ? 429 : error.status >= 500 ? 502 : 400,

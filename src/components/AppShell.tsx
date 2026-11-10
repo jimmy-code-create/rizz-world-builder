@@ -60,6 +60,7 @@ import { AppLoader } from "@/components/AppLoader";
 import { isQuickReturn } from "@/lib/app-activity";
 import { WelcomeTourHost } from "@/components/onboarding/WelcomeTourHost";
 import { KnockDoorbell } from "@/components/knock/KnockDoorbell";
+import { RizzInAppPill } from "@/components/notifications/RizzInAppPill";
 import { usePresenceHeartbeat } from "@/lib/knock";
 import { statusShortLabel, useSelfPresence } from "@/lib/presence";
 import { playNotificationPing } from "@/lib/notification-sound";
@@ -608,6 +609,9 @@ export function AppShell() {
 
       {/* Someone at the door — knocks ring wherever you are in the app. */}
       <KnockDoorbell />
+
+      {/* Foreground pushes land here: one island, never an OS + in-app dupe. */}
+      <RizzInAppPill />
 
       {/* Mobile bottom nav — 5 items, center FAB with 48px min touch height */}
       {!isConversation && (

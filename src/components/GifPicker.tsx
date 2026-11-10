@@ -158,6 +158,9 @@ export function GifPicker({
   const setOpen = isControlled ? (setControlledOpen ?? (() => {})) : setInternalOpen;
 
   const [tab, setTab] = useState<PickerTab>(initialTab);
+  // Mount the emoji grid one paint after the sheet opens. The sheet's slide and
+  // the 1,000-glyph grid used to compete for the same frame on phones.
+  const [emojiReady, setEmojiReady] = useState(false);
   const [queries, setQueries] = useState<Record<PickerTab, string>>({
     emoji: "",
     gifs: "",
@@ -205,6 +208,15 @@ export function GifPicker({
     setDragging(false);
     if (sheetRef.current) sheetRef.current.style.transform = "";
   }, [initialTab, open]);
+
+  useEffect(() => {
+    if (!open || tab !== "emoji") {
+      setEmojiReady(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setEmojiReady(true), 30);
+    return () => window.clearTimeout(timer);
+  }, [open, tab]);
 
   useEffect(() => {
     if (!open || tab !== "stickers") return;
@@ -498,18 +510,31 @@ export function GifPicker({
         <div key={tab} className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden">
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <RizzEmojiPanel
-                realmId={realmId}
-                realmName={realmName}
-                query={query}
-                onQueryChange={setQuery}
-                onEmoji={(token) => closeAnd(token)}
-                onPick={(token) => closeAnd(token)}
-                onClose={() => setOpen(false)}
-                onManage={onCustomEmoji}
-                initialScrollTop={scrollPositions.current.emoji}
-                onScrollTopChange={(value) => saveScroll("emoji", value)}
-              />
+              {emojiReady ? (
+                <RizzEmojiPanel
+                  realmId={realmId}
+                  realmName={realmName}
+                  query={query}
+                  onQueryChange={setQuery}
+                  onEmoji={(token) => closeAnd(token)}
+                  onPick={(token) => closeAnd(token)}
+                  onClose={() => setOpen(false)}
+                  onManage={onCustomEmoji}
+                  initialScrollTop={scrollPositions.current.emoji}
+                  onScrollTopChange={(value) => saveScroll("emoji", value)}
+                />
+              ) : (
+                <div
+                  className="grid grid-cols-8 gap-0 px-2 pt-3"
+                  aria-label="Loading emoji"
+                >
+                  {Array.from({ length: 48 }, (_, index) => (
+                    <div key={index} className="grid h-10 place-items-center">
+                      <span className="h-6 w-6 rounded-full bg-white/[0.055]" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : tab === "gifs" ? (
             <div

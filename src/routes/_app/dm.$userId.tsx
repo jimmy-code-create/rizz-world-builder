@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3 } from "lucide-react";
+import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -139,6 +139,14 @@ function DMPage() {
   // every other entry point (long press, right click, keyboard) opens actions.
   const [openMsgView, setOpenMsgView] = useState<"actions" | "reactions">("actions");
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
+  const [editing, setEditing] = useState<{
+    id: string;
+    previousBody: string;
+    prefix: string;
+    text: string;
+    mine: boolean;
+  } | null>(null);
+  const preEditDraftRef = useRef("");
 
   // Replying opens the keyboard and keeps the composer above it: the list is
   // re-pinned to the newest message while the viewport settles, so the reply
@@ -236,6 +244,55 @@ function DMPage() {
     setOpenMsgView(view);
     setOpenMsg(id);
   };
+
+  const cancelEdit = () => {
+    if (!editing) return;
+    setEditing(null);
+    setBody(preEditDraftRef.current);
+    setCaret(preEditDraftRef.current.length);
+    requestAnimationFrame(() => {
+      const el = composerRef.current;
+      el?.focus();
+      el?.setSelection(preEditDraftRef.current.length);
+    });
+  };
+
+  const beginEdit = (message: {
+    id: string;
+    body: string;
+    prefix: string;
+    text: string;
+  }) => {
+    if (!user || !message.text.trim()) {
+      toast.info("Only text messages can be edited");
+      return;
+    }
+    preEditDraftRef.current = body;
+    setReplyTo(null);
+    setEditing({
+      id: message.id,
+      previousBody: message.body,
+      prefix: message.prefix,
+      text: message.text,
+      mine: true,
+    });
+    setBody(message.text);
+    setCaret(message.text.length);
+    setOpenMsg(null);
+    requestAnimationFrame(() => {
+      const el = composerRef.current;
+      el?.focus();
+      el?.setSelection(message.text.length);
+    });
+  };
+
+  // Reply is the other composer mode: they cannot both own the strip.
+  useEffect(() => {
+    if (!replyTo || !editing) return;
+    setEditing(null);
+    setBody(preEditDraftRef.current);
+    setCaret(preEditDraftRef.current.length);
+  }, [replyTo, editing]);
 
   const jumpToMessage = (id: string) => {
     const el = document.getElementById(`msg-${id}`);
@@ -536,7 +593,48 @@ function DMPage() {
   };
 
   const send = () => {
-    if (!user || (!body.trim() && !imageFile)) return;
+    if (!user) return;
+
+    if (editing) {
+      const nextText = body.trim();
+      if (!nextText) {
+        toast.error("Message can't be empty");
+        return;
+      }
+      const nextBody = editing.prefix ? `${editing.prefix}${nextText}` : nextText;
+      if (nextBody.length > MAX_MESSAGE_LENGTH) {
+        toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
+        return;
+      }
+      const editingNow = editing;
+      qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+        current.map((message) => message.id === editingNow.id ? { ...message, body: nextBody } : message),
+      );
+      setEditing(null);
+      setBody("");
+      setCaret(0);
+      requestAnimationFrame(() => composerRef.current?.focus());
+      void supabase
+        .from("direct_messages")
+        .update({ body: nextBody })
+        .eq("id", editingNow.id)
+        .eq("sender_id", user.id)
+        .then(({ error }) => {
+          if (!error) return;
+          qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+            current.map((message) =>
+              message.id === editingNow.id ? { ...message, body: editingNow.previousBody } : message,
+            ),
+          );
+          setEditing(editingNow);
+          setBody(nextText);
+          setCaret(nextText.length);
+          toast.error(error.message || "Couldn't update that message");
+        });
+      return;
+    }
+
+    if (!body.trim() && !imageFile) return;
     const composerText = body;
     const reply = replyTo;
     const pendingPreview = imagePreview;
@@ -1110,6 +1208,11 @@ function DMPage() {
                 // Long-press anywhere in the row (avatar, name, photo, empty
                 // space) opens this message's actions — the realm gesture.
                 onLongPress={() => openMessageMenu(m.id)}
+                onSwipeReply={
+                  deletedAt || deliveryStatus
+                    ? undefined
+                    : () => setReplyTo({ id: m.id, body: rest || m.body, mine })
+                }
                 // On a desktop the same two actions live on a hover toolbar,
                 // Discord-style, so a mouse never has to hold a message down.
                 onQuickReact={() => openMessageMenu(m.id, "reactions")}
@@ -1166,6 +1269,20 @@ function DMPage() {
                         setReplyTo({ id: m.id, body: rest || m.body, mine });
                       },
                     },
+                    ...(mine && !deletedAt && !deliveryStatus && (rest ?? "").trim()
+                      ? [{
+                          label: "Edit message",
+                          icon: Pencil,
+                          onSelect: () => {
+                            beginEdit({
+                              id: m.id,
+                              body: m.body,
+                              prefix: quote ? `↪ ${quote}\n` : "",
+                              text: rest ?? "",
+                            });
+                          },
+                        }]
+                      : []),
                     {
                       label: "Forward",
                       icon: Forward,
@@ -1406,12 +1523,24 @@ function DMPage() {
             </Button>
           </div>
         ) : null}
-        reply={replyTo ? {
-          label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
-          preview: replyTo.body || "Photo",
-          onCancel: () => setReplyTo(null),
-          onJump: () => jumpToMessage(replyTo.id),
-        } : null}
+        reply={
+          editing
+            ? {
+                mode: "edit",
+                label: "Editing message",
+                preview: editing.text || "Message",
+                onCancel: cancelEdit,
+                onJump: () => jumpToMessage(editing.id),
+              }
+            : replyTo
+              ? {
+                  label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
+                  preview: replyTo.body || "Photo",
+                  onCancel: () => setReplyTo(null),
+                  onJump: () => jumpToMessage(replyTo.id),
+                }
+              : null
+        }
         mentions={
           <MentionAutocomplete
             value={body}

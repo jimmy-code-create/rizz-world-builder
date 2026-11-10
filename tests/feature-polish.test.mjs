@@ -116,7 +116,7 @@ await check("one RIZZ emoji picker is shared by every reaction surface", () => {
   assert.match(commentThread, /RizzEmojiPanel/, "comments and Reels use the cat picker");
   assert.match(chatPicker, /RizzEmojiPanel/, "messages use it");
   assert.match(gifPicker, /RizzEmojiPanel/, "the composer sheet uses it");
-  assert.match(gifPicker, /onSelect\(shortcode\)/, "the picker inserts the shortcode");
+  assert.match(gifPicker, /onSelect\(marker\)/, "the picker inserts the selected marker");
 });
 
 console.log(`\n${passed} checks passed${process.exitCode ? " (with failures)" : ""}.`);

@@ -1,10 +1,10 @@
 /**
  * The door into live, drawn as part of RIZZ rather than as a red icon button.
  *
- * On a phone it is a lens: an ink orb with a lime rim, one slow arc of light
- * travelling around it, and the LIVE label sitting in the nav row like every
- * other tab. The block is sized so the bar keeps the same height it has on
- * Feed and Messages — the orb rises 12px above it instead of growing it.
+ * On a phone it is a quiet ink orb with a lime rim and a static signal dot,
+ * with the LIVE label sitting in the nav row like every other tab. The block
+ * is sized so the bar keeps the same height it has on Feed and Messages — the
+ * orb rises 12px above it instead of growing it.
  *
  * While you are on air the same orb turns red and the label reads "On air",
  * so "can start" and "already live" are never the same colour.
@@ -25,11 +25,6 @@ function LiveOrb({ size, onAir }: { size: "mobile" | "sidebar"; onAir: boolean }
           : "shadow-[0_10px_30px_-12px_rgba(201,255,61,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]"
       } ${mobile ? "h-12 w-12" : "h-10 w-10"}`}
     >
-      <span className="live-orb__sweep" aria-hidden="true" />
-      <span
-        className="live-fab__halo pointer-events-none absolute inset-0 rounded-full border border-primary/25"
-        aria-hidden="true"
-      />
       <RizzLiveIcon
         className={`relative ${onAir ? "text-[#ff5d68]" : "text-primary"} ${
           mobile ? "h-6 w-6" : "h-5 w-5"
@@ -37,6 +32,8 @@ function LiveOrb({ size, onAir }: { size: "mobile" | "sidebar"; onAir: boolean }
       />
       <span
         className={`live-signal-dot absolute rounded-full ring-2 ring-[#0a0a0b] ${
+          onAir ? "bg-[#ff5d68]" : "bg-primary"
+        } ${
           mobile ? "right-0.5 top-0.5 h-2 w-2" : "-right-0.5 -top-0.5 h-[7px] w-[7px]"
         }`}
         aria-hidden="true"

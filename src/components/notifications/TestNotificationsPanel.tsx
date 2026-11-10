@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Bell, Play, Volume2, Vibrate, Phone, ShieldAlert, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
@@ -16,12 +16,25 @@ import { sendTestPush } from "@/lib/push";
 import {
   aggregateNotifications,
   type AggregatedCard,
+  type NotifEvent,
   exampleSingle,
   exampleTwo,
   exampleThree,
   exampleFifteen,
   exampleThirteenHourGap,
 } from "@/lib/notifications-aggregation";
+
+type TestStatus = {
+  permission: string;
+  sw: string;
+  subscription: string;
+  pwa: string;
+  audio: string;
+  vibrate: string;
+};
+
+/** `renotify` is part of the Notifications spec but not in this TS DOM lib. */
+type RichNotificationOptions = NotificationOptions & { renotify?: boolean };
 
 const DEV_ONLY = import.meta.env.DEV === true;
 const PROD_FLAG =
@@ -49,17 +62,14 @@ export function TestNotificationsPanel() {
   // ------------------------------------------------------------------
   // Status readout
   // ------------------------------------------------------------------
-  const [status, setStatus] = useMemo(() => {
-    const s: Record<string, string> = {
-      permission: typeof Notification !== "undefined" ? Notification.permission : "unknown",
-      sw: "checking…",
-      subscription: "none",
-      pwa: "no",
-      audio: "unknown",
-      vibrate: typeof navigator !== "undefined" && typeof navigator.vibrate === "function" ? "yes" : "no",
-    };
-    return s;
-  }, []);
+  const [status, setStatus] = useState<TestStatus>(() => ({
+    permission: typeof Notification !== "undefined" ? Notification.permission : "unknown",
+    sw: "checking…",
+    subscription: "none",
+    pwa: "no",
+    audio: "unknown",
+    vibrate: typeof navigator !== "undefined" && typeof navigator.vibrate === "function" ? "yes" : "no",
+  }));
 
   useEffect(() => {
     let mounted = true;
@@ -200,6 +210,7 @@ export function TestNotificationsPanel() {
         setOsCountdown(delayMs / 1000);
         const tick = setInterval(() => {
           setOsCountdown((prev) => {
+            if (prev === null) return null;
             const next = prev - 1;
             if (next <= 0) {
               clearInterval(tick);
@@ -217,7 +228,7 @@ export function TestNotificationsPanel() {
             tag,
             renotify: true,
             data: { url: "/settings", type: "test" },
-          });
+          } as RichNotificationOptions);
           log(`OS notification sent (tag: ${tag}) after ${delayMs / 1000}s.`);
         }, delayMs);
         log(`OS notification scheduled in ${delayMs / 1000}s (tag: ${tag}).`);
@@ -228,7 +239,7 @@ export function TestNotificationsPanel() {
         tag,
         renotify: true,
         data: { url: "/settings", type: "test" },
-      });
+      } as RichNotificationOptions);
       log(`OS notification sent now (tag: ${tag}).`);
     },
     [log, rateLimited],
@@ -249,14 +260,14 @@ export function TestNotificationsPanel() {
       tag: "rizz-same-tag",
       renotify: true,
       data: { url: "/settings", type: "test" },
-    });
+    } as RichNotificationOptions);
     setTimeout(async () => {
       await registration.showNotification("RIZZ test", {
         body: "Second replaces first (no stack).",
         tag: "rizz-same-tag",
         renotify: true,
         data: { url: "/settings", type: "test" },
-      });
+      } as RichNotificationOptions);
       log("Sent same tag twice — second should replace, not stack.");
     }, 800);
   }, [log, rateLimited]);
@@ -285,7 +296,7 @@ export function TestNotificationsPanel() {
   // Grouping preview (real aggregation, sample data, rendered in-sheet only)
   // ------------------------------------------------------------------
   const [groupingResults, setGroupingResults] = useState<Record<string, AggregatedCard[]>>({});
-  const runGrouping = useCallback((label: string, events: typeof exampleSingle) => {
+  const runGrouping = useCallback((label: string, events: NotifEvent[]) => {
     if (rateLimited("group")) {
       log("Grouping preview rate-limited (1/s).");
       return;

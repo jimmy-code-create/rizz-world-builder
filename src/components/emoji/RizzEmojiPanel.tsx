@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -129,6 +128,18 @@ function unicodeItem(entry: EmojiEntry): UnicodeItem {
     shortcode: entry.name.replace(/\s+/g, "_"),
   };
 }
+
+// The unicode catalog is static. Building it once at module scope keeps the
+// sheet's first paint free of ~1,000 object allocations on every open (the
+// sheet unmounts when closed, so a component `useMemo` only cached one visit).
+const UNICODE_BY_CHAR = new Map(EMOJI_DATA.map((entry) => [entry.char, entry]));
+const UNICODE_SECTIONS: EmojiSection[] = EMOJI_CATEGORIES.map((category) => ({
+  id: `unicode-${category.id}`,
+  label: category.label,
+  kind: "category" as const,
+  items: EMOJI_DATA.filter((entry) => entry.category === category.category).map(unicodeItem),
+  iconChar: category.icon,
+}));
 
 function realmItem(emoji: SharedEmoji, realmIcon: string | null): RealmItem {
   return {
@@ -307,12 +318,6 @@ export function RizzEmojiPanel({
     return map;
   }, [available.data]);
 
-  const unicodeByChar = useMemo(() => {
-    const map = new Map<string, EmojiEntry>();
-    for (const entry of EMOJI_DATA) map.set(entry.char, entry);
-    return map;
-  }, []);
-
   /**
    * Realm sections, empty ones removed. A realm with no custom emoji is not a
    * useful rail stop (that was the "shows 0" complaint); Private and the
@@ -407,7 +412,7 @@ export function RizzEmojiPanel({
         if (row) pushRecent(realmItem(row, realmById.get(row.realm_id)?.icon ?? null));
         continue;
       }
-      const unicode = unicodeByChar.get(token);
+      const unicode = UNICODE_BY_CHAR.get(token);
       if (unicode) pushRecent(unicodeItem(unicode));
     }
 
@@ -421,14 +426,6 @@ export function RizzEmojiPanel({
         iconUrl: section.iconUrl,
       }));
 
-    const categories: EmojiSection[] = EMOJI_CATEGORIES.map((category) => ({
-      id: `unicode-${category.id}`,
-      label: category.label,
-      kind: "category" as const,
-      items: EMOJI_DATA.filter((entry) => entry.category === category.category).map(unicodeItem),
-      iconChar: category.icon,
-    }));
-
     return [
       { id: "recent", label: "Recent", kind: "recent", items: recentItems },
       {
@@ -438,9 +435,9 @@ export function RizzEmojiPanel({
         items: privateRows.map((emoji) => realmItem(emoji, null)),
       },
       ...realmSectionsForPanel,
-      ...categories,
+      ...UNICODE_SECTIONS,
     ];
-  }, [emojiById, prefs.recents, privateRows, realmById, realmSections, unicodeByChar]);
+  }, [emojiById, prefs.recents, privateRows, realmById, realmSections]);
 
   const trimmedQuery = searchValue.trim();
   const searching = trimmedQuery.length > 0;
@@ -549,7 +546,7 @@ export function RizzEmojiPanel({
     [activeSection, layout],
   );
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
     element.scrollTop = initialScrollTop;

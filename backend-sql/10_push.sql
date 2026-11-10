@@ -220,9 +220,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
-DECLARE v_sender text; v_body text;
+DECLARE v_sender text; v_sender_username text; v_avatar text; v_body text;
 BEGIN
-  SELECT coalesce(nullif(display_name, ''), username) INTO v_sender
+  SELECT coalesce(nullif(display_name, ''), username), username, avatar_url
+    INTO v_sender, v_sender_username, v_avatar
   FROM public.profiles WHERE id = NEW.sender_id;
   v_body := CASE
     WHEN NEW.attachment_url IS NOT NULL THEN 'Sent a photo'
@@ -235,10 +236,23 @@ BEGIN
       'type', 'message',
       'title', coalesce(v_sender, 'New message'),
       'body', v_body,
-      'tag', NEW.sender_id::text,
+      'tag', 'dm-room-' || NEW.sender_id::text,
       'conversation_id', NEW.sender_id::text,
       'url', '/dm/' || NEW.sender_id::text,
-      'actor_id', NEW.sender_id::text
+      'actor_id', NEW.sender_id::text,
+      'icon', coalesce(v_avatar, '/brand/rizz-cat-logo.svg'),
+      'badge', '/brand/badge-mono-96.png',
+      'renotify', true,
+      'data', jsonb_build_object(
+        'url', '/dm/' || NEW.sender_id::text,
+        'type', 'dm',
+        'actor_username', v_sender_username,
+        'actor_avatar_url', v_avatar
+      ),
+      'actions', jsonb_build_array(
+        jsonb_build_object('action', 'open', 'title', 'Reply'),
+        jsonb_build_object('action', 'dismiss', 'title', 'Dismiss')
+      )
     )
   );
   RETURN NEW;

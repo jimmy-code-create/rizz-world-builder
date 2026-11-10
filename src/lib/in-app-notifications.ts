@@ -25,7 +25,9 @@ export function subscribeToInAppNotifications(
   callback: (notification: InAppNotification) => void,
 ) {
   subscribers.add(callback);
-  return () => subscribers.delete(callback);
+  return () => {
+    subscribers.delete(callback);
+  };
 }
 
 export function dispatchInAppNotification(notification: InAppNotification) {
