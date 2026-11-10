@@ -96,14 +96,16 @@ await check("one knock per door, not a mash button", async () => {
 });
 
 await check("the controls sit wherever a name does", async () => {
-  assert.ok(dmRoute.includes("<KnockButton"), "the DM header carries the verdict pill");
+  assert.ok(
+    dmRoute.includes('aria-label="Live now, tap to knock"'),
+    "the DM header carries the live knock mark",
+  );
+  assert.ok(dmRoute.includes("sendKnock(userId)"), "the live mark knocks without another sheet");
   assert.ok(preview.includes("<KnockButton"), "the profile card has the knock");
   assert.ok(profilePage.includes("<KnockButton"), "and so does the full profile");
-  // The pill says the verdict; the old passive "Active now" line could not.
-  assert.ok(
-    !dmRoute.includes('truncate">{blockStatus.data ? "Blocked by you"'),
-    "the passive status line was replaced by the knock pill",
-  );
+  // The subline is status first; the live mark itself is the doorbell.
+  assert.match(dmRoute, /peerTyping \?[\s\S]{0,120}typing…/, "typing wins the subline");
+  assert.match(dmRoute, /peerOnline \? "Online" : lastSeenLabel/, "then online, then last seen");
   assert.ok(controls.includes("mood.verdict"), "the sheet explains where the knock will land");
   assert.ok(controls.includes("knockSentMessage"), "and the sender learns what happened");
 });

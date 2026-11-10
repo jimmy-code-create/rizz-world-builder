@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil } from "lucide-react";
+import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil, Podcast } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -21,7 +21,7 @@ import { CornerUpLeft } from "lucide-react";
 import { ShareToChatSheet } from "@/components/share/ShareToChatSheet";
 import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { hapticSend } from "@/lib/haptics";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
@@ -35,10 +35,16 @@ import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
-import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { AvatarWithStatus, CustomStatusLine, StatusIcon } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, usePresence } from "@/lib/presence";
-import { markKnocksSeen, useKnockMood, useKnockThread, type Knock } from "@/lib/knock";
-import { KnockButton } from "@/components/knock/KnockControls";
+import {
+  markKnocksSeen,
+  relativeLastSeen,
+  sendKnock,
+  useKnockMood,
+  useKnockThread,
+  type Knock,
+} from "@/lib/knock";
 import { KnockThreadCard } from "@/components/knock/KnockThreadCard";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
@@ -136,6 +142,7 @@ function DMPage() {
   const wasNearBottomRef = useRef(true);
   const previousMessageIdsRef = useRef<string[]>([]);
   const isMobile = useIsMobile();
+  const reduceMotion = useReducedMotion();
   const [openMsg, setOpenMsg] = useState<string | null>(null);
   // The desktop hover toolbar's smiley opens the menu straight into reactions;
   // every other entry point (long press, right click, keyboard) opens actions.
@@ -168,6 +175,11 @@ function DMPage() {
   const lastTypingBroadcastAtRef = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [knockCooldown, setKnockCooldown] = useState(false);
+  const [knocking, setKnocking] = useState(false);
+  const [knockRipple, setKnockRipple] = useState(0);
+  const knockCooldownTimer = useRef<number | null>(null);
   const [recording, setRecording] = useState(false);
   const recStart = useRef(0);
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
@@ -208,12 +220,17 @@ function DMPage() {
     setWallpaper(loadWallpaper("dm", userId));
   }, [userId]);
 
-  // Escape leaves the conversation. Without it the only way out of a DM was
-  // the browser's own back button, which is not an affordance the app owns.
+  // Escape closes search first, closes the conversation second. Without it the
+  // only way out of a DM was the browser's own back button.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (openMsg || searchOpen || replyTo || wallpaperOpen) return;
+      if (searchOpen) {
+        setSearchOpen(false);
+        setSearchQ("");
+        return;
+      }
+      if (openMsg || replyTo || wallpaperOpen) return;
       // Never steal the key from a field the user is typing in.
       const target = event.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) return;
@@ -222,6 +239,21 @@ function DMPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [nav, openMsg, searchOpen, replyTo, wallpaperOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchOpen]);
+
+  useEffect(
+    () => () => {
+      if (knockCooldownTimer.current !== null) {
+        window.clearTimeout(knockCooldownTimer.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!draftReady || !draftKey) return;
@@ -303,9 +335,19 @@ function DMPage() {
     composerRef.current?.focus();
   }, [replyTo]);
 
-  // A DM is its own conversation: switching peers must drop a pending quote.
+  // A DM is its own conversation: switching peers must drop a pending quote,
+  // an open search, and the previous doorbell's cooldown/ripple.
   useEffect(() => {
     setReplyTo(null);
+    setSearchOpen(false);
+    setSearchQ("");
+    setKnockCooldown(false);
+    setKnocking(false);
+    setKnockRipple(0);
+    if (knockCooldownTimer.current !== null) {
+      window.clearTimeout(knockCooldownTimer.current);
+      knockCooldownTimer.current = null;
+    }
   }, [userId]);
 
   const jumpToMessage = (id: string) => {
@@ -803,6 +845,15 @@ function DMPage() {
   const knockMood = useKnockMood(other.data?.id);
   const knocks = useKnockThread(userId);
   const peerName = other.data?.display_name || other.data?.username || "They";
+  const peerLive = knockMood.verdict === "live";
+  // "Online" means the app is actually open, not just a status left on. The
+  // private DM channel is a fallback; `peerStatus` has already folded
+  // invisibility down to offline, so it can never reveal a hidden user.
+  const peerOnline =
+    peerStatus !== "offline" && (knockMood.verdict !== "offline" || online);
+  const lastSeenLabel = peerPresence?.last_seen_at
+    ? `Last seen ${relativeLastSeen(peerPresence.last_seen_at)}`
+    : "Offline";
   const showKnocks = !searchQ;
 
   const knockTimeline = useMemo(() => {
@@ -890,6 +941,38 @@ function DMPage() {
       });
     } catch { /* non-fatal */ }
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
+  };
+
+  /** The live mark is also the door: one tap knocks, no sheet in between. */
+  const sendLiveKnock = async () => {
+    if (!user || !peerLive || knocking || knockCooldown) return;
+    setKnocking(true);
+    setKnockRipple((current) => current + 1);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try {
+        navigator.vibrate(10);
+      } catch {
+        // Vibration is best-effort; the knock still goes through.
+      }
+    }
+    try {
+      await sendKnock(userId);
+      void qc.invalidateQueries({ queryKey: ["knocks"] });
+      void qc.invalidateQueries({ queryKey: ["knock-doorbell"] });
+      toast.success("Knocked");
+      setKnockCooldown(true);
+      if (knockCooldownTimer.current !== null) {
+        window.clearTimeout(knockCooldownTimer.current);
+      }
+      knockCooldownTimer.current = window.setTimeout(() => {
+        setKnockCooldown(false);
+        knockCooldownTimer.current = null;
+      }, 5_000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't knock");
+    } finally {
+      setKnocking(false);
+    }
   };
 
   const deleteMsg = async (id: string) => {
@@ -984,125 +1067,264 @@ function DMPage() {
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[5px]"
         />
       )}
-      <div
-        className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 pb-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
-      >
-        <Link
-          to="/dms"
-          aria-label="Back to messages"
-          title="Back to messages"
-          className="-ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="grid min-h-12 min-w-12 place-items-center">
-        <AvatarWithStatus status={peerStatus} dotSize={12}>
-          <Avatar className="h-9 w-9 ring-2 ring-primary/40">
-            <AvatarImage src={other.data?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">{(other.data?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-        </AvatarWithStatus>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <Link to="/u/$username" params={{ username: other.data?.username ?? "" }} className="block min-w-0">
-            <p className="truncate font-bold">{other.data?.display_name || other.data?.username}</p>
-            {peerCustom && (
-              <CustomStatusLine status={peerCustom} className="text-[11px] text-primary/90" />
-            )}
-          </Link>
-          {blockStatus.data ? (
-            <p className="truncate text-xs text-muted-foreground">Blocked by you</p>
-          ) : peerTyping ? (
-            <p className="truncate text-xs text-muted-foreground">typing…</p>
-          ) : (
-            // One line, two jobs: it answers "is their app actually open?" and it
-            // IS the doorbell. The old passive "Active now" could never tell an
-            // idle tab apart from a closed one.
-            <KnockButton
-              to={userId}
-              username={other.data?.username ?? ""}
-              displayName={other.data?.display_name}
-              mood={knockMood}
-              className="mt-0.5"
-            />
-          )}
-        </div>
-        {peerInCall && (
+      <header className="chat-header">
+        <div className="chat-header__row">
           <Link
-            to="/call/$userId"
-            params={{ userId }}
-            search={{ video: false }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+            to="/dms"
+            aria-label="Back to messages"
+            title="Back to messages"
+            className="chat-header__action"
           >
-            <Phone className="h-3.5 w-3.5" />
-            Call in progress · Join
+            <ArrowLeft aria-hidden="true" />
           </Link>
-        )}
-        <Button onClick={() => startCall(false)} variant="ghost" size="icon" aria-label="Voice call" className="text-muted-foreground hover:text-foreground">
-          <Phone className="h-5 w-5" />
-        </Button>
 
-        <Button onClick={() => setSearchOpen((o) => !o)} variant="ghost" size="icon" aria-label="Search messages" className="text-muted-foreground hover:text-foreground">
-          <Search className="h-5 w-5" />
-        </Button>
-        <Button onClick={() => startCall(true)} variant="ghost" size="icon" aria-label="Video call" className="text-muted-foreground hover:text-foreground">
-          <Video className="h-5 w-5" />
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="More" className="text-muted-foreground"><MoreVertical className="h-5 w-5" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-strong border-white/10">
-            <DropdownMenuItem asChild>
-              <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>View profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(`${location.origin}/u/${other.data?.username ?? ""}`); toast.success("Profile link copied"); }}>Share profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { const all = (msgs.data ?? []).map((m: any) => m.body).join("\n"); navigator.clipboard.writeText(all); toast.success("Loaded messages copied"); }}>Export loaded messages</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setWallpaperOpen(true)}>Chat wallpaper</DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                if (!user) return;
-                try { await muteUser(user.id, userId); toast.success("Conversation muted"); }
-                catch (e: any) { toast.error(e.message); }
-              }}
+          <div className="chat-header__identity">
+            <Link
+              to="/u/$username"
+              params={{ username: other.data?.username ?? "" }}
+              aria-label={`View ${peerName}'s profile`}
+              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Mute conversation
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                if (!user) return;
-                const currentlyBlocked = !!blockStatus.data;
-                if (!currentlyBlocked && !confirm(`Block @${other.data?.username}?`)) return;
-                try {
-                  if (currentlyBlocked) {
-                    await unblockUser(user.id, userId);
-                    toast.success("User unblocked");
-                  } else {
-                    await blockUser(user.id, userId);
-                    toast.success("User blocked");
-                  }
-                  qc.setQueryData(["block-status", user.id, userId], !currentlyBlocked);
-                  void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
-                } catch (e: any) { toast.error(e.message); }
-              }}
-              className="text-destructive focus:text-destructive"
+              <AvatarWithStatus status={peerStatus} dotSize={12}>
+                <Avatar
+                  className={`h-10 w-10 ring-2 transition-shadow duration-200 ${
+                    peerLive ? "ring-primary" : "ring-white/10"
+                  }`}
+                >
+                  <AvatarImage src={other.data?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
+                    {(other.data?.username ?? "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </AvatarWithStatus>
+            </Link>
+
+            <div className="min-w-0 flex-1">
+              <Link
+                to="/u/$username"
+                params={{ username: other.data?.username ?? "" }}
+                className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <p className="truncate font-display text-[17px] font-bold leading-tight tracking-[-0.01em]">
+                  {peerName}
+                </p>
+              </Link>
+              <div
+                className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] leading-tight"
+                aria-live={peerTyping ? "polite" : undefined}
+              >
+                <StatusIcon status={peerStatus} size={12} className="shrink-0 opacity-90" />
+                {blockStatus.data ? (
+                  <span className="truncate text-muted-foreground">Blocked by you</span>
+                ) : peerTyping ? (
+                  <span className="truncate text-muted-foreground">typing…</span>
+                ) : peerCustom ? (
+                  <CustomStatusLine status={peerCustom} className="min-w-0 text-primary" />
+                ) : (
+                  <span className="truncate text-muted-foreground">
+                    {peerOnline ? "Online" : lastSeenLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="chat-header__actions">
+            <button
+              type="button"
+              onClick={() => void sendLiveKnock()}
+              aria-label="Live now, tap to knock"
+              aria-hidden={!peerLive}
+              tabIndex={peerLive ? 0 : -1}
+              data-live={peerLive ? "true" : "false"}
+              disabled={!peerLive || knocking || knockCooldown}
+              title={peerLive ? "Knock" : undefined}
+              className={`chat-header__action chat-header__live ${peerLive ? "" : "invisible"}`}
             >
-              {blockStatus.data ? "Unblock user" : "Block user"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Podcast aria-hidden="true" />
+              {knockRipple > 0 && (
+                <span key={knockRipple} className="chat-header__ripple" aria-hidden="true" />
+              )}
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Call options"
+                  title="Call"
+                  className="chat-header__action"
+                >
+                  <Phone aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="glass-strong min-w-[11rem] border-white/10"
+              >
+                {peerInCall && (
+                  <>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        nav({ to: "/call/$userId", params: { userId }, search: { video: false } })
+                      }
+                      className="gap-2.5 py-2"
+                    >
+                      <Phone className="text-emerald-300" aria-hidden="true" />
+                      Join call in progress
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onSelect={() => startCall(false)} className="gap-2.5 py-2">
+                  <Phone aria-hidden="true" />
+                  Voice call
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => startCall(true)} className="gap-2.5 py-2">
+                  <Video aria-hidden="true" />
+                  Video call
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="More options"
+                  title="More"
+                  className="chat-header__action"
+                >
+                  <MoreVertical aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="glass-strong min-w-[13rem] border-white/10"
+              >
+                <DropdownMenuItem
+                  onSelect={() => setSearchOpen(true)}
+                  className="gap-2.5 py-2"
+                >
+                  <Search aria-hidden="true" />
+                  Search messages
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
+                    View profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${location.origin}/u/${other.data?.username ?? ""}`,
+                    );
+                    toast.success("Profile link copied");
+                  }}
+                >
+                  Share profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const all = (msgs.data ?? []).map((m: any) => m.body).join("\n");
+                    navigator.clipboard.writeText(all);
+                    toast.success("Loaded messages copied");
+                  }}
+                >
+                  Export loaded messages
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setWallpaperOpen(true)}>
+                  Chat wallpaper
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (!user) return;
+                    try {
+                      await muteUser(user.id, userId);
+                      toast.success("Conversation muted");
+                    } catch (e: any) {
+                      toast.error(e.message);
+                    }
+                  }}
+                >
+                  Mute conversation
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (!user) return;
+                    const currentlyBlocked = !!blockStatus.data;
+                    if (!currentlyBlocked && !confirm(`Block @${other.data?.username}?`)) return;
+                    try {
+                      if (currentlyBlocked) {
+                        await unblockUser(user.id, userId);
+                        toast.success("User unblocked");
+                      } else {
+                        await blockUser(user.id, userId);
+                        toast.success("User blocked");
+                      }
+                      qc.setQueryData(["block-status", user.id, userId], !currentlyBlocked);
+                      void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
+                    } catch (e: any) {
+                      toast.error(e.message);
+                    }
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  {blockStatus.data ? "Unblock user" : "Block user"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-      {searchOpen && (
-        <div className="chat-bar relative z-20 flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Search loaded messages…" className="glass border-white/10 h-8" />
-          <CloseButton onClick={() => { setSearchOpen(false); setSearchQ(""); }} className="h-8 w-8 min-h-0 min-w-0" />
-        </div>
-      )}
+        <AnimatePresence initial={false}>
+          {searchOpen && (
+            <motion.div
+              key="dm-search"
+              initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.18,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              role="search"
+              aria-label="Search this conversation"
+              className="chat-header__search absolute inset-x-0 top-full z-30"
+            >
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Search
+                  className="h-[18px] w-[18px] shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  ref={searchInputRef}
+                  autoFocus
+                  value={searchQ}
+                  onChange={(event) => setSearchQ(event.target.value)}
+                  placeholder="Search loaded messages…"
+                  aria-label="Search messages"
+                  autoComplete="off"
+                  className="glass h-10 border-white/10"
+                />
+                <CloseButton
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setSearchQ("");
+                  }}
+                  aria-label="Close search and clear"
+                  className="shrink-0"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
 
       <div
         ref={scrollRef}
