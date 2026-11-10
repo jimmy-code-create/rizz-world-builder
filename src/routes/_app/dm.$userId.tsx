@@ -49,6 +49,8 @@ import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { MessageRow } from "@/components/chat/MessageRow";
+import { ReplyQuote } from "@/components/chat/ReplyQuote";
+import { replyPreviewText } from "@/lib/chat-reply";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
 import { withoutShareLinks } from "@/lib/share-links";
 import { extractInviteCode } from "@/lib/groups";
@@ -138,7 +140,8 @@ function DMPage() {
   // The desktop hover toolbar's smiley opens the menu straight into reactions;
   // every other entry point (long press, right click, keyboard) opens actions.
   const [openMsgView, setOpenMsgView] = useState<"actions" | "reactions">("actions");
-  const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean; attachmentUrl?: string | null } | null>(null);
+  const [missingReplies, setMissingReplies] = useState<Set<string>>(() => new Set());
   const [editing, setEditing] = useState<{
     id: string;
     previousBody: string;
@@ -293,6 +296,17 @@ function DMPage() {
     setBody(preEditDraftRef.current);
     setCaret(preEditDraftRef.current.length);
   }, [replyTo, editing]);
+
+  // Starting a reply opens the keyboard, like every other chat surface.
+  useEffect(() => {
+    if (!replyTo) return;
+    composerRef.current?.focus();
+  }, [replyTo]);
+
+  // A DM is its own conversation: switching peers must drop a pending quote.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [userId]);
 
   const jumpToMessage = (id: string) => {
     const el = document.getElementById(`msg-${id}`);
@@ -638,10 +652,8 @@ function DMPage() {
     const composerText = body;
     const reply = replyTo;
     const pendingPreview = imagePreview;
-    const quoted = reply ? `↪ ${reply.body.slice(0, 120)}\n` : "";
-    // An image with no caption keeps an empty body. Writing “📷 Image” here made
-    // every photo message read as a caption that repeated the picture.
-    const text = (quoted + body.trim()).trim();
+    // The quote is a reply_to pointer, not text pasted into the body.
+    const text = body.trim();
     if (text.length > MAX_MESSAGE_LENGTH) {
       toast.error(`Messages can be up to ${MAX_MESSAGE_LENGTH.toLocaleString()} characters`);
       return;
@@ -822,6 +834,34 @@ function DMPage() {
   const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
     !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase())
   );
+
+  /** A quoted original may be outside the loaded window; load it, then jump. */
+  const jumpToReply = async (messageId: string) => {
+    if (!(msgs.data ?? []).some((m: any) => m.id === messageId)) {
+      try {
+        const { data, error } = await supabase
+          .from("direct_messages")
+          .select("*")
+          .eq("id", messageId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          setMissingReplies((current) => new Set(current).add(messageId));
+          return;
+        }
+        if (!user) return;
+        qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
+          [...current, data as CachedDirectMessage].sort((a, b) =>
+            String(a.created_at).localeCompare(String(b.created_at)),
+          ),
+        );
+      } catch {
+        setMissingReplies((current) => new Set(current).add(messageId));
+        return;
+      }
+    }
+    window.setTimeout(() => jumpToMessage(messageId), 60);
+  };
 
   const startCall = (video: boolean) => {
     if (!user) return;
@@ -1089,6 +1129,15 @@ function DMPage() {
             const knockCards = knockTimeline.byMessage.get(String(m.id));
             const deliveryStatus = (m as CachedDirectMessage).delivery_status;
             const audioPath = (m as any).audio_url as string | null;
+            const replyId = (m as any).reply_to as string | null;
+            const replySource = replyId
+              ? (msgs.data ?? []).find((row: any) => row.id === replyId)
+              : null;
+            const replyDeleted = Boolean(
+              replyId &&
+                (missingReplies.has(replyId) ||
+                  (replySource as { deleted_at?: string | null } | null)?.deleted_at),
+            );
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
             // A shared post/reel travels as its permalink: the raw URL is swapped
@@ -1211,7 +1260,13 @@ function DMPage() {
                 onSwipeReply={
                   deletedAt || deliveryStatus
                     ? undefined
-                    : () => setReplyTo({ id: m.id, body: rest || m.body, mine })
+                    : () =>
+                        setReplyTo({
+                          id: m.id,
+                          body: rest || m.body,
+                          mine,
+                          attachmentUrl: m.attachment_url ?? null,
+                        })
                 }
                 // On a desktop the same two actions live on a hover toolbar,
                 // Discord-style, so a mouse never has to hold a message down.
@@ -1327,7 +1382,17 @@ function DMPage() {
                     }`}
                     style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
                   >
-                    {quote && (
+                    {replyId ? (
+                      <ReplyQuote
+                        author={replySource ? (replySource.sender_id === user?.id ? "You" : peerName) : null}
+                        body={replySource?.body ?? null}
+                        attachmentUrl={replySource?.attachment_url ?? null}
+                        audioUrl={(replySource as any)?.audio_url ?? null}
+                        deleted={replyDeleted}
+                        onJump={missingReplies.has(replyId) ? undefined : () => void jumpToReply(replyId)}
+                      />
+                    ) : null}
+                    {!replyId && quote && (
                       <span
                         role="button"
                         tabIndex={0}
@@ -1535,9 +1600,12 @@ function DMPage() {
             : replyTo
               ? {
                   label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
-                  preview: replyTo.body || "Photo",
+                  preview: replyPreviewText({
+                    body: replyTo.body,
+                    attachmentUrl: replyTo.attachmentUrl,
+                  }),
                   onCancel: () => setReplyTo(null),
-                  onJump: () => jumpToMessage(replyTo.id),
+                  onJump: () => void jumpToReply(replyTo.id),
                 }
               : null
         }

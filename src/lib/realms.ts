@@ -21,6 +21,10 @@ export type Realm = {
 export type RealmMessage = {
   id: string;
   realm_id: string;
+  /** Set when the message lives in a room rather than the realm's main channel. */
+  realm_room_id?: string | null;
+  /** Set when the message is a voice note. */
+  audio_url?: string | null;
   /** Null on a bot message: bots have no user account. */
   sender_id: string | null;
   /** Set only on a bot message. */
@@ -122,11 +126,23 @@ export async function fetchRealmMessages(realmId: string, limit = 100) {
   return ((data ?? []) as unknown as RealmMessage[]).reverse();
 }
 
+/** One message by id, used when a quoted original is outside the loaded window. */
+export async function fetchRealmMessageById(messageId: string) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select(`*, ${MESSAGE_SENDER_SELECT}, ${MESSAGE_BOT_SELECT}`)
+    .eq("id", messageId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as unknown as RealmMessage | null;
+}
+
 export async function sendRealmMessage(
   realmId: string,
   senderId: string,
   body: string,
   attachmentUrl?: string | null,
+  replyToId?: string | null,
 ) {
   const { error } = await supabase
     .from("messages")
@@ -135,6 +151,7 @@ export async function sendRealmMessage(
       sender_id: senderId,
       body,
       ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
+      ...(replyToId ? { reply_to: replyToId } : {}),
     });
   if (error) throw error;
 }
@@ -388,6 +405,7 @@ export async function sendRealmRoomMessage(
   senderId: string,
   body: string,
   attachmentUrl?: string | null,
+  replyToId?: string | null,
 ) {
   const { data: room, error: roomError } = await supabase
     .from("realm_rooms")
@@ -404,6 +422,7 @@ export async function sendRealmRoomMessage(
       sender_id: senderId,
       body,
       ...(attachmentUrl ? { attachment_url: attachmentUrl } : {}),
+      ...(replyToId ? { reply_to: replyToId } : {}),
     });
   if (error) throw error;
 }

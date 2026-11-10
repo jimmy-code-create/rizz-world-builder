@@ -855,6 +855,10 @@
 .chat-scroll {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  /* Swipe-to-reply translates a row up to 90px right; without this the chat
+     pane grows a horizontal scrollbar on browsers that compute the other axis
+     from `overflow-y: auto`. */
+  overflow-x: hidden;
 }
 
 /* ============ CHAT MESSAGES (Phase 1) ============ */
@@ -877,7 +881,7 @@
 /* The first row in the list, and the first row after a date separator, gets the
    group gap so a divider never looks glued to the message under it. */
 .realm-message--group-start,
-.realm-message:first-child {
+[data-swipe-reply]:first-child > .realm-message {
   margin-top: var(--chat-gap-group);
 }
 
@@ -891,13 +895,16 @@
   margin-top: var(--chat-gap-same);
 }
 .chat-message-slot:first-child,
-.chat-message-slot:has(> .realm-message--group-start) {
+.chat-message-slot:has(> .realm-message--group-start),
+.chat-message-slot:has(> [data-swipe-reply] > .realm-message--group-start) {
   margin-top: 0;
 }
-.chat-message-slot > .realm-message {
+.chat-message-slot > .realm-message,
+.chat-message-slot > [data-swipe-reply] > .realm-message {
   margin-top: 0;
 }
-.chat-message-slot > .realm-message--group-start {
+.chat-message-slot > .realm-message--group-start,
+.chat-message-slot > [data-swipe-reply] > .realm-message--group-start {
   margin-top: var(--chat-gap-group);
 }
 .realm-message:hover {

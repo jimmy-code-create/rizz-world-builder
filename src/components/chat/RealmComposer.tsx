@@ -9,7 +9,7 @@ import {
 } from "react";
 import { BarChart3, CalendarClock, Camera, ImagePlus, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MessageComposer } from "@/components/chat/MessageComposer";
+import { MessageComposer, type ComposerReply } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { parseEmojiToken, type EmojiTokenParts } from "@/lib/emoji-token";
@@ -52,6 +52,8 @@ export type RealmComposerProps = {
   onPoll?: () => void;
   onSchedule?: (draft: string) => void;
   onInputFocus?: () => void;
+  /** Quote strip above the row: replying to a message in this channel. */
+  reply?: ComposerReply | null;
 };
 
 const MAX_ATTACHMENTS = 10;
@@ -75,6 +77,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       onPoll,
       onSchedule,
       onInputFocus,
+      reply = null,
     },
     ref,
   ) {
@@ -303,6 +306,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
           inputRef={inputRef}
           resolveEmoji={resolveEmoji}
           sending={sending}
+          reply={reply}
           canSend={Boolean(body.trim() || attachments.length)}
           allowVoice={false}
           onPaste={handlePaste}

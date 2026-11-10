@@ -29,6 +29,7 @@ import {
   type RealmMember as RealmMemberRow,
   type RealmRoom,
   type RealmRoomKind,
+  type RealmMessage,
 } from "@/lib/realms";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedFrom } from "@/lib/untyped-db";
@@ -36,6 +37,7 @@ import { useAuth } from "@/lib/auth";
 import {
   fetchRealmBySlug,
   fetchRealmMessages,
+  fetchRealmMessageById,
   sendRealmMessage,
   joinRealm,
   leaveRealm,
@@ -61,6 +63,7 @@ import {
   ArrowLeft,
   Bot as BotIcon,
   ChevronDown,
+  CornerUpLeft,
   Flag,
   Hash,
   Lock,
@@ -101,6 +104,9 @@ import { compressChatImage } from "@/lib/chat-media";
 import { RealmComposer, type RealmComposerHandle } from "@/components/chat/RealmComposer";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
+import { SwipeableMessage } from "@/components/chat/SwipeToReply";
+import { ReplyQuote } from "@/components/chat/ReplyQuote";
+import { replyPreviewText } from "@/lib/chat-reply";
 import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
@@ -262,6 +268,14 @@ function RealmPage() {
   const [pinsOpen, setPinsOpen] = useState(false);
   const [pinIndex, setPinIndex] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  // The message being quoted in the composer, shared by every channel and room.
+  const [replyTo, setReplyTo] = useState<{
+    id: string;
+    body: string;
+    author: string;
+    attachmentUrl: string | null;
+  } | null>(null);
+  const [missingReplies, setMissingReplies] = useState<Set<string>>(() => new Set());
   const [unpinningId, setUnpinningId] = useState<string | null>(null);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
   // The one message opened full size from the long-press menu.
@@ -306,6 +320,13 @@ function RealmPage() {
   });
 
   const activeRoom = (rooms.data ?? []).find((r) => r.id === activeRoomId) ?? null;
+
+  // A quote belongs to the conversation it was started in; switching channels
+  // must never leave it dangling over a different room. This sits above the
+  // loading/not-found returns so the hook order never changes.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [activeRoomId, activeRoom?.kind, realm.data?.id]);
   const textRooms = (rooms.data ?? []).filter((r) => r.kind !== "voice");
   const voiceRoomsList = (rooms.data ?? []).filter((r) => r.kind === "voice");
 
@@ -580,6 +601,42 @@ function RealmPage() {
     }, 50);
   };
 
+  /** A quoted message may sit outside the loaded window: load it, then jump. */
+  const jumpToReply = async (messageId: string) => {
+    const loaded = activeRoomId ? (roomMessages.data ?? []) : (messages.data ?? []);
+    if (!loaded.some((row: { id: string }) => row.id === messageId)) {
+      try {
+        const fetched = await fetchRealmMessageById(messageId);
+        if (!fetched) {
+          setMissingReplies((current) => new Set(current).add(messageId));
+          return;
+        }
+        const key = fetched.realm_room_id
+          ? ["realm-room-messages", fetched.realm_room_id]
+          : ["realm-messages", realm.data?.id];
+        qc.setQueryData<RealmMessage[]>(key, (current = []) =>
+          [...current, fetched].sort((a, b) =>
+            String(a.created_at).localeCompare(String(b.created_at)),
+          ),
+        );
+        // The window is capped at MESSAGE_PAGE_SIZE; reveal every row we now
+        // hold so the fetched original is actually in the DOM to jump to.
+        setMessageLimit((current) => Math.max(current, messageRows.length + 1));
+      } catch {
+        setMissingReplies((current) => new Set(current).add(messageId));
+        return;
+      }
+    }
+    const jumpWhenRendered = (attempt = 0) => {
+      if (document.getElementById(`msg-${messageId}`)) {
+        jumpToMessage(messageId);
+        return;
+      }
+      if (attempt < 20) window.setTimeout(() => jumpWhenRendered(attempt + 1), 50);
+    };
+    jumpWhenRendered();
+  };
+
   // Deep link from a mention: resolve the message's channel first (it may be a
   // channel you are not currently looking at), then jump once the row exists.
   //
@@ -650,6 +707,8 @@ function RealmPage() {
       : myWriteBlocked
         ? "A moderator turned off writing here for you"
         : null;
+  // Reply uses the same gate as the composer: no posting permission, no swipe.
+  const canReply = Boolean(user && joined && !composerBlock);
 
   const toggleRoomLock = async (room: RealmRoom, locked: boolean) => {
     setLockingRoomId(room.id);
@@ -691,6 +750,10 @@ function RealmPage() {
     }
 
     hapticSend();
+
+    // The quote is a real reply_to, not text pasted into the body, so it
+    // survives reloads and renders the same block in every surface.
+    const replyId = replyTo?.id ?? null;
 
     // "/name args" that matches an installed command runs the bot. Any other
     // text starting with "/" is still just a message. A caption is never a command.
@@ -812,13 +875,14 @@ function RealmPage() {
       const [first, ...rest] = urls;
       if (!text.trim() && !first) return false;
       if (activeRoomId && activeRoom?.kind !== "voice") {
-        await sendRealmRoomMessage(activeRoomId, user.id, text.trim(), first ?? null);
+        await sendRealmRoomMessage(activeRoomId, user.id, text.trim(), first ?? null, replyId);
         for (const url of rest) await sendRealmRoomMessage(activeRoomId, user.id, "", url);
         await qc.invalidateQueries({ queryKey: ["realm-room-messages", activeRoomId] });
       } else {
-        await sendRealmMessage(c.id, user.id, text.trim(), first ?? null);
+        await sendRealmMessage(c.id, user.id, text.trim(), first ?? null, replyId);
         for (const url of rest) await sendRealmMessage(c.id, user.id, "", url);
       }
+      setReplyTo(null);
       return true;
     } catch (e: any) {
       toast.error(e.message);
@@ -827,7 +891,6 @@ function RealmPage() {
       setSending(false);
     }
   };
-
 
   /** Jumps to a pinned message and flashes it briefly. */
   const jumpToPin = (pin: PinnedMessageDetails) => {
@@ -1935,6 +1998,16 @@ function RealmPage() {
                   /@(everyone|here)\b/i.test(m.body)),
               );
               const mentionClasses = mentionsMe ? "realm-message--mentions-me" : "";
+              const replySource = m.reply_to
+                ? messageRows.find((row) => row.id === m.reply_to)
+                : null;
+              const replyAuthorName = replySource
+                ? (replySource.bot?.name ??
+                  replySource.sender?.display_name ??
+                  replySource.sender?.username ??
+                  "Member")
+                : null;
+              const replyDeleted = m.reply_to ? missingReplies.has(m.reply_to) : false;
 
               // Profile preview handler on avatar or name tap
               const handleAuthorClick = (e: React.MouseEvent) => {
@@ -1968,9 +2041,12 @@ function RealmPage() {
                 )
                   return;
                 clearRowTimer();
+                const pressTarget = e.target as HTMLElement;
                 rowPressOrigin.current = { x: e.clientX, y: e.clientY };
                 rowPressTimer.current = setTimeout(() => {
                   rowPressTimer.current = null;
+                  // A horizontal swipe owns the gesture, even a slow one.
+                  if (pressTarget.closest('[data-swipe-active="true"]')) return;
                   if (typeof navigator !== "undefined" && navigator.vibrate) {
                     try {
                       navigator.vibrate(35);
@@ -1994,6 +2070,20 @@ function RealmPage() {
                 <Fragment key={m.id}>
                   {newDay && <DateSeparator date={m.created_at} />}
                   {/* Realm chat is Discord-style flat rows, with full-row long-press and mention highlight */}
+                  {/* One swipe gesture shared with DMs and groups. */}
+                  <SwipeableMessage
+                    onReply={() => {
+                      if (!canReply) return;
+                      setReplyTo({
+                        id: m.id,
+                        body: m.body ?? "",
+                        author: authorName,
+                        attachmentUrl: m.attachment_url ?? null,
+                      });
+                      requestAnimationFrame(() => composerRef.current?.focus());
+                    }}
+                    disabled={!canReply}
+                  >
                   <motion.div
                     id={`msg-${m.id}`}
                     initial={{ opacity: 0, y: 6 }}
@@ -2013,6 +2103,26 @@ function RealmPage() {
                     {/* Discord's mouse affordance: hover the row, get quick
                         react + more. Touch keeps the long-press sheet. */}
                     <div className="chat-hover-actions">
+                        {canReply && (
+                          <button
+                            type="button"
+                            data-interactive="true"
+                            aria-label="Reply"
+                            title="Reply"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setReplyTo({
+                                id: m.id,
+                                body: m.body ?? "",
+                                author: authorName,
+                                attachmentUrl: m.attachment_url ?? null,
+                              });
+                              requestAnimationFrame(() => composerRef.current?.focus());
+                            }}
+                          >
+                            <CornerUpLeft className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        )}
                       <button
                         type="button"
                         data-interactive="true"
@@ -2132,6 +2242,23 @@ function RealmPage() {
                           avatarUrl: authorAvatar,
                         }}
                         actions={[
+                            ...(canReply
+                              ? [
+                                  {
+                                    label: "Reply",
+                                    icon: CornerUpLeft,
+                                    onSelect: () => {
+                                      setReplyTo({
+                                        id: m.id,
+                                        body: m.body ?? "",
+                                        author: authorName,
+                                        attachmentUrl: m.attachment_url ?? null,
+                                      });
+                                      requestAnimationFrame(() => composerRef.current?.focus());
+                                    },
+                                  },
+                                ]
+                              : []),
                           {
                             label: "View message",
                             icon: Maximize2,
@@ -2246,6 +2373,26 @@ function RealmPage() {
                         <div
                           className={`realm-message__body select-none touch-manipulation ${emojiTextClass(bodyText, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}
                         >
+                            {m.reply_to ? (
+                              <ReplyQuote
+                                author={replyAuthorName}
+                                body={replySource?.body ?? null}
+                                attachmentUrl={replySource?.attachment_url ?? null}
+                                audioUrl={replySource?.audio_url ?? null}
+                                deleted={
+                                  replyDeleted ||
+                                  Boolean(
+                                    (replySource as { deleted_at?: string | null } | null)
+                                      ?.deleted_at,
+                                  )
+                                }
+                                onJump={
+                                  replyDeleted
+                                    ? undefined
+                                    : () => void jumpToReply(m.reply_to as string)
+                                }
+                              />
+                            ) : null}
                           {renderGifSegments(bodyText).map((seg, si) => {
                             if (seg.isGif || seg.isSticker) {
                               return <GifContent key={si}>{seg.marker ?? ""}</GifContent>;
@@ -2468,6 +2615,7 @@ function RealmPage() {
                       />
                     </div>
                   </motion.div>
+                  </SwipeableMessage>
                 </Fragment>
               );
             })}
@@ -2608,6 +2756,19 @@ function RealmPage() {
           commands={[...realmCommands.commands, ...VOICE_BOT_COMMANDS]}
           commandsLoading={realmCommands.isLoading}
           onSend={handleSend}
+          reply={
+            replyTo
+              ? {
+                  label: `Replying to ${replyTo.author}`,
+                  preview: replyPreviewText({
+                    body: replyTo.body,
+                    attachmentUrl: replyTo.attachmentUrl,
+                  }),
+                  onCancel: () => setReplyTo(null),
+                  onJump: () => void jumpToReply(replyTo.id),
+                }
+              : null
+          }
           onManageEmoji={() => setEmojiOpen(true)}
           onPoll={() => setPollOpen(true)}
           onSchedule={(draft) => {

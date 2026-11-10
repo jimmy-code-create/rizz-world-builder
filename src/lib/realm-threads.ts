@@ -14,6 +14,9 @@ export type ThreadMessage = {
   bot_id?: string | null;
   body: string;
   card?: unknown;
+  reply_to?: string | null;
+  attachment_url?: string | null;
+  audio_url?: string | null;
   thread_root: string | null;
   parent_id: string | null;
   reply_count: number;
@@ -45,6 +48,7 @@ export async function sendThreadReply(input: {
   rootId: string;
   parentId: string;
   body: string;
+  replyToId?: string | null;
 }): Promise<void> {
   const { error } = await supabase.from("messages").insert({
     realm_id: input.realmId,
@@ -53,6 +57,7 @@ export async function sendThreadReply(input: {
     body: input.body,
     thread_root: input.rootId,
     parent_id: input.parentId,
+    ...(input.replyToId ? { reply_to: input.replyToId } : {}),
   } as any);
   if (error) throw error;
 }

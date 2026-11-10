@@ -213,6 +213,19 @@ export async function fetchOlderGroupMessages(
   };
 }
 
+/** One group message, used when a quoted original is outside the loaded window. */
+export async function fetchGroupMessageById(messageId: string) {
+  const { data, error } = await supabase
+    .from("group_messages")
+    .select("*")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const authors = await fetchMessageAuthors([data.author_id]);
+  return { ...data, author: authors.get(data.author_id) ?? null };
+}
+
 export async function sendGroupMessage(input: { group_id: string; author_id: string; body: string; attachment_url?: string | null; reply_to?: string | null }) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;

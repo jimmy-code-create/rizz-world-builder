@@ -18,7 +18,7 @@ import { shareDraftForMessage, type ShareDraft } from "@/lib/share-to-chat";
 import { isMediaPlaceholderText, isOnlyMediaMarker } from "@/lib/gif-content";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
+import { fetchGroup, fetchMembers, fetchGroupMessages, fetchOlderGroupMessages, fetchGroupMessageById, sendGroupMessage, createInvite, leaveGroup } from "@/lib/groups";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
@@ -51,6 +51,8 @@ import { EmojiText } from "@/components/emoji/EmojiText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { scrollChatToLatest } from "@/lib/chat-scroll";
 import { MessageRow } from "@/components/chat/MessageRow";
+import { ReplyQuote } from "@/components/chat/ReplyQuote";
+import { replyPreviewText } from "@/lib/chat-reply";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
 import { SharedPostCards } from "@/components/chat/SharedPostCards";
 import { withoutShareLinks } from "@/lib/share-links";
@@ -94,6 +96,7 @@ function GroupRoom() {
   // Replying is composer state, like Discord: the bar sits above the box, the
   // keyboard opens, and the chat settles on the newest message.
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
+  const [missingReplies, setMissingReplies] = useState<Set<string>>(() => new Set());
   const messagesListRef = useRef<HTMLDivElement>(null);
   // Contenteditable field: custom emoji draw inline, see ComposerInput.
   const composerRef = useRef<ComposerInputHandle>(null);
@@ -116,6 +119,10 @@ function GroupRoom() {
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const draftKey = user?.id ? `rizz:group-draft:${user.id}:${id}` : null;
+  // Switching groups drops a quote that belonged to the last conversation.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [id]);
 
   const group = useQuery({ queryKey: ["group", id], queryFn: () => fetchGroup(id) });
   const members = useQuery({ queryKey: ["group-members", id], queryFn: () => fetchMembers(id), enabled: !!group.data });
@@ -127,11 +134,11 @@ function GroupRoom() {
   type GroupMessage = Awaited<ReturnType<typeof fetchGroupMessages>>[number];
   type CachedGroupMessage = GroupMessage & { delivery_status?: "sending" | "failed" };
   const sendMessage = useMutation({
-    mutationFn: ({ text, attachmentUrl }: { text: string; retryId?: string; attachmentUrl?: string | null }) => {
+    mutationFn: ({ text, attachmentUrl, replyToId }: { text: string; retryId?: string; attachmentUrl?: string | null; replyToId?: string | null }) => {
       if (!user) throw new Error("Sign in to send a message");
-      return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null });
+      return sendGroupMessage({ group_id: id, author_id: user.id, body: text, attachment_url: attachmentUrl ?? null, reply_to: replyToId ?? null });
     },
-    onMutate: ({ text, retryId, attachmentUrl }) => {
+    onMutate: ({ text, retryId, attachmentUrl, replyToId }) => {
       // Paint the optimistic row now; cancelling the in-flight query can happen
       // in the background and must never delay the composer.
       void qc.cancelQueries({ queryKey: messageKey });
@@ -147,7 +154,7 @@ function GroupRoom() {
         attachment_url: attachmentUrl ?? null,
         audio_url: null,
         duration_ms: null,
-        reply_to: null,
+        reply_to: replyToId ?? null,
         author: {
           username: profile?.username ?? user?.user_metadata?.username ?? "you",
           display_name: profile?.display_name ?? null,
@@ -319,15 +326,12 @@ function GroupRoom() {
     if (!user) return;
     const draft = body.trim();
     keepComposerFocused();
-    // The quote travels in the body, like DMs, so it survives a reload without
-    // another join or a schema change.
-    const quoted = replyTo ? `↪ ${replyTo.body.slice(0, 120)}\n` : "";
-    const text = (quoted + draft).trim();
     if (!draft && !imageFile) return;
-    if (text.length > GROUP_MESSAGE_LIMIT) {
+    if (draft.length > GROUP_MESSAGE_LIMIT) {
       toast.error(`Messages can be up to ${GROUP_MESSAGE_LIMIT.toLocaleString()} characters`);
       return;
     }
+    const replyId = replyTo?.id ?? null;
     setReplyTo(null);
     if (imageFile) {
       setUploadingImage(true);
@@ -343,7 +347,7 @@ function GroupRoom() {
             : error.message);
         }
         const attachmentUrl = supabase.storage.from("chat-media").getPublicUrl(path).data.publicUrl;
-        sendMessage.mutate({ text, attachmentUrl });
+        sendMessage.mutate({ text: draft, attachmentUrl, replyToId: replyId });
         setBody("");
         clearImage();
       } catch (error) {
@@ -354,7 +358,7 @@ function GroupRoom() {
       return;
     }
     setBody("");
-    sendMessage.mutate({ text });
+    sendMessage.mutate({ text: draft, replyToId: replyId });
   };
 
   const deleteMessage = async (messageId: string) => {
@@ -466,6 +470,39 @@ function GroupRoom() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.message]);
+  const jumpToMessage = (messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedMessage(messageId);
+    window.setTimeout(
+      () => setHighlightedMessage((current) => (current === messageId ? null : current)),
+      2400,
+    );
+  };
+
+  /** A quoted original may be outside the loaded window; load it, then jump. */
+  const jumpToReply = async (messageId: string) => {
+    if (!visibleMessages.some((message) => message.id === messageId)) {
+      try {
+        const fetched = await fetchGroupMessageById(messageId);
+        if (!fetched) {
+          setMissingReplies((current) => new Set(current).add(messageId));
+          return;
+        }
+        qc.setQueryData<CachedGroupMessage[]>(messageKey, (current = []) =>
+          [...current, fetched as CachedGroupMessage].sort((a, b) =>
+            String(a.created_at).localeCompare(String(b.created_at)),
+          ),
+        );
+      } catch {
+        setMissingReplies((current) => new Set(current).add(messageId));
+        return;
+      }
+    }
+    window.setTimeout(() => jumpToMessage(messageId), 60);
+  };
+
   const reactions = useChatReactions("group", visibleIds, {
     myMessageIds: visibleMessages
       .filter((message: { author_id: string }) => message.author_id === user?.id)
@@ -558,6 +595,12 @@ function GroupRoom() {
           {visibleMessages.map((m: any, index) => {
             const mine = m.author_id === user?.id;
             const deletedAt = m.deleted_at as string | null | undefined;
+            const replySource = m.reply_to
+              ? visibleMessages.find((row) => row.id === m.reply_to)
+              : null;
+            const replyDeleted = Boolean(
+              m.reply_to && (missingReplies.has(m.reply_to) || replySource?.deleted_at),
+            );
             // A shared post/reel travels as its permalink; the raw URL becomes a
             // card (SharedPostCards) so it renders the same in every chat.
             const rawBodyText = withoutShareLinks(m.body);
@@ -609,6 +652,16 @@ function GroupRoom() {
                   setOpenMessageView("actions");
                   setOpenMessageId(m.id);
                 }}
+                onSwipeReply={
+                  deletedAt || m.delivery_status
+                    ? undefined
+                    : () =>
+                        setReplyTo({
+                          id: m.id,
+                          body: m.body,
+                          author: m.author?.display_name || m.author?.username || null,
+                        })
+                }
                 // Mouse users get Discord's hover toolbar instead of a hold.
                 onQuickReact={() => {
                   setOpenMessageView("reactions");
@@ -696,6 +749,24 @@ function GroupRoom() {
                         m.delivery_status ? "opacity-55" : ""
                       }`}
                     >
+                      {m.reply_to ? (
+                        <ReplyQuote
+                          author={
+                            replySource?.author?.display_name ||
+                            replySource?.author?.username ||
+                            null
+                          }
+                          body={replySource?.body ?? null}
+                          attachmentUrl={replySource?.attachment_url ?? null}
+                          audioUrl={replySource?.audio_url ?? null}
+                          deleted={replyDeleted}
+                          onJump={
+                            missingReplies.has(m.reply_to)
+                              ? undefined
+                              : () => void jumpToReply(m.reply_to)
+                          }
+                        />
+                      ) : null}
                       {m.attachment_url && !deletedAt && (
                         <ChatMessageMedia
                           src={m.attachment_url}
@@ -760,7 +831,7 @@ function GroupRoom() {
                   {m.delivery_status ? (
                     m.delivery_status === "failed" ? (
                       <button
-                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url })}
+                        onClick={() => sendMessage.mutate({ text: m.body, retryId: m.id, attachmentUrl: m.attachment_url, replyToId: m.reply_to ?? null })}
                         disabled={sendMessage.isPending}
                         className="mt-0.5 text-[10px] text-amber-200/80 hover:text-amber-100"
                       >
@@ -827,8 +898,9 @@ function GroupRoom() {
             ) : null}
             reply={replyTo ? {
               label: `Replying to ${replyTo.author ? `@${replyTo.author}` : "them"}`,
-              preview: replyTo.body || "Photo",
+              preview: replyPreviewText({ body: replyTo.body }),
               onCancel: () => setReplyTo(null),
+              onJump: () => void jumpToReply(replyTo.id),
             } : null}
             attach={<ChatAttachButton
               appearance="circle"

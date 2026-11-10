@@ -1,7 +1,8 @@
 import { useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { MoreHorizontal, SmilePlus } from "lucide-react";
+import { CornerUpLeft, MoreHorizontal, SmilePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SwipeableMessage } from "@/components/chat/SwipeToReply";
 import { nameColorFor } from "@/lib/chat-appearance";
 
 export type MessageRowAuthor = {
@@ -80,7 +81,6 @@ export function MessageRow({
   // and cancels — so scrolling a conversation never pops a menu open.
   const pressTimer = useRef<number | null>(null);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
-  const swipeFired = useRef(false);
   const clearPress = () => {
     if (pressTimer.current !== null) {
       window.clearTimeout(pressTimer.current);
@@ -89,17 +89,18 @@ export function MessageRow({
     pressOrigin.current = null;
   };
   const startPress = (event: React.PointerEvent) => {
-    if (!onLongPress && !onSwipeReply) return;
+    if (!onLongPress) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     // Controls inside the row own their presses (profile links, media, the
     // reaction bar, an embed button…).
     if ((event.target as HTMLElement).closest("button, a, input, textarea, [data-interactive]")) return;
     clearPress();
-    swipeFired.current = false;
+    const target = event.target as HTMLElement;
     pressOrigin.current = { x: event.clientX, y: event.clientY };
-    if (!onLongPress) return;
     pressTimer.current = window.setTimeout(() => {
       pressTimer.current = null;
+      // A horizontal swipe cancels the hold even when it started slowly.
+      if (target.closest('[data-swipe-active="true"]')) return;
       if (typeof navigator !== "undefined" && navigator.vibrate) {
         try {
           navigator.vibrate(35);
@@ -113,31 +114,11 @@ export function MessageRow({
   const movePress = (event: React.PointerEvent) => {
     const origin = pressOrigin.current;
     if (!origin) return;
-    const dx = event.clientX - origin.x;
-    const dy = event.clientY - origin.y;
-
-    // Horizontal intent wins: cancel the hold, then fire one reply at 56px.
-    if (onSwipeReply && Math.abs(dx) > Math.abs(dy) + 10) {
-      if (pressTimer.current !== null) {
-        window.clearTimeout(pressTimer.current);
-        pressTimer.current = null;
-      }
-      if (!swipeFired.current && dx >= 56) {
-        swipeFired.current = true;
-        try {
-          navigator.vibrate?.(12);
-        } catch {
-          // Best-effort, like the long-press haptic above.
-        }
-        onSwipeReply();
-      }
-      return;
-    }
-
-    if (onLongPress && Math.hypot(dx, dy) > 20) clearPress();
+    if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 20) clearPress();
   };
 
   return (
+    <SwipeableMessage onReply={onSwipeReply ?? (() => {})} disabled={!onSwipeReply}>
     <motion.div
       id={`msg-${id}`}
       initial={{ opacity: 0, y: 6 }}
@@ -160,10 +141,23 @@ export function MessageRow({
       } ${highlighted ? "chat-jump-highlight" : ""} ${
         mentionsMe ? "realm-message--mentions-me" : ""
       } ${className}`}
-      style={onSwipeReply ? { touchAction: "pan-y" } : undefined}
     >
-      {(onQuickReact || onMoreActions) && (
+        {(onQuickReact || onMoreActions || onSwipeReply) && (
         <div className="chat-hover-actions">
+            {onSwipeReply && (
+              <button
+                type="button"
+                data-interactive="true"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSwipeReply();
+                }}
+                aria-label="Reply"
+                title="Reply"
+              >
+                <CornerUpLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           {onQuickReact && (
             <button
               type="button"
@@ -240,5 +234,6 @@ export function MessageRow({
         {children}
       </div>
     </motion.div>
+    </SwipeableMessage>
   );
 }
