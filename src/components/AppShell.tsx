@@ -649,7 +649,7 @@ export function AppShell() {
       {/* Mobile bottom nav — five slots, lime active tile, oversized create FAB.
           Matches the docked bar design: icon over label, one accent per row. */}
       {!isConversation && (
-        <nav className="md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.375rem)]">
+        <nav className="md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
           <div className="mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
@@ -666,11 +666,11 @@ export function AppShell() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="flex min-h-[56px] min-w-[44px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
+              className="flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
               aria-label="Create"
             >
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
-                <Plus className="h-8 w-8 stroke-[2.4]" />
+              <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
+                <Plus className="h-6 w-6 stroke-[2.4]" />
               </span>
             </button>
             {mobileTabs.slice(2).map((tab) => {
@@ -688,16 +688,13 @@ export function AppShell() {
             <button
               onClick={() => setMoreOpen(true)}
               data-tour="mobile-more"
-              className="flex min-h-[56px] flex-1 flex-col items-center justify-start gap-[3px] pt-0.5 focus-visible:outline-none"
+              className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
               aria-label={t("more")}
             >
-              <span className="grid h-11 w-11 place-items-center rounded-[14px]">
-                <MoreHorizontal
-                  className="h-[22px] w-[22px] text-muted-foreground"
-                  strokeWidth={1.8}
-                />
+              <span className="grid h-10 w-10 place-items-center rounded-xl">
+                <MoreHorizontal className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
               </span>
-              <span className="text-[12px] font-medium leading-none text-muted-foreground">
+              <span className="text-[11px] font-medium leading-none text-muted-foreground">
                 {t("more")}
               </span>
             </button>
@@ -957,20 +954,20 @@ function NavBtn({
   return (
     <Link
       to={to}
-      className="flex min-h-[56px] flex-1 flex-col items-center justify-start gap-[3px] pt-0.5 focus-visible:outline-none"
+      className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
     >
       <span
-        className={`grid h-11 w-11 place-items-center rounded-[14px] transition-colors ${
+        className={`grid h-10 w-10 place-items-center rounded-xl transition-colors ${
           active ? "bg-primary/15" : ""
         }`}
       >
         <Icon
-          className={`h-[22px] w-[22px] ${active ? "text-primary" : "text-muted-foreground"}`}
+          className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
           strokeWidth={active ? 2.2 : 1.8}
         />
       </span>
       <span
-        className={`text-[12px] leading-none ${
+        className={`text-[11px] leading-none ${
           active ? "text-primary font-semibold" : "text-muted-foreground font-medium"
         }`}
       >
