@@ -4,7 +4,7 @@ import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
-  Plus, Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, MoreVertical, Users,
+  Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, MoreVertical, Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
@@ -34,6 +34,7 @@ import { parseExternalReelLink } from "@/lib/external-reels";
 import { renderCaptionWithTags } from "@/lib/hashtags";
 import { formatCount } from "@/lib/utils";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
+import { LiveNowChip } from "@/components/live/LiveNowChip";
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
@@ -88,8 +89,9 @@ const REEL_LIKE_EFFECTS = [
 
 export const Route = createFileRoute("/_app/reels")({
   head: () => ({ meta: [{ title: "Reels · RIZZ" }] }),
-  validateSearch: (search: Record<string, unknown>): { party?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { party?: string; compose?: "1" } => ({
     party: typeof search.party === "string" ? search.party : undefined,
+    compose: search.compose === "1" ? "1" : undefined,
   }),
   component: ReelsPage,
 });
@@ -98,10 +100,18 @@ function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const { user, profile } = useAuth();
   const navigate = Route.useNavigate();
-  const { party: partyParam } = Route.useSearch();
+  const { party: partyParam, compose } = Route.useSearch();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [partyOpen, setPartyOpen] = useState(false);
+
+  // Create > Reel lands here with ?compose=1, then the URL is cleaned so a
+  // refresh does not reopen an editor the person already closed.
+  useEffect(() => {
+    if (compose !== "1") return;
+    setEditorOpen(true);
+    void navigate({ to: "/reels", search: { party: partyParam }, replace: true });
+  }, [compose, partyParam, navigate]);
   const [speed, setSpeed] = useState(1);
   const [captions, setCaptions] = useState(true);
   const [filter, setFilter] = useState<string>("none");
@@ -380,20 +390,8 @@ function ReelsPage() {
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-black">
       <div className="absolute inset-x-3 top-3 z-30 flex items-center gap-2 pointer-events-none">
         <button
-          onClick={() => setEditorOpen(true)}
-          className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-95"
-          aria-label="Upload reel"
-          title="Upload reel"
-        >
-          <Plus className="h-5 w-5 text-white" />
-        </button>
-        <button
           onClick={() => setPartyOpen(true)}
-          className={`pointer-events-auto relative grid h-10 w-10 place-items-center rounded-full border shadow-md backdrop-blur-md transition-transform active:scale-95 ${
-            party.code
-              ? "border-primary/50 bg-primary/20 text-primary"
-              : "border-white/15 bg-black/45 text-white"
-          }`}
+          className="pointer-events-auto relative grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/45 text-white transition-transform active:scale-95"
           aria-label={party.code ? "Reel party controls" : "Start a reel party"}
           title="Reel party"
         >
@@ -404,6 +402,7 @@ function ReelsPage() {
             </span>
           )}
         </button>
+        <LiveNowChip className="pointer-events-auto ml-auto" />
       </div>
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />

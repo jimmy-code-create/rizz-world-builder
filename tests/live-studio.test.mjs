@@ -27,8 +27,9 @@ async function check(name, fn) {
 const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
 const studio = read("components/live/LiveStudioSheet.tsx");
-const launch = read("components/live/LiveLaunchButton.tsx");
 const shell = read("components/AppShell.tsx");
+const create = read("components/create/CreateSheet.tsx");
+const chip = read("components/live/LiveNowChip.tsx");
 const settings = read("lib/live-studio.ts");
 const provider = read("components/voice/VoiceCallProvider.tsx");
 const room = read("components/live/useLiveRoom.ts");
@@ -38,17 +39,17 @@ const ambience = read("components/live/LiveAmbience.tsx");
 const hostStage = read("components/live/LiveHostStage.tsx");
 const styles = read("styles.css");
 
-await check("the Live entry point was rebuilt, not just tinted", () => {
-  assert.ok(shell.includes("<LiveLaunchButton variant=\"sidebar\""), "sidebar uses the new control");
-  assert.ok(shell.includes("<LiveLaunchButton variant=\"mobile\""), "phone FAB uses it too");
-  assert.ok(!shell.includes("<Radio className=\"h-5 w-5\" /> Go live"), "old sidebar button is gone");
-  assert.ok(!launch.includes("live-fab__halo"), "the phone button still has a halo");
-  assert.ok(!launch.includes("live-orb__sweep"), "the orb still has a moving sweep");
-  assert.match(launch, /live-signal-dot/, "the launch signal dot is shared");
-  assert.match(launch, /Camera · screen · live chat/, "the button explains the new room");
-  assert.match(styles, /\.live-signal-dot[\s\S]*?border-radius/);
-  assert.ok(!styles.includes("live-signal-pulse"), "the static signal dot still pulses");
-  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.live-dot/);
+await check("Live moved out of the nav into Create and discovery", () => {
+  assert.ok(!shell.includes("LiveLaunchButton"), "the old route FAB and sidebar button are gone");
+  assert.ok(shell.includes("<CreateSheet"), "the centre button opens one create sheet");
+  for (const row of ["Post", "Reel", "Story", "Go live", "Start a voice room"]) {
+    assert.ok(create.includes(`\"${row}\"`), `the create sheet is missing ${row}`);
+  }
+  assert.ok(shell.includes("<LiveStudioSheet"), "Go live still opens the real studio");
+  assert.ok(shell.includes("OPEN_LIVE_STUDIO_EVENT"), "the discovery chip can open the studio");
+  assert.ok(chip.includes("OPEN_LIVE_STUDIO_EVENT"), "the chip dispatches the shared event");
+  assert.match(styles, /\.live-chip\b/);
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*?\.live-chip__dot/);
 });
 
 await check("pre-live offers camera, screen and both", () => {

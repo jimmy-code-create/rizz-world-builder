@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { StoriesStrip } from "@/components/StoriesStrip";
-import { LiveNowRail } from "@/components/live/LiveNowRail";
+import { LiveNowChip } from "@/components/live/LiveNowChip";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -155,6 +155,7 @@ function FeedPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full">
       <div className="xl:col-span-8 min-w-0 space-y-4">
+        <LiveNowChip />
         {/* Compact greeting bar */}
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -177,8 +178,6 @@ function FeedPage() {
             )}
           </div>
         </div>
-
-        <LiveNowRail />
 
         <SectionHeading title={t("stories")} tooltip={t("fresh_stories")} />
         <div data-tour="stories" className="scroll-mt-24">

@@ -48,7 +48,8 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VoiceCallBar } from "@/components/voice/VoiceCallBar";
-import { LiveLaunchButton } from "@/components/live/LiveLaunchButton";
+import { CreateSheet, type CreateAction } from "@/components/create/CreateSheet";
+import { OPEN_LIVE_STUDIO_EVENT } from "@/components/live/LiveNowChip";
 import { PresenceSheet } from "@/components/presence/PresenceSheet";
 import { PurifyPaywallSheet } from "@/components/purify/PurifyPaywallSheet";
 import { ReactionBurstLayer } from "@/components/chat/ReactionBurst";
@@ -91,6 +92,9 @@ const PostComposer = lazy(() =>
 );
 const LiveStudioSheet = lazy(() =>
   import("@/components/live/LiveStudioSheet").then((m) => ({ default: m.LiveStudioSheet })),
+);
+const StoryComposer = lazy(() =>
+  import("@/components/StoryComposer").then((m) => ({ default: m.StoryComposer })),
 );
 
 const sideTabs = [
@@ -238,6 +242,8 @@ export function AppShell() {
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -258,11 +264,14 @@ export function AppShell() {
   const isWidePage =
     path === "/feed" || path === "/_app/feed" || path === "/badges" || path === "/_app/badges";
 
-  // The Live entry point belongs to Reels only; never leave its sheet open
-  // after a tab change.
+  // Live discovery lives in the chip and Create > Go live, so the studio can
+  // open from any tab. The chip dispatches this event instead of the shell
+  // passing a callback through every route.
   useEffect(() => {
-    if (!isReels) setLiveOpen(false);
-  }, [isReels]);
+    const open = () => setLiveOpen(true);
+    window.addEventListener(OPEN_LIVE_STUDIO_EVENT, open);
+    return () => window.removeEventListener(OPEN_LIVE_STUDIO_EVENT, open);
+  }, []);
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -446,8 +455,6 @@ export function AppShell() {
             <Plus className="h-5 w-5" /> New post
           </Button>
 
-          {isReels && <LiveLaunchButton variant="sidebar" onClick={() => setLiveOpen(true)} />}
-
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto -mx-1 px-1">
             <button
               type="button"
@@ -629,20 +636,16 @@ export function AppShell() {
                 />
               );
             })}
-            {isReels ? (
-              <LiveLaunchButton variant="mobile" onClick={() => setLiveOpen(true)} />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setComposerOpen(true)}
-                className="flex-1 flex flex-col items-center justify-center -mt-4 min-h-[44px] min-w-[44px] focus-visible:outline-none"
-                aria-label="New post"
-              >
-                <div className="h-12 w-12 min-h-[44px] min-w-[44px] rounded-full bg-[#c8ff3d] text-[#0a0a0b] flex items-center justify-center ring-4 ring-background shadow-md transition-transform active:scale-95 hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring">
-                  <Plus className="h-6 w-6 stroke-[2.5]" />
-                </div>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="flex min-h-[44px] min-w-[44px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
+              aria-label="Create"
+            >
+              <span className="-mt-2 grid h-[56px] w-[56px] place-items-center rounded-full bg-[#c8ff3d] text-[#0a0a0b] transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
+                <Plus className="h-7 w-7 stroke-[2.5]" />
+              </span>
+            </button>
             {mobileTabs.slice(2).map((tab) => {
               const label = t(tab.label);
               return (
@@ -664,7 +667,7 @@ export function AppShell() {
               <div className="p-1 rounded-lg">
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground">{t("more")}</span>
+              <span className="text-[12px] font-medium text-muted-foreground">{t("more")}</span>
             </button>
           </div>
         </nav>
@@ -679,9 +682,30 @@ export function AppShell() {
         </DialogContent>
       </Dialog>
 
-      {isReels && (
+      <CreateSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onAction={(action: CreateAction) => {
+          setCreateOpen(false);
+          if (action === "post") setComposerOpen(true);
+          else if (action === "story") setStoryOpen(true);
+          else if (action === "live") setLiveOpen(true);
+          else if (action === "reel") nav({ to: "/reels", search: { compose: "1" } });
+          else nav({ to: "/realms" });
+        }}
+      />
+
+      <Suspense fallback={null}>
+        <LiveStudioSheet open={liveOpen} onOpenChange={setLiveOpen} />
+      </Suspense>
+
+      {storyOpen && (
         <Suspense fallback={null}>
-          <LiveStudioSheet open={liveOpen} onOpenChange={setLiveOpen} />
+          <StoryComposer
+            open={storyOpen}
+            onClose={() => setStoryOpen(false)}
+            onPosted={() => setStoryOpen(false)}
+          />
         </Suspense>
       )}
 
@@ -904,12 +928,12 @@ function NavBtn({
       className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
     >
       <div
-        className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}
+        className={`grid h-8 w-8 place-items-center rounded-xl transition-colors ${active ? "bg-primary text-primary-foreground" : ""}`}
       >
-        <Icon className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`} />
+        <Icon className={`h-5 w-5 ${active ? "text-primary-foreground" : "text-muted-foreground"}`} />
       </div>
       <span
-        className={`text-[10px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}
+        className={`text-[12px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}
       >
         {label}
       </span>
