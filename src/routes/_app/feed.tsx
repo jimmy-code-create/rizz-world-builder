@@ -6,7 +6,7 @@ import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { StoriesStrip } from "@/components/StoriesStrip";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
-import { LiveAndVibingSheet } from "@/components/live/LiveAndVibingSheet";
+import { LiveBrowserSheet } from "@/components/live/LiveBrowserSheet";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -267,7 +267,7 @@ function FeedPage() {
         />
       </aside>
 
-      <LiveAndVibingSheet open={liveOpen} onOpenChange={setLiveOpen} />
+      <LiveBrowserSheet open={liveOpen} onOpenChange={setLiveOpen} />
     </div>
   );
 }

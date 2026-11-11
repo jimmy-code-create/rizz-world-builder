@@ -35,7 +35,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { formatCount } from "@/lib/utils";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
-import { LiveAndVibingSheet } from "@/components/live/LiveAndVibingSheet";
+import { LiveBrowserSheet } from "@/components/live/LiveBrowserSheet";
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
@@ -611,7 +611,7 @@ function ReelsPage() {
         </div>
       </div>
 
-      <LiveAndVibingSheet open={liveOpen} onOpenChange={setLiveOpen} />
+      <LiveBrowserSheet open={liveOpen} onOpenChange={setLiveOpen} />
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
       <ReelPartySheet

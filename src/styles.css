@@ -3170,18 +3170,23 @@ button:active > .motion-icon {
   }
 }
 
-/* The Live & vibing sheet: 400px on desktop, full-height bottom sheet on a
-   phone. The primitive's desktop recipe is 28rem, so this selector matches its
-   specificity and wins by order. */
-@media (hover: hover) and (pointer: fine) and (min-width: 641px) {
-  [role="dialog"][data-state="open"][data-side="bottom"].live-vibing-sheet {
-    width: 400px;
-    max-width: 400px;
-  }
+/* The Live browser is a full-screen surface, not a strip: it answers "who is
+   live?" and every row is a door into a room. The primitive still supplies the
+   focus trap and restoration, so this only rewrites the box. */
+[role="dialog"][data-state="open"][data-side="bottom"].live-browser-sheet {
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding-bottom: 0;
 }
 
 /* Rows fade in one by one as realtime adds them; never under reduced motion. */
-@keyframes lv-row-in {
+@keyframes live-row-in {
   from {
     opacity: 0;
   }
@@ -3189,14 +3194,14 @@ button:active > .motion-icon {
     opacity: 1;
   }
 }
-.lv-row {
-  animation: lv-row-in 150ms ease-out both;
+.live-row {
+  animation: live-row-in 150ms ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .lv-row {
+  .live-row {
     animation: none;
   }
 }
-[data-reduced-motion="true"] .lv-row {
+[data-reduced-motion="true"] .live-row {
   animation: none;
 }
