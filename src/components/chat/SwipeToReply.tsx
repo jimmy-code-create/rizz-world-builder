@@ -66,7 +66,7 @@ export function SwipeableMessage({
     const progress = Math.min(offset / SWIPE_REPLY.threshold, 1);
     icon.style.opacity = String(progress);
     icon.style.transform = `translateY(-50%) scale(${
-      armed ? SWIPE_REPLY.popScale : 0.6 + 0.4 * progress
+      armed ? SWIPE_REPLY.popScale : 0.5 + 0.5 * progress
     })`;
     icon.style.color = armed ? "var(--primary)" : "var(--muted-foreground)";
   };
@@ -127,7 +127,14 @@ export function SwipeableMessage({
     if (event.pointerType === "mouse" && event.button !== 0) return;
     // Leave the screen-edge back gesture alone.
     if (event.clientX < SWIPE_REPLY.edgeGuard) return;
-    if ((event.target as HTMLElement).closest("input, textarea, [contenteditable='true']")) return;
+    // Links, buttons, media controls and text fields own their own gestures.
+    if (
+      (event.target as HTMLElement).closest(
+        "a, button, input, textarea, [data-interactive], [data-swipe-ignore], [contenteditable='true']",
+      )
+    ) {
+      return;
+    }
     if (resetTimer.current !== null) {
       window.clearTimeout(resetTimer.current);
       resetTimer.current = null;
@@ -161,18 +168,22 @@ export function SwipeableMessage({
         state.axis = "y";
         return;
       }
+      // A committed left drag is the browser back gesture, never a reply.
+      // Abandon the gesture instead of tracking it and swallowing the tap.
+      if (dx < 0) {
+        state.axis = "y";
+        state.offset = 0;
+        paint(0, false);
+        return;
+      }
       state.axis = "x";
       hostRef.current?.setPointerCapture?.(event.pointerId);
       if (hostRef.current) hostRef.current.dataset.swipeActive = "true";
     }
 
-    // Only rightward drags arm the reply; a small left drift just sits at rest.
+    // Only rightward drags arm the reply; the axis lock above already rejected
+    // a leftward gesture.
     if (event.cancelable) event.preventDefault();
-    if (dx < 0) {
-      state.offset = 0;
-      paint(0, false);
-      return;
-    }
     let offset = dx;
     if (offset > SWIPE_REPLY.maxDrag) {
       offset = SWIPE_REPLY.maxDrag + (offset - SWIPE_REPLY.maxDrag) * SWIPE_REPLY.rubber;
@@ -196,12 +207,14 @@ export function SwipeableMessage({
     if (state.pointerId !== event.pointerId) return;
     const wasHorizontal = state.axis === "x";
     const armed = state.offset >= SWIPE_REPLY.threshold;
+    // Do not eat a normal tap after a couple of pixels of finger jitter.
+    const dragged = state.offset > SWIPE_REPLY.axisLock;
     gesture.current.pointerId = -1;
     gesture.current.axis = "none";
     gesture.current.offset = 0;
     endGesture(event.pointerId, wasHorizontal);
     if (!wasHorizontal) return;
-    suppressClick.current = true;
+    suppressClick.current = dragged;
     if (armed && !disabled) onReply();
     settle();
   };

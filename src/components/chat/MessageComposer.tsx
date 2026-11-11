@@ -126,6 +126,7 @@ export function MessageComposer({
 }) {
   const localRef = useRef<ComposerInputHandle | null>(null);
   const field = inputRef ?? localRef;
+  const hadReply = useRef(false);
   const pressRef = useRef<{ x: number } | null>(null);
   const [sliding, setSliding] = useState(false);
   const hasText = value.trim().length > 0;
@@ -144,6 +145,15 @@ export function MessageComposer({
     node.style.height = `${next}px`;
     node.style.overflowY = node.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [value, field]);
+
+  // Entering reply/edit mode is a user intent to type, so the keyboard should
+  // already be up. The ref keeps unrelated composer renders from stealing focus.
+  useEffect(() => {
+    if (reply && !hadReply.current) {
+      requestAnimationFrame(() => field.current?.focus());
+    }
+    hadReply.current = !!reply;
+  }, [reply, field]);
 
   const beginRecord = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -200,7 +210,7 @@ export function MessageComposer({
         {reply ? (
           // 40px strip: a lime bar, the target of the reply, and one line of
           // the message. The whole middle is a jump link on replies.
-          <div className="mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"

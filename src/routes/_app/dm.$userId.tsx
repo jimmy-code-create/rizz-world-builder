@@ -1363,6 +1363,17 @@ function DMPage() {
             );
             const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
             const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
+            // Prefer the authoritative column. The old fallback searched the
+            // whole body with `includes`, so a common phrase could jump to the
+            // wrong message; matching the quoted prefix is at least directional.
+            const quotedMessageId = quote
+              ? ((m as CachedDirectMessage).reply_to ??
+                  (msgs.data ?? []).find(
+                    (candidate) =>
+                      String(candidate.id) !== String(m.id) &&
+                      (candidate.body || "").startsWith(quote),
+                  )?.id ?? null)
+              : null;
             // A shared post/reel travels as its permalink: the raw URL is swapped
             // for a real card (SharedPostCards) right under the message.
             const restText = withoutShareLinks(rest);
@@ -1483,13 +1494,17 @@ function DMPage() {
                 onSwipeReply={
                   deletedAt || deliveryStatus
                     ? undefined
-                    : () =>
+                    : () => {
                         setReplyTo({
                           id: m.id,
                           body: rest || m.body,
                           mine,
                           attachmentUrl: m.attachment_url ?? null,
-                        })
+                        });
+                        // Stay inside the pointer-up gesture so iOS raises the
+                        // keyboard; the composer's effect is only a fallback.
+                        composerRef.current?.focus();
+                      }
                 }
                 // On a desktop the same two actions live on a hover toolbar,
                 // Discord-style, so a mouse never has to hold a message down.
@@ -1618,8 +1633,19 @@ function DMPage() {
                     {!replyId && quote && (
                       <span
                         role="button"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); const t = (msgs.data ?? []).find((x: any) => (x.body || "").includes(quote)); if (t) jumpToMessage((t as any).id); }}
+                        tabIndex={quotedMessageId ? 0 : -1}
+                        data-swipe-ignore="true"
+                        aria-label={quotedMessageId ? "Jump to the replied message" : undefined}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (quotedMessageId) jumpToMessage(String(quotedMessageId));
+                        }}
+                        onKeyDown={(e) => {
+                          if (!quotedMessageId || (e.key !== "Enter" && e.key !== " ")) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          jumpToMessage(String(quotedMessageId));
+                        }}
                         className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-white/25 pl-2 text-[11px] text-muted-foreground line-clamp-2"
                       >
                         <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}

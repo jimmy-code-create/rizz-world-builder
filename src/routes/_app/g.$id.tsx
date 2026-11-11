@@ -655,12 +655,16 @@ function GroupRoom() {
                 onSwipeReply={
                   deletedAt || m.delivery_status
                     ? undefined
-                    : () =>
+                    : () => {
                         setReplyTo({
                           id: m.id,
                           body: m.body,
                           author: m.author?.display_name || m.author?.username || null,
-                        })
+                        });
+                        // Stay inside the pointer-up gesture so iOS raises the
+                        // keyboard; the composer's effect is only a fallback.
+                        composerRef.current?.focus();
+                      }
                 }
                 // Mouse users get Discord's hover toolbar instead of a hold.
                 onQuickReact={() => {

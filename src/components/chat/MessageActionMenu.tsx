@@ -103,6 +103,7 @@ export function MessageActionMenu({
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
   const longPressFired = useRef(false);
+  const movedDuringPress = useRef(false);
   const lastTap = useRef(0);
   const onDoubleTapRef = useRef(onDoubleTap);
   onDoubleTapRef.current = onDoubleTap;
@@ -143,6 +144,7 @@ export function MessageActionMenu({
 
     clearPress();
     longPressFired.current = false;
+    movedDuringPress.current = false;
     pressOrigin.current = {
       x: event.clientX,
       y: event.clientY,
@@ -162,6 +164,9 @@ export function MessageActionMenu({
   /** A tap that never became a long press: the second one within the window is a
    *  double tap (heart reaction), and it must not also open the menu. */
   const handleTapEnd = () => {
+    // A swipe or scroll must never count as a tap (and two swipes must never
+    // accidentally fire the heart). Movement is latched until pointerdown.
+    if (movedDuringPress.current) return;
     if (!onDoubleTapRef.current) return;
     const now = Date.now();
     if (now - lastTap.current < DOUBLE_TAP_WINDOW) {
@@ -179,6 +184,7 @@ export function MessageActionMenu({
     const movedX = event.clientX - origin.x;
     const movedY = event.clientY - origin.y;
     if (movedX * movedX + movedY * movedY > MOVEMENT_TOLERANCE ** 2) {
+      movedDuringPress.current = true;
       clearPress();
     }
   };
