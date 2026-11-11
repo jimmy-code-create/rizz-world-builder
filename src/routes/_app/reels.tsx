@@ -3,8 +3,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
-  Heart, MessageCircle, Share2, Volume2, VolumeX, Music2, Pause, Play, ExternalLink,
-  Upload, Link2, Scissors, Type as TypeIcon, Loader2, Check, Captions, Gauge, Palette, Bookmark, MoreVertical, Users,
+  Heart,
+  MessageCircle,
+  Share2,
+  Volume2,
+  VolumeX,
+  Music2,
+  Pause,
+  Play,
+  ExternalLink,
+  Upload,
+  Link2,
+  Scissors,
+  Type as TypeIcon,
+  Loader2,
+  Check,
+  Captions,
+  Gauge,
+  Palette,
+  Bookmark,
+  MoreVertical,
+  Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilePreviewTrigger } from "@/components/ProfilePreview";
@@ -36,6 +55,7 @@ import { formatCount } from "@/lib/utils";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
 import { LiveBrowserSheet } from "@/components/live/LiveBrowserSheet";
+import { BulkReelUploader } from "@/components/create/BulkReelUploader";
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
@@ -90,9 +110,12 @@ const REEL_LIKE_EFFECTS = [
 
 export const Route = createFileRoute("/_app/reels")({
   head: () => ({ meta: [{ title: "Reels · RIZZ" }] }),
-  validateSearch: (search: Record<string, unknown>): { party?: string; compose?: "1" } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { party?: string; compose?: "1"; bulk?: "1" } => ({
     party: typeof search.party === "string" ? search.party : undefined,
     compose: search.compose === "1" ? "1" : undefined,
+    bulk: search.bulk === "1" ? "1" : undefined,
   }),
   component: ReelsPage,
 });
@@ -101,9 +124,10 @@ function ReelsPage() {
   const reels = useQuery({ queryKey: ["reels"], queryFn: () => fetchReels(40) });
   const { user, profile } = useAuth();
   const navigate = Route.useNavigate();
-  const { party: partyParam, compose } = Route.useSearch();
+  const { party: partyParam, compose, bulk } = Route.useSearch();
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [partyOpen, setPartyOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   // The bar owns pause now, but the video is still the source of truth. These
@@ -119,6 +143,13 @@ function ReelsPage() {
     setEditorOpen(true);
     void navigate({ to: "/reels", search: { party: partyParam }, replace: true });
   }, [compose, partyParam, navigate]);
+
+  // Bulk upload opens with ?bulk=1
+  useEffect(() => {
+    if (bulk !== "1") return;
+    setBulkUploadOpen(true);
+    void navigate({ to: "/reels", search: { party: partyParam }, replace: true });
+  }, [bulk, partyParam, navigate]);
   const [speed, setSpeed] = useState(1);
   const [captions, setCaptions] = useState(true);
   const [filter, setFilter] = useState<string>("none");
@@ -133,9 +164,8 @@ function ReelsPage() {
     const index = activeIndexRef.current;
     if (index < 0) return null;
     return (
-      scrollerRef.current?.querySelector<HTMLVideoElement>(
-        `[data-reel-index="${index}"] video`,
-      ) ?? null
+      scrollerRef.current?.querySelector<HTMLVideoElement>(`[data-reel-index="${index}"] video`) ??
+      null
     );
   }, []);
 
@@ -210,7 +240,11 @@ function ReelsPage() {
 
   const likes = useQuery({
     queryKey: ["reel-likes", user?.id, reels.data?.map((r) => r.id).join(",")],
-    queryFn: () => fetchMyLikes(user!.id, reels.data!.map((r) => r.id)),
+    queryFn: () =>
+      fetchMyLikes(
+        user!.id,
+        reels.data!.map((r) => r.id),
+      ),
     enabled: !!user && !!reels.data && reels.data.length > 0,
   });
   const saved = useQuery({
@@ -223,9 +257,7 @@ function ReelsPage() {
     const scroller = scrollerRef.current;
     const index = activeIndexRef.current;
     if (!scroller || index < 0) return null;
-    const video = scroller.querySelector<HTMLVideoElement>(
-      `[data-reel-index="${index}"] video`,
-    );
+    const video = scroller.querySelector<HTMLVideoElement>(`[data-reel-index="${index}"] video`);
     // External (YouTube) reels have no <video> to seek, but the room should
     // still follow the host to the right slide.
     return {
@@ -254,9 +286,7 @@ function ReelsPage() {
     // Advance the host's playhead by the time the message spent in flight, so
     // a guest joins mid-reel instead of restarting it. Clamp the flight time:
     // a badly skewed device clock must not throw the guest decades ahead.
-    const flight = sync.playing
-      ? Math.min(5, Math.max(0, (Date.now() - sync.at) / 1000))
-      : 0;
+    const flight = sync.playing ? Math.min(5, Math.max(0, (Date.now() - sync.at) / 1000)) : 0;
     const expected = Math.max(0, sync.position) + flight;
     const apply = () => {
       const video = scroller.querySelector<HTMLVideoElement>(
@@ -275,20 +305,13 @@ function ReelsPage() {
     };
     apply();
     partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
-    partySyncTimers.current = [
-      window.setTimeout(apply, 160),
-      window.setTimeout(apply, 520),
-    ];
+    partySyncTimers.current = [window.setTimeout(apply, 160), window.setTimeout(apply, 520)];
   }, []);
 
   const partyIdentity = useMemo(() => {
     if (!user) return null;
     return {
-      name:
-        profile?.display_name ||
-        profile?.username ||
-        user.email?.split("@")[0] ||
-        "Someone",
+      name: profile?.display_name || profile?.username || user.email?.split("@")[0] || "Someone",
       avatar: profile?.avatar_url ?? null,
       username: profile?.username ?? null,
     };
@@ -309,14 +332,17 @@ function ReelsPage() {
   }, [party.code, party.isHost, party.publish, readPartySnapshot]);
 
   /** Host-only: tell the room the comments sheet just opened or closed. */
-  const reportHostComments = useCallback((open: boolean) => {
-    if (!party.isHost || hostCommentsRef.current === open) return;
-    hostCommentsRef.current = open;
-    const snapshot = readPartySnapshot();
-    if (!snapshot) return;
-    // Scoped, so guests mirror the sheet without touching their player.
-    party.publish({ ...snapshot, scope: "comments" });
-  }, [party.isHost, party.publish, readPartySnapshot]);
+  const reportHostComments = useCallback(
+    (open: boolean) => {
+      if (!party.isHost || hostCommentsRef.current === open) return;
+      hostCommentsRef.current = open;
+      const snapshot = readPartySnapshot();
+      if (!snapshot) return;
+      // Scoped, so guests mirror the sheet without touching their player.
+      party.publish({ ...snapshot, scope: "comments" });
+    },
+    [party.isHost, party.publish, readPartySnapshot],
+  );
 
   // Leaving the room puts the guest's own screens back in their hands.
   useEffect(() => {
@@ -325,9 +351,12 @@ function ReelsPage() {
     setPartyComments(false);
   }, [party.code]);
 
-  useEffect(() => () => {
-    partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
-  }, []);
+  useEffect(
+    () => () => {
+      partySyncTimers.current.forEach((timer) => window.clearTimeout(timer));
+    },
+    [],
+  );
 
   // A host's swipe is the room's next reel.
   useEffect(() => {
@@ -400,14 +429,18 @@ function ReelsPage() {
           : -1;
         if (Number.isFinite(index)) setActiveIndex(index);
       },
-      { root: scroller, threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
+      { root: scroller, threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
     );
-    scroller.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((item) => observer.observe(item));
+    scroller
+      .querySelectorAll<HTMLElement>("[data-reel-index]")
+      .forEach((item) => observer.observe(item));
     return () => observer.disconnect();
   }, [reels.data]);
 
   const advanceReel = (index: number) => {
-    const next = scrollerRef.current?.querySelector<HTMLElement>(`[data-reel-index="${index + 1}"]`);
+    const next = scrollerRef.current?.querySelector<HTMLElement>(
+      `[data-reel-index="${index + 1}"]`,
+    );
     next?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -431,9 +464,10 @@ function ReelsPage() {
     const code = party.create();
     setPartyOpen(false);
     void navigate({ to: "/reels", search: { party: code }, replace: true });
-    const copied = typeof navigator !== "undefined"
-      ? navigator.clipboard?.writeText?.(reelPartyInviteUrl(code))
-      : undefined;
+    const copied =
+      typeof navigator !== "undefined"
+        ? navigator.clipboard?.writeText?.(reelPartyInviteUrl(code))
+        : undefined;
     if (copied) {
       void copied.then(
         () => toast.success(`Party ${code} is live — invite link copied`),
@@ -531,9 +565,15 @@ function ReelsPage() {
                       onClick={() => setAutoplay((current) => !current)}
                       className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
                     >
-                      <span className="flex items-center gap-2"><Play className="h-4 w-4 text-primary" /> Autoplay</span>
-                      <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-primary" : "bg-white/25"}`}>
-                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
+                      <span className="flex items-center gap-2">
+                        <Play className="h-4 w-4 text-primary" /> Autoplay
+                      </span>
+                      <span
+                        className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-primary" : "bg-white/25"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`}
+                        />
                       </span>
                     </button>
                   </section>
@@ -543,7 +583,11 @@ function ReelsPage() {
                         type="button"
                         onClick={() => {
                           if (activeExternalLink?.ok) {
-                            window.open(activeExternalLink.value.sourceUrl, "_blank", "noopener,noreferrer");
+                            window.open(
+                              activeExternalLink.value.sourceUrl,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
                           }
                         }}
                         className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
@@ -580,8 +624,12 @@ function ReelsPage() {
                           onClick={() => setCaptions((current) => !current)}
                           className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
                         >
-                          <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-primary" /> Captions</span>
-                          <span className="text-xs text-muted-foreground">{captions ? "On" : "Off"}</span>
+                          <span className="flex items-center gap-2">
+                            <Captions className="h-4 w-4 text-primary" /> Captions
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {captions ? "On" : "Off"}
+                          </span>
                         </button>
                       </section>
                       <section className="border-t border-white/10 pt-3">
@@ -613,6 +661,8 @@ function ReelsPage() {
 
       <LiveBrowserSheet open={liveOpen} onOpenChange={setLiveOpen} />
 
+      <BulkReelUploader open={bulkUploadOpen} onOpenChange={setBulkUploadOpen} />
+
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
       <ReelPartySheet
         open={partyOpen}
@@ -629,20 +679,31 @@ function ReelsPage() {
         onCopyInvite={copyPartyInvite}
       />
 
-      {reels.isLoading && <div className="grid min-h-0 flex-1 place-items-center text-muted-foreground">Loading reels…</div>}
+      {reels.isLoading && (
+        <div className="grid min-h-0 flex-1 place-items-center text-muted-foreground">
+          Loading reels…
+        </div>
+      )}
       {reels.isError && (
         <div className="grid min-h-0 flex-1 place-items-center px-6 text-center">
           <div>
             <p className="mb-3 text-sm text-muted-foreground">Reels could not be loaded.</p>
-            <Button variant="outline" onClick={() => void reels.refetch()}>Try again</Button>
+            <Button variant="outline" onClick={() => void reels.refetch()}>
+              Try again
+            </Button>
           </div>
         </div>
       )}
       {reels.data?.length === 0 && (
         <div className="grid min-h-0 flex-1 place-items-center px-8 text-center">
           <div>
-            <p className="text-muted-foreground mb-4">No reels yet — be the first to drop a vibe.</p>
-            <Button onClick={() => setEditorOpen(true)} className="bg-primary text-primary-foreground border-0 shadow-md">
+            <p className="text-muted-foreground mb-4">
+              No reels yet — be the first to drop a vibe.
+            </p>
+            <Button
+              onClick={() => setEditorOpen(true)}
+              className="bg-primary text-primary-foreground border-0 shadow-md"
+            >
               <Upload className="h-4 w-4 mr-2" /> Upload a reel
             </Button>
           </div>
@@ -657,38 +718,38 @@ function ReelsPage() {
           }`}
         >
           {reels.data.map((r, index) => (
-          <ReelItem
-            key={r.id}
-            post={r}
-            reelIndex={index}
-            muted={muted}
-            partyControlled={partyControlled}
-            speed={speed}
-            captions={captions}
-            filter={filter}
-            isActive={activeIndex === index}
-            // Load window: the reel on screen gets the connection, its
-            // neighbours get their first frame so the next swipe is instant,
-            // and everything else is left on the server. Without this every
-            // reel in the list mounted a <video> at the browser's default
-            // preload and started downloading at once, so the reel being
-            // watched fought twenty others for bandwidth on a phone.
-            preload={
-              index === activeIndex
-                ? dataSaverOn()
-                  ? "metadata"
-                  : "auto"
-                : !dataSaverOn() && Math.abs(index - (activeIndex < 0 ? 0 : activeIndex)) <= 1
-                  ? "metadata"
-                  : "none"
-            }
-            autoplay={autoplay}
-            onEnded={() => advanceReel(index)}
-            initialLiked={!!likes.data?.has(r.id)}
-            initialSaved={!!saved.data?.has(r.id)}
-            partyComments={partyComments}
-            onCommentsOpenChange={activeIndex === index ? reportHostComments : undefined}
-          />
+            <ReelItem
+              key={r.id}
+              post={r}
+              reelIndex={index}
+              muted={muted}
+              partyControlled={partyControlled}
+              speed={speed}
+              captions={captions}
+              filter={filter}
+              isActive={activeIndex === index}
+              // Load window: the reel on screen gets the connection, its
+              // neighbours get their first frame so the next swipe is instant,
+              // and everything else is left on the server. Without this every
+              // reel in the list mounted a <video> at the browser's default
+              // preload and started downloading at once, so the reel being
+              // watched fought twenty others for bandwidth on a phone.
+              preload={
+                index === activeIndex
+                  ? dataSaverOn()
+                    ? "metadata"
+                    : "auto"
+                  : !dataSaverOn() && Math.abs(index - (activeIndex < 0 ? 0 : activeIndex)) <= 1
+                    ? "metadata"
+                    : "none"
+              }
+              autoplay={autoplay}
+              onEnded={() => advanceReel(index)}
+              initialLiked={!!likes.data?.has(r.id)}
+              initialSaved={!!saved.data?.has(r.id)}
+              partyComments={partyComments}
+              onCommentsOpenChange={activeIndex === index ? reportHostComments : undefined}
+            />
           ))}
         </div>
       )}
@@ -714,24 +775,53 @@ const FILTER_CSS: Record<string, string> = {
 function CaptionText({ caption }: { caption: string }) {
   return (
     <>
-      {renderGifSegments(caption).map((segment, segmentIndex) => segment.isGif || segment.isSticker
-        ? <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
-        : renderCaptionWithTags(segment.value).map((part, index) => {
-        if (part.mention) {
-          return (
-            <ProfilePreviewTrigger key={index} username={part.mention} className="mention-highlight font-semibold underline underline-offset-2">
-              {part.text}
-            </ProfilePreviewTrigger>
-          );
-        }
-        if (part.tag) {
-          return <Link key={index} to="/tag/$tag" params={{ tag: part.tag }} onClick={(event) => event.stopPropagation()} className="font-semibold text-white underline decoration-white/60 underline-offset-2">{part.text}</Link>;
-        }
-        if (part.url) {
-          return <a key={index} href={part.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="underline decoration-white/60 underline-offset-2">{part.text}</a>;
-        }
-        return <span key={index}>{part.text}</span>;
-      }))}
+      {renderGifSegments(caption).map((segment, segmentIndex) =>
+        segment.isGif || segment.isSticker ? (
+          <GifContent key={`media-${segmentIndex}`}>{segment.marker ?? ""}</GifContent>
+        ) : (
+          renderCaptionWithTags(segment.value).map((part, index) => {
+            if (part.mention) {
+              return (
+                <ProfilePreviewTrigger
+                  key={index}
+                  username={part.mention}
+                  className="mention-highlight font-semibold underline underline-offset-2"
+                >
+                  {part.text}
+                </ProfilePreviewTrigger>
+              );
+            }
+            if (part.tag) {
+              return (
+                <Link
+                  key={index}
+                  to="/tag/$tag"
+                  params={{ tag: part.tag }}
+                  onClick={(event) => event.stopPropagation()}
+                  className="font-semibold text-white underline decoration-white/60 underline-offset-2"
+                >
+                  {part.text}
+                </Link>
+              );
+            }
+            if (part.url) {
+              return (
+                <a
+                  key={index}
+                  href={part.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="underline decoration-white/60 underline-offset-2"
+                >
+                  {part.text}
+                </a>
+              );
+            }
+            return <span key={index}>{part.text}</span>;
+          })
+        ),
+      )}
     </>
   );
 }
@@ -784,9 +874,7 @@ function ReelItem({
     return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
   }, []);
   const externalLink =
-    post.media_type === "video" && post.media_url
-      ? parseExternalReelLink(post.media_url)
-      : null;
+    post.media_type === "video" && post.media_url ? parseExternalReelLink(post.media_url) : null;
   const isExternal = !!externalLink?.ok;
   const [progress, setProgress] = useState(0);
   const [liked, setLiked] = useState(initialLiked);
@@ -794,7 +882,13 @@ function ReelItem({
   const [saved, setSaved] = useState(initialSaved);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
+  const [stickerBurst, setStickerBurst] = useState<{
+    id: number;
+    src: string;
+    x: number;
+    y: number;
+    imageLoaded: boolean;
+  } | null>(null);
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
@@ -847,15 +941,20 @@ function ReelItem({
     let cancelled = false;
     if (!isActive) {
       video.pause();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
     if (partyControlled) {
       // The party sync owns this player. Trying to autoplay here would fight
       // the host's pause, so leave the decision to the incoming snapshot.
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
     if (autoplay) {
-      video.play()
+      video
+        .play()
         .then(() => {
           if (cancelled) {
             video.pause();
@@ -869,21 +968,31 @@ function ReelItem({
     } else {
       video.pause();
     }
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isActive, autoplay, partyControlled]);
-  useEffect(() => { if (ref.current) ref.current.playbackRate = speed; }, [speed]);
+  useEffect(() => {
+    if (ref.current) ref.current.playbackRate = speed;
+  }, [speed]);
   useEffect(() => {
     if (!isActive) return;
     return warmStickerEffect();
   }, [isActive, warmStickerEffect]);
-  useEffect(() => () => {
-    if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
-    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
-    if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (cueTimer.current !== null) window.clearTimeout(cueTimer.current);
+      if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+      if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
+    },
+    [],
+  );
 
   async function doLike(force?: boolean) {
-    if (!user) { toast.error("Sign in to like"); return; }
+    if (!user) {
+      toast.error("Sign in to like");
+      return;
+    }
     const next = force ?? !liked;
     if (next === liked) return;
     setLiked(next);
@@ -899,7 +1008,10 @@ function ReelItem({
   }
 
   async function doSave() {
-    if (!user) { toast.error("Sign in to save"); return; }
+    if (!user) {
+      toast.error("Sign in to save");
+      return;
+    }
     const next = !saved;
     setSaved(next);
     try {
@@ -952,8 +1064,14 @@ function ReelItem({
       const bounds = event.currentTarget.getBoundingClientRect();
       const insetX = Math.min(12, (42 / bounds.width) * 100);
       const insetY = Math.min(12, (42 / bounds.height) * 100);
-      const x = Math.max(insetX, Math.min(100 - insetX, ((event.clientX - bounds.left) / bounds.width) * 100));
-      const y = Math.max(insetY, Math.min(100 - insetY, ((event.clientY - bounds.top) / bounds.height) * 100));
+      const x = Math.max(
+        insetX,
+        Math.min(100 - insetX, ((event.clientX - bounds.left) / bounds.width) * 100),
+      );
+      const y = Math.max(
+        insetY,
+        Math.min(100 - insetY, ((event.clientY - bounds.top) / bounds.height) * 100),
+      );
       const id = ++stickerId.current;
       const preparedSticker = preparedStickerRef.current;
       const effect = preparedSticker ?? {
@@ -964,7 +1082,7 @@ function ReelItem({
       warmStickerEffect();
       if (stickerTimer.current !== null) window.clearTimeout(stickerTimer.current);
       stickerTimer.current = window.setTimeout(() => {
-        setStickerBurst((current) => current?.id === id ? null : current);
+        setStickerBurst((current) => (current?.id === id ? null : current));
       }, 900);
       return;
     }
@@ -986,11 +1104,20 @@ function ReelItem({
   });
 
   return (
-      <section data-reel-index={reelIndex} className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}>
+    <section
+      data-reel-index={reelIndex}
+      className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black ${isExternal ? "flex flex-col" : ""}`}
+    >
       {!isExternal && (
         <>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-36 bg-gradient-to-b from-black/45 via-black/15 to-transparent" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-44 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-36 bg-gradient-to-b from-black/45 via-black/15 to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-44 bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+          />
         </>
       )}
       {isExternal ? (
@@ -1003,10 +1130,15 @@ function ReelItem({
             minimalControls
           />
           <div className="shrink-0 px-4 py-3 text-white">
-            <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
+            <ProfilePreviewTrigger
+              username={post.author?.username}
+              className="mb-2 flex items-center gap-2 text-left"
+            >
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
                 <AvatarImage src={post.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {(post.author?.username ?? "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <span className="font-bold text-sm">@{post.author?.username}</span>
               {post.author?.verified_creator && <VerifiedCreatorTag />}
@@ -1018,15 +1150,30 @@ function ReelItem({
                 onClick={() => doLike()}
                 active={liked}
               />
-              <ReelAction icon={<MessageCircle className="h-6 w-6" />} label={formatCount(post.comment_count)} onClick={() => setCommentsOpen(true)} />
+              <ReelAction
+                icon={<MessageCircle className="h-6 w-6" />}
+                label={formatCount(post.comment_count)}
+                onClick={() => setCommentsOpen(true)}
+              />
               <ReelAction
                 icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
                 label={saved ? "Saved" : "Save"}
                 onClick={doSave}
                 active={saved}
               />
-              <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={() => setShareOpen(true)} />
-              <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
+              <ReelAction
+                icon={<Share2 className="h-6 w-6" />}
+                label="Share"
+                onClick={() => setShareOpen(true)}
+              />
+              <Button
+                onClick={remix}
+                size="sm"
+                variant="outline"
+                className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs"
+              >
+                Remix
+              </Button>
             </div>
           </div>
           <CommentsSheet
@@ -1039,114 +1186,151 @@ function ReelItem({
         </>
       ) : (
         <>
-        <video
-          ref={ref}
-          src={post.media_url}
-          preload={preload}
-          muted={muted}
-          playsInline
-          onClick={handleVideoTap}
-          onEnded={() => { if (!partyControlled && autoplay && isActive) onEnded(); }}
-          onTimeUpdate={(e) => {
-            const v = e.currentTarget;
-            if (v.duration) setProgress((v.currentTime / v.duration) * 100);
-          }}
-          className="absolute inset-0 h-full w-full object-cover transition-[filter] duration-300"
-          style={{ filter: FILTER_CSS[filter] || "none" }}
-        />
-      {stickerBurst && (
-        <span
-          key={stickerBurst.id}
-          className="pointer-events-none absolute z-[15] grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-black/35 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-sm"
-          style={{
-            left: `${stickerBurst.x}%`,
-            top: `${stickerBurst.y}%`,
-            animation: "reel-sticker-pop 900ms cubic-bezier(0.2,0.7,0.2,1) forwards",
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className={`pointer-events-none absolute inset-0 grid place-items-center text-4xl transition-opacity duration-100 ${
-              stickerBurst.imageLoaded ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            💖
-          </span>
-          <img
-            src={stickerBurst.src}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            onLoad={() => setStickerBurst((current) =>
-              current?.id === stickerBurst.id ? { ...current, imageLoaded: true } : current
-            )}
-            className={`h-11 w-11 select-none object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] transition-opacity duration-100 ${
-              stickerBurst.imageLoaded ? "opacity-100" : "opacity-0"
-            }`}
+          <video
+            ref={ref}
+            src={post.media_url}
+            preload={preload}
+            muted={muted}
+            playsInline
+            onClick={handleVideoTap}
+            onEnded={() => {
+              if (!partyControlled && autoplay && isActive) onEnded();
+            }}
+            onTimeUpdate={(e) => {
+              const v = e.currentTarget;
+              if (v.duration) setProgress((v.currentTime / v.duration) * 100);
+            }}
+            className="absolute inset-0 h-full w-full object-cover transition-[filter] duration-300"
+            style={{ filter: FILTER_CSS[filter] || "none" }}
           />
-        </span>
-      )}
-      {staticLikeFeedback && (
-        <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
-            <Heart className="h-3.5 w-3.5 fill-primary text-primary" />
-            Liked
-          </span>
-        </span>
-      )}
-      {playCue && (
-        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-live="polite">
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150">
-            {playCue === "play" ? <Play className="h-7 w-7 fill-current" /> : <Pause className="h-7 w-7 fill-current" />}
-            <span className="sr-only">{playCue === "play" ? "Playing" : "Paused"}</span>
-          </span>
-        </div>
-      )}
-      {!isExternal && <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
-        <div className="h-full bg-primary text-primary-foreground shadow-md" style={{ width: `${progress}%` }} />
-      </div>}
-      <div className="absolute left-3 right-[5.5rem] bottom-3 z-10 text-white drop-shadow md:left-6 md:bottom-5">
-        <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
-          <Avatar className="h-9 w-9 ring-2 ring-white/40">
-            <AvatarImage src={post.author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">{(post.author?.username ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <span className="font-bold text-sm">@{post.author?.username}</span>
-          {post.author?.verified_creator && <VerifiedCreatorTag />}
-        </ProfilePreviewTrigger>
-        {captions && post.caption && <p className="max-w-full text-[13px] leading-snug line-clamp-3 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 inline-block break-words"><CaptionText caption={post.caption} /></p>}
-        <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
-          <Music2 className="h-3.5 w-3.5" /> {isExternal ? "Linked video" : `Original audio · @${post.author?.username}`}
-        </div>
-      </div>
-      <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
-        <ReelAction
-          icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
-          label={formatCount(likeCount)}
-          onClick={() => doLike()}
-          active={liked}
-        />
-        <ReelAction
-          icon={<MessageCircle className="h-6 w-6" />}
-          label={formatCount(post.comment_count)}
-          onClick={() => setCommentsOpen(true)}
-        />
-        <ReelAction
-          icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
-          label={saved ? "Saved" : "Save"}
-          onClick={doSave}
-          active={saved}
-        />
-        <ReelAction icon={<Share2 className="h-6 w-6" />} label="Share" onClick={() => setShareOpen(true)} />
-        <Button onClick={remix} size="sm" variant="outline" className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs">Remix</Button>
-      </div>
-      <CommentsSheet
-        open={commentsOpen}
-        onOpenChange={setCommentsOpen}
-        postId={post.id}
-        readingWithHost={partyControlled && partyComments}
-      />
-      <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
+          {stickerBurst && (
+            <span
+              key={stickerBurst.id}
+              className="pointer-events-none absolute z-[15] grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-black/35 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+              style={{
+                left: `${stickerBurst.x}%`,
+                top: `${stickerBurst.y}%`,
+                animation: "reel-sticker-pop 900ms cubic-bezier(0.2,0.7,0.2,1) forwards",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-0 grid place-items-center text-4xl transition-opacity duration-100 ${
+                  stickerBurst.imageLoaded ? "opacity-0" : "opacity-100"
+                }`}
+              >
+                💖
+              </span>
+              <img
+                src={stickerBurst.src}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                onLoad={() =>
+                  setStickerBurst((current) =>
+                    current?.id === stickerBurst.id ? { ...current, imageLoaded: true } : current,
+                  )
+                }
+                className={`h-11 w-11 select-none object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] transition-opacity duration-100 ${
+                  stickerBurst.imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            </span>
+          )}
+          {staticLikeFeedback && (
+            <span className="pointer-events-none absolute inset-0 z-[15] grid place-items-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
+                <Heart className="h-3.5 w-3.5 fill-primary text-primary" />
+                Liked
+              </span>
+            </span>
+          )}
+          {playCue && (
+            <div
+              className="pointer-events-none absolute inset-0 z-20 grid place-items-center"
+              aria-live="polite"
+            >
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150">
+                {playCue === "play" ? (
+                  <Play className="h-7 w-7 fill-current" />
+                ) : (
+                  <Pause className="h-7 w-7 fill-current" />
+                )}
+                <span className="sr-only">{playCue === "play" ? "Playing" : "Paused"}</span>
+              </span>
+            </div>
+          )}
+          {!isExternal && (
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
+              <div
+                className="h-full bg-primary text-primary-foreground shadow-md"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+          <div className="absolute left-3 right-[5.5rem] bottom-3 z-10 text-white drop-shadow md:left-6 md:bottom-5">
+            <ProfilePreviewTrigger
+              username={post.author?.username}
+              className="mb-2 flex items-center gap-2 text-left"
+            >
+              <Avatar className="h-9 w-9 ring-2 ring-white/40">
+                <AvatarImage src={post.author?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {(post.author?.username ?? "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-bold text-sm">@{post.author?.username}</span>
+              {post.author?.verified_creator && <VerifiedCreatorTag />}
+            </ProfilePreviewTrigger>
+            {captions && post.caption && (
+              <p className="max-w-full text-[13px] leading-snug line-clamp-3 bg-black/55 backdrop-blur-sm rounded-lg px-2 py-1 inline-block break-words">
+                <CaptionText caption={post.caption} />
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 text-xs mt-2 opacity-80">
+              <Music2 className="h-3.5 w-3.5" />{" "}
+              {isExternal ? "Linked video" : `Original audio · @${post.author?.username}`}
+            </div>
+          </div>
+          <div className="absolute right-2 bottom-3 md:right-4 md:bottom-5 flex flex-col items-center gap-2 text-white z-10">
+            <ReelAction
+              icon={<Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />}
+              label={formatCount(likeCount)}
+              onClick={() => doLike()}
+              active={liked}
+            />
+            <ReelAction
+              icon={<MessageCircle className="h-6 w-6" />}
+              label={formatCount(post.comment_count)}
+              onClick={() => setCommentsOpen(true)}
+            />
+            <ReelAction
+              icon={<Bookmark className={`h-6 w-6 ${saved ? "fill-white" : ""}`} />}
+              label={saved ? "Saved" : "Save"}
+              onClick={doSave}
+              active={saved}
+            />
+            <ReelAction
+              icon={<Share2 className="h-6 w-6" />}
+              label="Share"
+              onClick={() => setShareOpen(true)}
+            />
+            <Button
+              onClick={remix}
+              size="sm"
+              variant="outline"
+              className="rounded-full bg-white/10 border-white/30 text-white h-8 px-3 text-xs"
+            >
+              Remix
+            </Button>
+          </div>
+          <CommentsSheet
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            postId={post.id}
+            readingWithHost={partyControlled && partyComments}
+          />
+          <ShareToChatSheet open={shareOpen} onOpenChange={setShareOpen} draft={shareDraft} />
         </>
       )}
 
@@ -1168,10 +1352,27 @@ function ReelItem({
   );
 }
 
-function ReelAction({ icon, label, onClick, active }: { icon: React.ReactNode; label: string; onClick?: () => void; active?: boolean }) {
+function ReelAction({
+  icon,
+  label,
+  onClick,
+  active,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  active?: boolean;
+}) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-      <span className={`h-12 w-12 rounded-full glass-strong grid place-items-center ${active ? "ring-2 ring-white/50" : ""}`}>{icon}</span>
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+    >
+      <span
+        className={`h-12 w-12 rounded-full glass-strong grid place-items-center ${active ? "ring-2 ring-white/50" : ""}`}
+      >
+        {icon}
+      </span>
       <span className="text-[11px] font-semibold drop-shadow">{label}</span>
     </button>
   );
@@ -1209,7 +1410,10 @@ function CommentsSheet({
             <SheetTitle className="font-display text-lg">Comments</SheetTitle>
             {readingWithHost && (
               <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/12 px-2 py-0.5 text-[10px] font-bold text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden="true" />
+                <span
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary"
+                  aria-hidden="true"
+                />
                 Host is reading
               </span>
             )}
@@ -1252,21 +1456,38 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
     sourceLinkResult.value.platform === "youtube" &&
     rightsConfirmed;
 
-  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
 
   const pick = (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("video/")) { toast.error("Pick a video file"); return; }
-    if (f.size > 50 * 1024 * 1024) { toast.error("Max 50MB"); return; }
+    if (!f.type.startsWith("video/")) {
+      toast.error("Pick a video file");
+      return;
+    }
+    if (f.size > 50 * 1024 * 1024) {
+      toast.error("Max 50MB");
+      return;
+    }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
   };
 
   const reset = () => {
-     setFile(null); setSourceLink(""); setRightsConfirmed(false); setSourceMode("upload");
-     setCaption(""); setSong(null); setOverlay("");
-    setTrim([0, 60]); setDuration(60);
+    setFile(null);
+    setSourceLink("");
+    setRightsConfirmed(false);
+    setSourceMode("upload");
+    setCaption("");
+    setSong(null);
+    setOverlay("");
+    setTrim([0, 60]);
+    setDuration(60);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
   };
@@ -1274,56 +1495,71 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in first");
-      const parsedLink = sourceMode === "link" && sourceLinkResult?.ok ? sourceLinkResult.value : null;
+      const parsedLink =
+        sourceMode === "link" && sourceLinkResult?.ok ? sourceLinkResult.value : null;
       if (sourceMode === "upload" && !file) throw new Error("Pick a video to create a reel");
       if (sourceMode === "link" && !parsedLink) {
-        throw new Error(sourceLinkResult && !sourceLinkResult.ok ? sourceLinkResult.error : "Paste a video link.");
+        throw new Error(
+          sourceLinkResult && !sourceLinkResult.ok ? sourceLinkResult.error : "Paste a video link.",
+        );
       }
-      if (sourceMode === "link" && parsedLink?.platform === "rednote") throw new Error("RedNote links aren't supported in Reels.");
-      if (sourceMode === "link" && parsedLink?.platform === "instagram") throw new Error("This video link isn't supported here.");
-      if (sourceMode === "link" && !rightsConfirmed) throw new Error("Confirm that you have permission to share this video.");
+      if (sourceMode === "link" && parsedLink?.platform === "rednote")
+        throw new Error("RedNote links aren't supported in Reels.");
+      if (sourceMode === "link" && parsedLink?.platform === "instagram")
+        throw new Error("This video link isn't supported here.");
+      if (sourceMode === "link" && !rightsConfirmed)
+        throw new Error("Confirm that you have permission to share this video.");
       const songTag = song ? SONG_LIBRARY.find((s) => s.id === song) : null;
-      const songLine = sourceMode === "upload" && songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
+      const songLine =
+        sourceMode === "upload" && songTag ? `\n🎵 ${songTag.title} — ${songTag.artist}` : "";
       const overlayLine = sourceMode === "upload" && overlay ? `\n${overlay}` : "";
       const fullCaption = (caption + overlayLine + songLine).trim();
-      uploadToastId.current = toast.loading(sourceMode === "link" ? "Publishing reel link…" : "Uploading your video…");
-       return createPost({
-         authorId: user.id,
-         caption: fullCaption,
-          file: sourceMode === "upload" ? file : null,
-          externalSourceUrl: parsedLink?.sourceUrl,
-         kind: "reel",
-         onProgress: (stage) => {
-            toast.loading(stage === "uploading" ? "Uploading your video…" : "Saving your reel…", {
-             id: uploadToastId.current,
-           });
-         },
-       });
+      uploadToastId.current = toast.loading(
+        sourceMode === "link" ? "Publishing reel link…" : "Uploading your video…",
+      );
+      return createPost({
+        authorId: user.id,
+        caption: fullCaption,
+        file: sourceMode === "upload" ? file : null,
+        externalSourceUrl: parsedLink?.sourceUrl,
+        kind: "reel",
+        onProgress: (stage) => {
+          toast.loading(stage === "uploading" ? "Uploading your video…" : "Saving your reel…", {
+            id: uploadToastId.current,
+          });
+        },
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reels"] });
       qc.invalidateQueries({ queryKey: ["feed"] });
-       toast.success("Reel posted 🎬", { id: uploadToastId.current });
-       uploadToastId.current = undefined;
+      toast.success("Reel posted 🎬", { id: uploadToastId.current });
+      uploadToastId.current = undefined;
       reset();
       onClose();
     },
-     onError: (e: Error) => {
-       if (uploadToastId.current !== undefined) {
-         toast.error(e.message, { id: uploadToastId.current });
-         uploadToastId.current = undefined;
-       } else {
-         toast.error(e.message);
-       }
-     },
+    onError: (e: Error) => {
+      if (uploadToastId.current !== undefined) {
+        toast.error(e.message, { id: uploadToastId.current });
+        uploadToastId.current = undefined;
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
-  const filteredSongs = SONG_LIBRARY.filter((s) =>
-    !songQuery || (s.title + s.artist + s.mood).toLowerCase().includes(songQuery.toLowerCase())
+  const filteredSongs = SONG_LIBRARY.filter(
+    (s) =>
+      !songQuery || (s.title + s.artist + s.mood).toLowerCase().includes(songQuery.toLowerCase()),
   );
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogContent
         className="glass-strong border-white/10 md:max-w-3xl p-0 overflow-hidden flex flex-col
           max-md:top-0 max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:translate-x-0 max-md:translate-y-0
@@ -1334,23 +1570,40 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           <DialogTitle className="text-base font-black">Create reel</DialogTitle>
-          <DialogDescription className="sr-only">Upload a video file or add a YouTube video link, then write a caption.</DialogDescription>
+          <DialogDescription className="sr-only">
+            Upload a video file or add a YouTube video link, then write a caption.
+          </DialogDescription>
           <span className="h-8 w-8" aria-hidden />
         </div>
 
         <div className="flex gap-2 px-4 pt-3 shrink-0" role="group" aria-label="Reel source">
-          <Button type="button" variant={sourceMode === "upload" ? "default" : "outline"} onClick={() => setSourceMode("upload")} aria-pressed={sourceMode === "upload"}>
+          <Button
+            type="button"
+            variant={sourceMode === "upload" ? "default" : "outline"}
+            onClick={() => setSourceMode("upload")}
+            aria-pressed={sourceMode === "upload"}
+          >
             <Upload className="mr-2 h-4 w-4" /> Video file
           </Button>
-          <Button type="button" variant={sourceMode === "link" ? "default" : "outline"} onClick={() => setSourceMode("link")} aria-pressed={sourceMode === "link"}>
+          <Button
+            type="button"
+            variant={sourceMode === "link" ? "default" : "outline"}
+            onClick={() => setSourceMode("link")}
+            aria-pressed={sourceMode === "link"}
+          >
             <Link2 className="mr-2 h-4 w-4" /> Add a link
           </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
           <div className="bg-black grid place-items-center min-h-[240px] md:min-h-[440px] relative">
-            {sourceMode === "link" && sourceLinkResult?.ok && sourceLinkResult.value.platform === "youtube" ? (
-              <ExternalVideoEmbed sourceUrl={sourceLinkResult.value.sourceUrl} className="h-full w-full" />
+            {sourceMode === "link" &&
+            sourceLinkResult?.ok &&
+            sourceLinkResult.value.platform === "youtube" ? (
+              <ExternalVideoEmbed
+                sourceUrl={sourceLinkResult.value.sourceUrl}
+                className="h-full w-full"
+              />
             ) : sourceMode === "link" && sourceLinkResult?.ok ? (
               <div className="max-w-sm p-6 text-center text-sm text-white/75" role="status">
                 {sourceLinkResult.value.platform === "rednote"
@@ -1366,14 +1619,16 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   controls
                   preload="metadata"
                   onLoadedMetadata={(e) => {
-                    const d = Math.round((e.currentTarget.duration || 60));
+                    const d = Math.round(e.currentTarget.duration || 60);
                     setDuration(d);
                     setTrim([0, Math.min(d, 60)]);
                   }}
                 />
                 {overlay && (
                   <div className="absolute inset-x-4 top-4 text-center pointer-events-none">
-                    <span className="inline-block bg-black/60 text-white px-3 py-1 rounded-lg text-sm font-bold backdrop-blur">{overlay}</span>
+                    <span className="inline-block bg-black/60 text-white px-3 py-1 rounded-lg text-sm font-bold backdrop-blur">
+                      {overlay}
+                    </span>
                   </div>
                 )}
                 {song && (
@@ -1387,7 +1642,12 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
               <div className="flex flex-col items-center gap-3 text-white/70 px-6 py-10 text-center">
                 {sourceMode === "upload" ? (
                   <label className="cursor-pointer flex flex-col items-center gap-3">
-                    <input type="file" accept="video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+                    <input
+                      type="file"
+                      accept="video/*"
+                      hidden
+                      onChange={(e) => pick(e.target.files?.[0] ?? null)}
+                    />
                     <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-md">
                       <Upload className="h-7 w-7 text-white" />
                     </div>
@@ -1407,7 +1667,12 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           <div className="p-4 overflow-y-auto">
             {sourceMode === "link" && (
               <div className="mb-4 space-y-2">
-                <label htmlFor="reel-source-link" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Video link</label>
+                <label
+                  htmlFor="reel-source-link"
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                >
+                  Video link
+                </label>
                 <Input
                   id="reel-source-link"
                   type="url"
@@ -1419,15 +1684,27 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   className="glass border-white/10"
                   aria-describedby="reel-source-help reel-source-status"
                 />
-                <p id="reel-source-status" className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform !== "youtube")) ? "text-destructive" : "text-muted-foreground"}`} role="status">
-                  {!sourceLinkResult ? "YouTube previews use the official player. RedNote and Instagram links aren’t supported in Reels." :
-                    !sourceLinkResult.ok ? sourceLinkResult.error :
-                      sourceLinkResult.value.platform === "instagram" ? "This link can’t be shared here. Try a YouTube video link." :
-                        sourceLinkResult.value.platform === "rednote" ? "RedNote links aren’t supported in Reels." :
-                          "YouTube link ready to preview."}
+                <p
+                  id="reel-source-status"
+                  className={`text-xs ${sourceLinkResult && (!sourceLinkResult.ok || (sourceLinkResult.ok && sourceLinkResult.value.platform !== "youtube")) ? "text-destructive" : "text-muted-foreground"}`}
+                  role="status"
+                >
+                  {!sourceLinkResult
+                    ? "YouTube previews use the official player. RedNote and Instagram links aren’t supported in Reels."
+                    : !sourceLinkResult.ok
+                      ? sourceLinkResult.error
+                      : sourceLinkResult.value.platform === "instagram"
+                        ? "This link can’t be shared here. Try a YouTube video link."
+                        : sourceLinkResult.value.platform === "rednote"
+                          ? "RedNote links aren’t supported in Reels."
+                          : "YouTube link ready to preview."}
                 </p>
-                <p id="reel-source-help" className="text-[11px] leading-relaxed text-muted-foreground">
-                  External videos stay on their original platform. RIZZ does not download or rehost them.
+                <p
+                  id="reel-source-help"
+                  className="text-[11px] leading-relaxed text-muted-foreground"
+                >
+                  External videos stay on their original platform. RIZZ does not download or rehost
+                  them.
                 </p>
                 <label className="flex items-start gap-2 text-xs leading-relaxed">
                   <input
@@ -1442,11 +1719,19 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
             )}
             <Tabs key={sourceMode} defaultValue="caption">
               <TabsList className="w-full glass border border-white/10">
-                <TabsTrigger value="caption" className="flex-1"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption</TabsTrigger>
-                {sourceMode === "upload" && <>
-                  <TabsTrigger value="song" className="flex-1"><Music2 className="h-3.5 w-3.5 mr-1" /> Song</TabsTrigger>
-                  <TabsTrigger value="trim" className="flex-1"><Scissors className="h-3.5 w-3.5 mr-1" /> Trim</TabsTrigger>
-                </>}
+                <TabsTrigger value="caption" className="flex-1">
+                  <TypeIcon className="h-3.5 w-3.5 mr-1" /> Caption
+                </TabsTrigger>
+                {sourceMode === "upload" && (
+                  <>
+                    <TabsTrigger value="song" className="flex-1">
+                      <Music2 className="h-3.5 w-3.5 mr-1" /> Song
+                    </TabsTrigger>
+                    <TabsTrigger value="trim" className="flex-1">
+                      <Scissors className="h-3.5 w-3.5 mr-1" /> Trim
+                    </TabsTrigger>
+                  </>
+                )}
               </TabsList>
 
               <TabsContent value="caption" className="space-y-3 mt-4">
@@ -1456,78 +1741,104 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
                   placeholder="Describe your reel… use #hashtags and @mentions"
                   className="glass border-white/10 min-h-[110px] resize-none"
                 />
-                <p className="text-xs text-muted-foreground text-right">{500 - caption.length} left</p>
-                {sourceMode === "upload" && <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sticker text</p>
-                  <Input
-                    value={overlay}
-                    onChange={(e) => setOverlay(e.target.value.slice(0, 60))}
-                    placeholder="POV: it's Friday"
-                    className="glass border-white/10"
-                  />
-                </div>}
+                <p className="text-xs text-muted-foreground text-right">
+                  {500 - caption.length} left
+                </p>
+                {sourceMode === "upload" && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      Sticker text
+                    </p>
+                    <Input
+                      value={overlay}
+                      onChange={(e) => setOverlay(e.target.value.slice(0, 60))}
+                      placeholder="POV: it's Friday"
+                      className="glass border-white/10"
+                    />
+                  </div>
+                )}
               </TabsContent>
 
-              {sourceMode === "upload" && <TabsContent value="song" className="space-y-3 mt-4">
-                <Input
-                  value={songQuery}
-                  onChange={(e) => setSongQuery(e.target.value)}
-                  placeholder="Search songs, artists, moods…"
-                  className="glass border-white/10"
-                />
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                  <button
-                    onClick={() => setSong(null)}
-                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                      song === null ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
-                    }`}
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-white/10 grid place-items-center"><Music2 className="h-4 w-4" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold">Original audio</p>
-                      <p className="text-xs opacity-70">Use the sound from your clip</p>
-                    </div>
-                    {song === null && <Check className="h-4 w-4" />}
-                  </button>
-                  {filteredSongs.map((s) => (
+              {sourceMode === "upload" && (
+                <TabsContent value="song" className="space-y-3 mt-4">
+                  <Input
+                    value={songQuery}
+                    onChange={(e) => setSongQuery(e.target.value)}
+                    placeholder="Search songs, artists, moods…"
+                    className="glass border-white/10"
+                  />
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                     <button
-                      key={s.id}
-                      onClick={() => setSong(s.id)}
+                      onClick={() => setSong(null)}
                       className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
-                        song === s.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-white/5"
+                        song === null
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "hover:bg-white/5"
                       }`}
                     >
-                      <div className="h-10 w-10 rounded-lg bg-primary/20 grid place-items-center text-base">🎵</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate">{s.title}</p>
-                        <p className="text-xs opacity-70 truncate">{s.artist} · {s.bpm} BPM · {s.mood}</p>
+                      <div className="h-10 w-10 rounded-lg bg-white/10 grid place-items-center">
+                        <Music2 className="h-4 w-4" />
                       </div>
-                      {song === s.id && <Check className="h-4 w-4" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold">Original audio</p>
+                        <p className="text-xs opacity-70">Use the sound from your clip</p>
+                      </div>
+                      {song === null && <Check className="h-4 w-4" />}
                     </button>
-                  ))}
-                </div>
-              </TabsContent>}
-
-              {sourceMode === "upload" && <TabsContent value="trim" className="space-y-4 mt-4">
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-muted-foreground">Start</span>
-                    <span className="font-mono">{trim[0]}s → {trim[1]}s</span>
-                    <span className="text-muted-foreground">End</span>
+                    {filteredSongs.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSong(s.id)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition ${
+                          song === s.id
+                            ? "bg-primary text-primary-foreground shadow-md"
+                            : "hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="h-10 w-10 rounded-lg bg-primary/20 grid place-items-center text-base">
+                          🎵
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate">{s.title}</p>
+                          <p className="text-xs opacity-70 truncate">
+                            {s.artist} · {s.bpm} BPM · {s.mood}
+                          </p>
+                        </div>
+                        {song === s.id && <Check className="h-4 w-4" />}
+                      </button>
+                    ))}
                   </div>
-                  <Slider
-                    value={trim}
-                    min={0}
-                    max={duration}
-                    step={1}
-                    onValueChange={(v) => setTrim([v[0], v[1]] as [number, number])}
-                  />
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Selected length: <span className="font-bold text-foreground">{trim[1] - trim[0]}s</span> · Source: {duration}s
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">Trim is applied on playback — full clip is uploaded.</p>
-                </div>
-              </TabsContent>}
+                </TabsContent>
+              )}
+
+              {sourceMode === "upload" && (
+                <TabsContent value="trim" className="space-y-4 mt-4">
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <span className="text-muted-foreground">Start</span>
+                      <span className="font-mono">
+                        {trim[0]}s → {trim[1]}s
+                      </span>
+                      <span className="text-muted-foreground">End</span>
+                    </div>
+                    <Slider
+                      value={trim}
+                      min={0}
+                      max={duration}
+                      step={1}
+                      onValueChange={(v) => setTrim([v[0], v[1]] as [number, number])}
+                    />
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Selected length:{" "}
+                      <span className="font-bold text-foreground">{trim[1] - trim[0]}s</span> ·
+                      Source: {duration}s
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Trim is applied on playback — full clip is uploaded.
+                    </p>
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>
@@ -1536,13 +1847,25 @@ function ReelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
           className="flex items-center justify-between gap-2 px-5 py-3 border-t border-white/10 shrink-0"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
-           <Button variant="ghost" onClick={reset} disabled={(!file && !sourceLink) || mut.isPending}>Reset</Button>
+          <Button
+            variant="ghost"
+            onClick={reset}
+            disabled={(!file && !sourceLink) || mut.isPending}
+          >
+            Reset
+          </Button>
           <Button
             onClick={() => mut.mutate()}
             disabled={mut.isPending || (sourceMode === "upload" ? !file : !canPublishLink)}
             className="bg-primary text-primary-foreground border-0 shadow-md px-6"
           >
-            {mut.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : "Post reel 🎬"}
+            {mut.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…
+              </>
+            ) : (
+              "Post reel 🎬"
+            )}
           </Button>
         </div>
       </DialogContent>

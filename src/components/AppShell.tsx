@@ -720,6 +720,7 @@ export function AppShell() {
           else if (action === "story") setStoryOpen(true);
           else if (action === "live") setLiveOpen(true);
           else if (action === "reel") nav({ to: "/reels", search: { compose: "1" } });
+          else if (action === "bulk-reels") nav({ to: "/reels", search: { bulk: "1" } });
           else nav({ to: "/realms" });
         }}
       />
