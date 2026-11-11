@@ -296,13 +296,36 @@ export function AppShell() {
       }
     }
 
+    // sessionStorage is synchronous. Writing it on every scroll event blocks
+    // the main thread and turns a smooth flick into a stuttering one, so trail
+    // the scroll and persist at most a few times a second.
+    let saveTimer: number | null = null;
+    let lastTop = mainEl.scrollTop;
+    let dirty = false;
+    const save = () => {
+      sessionStorage.setItem(`rizz_main_scroll_${path}`, String(lastTop));
+    };
     const onScroll = () => {
-      sessionStorage.setItem(`rizz_main_scroll_${path}`, String(mainEl.scrollTop));
+      lastTop = mainEl.scrollTop;
+      dirty = true;
+      if (saveTimer !== null) return;
+      saveTimer = window.setTimeout(() => {
+        saveTimer = null;
+        save();
+      }, 150);
     };
 
     mainEl.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       mainEl.removeEventListener("scroll", onScroll);
+      if (saveTimer !== null) {
+        window.clearTimeout(saveTimer);
+        saveTimer = null;
+      }
+      // Only write a position the reader actually reached. Writing mainEl's
+      // current value on a fast tab switch can save 0 before the new route
+      // paints, which would erase the old page's restored offset.
+      if (dirty) save();
     };
   }, [path]);
 

@@ -1751,6 +1751,12 @@
 .list-item-rise {
   animation: rizz-rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* Feed cards are expensive trees. Skip style, layout and paint for the ones
+   far below the viewport instead of keeping every card live while scrolling. */
+.feed-card-slot {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 440px;
+}
 @media (prefers-reduced-motion: reduce) {
   .list-item-rise {
     animation: none !important;

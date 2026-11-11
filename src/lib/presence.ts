@@ -88,12 +88,22 @@ export function publicStatusOf(row: PresenceRow | undefined | null, isSelf = fal
 // A single shared realtime subscription: one channel for the whole app, no
 // matter how many components are showing status dots.
 // ---------------------------------------------------------------------------
-type PresenceListener = () => void;
+type PresenceChange = {
+  eventType: "INSERT" | "UPDATE" | "DELETE";
+  new: Partial<PresenceRow>;
+  old: Partial<PresenceRow>;
+};
+type PresenceListener = (change: PresenceChange) => void;
 const presenceListeners = new Set<PresenceListener>();
 let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
 
-function emitPresenceChange() {
-  presenceListeners.forEach((listener) => listener());
+function presenceChangeUserId(change: PresenceChange): string | null {
+  const row = change.eventType === "DELETE" ? change.old : change.new;
+  return typeof row?.user_id === "string" ? row.user_id : null;
+}
+
+function emitPresenceChange(change: PresenceChange) {
+  presenceListeners.forEach((listener) => listener(change));
 }
 
 function subscribeToPresence(listener: PresenceListener) {
@@ -101,11 +111,16 @@ function subscribeToPresence(listener: PresenceListener) {
   if (!presenceChannel) {
     const channel = supabase
       .channel("user-presence")
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => {
-        // Row level security applies here: an invisible status is never sent to
-        // anyone but its owner.
-        emitPresenceChange();
-      });
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_presence" },
+        (payload) => {
+          // Row level security applies here: an invisible status is never sent
+          // to anyone but its owner. Pass the changed row along instead of a
+          // bare ping so readers can patch their cache without refetching.
+          emitPresenceChange(payload as unknown as PresenceChange);
+        },
+      );
     // Teardown is asynchronous, so a listener arriving right after the last one
     // left can be handed the channel that is still unsubscribing. Subscribing it
     // again would throw "tried to subscribe multiple times" and take the route
@@ -132,7 +147,9 @@ export function presenceMapKey(userIds: string[]) {
 export function usePresenceMap(userIds: string[]) {
   const qc = useQueryClient();
   const ids = useMemo(() => [...new Set(userIds.filter(Boolean))], [userIds.join("|")]);
-  const key = presenceMapKey(ids);
+  const key = useMemo(() => presenceMapKey(ids), [ids]);
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
 
   const query = useQuery({
     queryKey: key,
@@ -150,11 +167,25 @@ export function usePresenceMap(userIds: string[]) {
 
   useEffect(
     () =>
-      subscribeToPresence(() => {
-        void qc.invalidateQueries({ queryKey: ["presence-map"] });
-        void qc.invalidateQueries({ queryKey: ["presence-self"] });
+      subscribeToPresence((change) => {
+        const changedId = presenceChangeUserId(change);
+        if (!changedId || !idsRef.current.includes(changedId)) return;
+        qc.setQueryData<Record<string, PresenceRow>>(key, (current) => {
+          // Nothing cached yet means the first fetch is in flight; it will
+          // include this row already.
+          if (!current) return current;
+          if (change.eventType === "DELETE") {
+            if (!(changedId in current)) return current;
+            const next = { ...current };
+            delete next[changedId];
+            return next;
+          }
+          const incoming = change.new as PresenceRow;
+          if (!incoming.user_id) return current;
+          return { ...current, [changedId]: { ...(current[changedId] ?? incoming), ...incoming } };
+        });
       }),
-    [qc],
+    [qc, key],
   );
 
   const rows = query.data ?? {};
@@ -178,8 +209,9 @@ export function usePresence(
 ) {
   const qc = useQueryClient();
   const refetchInterval = options.refetchInterval;
+  const key = useMemo(() => ["presence-user", userId ?? "none"] as const, [userId]);
   const query = useQuery({
-    queryKey: ["presence-user", userId ?? "none"],
+    queryKey: key,
     enabled: !!userId,
     staleTime: 30_000,
     refetchInterval,
@@ -196,10 +228,17 @@ export function usePresence(
 
   useEffect(
     () =>
-      subscribeToPresence(() => {
-        void qc.invalidateQueries({ queryKey: ["presence-user"] });
+      subscribeToPresence((change) => {
+        if (!userId || presenceChangeUserId(change) !== userId) return;
+        qc.setQueryData<PresenceRow | null>(key, (current) => {
+          if (current === undefined) return current;
+          if (change.eventType === "DELETE") return null;
+          const incoming = change.new as PresenceRow;
+          if (!incoming.user_id) return current;
+          return { ...(current ?? incoming), ...incoming };
+        });
       }),
-    [qc],
+    [qc, userId, key],
   );
 
   return query.data ?? null;
@@ -272,11 +311,18 @@ export function useSelfPresence() {
 
   useEffect(
     () =>
-      subscribeToPresence(() => {
-        void qc.invalidateQueries({ queryKey: ["presence-self"] });
+      subscribeToPresence((change) => {
+        if (!user?.id || presenceChangeUserId(change) !== user.id) return;
+        qc.setQueryData<PresenceRow | null>(["presence-self", user.id], (current) => {
+          if (current === undefined) return current;
+          if (change.eventType === "DELETE") return null;
+          const incoming = change.new as PresenceRow;
+          if (!incoming.user_id) return current;
+          return { ...(current ?? incoming), ...incoming };
+        });
         setRowsVersion((current) => current + 1);
       }),
-    [qc],
+    [qc, user?.id],
   );
 
   const lastWrite = useRef<{ status: PresenceStatus | null; at: number }>({ status: null, at: 0 });

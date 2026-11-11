@@ -220,7 +220,7 @@ function FeedPage() {
           {shown.map((p, i) => (
             <div
               key={p.id}
-              className="list-item-rise"
+              className="feed-card-slot list-item-rise"
               style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
             >
               <PostCard post={p} liked={likes.data?.has(p.id)} />
