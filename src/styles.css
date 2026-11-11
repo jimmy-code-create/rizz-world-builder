@@ -695,12 +695,12 @@
    gutters, and 8px/4px rhythm. Surfaces opt in; the tokens stay shared. */
 .chat-header {
   --chat-header-row: 4rem;
-  --chat-header-gutter: 0.75rem;
-  --chat-header-gap: 0.5rem;
-  --chat-header-avatar-gap: 0.75rem;
+  --chat-header-gutter: 0.875rem;
+  --chat-header-gap: 0.625rem;
+  --chat-header-avatar-gap: 0.6875rem;
   --chat-header-action: 2.75rem;
-  --chat-header-action-gap: 0.25rem;
-  --chat-header-icon: 1.375rem;
+  --chat-header-action-gap: 0.375rem;
+  --chat-header-icon: 1.25rem;
   position: sticky;
   top: 0;
   z-index: var(--z-sticky, 20);
@@ -730,6 +730,42 @@
   flex-shrink: 0;
   align-items: center;
   gap: var(--chat-header-action-gap);
+  margin-left: 0.125rem;
+}
+.chat-header__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
+.chat-header__status {
+  /* Never let a long custom status push the action cluster off the row. */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.chat-header__custom {
+  color: var(--primary);
+}
+.chat-header__typing {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--primary);
+  font-weight: 500;
+}
+.chat-header__typing-dots {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: 1px;
+}
+.chat-header__typing-dots span {
+  animation: chat-typing-dot 1.15s ease-in-out infinite;
+}
+.chat-header__typing-dots span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.chat-header__typing-dots span:nth-child(3) {
+  animation-delay: 0.28s;
 }
 .chat-header__action {
   position: relative;
@@ -765,41 +801,69 @@
   height: var(--chat-header-icon);
   stroke-width: 1.75;
 }
-/* One call door, both call types visible. */
-.chat-header__action-pair {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-}
-.chat-header__action-pair svg {
-  width: 20px;
-  height: 20px;
-}
-.chat-header__live {
+/*
+ * The knock is the one filled door in the header: lime-tinted at rest so the
+ * door reads as the action, and solid signal-lime while the person is live.
+ * It keeps the same 44px target as its neighbours, so the cluster stays on one
+ * optical line instead of three differently weighted icons.
+ */
+.chat-header__knock {
+  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent);
   transition:
     background-color 150ms ease,
     color 150ms ease,
-    opacity 150ms ease;
+    box-shadow 150ms ease,
+    transform 120ms ease;
 }
-.chat-header__live[data-live="false"] {
-  opacity: 0.68;
-}
-.chat-header__live[data-live="false"]:hover {
-  opacity: 1;
-}
-.chat-header__live[data-live="true"] {
+.chat-header__knock:hover {
+  background: color-mix(in srgb, var(--primary) 19%, transparent);
   color: var(--primary);
+}
+.chat-header__knock:active {
+  background: color-mix(in srgb, var(--primary) 26%, transparent);
+  transform: scale(0.92);
+}
+.chat-header__knock:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.chat-header__knock-glyph {
+  width: 1.3125rem;
+  height: 1.3125rem;
+}
+.chat-header__knock[data-knocking="true"] .chat-header__knock-glyph {
+  animation: chat-knock-tap 480ms ease-in-out;
+}
+.chat-header__knock[data-live="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 7px 18px -9px color-mix(in srgb, var(--primary) 80%, transparent);
+}
+.chat-header__knock[data-live="true"]:hover {
+  background: color-mix(in srgb, var(--primary) 88%, white);
+  color: var(--primary-foreground);
 }
 /* The ring is decorative: it never participates in layout, and only a live
    person gets one. Opacity + transform keep the animation off the paint path. */
-.chat-header__live[data-live="true"]::after {
+.chat-header__knock[data-live="true"]::after {
   content: "";
   position: absolute;
-  inset: 4px;
-  border: 1px solid var(--primary);
+  inset: -2px;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 70%, transparent);
   border-radius: 9999px;
   pointer-events: none;
   animation: chat-live-pulse 2.6s ease-out infinite;
+}
+.chat-header__call svg {
+  width: 1.1875rem;
+  height: 1.1875rem;
+}
+.chat-header__knock[data-live="true"] .chat-header__ripple {
+  background: var(--primary-foreground);
 }
 .chat-header__ripple {
   position: absolute;
@@ -809,6 +873,17 @@
   opacity: 0;
   pointer-events: none;
   animation: chat-knock-ripple 450ms ease-out;
+}
+/* Phones lose the 44px ring but keep the same 40px circular targets and 6px
+   rhythm, which buys the name column enough room to stay readable. */
+@media (max-width: 400px) {
+  .chat-header {
+    --chat-header-row: 3.75rem;
+    --chat-header-gutter: 0.75rem;
+    --chat-header-gap: 0.5rem;
+    --chat-header-avatar-gap: 0.625rem;
+    --chat-header-action: 2.5rem;
+  }
 }
 .chat-header__search {
   background: var(--surface-bar);
@@ -838,13 +913,47 @@
     transform: scale(1.7);
   }
 }
+@keyframes chat-knock-tap {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-9deg);
+  }
+  55% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes chat-typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-1.5px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .chat-header__live[data-live="true"]::after {
+  .chat-header__knock[data-live="true"]::after {
     animation: none;
     opacity: 0.35;
   }
   .chat-header__ripple {
     display: none;
+  }
+  .chat-header__knock[data-knocking="true"] .chat-header__knock-glyph {
+    animation: none;
+  }
+  .chat-header__typing-dots span {
+    animation: none;
+    opacity: 1;
   }
 }
 .chat-bubble {

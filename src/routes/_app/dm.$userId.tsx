@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil, Podcast } from "lucide-react";
+import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -35,7 +35,7 @@ import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
-import { AvatarWithStatus, CustomStatusLine, StatusIcon } from "@/components/presence/StatusDot";
+import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, usePresence } from "@/lib/presence";
 import {
   markKnocksSeen,
@@ -85,6 +85,33 @@ type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"
   delivery_status?: "sending" | "failed";
   deleted_at?: string | null;
 };
+
+/*
+ * A door with three impact marks: the header's knock is a literal door knock,
+ * not a broadcast. `currentColor` so the live/cooldown tints apply to the
+ * whole glyph, and the rays sit clear of the door panel at small sizes.
+ */
+function KnockGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="chat-header__knock-glyph"
+    >
+      <path d="M5.5 20.5V5.25A1.75 1.75 0 0 1 7.25 3.5h6.5a1.75 1.75 0 0 1 1.75 1.75v15.25" />
+      <path d="M5.5 20.5h10" />
+      <circle cx="12.7" cy="11.9" r="1.05" fill="currentColor" stroke="none" />
+      <path d="M17.8 7.2 20 5" />
+      <path d="M18.4 12H21.5" />
+      <path d="M17.8 16.8 20 19" />
+    </svg>
+  );
+}
 
 function ownChatImagePath(url: string | null, userId: string) {
   const marker = "/storage/v1/object/public/chat-media/";
@@ -1099,29 +1126,39 @@ function DMPage() {
               </AvatarWithStatus>
             </Link>
 
-            <div className="min-w-0 flex-1">
+            <div className="chat-header__text min-w-0 flex-1">
               <Link
                 to="/u/$username"
                 params={{ username: other.data?.username ?? "" }}
                 className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <p className="truncate font-display text-base font-bold leading-tight tracking-[-0.01em]">
+                <p className="truncate font-display text-[15px] font-bold leading-5 tracking-[-0.01em]">
                   {peerName}
                 </p>
               </Link>
               <div
-                className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-tight"
+                className="chat-header__status mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4"
                 aria-live={peerTyping ? "polite" : undefined}
               >
-                <StatusIcon status={peerStatus} size={12} className="shrink-0 opacity-90" />
                 {blockStatus.data ? (
                   <span className="truncate text-muted-foreground">Blocked by you</span>
                 ) : peerTyping ? (
-                  <span className="truncate text-muted-foreground">typing…</span>
+                  <span className="chat-header__typing">
+                    typing
+                    <span className="chat-header__typing-dots" aria-hidden="true">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </span>
                 ) : peerCustom ? (
-                  <CustomStatusLine status={peerCustom} className="min-w-0 text-primary" />
+                  <CustomStatusLine status={peerCustom} className="chat-header__custom min-w-0" />
                 ) : (
-                  <span className="truncate text-muted-foreground">
+                  <span
+                    className={`truncate font-medium ${
+                      peerOnline ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
                     {peerOnline ? "Online" : lastSeenLabel}
                   </span>
                 )}
@@ -1129,17 +1166,18 @@ function DMPage() {
             </div>
           </div>
 
-          <div className="chat-header__actions">
+          <div className="chat-header__actions" role="group" aria-label="Conversation actions">
             <button
               type="button"
               onClick={() => void sendHeaderKnock()}
-              aria-label={peerLive ? "Live now, tap to knock" : "Knock"}
+              aria-label={peerLive ? "Live now, knock on their door" : "Knock on their door"}
               data-live={peerLive ? "true" : "false"}
+              data-knocking={knocking ? "true" : "false"}
               disabled={knocking || knockCooldown}
-              title={peerLive ? "Knock — live now" : "Knock"}
-              className="chat-header__action chat-header__live"
+              title={peerLive ? "Knock — they're live" : "Knock"}
+              className="chat-header__action chat-header__knock"
             >
-              <Podcast aria-hidden="true" />
+              <KnockGlyph />
               {knockRipple > 0 && (
                 <span key={knockRipple} className="chat-header__ripple" aria-hidden="true" />
               )}
@@ -1149,14 +1187,11 @@ function DMPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label="Voice or video call"
-                  title="Voice or video call"
-                  className="chat-header__action"
+                  aria-label="Call options"
+                  title="Call"
+                  className="chat-header__action chat-header__call"
                 >
-                  <span className="chat-header__action-pair" aria-hidden="true">
-                    <Phone />
-                    <Video />
-                  </span>
+                  <Phone aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
