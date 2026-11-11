@@ -82,7 +82,10 @@ export function knockMood(
   const lastSeen = row?.last_seen_at ? new Date(row.last_seen_at).getTime() : 0;
   const open = !!row && Number.isFinite(lastSeen) && now - lastSeen <= LIVE_WINDOW_MS;
 
-  if (!open) {
+  // Invisible users have a live heartbeat too, but nobody is allowed to see
+  // it. `publicStatusOf` folds invisible down to offline; keeping the check
+  // here as well means their fresh last_seen_at can never leak a live dot.
+  if (!open || status === "offline") {
     return {
       verdict: "offline",
       label: "App closed",

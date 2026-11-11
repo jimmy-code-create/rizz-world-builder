@@ -96,19 +96,21 @@ await check("one knock per door, not a mash button", async () => {
 });
 
 await check("the controls sit wherever a name does", async () => {
-  assert.ok(dmRoute.includes('"Live now, open the knock door"'), "the live mark keeps its aria label");
-  assert.ok(dmRoute.includes('<KnockButton'), "the header opens the shared knock sheet");
-  assert.ok(dmRoute.includes("renderTrigger"), "the header still owns its circular door mark");
-  assert.ok(dmRoute.includes("onSent={() => setKnockRipple"), "a sent knock still ripples locally");
-  assert.ok(dmRoute.includes("chat-header__call-group"), "the call door shows voice and video");
-  assert.ok(dmRoute.includes('aria-label="Start voice call"'), "voice is a direct call control");
-  assert.ok(dmRoute.includes('aria-label="Start video call"'), "video is a direct call control");
+  assert.ok(dmRoute.includes("chat-header chat-header--dm"), "the DM header uses its own single-row layout");
+  assert.ok(dmRoute.includes("<DmKnockStrip"), "the knock strip lives under the header");
+  assert.ok(!dmRoute.includes("<KnockButton"), "the header no longer mounts a check-in pill");
+  assert.ok(!dmRoute.includes("chat-header__call-group"), "the joined call and video pill is gone");
+  assert.ok(dmRoute.includes('aria-label="Voice call"'), "voice is one uniform icon button");
+  assert.ok(dmRoute.includes('aria-label="Video call"'), "video is one uniform icon button");
+  assert.ok(dmRoute.includes('aria-label="More options"'), "more closes the row");
   assert.ok(dmRoute.includes("<Video"), "a video-call icon is visible");
   assert.ok(preview.includes("<KnockButton"), "the profile card has the knock");
   assert.ok(profilePage.includes("<KnockButton"), "and so does the full profile");
-  // The subline is status first; the live mark itself is the doorbell.
+  // One computed presence state drives the dot, the subline and the strip.
+  assert.ok(dmRoute.includes("doorState"), "presence is derived once");
+  assert.match(dmRoute, /doorState === "dnd"[\s\S]{0,160}Do not disturb/, "dnd reads as a quiet note");
   assert.match(dmRoute, /peerTyping \?[\s\S]{0,160}chat-header__typing/, "typing wins the subline");
-  assert.match(dmRoute, /peerOnline \? "Online" : lastSeenLabel/, "then online, then last seen");
+  assert.match(dmRoute, /relativeLastSeen/, "then relative last seen when privacy allows");
   assert.ok(controls.includes("mood.verdict"), "the sheet explains where the knock will land");
   assert.ok(controls.includes("knockSentMessage"), "and the sender learns what happened");
 });

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil } from "lucide-react";
+import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil, Check } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -35,18 +35,19 @@ import { ReactionChips, burstOverMessage } from "@/components/chat/ReactionChips
 import { reactionHaptic } from "@/components/chat/ReactionBurst";
 import { MessageLinkPreviews } from "@/components/chat/LinkPreviews";
 import { useHiddenLinkPreviews } from "@/lib/link-preview";
-import { AvatarWithStatus, CustomStatusLine } from "@/components/presence/StatusDot";
+import { CustomStatusLine } from "@/components/presence/StatusDot";
 import { publicCustomStatus, publicStatusOf, usePresence } from "@/lib/presence";
 import {
   markKnocksSeen,
   relativeLastSeen,
+  sendKnock,
   useKnockMood,
   useKnockThread,
   type Knock,
 } from "@/lib/knock";
 import { KnockThreadCard } from "@/components/knock/KnockThreadCard";
-import { KnockButton } from "@/components/knock/KnockControls";
-import { KnockGlyph } from "@/components/knock/KnockGlyph";
+import { DmKnockStrip } from "@/components/knock/DmKnockStrip";
+import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
@@ -169,6 +170,7 @@ function DMPage() {
   }, [replyTo]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
+  const [peerVisible, setPeerVisible] = useState(true);
   const [peerTyping, setPeerTyping] = useState(false);
   const [showJump, setShowJump] = useState(false);
   const presenceCh = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -177,7 +179,16 @@ function DMPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [knockRipple, setKnockRipple] = useState(0);
+  const [callPrompt, setCallPrompt] = useState<null | "offline" | "choose">(null);
+  const [pendingCallVideo, setPendingCallVideo] = useState(false);
+  const [callKnockSending, setCallKnockSending] = useState(false);
+  const [callKnockSent, setCallKnockSent] = useState(false);
+  const [callKnockError, setCallKnockError] = useState<string | null>(null);
+  const [narrowHeader, setNarrowHeader] = useState(false);
+  const [dismissedStripKey, setDismissedStripKey] = useState<string | null>(null);
+  const avatarPressTimer = useRef<number | null>(null);
+  const avatarPressStart = useRef<{ x: number; y: number } | null>(null);
+  const avatarLongPressed = useRef(false);
   const [recording, setRecording] = useState(false);
   const recStart = useRef(0);
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
@@ -217,6 +228,31 @@ function DMPage() {
   useEffect(() => {
     setWallpaper(loadWallpaper("dm", userId));
   }, [userId]);
+
+  // The single Call button is only for genuinely narrow phones; 340px is the
+  // last width where Voice and Video can stay separate without squeezing the
+  // name to a couple of characters.
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 339px)");
+    const update = () => setNarrowHeader(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (callPrompt) return;
+    setCallKnockSending(false);
+    setCallKnockSent(false);
+    setCallKnockError(null);
+  }, [callPrompt]);
+
+  useEffect(
+    () => () => {
+      if (avatarPressTimer.current !== null) window.clearTimeout(avatarPressTimer.current);
+    },
+    [],
+  );
 
   // Escape closes search first, closes the conversation second. Without it the
   // only way out of a DM was the browser's own back button.
@@ -325,12 +361,16 @@ function DMPage() {
   }, [replyTo]);
 
   // A DM is its own conversation: switching peers must drop a pending quote,
-  // an open search, and the previous doorbell's ripple.
+  // an open search, and any knock/call sheet left over from the last one.
   useEffect(() => {
     setReplyTo(null);
     setSearchOpen(false);
     setSearchQ("");
-    setKnockRipple(0);
+    setDismissedStripKey(null);
+    setCallPrompt(null);
+    setPendingCallVideo(false);
+    setCallKnockSent(false);
+    setCallKnockError(null);
   }, [userId]);
 
   const jumpToMessage = (id: string) => {
@@ -491,8 +531,11 @@ function DMPage() {
     const ch = supabase.channel(`dm-presence-${key}`, { config: { presence: { key: user.id } } });
     presenceCh.current = ch;
     ch.on("presence", { event: "sync" }, () => {
-      const state = ch.presenceState() as Record<string, unknown[]>;
-      setOnline(Boolean(state[userId]?.length));
+      const state = ch.presenceState() as Record<string, Array<{ visible?: boolean }>>;
+      const peer = state[userId] ?? [];
+      setOnline(peer.length > 0);
+      // A tab that is open but in the background is "around", not "online".
+      setPeerVisible(peer.length === 0 || peer.some((meta) => meta.visible !== false));
     });
     ch.on("broadcast", { event: "typing" }, ({ payload }: any) => {
       if (payload?.user_id !== userId) return;
@@ -500,11 +543,16 @@ function DMPage() {
       if (typingTimer.current) window.clearTimeout(typingTimer.current);
       typingTimer.current = window.setTimeout(() => setPeerTyping(false), 2500);
     });
-    ch.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") await ch.track({ at: Date.now() });
+    const track = () => {
+      void ch.track({ at: Date.now(), visible: document.visibilityState === "visible" });
+    };
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") track();
     });
+    document.addEventListener("visibilitychange", track);
     return () => {
       if (typingTimer.current) window.clearTimeout(typingTimer.current);
+      document.removeEventListener("visibilitychange", track);
       supabase.removeChannel(ch);
       presenceCh.current = null;
     };
@@ -818,7 +866,6 @@ function DMPage() {
   );
   const removedPreviews = useHiddenLinkPreviews("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
   const peerPresence = usePresence(other.data?.id);
-  const peerStatus = publicStatusOf(peerPresence);
   const peerCustom = publicCustomStatus(peerPresence, false);
   const media = useMediaViewer();
 
@@ -828,15 +875,43 @@ function DMPage() {
   const knockMood = useKnockMood(other.data?.id);
   const knocks = useKnockThread(userId);
   const peerName = other.data?.display_name || other.data?.username || "They";
-  const peerLive = knockMood.verdict === "live";
-  // "Online" means the app is actually open, not just a status left on. The
-  // private DM channel is a fallback; `peerStatus` has already folded
-  // invisibility down to offline, so it can never reveal a hidden user.
-  const peerOnline =
-    peerStatus !== "offline" && (knockMood.verdict !== "offline" || online);
-  const lastSeenLabel = peerPresence?.last_seen_at
-    ? `Last seen ${relativeLastSeen(peerPresence.last_seen_at)}`
-    : "Offline";
+
+  const isSelfChat = userId === user?.id;
+  const isDeleted = other.isFetched && !other.data;
+  const peerBlocked = !!blockStatus.data;
+  const headerName = isSelfChat
+    ? "Notes to self (You)"
+    : isDeleted
+      ? "Deleted user"
+      : peerName;
+
+  // One state for the dot AND the subline. The DM presence channel and the
+  // heartbeat are both live-presence signals; the saved status only decides
+  // which live state it is. No live signal means offline, whatever the saved
+  // status says, and invisibility always reads as offline.
+  const savedStatus = publicStatusOf(peerPresence);
+  const invisible = peerPresence?.status === "invisible";
+  const livePresence = !invisible && (online || knockMood.verdict !== "offline");
+  const doorState: "online" | "around" | "dnd" | "offline" =
+    isSelfChat || isDeleted || peerBlocked || !livePresence
+      ? "offline"
+      : savedStatus === "dnd" || knockMood.verdict === "dnd"
+        ? "dnd"
+        : savedStatus === "idle" || knockMood.verdict === "away" || (online && !peerVisible)
+          ? "around"
+          : "online";
+  const canShowLastSeen =
+    !isSelfChat &&
+    !isDeleted &&
+    !peerBlocked &&
+    !invisible &&
+    !!peerPresence?.last_seen_at;
+  const lastSeenLabel = canShowLastSeen
+    ? `Last seen ${relativeLastSeen(peerPresence!.last_seen_at)}`
+    : null;
+  const lastSeenFull = canShowLastSeen
+    ? new Date(peerPresence!.last_seen_at!).toLocaleString()
+    : null;
   const showKnocks = !searchQ;
 
   const knockTimeline = useMemo(() => {
@@ -926,6 +1001,76 @@ function DMPage() {
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
+  const placeCall = (video: boolean) => {
+    if (peerBlocked) return;
+    if (doorState === "offline") {
+      setPendingCallVideo(video);
+      setCallPrompt("offline");
+      return;
+    }
+    startCall(video);
+  };
+
+  const requestCall = (video: boolean) => {
+    if (peerBlocked) return;
+    if (narrowHeader) {
+      setCallPrompt("choose");
+      return;
+    }
+    placeCall(video);
+  };
+
+  const knockFromCallPrompt = async () => {
+    if (!user || callKnockSending || callKnockSent) return;
+    setCallKnockSending(true);
+    setCallKnockError(null);
+    try {
+      await sendKnock(userId, null);
+      setCallKnockSent(true);
+      void qc.invalidateQueries({ queryKey: ["knocks"] });
+      void qc.invalidateQueries({ queryKey: ["knock-doorbell"] });
+    } catch (reason) {
+      setCallKnockError(reason instanceof Error ? reason.message : "Couldn't knock right now");
+    } finally {
+      setCallKnockSending(false);
+    }
+  };
+
+  const beginAvatarPress = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    const photo = other.data?.avatar_url;
+    if (!photo) return;
+    avatarLongPressed.current = false;
+    avatarPressStart.current = { x: event.clientX, y: event.clientY };
+    avatarPressTimer.current = window.setTimeout(() => {
+      avatarLongPressed.current = true;
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(20);
+        } catch {
+          /* vibration is a nicety, not a requirement */
+        }
+      }
+      media.openMedia(photo);
+    }, 450);
+  };
+
+  const moveAvatarPress = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (!avatarPressStart.current || avatarPressTimer.current === null) return;
+    const moved = Math.hypot(
+      event.clientX - avatarPressStart.current.x,
+      event.clientY - avatarPressStart.current.y,
+    );
+    if (moved <= 10) return;
+    window.clearTimeout(avatarPressTimer.current);
+    avatarPressTimer.current = null;
+  };
+
+  const endAvatarPress = () => {
+    if (avatarPressTimer.current !== null) window.clearTimeout(avatarPressTimer.current);
+    avatarPressTimer.current = null;
+    avatarPressStart.current = null;
+  };
+
   const deleteMsg = async (id: string) => {
     if (!user) return;
     try {
@@ -994,6 +1139,16 @@ function DMPage() {
   // Live "Call in progress · Join" state for this conversation.
   const peerInCall = usePeerInCall(userId);
 
+  const stripState =
+    !isSelfChat && !isDeleted && !peerBlocked && doorState !== "online" ? doorState : null;
+  const showStrip = stripState !== null && dismissedStripKey !== stripState;
+
+  // Dismissal lasts until the door state itself changes, not until the next
+  // heartbeat bumps last_seen.
+  useEffect(() => {
+    setDismissedStripKey(null);
+  }, [stripState]);
+
   return (
     // Two-pane on desktop: the conversation list sits beside the open chat, the
     // phone layout keeps the single column and uses /dms for the list.
@@ -1018,7 +1173,7 @@ function DMPage() {
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[5px]"
         />
       )}
-      <header className="chat-header">
+      <header className="chat-header chat-header--dm">
         <div className="chat-header__row">
           <Link
             to="/dms"
@@ -1033,21 +1188,36 @@ function DMPage() {
             <Link
               to="/u/$username"
               params={{ username: other.data?.username ?? "" }}
-              aria-label={`View ${peerName}'s profile`}
-              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={`View ${headerName}'s profile`}
+              title={other.data?.avatar_url ? "Hold to view photo" : undefined}
+              onPointerDown={beginAvatarPress}
+              onPointerMove={moveAvatarPress}
+              onPointerUp={endAvatarPress}
+              onPointerCancel={endAvatarPress}
+              onPointerLeave={endAvatarPress}
+              onClick={(event) => {
+                if (!avatarLongPressed.current) return;
+                event.preventDefault();
+                event.stopPropagation();
+                avatarLongPressed.current = false;
+              }}
+              onContextMenu={(event) => event.preventDefault()}
+              className="dm-header__avatar shrink-0 touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <AvatarWithStatus status={peerStatus} dotSize={12}>
-                <Avatar
-                  className={`h-10 w-10 ring-2 transition-shadow duration-200 ${
-                    peerLive ? "ring-primary" : "ring-white/10"
-                  }`}
-                >
+              <span className="relative inline-flex h-10 w-10 shrink-0">
+                <Avatar className="h-10 w-10 border-0 shadow-none ring-0">
                   <AvatarImage src={other.data?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
+                  <AvatarFallback className="bg-[#2c2d35] text-[#f2efe6] font-semibold text-xs">
                     {(other.data?.username ?? "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-              </AvatarWithStatus>
+                {doorState !== "offline" && (
+                  <span
+                    aria-hidden="true"
+                    className={`dm-presence-dot dm-presence-dot--${doorState}`}
+                  />
+                )}
+              </span>
             </Link>
 
             <div className="chat-header__text min-w-0 flex-1">
@@ -1056,97 +1226,86 @@ function DMPage() {
                 params={{ username: other.data?.username ?? "" }}
                 className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <p className="truncate font-display text-[15px] font-bold leading-5 tracking-[-0.01em]">
-                  {peerName}
+                <p className="dm-header__name truncate font-display">
+                  {headerName}
                 </p>
               </Link>
-              <div
-                className="chat-header__status mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4"
-                aria-live={peerTyping ? "polite" : undefined}
-              >
-                {blockStatus.data ? (
-                  <span className="truncate text-muted-foreground">Blocked by you</span>
-                ) : peerTyping ? (
-                  <span className="chat-header__typing">
-                    typing
-                    <span className="chat-header__typing-dots" aria-hidden="true">
-                      <span>.</span>
-                      <span>.</span>
-                      <span>.</span>
+              {!peerBlocked && !isDeleted && (
+                <div
+                  className="dm-header__status chat-header__status mt-0.5"
+                  aria-live={peerTyping ? "polite" : undefined}
+                >
+                  {peerTyping ? (
+                    <span className="chat-header__typing">
+                      typing
+                      <span className="chat-header__typing-dots" aria-hidden="true">
+                        <span>.</span>
+                        <span>.</span>
+                        <span>.</span>
+                      </span>
                     </span>
-                  </span>
-                ) : peerCustom ? (
-                  <CustomStatusLine status={peerCustom} className="chat-header__custom min-w-0" />
-                ) : (
-                  <span
-                    className={`truncate font-medium ${
-                      peerOnline ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  >
-                    {peerOnline ? "Online" : lastSeenLabel}
-                  </span>
-                )}
-              </div>
+                  ) : peerCustom ? (
+                    <CustomStatusLine status={peerCustom} className="chat-header__custom min-w-0" />
+                  ) : isSelfChat ? (
+                    <span className="truncate text-muted-foreground">Only you can see this</span>
+                  ) : doorState === "online" ? (
+                    <span className="truncate font-medium text-primary">Online</span>
+                  ) : doorState === "around" ? (
+                    <span className="truncate text-muted-foreground">Active recently</span>
+                  ) : doorState === "dnd" ? (
+                    <span className="truncate text-muted-foreground">Do not disturb</span>
+                  ) : lastSeenLabel ? (
+                    <span
+                      className="truncate text-muted-foreground"
+                      title={lastSeenFull ?? undefined}
+                      aria-label={lastSeenFull ? `${lastSeenLabel}. ${lastSeenFull}` : lastSeenLabel}
+                    >
+                      {lastSeenLabel}
+                    </span>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="chat-header__actions" role="group" aria-label="Conversation actions">
-            <KnockButton
-              to={userId}
-              username={other.data?.username ?? ""}
-              displayName={peerName}
-              mood={knockMood}
-              variant="button"
-              onSent={() => setKnockRipple((current) => current + 1)}
-              renderTrigger={(openSheet) => (
+            {!isDeleted && !isSelfChat && (
+              narrowHeader ? (
                 <button
                   type="button"
-                  onClick={openSheet}
-                  aria-label={
-                    peerLive ? "Live now, open the knock door" : "Open the knock door"
-                  }
-                  data-live={peerLive ? "true" : "false"}
-                  title={peerLive ? "Knock — they're live" : "Knock"}
-                  className="chat-header__action chat-header__knock"
+                  onClick={() => requestCall(false)}
+                  aria-label="Call"
+                  title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Call"}
+                  disabled={peerBlocked}
+                  className="chat-header__action dm-header__icon-btn"
                 >
-                  <KnockGlyph className="chat-header__knock-glyph" />
-                  {knockRipple > 0 && (
-                    <span
-                      key={knockRipple}
-                      className="chat-header__ripple"
-                      aria-hidden="true"
-                    />
-                  )}
+                  <Phone aria-hidden="true" />
                 </button>
-              )}
-            />
-
-            <div
-              className="chat-header__call-group"
-              role="group"
-              aria-label="Call"
-              data-live={peerInCall ? "true" : "false"}
-            >
-              <button
-                type="button"
-                onClick={() => startCall(false)}
-                aria-label="Start voice call"
-                title="Voice call"
-                className="chat-header__call-option"
-              >
-                <Phone aria-hidden="true" />
-              </button>
-              <span className="chat-header__call-divider" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => startCall(true)}
-                aria-label="Start video call"
-                title="Video call"
-                className="chat-header__call-option"
-              >
-                <Video aria-hidden="true" />
-              </button>
-            </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => requestCall(false)}
+                    aria-label="Voice call"
+                    title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Voice call"}
+                    disabled={peerBlocked}
+                    className="chat-header__action dm-header__icon-btn"
+                  >
+                    <Phone aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => requestCall(true)}
+                    aria-label="Video call"
+                    title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Video call"}
+                    disabled={peerBlocked}
+                    className="chat-header__action dm-header__icon-btn"
+                  >
+                    <Video aria-hidden="true" />
+                  </button>
+                </>
+              )
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1154,7 +1313,7 @@ function DMPage() {
                   type="button"
                   aria-label="More options"
                   title="More"
-                  className="chat-header__action"
+                  className="chat-header__action dm-header__icon-btn"
                 >
                   <MoreVertical aria-hidden="true" />
                 </button>
@@ -1164,6 +1323,14 @@ function DMPage() {
                 sideOffset={8}
                 className="glass-strong min-w-[13rem] border-white/10"
               >
+                <DropdownMenuItem
+                  onSelect={() => setSearchOpen(true)}
+                  className="gap-2.5 py-2"
+                >
+                  <Search aria-hidden="true" />
+                  Search in chat
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {peerInCall && (
                   <>
                     <DropdownMenuItem
@@ -1178,14 +1345,6 @@ function DMPage() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem
-                  onSelect={() => setSearchOpen(true)}
-                  className="gap-2.5 py-2"
-                >
-                  <Search aria-hidden="true" />
-                  Search messages
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
                     View profile
@@ -1257,6 +1416,28 @@ function DMPage() {
         </div>
 
         <AnimatePresence initial={false}>
+          {showStrip && stripState && (
+            <motion.div
+              key="dm-knock-strip"
+              initial={reduceMotion ? false : { y: -44, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={reduceMotion ? undefined : { y: -44, opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-full z-10"
+            >
+              <DmKnockStrip
+                peerId={userId}
+                state={stripState}
+                lastSeenLabel={lastSeenLabel}
+                lastSeenFull={lastSeenFull}
+                knocks={knocks}
+                onDismiss={() => setDismissedStripKey(stripState)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
           {searchOpen && (
             <motion.div
               key="dm-search"
@@ -1299,6 +1480,89 @@ function DMPage() {
           )}
         </AnimatePresence>
       </header>
+
+      <ResponsiveOverlay
+        open={callPrompt === "offline"}
+        onOpenChange={(open) => {
+          if (!open) setCallPrompt(null);
+        }}
+        title={`${headerName} is offline.`}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            A call will ring an app that isn't open. A knock waits in their chat
+            and reaches them the moment they come back.
+          </p>
+          {callKnockError && (
+            <p role="alert" className="text-[13px] text-destructive">
+              {callKnockError}
+            </p>
+          )}
+          <div className="grid gap-2">
+            <Button
+              type="button"
+              onClick={() => void knockFromCallPrompt()}
+              disabled={callKnockSending || callKnockSent}
+              className="h-11 gap-2 rounded-xl font-semibold"
+            >
+              {callKnockSent ? (
+                <>
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                  Knocked
+                </>
+              ) : callKnockSending ? (
+                "Knocking…"
+              ) : (
+                "Knock"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCallPrompt(null);
+                startCall(pendingCallVideo);
+              }}
+              className="h-11 rounded-xl"
+            >
+              Call anyway
+            </Button>
+          </div>
+        </div>
+      </ResponsiveOverlay>
+
+      <ResponsiveOverlay
+        open={callPrompt === "choose"}
+        onOpenChange={(open) => {
+          if (!open) setCallPrompt(null);
+        }}
+        title="Call"
+      >
+        <div className="grid gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCallPrompt(null);
+              placeCall(false);
+            }}
+            className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold">Voice call</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCallPrompt(null);
+              placeCall(true);
+            }}
+            className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Video className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold">Video call</span>
+          </button>
+        </div>
+      </ResponsiveOverlay>
 
       <div
         ref={scrollRef}

@@ -690,6 +690,191 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* ============ DM HEADER ============ */
+/* The DM bar is deliberately quieter than the rest of the app: one solid row,
+   one hairline, three identical target-sized icon buttons. No ring, glow or
+   gradient competes with the name. */
+.chat-header--dm {
+  background: var(--background);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-paper) 10%, transparent);
+}
+.chat-header--dm .chat-header__row {
+  /* 63px + the 1px hairline = a 64px bar at normal text size. The row is
+     allowed to grow when the name or status uses larger text. */
+  min-height: 63px;
+  height: auto;
+  padding-block: 8px;
+  gap: 8px;
+  padding-inline: 12px;
+}
+.chat-header--dm .chat-header__identity {
+  gap: 0.5rem;
+}
+.chat-header--dm .chat-header__text {
+  min-width: 0;
+}
+.chat-header--dm .chat-header__actions {
+  gap: 0.125rem;
+  margin-left: 0;
+}
+.chat-header--dm .chat-header__action {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--brand-paper);
+  box-shadow: none;
+}
+.chat-header--dm .chat-header__action::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+}
+.chat-header--dm .chat-header__action svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.75;
+}
+.chat-header--dm .chat-header__action:hover {
+  background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
+  color: var(--brand-paper);
+}
+.chat-header--dm .chat-header__action:active {
+  background: rgba(148, 148, 156, 0.12);
+}
+.chat-header--dm .chat-header__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.chat-header--dm .chat-header__search {
+  background: var(--background);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.dm-header__avatar,
+.dm-header__avatar > span {
+  display: inline-flex;
+}
+.dm-header__name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: -0.01em;
+}
+.dm-header__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.dm-presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px var(--background);
+  pointer-events: none;
+}
+.dm-presence-dot--online {
+  background: #3ddc84;
+}
+.dm-presence-dot--around {
+  background: #f5b932;
+}
+.dm-presence-dot--dnd {
+  background: #ef4444;
+}
+/* The knock strip is 44px of overlay, not a row in the thread: appearing or
+   leaving it can never shift the messages below it. */
+.dm-knock-strip {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  background: var(--background);
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-paper) 10%, transparent);
+}
+.dm-knock-strip__glyph {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.dm-knock-strip__line {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.dm-knock-strip__knock {
+  position: relative;
+  display: inline-flex;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 8px;
+  padding-inline: 10px;
+  background: rgba(200, 255, 61, 0.14);
+  color: #c8ff3d;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+.dm-knock-strip__knock::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+}
+.dm-knock-strip__knock:hover {
+  background: rgba(200, 255, 61, 0.2);
+}
+.dm-knock-strip__knock:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+.dm-knock-strip__knock:focus-visible,
+.dm-knock-strip__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+}
+.dm-knock-strip__close {
+  position: relative;
+  display: grid;
+  width: 32px;
+  height: 44px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--muted-foreground);
+}
+.dm-knock-strip__close::before {
+  content: "";
+  position: absolute;
+  inset: 0 -6px;
+}
+.dm-knock-strip__close:hover {
+  color: var(--foreground);
+}
+
 /* ============ CHAT HEADER ============ */
 /* One geometry for every conversation bar: 44px targets, 64px row, 12px
    gutters, and 8px/4px rhythm. Surfaces opt in; the tokens stay shared. */
@@ -2915,6 +3100,36 @@ button:active > .motion-icon {
   --accent-live: #ff5d68;
   --accent-focus: #d9d9de;
 }
+
+/* The live chip is the quiet discovery surface: 32px, one static group of
+   faces, one slow dot. It disappears entirely when no room is live. */
+.live-chip {
+  display: inline-flex;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--brand-paper) 12%, transparent);
+  background: var(--card);
+  padding-inline: 10px;
+}
+.live-chip__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #c8ff3d;
+  animation: live-chip-pulse 2.4s ease-in-out infinite;
+}
+@keyframes live-chip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-chip__dot { animation: none; }
+}
+[data-reduced-motion="true"] .live-chip__dot { animation: none; }
 
 /* The Live orb is deliberately plain: one solid ink disc, one rim, one icon. */
 .live-orb {
