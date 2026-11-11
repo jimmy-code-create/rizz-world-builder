@@ -701,6 +701,7 @@
   --chat-header-action: 2.75rem;
   --chat-header-action-gap: 0.375rem;
   --chat-header-icon: 1.25rem;
+  --chat-header-call-half: 2.25rem;
   position: sticky;
   top: 0;
   z-index: var(--z-sticky, 20);
@@ -833,9 +834,6 @@
   width: 1.3125rem;
   height: 1.3125rem;
 }
-.chat-header__knock[data-knocking="true"] .chat-header__knock-glyph {
-  animation: chat-knock-tap 480ms ease-in-out;
-}
 .chat-header__knock[data-live="true"] {
   background: var(--primary);
   color: var(--primary-foreground);
@@ -858,9 +856,66 @@
   pointer-events: none;
   animation: chat-live-pulse 2.6s ease-out infinite;
 }
-.chat-header__call svg {
-  width: 1.1875rem;
-  height: 1.1875rem;
+/*
+ * Voice and video are both visible, not hidden behind a phone icon that
+ * happened to open a menu. The split pill keeps them distinct without the old
+ * overlapping pair, and each half is still a real button.
+ */
+.chat-header__call-group {
+  position: relative;
+  display: flex;
+  height: var(--chat-header-action);
+  flex-shrink: 0;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-paper) 9%, transparent);
+}
+.chat-header__call-option {
+  display: grid;
+  width: var(--chat-header-call-half);
+  height: 100%;
+  place-items: center;
+  color: var(--muted-foreground);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-header__call-option:hover {
+  background: color-mix(in srgb, var(--brand-paper) 9%, transparent);
+  color: var(--foreground);
+}
+.chat-header__call-option:active {
+  background: color-mix(in srgb, var(--brand-paper) 14%, transparent);
+}
+.chat-header__call-option:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+.chat-header__call-option svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 1.8;
+}
+.chat-header__call-divider {
+  width: 1px;
+  height: 1.125rem;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--brand-paper) 13%, transparent);
+}
+.chat-header__call-group[data-live="true"]::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--background);
+  pointer-events: none;
 }
 .chat-header__knock[data-live="true"] .chat-header__ripple {
   background: var(--primary-foreground);
@@ -879,10 +934,11 @@
 @media (max-width: 400px) {
   .chat-header {
     --chat-header-row: 3.75rem;
-    --chat-header-gutter: 0.75rem;
-    --chat-header-gap: 0.5rem;
-    --chat-header-avatar-gap: 0.625rem;
-    --chat-header-action: 2.5rem;
+    --chat-header-gutter: 0.625rem;
+    --chat-header-gap: 0.4375rem;
+    --chat-header-avatar-gap: 0.5625rem;
+    --chat-header-action: 2.375rem;
+    --chat-header-call-half: 1.875rem;
   }
 }
 .chat-header__search {
@@ -913,20 +969,20 @@
     transform: scale(1.7);
   }
 }
-@keyframes chat-knock-tap {
-  0%,
+@keyframes knock-hero-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.86);
+  }
+  75%,
   100% {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: scale(1.22);
   }
-  25% {
-    transform: rotate(-9deg);
-  }
-  55% {
-    transform: rotate(7deg);
-  }
-  80% {
-    transform: rotate(-3deg);
-  }
+}
+.knock-hero-pulse {
+  animation: knock-hero-pulse 2.4s ease-out infinite;
+  pointer-events: none;
 }
 @keyframes chat-typing-dot {
   0%,
@@ -948,8 +1004,9 @@
   .chat-header__ripple {
     display: none;
   }
-  .chat-header__knock[data-knocking="true"] .chat-header__knock-glyph {
+  .knock-hero-pulse {
     animation: none;
+    opacity: 0.35;
   }
   .chat-header__typing-dots span {
     animation: none;

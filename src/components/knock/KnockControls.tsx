@@ -6,6 +6,7 @@ import { haptic, hapticError } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
+import { KnockGlyph } from "@/components/knock/KnockGlyph";
 import { cn } from "@/lib/utils";
 import {
   knockMoodColor,
@@ -64,6 +65,8 @@ export function KnockButton({
   className,
   label,
   onOpenChange,
+  renderTrigger,
+  onSent,
 }: {
   to: string;
   username: string;
@@ -75,6 +78,13 @@ export function KnockButton({
   /** Shortens the trigger label ("Knock") without changing the sheet's action. */
   label?: string;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Lets a surface own the trigger markup (the DM header's circular door)
+   * while still using this sheet and its send/cooldown behavior.
+   */
+  renderTrigger?: (openSheet: () => void) => ReactNode;
+  /** Fired after a knock is accepted, for a local ripple or cooldown UI. */
+  onSent?: () => void;
 }) {
   const qc = useQueryClient();
   const [open, setOpenState] = useState(false);
@@ -100,6 +110,7 @@ export function KnockButton({
       void qc.invalidateQueries({ queryKey: ["knocks"] });
       void qc.invalidateQueries({ queryKey: ["knock-doorbell"] });
       toast.success(knockSentMessage(mood, username));
+      onSent?.();
       setNote("");
       setOpen(false);
     } catch (error) {
@@ -145,7 +156,12 @@ export function KnockButton({
 
   return (
     <>
-      {trigger}
+      {renderTrigger
+        ? renderTrigger(() => {
+            haptic("light");
+            setOpen(true);
+          })
+        : trigger}
       <ResponsiveOverlay
         open={open}
         onOpenChange={setOpen}
@@ -153,23 +169,33 @@ export function KnockButton({
         description={mood.detail}
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-3,#1c1c1f)] px-3.5 py-3">
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Right now</p>
-              <p className="mt-0.5 font-display text-lg font-bold tracking-tight" style={{ color: knockMoodColor(mood.verdict) }}>
-                {mood.label}
-              </p>
-            </div>
+          <div className="relative overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-3,#1c1c1f)] px-4 pb-4 pt-5 text-center">
             <span
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-lg"
+              className="relative mx-auto grid h-20 w-20 place-items-center rounded-full"
               style={{
-                backgroundColor: `${knockMoodColor(mood.verdict)}1a`,
+                backgroundColor: `${knockMoodColor(mood.verdict)}14`,
                 color: knockMoodColor(mood.verdict),
+                boxShadow: `inset 0 0 0 1px ${knockMoodColor(mood.verdict)}38`,
               }}
               aria-hidden="true"
             >
-              <DoorOpen className="h-5 w-5" />
+              {mood.verdict === "live" && (
+                <span
+                  className="knock-hero-pulse absolute inset-0 rounded-full border"
+                  style={{ borderColor: knockMoodColor(mood.verdict) }}
+                />
+              )}
+              <KnockGlyph className="h-9 w-9" />
             </span>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Right now
+            </p>
+            <p
+              className="mt-0.5 font-display text-xl font-bold tracking-tight"
+              style={{ color: knockMoodColor(mood.verdict) }}
+            >
+              {mood.label}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -216,9 +242,9 @@ export function KnockButton({
           <Button
             onClick={() => void knock()}
             disabled={sending || justKnocked}
-            className="h-11 w-full gap-2 font-bold"
+            className="h-12 w-full gap-2 rounded-2xl text-[15px] font-bold"
           >
-            <DoorOpen className="h-4 w-4" />
+            <KnockGlyph className="h-5 w-5" />
             {sending ? "Knocking…" : justKnocked ? "Already knocked" : mood.action}
           </Button>
         </div>

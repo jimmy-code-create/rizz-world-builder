@@ -40,12 +40,13 @@ import { publicCustomStatus, publicStatusOf, usePresence } from "@/lib/presence"
 import {
   markKnocksSeen,
   relativeLastSeen,
-  sendKnock,
   useKnockMood,
   useKnockThread,
   type Knock,
 } from "@/lib/knock";
 import { KnockThreadCard } from "@/components/knock/KnockThreadCard";
+import { KnockButton } from "@/components/knock/KnockControls";
+import { KnockGlyph } from "@/components/knock/KnockGlyph";
 import { useChatReactions } from "@/lib/useChatReactions";
 import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
@@ -85,33 +86,6 @@ type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"
   delivery_status?: "sending" | "failed";
   deleted_at?: string | null;
 };
-
-/*
- * A door with three impact marks: the header's knock is a literal door knock,
- * not a broadcast. `currentColor` so the live/cooldown tints apply to the
- * whole glyph, and the rays sit clear of the door panel at small sizes.
- */
-function KnockGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="chat-header__knock-glyph"
-    >
-      <path d="M5.5 20.5V5.25A1.75 1.75 0 0 1 7.25 3.5h6.5a1.75 1.75 0 0 1 1.75 1.75v15.25" />
-      <path d="M5.5 20.5h10" />
-      <circle cx="12.7" cy="11.9" r="1.05" fill="currentColor" stroke="none" />
-      <path d="M17.8 7.2 20 5" />
-      <path d="M18.4 12H21.5" />
-      <path d="M17.8 16.8 20 19" />
-    </svg>
-  );
-}
 
 function ownChatImagePath(url: string | null, userId: string) {
   const marker = "/storage/v1/object/public/chat-media/";
@@ -203,10 +177,7 @@ function DMPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [knockCooldown, setKnockCooldown] = useState(false);
-  const [knocking, setKnocking] = useState(false);
   const [knockRipple, setKnockRipple] = useState(0);
-  const knockCooldownTimer = useRef<number | null>(null);
   const [recording, setRecording] = useState(false);
   const recStart = useRef(0);
   const stopRec = useRef<null | (() => Promise<{ blob: Blob; durationMs: number }>)>(null);
@@ -272,15 +243,6 @@ function DMPage() {
     const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [searchOpen]);
-
-  useEffect(
-    () => () => {
-      if (knockCooldownTimer.current !== null) {
-        window.clearTimeout(knockCooldownTimer.current);
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!draftReady || !draftKey) return;
@@ -363,18 +325,12 @@ function DMPage() {
   }, [replyTo]);
 
   // A DM is its own conversation: switching peers must drop a pending quote,
-  // an open search, and the previous doorbell's cooldown/ripple.
+  // an open search, and the previous doorbell's ripple.
   useEffect(() => {
     setReplyTo(null);
     setSearchOpen(false);
     setSearchQ("");
-    setKnockCooldown(false);
-    setKnocking(false);
     setKnockRipple(0);
-    if (knockCooldownTimer.current !== null) {
-      window.clearTimeout(knockCooldownTimer.current);
-      knockCooldownTimer.current = null;
-    }
   }, [userId]);
 
   const jumpToMessage = (id: string) => {
@@ -970,38 +926,6 @@ function DMPage() {
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
-  /** The broadcast mark is the door: one tap knocks, no sheet in between. */
-  const sendHeaderKnock = async () => {
-    if (!user || knocking || knockCooldown) return;
-    setKnocking(true);
-    setKnockRipple((current) => current + 1);
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      try {
-        navigator.vibrate(10);
-      } catch {
-        // Vibration is best-effort; the knock still goes through.
-      }
-    }
-    try {
-      await sendKnock(userId);
-      void qc.invalidateQueries({ queryKey: ["knocks"] });
-      void qc.invalidateQueries({ queryKey: ["knock-doorbell"] });
-      toast.success("Knocked");
-      setKnockCooldown(true);
-      if (knockCooldownTimer.current !== null) {
-        window.clearTimeout(knockCooldownTimer.current);
-      }
-      knockCooldownTimer.current = window.setTimeout(() => {
-        setKnockCooldown(false);
-        knockCooldownTimer.current = null;
-      }, 5_000);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't knock");
-    } finally {
-      setKnocking(false);
-    }
-  };
-
   const deleteMsg = async (id: string) => {
     if (!user) return;
     try {
@@ -1167,62 +1091,62 @@ function DMPage() {
           </div>
 
           <div className="chat-header__actions" role="group" aria-label="Conversation actions">
-            <button
-              type="button"
-              onClick={() => void sendHeaderKnock()}
-              aria-label={peerLive ? "Live now, knock on their door" : "Knock on their door"}
-              data-live={peerLive ? "true" : "false"}
-              data-knocking={knocking ? "true" : "false"}
-              disabled={knocking || knockCooldown}
-              title={peerLive ? "Knock — they're live" : "Knock"}
-              className="chat-header__action chat-header__knock"
-            >
-              <KnockGlyph />
-              {knockRipple > 0 && (
-                <span key={knockRipple} className="chat-header__ripple" aria-hidden="true" />
-              )}
-            </button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <KnockButton
+              to={userId}
+              username={other.data?.username ?? ""}
+              displayName={peerName}
+              mood={knockMood}
+              variant="button"
+              onSent={() => setKnockRipple((current) => current + 1)}
+              renderTrigger={(openSheet) => (
                 <button
                   type="button"
-                  aria-label="Call options"
-                  title="Call"
-                  className="chat-header__action chat-header__call"
+                  onClick={openSheet}
+                  aria-label={
+                    peerLive ? "Live now, open the knock door" : "Open the knock door"
+                  }
+                  data-live={peerLive ? "true" : "false"}
+                  title={peerLive ? "Knock — they're live" : "Knock"}
+                  className="chat-header__action chat-header__knock"
                 >
-                  <Phone aria-hidden="true" />
+                  <KnockGlyph className="chat-header__knock-glyph" />
+                  {knockRipple > 0 && (
+                    <span
+                      key={knockRipple}
+                      className="chat-header__ripple"
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={8}
-                className="glass-strong min-w-[11rem] border-white/10"
+              )}
+            />
+
+            <div
+              className="chat-header__call-group"
+              role="group"
+              aria-label="Call"
+              data-live={peerInCall ? "true" : "false"}
+            >
+              <button
+                type="button"
+                onClick={() => startCall(false)}
+                aria-label="Start voice call"
+                title="Voice call"
+                className="chat-header__call-option"
               >
-                {peerInCall && (
-                  <>
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        nav({ to: "/call/$userId", params: { userId }, search: { video: false } })
-                      }
-                      className="gap-2.5 py-2"
-                    >
-                      <Phone className="text-emerald-300" aria-hidden="true" />
-                      Join call in progress
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onSelect={() => startCall(false)} className="gap-2.5 py-2">
-                  <Phone aria-hidden="true" />
-                  Voice call
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => startCall(true)} className="gap-2.5 py-2">
-                  <Video aria-hidden="true" />
-                  Video call
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Phone aria-hidden="true" />
+              </button>
+              <span className="chat-header__call-divider" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => startCall(true)}
+                aria-label="Start video call"
+                title="Video call"
+                className="chat-header__call-option"
+              >
+                <Video aria-hidden="true" />
+              </button>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1240,6 +1164,20 @@ function DMPage() {
                 sideOffset={8}
                 className="glass-strong min-w-[13rem] border-white/10"
               >
+                {peerInCall && (
+                  <>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        nav({ to: "/call/$userId", params: { userId }, search: { video: false } })
+                      }
+                      className="gap-2.5 py-2"
+                    >
+                      <Phone className="text-emerald-300" aria-hidden="true" />
+                      Join call in progress
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   onSelect={() => setSearchOpen(true)}
                   className="gap-2.5 py-2"
