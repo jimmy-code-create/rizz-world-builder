@@ -809,9 +809,16 @@
  * optical line instead of three differently weighted icons.
  */
 .chat-header__knock {
-  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  background-image: radial-gradient(
+    120% 120% at 32% 22%,
+    color-mix(in srgb, var(--primary) 18%, transparent),
+    transparent 68%
+  );
   color: var(--primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--primary) 27%, transparent),
+    0 0 18px -14px color-mix(in srgb, var(--primary) 70%, transparent);
   transition:
     background-color 150ms ease,
     color 150ms ease,
@@ -819,30 +826,45 @@
     transform 120ms ease;
 }
 .chat-header__knock:hover {
-  background: color-mix(in srgb, var(--primary) 19%, transparent);
+  background-color: color-mix(in srgb, var(--primary) 18%, transparent);
   color: var(--primary);
 }
 .chat-header__knock:active {
-  background: color-mix(in srgb, var(--primary) 26%, transparent);
+  background-color: color-mix(in srgb, var(--primary) 26%, transparent);
   transform: scale(0.92);
 }
 .chat-header__knock:disabled {
   cursor: default;
   opacity: 0.55;
 }
-.chat-header__knock-glyph {
-  width: 1.3125rem;
-  height: 1.3125rem;
+/* Two classes so this wins over the generic `.chat-header__action svg` size. */
+.chat-header__action .chat-header__knock-glyph {
+  width: 1.5rem;
+  height: 1.5rem;
+  stroke-width: 1.95;
+  transform-origin: 50% 50%;
+  transition: transform 160ms ease;
+}
+.chat-header__knock:hover .chat-header__knock-glyph {
+  transform: rotate(-6deg) scale(1.05);
+}
+.chat-header__knock:active .chat-header__knock-glyph {
+  transform: scale(0.88);
 }
 .chat-header__knock[data-live="true"] {
-  background: var(--primary);
+  background-color: var(--primary);
+  background-image: radial-gradient(
+    100% 100% at 32% 18%,
+    rgb(255 255 255 / 0.32),
+    transparent 62%
+  );
   color: var(--primary-foreground);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--primary) 55%, transparent),
-    0 7px 18px -9px color-mix(in srgb, var(--primary) 80%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--primary) 60%, transparent),
+    0 8px 22px -10px color-mix(in srgb, var(--primary) 80%, transparent);
 }
 .chat-header__knock[data-live="true"]:hover {
-  background: color-mix(in srgb, var(--primary) 88%, white);
+  background-color: color-mix(in srgb, var(--primary) 88%, white);
   color: var(--primary-foreground);
 }
 /* The ring is decorative: it never participates in layout, and only a live
@@ -1007,6 +1029,11 @@
   .knock-hero-pulse {
     animation: none;
     opacity: 0.35;
+  }
+  .chat-header__action .chat-header__knock-glyph,
+  .chat-header__knock:hover .chat-header__knock-glyph {
+    transition: none;
+    transform: none;
   }
   .chat-header__typing-dots span {
     animation: none;
