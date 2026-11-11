@@ -1427,6 +1427,8 @@ function DMPage() {
             >
               <DmKnockStrip
                 peerId={userId}
+                name={other.data?.display_name || other.data?.username || "them"}
+                mood={knockMood}
                 state={stripState}
                 lastSeenLabel={lastSeenLabel}
                 lastSeenFull={lastSeenFull}

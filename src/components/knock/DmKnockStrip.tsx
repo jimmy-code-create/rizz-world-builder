@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
-import { haptic, hapticError } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth";
-import { sendKnock, type Knock } from "@/lib/knock";
+import type { Knock, KnockMood } from "@/lib/knock";
 import { KnockGlyph } from "@/components/knock/KnockGlyph";
-import { cn } from "@/lib/utils";
+import { KnockButton } from "@/components/knock/KnockControls";
 
 /**
  * The knock strip under a DM header.
@@ -22,6 +20,8 @@ export type DmDoorState = "offline" | "around" | "dnd";
 
 export function DmKnockStrip({
   peerId,
+  name,
+  mood,
   state,
   lastSeenLabel,
   lastSeenFull,
@@ -29,6 +29,8 @@ export function DmKnockStrip({
   onDismiss,
 }: {
   peerId: string;
+  name: string;
+  mood: KnockMood;
   state: DmDoorState;
   lastSeenLabel: string | null;
   lastSeenFull: string | null;
@@ -36,10 +38,7 @@ export function DmKnockStrip({
   onDismiss: () => void;
 }) {
   const { user } = useAuth();
-  const qc = useQueryClient();
-  const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const latestMine = useMemo(() => {
@@ -59,25 +58,6 @@ export function DmKnockStrip({
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, [remainingMs]);
-
-  const knock = async () => {
-    if (!user || sending || remainingMs > 0) return;
-    setSending(true);
-    setError(null);
-    haptic("medium");
-    try {
-      await sendKnock(peerId, null);
-      setSentAt(Date.now());
-      setNow(Date.now());
-      void qc.invalidateQueries({ queryKey: ["knocks"] });
-      void qc.invalidateQueries({ queryKey: ["knock-doorbell"] });
-    } catch (reason) {
-      hapticError();
-      setError(reason instanceof Error ? reason.message : "Couldn't knock right now");
-    } finally {
-      setSending(false);
-    }
-  };
 
   const line =
     state === "dnd"
@@ -99,29 +79,38 @@ export function DmKnockStrip({
       title={state === "offline" && lastSeenFull ? lastSeenFull : undefined}
     >
       <KnockGlyph className="dm-knock-strip__glyph" />
-      <p className={cn("dm-knock-strip__line", error && "text-destructive")} aria-live={error ? "assertive" : undefined}>
-        {error ?? line}
-      </p>
+      <p className="dm-knock-strip__line">{line}</p>
       {state !== "dnd" && (
-        <button
-          type="button"
-          onClick={() => void knock()}
-          disabled={sending || remainingMs > 0}
-          className="dm-knock-strip__knock"
-          title={remainingMs > 0 ? `Again in ${countdown}` : "Knock"}
-        >
-          {remainingMs > 0 ? (
-            <>
-              <Check className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Knocked</span>
-              <span className="tabular-nums opacity-70">{countdown}</span>
-            </>
-          ) : sending ? (
-            "Knocking…"
-          ) : (
-            "Knock"
+        <KnockButton
+          to={peerId}
+          username={name}
+          displayName={name}
+          mood={mood}
+          onSent={() => {
+            setSentAt(Date.now());
+            setNow(Date.now());
+          }}
+          renderTrigger={(openSheet) => (
+            <button
+              type="button"
+              onClick={openSheet}
+              disabled={remainingMs > 0}
+              className="dm-knock-strip__knock"
+              title={remainingMs > 0 ? `Again in ${countdown}` : "Knock"}
+              aria-haspopup="dialog"
+            >
+              {remainingMs > 0 ? (
+                <>
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Knocked</span>
+                  <span className="tabular-nums opacity-70">{countdown}</span>
+                </>
+              ) : (
+                "Knock"
+              )}
+            </button>
           )}
-        </button>
+        />
       )}
       <button
         type="button"

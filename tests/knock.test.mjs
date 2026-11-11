@@ -34,6 +34,7 @@ const profilePage = read("src/routes/_app/u.$username.tsx");
 const doorbell = read("src/components/knock/KnockDoorbell.tsx");
 const card = read("src/components/knock/KnockThreadCard.tsx");
 const controls = read("src/components/knock/KnockControls.tsx");
+const strip = read("src/components/knock/DmKnockStrip.tsx");
 
 await check("an open tab is measurable apart from a closed one", async () => {
   // The heartbeat is the only thing that can tell "app open but away" from
@@ -98,6 +99,8 @@ await check("one knock per door, not a mash button", async () => {
 await check("the controls sit wherever a name does", async () => {
   assert.ok(dmRoute.includes("chat-header chat-header--dm"), "the DM header uses its own single-row layout");
   assert.ok(dmRoute.includes("<DmKnockStrip"), "the knock strip lives under the header");
+  assert.ok(strip.includes("<KnockButton"), "the strip's Knock opens the full knock sheet");
+  assert.ok(strip.includes("renderTrigger"), "the strip owns the sheet's trigger button");
   assert.ok(!dmRoute.includes("<KnockButton"), "the header no longer mounts a check-in pill");
   assert.ok(!dmRoute.includes("chat-header__call-group"), "the joined call and video pill is gone");
   assert.ok(dmRoute.includes('aria-label="Voice call"'), "voice is one uniform icon button");
