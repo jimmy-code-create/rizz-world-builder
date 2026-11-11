@@ -41,37 +41,42 @@ await check("covers are an additive realm column", () => {
   assert.ok(row.includes("cover_url: string | null"), "generated types do not know the cover");
 });
 
-await check("both RIZZ-run realms are featured from normal rows", () => {
+await check("both RIZZ-run realms are spotlighted from normal rows", () => {
   assert.ok(officials.includes('name: "Rizz Official"'), "official realm missing");
   assert.ok(officials.includes('name: "Rizz Support"'), "support realm missing");
   assert.ok(
     officials.includes("rizz-official") && officials.includes("rizz-support"),
     "slug match missing",
   );
-  assert.ok(page.includes("Featured"), "featured strip removed");
-  assert.ok(page.includes("availableCount"), "featured strip lost its available count");
-  assert.ok(page.includes("h-[196px]"), "featured card is not the tall version");
+  assert.ok(page.includes("Spotlight"), "spotlight section removed");
+  assert.ok(page.includes("availableCount"), "directory lost its available count");
   assert.ok(page.includes("official.matches(realm)"), "rows are not matched to the official list");
-  assert.ok(page.includes("featuredIds.has(realm.id)"), "featured realms can repeat in the grid");
-  assert.ok(page.includes("RealmBannerCard"), "banner card component removed");
+  assert.ok(page.includes("featuredIds.has(realm.id)"), "featured realms can repeat in the list");
+  assert.ok(page.includes("RealmSpotlight"), "spotlight component removed");
+  assert.ok(page.includes("discoverRows"), "open rooms do not follow the spotlight");
 });
 
-await check("discovery is searchable and keeps the three scope chips", () => {
-  assert.ok(page.includes('placeholder="Search realms by name, topic or slug"'), "no realm search");
-  assert.ok(page.includes("matchesSearch(entry.realm)"), "featured cards ignore the search");
-  assert.ok(page.includes("MY_SCOPES"), "no public/private/owned scope chips");
-  assert.ok(page.includes("scopeCounts[key]"), "chips have no counts");
+await check("discovery is searchable and keeps the four scope filters", () => {
+  assert.ok(page.includes('placeholder="Search rooms"'), "no room search");
+  assert.ok(page.includes("matchesSearch(entry.realm)"), "spotlight ignores the search");
+  assert.ok(page.includes("MY_SCOPES"), "no all/public/private/owned scope filters");
+  assert.ok(page.includes('{ key: "all", label: "All" }'), "the All filter is missing");
+  assert.ok(page.includes("scopeCounts[key]"), "filters have no counts");
   assert.ok(page.includes('realmScope === "public"'), "scope does not filter the list");
-  assert.ok(page.includes("setRealmScope(key)"), "scope chips cannot change the filter");
+  assert.ok(page.includes('useState<MyScope>("all")'), "scope should start on every room");
+  assert.ok(page.includes("setRealmScope(key)"), "scope filters cannot change the selection");
 });
 
-await check("the redesigned screen keeps its tabs and banner dimensions", () => {
-  assert.ok(page.includes('role="tablist"'), "no segmented tab list");
-  assert.ok(page.includes('layoutId="realms-tab-thumb"'), "no sliding active thumb");
-  assert.ok(page.includes("My realms") && page.includes("Discover"), "tab labels missing");
-  assert.ok(page.includes("h-[148px]"), "banner cards are not 148px tall");
-  assert.ok(page.includes("rounded-[24px]"), "banner cards lost their 24px radius");
-  assert.ok(page.includes("RealmJoinAction"), "Open/Join action removed");
+await check("the redesigned screen keeps one lead room and a ruled list", () => {
+  assert.ok(page.includes('role="tablist"'), "no tab list");
+  assert.ok(page.includes("My rooms") && page.includes("Discover"), "tab labels missing");
+  assert.ok(!page.includes('layoutId="realms-tab-thumb"'), "the old sliding pill is back");
+  assert.ok(page.includes("RealmRow"), "ruled realm rows removed");
+  assert.ok(page.includes("myShown[0]"), "no lead room");
+  assert.ok(page.includes("myShown.slice(1)"), "the lead room repeats in the list");
+  assert.ok(page.includes("JoinButton"), "Join action removed");
+  assert.ok(!page.includes("RealmBannerCard"), "the old banner card is back");
+  assert.ok(!page.includes("rounded-[24px]"), "the old card radius is back");
 });
 
 await check("animated covers are accepted and shown", () => {
@@ -82,7 +87,7 @@ await check("animated covers are accepted and shown", () => {
     sheet.includes("coverUrl") && sheet.includes("removeCover"),
     "edit sheet cannot save a cover",
   );
-  assert.ok(detail.includes("c.cover_url"), "realm header does not show the cover");
+  assert.ok(detail.includes("cover_url:"), "realm header does not map the cover");
 });
 
 await check("a missing migration does not empty the existing lists", () => {

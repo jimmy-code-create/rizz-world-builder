@@ -33,7 +33,6 @@ import {
   Hash,
   ImagePlus,
   KeyRound,
-  LayoutGrid,
   Loader2,
   Lock,
   Megaphone,
@@ -41,13 +40,9 @@ import {
   Plus,
   RefreshCw,
   Search,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
   Users,
   X,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { RealmCoverPicker } from "@/components/realms/RealmCoverPicker";
 import { cn } from "@/lib/utils";
@@ -81,9 +76,10 @@ type Membership = {
 };
 
 const MY_SCOPES = [
-  { key: "public", label: "Public", Icon: Globe },
-  { key: "private", label: "Private", Icon: Lock },
-  { key: "owned", label: "Yours", Icon: Crown },
+  { key: "all", label: "All" },
+  { key: "public", label: "Public" },
+  { key: "private", label: "Private" },
+  { key: "owned", label: "Yours" },
 ] as const;
 
 type MyScope = (typeof MY_SCOPES)[number]["key"];
@@ -98,36 +94,27 @@ const DISCOVER_CATEGORIES = [
 
 type DiscoverCategory = (typeof DISCOVER_CATEGORIES)[number]["key"];
 
-const ROLE_META: Record<
-  Membership["role"],
-  { label: string; Icon: typeof Crown; className: string }
-> = {
-  owner: {
-    label: "Owner",
-    Icon: Crown,
-    className:
-      "border-primary/50 bg-primary text-[#0a0a0b] shadow-[0_4px_14px_rgba(201,255,61,0.28)]",
-  },
-  mod: {
-    label: "Mod",
-    Icon: ShieldCheck,
-    className: "border-white/25 bg-white/20 text-white",
-  },
-  member: {
-    label: "Member",
-    Icon: UserRound,
-    className: "border-white/20 bg-black/50 text-white/80",
-  },
+const ROLE_LABEL: Record<Membership["role"], string> = {
+  owner: "Owner",
+  mod: "Mod",
+  member: "Member",
 };
 
-/** Six-digit hex plus an alpha suffix, without breaking any other CSS colour. */
-function tint(color: string, alpha: string) {
-  const value = color.trim();
-  if (/^#[0-9a-f]{6}$/i.test(value)) return `${value}${alpha}`;
-  if (/^#[0-9a-f]{3}$/i.test(value)) {
-    return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}${alpha}`;
-  }
-  return value;
+const KIND_LABEL: Record<RealmRow["kind"], string> = {
+  text: "Text room",
+  announcement: "News room",
+  voice: "Voice room",
+  drops: "Drops room",
+};
+
+/** Official realms keep their own cover colour; everything else uses its accent. */
+function realmAccent(realm: RealmRow, official?: OfficialRealm | null) {
+  if (!official) return realm.accent_color || "#c9ff3d";
+  return official.key === "official" ? "#e5484d" : official.accent;
+}
+
+function roomCount(count: number) {
+  return `${count.toLocaleString()} ${count === 1 ? "room" : "rooms"}`;
 }
 
 function memberLabel(count: number) {
@@ -140,210 +127,376 @@ function isFreshRealm(realm: RealmRow) {
   return Number.isFinite(created) && Date.now() - created < 7 * 24 * 60 * 60 * 1000;
 }
 
-function RealmJoinAction({
+function RealmArt({
+  realm,
+  official = null,
+  size = "md",
+  className,
+}: {
+  realm: RealmRow;
+  official?: OfficialRealm | null;
+  size?: "md" | "lg";
+  className?: string;
+}) {
+  const accent = realmAccent(realm, official);
+  const initial = (realm.name || official?.name || "?").charAt(0).toUpperCase();
+  const image = realm.icon_url ?? realm.cover_url;
+
+  return (
+    <div
+      className={cn(
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-[8px] border border-border",
+        className,
+      )}
+      style={{ backgroundColor: `color-mix(in srgb, ${accent} 22%, #0a0a0b)` }}
+    >
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span
+          className={cn(
+            "font-display font-extrabold",
+            size === "lg" ? "text-[20px]" : "text-[16px]",
+          )}
+          style={{ color: accent }}
+        >
+          {initial}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function MetaDot() {
+  return (
+    <span aria-hidden className="h-[3px] w-[3px] shrink-0 rounded-full bg-current opacity-50" />
+  );
+}
+
+function RealmMeta({
+  realm,
+  official = null,
+  role,
+  joined = false,
+  fresh = false,
+  className,
+}: {
+  realm: RealmRow;
+  official?: OfficialRealm | null;
+  role?: Membership["role"];
+  joined?: boolean;
+  fresh?: boolean;
+  className?: string;
+}) {
+  const kind = KIND_LABEL[realm.kind] ?? "Room";
+  const hasLead = Boolean(role || official || joined || fresh);
+
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] font-medium leading-4 text-muted-foreground",
+        className,
+      )}
+    >
+      {role ? (
+        <span className="font-semibold text-primary">{ROLE_LABEL[role]}</span>
+      ) : official ? (
+        <span className="inline-flex items-center gap-1 font-semibold text-primary">
+          <BadgeCheck className="h-3 w-3" />
+          {official.label}
+        </span>
+      ) : joined ? (
+        <span className="inline-flex items-center gap-1 font-semibold text-primary">
+          <Check className="h-3 w-3" />
+          Joined
+        </span>
+      ) : fresh ? (
+        <span className="font-semibold text-primary">New</span>
+      ) : null}
+      {hasLead ? <MetaDot /> : null}
+      {!realm.is_public ? (
+        <>
+          <span className="inline-flex items-center gap-1">
+            <Lock className="h-2.5 w-2.5" />
+            Private
+          </span>
+          <MetaDot />
+        </>
+      ) : null}
+      <span>{kind}</span>
+    </div>
+  );
+}
+
+function JoinButton({
   joining,
-  joined,
   onJoin,
+  compact = false,
 }: {
   joining: boolean;
-  joined: boolean;
   onJoin: () => void;
+  compact?: boolean;
 }) {
-  if (joined) {
-    return (
-      <span className="inline-flex h-10 items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-4 text-[12px] font-semibold text-white backdrop-blur-md">
-        <ArrowUpRight className="h-3.5 w-3.5" />
-        Open
-      </span>
-    );
-  }
   return (
     <button
       type="button"
       onClick={onJoin}
       disabled={joining}
-      className="pointer-events-auto inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[12px] font-bold text-[#0a0a0b] shadow-[0_10px_22px_-12px_rgba(201,255,61,0.9)] transition-transform hover:scale-105 active:scale-95 disabled:pointer-events-none disabled:opacity-60"
+      className={cn(
+        "pointer-events-auto relative z-20 inline-flex shrink-0 items-center justify-center gap-1 rounded-[6px] font-bold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact
+          ? "h-10 border border-primary/40 px-2.5 text-[11px] text-primary hover:bg-primary/10"
+          : "h-11 bg-primary px-4 text-[12px] text-primary-foreground hover:bg-primary/90",
+      )}
     >
       {joining ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="h-3 w-3 animate-spin" />
       ) : (
-        <Plus className="h-3.5 w-3.5 stroke-[2.6]" />
+        <Plus className="h-3 w-3 stroke-[2.6]" />
       )}
-      {joining ? "Joining" : "Join"}
+      {joining ? "Joining" : compact ? "Join" : "Join room"}
     </button>
   );
 }
 
-function RealmBannerCard({
+function RealmSpotlight({
   realm,
   official = null,
   role,
-  tall = false,
   joined = false,
-  showFresh = false,
-  action,
+  fresh = false,
+  joining = false,
+  onJoin,
 }: {
   realm: RealmRow;
   official?: OfficialRealm | null;
   role?: Membership["role"];
-  tall?: boolean;
   joined?: boolean;
-  showFresh?: boolean;
-  action?: ReactNode;
+  fresh?: boolean;
+  joining?: boolean;
+  onJoin?: () => void;
 }) {
-  const KindIcon = KIND_ICON[realm.kind as keyof typeof KIND_ICON] ?? Hash;
-  const accent = official
-    ? official.key === "official"
-      ? "#e5484d"
-      : official.accent
-    : realm.accent_color || "#c9ff3d";
-  const roleMeta = role ? ROLE_META[role] : null;
-  const RoleIcon = roleMeta?.Icon;
+  const accent = realmAccent(realm, official);
   const initial = (realm.name || official?.name || "?").charAt(0).toUpperCase();
-  const fresh = showFresh && isFreshRealm(realm);
+  const description = official?.blurb ?? realm.topic;
 
   return (
-    <article
-      className={cn(
-        "group relative isolate overflow-hidden rounded-[24px] border border-white/[0.09] bg-[#101010] shadow-[0_18px_44px_-28px_rgba(0,0,0,0.95)] transition-[border-color,transform] duration-300 hover:border-white/20",
-        tall ? "h-[196px]" : "h-[148px]",
-      )}
-    >
-      <div className="absolute inset-0 overflow-hidden">
+    <article className="group relative">
+      <Link
+        to="/r/$slug"
+        params={{ slug: realm.slug }}
+        aria-label={`Open ${realm.name}`}
+        className="absolute inset-0 z-10 rounded-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <div className="relative h-[190px] overflow-hidden rounded-[12px] border border-border bg-secondary transition-colors group-hover:border-white/25 sm:h-[248px]">
         {realm.cover_url ? (
           <img
             src={realm.cover_url}
             alt=""
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <div
-            className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]"
-            style={{
-              background: `radial-gradient(135% 150% at 12% 0%, ${tint(accent, "99")} 0%, ${tint(accent, "2e")} 38%, transparent 68%), linear-gradient(145deg, ${tint(accent, "38")} 0%, #111 56%, #070707 100%)`,
-            }}
-          />
+            className="absolute inset-0"
+            style={{ backgroundColor: `color-mix(in srgb, ${accent} 24%, #0a0a0b)` }}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-0 grid place-items-center font-display text-[8rem] font-extrabold leading-none"
+              style={{ color: accent, opacity: 0.24 }}
+            >
+              {initial}
+            </span>
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 w-1.5"
+              style={{ backgroundColor: accent }}
+            />
+          </div>
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.22)_0%,rgba(0,0,0,0.03)_36%,rgba(0,0,0,0.72)_74%,rgba(0,0,0,0.94)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_0%_100%,rgba(0,0,0,0.62),transparent_60%)]" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-5 -top-9 select-none font-display text-[8.5rem] font-black leading-none text-white/[0.055]"
-      >
-        {initial}
+      <div className="pointer-events-none relative z-20 mt-3 flex items-start gap-3">
+        <RealmArt realm={realm} official={official} size="lg" className="h-12 w-12" />
+        <div className="min-w-0 flex-1">
+          <RealmMeta realm={realm} official={official} role={role} joined={joined} fresh={fresh} />
+          <h3 className="mt-1 truncate font-display text-[24px] font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-[30px]">
+            {official?.name ?? realm.name}
+          </h3>
+          {description ? (
+            <p className="mt-1 line-clamp-2 max-w-[46ch] text-[12px] leading-snug text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+          <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+            <Users className="h-3 w-3" />
+            {memberLabel(realm.member_count)}
+          </p>
+        </div>
+        <div className="shrink-0 pl-1">
+          {onJoin && !joined ? (
+            <JoinButton joining={joining} onJoin={onJoin} />
+          ) : (
+            <span
+              aria-hidden
+              className="grid h-10 w-10 place-items-center rounded-[8px] border border-border text-muted-foreground transition-colors group-hover:border-white/25 group-hover:text-foreground"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </span>
+          )}
+        </div>
       </div>
+    </article>
+  );
+}
 
+function RealmRow({
+  realm,
+  official = null,
+  role,
+  joined = false,
+  fresh = false,
+  joining = false,
+  onJoin,
+}: {
+  realm: RealmRow;
+  official?: OfficialRealm | null;
+  role?: Membership["role"];
+  joined?: boolean;
+  fresh?: boolean;
+  joining?: boolean;
+  onJoin?: () => void;
+}) {
+  return (
+    <article className="group relative -mx-2 flex items-center gap-3 border-b border-border px-2 py-3 transition-colors hover:bg-white/[0.025]">
       <Link
         to="/r/$slug"
         params={{ slug: realm.slug }}
         aria-label={`Open ${realm.name}`}
-        className="absolute inset-0 z-10 rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       />
+      <RealmArt realm={realm} official={official} className="h-14 w-14" />
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate font-display text-[17px] font-bold leading-tight tracking-[-0.02em]">
+          {official?.name ?? realm.name}
+        </h3>
+        <RealmMeta
+          realm={realm}
+          official={official}
+          role={role}
+          joined={joined}
+          fresh={fresh}
+          className="mt-1"
+        />
+      </div>
+      {onJoin && !joined ? (
+        <JoinButton joining={joining} onJoin={onJoin} compact />
+      ) : (
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+      )}
+    </article>
+  );
+}
 
-      <div className="pointer-events-none relative z-20 flex h-full flex-col justify-between p-4">
-        <div className="flex items-start justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                realm.is_public
-                  ? "bg-primary shadow-[0_0_8px_rgba(201,255,61,0.85)]"
-                  : "bg-amber-300",
-              )}
-            />
-            {realm.is_public ? "Public" : "Private"}
-          </span>
+function SectionHeading({ title, count, note }: { title: string; count?: number; note?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-[15px] font-bold tracking-[-0.01em]">{title}</h2>
+      {note ? (
+        <span className="text-[10.5px] font-medium text-muted-foreground">{note}</span>
+      ) : count !== undefined ? (
+        <span className="text-[11px] font-medium tabular-nums text-muted-foreground">{count}</span>
+      ) : null}
+    </div>
+  );
+}
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            {official ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] shadow-lg"
-                style={{
-                  backgroundColor: official.accent,
-                  color: official.key === "official" ? "#0a0a0b" : "#ffffff",
-                }}
-              >
-                <BadgeCheck className="h-3 w-3" />
-                {official.label}
-              </span>
-            ) : roleMeta && RoleIcon ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] backdrop-blur-md",
-                  roleMeta.className,
-                )}
-              >
-                <RoleIcon className="h-3 w-3" />
-                {roleMeta.label}
-              </span>
-            ) : fresh ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white backdrop-blur-md">
-                <Sparkles className="h-3 w-3" />
-                New
-              </span>
-            ) : null}
-          </div>
+function RealmsEmpty({
+  Icon,
+  title,
+  body,
+  children,
+}: {
+  Icon: typeof Compass;
+  title: string;
+  body: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="border-y border-border py-8">
+      <div className="flex items-start gap-4">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] border border-border text-primary">
+          <Icon className="h-4 w-4" />
         </div>
-
-        <div className="flex items-end gap-3">
-          <div
-            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-white/20 bg-black/50 shadow-lg backdrop-blur-md"
-            style={{
-              background: realm.icon_url
-                ? undefined
-                : `linear-gradient(145deg, ${tint(accent, "66")}, rgba(0,0,0,0.72))`,
-            }}
-          >
-            {realm.icon_url ? (
-              <img
-                src={realm.icon_url}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="font-display text-lg font-black text-white">{initial}</span>
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1 pb-0.5">
-            {official && tall ? (
-              <p className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/60">
-                <KindIcon className="h-3 w-3" />
-                Official realm
-              </p>
-            ) : null}
-            <h3 className="font-display text-[20px] font-black leading-tight tracking-[-0.025em] text-white">
-              <span className="line-clamp-1">{official?.name ?? realm.name}</span>
-            </h3>
-            {official && tall ? (
-              <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed text-white/60">
-                {official.blurb}
-              </p>
-            ) : null}
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-white/60">
-              <span className="inline-flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {memberLabel(realm.member_count)}
-              </span>
-              {joined && !role ? (
-                <span className="inline-flex items-center gap-1 text-primary">
-                  <Check className="h-3 w-3" />
-                  Joined
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          {action ? <div className="pointer-events-none shrink-0">{action}</div> : null}
+        <div className="min-w-0">
+          <h2 className="font-display text-[20px] font-bold tracking-[-0.02em]">{title}</h2>
+          <p className="mt-1.5 max-w-[36ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            {body}
+          </p>
+          {children ? <div className="mt-4 flex flex-wrap gap-2">{children}</div> : null}
         </div>
       </div>
-    </article>
+    </div>
+  );
+}
+
+function EmptyButton({
+  children,
+  onClick,
+  variant = "quiet",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  variant?: "quiet" | "primary";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-10 items-center gap-1.5 rounded-[6px] px-3.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        variant === "primary"
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "border border-border text-foreground hover:border-white/30",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RealmsSkeleton() {
+  return (
+    <div className="mt-4 animate-pulse" aria-hidden>
+      <div className="h-[190px] rounded-[12px] border border-border bg-white/[0.04] sm:h-[248px]" />
+      <div className="mt-3 flex gap-3">
+        <div className="h-12 w-12 rounded-[8px] border border-border bg-white/[0.04]" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-2.5 w-24 rounded-full bg-white/[0.06]" />
+          <div className="h-5 w-40 rounded-[4px] bg-white/[0.06]" />
+          <div className="h-2.5 w-28 rounded-full bg-white/[0.04]" />
+        </div>
+      </div>
+      <div className="mt-7 border-t border-border">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="flex items-center gap-3 border-b border-border py-3">
+            <div className="h-14 w-14 rounded-[8px] bg-white/[0.04]" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-36 rounded-[4px] bg-white/[0.06]" />
+              <div className="h-2.5 w-24 rounded-full bg-white/[0.04]" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -372,7 +525,7 @@ function RealmsPage() {
   );
 
   const [view, setView] = useState<"mine" | "discover">("mine");
-  const [realmScope, setRealmScope] = useState<MyScope>("public");
+  const [realmScope, setRealmScope] = useState<MyScope>("all");
   const [category, setCategory] = useState<DiscoverCategory>("all");
   const [search, setSearch] = useState("");
   const [quickJoining, setQuickJoining] = useState<string | null>(null);
@@ -419,6 +572,7 @@ function RealmsPage() {
   );
   const scopeCounts = useMemo(
     () => ({
+      all: myRows.length,
       public: myRows.filter((row) => row.realm.is_public).length,
       private: myRows.filter((row) => !row.realm.is_public).length,
       owned: myRows.filter((row) => row.role === "owner").length,
@@ -431,7 +585,8 @@ function RealmsPage() {
       .filter((row) => {
         if (realmScope === "owned") return row.role === "owner";
         if (realmScope === "public") return row.realm.is_public;
-        return !row.realm.is_public;
+        if (realmScope === "private") return !row.realm.is_public;
+        return true;
       })
       .sort(
         (a, b) =>
@@ -473,6 +628,29 @@ function RealmsPage() {
     return true;
   });
   const availableCount = shownFeatured.length + publicRealms.length;
+
+  // One room carries the page: your top room when you're home, or the first
+  // RIZZ-run room in the directory. Everything else becomes a ruled row, so
+  // the page has hierarchy instead of a stack of identical cards.
+  const mineLead = myShown[0];
+  const mineRest = myShown.slice(1);
+  const discoverLead = shownFeatured[0] ?? null;
+  const discoverRows: { realm: RealmRow; official: OfficialRealm | null }[] = [
+    ...(discoverLead ? shownFeatured.slice(1) : []),
+    ...publicRealms.map((realm) => ({ realm, official: null })),
+  ];
+  const roomsNote = myMemberships.isLoading
+    ? "Loading your rooms"
+    : myMemberships.isError
+      ? "Couldn't load your rooms"
+      : myRows.length === 0
+        ? "No rooms yet"
+        : `${roomCount(myRows.length)}${scopeCounts.owned ? `, ${scopeCounts.owned} owned` : ""}`;
+  const directoryNote = realms.isLoading
+    ? "Loading the directory"
+    : realms.isError
+      ? "Couldn't load the directory"
+      : `${availableCount} public ${availableCount === 1 ? "room" : "rooms"}`;
 
   const handleCreate = async () => {
     if (!user || !name.trim()) return;
@@ -644,18 +822,14 @@ function RealmsPage() {
 
   return (
     <div className="-mx-3 -mt-3 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] sm:mx-0 sm:mt-0">
-      <div className="mx-auto w-full max-w-[470px] space-y-5 px-4 pt-3 sm:max-w-2xl sm:px-0">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-start justify-between gap-3"
-        >
-          <div className="min-w-0">
-            <h1 className="font-display text-[2rem] font-black leading-none tracking-[-0.045em]">
+      <div className="mx-auto w-full max-w-[520px] px-4 pt-5 sm:max-w-2xl sm:px-0 sm:pt-1">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 pb-0.5">
+            <h1 className="font-display text-[2.5rem] font-extrabold leading-[0.92] tracking-[-0.05em] sm:text-[3rem]">
               Realms
             </h1>
-            <p className="mt-1.5 text-[13px] font-medium text-muted-foreground">
-              Your spaces. Your people.
+            <p className="mt-2 text-[12px] font-medium text-muted-foreground">
+              {view === "mine" ? roomsNote : directoryNote}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -673,10 +847,11 @@ function RealmsPage() {
                 type="button"
                 onClick={() => setJoinOpen(true)}
                 aria-label="Join a realm with an invite code"
-                title="Join by code"
-                className="grid h-11 w-11 place-items-center rounded-[14px] border border-white/10 bg-white/[0.045] text-foreground transition-colors hover:border-white/25 hover:bg-white/[0.08] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                title="Join with a code"
+                className="inline-flex h-11 items-center gap-1.5 rounded-[8px] border border-border px-3 text-[12px] font-semibold text-foreground transition-colors hover:border-white/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <KeyRound className="h-[18px] w-[18px]" />
+                <KeyRound className="h-3.5 w-3.5" />
+                Code
               </button>
               <DialogContent className="rounded-[28px] border-white/10 bg-[#0d0d0d] p-5 shadow-2xl">
                 <DialogHeader>
@@ -740,9 +915,10 @@ function RealmsPage() {
                   type="button"
                   aria-label="Create a new realm"
                   title="New realm"
-                  className="grid h-11 w-11 place-items-center rounded-[14px] bg-primary text-[#0a0a0b] shadow-[0_10px_24px_-12px_rgba(201,255,61,0.8)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-[8px] bg-primary px-3 text-[12px] font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Plus className="h-5 w-5 stroke-[2.6]" />
+                  <Plus className="h-3.5 w-3.5 stroke-[2.8]" />
+                  New
                 </button>
               </DialogTrigger>
               <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-[28px] border-white/10 bg-[#0d0d0d] p-5 shadow-2xl">
@@ -879,17 +1055,17 @@ function RealmsPage() {
               </DialogContent>
             </Dialog>
           </div>
-        </motion.div>
+        </div>
 
-        {/* One pill, two rooms: your joined realms or the public directory. */}
+        {/* Tabs are an index, not another pill: a rule with a lime selected mark. */}
         <div
           role="tablist"
           aria-label="Realms view"
-          className="relative grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1"
+          className="mt-7 flex items-center gap-6 border-b border-border"
         >
           {[
-            { key: "mine" as const, label: "My realms", Icon: LayoutGrid },
-            { key: "discover" as const, label: "Discover", Icon: Compass },
+            { key: "mine" as const, label: "My rooms" },
+            { key: "discover" as const, label: "Discover" },
           ].map((tab) => {
             const active = view === tab.key;
             return (
@@ -900,36 +1076,29 @@ function RealmsPage() {
                 aria-selected={active}
                 onClick={() => setView(tab.key)}
                 className={cn(
-                  "relative flex h-11 items-center justify-center rounded-full text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  active ? "text-[#0a0a0b]" : "text-muted-foreground hover:text-foreground",
+                  "relative -mb-px inline-flex min-h-11 items-baseline gap-1.5 pb-3 pt-2 text-[13.5px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {active ? (
-                  <motion.span
-                    layoutId="realms-tab-thumb"
-                    className="absolute inset-0 rounded-full bg-primary shadow-[0_8px_22px_-12px_rgba(201,255,61,0.9)]"
-                    transition={{ type: "spring", stiffness: 430, damping: 34 }}
-                  />
+                {tab.label}
+                {tab.key === "mine" && !myMemberships.isLoading ? (
+                  <span className="text-[10.5px] font-medium tabular-nums text-muted-foreground">
+                    {myRows.length}
+                  </span>
                 ) : null}
-                <span className="relative z-10 inline-flex items-center gap-1.5">
-                  <tab.Icon className="h-4 w-4" />
-                  {tab.label}
-                </span>
+                {active ? (
+                  <span className="absolute inset-x-0 bottom-0 h-[2px] bg-primary" />
+                ) : null}
               </button>
             );
           })}
         </div>
 
         {view === "mine" ? (
-          <motion.section
-            key="mine"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="space-y-4"
-          >
-            <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {MY_SCOPES.map(({ key, label, Icon }) => {
+          <section aria-label="Your rooms">
+            <h2 className="sr-only">Your rooms</h2>
+            <div className="mt-4 flex gap-5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {MY_SCOPES.map(({ key, label }) => {
                 const active = realmScope === key;
                 return (
                   <button
@@ -938,22 +1107,12 @@ function RealmsPage() {
                     onClick={() => setRealmScope(key)}
                     aria-pressed={active}
                     className={cn(
-                      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-white/10 bg-white/[0.035] text-muted-foreground hover:border-white/20 hover:text-foreground",
+                      "inline-flex min-h-10 shrink-0 items-center gap-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
                     {label}
-                    <span
-                      className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
-                        active
-                          ? "bg-primary/20 text-primary"
-                          : "bg-white/[0.07] text-muted-foreground",
-                      )}
-                    >
+                    <span className="text-[10px] font-medium tabular-nums opacity-70">
                       {scopeCounts[key]}
                     </span>
                   </button>
@@ -961,133 +1120,108 @@ function RealmsPage() {
               })}
             </div>
 
-            {myMemberships.isLoading && (
-              <div className="space-y-3">
-                {[0, 1, 2].map((index) => (
-                  <div
-                    key={index}
-                    className="h-[148px] animate-pulse rounded-[24px] border border-white/[0.06] bg-white/[0.035]"
-                  />
-                ))}
-              </div>
-            )}
+            {myMemberships.isLoading ? <RealmsSkeleton /> : null}
 
-            {myMemberships.isError && !myMemberships.isLoading && (
-              <div className="rounded-[24px] border border-destructive/25 bg-destructive/10 p-6 text-center">
-                <RefreshCw className="mx-auto h-6 w-6 text-destructive" />
-                <h2 className="mt-3 font-display text-base font-bold">Couldn't load your realms</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Check your connection and try again.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void myMemberships.refetch()}
-                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 text-xs font-semibold transition-colors hover:bg-white/[0.1]"
+            {!myMemberships.isLoading && myMemberships.isError ? (
+              <div className="mt-5">
+                <RealmsEmpty
+                  Icon={RefreshCw}
+                  title="Couldn't load your rooms"
+                  body="Check your connection and try again."
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Try again
-                </button>
+                  <EmptyButton onClick={() => void myMemberships.refetch()}>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Try again
+                  </EmptyButton>
+                </RealmsEmpty>
               </div>
-            )}
+            ) : null}
 
-            {!myMemberships.isLoading && !myMemberships.isError && myShown.length === 0 && (
-              <div className="relative overflow-hidden rounded-[24px] border border-dashed border-white/10 bg-white/[0.025] p-6 text-center">
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                  {realmScope === "owned" ? (
-                    <Crown className="h-5 w-5" />
-                  ) : realmScope === "private" ? (
-                    <Lock className="h-5 w-5" />
-                  ) : (
-                    <Globe className="h-5 w-5" />
-                  )}
-                </div>
-                <h2 className="mt-3 font-display text-base font-bold">
-                  {realmScope === "owned"
-                    ? "Nothing of your own yet"
-                    : realmScope === "private"
-                      ? "No private realms yet"
-                      : "No public realms yet"}
-                </h2>
-                <p className="mx-auto mt-1 max-w-[280px] text-xs leading-relaxed text-muted-foreground">
-                  {realmScope === "owned"
-                    ? "Start a room for your people and it will live right here."
-                    : realmScope === "private"
-                      ? "Private realms stay invite-only. Make one and share the code."
-                      : "Join an official room, browse the directory, or use an invite code."}
-                </p>
-                <div className="mt-4 flex justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setView("discover")}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-bold text-[#0a0a0b] transition-transform active:scale-95"
-                  >
-                    <Compass className="h-3.5 w-3.5" />
-                    Discover
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCreateOpen(true)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-4 text-xs font-semibold transition-colors hover:bg-white/[0.09]"
-                  >
+            {!myMemberships.isLoading && !myMemberships.isError && myShown.length === 0 ? (
+              <div className="mt-5">
+                <RealmsEmpty
+                  Icon={realmScope === "owned" ? Crown : realmScope === "private" ? Lock : Globe}
+                  title={
+                    realmScope === "owned"
+                      ? "You don't own a room yet"
+                      : realmScope === "private"
+                        ? "No private rooms yet"
+                        : realmScope === "public"
+                          ? "No public rooms yet"
+                          : "Find your first room"
+                  }
+                  body={
+                    realmScope === "owned"
+                      ? "Start a room for your people and it will live here."
+                      : realmScope === "private"
+                        ? "Invite-only rooms you join will show up here."
+                        : realmScope === "public"
+                          ? "Rooms you join that anyone can find will show up here."
+                          : "Browse public rooms, use an invite code, or start one of your own."
+                  }
+                >
+                  {realmScope !== "owned" ? (
+                    <EmptyButton variant="primary" onClick={() => setView("discover")}>
+                      <Compass className="h-3.5 w-3.5" />
+                      {realmScope === "all" ? "Browse rooms" : "Find a room"}
+                    </EmptyButton>
+                  ) : null}
+                  <EmptyButton onClick={() => setCreateOpen(true)}>
                     <Plus className="h-3.5 w-3.5" />
-                    Create
-                  </button>
-                </div>
+                    New room
+                  </EmptyButton>
+                </RealmsEmpty>
               </div>
-            )}
+            ) : null}
 
-            {!myMemberships.isError && myShown.length > 0 && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {myShown.map((membership) => (
-                  <RealmBannerCard
-                    key={membership.realm.id}
-                    realm={membership.realm}
-                    role={membership.role}
-                    action={
-                      <span
-                        aria-hidden
-                        className="grid h-11 w-11 place-items-center rounded-full bg-primary text-[#0a0a0b] shadow-[0_10px_24px_-12px_rgba(201,255,61,0.9)] transition-transform duration-300 group-hover:scale-105"
-                      >
-                        <ArrowUpRight className="h-5 w-5 stroke-[2.6]" />
-                      </span>
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </motion.section>
+            {!myMemberships.isLoading && !myMemberships.isError && mineLead ? (
+              <>
+                <div className="mt-4">
+                  <RealmSpotlight realm={mineLead.realm} role={mineLead.role} />
+                </div>
+                {mineRest.length > 0 ? (
+                  <section className="mt-7">
+                    <SectionHeading title="Also yours" count={mineRest.length} />
+                    <div className="mt-2 border-t border-border">
+                      {mineRest.map((membership) => (
+                        <RealmRow
+                          key={membership.realm.id}
+                          realm={membership.realm}
+                          role={membership.role}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </>
+            ) : null}
+          </section>
         ) : (
-          <motion.section
-            key="discover"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="space-y-4"
-          >
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <section aria-label="Discover rooms">
+            <div className="relative mt-4 border-b border-border transition-colors focus-within:border-primary">
+              <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search realms by name, topic or slug"
-                aria-label="Search realms"
+                placeholder="Search rooms"
+                aria-label="Search rooms"
                 maxLength={80}
-                className="h-12 rounded-2xl border-white/10 bg-white/[0.045] pl-11 pr-10 text-[13px] placeholder:text-muted-foreground focus-visible:ring-primary/40"
+                className="h-11 rounded-none border-0 bg-transparent pl-7 pr-9 text-[13.5px] shadow-none placeholder:text-muted-foreground focus-visible:ring-0 md:text-[13.5px]"
               />
               {search ? (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  aria-label="Clear realm search"
-                  className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                  aria-label="Clear room search"
+                  className="absolute right-0 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-[4px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               ) : null}
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {DISCOVER_CATEGORIES.map(({ key, label, Icon }) => {
+            <div className="mt-3 flex gap-4 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {DISCOVER_CATEGORIES.map(({ key, label }) => {
                 const active = category === key;
                 return (
                   <button
@@ -1096,149 +1230,116 @@ function RealmsPage() {
                     onClick={() => setCategory(key)}
                     aria-pressed={active}
                     className={cn(
-                      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active
-                        ? "border-primary bg-primary text-[#0a0a0b]"
-                        : "border-white/10 bg-white/[0.035] text-muted-foreground hover:border-white/20 hover:text-foreground",
+                      "inline-flex min-h-10 shrink-0 items-center text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
                     {label}
                   </button>
                 );
               })}
             </div>
 
-            {realms.isLoading && (
-              <div className="space-y-3">
-                <div className="h-[196px] animate-pulse rounded-[24px] border border-white/[0.06] bg-white/[0.035]" />
-                <div className="h-[148px] animate-pulse rounded-[24px] border border-white/[0.06] bg-white/[0.035]" />
-              </div>
-            )}
+            {realms.isLoading ? <RealmsSkeleton /> : null}
 
-            {realms.isError && !realms.isLoading && (
-              <div className="rounded-[24px] border border-destructive/25 bg-destructive/10 p-6 text-center">
-                <RefreshCw className="mx-auto h-6 w-6 text-destructive" />
-                <h2 className="mt-3 font-display text-base font-bold">
-                  Couldn't load the directory
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Check your connection and try again.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void realms.refetch()}
-                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 text-xs font-semibold transition-colors hover:bg-white/[0.1]"
+            {!realms.isLoading && realms.isError ? (
+              <div className="mt-5">
+                <RealmsEmpty
+                  Icon={RefreshCw}
+                  title="Couldn't load the directory"
+                  body="Check your connection and try again."
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Try again
-                </button>
+                  <EmptyButton onClick={() => void realms.refetch()}>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Try again
+                  </EmptyButton>
+                </RealmsEmpty>
               </div>
-            )}
+            ) : null}
 
-            {shownFeatured.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    Featured
-                  </h2>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    {availableCount} available
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {shownFeatured.map(({ official, realm }) => {
-                    const joined = myRealmIds.has(realm.id);
-                    const joiningThis = quickJoining === realm.id;
-                    return (
-                      <RealmBannerCard
-                        key={realm.id}
-                        realm={realm}
-                        official={official}
-                        tall
-                        joined={joined}
-                        action={
-                          <RealmJoinAction
-                            joined={joined}
-                            joining={joiningThis}
-                            onJoin={() => void handleQuickJoin(realm.id)}
-                          />
+            {!realms.isLoading && !realms.isError && availableCount === 0 ? (
+              <div className="mt-5">
+                <RealmsEmpty
+                  Icon={term ? Search : Compass}
+                  title={
+                    term
+                      ? `No rooms for “${search.trim()}”`
+                      : category === "all"
+                        ? "No public rooms yet"
+                        : "Nothing in that category yet"
+                  }
+                  body={
+                    term
+                      ? "Try a shorter name, a topic, or a different category."
+                      : category === "all"
+                        ? "When someone opens a room to everyone, it shows up here."
+                        : "Try another category or look through every room."
+                  }
+                >
+                  <EmptyButton
+                    variant="primary"
+                    onClick={() => {
+                      if (term) setSearch("");
+                      else setCategory("all");
+                    }}
+                  >
+                    {term ? <X className="h-3.5 w-3.5" /> : <Compass className="h-3.5 w-3.5" />}
+                    {term ? "Clear search" : "Show all rooms"}
+                  </EmptyButton>
+                  {!term && category === "all" ? (
+                    <EmptyButton onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" />
+                      New room
+                    </EmptyButton>
+                  ) : null}
+                </RealmsEmpty>
+              </div>
+            ) : null}
+
+            {!realms.isLoading && !realms.isError && availableCount > 0 ? (
+              <>
+                {discoverLead ? (
+                  <section className="mt-6">
+                    <SectionHeading title="Spotlight" note="Rizz-run rooms" />
+                    <div className="mt-3">
+                      <RealmSpotlight
+                        realm={discoverLead.realm}
+                        official={discoverLead.official}
+                        joined={myRealmIds.has(discoverLead.realm.id)}
+                        fresh={
+                          !myRealmIds.has(discoverLead.realm.id) && isFreshRealm(discoverLead.realm)
                         }
+                        joining={quickJoining === discoverLead.realm.id}
+                        onJoin={() => void handleQuickJoin(discoverLead.realm.id)}
                       />
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+                    </div>
+                  </section>
+                ) : null}
 
-            {publicRealms.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Compass className="h-3.5 w-3.5" />
-                    More to explore
-                  </h2>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    {publicRealms.length} {publicRealms.length === 1 ? "realm" : "realms"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {publicRealms.map((realm) => {
-                    const joined = myRealmIds.has(realm.id);
-                    return (
-                      <RealmBannerCard
-                        key={realm.id}
-                        realm={realm}
-                        joined={joined}
-                        showFresh={!joined}
-                        action={
-                          <RealmJoinAction
+                {discoverRows.length > 0 ? (
+                  <section className={discoverLead ? "mt-7" : "mt-5"}>
+                    <SectionHeading title="Open rooms" count={discoverRows.length} />
+                    <div className="mt-2 border-t border-border">
+                      {discoverRows.map(({ realm, official }) => {
+                        const joined = myRealmIds.has(realm.id);
+                        return (
+                          <RealmRow
+                            key={realm.id}
+                            realm={realm}
+                            official={official}
                             joined={joined}
+                            fresh={!official && !joined && isFreshRealm(realm)}
                             joining={quickJoining === realm.id}
                             onJoin={() => void handleQuickJoin(realm.id)}
                           />
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {!realms.isLoading && !realms.isError && availableCount === 0 && (
-              <div className="relative overflow-hidden rounded-[24px] border border-dashed border-white/10 bg-white/[0.025] p-7 text-center">
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                  {term ? <Search className="h-5 w-5" /> : <Compass className="h-5 w-5" />}
-                </div>
-                <h2 className="mt-3 font-display text-base font-bold">
-                  {term
-                    ? `No realms for “${search.trim()}”`
-                    : category === "all"
-                      ? "You're all caught up"
-                      : "Nothing in this lane yet"}
-                </h2>
-                <p className="mx-auto mt-1 max-w-[280px] text-xs leading-relaxed text-muted-foreground">
-                  {term
-                    ? "Try a shorter name, a topic, or a different category."
-                    : category === "all"
-                      ? "No public realms have opened yet. Check back soon or start your own."
-                      : "Try another category or show everything again."}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (term) setSearch("");
-                    else setCategory("all");
-                  }}
-                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-bold text-[#0a0a0b] transition-transform active:scale-95"
-                >
-                  {term ? <X className="h-3.5 w-3.5" /> : <Compass className="h-3.5 w-3.5" />}
-                  {term ? "Clear search" : "Show all"}
-                </button>
-              </div>
-            )}
-          </motion.section>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : null}
+              </>
+            ) : null}
+          </section>
         )}
       </div>
     </div>
