@@ -3151,3 +3151,52 @@ button:active > .motion-icon {
 [data-reduced-motion="true"] .live-dot {
   animation: none;
 }
+
+/* Over-video chip: a quiet ink pill on the reel. No glow, no blur halo. */
+.live-chip--video {
+  background: rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.live-chip--video .live-chip__count {
+  color: rgba(255, 255, 255, 0.72);
+}
+/* At 320px the row has no room for faces and a word; the dot + count still
+   answer "is anything happening?" without pushing a control off screen. */
+@media (max-width: 359px) {
+  .live-chip__label,
+  .live-chip__faces {
+    display: none;
+  }
+}
+
+/* The Live & vibing sheet: 400px on desktop, full-height bottom sheet on a
+   phone. The primitive's desktop recipe is 28rem, so this selector matches its
+   specificity and wins by order. */
+@media (hover: hover) and (pointer: fine) and (min-width: 641px) {
+  [role="dialog"][data-state="open"][data-side="bottom"].live-vibing-sheet {
+    width: 400px;
+    max-width: 400px;
+  }
+}
+
+/* Rows fade in one by one as realtime adds them; never under reduced motion. */
+@keyframes lv-row-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.lv-row {
+  animation: lv-row-in 150ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv-row {
+    animation: none;
+  }
+}
+[data-reduced-motion="true"] .lv-row {
+  animation: none;
+}

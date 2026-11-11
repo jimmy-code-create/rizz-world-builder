@@ -35,6 +35,7 @@ import { renderCaptionWithTags } from "@/lib/hashtags";
 import { formatCount } from "@/lib/utils";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
+import { LiveAndVibingSheet } from "@/components/live/LiveAndVibingSheet";
 import {
   normalizeReelPartyCode,
   reelPartyInviteUrl,
@@ -104,6 +105,12 @@ function ReelsPage() {
   const [muted, setMuted] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [partyOpen, setPartyOpen] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
+  // The bar owns pause now, but the video is still the source of truth. These
+  // mirror the active reel's play state and remember whether it was playing
+  // before the Live & vibing sheet paused it.
+  const [reelPaused, setReelPaused] = useState(true);
+  const sheetWasPlaying = useRef(false);
 
   // Create > Reel lands here with ?compose=1, then the URL is cleaned so a
   // refresh does not reopen an editor the person already closed.
@@ -120,6 +127,78 @@ function ReelsPage() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const activeIndexRef = useRef(-1);
   activeIndexRef.current = activeIndex;
+
+  /** The <video> for the reel on screen. External reels have none. */
+  const activeVideo = useCallback(() => {
+    const index = activeIndexRef.current;
+    if (index < 0) return null;
+    return (
+      scrollerRef.current?.querySelector<HTMLVideoElement>(
+        `[data-reel-index="${index}"] video`,
+      ) ?? null
+    );
+  }, []);
+
+  // The top bar reads the active reel's real state instead of guessing.
+  useEffect(() => {
+    const video = activeVideo();
+    setReelPaused(video ? video.paused : true);
+  }, [activeIndex, activeVideo]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const onPlayback = (event: Event) => {
+      const video = event.target;
+      if (!(video instanceof HTMLVideoElement)) return;
+      const holder = video.closest<HTMLElement>("[data-reel-index]");
+      if (!holder || Number(holder.dataset.reelIndex) !== activeIndexRef.current) return;
+      setReelPaused(video.paused);
+    };
+    scroller.addEventListener("play", onPlayback, true);
+    scroller.addEventListener("pause", onPlayback, true);
+    return () => {
+      scroller.removeEventListener("play", onPlayback, true);
+      scroller.removeEventListener("pause", onPlayback, true);
+    };
+  }, [reels.data?.length]);
+
+  // The sheet owns the screen while it is open: pause the reel underneath and
+  // put it back only if it was actually playing when the sheet opened.
+  useEffect(() => {
+    const video = activeVideo();
+    if (liveOpen) {
+      if (video) {
+        sheetWasPlaying.current = !video.paused;
+        video.pause();
+      }
+      return;
+    }
+    const wasPlaying = sheetWasPlaying.current;
+    sheetWasPlaying.current = false;
+    if (wasPlaying && video?.paused) void video.play().catch(() => {});
+  }, [liveOpen, activeVideo]);
+
+  const activePost = activeIndex >= 0 ? reels.data?.[activeIndex] : undefined;
+  const activeExternalLink =
+    activePost?.media_type === "video" && activePost.media_url
+      ? parseExternalReelLink(activePost.media_url)
+      : null;
+  const activeIsExternal = !!activeExternalLink?.ok;
+
+  const toggleReelPlayback = useCallback(() => {
+    const video = activeVideo();
+    if (!video) return;
+    if (video.paused) {
+      void video
+        .play()
+        .then(() => setReelPaused(false))
+        .catch(() => toast.error("Couldn't play this reel"));
+    } else {
+      video.pause();
+      setReelPaused(true);
+    }
+  }, [activeVideo]);
   const partySyncTimers = useRef<number[]>([]);
   const autoJoinedParty = useRef(false);
   const invitePrompted = useRef(false);
@@ -388,22 +467,151 @@ function ReelsPage() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-black">
-      <div className="absolute inset-x-3 top-3 z-30 flex items-center gap-2 pointer-events-none">
-        <button
-          onClick={() => setPartyOpen(true)}
-          className="pointer-events-auto relative grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/45 text-white transition-transform active:scale-95"
-          aria-label={party.code ? "Reel party controls" : "Start a reel party"}
-          title="Reel party"
-        >
-          <Users className="h-5 w-5" />
-          {party.code && (
-            <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-black leading-4 text-primary-foreground">
-              {party.watching}
-            </span>
-          )}
-        </button>
-        <LiveNowChip className="pointer-events-auto ml-auto" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="mx-auto flex h-11 w-full max-w-[1280px] items-center gap-2 px-3">
+          <button
+            onClick={() => setPartyOpen(true)}
+            className="pointer-events-auto relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95"
+            aria-label={party.code ? "Reel party controls" : "Start a reel party"}
+            title="Reel party"
+          >
+            <Users className="h-5 w-5" />
+            {party.code && (
+              <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-black leading-4 text-primary-foreground">
+                {party.watching}
+              </span>
+            )}
+          </button>
+
+          <div className="flex min-w-0 flex-1 justify-center">
+            <LiveNowChip
+              variant="video"
+              className="pointer-events-auto max-w-full"
+              onOpen={() => setLiveOpen(true)}
+            />
+          </div>
+
+          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleReelPlayback}
+              disabled={activeIsExternal || partyControlled}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95 disabled:opacity-40"
+              aria-label={reelPaused ? "Play reel" : "Pause reel"}
+              aria-pressed={!reelPaused}
+            >
+              {reelPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMuted((m) => !m)}
+              disabled={activeIsExternal}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95 disabled:opacity-40"
+              aria-label={muted ? "Unmute reel" : "Mute reel"}
+            >
+              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white transition-transform active:scale-95"
+                  aria-label="Reel settings"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-60 p-3 glass-strong border-white/10">
+                <div className="space-y-3 text-foreground">
+                  <section>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-label="Autoplay uploaded videos"
+                      aria-checked={autoplay}
+                      onClick={() => setAutoplay((current) => !current)}
+                      className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
+                    >
+                      <span className="flex items-center gap-2"><Play className="h-4 w-4 text-primary" /> Autoplay</span>
+                      <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-primary" : "bg-white/25"}`}>
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </span>
+                    </button>
+                  </section>
+                  {activeIsExternal ? (
+                    <section className="border-t border-white/10 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (activeExternalLink?.ok) {
+                            window.open(activeExternalLink.value.sourceUrl, "_blank", "noopener,noreferrer");
+                          }
+                        }}
+                        className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
+                      >
+                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        View original
+                      </button>
+                    </section>
+                  ) : (
+                    <>
+                      <section className="border-t border-white/10 pt-3">
+                        <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
+                          <Gauge className="h-3.5 w-3.5 text-primary" /> Playback speed
+                        </h3>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[0.5, 1, 1.5, 2].map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              aria-pressed={speed === value}
+                              onClick={() => setSpeed(value)}
+                              className={`rounded-lg px-1.5 py-1.5 text-xs transition-colors ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                            >
+                              {value}x
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                      <section className="border-t border-white/10 pt-3">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={captions}
+                          onClick={() => setCaptions((current) => !current)}
+                          className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
+                        >
+                          <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-primary" /> Captions</span>
+                          <span className="text-xs text-muted-foreground">{captions ? "On" : "Off"}</span>
+                        </button>
+                      </section>
+                      <section className="border-t border-white/10 pt-3">
+                        <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
+                          <Palette className="h-3.5 w-3.5 text-muted-foreground" /> Visual filter
+                        </h3>
+                        <div className="grid grid-cols-3 gap-1">
+                          {(["none", "warm", "cool", "noir", "vivid"] as const).map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              aria-pressed={filter === value}
+                              onClick={() => setFilter(value)}
+                              className={`rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${filter === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
+                            >
+                              {value === "none" ? "None" : value}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    </>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </div>
+
+      <LiveAndVibingSheet open={liveOpen} onOpenChange={setLiveOpen} />
 
       <ReelEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
       <ReelPartySheet
@@ -455,13 +663,9 @@ function ReelsPage() {
             reelIndex={index}
             muted={muted}
             partyControlled={partyControlled}
-            toggleMute={() => setMuted((m) => !m)}
             speed={speed}
             captions={captions}
             filter={filter}
-            setSpeed={setSpeed}
-            setCaptions={setCaptions}
-            setFilter={setFilter}
             isActive={activeIndex === index}
             // Load window: the reel on screen gets the connection, its
             // neighbours get their first frame so the next swipe is instant,
@@ -479,7 +683,6 @@ function ReelsPage() {
                   : "none"
             }
             autoplay={autoplay}
-            setAutoplay={setAutoplay}
             onEnded={() => advanceReel(index)}
             initialLiked={!!likes.data?.has(r.id)}
             initialSaved={!!saved.data?.has(r.id)}
@@ -538,13 +741,9 @@ function ReelItem({
   reelIndex,
   muted,
   partyControlled,
-  toggleMute,
   speed,
   captions,
   filter,
-  setSpeed,
-  setCaptions,
-  setFilter,
   initialLiked,
   initialSaved,
   isActive,
@@ -552,7 +751,6 @@ function ReelItem({
   onCommentsOpenChange,
   preload,
   autoplay,
-  setAutoplay,
   onEnded,
 }: {
   post: any;
@@ -560,13 +758,9 @@ function ReelItem({
   muted: boolean;
   /** A guest in a live room: the host owns play/pause and the playhead. */
   partyControlled: boolean;
-  toggleMute: () => void;
   speed: number;
   captions: boolean;
   filter: string;
-  setSpeed: React.Dispatch<React.SetStateAction<number>>;
-  setCaptions: React.Dispatch<React.SetStateAction<boolean>>;
-  setFilter: React.Dispatch<React.SetStateAction<string>>;
   initialLiked: boolean;
   initialSaved: boolean;
   isActive: boolean;
@@ -575,7 +769,6 @@ function ReelItem({
   /** "auto" on screen, "metadata" for the neighbour slides, "none" far away. */
   preload: "auto" | "metadata" | "none";
   autoplay: boolean;
-  setAutoplay: React.Dispatch<React.SetStateAction<boolean>>;
   onEnded: () => void;
 }) {
   const { user } = useAuth();
@@ -604,7 +797,6 @@ function ReelItem({
   const [stickerBurst, setStickerBurst] = useState<{ id: number; src: string; x: number; y: number; imageLoaded: boolean } | null>(null);
   const preparedStickerRef = useRef<{ src: string; loaded: boolean } | null>(null);
   const [staticLikeFeedback, setStaticLikeFeedback] = useState(false);
-  const [paused, setPaused] = useState(true);
   const [playCue, setPlayCue] = useState<"play" | "pause" | null>(null);
   const cueTimer = useRef<number | null>(null);
   const tapTimer = useRef<number | null>(null);
@@ -655,7 +847,6 @@ function ReelItem({
     let cancelled = false;
     if (!isActive) {
       video.pause();
-      setPaused(true);
       return () => { cancelled = true; };
     }
     if (partyControlled) {
@@ -670,14 +861,13 @@ function ReelItem({
             video.pause();
             return;
           }
-          setPaused(false);
         })
         .catch(() => {
-          if (!cancelled) setPaused(video.paused);
+          // Autoplay can be blocked; the page bar still reflects the truth
+          // through the scroller's play/pause listener.
         });
     } else {
       video.pause();
-      setPaused(true);
     }
     return () => { cancelled = true; };
   }, [isActive, autoplay, partyControlled]);
@@ -734,14 +924,12 @@ function ReelItem({
     if (video.paused) {
       try {
         await video.play();
-        setPaused(false);
         showPlaybackCue("play");
       } catch {
         toast.error("Couldn't play this reel");
       }
     } else {
       video.pause();
-      setPaused(true);
       showPlaybackCue("pause");
     }
   }
@@ -786,11 +974,6 @@ function ReelItem({
     }, 260);
   }
 
-  function viewOriginal() {
-    if (!externalLink?.ok) return;
-    window.open(externalLink.value.sourceUrl, "_blank", "noopener,noreferrer");
-  }
-
   const remix = () => toast.success("Remix template saved to your drafts ✨");
   // A reel is shareable into any conversation; its permalink opens the reel
   // itself, not the author's profile.
@@ -819,40 +1002,6 @@ function ReelItem({
             creator={post.author?.username}
             minimalControls
           />
-          <div className="absolute right-3 top-3 z-20">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="grid h-10 w-10 place-items-center rounded-full glass-strong text-white"
-                  aria-label="Reel options"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-1.5 glass-strong border-white/10">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Autoplay uploaded videos"
-                  aria-checked={autoplay}
-                  onClick={() => setAutoplay((current) => !current)}
-                  className="w-full flex min-h-10 items-center justify-between rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
-                >
-                  Autoplay uploads
-                  <span className="text-xs text-muted-foreground">{autoplay ? "On" : "Off"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={viewOriginal}
-                  className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm font-medium hover:bg-white/10"
-                >
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  View original
-                </button>
-              </PopoverContent>
-            </Popover>
-          </div>
           <div className="shrink-0 px-4 py-3 text-white">
             <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
               <Avatar className="h-9 w-9 ring-2 ring-white/40">
@@ -897,8 +1046,6 @@ function ReelItem({
           muted={muted}
           playsInline
           onClick={handleVideoTap}
-          onPlay={() => setPaused(false)}
-          onPause={() => setPaused(true)}
           onEnded={() => { if (!partyControlled && autoplay && isActive) onEnded(); }}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
@@ -958,101 +1105,6 @@ function ReelItem({
       {!isExternal && <div className="absolute top-0 inset-x-0 h-0.5 bg-white/10">
         <div className="h-full bg-primary text-primary-foreground shadow-md" style={{ width: `${progress}%` }} />
       </div>}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-        {!isExternal && !partyControlled && <button
-          type="button"
-          onClick={() => void togglePlayback()}
-          className="h-10 w-10 rounded-full glass-strong grid place-items-center"
-          aria-label={paused ? "Play reel" : "Pause reel"}
-          aria-pressed={!paused}
-        >
-          {paused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
-        </button>}
-        {!isExternal && <button
-            onClick={toggleMute}
-            className="h-10 w-10 rounded-full glass-strong grid place-items-center"
-            aria-label={muted ? "Unmute reel" : "Mute reel"}
-          >
-            {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-          </button>}
-        {!isExternal && <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className="h-10 w-10 rounded-full glass-strong grid place-items-center"
-              aria-label="Reel settings"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-60 p-3 glass-strong border-white/10">
-            <div className="space-y-3 text-foreground">
-              <section>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Autoplay uploaded videos"
-                  aria-checked={autoplay}
-                  onClick={() => setAutoplay((current) => !current)}
-                  className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
-                >
-                  <span className="flex items-center gap-2"><Play className="h-4 w-4 text-primary" /> Autoplay</span>
-                  <span className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? "bg-primary" : "bg-white/25"}`}>
-                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? "translate-x-4" : "translate-x-0.5"}`} />
-                  </span>
-                </button>
-              </section>
-              <section className="border-t border-white/10 pt-3">
-                <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
-                  <Gauge className="h-3.5 w-3.5 text-primary" /> Playback speed
-                </h3>
-                <div className="grid grid-cols-4 gap-1">
-                  {[0.5, 1, 1.5, 2].map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={speed === value}
-                      onClick={() => setSpeed(value)}
-                      className={`rounded-lg px-1.5 py-1.5 text-xs transition-colors ${speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
-                    >
-                      {value}x
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section className="border-t border-white/10 pt-3">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={captions}
-                  onClick={() => setCaptions((current) => !current)}
-                  className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/10"
-                >
-                  <span className="flex items-center gap-2"><Captions className="h-4 w-4 text-primary" /> Captions</span>
-                  <span className="text-xs text-muted-foreground">{captions ? "On" : "Off"}</span>
-                </button>
-              </section>
-              <section className="border-t border-white/10 pt-3">
-                <h3 className="flex items-center gap-2 text-xs font-semibold mb-2">
-                  <Palette className="h-3.5 w-3.5 text-muted-foreground" /> Visual filter
-                </h3>
-                <div className="grid grid-cols-3 gap-1">
-                  {(["none", "warm", "cool", "noir", "vivid"] as const).map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={filter === value}
-                      onClick={() => setFilter(value)}
-                      className={`rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${filter === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
-                    >
-                      {value === "none" ? "None" : value}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </PopoverContent>
-        </Popover>}
-      </div>
       <div className="absolute left-3 right-[5.5rem] bottom-3 z-10 text-white drop-shadow md:left-6 md:bottom-5">
         <ProfilePreviewTrigger username={post.author?.username} className="mb-2 flex items-center gap-2 text-left">
           <Avatar className="h-9 w-9 ring-2 ring-white/40">
