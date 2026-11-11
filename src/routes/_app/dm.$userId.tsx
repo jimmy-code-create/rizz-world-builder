@@ -1,5 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -8,7 +14,29 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Phone, Video, MoreVertical, ArrowDown, Search, Clock, X, Trash2, ImagePlus, Camera, Users, Copy, Flag, Forward, BarChart3, Pencil, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Video,
+  MoreVertical,
+  ArrowDown,
+  Search,
+  Clock,
+  X,
+  Trash2,
+  ImagePlus,
+  Camera,
+  Users,
+  Copy,
+  Flag,
+  Forward,
+  BarChart3,
+  Pencil,
+  Check,
+  Bell,
+  BellOff,
+  Download,
+} from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -27,7 +55,11 @@ import { hapticSend } from "@/lib/haptics";
 import { chatUploadLimitBytes, formatUploadLimit } from "@/lib/purify";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { MessageActionMenu } from "@/components/chat/MessageActionMenu";
 import { DateSeparator, dayKey } from "@/components/chat/DateSeparator";
@@ -77,7 +109,8 @@ import { MarkdownText } from "@/components/MarkdownText";
 import { EmojiText } from "@/components/emoji/EmojiText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { scrollChatToLatest } from "@/lib/chat-scroll";
-
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { KnockGlyph } from "@/components/knock/KnockGlyph";
 
 // Quick and extended reaction sets live in @/lib/reactions so DMs, realm chat
 // and group chat stay in sync.
@@ -149,7 +182,12 @@ function DMPage() {
   // The desktop hover toolbar's smiley opens the menu straight into reactions;
   // every other entry point (long press, right click, keyboard) opens actions.
   const [openMsgView, setOpenMsgView] = useState<"actions" | "reactions">("actions");
-  const [replyTo, setReplyTo] = useState<{ id: string; body: string; mine: boolean; attachmentUrl?: string | null } | null>(null);
+  const [replyTo, setReplyTo] = useState<{
+    id: string;
+    body: string;
+    mine: boolean;
+    attachmentUrl?: string | null;
+  } | null>(null);
   const [missingReplies, setMissingReplies] = useState<Set<string>>(() => new Set());
   const [editing, setEditing] = useState<{
     id: string;
@@ -197,6 +235,9 @@ function DMPage() {
   // The chat's own wallpaper: a preset or an uploaded background URL.
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  const [muteOpen, setMuteOpen] = useState(false);
+  const [confirmBlockOpen, setConfirmBlockOpen] = useState(false);
+  const [knockCooldown, setKnockCooldown] = useState(0);
   // Forward opens the same "send to" picker posts, reels and realms use.
   const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -209,15 +250,18 @@ function DMPage() {
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
 
-  useEffect(() => () => {
-    imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-  }, []);
+  useEffect(
+    () => () => {
+      imageObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
 
   useEffect(() => {
     setDraftReady(false);
     let saved = "";
     try {
-      saved = draftKey ? window.localStorage.getItem(draftKey) ?? "" : "";
+      saved = draftKey ? (window.localStorage.getItem(draftKey) ?? "") : "";
     } catch {
       // Keep the composer usable when browser storage is disabled.
     }
@@ -267,7 +311,8 @@ function DMPage() {
       if (openMsg || replyTo || wallpaperOpen) return;
       // Never steal the key from a field the user is typing in.
       const target = event.target as HTMLElement | null;
-      if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) return;
+      if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName)))
+        return;
       nav({ to: "/dms" });
     };
     window.addEventListener("keydown", onKeyDown);
@@ -317,12 +362,7 @@ function DMPage() {
     });
   };
 
-  const beginEdit = (message: {
-    id: string;
-    body: string;
-    prefix: string;
-    text: string;
-  }) => {
+  const beginEdit = (message: { id: string; body: string; prefix: string; text: string }) => {
     if (!user || !message.text.trim()) {
       toast.info("Only text messages can be edited");
       return;
@@ -421,7 +461,9 @@ function DMPage() {
       const { data, error } = await supabase
         .from("direct_messages")
         .select("*")
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${user.id})`)
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${user.id})`,
+        )
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(0, MESSAGE_PAGE_SIZE);
@@ -429,16 +471,24 @@ function DMPage() {
       const rows = data ?? [];
       setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
       const visibleRows = rows.slice(0, MESSAGE_PAGE_SIZE);
-      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)("direct_message_hides")
+      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)(
+        "direct_message_hides",
+      )
         .select("message_id")
         .eq("user_id", user.id)
-        .in("message_id", visibleRows.map((row) => row.id));
+        .in(
+          "message_id",
+          visibleRows.map((row) => row.id),
+        );
       if (hiddenError) {
         const message = String(hiddenError.message ?? "").toLowerCase();
-        if (!message.includes("does not exist") && !message.includes("schema cache")) throw hiddenError;
+        if (!message.includes("does not exist") && !message.includes("schema cache"))
+          throw hiddenError;
         return visibleRows.reverse();
       }
-      const hidden = new Set((hiddenRows ?? []).map((row: { message_id: string }) => row.message_id));
+      const hidden = new Set(
+        (hiddenRows ?? []).map((row: { message_id: string }) => row.message_id),
+      );
       return visibleRows.filter((row) => !hidden.has(row.id)).reverse();
     },
     enabled: !!user,
@@ -451,30 +501,50 @@ function DMPage() {
 
   useEffect(() => {
     if (!user) return;
-    const ch = supabase.channel(`dm-${user.id}-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, ({ new: message }) => {
-        const row = message as any;
-        const participants = new Set([user.id, userId]);
-        if (!participants.has(row.sender_id) || !participants.has(row.recipient_id) || row.sender_id === row.recipient_id) return;
-        qc.setQueryData<any[]>(["dm", user.id, userId], (current) => {
-          if (!current || current.some((item) => item.id === row.id)) return current;
-          return [...current, row].sort((a, b) => a.created_at.localeCompare(b.created_at));
-        });
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, ({ old: message }) => {
-        const row = message as any;
-        qc.setQueryData<any[]>(["dm", user.id, userId], (current) =>
-          current?.filter((item) => item.id !== row.id),
-        );
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages" }, ({ new: message }) => {
-        const row = message as CachedDirectMessage;
-        qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current) =>
-          current?.map((item) => item.id === row.id ? { ...item, ...row } : item),
-        );
-      })
+    const ch = supabase
+      .channel(`dm-${user.id}-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "direct_messages" },
+        ({ new: message }) => {
+          const row = message as any;
+          const participants = new Set([user.id, userId]);
+          if (
+            !participants.has(row.sender_id) ||
+            !participants.has(row.recipient_id) ||
+            row.sender_id === row.recipient_id
+          )
+            return;
+          qc.setQueryData<any[]>(["dm", user.id, userId], (current) => {
+            if (!current || current.some((item) => item.id === row.id)) return current;
+            return [...current, row].sort((a, b) => a.created_at.localeCompare(b.created_at));
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "direct_messages" },
+        ({ old: message }) => {
+          const row = message as any;
+          qc.setQueryData<any[]>(["dm", user.id, userId], (current) =>
+            current?.filter((item) => item.id !== row.id),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "direct_messages" },
+        ({ new: message }) => {
+          const row = message as CachedDirectMessage;
+          qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current) =>
+            current?.map((item) => (item.id === row.id ? { ...item, ...row } : item)),
+          );
+        },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [user, userId, qc]);
 
   const loadOlderMessages = async () => {
@@ -496,15 +566,23 @@ function DMPage() {
       const rows = data ?? [];
       setHasOlderMessages(rows.length > MESSAGE_PAGE_SIZE);
       const olderRows = rows.slice(0, MESSAGE_PAGE_SIZE);
-      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)("direct_message_hides")
+      const { data: hiddenRows, error: hiddenError } = await (supabase.from as any)(
+        "direct_message_hides",
+      )
         .select("message_id")
         .eq("user_id", user.id)
-        .in("message_id", olderRows.map((row) => row.id));
+        .in(
+          "message_id",
+          olderRows.map((row) => row.id),
+        );
       if (hiddenError) {
         const message = String(hiddenError.message ?? "").toLowerCase();
-        if (!message.includes("does not exist") && !message.includes("schema cache")) throw hiddenError;
+        if (!message.includes("does not exist") && !message.includes("schema cache"))
+          throw hiddenError;
       }
-      const hiddenIds = new Set((hiddenRows ?? []).map((row: { message_id: string }) => row.message_id));
+      const hiddenIds = new Set(
+        (hiddenRows ?? []).map((row: { message_id: string }) => row.message_id),
+      );
       const older = olderRows.filter((row) => !hiddenIds.has(row.id)).reverse();
       if (older.length) {
         const previousHeight = scrollRef.current?.scrollHeight ?? 0;
@@ -564,15 +642,19 @@ function DMPage() {
     const now = Date.now();
     if (now - lastTypingBroadcastAtRef.current < 3000) return;
     lastTypingBroadcastAtRef.current = now;
-    presenceCh.current?.send({ type: "broadcast", event: "typing", payload: { user_id: user?.id } });
+    presenceCh.current?.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { user_id: user?.id },
+    });
   };
 
   useEffect(() => {
     const currentIds = (msgs.data ?? []).map((message: any) => message.id);
     const previousIds = previousMessageIdsRef.current;
     const initialLoad = previousIds.length === 0 && currentIds.length > 0;
-    const appended = previousIds.length > 0 &&
-      previousIds.every((id, index) => currentIds[index] === id);
+    const appended =
+      previousIds.length > 0 && previousIds.every((id, index) => currentIds[index] === id);
     if (initialLoad || (appended && wasNearBottomRef.current)) {
       endRef.current?.scrollIntoView({ behavior: "smooth" });
     }
@@ -595,9 +677,15 @@ function DMPage() {
   // Mark incoming messages as read when viewed
   useEffect(() => {
     if (!user || !msgs.data) return;
-    const unread = msgs.data.filter((m: any) => m.recipient_id === user.id && !m.read).map((m: any) => m.id);
+    const unread = msgs.data
+      .filter((m: any) => m.recipient_id === user.id && !m.read)
+      .map((m: any) => m.id);
     if (unread.length === 0) return;
-    supabase.from("direct_messages").update({ read: true }).in("id", unread).then(() => {});
+    supabase
+      .from("direct_messages")
+      .update({ read: true })
+      .in("id", unread)
+      .then(() => {});
   }, [user, msgs.data]);
 
   const deliverPendingMessage = async (
@@ -609,7 +697,9 @@ function DMPage() {
     if (!user) return;
     setSendingCount((count) => count + 1);
     qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
-      current.map((message) => message.id === pendingId ? { ...message, delivery_status: "sending" } : message),
+      current.map((message) =>
+        message.id === pendingId ? { ...message, delivery_status: "sending" } : message,
+      ),
     );
     let uploadedImagePath: string | null = null;
     try {
@@ -624,7 +714,9 @@ function DMPage() {
           .upload(path, compressed, { contentType: "image/jpeg", upsert: false });
         if (uploadError) {
           if (/bucket.*not found|not found.*bucket/i.test(uploadError.message)) {
-            throw new Error("Image sending is not enabled yet. Apply the chat-media setup in BACKEND_REQUIREMENTS.md.");
+            throw new Error(
+              "Image sending is not enabled yet. Apply the chat-media setup in BACKEND_REQUIREMENTS.md.",
+            );
           }
           throw uploadError;
         }
@@ -652,10 +744,10 @@ function DMPage() {
       pendingReplyRef.current.delete(pendingId);
       if (pendingImage && imageFile === pendingImage) {
         setImageFile(null);
-        setImagePreview((current) => current === pendingPreview ? null : current);
+        setImagePreview((current) => (current === pendingPreview ? null : current));
       }
       if (clearComposerText !== undefined) {
-        setBody((current) => current === clearComposerText ? "" : current);
+        setBody((current) => (current === clearComposerText ? "" : current));
       }
     } catch (error) {
       if (uploadedImagePath) {
@@ -671,9 +763,15 @@ function DMPage() {
         setBody((current) => (current ? current : clearComposerText));
       }
       qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
-        current.map((message) => message.id === pendingId ? { ...message, delivery_status: "failed" } : message),
+        current.map((message) =>
+          message.id === pendingId ? { ...message, delivery_status: "failed" } : message,
+        ),
       );
-      toast.error(error instanceof Error ? error.message : "Couldn't send your message. Check your connection and try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Couldn't send your message. Check your connection and try again.",
+      );
     } finally {
       setSendingCount((count) => Math.max(0, count - 1));
     }
@@ -695,7 +793,9 @@ function DMPage() {
       }
       const editingNow = editing;
       qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
-        current.map((message) => message.id === editingNow.id ? { ...message, body: nextBody } : message),
+        current.map((message) =>
+          message.id === editingNow.id ? { ...message, body: nextBody } : message,
+        ),
       );
       setEditing(null);
       setBody("");
@@ -710,7 +810,9 @@ function DMPage() {
           if (!error) return;
           qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
             current.map((message) =>
-              message.id === editingNow.id ? { ...message, body: editingNow.previousBody } : message,
+              message.id === editingNow.id
+                ? { ...message, body: editingNow.previousBody }
+                : message,
             ),
           );
           setEditing(editingNow);
@@ -752,7 +854,10 @@ function DMPage() {
       card: null,
     };
     if (imageFile) pendingMediaRef.current.set(pendingId, imageFile);
-    qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [...current, optimistic]);
+    qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) => [
+      ...current,
+      optimistic,
+    ]);
 
     // Clear the box immediately; the optimistic row is already on screen. The
     // network insert and image upload continue in the background, so a slow
@@ -834,24 +939,128 @@ function DMPage() {
 
   const scheduleSend = () => {
     if (!body.trim()) return toast.info("Type a message first");
-    const text = body; setBody("");
+    const text = body;
+    setBody("");
     toast.success("Scheduled in 10s");
     setTimeout(() => {
       if (!user) return;
-      supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: userId, body: text }).then(({ error }) => {
-        if (error) toast.error(`Scheduled message failed: ${error.message}`);
-      });
+      supabase
+        .from("direct_messages")
+        .insert({ sender_id: user.id, recipient_id: userId, body: text })
+        .then(({ error }) => {
+          if (error) toast.error(`Scheduled message failed: ${error.message}`);
+        });
     }, 10000);
   };
 
   const markUnread = async () => {
     if (!user || !msgs.data) return;
-    const latest = [...msgs.data].reverse().find((m: any) => m.recipient_id === user.id);
-    if (!latest) return toast.info("Nothing to mark");
-    await supabase.from("direct_messages").update({ read: false }).eq("id", (latest as any).id);
-    qc.invalidateQueries({ queryKey: ["unread-notifs"] });
-    toast.success("Marked unread");
+    try {
+      const latest = [...msgs.data].reverse().find((m: any) => m.recipient_id === user.id);
+      if (!latest) return toast.info("Nothing to mark");
+      await supabase
+        .from("direct_messages")
+        .update({ read: false })
+        .eq("id", (latest as any).id);
+      qc.invalidateQueries({ queryKey: ["unread-notifs"] });
+      toast.success("Marked unread");
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't mark unread");
+    }
   };
+
+  const exportMessages = async () => {
+    if (!msgs.data || !msgs.data.length) {
+      toast.info("No messages to export");
+      return;
+    }
+    try {
+      const lines = (msgs.data as any[]).map((m) => {
+        const time = new Date(m.created_at).toLocaleString();
+        const sender = m.sender_id === user?.id ? "You" : other.data?.username || "Them";
+        return `[${time}] ${sender}: ${m.body || "(media)"}`;
+      });
+      const text = lines.join("\n");
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dm-${other.data?.username || userId}-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${msgs.data.length} messages`);
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!user) return;
+    const currentlyBlocked = !!blockStatus.data;
+    try {
+      if (currentlyBlocked) {
+        await unblockUser(user.id, userId);
+        toast.success("User unblocked");
+      } else {
+        await blockUser(user.id, userId);
+        toast.success("User blocked");
+      }
+      qc.setQueryData(["block-status", user.id, userId], !currentlyBlocked);
+      void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
+    } catch (e: any) {
+      toast.error(e.message || "Action failed");
+    }
+  };
+
+  const handleMute = async () => {
+    if (!user) return;
+    try {
+      await muteUser(user.id, userId);
+      toast.success("Conversation muted");
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't mute");
+    }
+  };
+
+  const shareProfile = async () => {
+    const url = `${location.origin}/u/${other.data?.username || userId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${other.data?.display_name || other.data?.username}'s profile`,
+          url,
+        });
+        return;
+      } catch {
+        // fallback to copy
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Profile link copied");
+    } catch {
+      toast.error("Couldn't copy link");
+    }
+  };
+
+  const sendHeaderKnock = async () => {
+    if (!user || knockCooldown > 0) return;
+    try {
+      await sendKnock(user.id, userId);
+      setKnockCooldown(30);
+      toast.success("Knock sent");
+    } catch (e: any) {
+      toast.error(e.message || "Knock failed");
+    }
+  };
+
+  useEffect(() => {
+    if (knockCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setKnockCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [knockCooldown]);
 
   // Reactions for every loaded message: one request, one realtime channel.
   const reactions = useChatReactions(
@@ -864,7 +1073,10 @@ function DMPage() {
         .map((message: { id: string }) => message.id),
     },
   );
-  const removedPreviews = useHiddenLinkPreviews("dm", (msgs.data ?? []).map((message: { id: string }) => message.id));
+  const removedPreviews = useHiddenLinkPreviews(
+    "dm",
+    (msgs.data ?? []).map((message: { id: string }) => message.id),
+  );
   const peerPresence = usePresence(other.data?.id);
   const peerCustom = publicCustomStatus(peerPresence, false);
   const media = useMediaViewer();
@@ -879,11 +1091,7 @@ function DMPage() {
   const isSelfChat = userId === user?.id;
   const isDeleted = other.isFetched && !other.data;
   const peerBlocked = !!blockStatus.data;
-  const headerName = isSelfChat
-    ? "Notes to self (You)"
-    : isDeleted
-      ? "Deleted user"
-      : peerName;
+  const headerName = isSelfChat ? "Notes to self (You)" : isDeleted ? "Deleted user" : peerName;
 
   // One state for the dot AND the subline. The DM presence channel and the
   // heartbeat are both live-presence signals; the saved status only decides
@@ -901,11 +1109,7 @@ function DMPage() {
           ? "around"
           : "online";
   const canShowLastSeen =
-    !isSelfChat &&
-    !isDeleted &&
-    !peerBlocked &&
-    !invisible &&
-    !!peerPresence?.last_seen_at;
+    !isSelfChat && !isDeleted && !peerBlocked && !invisible && !!peerPresence?.last_seen_at;
   const lastSeenLabel = canShowLastSeen
     ? `Last seen ${relativeLastSeen(peerPresence!.last_seen_at)}`
     : null;
@@ -940,8 +1144,8 @@ function DMPage() {
     void markKnocksSeen(userId);
   }, [userId, knocks, user?.id]);
 
-  const filteredMsgs = (msgs.data ?? []).filter((m: any) =>
-    !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase())
+  const filteredMsgs = (msgs.data ?? []).filter(
+    (m: any) => !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase()),
   );
 
   /** A quoted original may be outside the loaded window; load it, then jump. */
@@ -982,22 +1186,26 @@ function DMPage() {
       });
       ring.subscribe((st) => {
         if (st !== "SUBSCRIBED") return;
-        ring.send({
-          type: "broadcast",
-          event: "ring",
-          payload: {
-            fromId: user.id,
-            fromUsername: (user as any)?.user_metadata?.username,
-            fromDisplayName: (user as any)?.user_metadata?.display_name,
-            fromAvatar: (user as any)?.user_metadata?.avatar_url,
-            video,
-          },
-        }).finally(() => {
-          // let the message flush before closing
-          setTimeout(() => supabase.removeChannel(ring), 800);
-        });
+        ring
+          .send({
+            type: "broadcast",
+            event: "ring",
+            payload: {
+              fromId: user.id,
+              fromUsername: (user as any)?.user_metadata?.username,
+              fromDisplayName: (user as any)?.user_metadata?.display_name,
+              fromAvatar: (user as any)?.user_metadata?.avatar_url,
+              video,
+            },
+          })
+          .finally(() => {
+            // let the message flush before closing
+            setTimeout(() => supabase.removeChannel(ring), 800);
+          });
       });
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
     nav({ to: "/call/$userId", params: { userId }, search: { video } });
   };
 
@@ -1079,19 +1287,33 @@ function DMPage() {
       const { error } = await (supabase.rpc as any)("unsend_direct_message", { _message_id: id });
       if (error) {
         const message = String(error.message ?? "").toLowerCase();
-        if (message.includes("does not exist") || message.includes("schema cache") || message.includes("function")) {
+        if (
+          message.includes("does not exist") ||
+          message.includes("schema cache") ||
+          message.includes("function")
+        ) {
           throw new Error("Unsend needs the Lovable backend setup in BACKEND_REQUIREMENTS.md.");
         }
         throw error;
       }
       qc.setQueryData<CachedDirectMessage[]>(["dm", user.id, userId], (current = []) =>
-        current.map((message) => message.id === id
-          ? { ...message, body: "This message was unsent", attachment_url: null, audio_url: null, deleted_at: new Date().toISOString() }
-          : message),
+        current.map((message) =>
+          message.id === id
+            ? {
+                ...message,
+                body: "This message was unsent",
+                attachment_url: null,
+                audio_url: null,
+                deleted_at: new Date().toISOString(),
+              }
+            : message,
+        ),
       );
       if (imagePath) {
         try {
-          const { error: cleanupError } = await supabase.storage.from("chat-media").remove([imagePath]);
+          const { error: cleanupError } = await supabase.storage
+            .from("chat-media")
+            .remove([imagePath]);
           if (cleanupError) console.warn("Unsent image cleanup failed", cleanupError.message);
         } catch {
           console.warn("Unsent image cleanup failed");
@@ -1106,11 +1328,19 @@ function DMPage() {
   const deleteMsgForMe = async (id: string) => {
     if (!user) return;
     try {
-      const { error } = await (supabase.rpc as any)("hide_direct_message_for_me", { _message_id: id });
+      const { error } = await (supabase.rpc as any)("hide_direct_message_for_me", {
+        _message_id: id,
+      });
       if (error) {
         const message = String(error.message ?? "").toLowerCase();
-        if (message.includes("does not exist") || message.includes("schema cache") || message.includes("function")) {
-          throw new Error("Delete for me needs the Lovable backend setup in BACKEND_REQUIREMENTS.md.");
+        if (
+          message.includes("does not exist") ||
+          message.includes("schema cache") ||
+          message.includes("function")
+        ) {
+          throw new Error(
+            "Delete for me needs the Lovable backend setup in BACKEND_REQUIREMENTS.md.",
+          );
         }
         throw error;
       }
@@ -1163,133 +1393,140 @@ function DMPage() {
         className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
         style={wallpaperStyle(wallpaper)}
       >
-      {/* The dimmer exists for the phone's bottom sheet. On a desktop the menu
+        {/* The dimmer exists for the phone's bottom sheet. On a desktop the menu
           is a popover beside the message, exactly like Discord's — dimming the
           whole conversation for it made the hover toolbar feel like a modal. */}
-      {openMsg && isMobile && (
-        <div
-          aria-hidden="true"
-          onClick={() => setOpenMsg(null)}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[5px]"
-        />
-      )}
-      <header className="chat-header chat-header--dm">
-        <div className="chat-header__row">
-          <Link
-            to="/dms"
-            aria-label="Back to messages"
-            title="Back to messages"
-            className="chat-header__action"
-          >
-            <ArrowLeft aria-hidden="true" />
-          </Link>
-
-          <div className="chat-header__identity">
+        {openMsg && isMobile && (
+          <div
+            aria-hidden="true"
+            onClick={() => setOpenMsg(null)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[5px]"
+          />
+        )}
+        <header className="chat-header chat-header--dm">
+          <div className="chat-header__row">
             <Link
-              to="/u/$username"
-              params={{ username: other.data?.username ?? "" }}
-              aria-label={`View ${headerName}'s profile`}
-              title={other.data?.avatar_url ? "Hold to view photo" : undefined}
-              onPointerDown={beginAvatarPress}
-              onPointerMove={moveAvatarPress}
-              onPointerUp={endAvatarPress}
-              onPointerCancel={endAvatarPress}
-              onPointerLeave={endAvatarPress}
-              onClick={(event) => {
-                if (!avatarLongPressed.current) return;
-                event.preventDefault();
-                event.stopPropagation();
-                avatarLongPressed.current = false;
-              }}
-              onContextMenu={(event) => event.preventDefault()}
-              className="dm-header__avatar shrink-0 touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              to="/dms"
+              aria-label="Back to messages"
+              title="Back to messages"
+              className="chat-header__action"
             >
-              <span className="relative inline-flex h-10 w-10 shrink-0">
-                <Avatar className="h-10 w-10 border-0 shadow-none ring-0">
-                  <AvatarImage src={other.data?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-[#2c2d35] text-[#f2efe6] font-semibold text-xs">
-                    {(other.data?.username ?? "?").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {doorState !== "offline" && (
-                  <span
-                    aria-hidden="true"
-                    className={`dm-presence-dot dm-presence-dot--${doorState}`}
-                  />
-                )}
-              </span>
+              <ArrowLeft aria-hidden="true" />
             </Link>
 
-            <div className="chat-header__text min-w-0 flex-1">
+            <div className="chat-header__identity">
               <Link
                 to="/u/$username"
                 params={{ username: other.data?.username ?? "" }}
-                className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`View ${headerName}'s profile`}
+                title={other.data?.avatar_url ? "Hold to view photo" : undefined}
+                onPointerDown={beginAvatarPress}
+                onPointerMove={moveAvatarPress}
+                onPointerUp={endAvatarPress}
+                onPointerCancel={endAvatarPress}
+                onPointerLeave={endAvatarPress}
+                onClick={(event) => {
+                  if (!avatarLongPressed.current) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  avatarLongPressed.current = false;
+                }}
+                onContextMenu={(event) => event.preventDefault()}
+                className="dm-header__avatar shrink-0 touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <p className="dm-header__name truncate font-display">
-                  {headerName}
-                </p>
-              </Link>
-              {!peerBlocked && !isDeleted && (
-                <div
-                  className="dm-header__status chat-header__status mt-0.5"
-                  aria-live={peerTyping ? "polite" : undefined}
-                >
-                  {peerTyping ? (
-                    <span className="chat-header__typing">
-                      typing
-                      <span className="chat-header__typing-dots" aria-hidden="true">
-                        <span>.</span>
-                        <span>.</span>
-                        <span>.</span>
-                      </span>
-                    </span>
-                  ) : peerCustom ? (
-                    <CustomStatusLine status={peerCustom} className="chat-header__custom min-w-0" />
-                  ) : isSelfChat ? (
-                    <span className="truncate text-muted-foreground">Only you can see this</span>
-                  ) : doorState === "online" ? (
-                    <span className="truncate font-medium text-primary">Online</span>
-                  ) : doorState === "around" ? (
-                    <span className="truncate text-muted-foreground">Active recently</span>
-                  ) : doorState === "dnd" ? (
-                    <span className="truncate text-muted-foreground">Do not disturb</span>
-                  ) : lastSeenLabel ? (
+                <span className="relative inline-flex h-[34px] w-[34px] shrink-0">
+                  <Avatar className="h-[34px] w-[34px] border-0 shadow-none ring-0">
+                    <AvatarImage src={other.data?.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-[#2c2d35] text-[#f2efe6] font-semibold text-xs">
+                      {(other.data?.username ?? "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {doorState !== "offline" && (
                     <span
-                      className="truncate text-muted-foreground"
-                      title={lastSeenFull ?? undefined}
-                      aria-label={lastSeenFull ? `${lastSeenLabel}. ${lastSeenFull}` : lastSeenLabel}
-                    >
-                      {lastSeenLabel}
-                    </span>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </div>
+                      aria-hidden="true"
+                      className={`dm-presence-dot dm-presence-dot--${doorState}`}
+                    />
+                  )}
+                </span>
+              </Link>
 
-          <div className="chat-header__actions" role="group" aria-label="Conversation actions">
-            {!isDeleted && !isSelfChat && (
-              narrowHeader ? (
+              <div className="chat-header__text min-w-0 flex-1">
+                <Link
+                  to="/u/$username"
+                  params={{ username: other.data?.username ?? "" }}
+                  className="block min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <p className="dm-header__name truncate font-semibold">{headerName}</p>
+                </Link>
+                {!peerBlocked && !isDeleted && (
+                  <div
+                    className="dm-header__status chat-header__status"
+                    aria-live={peerTyping ? "polite" : undefined}
+                  >
+                    {peerTyping ? (
+                      <span className="chat-header__typing">
+                        typing
+                        <span className="chat-header__typing-dots" aria-hidden="true">
+                          <span>.</span>
+                          <span>.</span>
+                          <span>.</span>
+                        </span>
+                      </span>
+                    ) : peerCustom ? (
+                      <CustomStatusLine
+                        status={peerCustom}
+                        className="chat-header__custom min-w-0"
+                      />
+                    ) : isSelfChat ? (
+                      <span className="truncate text-muted-foreground">Only you can see this</span>
+                    ) : doorState === "online" ? (
+                      <span className="truncate font-medium text-primary">Online</span>
+                    ) : doorState === "around" ? (
+                      <span className="truncate text-muted-foreground">Active recently</span>
+                    ) : doorState === "dnd" ? (
+                      <span className="truncate text-muted-foreground">Do not disturb</span>
+                    ) : lastSeenLabel ? (
+                      <span
+                        className="truncate text-muted-foreground"
+                        title={lastSeenFull ?? undefined}
+                        aria-label={
+                          lastSeenFull ? `${lastSeenLabel}. ${lastSeenFull}` : lastSeenLabel
+                        }
+                      >
+                        {lastSeenLabel}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="chat-header__actions" role="group" aria-label="Conversation actions">
+              {!isDeleted && !isSelfChat && doorState === "offline" && !peerBlocked && (
                 <button
                   type="button"
-                  onClick={() => requestCall(false)}
-                  aria-label="Call"
-                  title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Call"}
-                  disabled={peerBlocked}
-                  className="chat-header__action dm-header__icon-btn"
+                  onClick={sendHeaderKnock}
+                  disabled={knockCooldown > 0}
+                  aria-label="Knock"
+                  title={knockCooldown > 0 ? `Wait ${knockCooldown}s` : "Knock"}
+                  className="chat-header__action"
                 >
-                  <Phone aria-hidden="true" />
+                  <KnockGlyph className="h-[22px] w-[22px]" />
                 </button>
-              ) : (
+              )}
+              {!isDeleted && !isSelfChat && (
                 <>
                   <button
                     type="button"
                     onClick={() => requestCall(false)}
                     aria-label="Voice call"
-                    title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Voice call"}
+                    title={
+                      peerBlocked
+                        ? "Calls are unavailable while this person is blocked"
+                        : "Voice call"
+                    }
                     disabled={peerBlocked}
-                    className="chat-header__action dm-header__icon-btn"
+                    className="chat-header__action"
                   >
                     <Phone aria-hidden="true" />
                   </button>
@@ -1297,857 +1534,1007 @@ function DMPage() {
                     type="button"
                     onClick={() => requestCall(true)}
                     aria-label="Video call"
-                    title={peerBlocked ? "Calls are unavailable while this person is blocked" : "Video call"}
+                    title={
+                      peerBlocked
+                        ? "Calls are unavailable while this person is blocked"
+                        : "Video call"
+                    }
                     disabled={peerBlocked}
-                    className="chat-header__action dm-header__icon-btn"
+                    className="chat-header__action"
                   >
                     <Video aria-hidden="true" />
                   </button>
                 </>
-              )
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="More options"
-                  title="More"
-                  className="chat-header__action dm-header__icon-btn"
-                >
-                  <MoreVertical aria-hidden="true" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={8}
-                className="glass-strong min-w-[13rem] border-white/10"
-              >
-                <DropdownMenuItem
-                  onSelect={() => setSearchOpen(true)}
-                  className="gap-2.5 py-2"
-                >
-                  <Search aria-hidden="true" />
-                  Search in chat
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {peerInCall && (
-                  <>
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        nav({ to: "/call/$userId", params: { userId }, search: { video: false } })
-                      }
-                      className="gap-2.5 py-2"
-                    >
-                      <Phone className="text-emerald-300" aria-hidden="true" />
-                      Join call in progress
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link to="/u/$username" params={{ username: other.data?.username ?? "" }}>
-                    View profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${location.origin}/u/${other.data?.username ?? ""}`,
-                    );
-                    toast.success("Profile link copied");
-                  }}
-                >
-                  Share profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={markUnread}>Mark as unread</DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    const all = (msgs.data ?? []).map((m: any) => m.body).join("\n");
-                    navigator.clipboard.writeText(all);
-                    toast.success("Loaded messages copied");
-                  }}
-                >
-                  Export loaded messages
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setWallpaperOpen(true)}>
-                  Chat wallpaper
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (!user) return;
-                    try {
-                      await muteUser(user.id, userId);
-                      toast.success("Conversation muted");
-                    } catch (e: any) {
-                      toast.error(e.message);
-                    }
-                  }}
-                >
-                  Mute conversation
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (!user) return;
-                    const currentlyBlocked = !!blockStatus.data;
-                    if (!currentlyBlocked && !confirm(`Block @${other.data?.username}?`)) return;
-                    try {
-                      if (currentlyBlocked) {
-                        await unblockUser(user.id, userId);
-                        toast.success("User unblocked");
-                      } else {
-                        await blockUser(user.id, userId);
-                        toast.success("User blocked");
-                      }
-                      qc.setQueryData(["block-status", user.id, userId], !currentlyBlocked);
-                      void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
-                    } catch (e: any) {
-                      toast.error(e.message);
-                    }
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  {blockStatus.data ? "Unblock user" : "Block user"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {showStrip && stripState && (
-            <motion.div
-              key="dm-knock-strip"
-              initial={reduceMotion ? false : { y: -44, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={reduceMotion ? undefined : { y: -44, opacity: 0 }}
-              transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-x-0 top-full z-10"
-            >
-              <DmKnockStrip
-                peerId={userId}
-                name={other.data?.display_name || other.data?.username || "them"}
-                mood={knockMood}
-                state={stripState}
-                lastSeenLabel={lastSeenLabel}
-                lastSeenFull={lastSeenFull}
-                knocks={knocks}
-                onDismiss={() => setDismissedStripKey(stripState)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence initial={false}>
-          {searchOpen && (
-            <motion.div
-              key="dm-search"
-              initial={reduceMotion ? false : { opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
-              transition={{
-                duration: reduceMotion ? 0 : 0.18,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              role="search"
-              aria-label="Search this conversation"
-              className="chat-header__search absolute inset-x-0 top-full z-30"
-            >
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Search
-                  className="h-[18px] w-[18px] shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  ref={searchInputRef}
-                  autoFocus
-                  value={searchQ}
-                  onChange={(event) => setSearchQ(event.target.value)}
-                  placeholder="Search loaded messages…"
-                  aria-label="Search messages"
-                  autoComplete="off"
-                  className="glass h-10 border-white/10"
-                />
-                <CloseButton
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQ("");
-                  }}
-                  aria-label="Close search and clear"
-                  className="shrink-0"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
-
-      <ResponsiveOverlay
-        open={callPrompt === "offline"}
-        onOpenChange={(open) => {
-          if (!open) setCallPrompt(null);
-        }}
-        title={`${headerName} is offline.`}
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            A call will ring an app that isn't open. A knock waits in their chat
-            and reaches them the moment they come back.
-          </p>
-          {callKnockError && (
-            <p role="alert" className="text-[13px] text-destructive">
-              {callKnockError}
-            </p>
-          )}
-          <div className="grid gap-2">
-            <Button
-              type="button"
-              onClick={() => void knockFromCallPrompt()}
-              disabled={callKnockSending || callKnockSent}
-              className="h-11 gap-2 rounded-xl font-semibold"
-            >
-              {callKnockSent ? (
-                <>
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                  Knocked
-                </>
-              ) : callKnockSending ? (
-                "Knocking…"
-              ) : (
-                "Knock"
               )}
-            </Button>
-            <Button
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More options"
+                    title="More"
+                    className="chat-header__action"
+                  >
+                    <MoreVertical aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={8}
+                  className="glass-strong min-w-[14rem] rounded-2xl border-white/10 p-2"
+                >
+                  <DropdownMenuItem
+                    onSelect={() => setSearchOpen(true)}
+                    className="gap-3 rounded-xl px-4 py-3"
+                  >
+                    <Search className="h-5 w-5" aria-hidden="true" />
+                    <span>Search in chat</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  {peerInCall && (
+                    <>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          nav({ to: "/call/$userId", params: { userId }, search: { video: false } })
+                        }
+                        className="gap-3 rounded-xl px-4 py-3"
+                      >
+                        <Phone className="h-5 w-5 text-emerald-300" aria-hidden="true" />
+                        <span>Join call in progress</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="my-1" />
+                    </>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/u/$username"
+                      params={{ username: other.data?.username ?? "" }}
+                      className="gap-3 rounded-xl px-4 py-3"
+                    >
+                      <Users className="h-5 w-5" aria-hidden="true" />
+                      <span>View profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={shareProfile} className="gap-3 rounded-xl px-4 py-3">
+                    <Copy className="h-5 w-5" aria-hidden="true" />
+                    <span>Share profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem onSelect={markUnread} className="gap-3 rounded-xl px-4 py-3">
+                    <Bell className="h-5 w-5" aria-hidden="true" />
+                    <span>Mark as unread</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={exportMessages}
+                    className="gap-3 rounded-xl px-4 py-3"
+                  >
+                    <Download className="h-5 w-5" aria-hidden="true" />
+                    <span>Export loaded messages</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setWallpaperOpen(true)}
+                    className="gap-3 rounded-xl px-4 py-3"
+                  >
+                    <ImagePlus className="h-5 w-5" aria-hidden="true" />
+                    <span>Chat wallpaper</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setMuteOpen(true)}
+                    className="gap-3 rounded-xl px-4 py-3"
+                  >
+                    <BellOff className="h-5 w-5" aria-hidden="true" />
+                    <span>Mute conversation</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem
+                    onSelect={() => setConfirmBlockOpen(true)}
+                    className="gap-3 rounded-xl px-4 py-3 text-destructive focus:text-destructive"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
+                    <span>{blockStatus.data ? "Unblock user" : "Block user"}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {searchOpen && (
+              <motion.div
+                key="dm-search"
+                initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+                transition={{
+                  duration: reduceMotion ? 0 : 0.18,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                role="search"
+                aria-label="Search this conversation"
+                className="chat-header__search absolute inset-x-0 top-full z-30"
+              >
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <Search
+                    className="h-[18px] w-[18px] shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    ref={searchInputRef}
+                    autoFocus
+                    value={searchQ}
+                    onChange={(event) => setSearchQ(event.target.value)}
+                    placeholder="Search loaded messages…"
+                    aria-label="Search messages"
+                    autoComplete="off"
+                    className="glass h-10 border-white/10"
+                  />
+                  <CloseButton
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQ("");
+                    }}
+                    aria-label="Close search and clear"
+                    className="shrink-0"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </header>
+
+        <ResponsiveOverlay
+          open={callPrompt === "offline"}
+          onOpenChange={(open) => {
+            if (!open) setCallPrompt(null);
+          }}
+          title={`${headerName} is offline.`}
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              A call will ring an app that isn't open. A knock waits in their chat and reaches them
+              the moment they come back.
+            </p>
+            {callKnockError && (
+              <p role="alert" className="text-[13px] text-destructive">
+                {callKnockError}
+              </p>
+            )}
+            <div className="grid gap-2">
+              <Button
+                type="button"
+                onClick={() => void knockFromCallPrompt()}
+                disabled={callKnockSending || callKnockSent}
+                className="h-11 gap-2 rounded-xl font-semibold"
+              >
+                {callKnockSent ? (
+                  <>
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                    Knocked
+                  </>
+                ) : callKnockSending ? (
+                  "Knocking…"
+                ) : (
+                  "Knock"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCallPrompt(null);
+                  startCall(pendingCallVideo);
+                }}
+                className="h-11 rounded-xl"
+              >
+                Call anyway
+              </Button>
+            </div>
+          </div>
+        </ResponsiveOverlay>
+
+        <ResponsiveOverlay
+          open={callPrompt === "choose"}
+          onOpenChange={(open) => {
+            if (!open) setCallPrompt(null);
+          }}
+          title="Call"
+        >
+          <div className="grid gap-2">
+            <button
               type="button"
-              variant="outline"
               onClick={() => {
                 setCallPrompt(null);
-                startCall(pendingCallVideo);
+                placeCall(false);
               }}
-              className="h-11 rounded-xl"
+              className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Call anyway
-            </Button>
+              <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold">Voice call</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCallPrompt(null);
+                placeCall(true);
+              }}
+              className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Video className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold">Video call</span>
+            </button>
           </div>
-        </div>
-      </ResponsiveOverlay>
+        </ResponsiveOverlay>
 
-      <ResponsiveOverlay
-        open={callPrompt === "choose"}
-        onOpenChange={(open) => {
-          if (!open) setCallPrompt(null);
-        }}
-        title="Call"
-      >
-        <div className="grid gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setCallPrompt(null);
-              placeCall(false);
-            }}
-            className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <span className="text-sm font-semibold">Voice call</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCallPrompt(null);
-              placeCall(true);
-            }}
-            className="flex h-14 items-center gap-3 rounded-xl border border-border/70 px-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Video className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <span className="text-sm font-semibold">Video call</span>
-          </button>
-        </div>
-      </ResponsiveOverlay>
-
-      <div
-        ref={scrollRef}
-        onClick={media.onMediaClick}
-        className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pb-3"
-      >
-        {media.viewer}
-        {/* The conversation column is capped and centred so the messages line
+        <div
+          ref={scrollRef}
+          onClick={media.onMediaClick}
+          className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pb-3"
+        >
+          {media.viewer}
+          {/* The conversation column is capped and centred so the messages line
             up with the composer. Rows carry their own side padding (the same
             variable realm chat uses) so all three surfaces align identically. */}
-        <div className="mx-auto w-full max-w-3xl">
-        {hasOlderMessages && (
-          <div className="flex justify-center px-4 pb-2">
-            <Button onClick={loadOlderMessages} disabled={loadingOlderMessages} variant="ghost" size="sm" className="text-xs text-muted-foreground">
-              {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
-            </Button>
-          </div>
-        )}
-        <AnimatePresence initial={false}>
-          {filteredMsgs.map((m, index) => {
-            const mine = m.sender_id === user?.id;
-            // Knocks that happened right before this message, so the doorbell
-            // reads as part of the conversation instead of a floating toast.
-            const knockCards = knockTimeline.byMessage.get(String(m.id));
-            const deliveryStatus = (m as CachedDirectMessage).delivery_status;
-            const audioPath = (m as any).audio_url as string | null;
-            const replyId = (m as any).reply_to as string | null;
-            const replySource = replyId
-              ? (msgs.data ?? []).find((row: any) => row.id === replyId)
-              : null;
-            const replyDeleted = Boolean(
-              replyId &&
-                (missingReplies.has(replyId) ||
-                  (replySource as { deleted_at?: string | null } | null)?.deleted_at),
-            );
-            const quote = (m.body || "").startsWith("↪ ") ? (m.body as string).split("\n")[0].slice(2) : null;
-            const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
-            // Prefer the authoritative column. The old fallback searched the
-            // whole body with `includes`, so a common phrase could jump to the
-            // wrong message; matching the quoted prefix is at least directional.
-            const quotedMessageId = quote
-              ? ((m as CachedDirectMessage).reply_to ??
-                  (msgs.data ?? []).find(
-                    (candidate) =>
-                      String(candidate.id) !== String(m.id) &&
-                      (candidate.body || "").startsWith(quote),
-                  )?.id ?? null)
-              : null;
-            // A shared post/reel travels as its permalink: the raw URL is swapped
-            // for a real card (SharedPostCards) right under the message.
-            const restText = withoutShareLinks(rest);
-            // A poll message carries its question in the body as a fallback for
-            // older clients; the card is the real message, so the text is not
-            // repeated above it.
-            const pollCard = asChatPollCard((m as { card?: unknown }).card);
-            // Old image-only messages stored the literal words “📷 Image” as
-            // their body. A photo should stand on its own, not repeat itself in
-            // a caption, so that placeholder is not text.
-            const messageText = pollCard || isMediaPlaceholderText(restText) ? "" : restText;
-            const hasText = !!messageText.trim();
-            const mediaOnly = isOnlyMediaMarker(messageText);
-            const previous = filteredMsgs[index - 1];
-            // A new calendar day always opens a group (and a divider) — the
-            // five-minute burst rule must not swallow midnight.
-            const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
-            const startsGroup = newDay ||
-              previous.sender_id !== m.sender_id ||
-              new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() > 5 * 60 * 1000;
-            const inviteUrl = rest?.match(/(?:https?:\/\/[^\s]+)?\/join\/[a-z0-9_-]+/i)?.[0];
-            const inviteCode = inviteUrl ? extractInviteCode(inviteUrl) : "";
-            const inviteText = inviteUrl ? rest?.replace(inviteUrl, "").trim() : "";
-            if (audioPath) {
-              const audioActions = [
-                {
-                  label: "Reply",
-                  icon: CornerUpLeft,
-                  onSelect: () => setReplyTo({ id: m.id, body: "Voice note", mine }),
-                },
-                ...(mine
-                  ? [{
-                      label: "Delete for everyone",
-                      icon: Trash2,
-                      destructive: true,
-                      onSelect: () => { void deleteMsg(m.id); },
-                    }]
-                  : []),
-              ];
-              return (
-                <div key={m.id} className="chat-message-slot space-y-1">
-                  {newDay && <DateSeparator date={m.created_at} />}
-                  {knockCards?.map((knock) => (
-                    <KnockThreadCard
-                      key={knock.id}
-                      knock={knock}
-                      mine={knock.from_user === user?.id}
-                      peerName={peerName}
-                    />
-                  ))}
-                  {startsGroup && !deliveryStatus && (
-                    <div className="flex w-full justify-center py-0.5">
-                      <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  )}
-                  <motion.div
-                    id={`msg-${m.id}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`group flex min-w-0 flex-col ${mine ? "items-end" : "items-start"}`}
-                  >
-                    <MessageActionMenu
-                      open={openMsg === m.id}
-                      onOpenChange={(open) => setOpenMsg(open ? m.id : null)}
-                      align={mine ? "right" : "left"}
-                      triggerRole="group"
-                      actions={audioActions}
-                    >
-                      <VoiceNoteBubble path={audioPath} durationMs={(m as any).duration_ms ?? null} mine={mine} />
-                    </MessageActionMenu>
-                    <ReactionChips
-                      scope="dm"
-                      messageId={m.id}
-                      groups={reactions.groupsFor(m.id)}
-                      reactorsFor={reactions.reactorsFor}
-                      align={mine ? "right" : "left"}
-                      hidden={String(m.id).startsWith("pending-") || !!(m as CachedDirectMessage).deleted_at}
-                      pulse={reactions.lastPulse}
-                      onToggle={(emoji) => reactions.toggle(m.id, emoji)}
-                    />
-                  </motion.div>
-                </div>
-              );
-            }
-            const deletedAt = (m as CachedDirectMessage).deleted_at;
-            return (
-              <div key={m.id} className="chat-message-slot space-y-1">
-              {newDay && <DateSeparator date={m.created_at} />}
-              {knockCards?.map((knock) => (
-                <KnockThreadCard
-                  key={knock.id}
-                  knock={knock}
-                  mine={knock.from_user === user?.id}
-                  peerName={peerName}
-                />
-              ))}
-              <MessageRow
-                id={String(m.id)}
-                author={{
-                  id: m.sender_id,
-                  name: mine
-                    ? profile?.display_name || profile?.username || "You"
-                    : other.data?.display_name || other.data?.username || "User",
-                  avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
-                }}
-                time={new Date(m.created_at).toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-                startsGroup={startsGroup}
-                lifted={openMsg === m.id}
-                highlighted={highlighted === m.id}
-                // Long-press anywhere in the row (avatar, name, photo, empty
-                // space) opens this message's actions — the realm gesture.
-                onLongPress={() => openMessageMenu(m.id)}
-                onSwipeReply={
-                  deletedAt || deliveryStatus
-                    ? undefined
-                    : () => {
-                        setReplyTo({
-                          id: m.id,
-                          body: rest || m.body,
-                          mine,
-                          attachmentUrl: m.attachment_url ?? null,
-                        });
-                        // Stay inside the pointer-up gesture so iOS raises the
-                        // keyboard; the composer's effect is only a fallback.
-                        composerRef.current?.focus();
-                      }
-                }
-                // On a desktop the same two actions live on a hover toolbar,
-                // Discord-style, so a mouse never has to hold a message down.
-                onQuickReact={() => openMessageMenu(m.id, "reactions")}
-                onMoreActions={() => openMessageMenu(m.id)}
-                onAuthorClick={
-                  (mine ? profile?.username : other.data?.username)
-                    ? () =>
-                        void nav({
-                          to: "/u/$username",
-                          params: {
-                            username: (mine ? profile?.username : other.data?.username) as string,
-                          },
-                        })
-                    : undefined
-                }
-              >
-                {inviteCode && !deletedAt ? (
-                  <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
-                ) : (
-                <MessageActionMenu
-                  open={openMsg === m.id}
-                  onOpenChange={(o) => (o ? openMessageMenu(m.id) : setOpenMsg(null))}
-                  initialView={openMsgView}
-                  align={mine ? "right" : "left"}
-                  // The row owns long-press; the menu keeps double-tap, keyboard
-                  // and right-click. Two racing timers double-vibrated.
-                  detectPress={false}
-                  reactionBar={{
-                    onPick: (emoji) => {
-                      void react(m.id, emoji);
-                      setOpenMsg(null);
-                    },
-                  }}
-                  onDoubleTap={() => void doubleTapHeart(m.id)}
-                  preview={{
-                    author: mine ? "You" : (other.data?.display_name || other.data?.username || "User"),
-                    time: new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-                    body: m.body,
-                    avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
-                  }}
-                  actions={[
-                    {
-                      label: "Copy text",
-                      icon: Copy,
-                      onSelect: () => {
-                        navigator.clipboard.writeText(m.body);
-                        toast.success("Copied");
-                      },
-                    },
+          <div className="mx-auto w-full max-w-3xl">
+            {hasOlderMessages && (
+              <div className="flex justify-center px-4 pb-2">
+                <Button
+                  onClick={loadOlderMessages}
+                  disabled={loadingOlderMessages}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                >
+                  {loadingOlderMessages ? "Loading earlier messages…" : "Load earlier messages"}
+                </Button>
+              </div>
+            )}
+            <AnimatePresence initial={false}>
+              {filteredMsgs.map((m, index) => {
+                const mine = m.sender_id === user?.id;
+                // Knocks that happened right before this message, so the doorbell
+                // reads as part of the conversation instead of a floating toast.
+                const knockCards = knockTimeline.byMessage.get(String(m.id));
+                const deliveryStatus = (m as CachedDirectMessage).delivery_status;
+                const audioPath = (m as any).audio_url as string | null;
+                const replyId = (m as any).reply_to as string | null;
+                const replySource = replyId
+                  ? (msgs.data ?? []).find((row: any) => row.id === replyId)
+                  : null;
+                const replyDeleted = Boolean(
+                  replyId &&
+                  (missingReplies.has(replyId) ||
+                    (replySource as { deleted_at?: string | null } | null)?.deleted_at),
+                );
+                const quote = (m.body || "").startsWith("↪ ")
+                  ? (m.body as string).split("\n")[0].slice(2)
+                  : null;
+                const rest = quote ? (m.body as string).split("\n").slice(1).join("\n") : m.body;
+                // Prefer the authoritative column. The old fallback searched the
+                // whole body with `includes`, so a common phrase could jump to the
+                // wrong message; matching the quoted prefix is at least directional.
+                const quotedMessageId = quote
+                  ? ((m as CachedDirectMessage).reply_to ??
+                    (msgs.data ?? []).find(
+                      (candidate) =>
+                        String(candidate.id) !== String(m.id) &&
+                        (candidate.body || "").startsWith(quote),
+                    )?.id ??
+                    null)
+                  : null;
+                // A shared post/reel travels as its permalink: the raw URL is swapped
+                // for a real card (SharedPostCards) right under the message.
+                const restText = withoutShareLinks(rest);
+                // A poll message carries its question in the body as a fallback for
+                // older clients; the card is the real message, so the text is not
+                // repeated above it.
+                const pollCard = asChatPollCard((m as { card?: unknown }).card);
+                // Old image-only messages stored the literal words “📷 Image” as
+                // their body. A photo should stand on its own, not repeat itself in
+                // a caption, so that placeholder is not text.
+                const messageText = pollCard || isMediaPlaceholderText(restText) ? "" : restText;
+                const hasText = !!messageText.trim();
+                const mediaOnly = isOnlyMediaMarker(messageText);
+                const previous = filteredMsgs[index - 1];
+                // A new calendar day always opens a group (and a divider) — the
+                // five-minute burst rule must not swallow midnight.
+                const newDay = !previous || dayKey(previous.created_at) !== dayKey(m.created_at);
+                const startsGroup =
+                  newDay ||
+                  previous.sender_id !== m.sender_id ||
+                  new Date(m.created_at).getTime() - new Date(previous.created_at).getTime() >
+                    5 * 60 * 1000;
+                const inviteUrl = rest?.match(/(?:https?:\/\/[^\s]+)?\/join\/[a-z0-9_-]+/i)?.[0];
+                const inviteCode = inviteUrl ? extractInviteCode(inviteUrl) : "";
+                const inviteText = inviteUrl ? rest?.replace(inviteUrl, "").trim() : "";
+                if (audioPath) {
+                  const audioActions = [
                     {
                       label: "Reply",
                       icon: CornerUpLeft,
-                      onSelect: () => {
-                        setReplyTo({ id: m.id, body: rest || m.body, mine });
-                      },
+                      onSelect: () => setReplyTo({ id: m.id, body: "Voice note", mine }),
                     },
-                    ...(mine && !deletedAt && !deliveryStatus && (rest ?? "").trim()
-                      ? [{
-                          label: "Edit message",
-                          icon: Pencil,
-                          onSelect: () => {
-                            beginEdit({
-                              id: m.id,
-                              body: m.body,
-                              prefix: quote ? `↪ ${quote}\n` : "",
-                              text: rest ?? "",
-                            });
+                    ...(mine
+                      ? [
+                          {
+                            label: "Delete for everyone",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => {
+                              void deleteMsg(m.id);
+                            },
                           },
-                        }]
+                        ]
                       : []),
-                    {
-                      label: "Forward",
-                      icon: Forward,
-                      onSelect: () => {
-                        setForwardDraft(
-                          shareDraftForMessage({
-                            body: rest || m.body,
-                            attachmentUrl: m.attachment_url,
-                            author: mine ? profile?.username : other.data?.username,
-                          }),
-                        );
-                      },
-                    },
-                    {
-                      label: "Report",
-                      icon: Flag,
-                      onSelect: () => {
-                        toast("Reported");
-                      },
-                    },
-                    ...(!deletedAt ? [{
-                      label: "Delete for me",
-                      icon: Trash2,
-                      destructive: true,
-                      onSelect: () => {
-                        void deleteMsgForMe(m.id);
-                      },
-                    }] : []),
-                    ...(mine && !deletedAt ? [{
-                      label: "Delete for everyone",
-                      icon: Trash2,
-                      destructive: true,
-                      onSelect: () => {
-                        void deleteMsg(m.id);
-                      },
-                    }] : []),
-                  ]}
-                >
-                  <div
-                    className={`realm-message__body select-none touch-manipulation ${
-                      deliveryStatus ? "opacity-60" : ""
-                    }`}
-                    style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
-                  >
-                    {replyId ? (
-                      <ReplyQuote
-                        author={replySource ? (replySource.sender_id === user?.id ? "You" : peerName) : null}
-                        body={replySource?.body ?? null}
-                        attachmentUrl={replySource?.attachment_url ?? null}
-                        audioUrl={(replySource as any)?.audio_url ?? null}
-                        deleted={replyDeleted}
-                        onJump={missingReplies.has(replyId) ? undefined : () => void jumpToReply(replyId)}
-                      />
-                    ) : null}
-                    {!replyId && quote && (
-                      <span
-                        role="button"
-                        tabIndex={quotedMessageId ? 0 : -1}
-                        data-swipe-ignore="true"
-                        aria-label={quotedMessageId ? "Jump to the replied message" : undefined}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (quotedMessageId) jumpToMessage(String(quotedMessageId));
-                        }}
-                        onKeyDown={(e) => {
-                          if (!quotedMessageId || (e.key !== "Enter" && e.key !== " ")) return;
-                          e.preventDefault();
-                          e.stopPropagation();
-                          jumpToMessage(String(quotedMessageId));
-                        }}
-                        className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-white/25 pl-2 text-[11px] text-muted-foreground line-clamp-2"
+                  ];
+                  return (
+                    <div key={m.id} className="chat-message-slot space-y-1">
+                      {newDay && <DateSeparator date={m.created_at} />}
+                      {knockCards?.map((knock) => (
+                        <KnockThreadCard
+                          key={knock.id}
+                          knock={knock}
+                          mine={knock.from_user === user?.id}
+                          peerName={peerName}
+                        />
+                      ))}
+                      {startsGroup && !deliveryStatus && (
+                        <div className="flex w-full justify-center py-0.5">
+                          <span className="rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {new Date(m.created_at).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      <motion.div
+                        id={`msg-${m.id}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`group flex min-w-0 flex-col ${mine ? "items-end" : "items-start"}`}
                       >
-                        <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
-                      </span>
-                    )}
-                    {m.attachment_url && !deletedAt && (
-                      <ChatMessageMedia
-                        src={m.attachment_url}
-                        alt="Image shared in chat"
-                        className={hasText ? "mb-1" : ""}
+                        <MessageActionMenu
+                          open={openMsg === m.id}
+                          onOpenChange={(open) => setOpenMsg(open ? m.id : null)}
+                          align={mine ? "right" : "left"}
+                          triggerRole="group"
+                          actions={audioActions}
+                        >
+                          <VoiceNoteBubble
+                            path={audioPath}
+                            durationMs={(m as any).duration_ms ?? null}
+                            mine={mine}
+                          />
+                        </MessageActionMenu>
+                        <ReactionChips
+                          scope="dm"
+                          messageId={m.id}
+                          groups={reactions.groupsFor(m.id)}
+                          reactorsFor={reactions.reactorsFor}
+                          align={mine ? "right" : "left"}
+                          hidden={
+                            String(m.id).startsWith("pending-") ||
+                            !!(m as CachedDirectMessage).deleted_at
+                          }
+                          pulse={reactions.lastPulse}
+                          onToggle={(emoji) => reactions.toggle(m.id, emoji)}
+                        />
+                      </motion.div>
+                    </div>
+                  );
+                }
+                const deletedAt = (m as CachedDirectMessage).deleted_at;
+                return (
+                  <div key={m.id} className="chat-message-slot space-y-1">
+                    {newDay && <DateSeparator date={m.created_at} />}
+                    {knockCards?.map((knock) => (
+                      <KnockThreadCard
+                        key={knock.id}
+                        knock={knock}
+                        mine={knock.from_user === user?.id}
+                        peerName={peerName}
                       />
-                    )}
-                    {deletedAt ? (
-                      <span className="text-[13px] italic text-muted-foreground">
-                        This message was unsent
-                      </span>
-                    ) : !hasText ? null : (
-                      <div className={m.attachment_url || mediaOnly ? "chat-media-caption" : ""}>
-                        {renderGifSegments(messageText).map((seg, si) =>
-                          seg.isGif || seg.isSticker
-                            ? <GifContent key={si}>{seg.marker ?? ""}</GifContent>
-                            : (
-                              <MarkdownText
-                                key={si}
-                                text={seg.value}
-                                renderPlainText={(plain) =>
-                                  renderCaptionWithTags(plain).map((p, pi) =>
-                                    p.mentionToken
-                                      ? <span key={`${si}-${pi}`} className="mention-highlight font-medium">{mentionLabels(p.mentionToken)}</span>
-                                      : p.mention
-                                        ? <Link key={`${si}-${pi}`} to="/u/$username" params={{ username: p.mention }} onClick={(e) => e.stopPropagation()} className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}>{p.text}</Link>                                          : p.tag
-                                          ? <Link key={`${si}-${pi}`} to="/tag/$tag" params={{ tag: p.tag }} onClick={(e) => e.stopPropagation()} className="font-medium text-primary hover:underline">{p.text}</Link>
-                                          : p.url
-                                            ? <a key={`${si}-${pi}`} href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="break-words text-primary hover:underline">{p.text}</a>
-                                            : <EmojiText key={`${si}-${pi}`} text={p.text} />
-                                  )
+                    ))}
+                    <MessageRow
+                      id={String(m.id)}
+                      author={{
+                        id: m.sender_id,
+                        name: mine
+                          ? profile?.display_name || profile?.username || "You"
+                          : other.data?.display_name || other.data?.username || "User",
+                        avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
+                      }}
+                      time={new Date(m.created_at).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                      startsGroup={startsGroup}
+                      lifted={openMsg === m.id}
+                      highlighted={highlighted === m.id}
+                      // Long-press anywhere in the row (avatar, name, photo, empty
+                      // space) opens this message's actions — the realm gesture.
+                      onLongPress={() => openMessageMenu(m.id)}
+                      onSwipeReply={
+                        deletedAt || deliveryStatus
+                          ? undefined
+                          : () => {
+                              setReplyTo({
+                                id: m.id,
+                                body: rest || m.body,
+                                mine,
+                                attachmentUrl: m.attachment_url ?? null,
+                              });
+                              // Stay inside the pointer-up gesture so iOS raises the
+                              // keyboard; the composer's effect is only a fallback.
+                              composerRef.current?.focus();
+                            }
+                      }
+                      // On a desktop the same two actions live on a hover toolbar,
+                      // Discord-style, so a mouse never has to hold a message down.
+                      onQuickReact={() => openMessageMenu(m.id, "reactions")}
+                      onMoreActions={() => openMessageMenu(m.id)}
+                      onAuthorClick={
+                        (mine ? profile?.username : other.data?.username)
+                          ? () =>
+                              void nav({
+                                to: "/u/$username",
+                                params: {
+                                  username: (mine
+                                    ? profile?.username
+                                    : other.data?.username) as string,
+                                },
+                              })
+                          : undefined
+                      }
+                    >
+                      {inviteCode && !deletedAt ? (
+                        <GroupInviteMessageCard code={inviteCode} message={inviteText ?? ""} />
+                      ) : (
+                        <MessageActionMenu
+                          open={openMsg === m.id}
+                          onOpenChange={(o) => (o ? openMessageMenu(m.id) : setOpenMsg(null))}
+                          initialView={openMsgView}
+                          align={mine ? "right" : "left"}
+                          // The row owns long-press; the menu keeps double-tap, keyboard
+                          // and right-click. Two racing timers double-vibrated.
+                          detectPress={false}
+                          reactionBar={{
+                            onPick: (emoji) => {
+                              void react(m.id, emoji);
+                              setOpenMsg(null);
+                            },
+                          }}
+                          onDoubleTap={() => void doubleTapHeart(m.id)}
+                          preview={{
+                            author: mine
+                              ? "You"
+                              : other.data?.display_name || other.data?.username || "User",
+                            time: new Date(m.created_at).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            }),
+                            body: m.body,
+                            avatarUrl: mine ? profile?.avatar_url : other.data?.avatar_url,
+                          }}
+                          actions={[
+                            {
+                              label: "Copy text",
+                              icon: Copy,
+                              onSelect: () => {
+                                navigator.clipboard.writeText(m.body);
+                                toast.success("Copied");
+                              },
+                            },
+                            {
+                              label: "Reply",
+                              icon: CornerUpLeft,
+                              onSelect: () => {
+                                setReplyTo({ id: m.id, body: rest || m.body, mine });
+                              },
+                            },
+                            ...(mine && !deletedAt && !deliveryStatus && (rest ?? "").trim()
+                              ? [
+                                  {
+                                    label: "Edit message",
+                                    icon: Pencil,
+                                    onSelect: () => {
+                                      beginEdit({
+                                        id: m.id,
+                                        body: m.body,
+                                        prefix: quote ? `↪ ${quote}\n` : "",
+                                        text: rest ?? "",
+                                      });
+                                    },
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: "Forward",
+                              icon: Forward,
+                              onSelect: () => {
+                                setForwardDraft(
+                                  shareDraftForMessage({
+                                    body: rest || m.body,
+                                    attachmentUrl: m.attachment_url,
+                                    author: mine ? profile?.username : other.data?.username,
+                                  }),
+                                );
+                              },
+                            },
+                            {
+                              label: "Report",
+                              icon: Flag,
+                              onSelect: () => {
+                                toast("Reported");
+                              },
+                            },
+                            ...(!deletedAt
+                              ? [
+                                  {
+                                    label: "Delete for me",
+                                    icon: Trash2,
+                                    destructive: true,
+                                    onSelect: () => {
+                                      void deleteMsgForMe(m.id);
+                                    },
+                                  },
+                                ]
+                              : []),
+                            ...(mine && !deletedAt
+                              ? [
+                                  {
+                                    label: "Delete for everyone",
+                                    icon: Trash2,
+                                    destructive: true,
+                                    onSelect: () => {
+                                      void deleteMsg(m.id);
+                                    },
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        >
+                          <div
+                            className={`realm-message__body select-none touch-manipulation ${
+                              deliveryStatus ? "opacity-60" : ""
+                            }`}
+                            style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
+                          >
+                            {replyId ? (
+                              <ReplyQuote
+                                author={
+                                  replySource
+                                    ? replySource.sender_id === user?.id
+                                      ? "You"
+                                      : peerName
+                                    : null
+                                }
+                                body={replySource?.body ?? null}
+                                attachmentUrl={replySource?.attachment_url ?? null}
+                                audioUrl={(replySource as any)?.audio_url ?? null}
+                                deleted={replyDeleted}
+                                onJump={
+                                  missingReplies.has(replyId)
+                                    ? undefined
+                                    : () => void jumpToReply(replyId)
                                 }
                               />
-                            )
-                        )}
-                      </div>
-                    )}
-                    {pollCard && !deletedAt && (
-                      <ChatPollCard card={pollCard} canVote={!blockStatus.data} />
-                    )}
+                            ) : null}
+                            {!replyId && quote && (
+                              <span
+                                role="button"
+                                tabIndex={quotedMessageId ? 0 : -1}
+                                data-swipe-ignore="true"
+                                aria-label={
+                                  quotedMessageId ? "Jump to the replied message" : undefined
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (quotedMessageId) jumpToMessage(String(quotedMessageId));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (!quotedMessageId || (e.key !== "Enter" && e.key !== " "))
+                                    return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  jumpToMessage(String(quotedMessageId));
+                                }}
+                                className="mb-1 flex w-fit max-w-full items-center gap-1 self-start border-l-2 border-white/25 pl-2 text-[11px] text-muted-foreground line-clamp-2"
+                              >
+                                <CornerUpLeft className="h-3 w-3 shrink-0" /> {quote}
+                              </span>
+                            )}
+                            {m.attachment_url && !deletedAt && (
+                              <ChatMessageMedia
+                                src={m.attachment_url}
+                                alt="Image shared in chat"
+                                className={hasText ? "mb-1" : ""}
+                              />
+                            )}
+                            {deletedAt ? (
+                              <span className="text-[13px] italic text-muted-foreground">
+                                This message was unsent
+                              </span>
+                            ) : !hasText ? null : (
+                              <div
+                                className={
+                                  m.attachment_url || mediaOnly ? "chat-media-caption" : ""
+                                }
+                              >
+                                {renderGifSegments(messageText).map((seg, si) =>
+                                  seg.isGif || seg.isSticker ? (
+                                    <GifContent key={si}>{seg.marker ?? ""}</GifContent>
+                                  ) : (
+                                    <MarkdownText
+                                      key={si}
+                                      text={seg.value}
+                                      renderPlainText={(plain) =>
+                                        renderCaptionWithTags(plain).map((p, pi) =>
+                                          p.mentionToken ? (
+                                            <span
+                                              key={`${si}-${pi}`}
+                                              className="mention-highlight font-medium"
+                                            >
+                                              {mentionLabels(p.mentionToken)}
+                                            </span>
+                                          ) : p.mention ? (
+                                            <Link
+                                              key={`${si}-${pi}`}
+                                              to="/u/$username"
+                                              params={{ username: p.mention }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className={`mention-highlight font-medium ${mine ? "underline decoration-white/60" : "hover:underline"}`}
+                                            >
+                                              {p.text}
+                                            </Link>
+                                          ) : p.tag ? (
+                                            <Link
+                                              key={`${si}-${pi}`}
+                                              to="/tag/$tag"
+                                              params={{ tag: p.tag }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="font-medium text-primary hover:underline"
+                                            >
+                                              {p.text}
+                                            </Link>
+                                          ) : p.url ? (
+                                            <a
+                                              key={`${si}-${pi}`}
+                                              href={p.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="break-words text-primary hover:underline"
+                                            >
+                                              {p.text}
+                                            </a>
+                                          ) : (
+                                            <EmojiText key={`${si}-${pi}`} text={p.text} />
+                                          ),
+                                        )
+                                      }
+                                    />
+                                  ),
+                                )}
+                              </div>
+                            )}
+                            {pollCard && !deletedAt && (
+                              <ChatPollCard card={pollCard} canVote={!blockStatus.data} />
+                            )}
+                          </div>
+                        </MessageActionMenu>
+                      )}
+                      {deliveryStatus === "failed" ? (
+                        <button
+                          onClick={() =>
+                            void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)
+                          }
+                          disabled={sendingMessage}
+                          className="text-[10px] text-amber-200/80 hover:text-amber-100"
+                        >
+                          Retry
+                        </button>
+                      ) : deliveryStatus === "sending" ? (
+                        <span className="text-[10px] text-muted-foreground">Sending…</span>
+                      ) : null}
+                      <ReactionChips
+                        scope="dm"
+                        messageId={m.id}
+                        groups={reactions.groupsFor(m.id)}
+                        reactorsFor={reactions.reactorsFor}
+                        align="left"
+                        hidden={!!deletedAt || String(m.id).startsWith("pending-")}
+                        pulse={reactions.lastPulse}
+                        onToggle={(emoji) => reactions.toggle(m.id, emoji)}
+                      />
+                      <SharedPostCards text={deletedAt ? null : m.body} />
+                      <MessageLinkPreviews
+                        // Internal permalinks are cards now; previews stay for the
+                        // outside web, so the same URL never renders twice.
+                        text={deletedAt ? null : messageText}
+                        messageId={m.id}
+                        scope="dm"
+                        canHide={mine}
+                        removed={removedPreviews.hidden.has(m.id)}
+                      />
+                    </MessageRow>
                   </div>
-                </MessageActionMenu>
-                )}
-                {deliveryStatus === "failed" ? (
-                  <button
-                    onClick={() => void deliverPendingMessage(m.id, m.body, undefined, m.attachment_url)}
-                    disabled={sendingMessage}
-                    className="text-[10px] text-amber-200/80 hover:text-amber-100"
-                  >
-                    Retry
-                  </button>
-                ) : deliveryStatus === "sending" ? (
-                  <span className="text-[10px] text-muted-foreground">Sending…</span>
-                ) : null}
-                <ReactionChips
-                  scope="dm"
-                  messageId={m.id}
-                  groups={reactions.groupsFor(m.id)}
-                  reactorsFor={reactions.reactorsFor}
-                  align="left"
-                  hidden={!!deletedAt || String(m.id).startsWith("pending-")}
-                  pulse={reactions.lastPulse}
-                  onToggle={(emoji) => reactions.toggle(m.id, emoji)}
-                />
-                <SharedPostCards text={deletedAt ? null : m.body} />
-                <MessageLinkPreviews
-                  // Internal permalinks are cards now; previews stay for the
-                  // outside web, so the same URL never renders twice.
-                  text={deletedAt ? null : messageText}
-                  messageId={m.id}
-                  scope="dm"
-                  canHide={mine}
-                  removed={removedPreviews.hidden.has(m.id)}
-                />
-              </MessageRow>
+                );
+              })}
+            </AnimatePresence>
+            {knockTimeline.trailing.map((knock) => (
+              <KnockThreadCard
+                key={knock.id}
+                knock={knock}
+                mine={knock.from_user === user?.id}
+                peerName={peerName}
+              />
+            ))}
+            <div ref={endRef} />
+            {peerTyping && (
+              // Typing is a quiet line, not a bubble: it sits in the message flow at
+              // the same left edge as the rows above it.
+              <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
+                <span className="inline-flex gap-1">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
+                </span>
+                {other.data?.display_name || other.data?.username || "They"} is typing…
               </div>
-            );
-          })}
-        </AnimatePresence>
-        {knockTimeline.trailing.map((knock) => (
-          <KnockThreadCard
-            key={knock.id}
-            knock={knock}
-            mine={knock.from_user === user?.id}
-            peerName={peerName}
-          />
-        ))}
-        <div ref={endRef} />
-        {peerTyping && (
-          // Typing is a quiet line, not a bubble: it sits in the message flow at
-          // the same left edge as the rows above it.
-          <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-flex gap-1">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:120ms]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:240ms]" />
-            </span>
-            {other.data?.display_name || other.data?.username || "They"} is typing…
+            )}
           </div>
-        )}
         </div>
-      </div>
 
-      {showJump && (
-        <button
-          onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}
-          className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-30 grid h-11 w-11 place-items-center rounded-full chat-bar border border-white/10 shadow-sm active:scale-95"
-          aria-label="Scroll to latest"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </button>
-      )}
+        {showJump && (
+          <button
+            onClick={() => endRef.current?.scrollIntoView({ behavior: "smooth" })}
+            className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-30 grid h-11 w-11 place-items-center rounded-full chat-bar border border-white/10 shadow-sm active:scale-95"
+            aria-label="Scroll to latest"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+        )}
 
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(event) => { chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
-      />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            chooseImage(event.target.files?.[0] ?? null);
+            event.currentTarget.value = "";
+          }}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(event) => {
+            chooseImage(event.target.files?.[0] ?? null);
+            event.currentTarget.value = "";
+          }}
+        />
 
-      <MessageComposer
-        value={body}
-        onChange={(next, nextCaret) => {
-          setBody(next);
-          setCaret(nextCaret);
-          broadcastTyping();
-        }}
-        onSend={send}
-        onEmoji={() => setGifOpen(true)}
-        onStickers={() => setCatOpen(true)}
-        placeholder={other.data?.username ? `Message ${other.data.username}` : "Message"}
-        maxLength={MAX_MESSAGE_LENGTH}
-        inputRef={composerRef}
-        resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
-        disabled={Boolean(blockStatus.data)}
-        disabledHint="You can't message this person"
-        sending={sendingVoice}
-        canSend={Boolean(body.trim() || imageFile)}
-        recording={recording}
-        recordMs={recMs}
-        onRecordStart={() => void beginVoiceNote()}
-        onRecordEnd={() => void finishVoiceNote(false)}
-        onRecordCancel={() => void finishVoiceNote(true)}
-        onKeyUp={() => setCaret(composerRef.current?.getCaret() ?? 0)}
-        onTextareaClick={() => {
-          setCaret(composerRef.current?.getCaret() ?? 0);
-          scrollChatToLatest(scrollRef.current);
-        }}
-        onFocus={() => scrollChatToLatest(scrollRef.current)}
-        attach={
-          <ChatAttachButton
-            appearance="circle"
-            label="Attach"
-            disabled={Boolean(blockStatus.data)}
-            actions={[
-              { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
-              { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-              { id: "poll", label: "Poll", hint: "Ask them", icon: BarChart3, onSelect: () => setPollOpen(true) },
-              { id: "schedule", label: "Schedule", hint: "Send in 10 seconds", icon: Clock, onSelect: scheduleSend, disabled: !body.trim() },
-            ]}
-          />
-        }
-        above={imagePreview ? (
-          <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
-            <img src={imagePreview} alt="Image ready to send" className="h-14 w-14 rounded-lg object-cover" />
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Image compressed before upload</span>
-            <Button
-              type="button"
-              onClick={() => { setImageFile(null); setImagePreview(null); }}
-              variant="ghost"
-              size="icon"
-              aria-label="Remove image"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : null}
-        reply={
-          editing
-            ? {
-                mode: "edit",
-                label: "Editing message",
-                preview: editing.text || "Message",
-                onCancel: cancelEdit,
-                onJump: () => jumpToMessage(editing.id),
-              }
-            : replyTo
+        <MessageComposer
+          value={body}
+          onChange={(next, nextCaret) => {
+            setBody(next);
+            setCaret(nextCaret);
+            broadcastTyping();
+          }}
+          onSend={send}
+          onEmoji={() => setGifOpen(true)}
+          onStickers={() => setCatOpen(true)}
+          placeholder={other.data?.username ? `Message ${other.data.username}` : "Message"}
+          maxLength={MAX_MESSAGE_LENGTH}
+          inputRef={composerRef}
+          resolveEmoji={(parts) => emojiUrlById.get(parts.id) ?? null}
+          disabled={Boolean(blockStatus.data)}
+          disabledHint="You can't message this person"
+          sending={sendingVoice}
+          canSend={Boolean(body.trim() || imageFile)}
+          recording={recording}
+          recordMs={recMs}
+          onRecordStart={() => void beginVoiceNote()}
+          onRecordEnd={() => void finishVoiceNote(false)}
+          onRecordCancel={() => void finishVoiceNote(true)}
+          onKeyUp={() => setCaret(composerRef.current?.getCaret() ?? 0)}
+          onTextareaClick={() => {
+            setCaret(composerRef.current?.getCaret() ?? 0);
+            scrollChatToLatest(scrollRef.current);
+          }}
+          onFocus={() => scrollChatToLatest(scrollRef.current)}
+          attach={
+            <ChatAttachButton
+              appearance="circle"
+              label="Attach"
+              disabled={Boolean(blockStatus.data)}
+              actions={[
+                {
+                  id: "photo",
+                  label: "Photo",
+                  hint: "Your library",
+                  icon: ImagePlus,
+                  onSelect: () => imageInputRef.current?.click(),
+                },
+                {
+                  id: "camera",
+                  label: "Camera",
+                  hint: "Take a shot",
+                  icon: Camera,
+                  onSelect: () => cameraInputRef.current?.click(),
+                },
+                {
+                  id: "poll",
+                  label: "Poll",
+                  hint: "Ask them",
+                  icon: BarChart3,
+                  onSelect: () => setPollOpen(true),
+                },
+                {
+                  id: "schedule",
+                  label: "Schedule",
+                  hint: "Send in 10 seconds",
+                  icon: Clock,
+                  onSelect: scheduleSend,
+                  disabled: !body.trim(),
+                },
+              ]}
+            />
+          }
+          above={
+            imagePreview ? (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                <img
+                  src={imagePreview}
+                  alt="Image ready to send"
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  Image compressed before upload
+                </span>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Remove image"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null
+          }
+          reply={
+            editing
               ? {
-                  label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
-                  preview: replyPreviewText({
-                    body: replyTo.body,
-                    attachmentUrl: replyTo.attachmentUrl,
-                  }),
-                  onCancel: () => setReplyTo(null),
-                  onJump: () => void jumpToReply(replyTo.id),
+                  mode: "edit",
+                  label: "Editing message",
+                  preview: editing.text || "Message",
+                  onCancel: cancelEdit,
+                  onJump: () => jumpToMessage(editing.id),
                 }
-              : null
-        }
-        mentions={
-          <MentionAutocomplete
-            value={body}
-            caret={caret}
-            memberIds={userId ? [user?.id, userId].filter(Boolean) as string[] : undefined}
-            emptyHint="Only the two of you are in this chat."
-            onPick={(username) => {
-              const next = replaceMention(body, caret, username);
-              setBody(next.value);
-              setCaret(next.caret);
-              const el = composerRef.current;
-              if (el) requestAnimationFrame(() => { el.focus(); el.setSelection(next.caret); });
-            }}
-          />
-        }
-      />
+              : replyTo
+                ? {
+                    label: `Replying to ${replyTo.mine ? "yourself" : `@${other.data?.username ?? "them"}`}`,
+                    preview: replyPreviewText({
+                      body: replyTo.body,
+                      attachmentUrl: replyTo.attachmentUrl,
+                    }),
+                    onCancel: () => setReplyTo(null),
+                    onJump: () => void jumpToReply(replyTo.id),
+                  }
+                : null
+          }
+          mentions={
+            <MentionAutocomplete
+              value={body}
+              caret={caret}
+              memberIds={userId ? ([user?.id, userId].filter(Boolean) as string[]) : undefined}
+              emptyHint="Only the two of you are in this chat."
+              onPick={(username) => {
+                const next = replaceMention(body, caret, username);
+                setBody(next.value);
+                setCaret(next.caret);
+                const el = composerRef.current;
+                if (el)
+                  requestAnimationFrame(() => {
+                    el.focus();
+                    el.setSelection(next.caret);
+                  });
+              }}
+            />
+          }
+        />
 
-      <GifPicker
-        open={gifOpen}
-        onOpenChange={setGifOpen}
-        hideTrigger
-        onSelect={(marker) => setBody((current) => `${current}${current ? " " : ""}${marker}`.slice(0, MAX_MESSAGE_LENGTH))}
-      />
-      <CatStickerSheet
-        open={catOpen}
-        onOpenChange={setCatOpen}
-        onPick={(shortcode) => setBody((current) => `${current}${shortcode}`.slice(0, MAX_MESSAGE_LENGTH))}
-      />
+        <GifPicker
+          open={gifOpen}
+          onOpenChange={setGifOpen}
+          hideTrigger
+          onSelect={(marker) =>
+            setBody((current) =>
+              `${current}${current ? " " : ""}${marker}`.slice(0, MAX_MESSAGE_LENGTH),
+            )
+          }
+        />
+        <CatStickerSheet
+          open={catOpen}
+          onOpenChange={setCatOpen}
+          onPick={(shortcode) =>
+            setBody((current) => `${current}${shortcode}`.slice(0, MAX_MESSAGE_LENGTH))
+          }
+        />
 
-      <ShareToChatSheet
-        open={!!forwardDraft}
-        onOpenChange={(next) => {
-          if (!next) setForwardDraft(null);
-        }}
-        draft={forwardDraft}
-      />
+        <ShareToChatSheet
+          open={!!forwardDraft}
+          onOpenChange={(next) => {
+            if (!next) setForwardDraft(null);
+          }}
+          draft={forwardDraft}
+        />
 
-      <WallpaperSheet
-        open={wallpaperOpen}
-        onOpenChange={setWallpaperOpen}
-        kind="dm"
-        chatId={userId}
-        userId={user?.id}
-        value={wallpaper}
-        onChange={setWallpaper}
-      />
+        <WallpaperSheet
+          open={wallpaperOpen}
+          onOpenChange={setWallpaperOpen}
+          kind="dm"
+          chatId={userId}
+          userId={user?.id}
+          value={wallpaper}
+          onChange={setWallpaper}
+        />
 
-      {/* The poll lives in the thread: the RPC inserts the message and its card,
+        <ResponsiveOverlay open={muteOpen} onOpenChange={setMuteOpen} title="Mute conversation">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              You won't receive notifications from this conversation.
+            </p>
+            <div className="grid gap-2">
+              <Button
+                onClick={async () => {
+                  await handleMute();
+                  setMuteOpen(false);
+                }}
+                className="h-11 rounded-xl"
+              >
+                Mute
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setMuteOpen(false)}
+                className="h-11 rounded-xl"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </ResponsiveOverlay>
+
+        <ConfirmDialog
+          open={confirmBlockOpen}
+          onOpenChange={setConfirmBlockOpen}
+          title={blockStatus.data ? "Unblock user?" : `Block ${headerName}?`}
+          description={
+            blockStatus.data
+              ? "They'll be able to message and call you again."
+              : "They won't be able to message or call you. You can unblock anytime in Settings."
+          }
+          confirmLabel={blockStatus.data ? "Unblock" : "Block"}
+          tone={blockStatus.data ? "default" : "danger"}
+          onConfirm={async () => {
+            await handleBlock();
+            setConfirmBlockOpen(false);
+          }}
+        />
+
+        {/* The poll lives in the thread: the RPC inserts the message and its card,
           and the realtime subscription drops it into the transcript. */}
-      <PollDialog open={pollOpen} onOpenChange={setPollOpen} dmUserId={userId ?? undefined} />
-
+        <PollDialog open={pollOpen} onOpenChange={setPollOpen} dmUserId={userId ?? undefined} />
       </div>
     </div>
   );
