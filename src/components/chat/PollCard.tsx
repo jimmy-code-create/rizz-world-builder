@@ -10,6 +10,7 @@ import { useChatPollTallies, voteChatPoll, fetchChatPollVoters } from "@/lib/cha
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 type TallyView = {
   data?: { counts: number[]; total: number; mine: number[]; closed: boolean };
@@ -92,7 +93,9 @@ function PollCardView({
         </IconTile>
         Poll{multi ? " · pick any" : ""}
       </p>
-      <p className="mt-1 break-words text-sm font-semibold leading-snug">{question}</p>
+      <p className="mt-1 break-words text-sm font-semibold leading-snug">
+        <EmojiText text={question} />
+      </p>
 
       <div className="mt-3 space-y-1.5">
         {options.map((option, index) => {
@@ -119,7 +122,9 @@ function PollCardView({
               {/* One box per option, carrying both the choice and its tick. */}
               <span className="relative flex items-center gap-2.5">
                 <ChoiceMark shape={multi ? "checkbox" : "radio"} checked={chosen} />
-                <span className="min-w-0 flex-1 break-words">{option}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  <EmojiText text={option} />
+                </span>
                 <span className="shrink-0 text-xs font-semibold text-muted-foreground">
                   {share}%
                 </span>

@@ -11,7 +11,7 @@ import {
   useAvailableEmojis,
   useUploadEmoji,
 } from "@/lib/emoji-available";
-import { SMILEY_EMOJI } from "@/lib/smiley-data";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 import { toast } from "@/lib/toast";
 
 type RealmEmojiPickerProps = {
@@ -25,8 +25,8 @@ type RealmEmojiPickerProps = {
 };
 
 /**
- * The realm's emoji sheet: search the unicode set or manage this realm's custom
- * emoji.
+ * The realm's emoji sheet: the shared Fluent smiley panel plus this realm's
+ * custom emoji and the upload/delete controls.
  *
  * Uploads show the file immediately (the optimistic row is written before the
  * request leaves), and a failure removes that row and prints the server's own
@@ -44,7 +44,6 @@ export function RealmEmojiPicker({
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [tab, setTab] = useState<"standard" | "custom">("standard");
-  const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -152,35 +151,17 @@ export function RealmEmojiPicker({
         </SheetHeader>
 
         {tab === "standard" && (
-          <div className="mt-3 space-y-2">
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search smileys"
-              aria-label="Search smileys"
-              className="glass h-9 border-white/10"
+          <div className="mt-3 h-[min(52dvh,430px)] min-h-[280px]">
+            {/* The same virtualised Fluent panel the DM and group sheets use.
+                Sharing it keeps one emoji design across the app and keeps this
+                sheet from mounting 750 unicode cells before it can paint. */}
+            <RizzEmojiPanel
+              realmId={realmId}
+              onPick={(token) => {
+                onPick(token);
+                onOpenChange(false);
+              }}
             />
-            <div className="grid max-h-[48dvh] grid-cols-8 gap-0.5 overflow-y-auto pb-1">
-              {SMILEY_EMOJI.filter((entry) =>
-                `${entry.name} ${entry.tags ?? ""}`
-                  .toLowerCase()
-                  .includes(query.trim().toLowerCase()),
-              ).map((entry) => (
-                <button
-                  key={entry.char}
-                  type="button"
-                  onClick={() => {
-                    onPick(entry.char);
-                    onOpenChange(false);
-                  }}
-                  className="grid h-10 w-10 place-items-center rounded-lg text-2xl transition-colors hover:bg-white/10 active:scale-95"
-                  aria-label={entry.name}
-                  title={entry.name}
-                >
-                  <span className="leading-none">{entry.char}</span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
 

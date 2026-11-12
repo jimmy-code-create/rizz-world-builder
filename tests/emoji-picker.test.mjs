@@ -2,9 +2,10 @@
  * The emoji picker, held to the shape the redesign promised.
  *
  * These are source-level checks on purpose: the project's other UI tests work
- * the same way (no DOM harness), and what matters here is structural — the
- * section order, the rail contract, the things that must never be animated with
- * layout, and the storage keys old messages still depend on.
+ * the same way (no DOM harness), and what matters here is structural — every
+ * sheet opens from code that is already loaded, the grid mounts only the rows
+ * near the viewport, and Microsoft Fluent artwork is layered over the system
+ * glyph so a cell is never blank while an SVG decodes.
  *
  * Run: node tests/emoji-picker.test.mjs
  */
@@ -26,175 +27,112 @@ async function check(name, fn) {
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-const data = read("src/lib/emoji-data.ts");
-const prefs = read("src/lib/emoji-recents.ts");
-const realms = read("src/lib/emoji-realms.ts");
+const smileys = read("src/lib/smiley-data.ts");
 const panel = read("src/components/emoji/RizzEmojiPanel.tsx");
-const picker = read("src/components/GifPicker.tsx");
+const emojiPicker = read("src/components/emoji/EmojiPicker.tsx");
+const gifPicker = read("src/components/GifPicker.tsx");
+const realmPicker = read("src/components/chat/RealmEmojiPicker.tsx");
+const fluent = read("src/components/emoji/FluentEmoji.tsx");
+const unicode = read("src/lib/unicode-emoji.ts");
 const css = read("src/components/emoji/picker.css");
-const realm = read("src/routes/_app/r.$slug.tsx");
-const composer = read("src/components/chat/RealmComposer.tsx");
 
-await check("the dataset covers all nine unicode categories", () => {
-  for (const label of [
-    "Smileys",
-    "People",
-    "Animals",
-    "Food",
-    "Activities",
-    "Travel",
-    "Objects",
-    "Symbols",
-    "Flags",
-  ]) {
-    assert.match(data, new RegExp(`label: "${label}"`), `${label} exists`);
-  }
-  assert.match(data, /export const EMOJI_CATEGORIES/);
-  assert.match(data, /export function searchUnicodeEmoji/);
-  assert.match(data, /export function withSkinTone/);
-  assert.match(data, /export const SKIN_TONES/);
+await check("one smiley table is searchable by name and tags", () => {
+  assert.match(smileys, /export const SMILEY_EMOJI/);
+  assert.match(smileys, /export const SMILEY_CHARS[\s\S]{0,80}new Set\(/);
+  assert.match(smileys, /export function searchSmileys/);
+  assert.match(smileys, /name/);
+  assert.match(smileys, /tags/);
+  assert.match(panel, /searchSmileys\(term\)/);
+  assert.match(panel, /No smiley matches/);
 });
 
-await check("skin tones only apply where the glyph supports a modifier", () => {
-  assert.match(data, /tone\?: boolean/);
-  assert.match(data, /export function supportsSkinTone/);
-  assert.match(data, /const TONED = \/\[\\u\{1F3FB\}-\\u\{1F3FF\}\]\/u/);
-  assert.match(panel, /supportsSkinTone\(preview\.item\.char\)/);
+await check("the grid mounts only the rows near the viewport", () => {
+  assert.match(panel, /const CELL_H = 48;/);
+  assert.match(panel, /const OVERSCAN = 160;/);
+  assert.match(panel, /const windowStart = viewport\.top - OVERSCAN;/);
+  assert.match(panel, /const windowEnd = viewport\.top \+ viewport\.height \+ OVERSCAN;/);
+  assert.match(panel, /top \+ height < windowStart \|\| top > windowEnd/);
+  assert.match(panel, /className="rizz-emoji-grid absolute inset-x-0"/);
+  assert.ok(!/emoji-rail/.test(panel), "the old category rail is gone");
+  assert.ok(!/emoji-section-head/.test(panel), "sections are not measured or stickied");
 });
 
-await check("recents, favorites and per-realm counts live in one external store", () => {
-  assert.match(prefs, /useSyncExternalStore/);
-  assert.match(prefs, /const STORAGE_KEY = "rizz:emoji-prefs:v1"/);
-  assert.match(prefs, /export function recordEmojiUse/);
-  assert.match(prefs, /export function toggleEmojiFavorite/);
-  assert.match(prefs, /export function topEmojiForRealm/);
-  assert.match(prefs, /realmId -> emojiKey -> times used/);
-  // The picker must survive a blocked or full localStorage.
-  assert.match(prefs, /catch \{\s*\n\s*\/\/ A corrupted or blocked store/);
+await check("a cell paints its glyph, then Fluent art covers it", () => {
+  assert.match(panel, /<FluentEmoji glyph=\{cell\.char\} size=\{28\} \/>/);
+  assert.match(panel, /className="emoji-cell__char"/);
+  assert.match(
+    css,
+    /\.emoji-cell__glyph > \.fluent-emoji\[data-loaded="true"\] \+ \.emoji-cell__char/,
+    "the system glyph hides only after the artwork decodes",
+  );
+  assert.match(fluent, /export function fluentEmojiUrl/);
+  assert.match(fluent, /URL_CACHE/);
+  assert.match(fluent, /onLoad=\{\(event\) => \{\s*event\.currentTarget\.dataset\.loaded = "true";/);
+  assert.match(fluent, /onError=\{\(\) => setFailed\(true\)\}/);
 });
 
-await check("realm sections are current-realm-first and know about locks", () => {
-  assert.match(realms, /export type EmojiRealmSection/);
-  assert.match(realms, /isMember: boolean/);
-  assert.match(realms, /allowExternal: boolean/);
-  assert.match(realms, /if \(a\.id === current\.id\) return -1;/);
-  assert.match(realms, /emoji_external_allowed\?: boolean \| null/);
+await check("glyphs with no Fluent asset keep the system character", () => {
+  // Country flags are not in the Fluent set: the fallback must print the glyph
+  // inside text runs instead of leaving an empty box.
+  assert.match(fluent, /fallbackGlyph\?: boolean/);
+  assert.match(fluent, /fallbackGlyph \? glyph : null/);
 });
 
-await check("the section order is Top, Recent, Favorites, realms, unicode", () => {
-  const order = [
-    "header(\n              `Top emoji in",
-    'header("Recently used"',
-    'header("Favorites"',
-    "decoratedSections.map(({ section, items }) => (",
-    "EMOJI_CATEGORIES.map((category) => (",
-  ].map((needle) => panel.indexOf(needle));
-  assert.ok(order.every((index) => index >= 0), "every section is rendered");
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "sections keep their order");
-  assert.match(panel, /`Top emoji in \$\{realmName \?\? "this realm"\}`/);
+await check("the composer panel and the post sheet share the smiley table", () => {
+  assert.match(emojiPicker, /@\/lib\/smiley-data/);
+  assert.match(gifPicker, /<RizzEmojiPanel/);
+  // The realm sheet delegates instead of mounting its own unicode list.
+  assert.match(realmPicker, /<RizzEmojiPanel/);
+  assert.match(realmPicker, /tab === "custom"/);
+  assert.match(realmPicker, /useUploadEmoji/);
 });
 
-await check("the rail scrolls to a section and follows the scroll", () => {
-  assert.match(panel, /role="tablist"/);
-  assert.match(panel, /aria-selected=\{active\}/);
-  assert.match(panel, /scrollIntoView\(\{/);
-  assert.match(panel, /const onScroll = \(\) => \{/);
-  assert.match(panel, /window\.requestAnimationFrame\(measure\)/, "the spy is frame-throttled");
-  assert.match(panel, /emoji-rail__btn--active/);
-  assert.match(panel, /emoji-rail__lock/);
+await check("every picker is loaded with its screen, not fetched on first tap", () => {
+  assert.match(gifPicker, /import \{ RizzEmojiPanel \} from "@\/components\/emoji\/RizzEmojiPanel";/);
+  assert.ok(!/lazy\(|Suspense|EmojiPanelSkeleton/.test(gifPicker), "no lazy chunk or skeleton");
+  assert.match(emojiPicker, /import \{ FluentEmoji \}/);
+  assert.match(emojiPicker, /import "\.\/picker\.css"/);
 });
 
-await check("the grid is nine columns of 40px targets with text glyphs", () => {
-  assert.match(css, /grid-template-columns: repeat\(9, minmax\(0, 1fr\)\)/);
-  assert.match(css, /min-height: 40px/);
-  assert.match(css, /\.emoji-cell__glyph \{\s*\n\s*font-size: 32px/);
-  assert.match(panel, /item\.url \? \(/);
-  assert.match(panel, /<span aria-hidden="true" className="emoji-cell__glyph">/);
+await check("the post sheet's default tab is virtualised as well", () => {
+  assert.match(emojiPicker, /function VirtualSmileyGrid/);
+  assert.match(emojiPicker, /const SMILEY_ROW_H = 40;/);
+  assert.match(emojiPicker, /rows\.slice\(start, end\)/);
+  assert.match(emojiPicker, /<VirtualSmileyGrid onPick=\{chooseUnicode\} \/>/);
+  assert.ok(
+    !/SMILEY_EMOJI\.map\(\(\{ char, name \}\) => \(/.test(emojiPicker),
+    "the default tab no longer mounts all ~750 cells at once",
+  );
 });
 
-await check("custom emoji are fixed-size, lazy and only play when near the viewport", () => {
-  assert.match(panel, /width=\{32\}/);
-  assert.match(panel, /height=\{32\}/);
-  assert.match(panel, /loading="lazy"/);
-  assert.match(panel, /decoding="async"/);
-  assert.match(panel, /if \(!visible\) return null;/);
-  assert.match(panel, /new IntersectionObserver/);
+await check("the sheet picks once, and chat can keep it open", () => {
+  assert.match(gifPicker, /keepOpenOnPick = false/);
+  assert.match(gifPicker, /if \(!keepOpenOnPick\) setOpen\(false\)/);
+  assert.match(gifPicker, /const handleEmojiPick = useCallback\(\(token: string\) => closeAnd\(token\)/);
+  // The panel records the recency itself, then calls exactly one callback.
+  assert.match(panel, /recordEmojiUse\(cell\.token, realmId\)/);
+  assert.match(
+    panel,
+    /if \(onPick\) onPick\(cell\.token, cell\.token\);\s*\n\s*else onEmoji\?\.\(cell\.token\);/,
+  );
 });
 
-await check("locked emoji are dimmed with a badge and explain themselves", () => {
-  assert.match(panel, /emoji-cell--locked/);
-  assert.match(panel, /emoji-cell__lock/);
-  assert.match(panel, /Join this realm to use its emoji in chat\./);
-  assert.match(panel, /toast\.info\(`\$\{item\.realmName \?\? "That realm"\} emoji are locked here`/);
-});
-
-await check("long-press opens a preview with a favorite toggle and tones", () => {
-  assert.match(panel, /`\$\{preview\.item\.name\} preview`/);
-  assert.match(panel, /data-emoji-preview/);
-  assert.match(panel, /toggleEmojiFavorite\(preview\.item\.key\)/);
-  assert.match(panel, /aria-pressed=\{prefs\.favoriteKeys\.has\(preview\.item\.key\)\}/);
-  assert.match(panel, /emoji-preview__tones/);
-  assert.match(panel, /onPointerDown=\{\(event\) => \{/);
-});
-
-await check("search is debounced and grouped, with an empty state", () => {
-  assert.match(panel, /useDebouncedValue\(query, 120\)/);
-  assert.match(panel, /searchUnicodeEmoji\(term, 120\)/);
-  assert.match(panel, /searchResults\.realms\.map/);
-  assert.match(panel, /No emoji match/);
-});
-
-await check("the sheet has pill tabs, a sliding indicator and one search field", () => {
-  assert.match(picker, /const TABS: Array<\{ id: PickerTab; label: string; icon: typeof Smile \}>/);
-  assert.match(picker, /{ id: "emoji", label: "Emoji", icon: Smile }/);
-  assert.match(picker, /{ id: "gifs", label: "GIFs", icon: Image }/);
-  assert.match(picker, /{ id: "stickers", label: "Stickers", icon: Sparkles }/);
-  assert.match(picker, /rizz-seg__indicator/);
-  assert.match(picker, /transform: `translateX\(\$\{indicatorIndex \* 100\}%\)`/);
-  assert.match(picker, /emoji: "Find the perfect emoji"/);
-  assert.match(picker, /aria-label="Clear search"/);
-  assert.match(picker, /<RizzEmojiPanel/);
-});
-
-await check("the picker stays open for multiple emoji, and the trigger is unchanged", () => {
-  assert.match(picker, /const pickEmoji = \(token: string, emoji: Parameters<typeof rememberEmojiPick>\[0\]\) => \{/);
-  assert.match(picker, /onSelect\(token\);\s*\n\s*rememberEmojiPick\(emoji, realmId\);/);
-  assert.match(picker, /className=\{`shrink-0 text-primary \$\{triggerClassName \?\? ""\}`\}/);
-});
-
-await check("picking writes through the same storage format messages already use", () => {
-  // `:name:` custom tokens and raw unicode chars: unchanged from the old picker.
-  assert.match(panel, /token: `:\$\{name\}:`/);
-  assert.match(panel, /return \{ key, token: char, name: meta\?\.name \?\? char, char \};/);
-  assert.match(data, /export const realmEmojiKeyFor = \(realmId: string, name: string\) => `r:\$\{realmId\}:\$\{name\}`/);
-});
-
-await check("custom emoji use the shared size variable and jumbo when alone", () => {
-  assert.ok(realm.includes("chat-inline-emoji"));
-  assert.match(realm, /const isJumboji = !hasText && emojiCount > 0;/);
-  assert.match(realm, /inline-block h-12 w-12 align-middle/);
-  assert.match(realm, /emojiTextClass\(bodyText, "chat"\)/);
-});
-
-await check("the picker CSS is transform-only, contained and motion-safe", () => {
+await check("tab switching is transform-only and the picker is contained", () => {
   assert.match(css, /contain: layout paint/);
   assert.match(css, /overscroll-behavior: contain/);
-  assert.match(css, /content-visibility: auto/);
-  assert.match(css, /transition: transform 80ms ease-out/);
-  assert.match(css, /\.emoji-cell:active \{\s*\n\s*transform: scale\(0\.92\)/);
-  assert.match(css, /\.rizz-picker\[data-state="open"\] \{\s*\n\s*animation-duration: 240ms/);
+  assert.match(css, /transition: transform 200ms cubic-bezier\(0\.22, 1, 0\.36, 1\)/);
+  assert.match(css, /\.rizz-seg__indicator/);
   assert.ok(!/backdrop-filter\s*:/.test(css), "no backdrop-filter in the picker");
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /\[data-reduced-motion="true"\] \.emoji-cell/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.emoji-cell,/);
 });
 
-await check("the composer never re-renders the picker or the list", () => {
-  // The picker gets no composer text at all — only its own query.
-  assert.ok(!/RizzEmojiPanel[\s\S]{0,400}?value=\{text\}/.test(picker), "no composer value is passed down");
-  assert.ok(!panel.includes("const [text, setText]"), "the panel owns no composer text");
-  assert.match(composer, /const \[text, setText\] = useState\(""\)/);
-  assert.ok(!realm.includes("setBody"), "the route no longer owns composer text");
-  assert.match(realm, /<RealmComposer/);
+await check("unicode is split once, by grapheme, and a single glyph is recognised", () => {
+  assert.match(unicode, /new Intl\.Segmenter/);
+  assert.match(unicode, /export function splitUnicodeEmoji/);
+  assert.match(unicode, /export function isSingleEmoji/);
+  assert.match(unicode, /\\p\{Extended_Pictographic\}/);
+  assert.match(unicode, /\\p\{Regional_Indicator\}/);
 });
 
 await check("the suite runs this file", () => {

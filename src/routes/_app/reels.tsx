@@ -51,6 +51,7 @@ import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { VerifiedCreatorTag } from "@/components/VerifiedCreatorTag";
 import { parseExternalReelLink } from "@/lib/external-reels";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { formatCount } from "@/lib/utils";
 import { ReelPartySheet } from "@/components/reels/ReelPartySheet";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
@@ -818,7 +819,7 @@ function CaptionText({ caption }: { caption: string }) {
                 </a>
               );
             }
-            return <span key={index}>{part.text}</span>;
+            return <EmojiText key={index} text={part.text} />;
           })
         ),
       )}

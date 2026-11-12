@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search, Smile, Sparkles, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -19,10 +19,10 @@ import { removeSharedEmoji, reportRealmEmoji } from "@/lib/realm-emoji-actions";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
 import { SMILEY_EMOJI } from "@/lib/smiley-data";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
+import "./picker.css";
 
-export type EmojiPick =
-  | { kind: "unicode"; value: string }
-  | { kind: "custom"; emoji: SharedEmoji };
+export type EmojiPick = { kind: "unicode"; value: string } | { kind: "custom"; emoji: SharedEmoji };
 
 /**
  * The one emoji picker in the app.
@@ -37,6 +37,100 @@ export type EmojiPick =
  * changes how a pick is sent, never which emoji are allowed.
  */
 const RIZZ_TAB = "rizz";
+
+/** One row of the default tab, measured in pixels for the virtual window. */
+const SMILEY_ROW_H = 40;
+const SMILEY_OVERSCAN = 40;
+
+/**
+ * The unicode set is ~750 glyphs. Mounting all of them made the sheet's first
+ * frame do the work of a long scroll; this keeps only the rows around the
+ * viewport in the tree, the same way the composer's picker does.
+ */
+function VirtualSmileyGrid({ onPick }: { onPick: (char: string) => void }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [viewport, setViewport] = useState({ top: 0, height: 320, width: 0 });
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const measure = () => {
+      setViewport((current) => {
+        const top = Math.floor(element.scrollTop / SMILEY_ROW_H) * SMILEY_ROW_H;
+        const height = element.clientHeight || current.height;
+        const width = element.clientWidth || current.width;
+        return current.top === top && current.height === height && current.width === width
+          ? current
+          : { top, height, width };
+      });
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const columns = viewport.width >= 560 ? 10 : viewport.width >= 440 ? 9 : 8;
+  const rows = useMemo(() => {
+    const out: Array<Array<(typeof SMILEY_EMOJI)[number]>> = [];
+    for (let index = 0; index < SMILEY_EMOJI.length; index += columns) {
+      out.push(SMILEY_EMOJI.slice(index, index + columns));
+    }
+    return out;
+  }, [columns]);
+
+  const start = Math.max(0, Math.floor((viewport.top - SMILEY_OVERSCAN) / SMILEY_ROW_H));
+  const end = Math.min(
+    rows.length,
+    Math.ceil((viewport.top + viewport.height + SMILEY_OVERSCAN) / SMILEY_ROW_H),
+  );
+
+  return (
+    <div
+      ref={scrollRef}
+      className="rizz-scroll h-[38dvh] overflow-y-auto overscroll-contain pb-2"
+      onScroll={(event) => {
+        const top = Math.floor(event.currentTarget.scrollTop / SMILEY_ROW_H) * SMILEY_ROW_H;
+        setViewport((current) => (current.top === top ? current : { ...current, top }));
+      }}
+    >
+      <div className="relative" style={{ height: rows.length * SMILEY_ROW_H }}>
+        {rows.slice(start, end).map((row, rowIndex) => {
+          const rowIndexAbsolute = start + rowIndex;
+          return (
+            <div
+              key={rowIndexAbsolute}
+              className="rizz-emoji-grid absolute inset-x-0"
+              style={{
+                top: rowIndexAbsolute * SMILEY_ROW_H,
+                height: SMILEY_ROW_H,
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              }}
+            >
+              {row.map((entry) => (
+                <button
+                  key={entry.char}
+                  type="button"
+                  onClick={() => onPick(entry.char)}
+                  className="emoji-cell emoji-cell--smiley"
+                  aria-label={entry.name}
+                  title={entry.name}
+                >
+                  <span className="emoji-cell__glyph" aria-hidden="true">
+                    <FluentEmoji glyph={entry.char} size={28} />
+                    <span className="emoji-cell__char">{entry.char}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function EmojiPicker({
   open,
   onOpenChange,
@@ -164,17 +258,32 @@ export function EmojiPicker({
           </label>
 
           <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabChip active={tab === "recent" && !query} onClick={() => { setTab("recent"); setQuery(""); }}>
+            <TabChip
+              active={tab === "recent" && !query}
+              onClick={() => {
+                setTab("recent");
+                setQuery("");
+              }}
+            >
               Recent
             </TabChip>
-            <TabChip active={tab === "default" && !query} onClick={() => { setTab("default"); setQuery(""); }}>
+            <TabChip
+              active={tab === "default" && !query}
+              onClick={() => {
+                setTab("default");
+                setQuery("");
+              }}
+            >
               Default
             </TabChip>
             {groups.map((group) => (
               <TabChip
                 key={group.id}
                 active={tab === group.id && !query}
-                onClick={() => { setTab(group.id); setQuery(""); }}
+                onClick={() => {
+                  setTab(group.id);
+                  setQuery("");
+                }}
                 title={group.name}
               >
                 {group.name}
@@ -182,7 +291,13 @@ export function EmojiPicker({
             ))}
             {/* The RIZZ pack is a tab like any other; in super mode it is simply
                 the one selected first. */}
-            <TabChip active={tab === RIZZ_TAB && !query} onClick={() => { setTab(RIZZ_TAB); setQuery(""); }}>
+            <TabChip
+              active={tab === RIZZ_TAB && !query}
+              onClick={() => {
+                setTab(RIZZ_TAB);
+                setQuery("");
+              }}
+            >
               RIZZ
             </TabChip>
           </div>
@@ -208,7 +323,7 @@ export function EmojiPicker({
                 </p>
               )}
             </div>
-          ) : emoji.isLoading ? (
+          ) : emoji.isLoading && (query.trim() || tab !== "default") ? (
             <div className="flex h-40 items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
@@ -232,20 +347,7 @@ export function EmojiPicker({
               )}
             </div>
           ) : tab === "default" ? (
-            <div className="grid max-h-[38dvh] grid-cols-8 gap-1 overflow-y-auto pb-2">
-              {SMILEY_EMOJI.map(({ char, name }) => (
-                <button
-                  key={char}
-                  type="button"
-                  onClick={() => chooseUnicode(char)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-2xl transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={name}
-                  title={name}
-                >
-                  {char}
-                </button>
-              ))}
-            </div>
+            <VirtualSmileyGrid onPick={chooseUnicode} />
           ) : (
             <div className="grid max-h-[38dvh] grid-cols-8 gap-1 overflow-y-auto pb-2">
               {(groups.find((group) => group.id === tab)?.emoji ?? []).map((row) => (

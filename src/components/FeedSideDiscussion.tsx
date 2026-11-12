@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import type { FeedPost } from "@/lib/posts";
 import { FollowSuggestions } from "@/components/FollowSuggestions";
 import { CommentSection } from "@/components/comments/CommentSection";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 /**
  * The desktop discussion pane: the feed keeps its place on the left, the
@@ -86,7 +87,9 @@ export function FeedSideDiscussion({
       {/* Post Caption Preview */}
       {activePost.caption && (
         <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/5 text-xs text-muted-foreground line-clamp-3">
-          &ldquo;{activePost.caption}&rdquo;
+          &ldquo;
+          <EmojiText text={activePost.caption} />
+          &rdquo;
         </div>
       )}
 

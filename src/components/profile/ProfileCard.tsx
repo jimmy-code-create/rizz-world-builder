@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -19,6 +19,7 @@ import { PURIFY_BADGE, usePurify } from "@/lib/purify";
 import { canonBadges, canonicalFor, distinctBadges } from "@/lib/badge-set";
 import { usePresence, publicCustomStatus, publicStatusOf } from "@/lib/presence";
 import { MarkdownText } from "@/components/MarkdownText";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedRpc } from "@/lib/untyped-db";
 import { getBanner } from "@/lib/banner";
@@ -595,7 +596,7 @@ export function ProfileCard({
             {part}
           </Link>
         ) : (
-          <Fragment key={`plain-${index}`}>{part}</Fragment>
+          <EmojiText key={`plain-${index}`} text={part} />
         ),
       )}
     </>

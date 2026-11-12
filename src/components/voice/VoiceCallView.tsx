@@ -31,6 +31,7 @@ import { VoiceSettingsSheet } from "@/components/voice/VoiceSettingsSheet";
 import { useAuth } from "@/lib/auth";
 import { useVoiceCallContext, useVoiceSpeaking } from "@/components/voice/VoiceCallProvider";
 import { setMusicBotDismissed, useMusicBotInCall } from "@/components/voice/MusicBotInCall";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { channelVolume, useSoundSettings, formatVolume } from "@/lib/sound-settings";
 import {
   AlertDialog,
@@ -1700,7 +1701,7 @@ export const VoiceCallView = memo(function VoiceCallView() {
                         </span>
                       </div>
                       <p className="text-foreground/90 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">
-                        {msg.body}
+                        <EmojiText text={msg.body} />
                       </p>
                     </div>
                   </div>

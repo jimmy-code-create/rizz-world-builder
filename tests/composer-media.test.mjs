@@ -92,16 +92,17 @@ await check("the attach sheet is a grid of squares, and the Rizz library is out 
   assert.match(attach, /RizzLibrarySheet/, "the library lives inside the + sheet again");
 });
 
-await check("DMs and groups can start a poll", () => {
+await check("groups and realms can start a poll, DMs only read legacy ones", () => {
   assert.match(realmComposer, /label: "Poll"/, "realms offer a poll from the library pill");
-  for (const [name, source] of [["DMs", dm], ["groups", group]]) {
-    assert.match(source, /label: "Poll"/, `${name} offer a poll from the +`);
-  }
-  for (const [name, source] of [["DMs", dm], ["groups", group], ["realms", realm]]) {
+  assert.match(group, /label: "Poll"/, "groups offer a poll from the +");
+  for (const [name, source] of [["groups", group], ["realms", realm]]) {
     assert.match(source, /<PollDialog/, `${name} mount the poll dialog`);
   }
-  assert.match(dm, /dmUserId=\{userId/);
   assert.match(group, /groupId=\{id\}/);
+  // DMs removed poll creation: the + sheet has no entry and the route mounts
+  // no dialog, but old poll messages still render as cards.
+  assert.ok(!dm.includes("PollDialog"), "DMs mount no poll dialog");
+  assert.ok(!dm.includes('label: "Poll"'), "the DM + sheet has no poll entry");
   assert.match(dm, /const pollCard = asChatPollCard\(\(m as \{ card\?: unknown \}\)\.card\)/);
   assert.match(group, /const pollCard = asChatPollCard\(m\.card\)/);
   assert.match(dm, /<ChatPollCard card=\{pollCard\}/);

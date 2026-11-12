@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
  *
  * Only Fluent artwork is drawn here. If an asset is missing (Microsoft does not
  * ship country flags, for example) the cell becomes a quiet ink square rather
- * than falling back to a Google/system emoji glyph.
+ * than falling back to a Google/system emoji glyph; text runs pass
+ * `fallbackGlyph` so a flag still reads as a flag instead of a hole.
  */
 const FLUENT_ASSETS =
   "https://cdn.jsdelivr.net/gh/shuding/fluentui-emoji-unicode@7a40f1a2d064d76e436813edc0f09b6c8cde5da8/assets";
@@ -49,7 +50,8 @@ export const FluentEmoji = memo(function FluentEmoji({
   label,
   decorative = true,
   priority = false,
-  eager = false,
+  inline = false,
+  fallbackGlyph = false,
 }: {
   glyph: string;
   size?: number;
@@ -61,23 +63,38 @@ export const FluentEmoji = memo(function FluentEmoji({
   /** True only for a preview/hero image that is already on screen. */
   priority?: boolean;
   /**
-   * True for cells inside an already-virtualised grid: they are on screen by
-   * construction, so waiting for the lazy-load intersection just delays paint.
+   * Sits inside a run of text: the box is sized in `em`, so it follows the
+   * surrounding font size (a caption, a 3rem emoji-only chat line, a comment).
    */
-  eager?: boolean;
+  inline?: boolean;
+  /**
+   * Microsoft does not ship every glyph (country flags, for one). In a run of
+   * text an empty box would delete the character, so let the system glyph stand
+   * in there. The grid passes nothing: it already paints the glyph underneath.
+   */
+  fallbackGlyph?: boolean;
 }) {
   const url = fluentEmojiUrl(glyph);
   const [failed, setFailed] = useState(false);
+  const box: CSSProperties = inline
+    ? { width: "1.18em", height: "1.18em" }
+    : { width: size, height: size };
 
   useEffect(() => setFailed(false), [url]);
 
   if (!url || failed) {
     return (
       <span
-        aria-hidden="true"
-        className={cn("fluent-emoji-fallback", className)}
-        style={{ width: size, height: size }}
-      />
+        aria-hidden={decorative ? "true" : undefined}
+        className={cn(
+          "fluent-emoji-fallback",
+          fallbackGlyph && "fluent-emoji-fallback--glyph",
+          className,
+        )}
+        style={box}
+      >
+        {fallbackGlyph ? glyph : null}
+      </span>
     );
   }
 
@@ -93,12 +110,12 @@ export const FluentEmoji = memo(function FluentEmoji({
       {...(decorative ? { "aria-hidden": true as const } : {})}
       width={size}
       height={size}
-      loading={priority || eager ? "eager" : "lazy"}
+      loading={priority ? "eager" : "lazy"}
       decoding="async"
-      fetchPriority={priority ? "high" : eager ? "auto" : "low"}
+      fetchPriority={priority ? "high" : "low"}
       draggable={false}
-      className={cn("fluent-emoji", className)}
-      style={{ width: size, height: size }}
+      className={cn("fluent-emoji", inline && "fluent-emoji--inline", className)}
+      style={box}
       // A CSS-only "art is ready" hook. Virtualised grids layer the unicode
       // glyph underneath so a cell is never blank, and hide it the moment this
       // attribute flips without a React render per image.

@@ -1,6 +1,4 @@
 import {
-  lazy,
-  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -20,6 +18,7 @@ import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
 import { StickerMedia } from "@/components/chat/StickerMedia";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 import {
   STICKER_PACKS,
   preloadStickerPack,
@@ -29,27 +28,6 @@ import {
 } from "@/lib/stickers";
 import { cn } from "@/lib/utils";
 import "./emoji/picker.css";
-
-// The Unicode catalogue is ~750 entries and only the emoji tab needs it. Loading
-// it with the composer put that parse on every chat screen; warming the chunk
-// while the app is idle keeps the first open instant without paying for it up
-// front.
-const loadEmojiPanel = () => import("@/components/emoji/RizzEmojiPanel");
-const RizzEmojiPanel = lazy(() =>
-  loadEmojiPanel().then((module) => ({ default: module.RizzEmojiPanel })),
-);
-
-function EmojiPanelSkeleton() {
-  return (
-    <div className="grid grid-cols-8 gap-0 px-2 pt-3" aria-label="Loading emoji">
-      {Array.from({ length: 48 }, (_, index) => (
-        <div key={index} className="grid h-10 place-items-center">
-          <span className="h-6 w-6 rounded-full bg-white/[0.055]" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 type GifResult = {
   id: string;
@@ -246,25 +224,6 @@ export function GifPicker({
     setDragging(false);
     if (sheetRef.current) sheetRef.current.style.transform = "";
   }, [initialTab, open]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const warm = () => {
-      if (!cancelled) void loadEmojiPanel();
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(warm, { timeout: 2200 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback?.(id);
-      };
-    }
-    const timer = window.setTimeout(warm, 900);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   useEffect(() => {
     if (!open || tab !== "stickers") return;
@@ -513,7 +472,7 @@ export function GifPicker({
         side="bottom"
         hideClose
         style={sheetStyle}
-        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-t border-white/[0.08] bg-[#0e0f10] p-0 shadow-[0_-18px_50px_-18px_rgba(0,0,0,0.8)]"
+        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-t border-white/[0.08] bg-[#0e0f10] p-0 shadow-[0_-18px_50px_-18px_rgba(0,0,0,0.8)] data-[state=closed]:duration-150 data-[state=open]:duration-200"
       >
         <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
 
@@ -607,19 +566,17 @@ export function GifPicker({
         >
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <Suspense fallback={<EmojiPanelSkeleton />}>
-                <RizzEmojiPanel
-                  realmId={realmId}
-                  realmName={realmName}
-                  query={deferredEmojiQuery}
-                  onQueryChange={setQuery}
-                  onPick={handleEmojiPick}
-                  onClose={handleEmojiClose}
-                  onManage={onCustomEmoji}
-                  initialScrollTop={scrollPositions.current.emoji}
-                  onScrollTopChange={handleEmojiScroll}
-                />
-              </Suspense>
+              <RizzEmojiPanel
+                realmId={realmId}
+                realmName={realmName}
+                query={deferredEmojiQuery}
+                onQueryChange={setQuery}
+                onPick={handleEmojiPick}
+                onClose={handleEmojiClose}
+                onManage={onCustomEmoji}
+                initialScrollTop={scrollPositions.current.emoji}
+                onScrollTopChange={handleEmojiScroll}
+              />
             </div>
           ) : tab === "gifs" ? (
             <div

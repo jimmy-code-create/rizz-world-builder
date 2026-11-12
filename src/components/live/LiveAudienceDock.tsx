@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/lib/toast";
 import { LIVE_SOUND_BEDS, liveModeLabel, liveSoundBedLabel } from "@/lib/live-studio";
 import type { LiveRoomState } from "@/components/live/useLiveRoom";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 const QUICK_ASKS = ["Say hi 👋", "React to the stream", "Collab?", "Q&A"];
 
@@ -424,7 +425,7 @@ export function LiveAudienceDock({
                       </span>
                     </div>
                     <p className="mt-0.5 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-foreground/85">
-                      {message.body}
+                      <EmojiText text={message.body} />
                     </p>
                   </div>
                 </div>

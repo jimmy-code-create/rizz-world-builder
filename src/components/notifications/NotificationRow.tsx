@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/i18n";
 import type { AggregatedCard } from "@/lib/notifications-aggregation";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 const CTA_LABEL: Record<string, string> = {
   dm: "Reply",
@@ -107,9 +108,9 @@ export function NotificationRow({ card, target_url, onTap }: NotificationRowProp
         >
           {card.summary}
         </p>
-        {showBody && (
+        {showBody && card.body && (
           <p className="mt-0.5 truncate text-[11px] leading-snug text-zinc-400">
-            {card.body}
+            <EmojiText text={card.body} className="truncate" />
           </p>
         )}
         <p className="mt-1 font-mono text-[10px] text-zinc-500">

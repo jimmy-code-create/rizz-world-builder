@@ -7,6 +7,7 @@ import { MarkdownText } from "@/components/MarkdownText";
 import { MusicPlayer } from "@/components/music/MusicPlayer";
 import { parseForumBody, type ForumBlock } from "@/lib/forum-content";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { providerFor } from "@/lib/music-sources";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +101,7 @@ function RichText({ text }: { text: string }) {
               </a>
             );
           }
-          return <span key={index}>{part.text}</span>;
+          return <EmojiText key={index} text={part.text} />;
         })
       }
     />

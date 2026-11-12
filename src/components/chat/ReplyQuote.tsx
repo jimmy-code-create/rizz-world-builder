@@ -1,6 +1,7 @@
 import { CornerUpLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { replyPreviewText } from "@/lib/chat-reply";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 type ReplyQuoteProps = {
   author?: string | null;
@@ -50,9 +51,14 @@ export function ReplyQuote({
       <span className="min-w-0 flex-1 truncate text-[11px] leading-tight">
         {author ? <span className="mr-1 font-bold text-primary">{author}</span> : null}
         <span className={deleted ? "italic text-muted-foreground" : "text-muted-foreground"}>
-          {deleted
-            ? "Original message deleted"
-            : replyPreviewText({ body, attachmentUrl, audioUrl })}
+          {deleted ? (
+            "Original message deleted"
+          ) : (
+            <EmojiText
+              text={replyPreviewText({ body, attachmentUrl, audioUrl })}
+              className="whitespace-nowrap"
+            />
+          )}
         </span>
       </span>
     </button>

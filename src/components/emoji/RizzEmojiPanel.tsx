@@ -6,6 +6,7 @@ import { recordEmojiUse, useEmojiPreferences } from "@/lib/emoji-recents";
 import { SMILEY_CHARS, searchSmileys } from "@/lib/smiley-data";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { FluentEmoji } from "@/components/emoji/FluentEmoji";
+import "./picker.css";
 
 /**
  * The emoji picker used by every composer: DMs, groups and realms.
@@ -16,7 +17,7 @@ import { FluentEmoji } from "@/components/emoji/FluentEmoji";
  *     a realm pack can be larger, but the DOM holds roughly one screenful at a
  *     time — the sheet opens in one frame instead of painting the whole set.
  *  2. A cell paints its unicode glyph immediately. Microsoft Fluent artwork is
- *     addressed by Unicode codepoint, so the same cell is one eager `<img>`
+ *     addressed by Unicode codepoint, so the same cell is one lazy `<img>`
  *     whose SVG covers the glyph when it decodes — no blank grid, no lookup
  *     table, and no per-cell fetch handler.
  *
@@ -85,9 +86,9 @@ const EmojiCell = memo(function EmojiCell({
       ) : (
         <span className="emoji-cell__glyph" aria-hidden="true">
           {/* The unicode glyph paints in the same frame the row mounts; the
-              Fluent artwork covers it once the (eager) image has decoded. That
+              Fluent artwork covers it once the lazy image has decoded. That
               keeps the grid from looking empty while CDN assets arrive. */}
-          {cell.char ? <FluentEmoji glyph={cell.char} size={28} eager /> : null}
+          {cell.char ? <FluentEmoji glyph={cell.char} size={28} /> : null}
           {cell.char ? <span className="emoji-cell__char">{cell.char}</span> : null}
         </span>
       )}

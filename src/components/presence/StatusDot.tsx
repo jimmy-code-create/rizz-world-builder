@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { Plus } from "lucide-react";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
 import { statusLabel, usePresence, type PublicPresence } from "@/lib/presence";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -204,11 +205,7 @@ function expiryLabel(expiresAt: string | null): string {
 function PillEmoji({ emoji, size = 16 }: { emoji: string; size?: number }) {
   const catName = catNameForShortcode(emoji);
   if (catName) return <CatEmoji name={catName} size={size} animate={false} />;
-  return (
-    <span aria-hidden className="shrink-0 leading-none" style={{ fontSize: size }}>
-      {emoji}
-    </span>
-  );
+  return <FluentEmoji glyph={emoji} size={size} fallbackGlyph />;
 }
 
 /**
@@ -351,9 +348,7 @@ export function CustomStatusLine({
         (catName ? (
           <CatEmoji name={catName} size={16} animate={false} />
         ) : (
-          <span aria-hidden className="text-sm shrink-0">
-            {status.emoji}
-          </span>
+          <FluentEmoji glyph={status.emoji} size={16} fallbackGlyph />
         ))}
       {status.text && <span className="truncate">{status.text}</span>}
     </span>
@@ -467,11 +462,7 @@ export function StatusBubble({
 function StatusBubbleEmoji({ emoji }: { emoji: string }) {
   const catName = catNameForShortcode(emoji);
   if (catName) return <CatEmoji name={catName} size={20} animate="loop" />;
-  return (
-    <span aria-hidden className="shrink-0 leading-none" style={{ fontSize: 20 }}>
-      {emoji}
-    </span>
-  );
+  return <FluentEmoji glyph={emoji} size={20} fallbackGlyph />;
 }
 
 /**

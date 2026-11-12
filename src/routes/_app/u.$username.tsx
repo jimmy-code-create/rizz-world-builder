@@ -53,6 +53,7 @@ import { TUTORIAL_INTERESTS } from "@/lib/emoji.js";
 import { cn } from "@/lib/utils";
 import { MarkdownText } from "@/components/MarkdownText";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 export const Route = createFileRoute("/_app/u/$username")({
   head: ({ params }) => ({ meta: [{ title: `@${params.username} · RIZZ` }] }),
@@ -705,7 +706,7 @@ function ProfilePage() {
                           </a>
                         );
                       }
-                      return <span key={i}>{p.text}</span>;
+                      return <EmojiText key={i} text={p.text} />;
                     })
                   }
                 />
