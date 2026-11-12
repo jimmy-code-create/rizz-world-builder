@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -178,7 +179,15 @@ export function GifPicker({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? (setControlledOpen ?? (() => {})) : setInternalOpen;
+  // A stable setter matters: the panel is memoised, and an inline function here
+  // would hand it a new `onClose` on every sheet render and defeat that.
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (isControlled) setControlledOpen?.(next);
+      else setInternalOpen(next);
+    },
+    [isControlled, setControlledOpen],
+  );
 
   const [tab, setTab] = useState<PickerTab>(initialTab);
 
@@ -188,7 +197,12 @@ export function GifPicker({
     stickers: "",
   });
   const query = queries[tab];
-  const setQuery = (next: string) => setQueries((current) => ({ ...current, [tab]: next }));
+  const setQuery = useCallback(
+    (next: string) => {
+      setQueries((current) => (current[tab] === next ? current : { ...current, [tab]: next }));
+    },
+    [tab],
+  );
 
   const [snap, setSnap] = useState<SnapPoint>("full");
   // The drag offset is written straight to the sheet element instead of state:
@@ -355,10 +369,32 @@ export function GifPicker({
     return () => observer.disconnect();
   }, [tab]);
 
-  const closeAnd = (marker: string) => {
-    onSelect(marker);
-    if (!keepOpenOnPick) setOpen(false);
-  };
+  // Parents pass an inline `onSelect` (the DM route appends to its draft), so
+  // keep the latest one in a ref. That lets `closeAnd` and every handler below
+  // stay referentially stable while the sheet re-renders around them.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  const closeAnd = useCallback(
+    (marker: string) => {
+      onSelectRef.current(marker);
+      if (!keepOpenOnPick) setOpen(false);
+    },
+    [keepOpenOnPick, setOpen],
+  );
+
+  // The input stays on the live query; the emoji grid catches up on a deferred
+  // copy. Typing then costs one input paint, not a rebuild of the visible grid.
+  const deferredEmojiQuery = useDeferredValue(query);
+
+  const handleEmojiPick = useCallback((token: string) => closeAnd(token), [closeAnd]);
+  const handleEmojiScroll = useCallback(
+    (value: number) => saveScroll("emoji", value),
+    [saveScroll],
+  );
+  const handleEmojiClose = useCallback(() => setOpen(false), [setOpen]);
 
   const beginSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
@@ -575,13 +611,13 @@ export function GifPicker({
                 <RizzEmojiPanel
                   realmId={realmId}
                   realmName={realmName}
-                  query={query}
+                  query={deferredEmojiQuery}
                   onQueryChange={setQuery}
-                  onPick={(token) => closeAnd(token)}
-                  onClose={() => setOpen(false)}
+                  onPick={handleEmojiPick}
+                  onClose={handleEmojiClose}
                   onManage={onCustomEmoji}
                   initialScrollTop={scrollPositions.current.emoji}
-                  onScrollTopChange={(value) => saveScroll("emoji", value)}
+                  onScrollTopChange={handleEmojiScroll}
                 />
               </Suspense>
             </div>
