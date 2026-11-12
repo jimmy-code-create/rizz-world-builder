@@ -1,10 +1,5 @@
-import { Clapperboard, Mic, PenLine, Radio, Sparkles } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Clapperboard, Mic, PenLine, Radio, Sparkles, Upload } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /**
  * One Create surface for the whole app.
@@ -27,6 +22,12 @@ const ROWS = [
     title: "Reel",
     subtitle: "Upload or record a short video",
     icon: Clapperboard,
+  },
+  {
+    id: "bulk-reels",
+    title: "Bulk Upload Reels",
+    subtitle: "Upload multiple videos at once",
+    icon: Upload,
   },
   {
     id: "story",
@@ -82,9 +83,7 @@ export function CreateSheet({
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-foreground">
-                    {row.title}
-                  </span>
+                  <span className="block text-sm font-semibold text-foreground">{row.title}</span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {row.subtitle}
                   </span>

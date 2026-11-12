@@ -16,6 +16,12 @@ export type Prefs = {
   language: string;
   /** Show cards for links in chats. */
   linkPreviews: boolean;
+  /**
+   * Appear in the Live & vibing list and its chip. Calls are unaffected.
+   * Stored here because the app has no user_settings table; this rides the
+   * existing per-device prefs store.
+   */
+  showInLiveAndVibing: boolean;
 };
 
 /** Fired whenever prefs change, so live UI (like Link previews) updates at once. */
@@ -33,6 +39,7 @@ export const DEFAULT_PREFS: Prefs = {
   emojiScale: 1,
   language: "auto",
   linkPreviews: true,
+  showInLiveAndVibing: true,
 };
 
 /** The text size the app used to ship as its default, before it moved to 92%. */

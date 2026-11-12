@@ -1,46 +1,54 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchLiveRooms } from "@/lib/voice";
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLiveAndVibing, type LivePerson } from "@/lib/live-and-vibing";
 
 /**
- * A live room is only worth a chip when one exists. This is the compact
- * discovery surface for Feed and Reels; tapping it opens the same Live Studio
- * the old Live button opened.
+ * The Live discovery chip.
+ *
+ * It only exists when a host is actually on air. Tapping it opens the
+ * full-screen Live browser, where every live host is one tap away from their
+ * audience viewer.
+ *
+ * `variant="video"` swaps the card surface for the over-video recipe so the
+ * chip reads on top of a reel without a blur halo.
  */
-
-type LiveRoomRow = {
-  id: string;
-  title: string | null;
-  is_live: boolean;
-  host?: {
-    username: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-  } | null;
-};
 
 export const OPEN_LIVE_STUDIO_EVENT = "rizz:open-live-studio";
 
-export function LiveNowChip({ className = "" }: { className?: string }) {
-  const query = useQuery({
-    queryKey: ["live-now-chip"],
-    queryFn: fetchLiveRooms,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  });
+type ChipVariant = "surface" | "video";
 
-  const rooms = ((query.data ?? []) as unknown as LiveRoomRow[]).filter((room) => room.is_live);
-  if (!rooms.length) return null;
+function initials(person: LivePerson) {
+  return (person.username || person.name || "?").charAt(0).toUpperCase();
+}
 
-  const hosts = rooms.slice(0, 3).map((room) => room.host);
+export function LiveNowChip({
+  className = "",
+  variant = "surface",
+  onOpen,
+}: {
+  className?: string;
+  variant?: ChipVariant;
+  onOpen: () => void;
+}) {
+  const { data } = useLiveAndVibing();
+
+  const hosts = useMemo(() => {
+    const seen = new Map<string, LivePerson>();
+    for (const stream of data.streams) seen.set(stream.host.id, stream.host);
+    return [...seen.values()];
+  }, [data.streams]);
+
+  if (!hosts.length) return null;
+
+  const count = hosts.length;
+  const faces = hosts.slice(0, 3);
 
   return (
     <button
       type="button"
-      onClick={() => window.dispatchEvent(new Event(OPEN_LIVE_STUDIO_EVENT))}
-      aria-label={`${rooms.length} ${rooms.length === 1 ? "person is" : "people are"} live. Open live studio`}
-      data-count={rooms.length}
-      className={`live-chip ${className}`}
+      onClick={onOpen}
+      aria-label={`${count} ${count === 1 ? "person is" : "people are"} live. Open live`}
+      className={`live-chip ${variant === "video" ? "live-chip--video" : ""} ${className}`}
     >
       <span className="live-chip__signal" aria-hidden="true">
         <span />
@@ -48,21 +56,21 @@ export function LiveNowChip({ className = "" }: { className?: string }) {
         <span />
       </span>
       <span className="live-chip__label">Live</span>
-      <span className="live-chip__hosts" aria-hidden="true">
-        {hosts.map((host, index) => (
+      <span className="live-chip__faces" aria-hidden="true">
+        {faces.map((person) => (
           <Avatar
-            key={`${host?.username ?? "host"}-${index}`}
+            key={person.id}
             className="live-chip__avatar -ml-1.5 h-5 w-5 border-0 first:ml-0"
           >
-            <AvatarImage src={host?.avatar_url ?? undefined} alt="" />
+            <AvatarImage src={person.avatarUrl ?? undefined} alt="" />
             <AvatarFallback className="bg-[#2c2d35] text-[8px] font-semibold text-[#f2efe6]">
-              {(host?.username ?? "?").charAt(0).toUpperCase()}
+              {initials(person)}
             </AvatarFallback>
           </Avatar>
         ))}
       </span>
       <span className="live-chip__count" aria-hidden="true">
-        {rooms.length}
+        {count}
       </span>
     </button>
   );

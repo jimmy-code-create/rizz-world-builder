@@ -20,6 +20,8 @@ function LiveRoomPage() {
   const { call, joinLiveRoom, openView, leaveCall } = useVoiceCallContext();
   const [state, setState] = useState<"joining" | "joined" | "failed" | "left">("joining");
   const busyRef = useRef(false);
+  const watching = call?.kind === "live" && !call.isHost;
+  const inAnotherCall = !!call && call.roomId !== roomId;
 
   const join = useCallback(async () => {
     if (busyRef.current) return;
@@ -49,18 +51,26 @@ function LiveRoomPage() {
       <div>
         <h1 className="font-display text-2xl text-white">
           {state === "joined"
-            ? "You're in the live room"
+            ? watching
+              ? "You're watching live"
+              : "You're in the live room"
             : state === "failed"
-              ? "Live room unavailable"
+              ? inAnotherCall
+                ? "You're already in a call"
+                : "Live room unavailable"
               : state === "left"
                 ? "You left the live room"
                 : "Joining live…"}
         </h1>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
           {state === "joined"
-            ? "The studio is open. Turn your camera on when you want to share, or leave whenever you're done."
+            ? watching
+              ? "The audience view is open. Watch, listen and raise your hand if you want to come on stage."
+              : "The studio is open. Turn your camera on when you want to share, or leave whenever you're done."
             : state === "failed"
-              ? "The host may have ended this room. Ask them for a fresh link."
+              ? inAnotherCall
+                ? "Leave your current call first if you want to watch this live."
+                : "The host may have ended this room. Ask them for a fresh link."
               : state === "left"
                 ? "You can hop back in while the host is still live."
                 : "Connecting to the host's room."}
@@ -79,7 +89,7 @@ function LiveRoomPage() {
             className="h-11 border-0 bg-primary text-primary-foreground shadow-md"
           >
             <Video className="h-4 w-4" />
-            Open studio
+            {watching ? "Watch live" : "Open studio"}
           </Button>
           <Button
             type="button"
@@ -108,7 +118,29 @@ function LiveRoomPage() {
         </div>
       )}
 
-      {state === "failed" && (
+      {state === "failed" && inAnotherCall && (
+        <div className="grid w-full grid-cols-2 gap-2">
+          <Button
+            type="button"
+            onClick={async () => {
+              await leaveCall();
+              await join();
+            }}
+            className="h-11 bg-primary text-primary-foreground"
+          >
+            <RizzLiveIcon className="h-4 w-4" />
+            Leave call & join
+          </Button>
+          <Button asChild variant="outline" className="h-11">
+            <Link to="/reels">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Reels
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      {state === "failed" && !inAnotherCall && (
         <Button asChild variant="outline" className="h-11">
           <Link to="/reels">
             <ArrowLeft className="h-4 w-4" />

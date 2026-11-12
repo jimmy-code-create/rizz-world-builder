@@ -26,6 +26,7 @@ import {
   Clock,
   Pin,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { installGlobalTapHaptics } from "@/lib/haptics";
@@ -151,9 +152,7 @@ const moreGroups: Array<{
 }> = [
   {
     titleKey: "create",
-    items: [
-      { kind: "action", action: "new-post" },
-    ],
+    items: [{ kind: "action", action: "new-post" }],
   },
   {
     titleKey: "communities",
@@ -516,7 +515,11 @@ export function AppShell() {
                 key={tab.to}
                 to={tab.to}
                 data-tour={
-                  tab.to === "/realms" ? "nav-realms" : tab.to === "/drops" ? "nav-drops" : undefined
+                  tab.to === "/realms"
+                    ? "nav-realms"
+                    : tab.to === "/drops"
+                      ? "nav-drops"
+                      : undefined
                 }
                 className={navItem(isActive(tab.to))}
               >
@@ -643,10 +646,11 @@ export function AppShell() {
       {/* Foreground pushes land here: one island, never an OS + in-app dupe. */}
       <RizzInAppPill />
 
-      {/* Mobile bottom nav — 5 items, center FAB with 48px min touch height */}
+      {/* Mobile bottom nav — five slots, lime active tile, oversized create FAB.
+          Matches the docked bar design: icon over label, one accent per row. */}
       {!isConversation && (
-        <nav className="md:hidden z-30 shrink-0 bg-card/90 backdrop-blur-md border-t border-border px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
-          <div className="flex items-center justify-between gap-1">
+        <nav className="md:hidden z-30 shrink-0 border-t border-white/[0.06] bg-background/95 backdrop-blur-xl px-1.5 pt-1.5 pb-[max(env(safe-area-inset-bottom),0.25rem)]">
+          <div className="mx-auto flex max-w-[560px] items-center justify-between gap-0.5">
             {mobileTabs.slice(0, 2).map((tab) => {
               const label = t(tab.label);
               return (
@@ -662,11 +666,11 @@ export function AppShell() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="flex min-h-[44px] min-w-[44px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
+              className="flex min-h-[48px] min-w-[40px] flex-1 flex-col items-center justify-center focus-visible:outline-none"
               aria-label="Create"
             >
-              <span className="-mt-2 grid h-[56px] w-[56px] place-items-center rounded-full bg-[#c8ff3d] text-[#0a0a0b] transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
-                <Plus className="h-7 w-7 stroke-[2.5]" />
+              <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring">
+                <Plus className="h-6 w-6 stroke-[2.4]" />
               </span>
             </button>
             {mobileTabs.slice(2).map((tab) => {
@@ -684,13 +688,15 @@ export function AppShell() {
             <button
               onClick={() => setMoreOpen(true)}
               data-tour="mobile-more"
-              className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
+              className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
               aria-label={t("more")}
             >
-              <div className="p-1 rounded-lg">
-                <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className="text-[12px] font-medium text-muted-foreground">{t("more")}</span>
+              <span className="grid h-10 w-10 place-items-center rounded-xl">
+                <MoreHorizontal className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
+              </span>
+              <span className="text-[11px] font-medium leading-none text-muted-foreground">
+                {t("more")}
+              </span>
             </button>
           </div>
         </nav>
@@ -714,6 +720,7 @@ export function AppShell() {
           else if (action === "story") setStoryOpen(true);
           else if (action === "live") setLiveOpen(true);
           else if (action === "reel") nav({ to: "/reels", search: { compose: "1" } });
+          else if (action === "bulk-reels") nav({ to: "/reels", search: { bulk: "1" } });
           else nav({ to: "/realms" });
         }}
       />
@@ -942,21 +949,28 @@ function NavBtn({
 }: {
   to: string;
   label: string;
-  Icon: any;
+  Icon: LucideIcon;
   active: boolean;
 }) {
   return (
     <Link
       to={to}
-      className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-1 focus-visible:outline-none"
+      className="flex min-h-[48px] flex-1 flex-col items-center justify-start gap-[2px] pt-0.5 focus-visible:outline-none"
     >
-      <div
-        className={`grid h-8 w-8 place-items-center rounded-xl transition-colors ${active ? "bg-primary text-primary-foreground" : ""}`}
-      >
-        <Icon className={`h-5 w-5 ${active ? "text-primary-foreground" : "text-muted-foreground"}`} />
-      </div>
       <span
-        className={`text-[12px] font-medium ${active ? "text-primary font-semibold" : "text-muted-foreground"}`}
+        className={`grid h-10 w-10 place-items-center rounded-xl transition-colors ${
+          active ? "bg-primary/15" : ""
+        }`}
+      >
+        <Icon
+          className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
+          strokeWidth={active ? 2.2 : 1.8}
+        />
+      </span>
+      <span
+        className={`text-[11px] leading-none ${
+          active ? "text-primary font-semibold" : "text-muted-foreground font-medium"
+        }`}
       >
         {label}
       </span>

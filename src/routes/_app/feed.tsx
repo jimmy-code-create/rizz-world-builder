@@ -6,6 +6,7 @@ import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { StoriesStrip } from "@/components/StoriesStrip";
 import { LiveNowChip } from "@/components/live/LiveNowChip";
+import { LiveBrowserSheet } from "@/components/live/LiveBrowserSheet";
 import { fetchFeed, fetchMyLikes } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,7 @@ function FeedPage() {
   const qc = useQueryClient();
   const [visible, setVisible] = useState(FEED_PAGE_SIZE);
   const [activeSidePost, setActiveSidePost] = useState<FeedPost | null>(null);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -155,7 +157,9 @@ function FeedPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start w-full">
       <div className="xl:col-span-8 min-w-0 space-y-4">
-        <LiveNowChip />
+        <div className="flex justify-center">
+          <LiveNowChip onOpen={() => setLiveOpen(true)} />
+        </div>
         {/* Compact greeting bar */}
         <div className="flex items-center justify-between pt-1 pb-1">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -262,6 +266,8 @@ function FeedPage() {
           onClose={() => setActiveSidePost(null)}
         />
       </aside>
+
+      <LiveBrowserSheet open={liveOpen} onOpenChange={setLiveOpen} />
     </div>
   );
 }

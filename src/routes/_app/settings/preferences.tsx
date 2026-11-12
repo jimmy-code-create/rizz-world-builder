@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import { Bell, Link2, Shield, Sliders } from "lucide-react";
+import { Bell, Link2, Radio, Shield, Sliders } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PrefRow } from "@/components/settings/PrefRow";
 import { SettingsCard, SettingsSubPage } from "@/components/settings/SettingsSubPage";
@@ -44,6 +44,13 @@ function PreferencesSettingsPage() {
         <PrefRow label={t("pref_autoplay")} desc={t("pref_autoplay_desc")} checked={prefs.autoplay} onChange={(v) => updatePref("autoplay", v)} />
         <PrefRow label={t("pref_datasaver")} desc={t("pref_datasaver_desc")} checked={prefs.dataSaver} onChange={(v) => updatePref("dataSaver", v)} />
         <PrefRow label={t("pref_linkpreviews")} desc={t("pref_linkpreviews_desc")} checked={prefs.linkPreviews !== false} onChange={(v) => updatePref("linkPreviews", v)} icon={<Link2 className="h-4 w-4" />} />
+        <PrefRow
+          label="Show me in Live & vibing"
+          desc="Let people find your status and activity in the Live & vibing list. Calls still work when this is off. Saved on this device."
+          checked={prefs.showInLiveAndVibing !== false}
+          onChange={(v) => updatePref("showInLiveAndVibing", v)}
+          icon={<Radio className="h-4 w-4" />}
+        />
         <PrefRow label={t("pref_sounds")} desc={t("pref_sounds_desc")} checked={prefs.sounds} onChange={(v) => updatePref("sounds", v)} icon={<Bell className="h-4 w-4" />} />
         <PrefRow
           label={t("pref_rizz_sounds")}
