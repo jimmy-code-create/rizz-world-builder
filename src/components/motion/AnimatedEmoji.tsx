@@ -1,5 +1,6 @@
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,9 +49,7 @@ export function AnimatedEmoji({
         {cat ? (
           <CatEmoji name={cat} size={size} animate={catMotion} />
         ) : (
-          <span className="motion-emoji__glyph" style={{ fontSize: size }}>
-            {emoji}
-          </span>
+          <FluentEmoji glyph={emoji} size={size} className="motion-emoji__glyph" />
         )}
       </span>
     </span>

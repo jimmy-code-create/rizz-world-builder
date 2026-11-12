@@ -86,6 +86,7 @@ export function DmKnockStrip({
           username={name}
           displayName={name}
           mood={mood}
+          cooldownFrom={lastKnockAt || null}
           onSent={() => {
             setSentAt(Date.now());
             setNow(Date.now());
@@ -94,9 +95,8 @@ export function DmKnockStrip({
             <button
               type="button"
               onClick={openSheet}
-              disabled={remainingMs > 0}
               className="dm-knock-strip__knock"
-              title={remainingMs > 0 ? `Again in ${countdown}` : "Knock"}
+              title={remainingMs > 0 ? `Knock again in ${countdown}` : "Knock"}
               aria-haspopup="dialog"
             >
               {remainingMs > 0 ? (

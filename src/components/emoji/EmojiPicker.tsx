@@ -19,6 +19,7 @@ import {
 import { removeSharedEmoji, reportRealmEmoji } from "@/lib/realm-emoji-actions";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 
 export type EmojiPick =
   | { kind: "unicode"; value: string }
@@ -238,10 +239,11 @@ export function EmojiPicker({
                   key={glyph}
                   type="button"
                   onClick={() => chooseUnicode(glyph)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={glyph}
+                  title={glyph}
                 >
-                  {glyph}
+                  <FluentEmoji glyph={glyph} size={30} />
                 </button>
               ))}
             </div>

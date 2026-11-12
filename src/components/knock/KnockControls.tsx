@@ -1,12 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DoorOpen } from "lucide-react";
+
 import { toast } from "@/lib/toast";
 import { haptic, hapticError } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResponsiveOverlay } from "@/components/ui/responsive-overlay";
 import { KnockGlyph } from "@/components/knock/KnockGlyph";
+import { KnockDoor } from "@/components/knock/KnockDoor";
 import { cn } from "@/lib/utils";
 import {
   knockMoodColor,
@@ -67,6 +68,7 @@ export function KnockButton({
   onOpenChange,
   renderTrigger,
   onSent,
+  cooldownFrom,
 }: {
   to: string;
   username: string;
@@ -85,17 +87,54 @@ export function KnockButton({
   renderTrigger?: (openSheet: () => void) => ReactNode;
   /** Fired after a knock is accepted, for a local ripple or cooldown UI. */
   onSent?: () => void;
+  /**
+   * The strip/header may already know when this door was last knocked. Passing
+   * it in means opening the sheet during cooldown still opens the full sheet,
+   * with an honest countdown instead of a second send attempt the server will
+   * reject.
+   */
+  cooldownFrom?: number | null;
 }) {
   const qc = useQueryClient();
   const [open, setOpenState] = useState(false);
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
-  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [sentAt, setSentAt] = useState<number | null>(cooldownFrom ?? null);
+  const [now, setNow] = useState(() => Date.now());
+  const [opening, setOpening] = useState(false);
 
   const name = displayName || username;
-  const justKnocked = sentAt !== null && Date.now() - sentAt < 60_000;
+  const lastKnockAt = Math.max(sentAt ?? 0, cooldownFrom ?? 0);
+  const remainingMs = Math.max(0, 30_000 - (now - lastKnockAt));
+  const justKnocked = remainingMs > 0;
+  const countdown = `${Math.ceil(remainingMs / 1_000)}s`;
+
+  useEffect(() => {
+    if (!cooldownFrom) return;
+    setSentAt(cooldownFrom);
+    setNow(Date.now());
+  }, [cooldownFrom]);
+
+  useEffect(() => {
+    if (!open || remainingMs <= 0) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [open, remainingMs]);
+
+  // Give the hero door one knock when the sheet opens. Without this, a touch
+  // device (no hover) only saw a static closed door until it was too late.
+  useEffect(() => {
+    if (!open) {
+      setOpening(false);
+      return;
+    }
+    setOpening(true);
+    const timer = window.setTimeout(() => setOpening(false), 780);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   const setOpen = (next: boolean) => {
+    if (next) setNow(Date.now());
     setOpenState(next);
     onOpenChange?.(next);
   };
@@ -149,7 +188,7 @@ export function KnockButton({
         }}
         className={cn("gap-1.5", className)}
       >
-        <DoorOpen className="h-4 w-4" />
+        <KnockDoor className="h-4 w-4" state={justKnocked ? "sent" : "idle"} />
         {justKnocked ? "Knocked" : (label ?? mood.action)}
       </Button>
     );
@@ -185,7 +224,18 @@ export function KnockButton({
                   style={{ borderColor: knockMoodColor(mood.verdict) }}
                 />
               )}
-              <KnockGlyph className="h-9 w-9" />
+              <KnockDoor
+                className="h-12 w-12"
+                state={
+                  sending || opening
+                    ? "knocking"
+                    : justKnocked
+                      ? "sent"
+                      : mood.verdict === "live"
+                        ? "live"
+                        : "idle"
+                }
+              />
             </span>
             <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Right now
@@ -244,8 +294,12 @@ export function KnockButton({
             disabled={sending || justKnocked}
             className="h-12 w-full gap-2 rounded-2xl text-[15px] font-bold"
           >
-            <KnockGlyph className="h-5 w-5" />
-            {sending ? "Knocking…" : justKnocked ? "Already knocked" : mood.action}
+            <KnockGlyph className="h-5 w-5" state={sending ? "knocking" : justKnocked ? "sent" : "idle"} />
+            {sending
+              ? "Knocking…"
+              : justKnocked
+                ? `Already knocked · ${countdown}`
+                : mood.action}
           </Button>
         </div>
       </ResponsiveOverlay>

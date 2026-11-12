@@ -20,6 +20,20 @@ export type MessageActionDescriptor = {
   icon: LucideIcon;
   onSelect: () => void;
   destructive?: boolean;
+  /** A short explanation shown under the label, Discord-style. */
+  description?: string;
+};
+
+/** Copy that keeps every action readable without touching each call site. */
+const ACTION_HINTS: Record<string, string> = {
+  "Copy text": "Copy this message to the clipboard",
+  Reply: "Quote it in the composer",
+  "Edit message": "Change what you sent",
+  Forward: "Send it to another chat",
+  Report: "Flag it for moderators",
+  "Delete for me": "Hide it only on this device",
+  "Delete for everyone": "Remove it for both of you",
+  "Add reaction": "Pick an emoji",
 };
 
 /**
@@ -223,8 +237,8 @@ export function MessageActionMenu({
   // Discord's context-menu header: avatar, name, timestamp, then the text, with
   // the reaction smiley at the right edge of the message. No card, no border.
   const previewHeader = preview ? (
-    <div className="flex items-start gap-2.5 px-2 pb-2 pt-1.5">
-      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
+    <div className="rizz-action-preview flex items-start gap-2.5 px-2 pb-2 pt-1.5">
+      <Avatar className="rizz-action-avatar mt-0.5 h-8 w-8 shrink-0">
         <AvatarImage src={preview.avatarUrl ?? undefined} alt="" />
         <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
           {preview.author.charAt(0).toUpperCase()}
@@ -237,7 +251,7 @@ export function MessageActionMenu({
             <span className="shrink-0 text-[11px] font-normal text-[#949ba4]">{preview.time}</span>
           )}
         </p>
-        <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
+        <p className="rizz-action-quote mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
@@ -269,37 +283,51 @@ export function MessageActionMenu({
    * phone sheet keeps full 44px targets.
    */
   const renderActions = (dense: boolean) => (
-    <div role="group" aria-label="Available actions" className="flex flex-col">
+    <div role="group" aria-label="Available actions" className="rizz-action-list flex flex-col">
       {actions.map((action, index) => {
         const Icon = action.icon;
+        const hint = action.description ?? ACTION_HINTS[action.label];
         const startsDanger = action.destructive && !actions.slice(0, index).some((item) => item.destructive);
         return (
           <Fragment key={`${action.label}-${index}`}>
             {startsDanger && index > 0 && (
-              <div aria-hidden className="my-1 h-px bg-white/[0.06]" />
+              <div aria-hidden className="rizz-action-divider my-1 h-px bg-white/[0.06]" />
             )}
             <button
               ref={index === 0 ? firstActionRef : undefined}
               type="button"
               onClick={() => select(action)}
-              className={`group flex w-full items-center gap-2.5 rounded-[3px] px-2 text-left text-[13px] font-medium leading-[18px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
+              className={`rizz-action-row group flex w-full items-center gap-2.5 rounded-[3px] px-2 text-left text-[13px] font-medium leading-[18px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
                 dense ? "min-h-8" : "min-h-11"
               } ${
                 action.destructive
-                  ? "text-[#f23f43] hover:bg-[#da373c] hover:text-white"
+                  ? "rizz-action-row--danger text-[#f23f43] hover:bg-[#da373c] hover:text-white"
                   : "text-[#dbdee1] hover:bg-white/[0.08] hover:text-white"
               }`}
             >
-              <Icon
-                aria-hidden="true"
-                className={`h-4 w-4 shrink-0 ${
+              <span
+                className={`rizz-action-icon grid h-7 w-7 shrink-0 place-items-center rounded-[9px] ${
                   action.destructive
-                    ? "text-[#f23f43] group-hover:text-white"
-                    : "text-[#b5bac1] transition-colors group-hover:text-white"
+                    ? "bg-[#f23f43]/10 text-[#f23f43] group-hover:bg-white/15 group-hover:text-white"
+                    : "bg-white/[0.055] text-[#b5bac1] group-hover:bg-white/10 group-hover:text-white"
                 }`}
-                strokeWidth={2}
-              />
-              <span className="truncate">{action.label}</span>
+              >
+                <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{action.label}</span>
+                {hint ? (
+                  <span
+                    className={`rizz-action-hint mt-0.5 block truncate text-[10.5px] font-normal leading-[14px] ${
+                      action.destructive
+                        ? "text-[#f23f43]/70 group-hover:text-white/80"
+                        : "text-[#949ba4] group-hover:text-white/65"
+                    }`}
+                  >
+                    {hint}
+                  </span>
+                ) : null}
+              </span>
             </button>
           </Fragment>
         );
@@ -361,7 +389,7 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="action-sheet z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
+            className="action-sheet rizz-action-menu z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
@@ -404,7 +432,7 @@ export function MessageActionMenu({
           event.preventDefault();
           firstActionRef.current?.focus();
         }}
-        className={`relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "13.75rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
+        className={`rizz-action-menu relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "15.5rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
         {showingReactions ? (
           reactionsView

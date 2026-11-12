@@ -1,24 +1,30 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { CornerUpLeft } from "lucide-react";
+import { CornerUpLeft, CornerUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * One gesture, four surfaces. Realm channels, realm threads, group chats and
  * DMs all wrap their rows in this component, so the threshold, the drag feel,
  * the arrow and the spring back can never drift between them.
+ *
+ * Discord's reply gesture is rightward, but the same physical drag leftward is
+ * just as natural for a thumb on the other side of the phone. Both arms the
+ * reply; the icon and rail mirror, and the browser's edge-back gesture is still
+ * left alone. Everything is painted directly to the DOM during the drag — no
+ * React state per pointermove — and the spring is CSS.
  */
 export const SWIPE_REPLY = {
   /** Release past this many px and the reply is armed. */
-  threshold: 64,
+  threshold: 62,
   /** Further than this the bubble rubber-bands instead of following 1:1. */
-  maxDrag: 90,
-  rubber: 0.18,
+  maxDrag: 94,
+  rubber: 0.16,
   /** Movement before the gesture commits to an axis. */
-  axisLock: 8,
-  /** The browser back gesture owns the first 20px of the left screen edge. */
-  edgeGuard: 20,
-  springMs: 250,
-  popScale: 1.2,
+  axisLock: 7,
+  /** The browser back gesture owns the first 22px of the left screen edge. */
+  edgeGuard: 22,
+  springMs: 240,
+  popScale: 1.16,
   hapticMs: 10,
 } as const;
 
@@ -45,7 +51,9 @@ export function SwipeableMessage({
 }: SwipeableMessageProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const iconRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const badgeRef = useRef<HTMLSpanElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
   const gesture = useRef({
     axis: "none" as Axis,
     startX: 0,
@@ -59,33 +67,56 @@ export function SwipeableMessage({
   const suppressTimer = useRef<number | null>(null);
 
   const paint = (offset: number, armed: boolean) => {
+    const host = hostRef.current;
     const content = contentRef.current;
+    const rail = railRef.current;
+    const badge = badgeRef.current;
+    const label = labelRef.current;
+    const distance = Math.abs(offset);
+    const progress = Math.min(distance / SWIPE_REPLY.threshold, 1);
+    const direction = offset >= 0 ? "right" : "left";
+
+    if (host) {
+      host.dataset.swipeDirection = direction;
+      host.dataset.swipeArmed = armed ? "true" : "false";
+    }
     if (content) content.style.transform = `translate3d(${offset}px, 0, 0)`;
-    const icon = iconRef.current;
-    if (!icon) return;
-    const progress = Math.min(offset / SWIPE_REPLY.threshold, 1);
-    icon.style.opacity = String(progress);
-    icon.style.transform = `translateY(-50%) scale(${
-      armed ? SWIPE_REPLY.popScale : 0.5 + 0.5 * progress
-    })`;
-    icon.style.color = armed ? "var(--primary)" : "var(--muted-foreground)";
+    if (rail) rail.style.opacity = String(Math.min(1, progress * 1.35));
+    if (badge) {
+      badge.style.opacity = String(Math.min(1, progress * 1.5));
+      badge.style.transform = `scale(${armed ? SWIPE_REPLY.popScale : 0.68 + 0.32 * progress})`;
+    }
+    if (label) {
+      label.style.opacity = String(Math.max(0, (progress - 0.34) / 0.66));
+      label.textContent = armed ? "Release to reply" : "Reply";
+    }
   };
 
   const settle = () => {
+    const host = hostRef.current;
     const content = contentRef.current;
-    const icon = iconRef.current;
+    const rail = railRef.current;
+    const badge = badgeRef.current;
+    const label = labelRef.current;
     const reduce = reducedMotion();
     if (content) {
-      content.style.transition = reduce ? "none" : `transform ${SWIPE_REPLY.springMs}ms ease-out`;
+      content.style.transition = reduce ? "none" : `transform ${SWIPE_REPLY.springMs}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       content.style.transform = "translate3d(0, 0, 0)";
     }
-    if (icon) {
-      icon.style.transition = reduce
+    if (rail) {
+      rail.style.transition = reduce ? "none" : `opacity ${SWIPE_REPLY.springMs}ms ease-out`;
+      rail.style.opacity = "0";
+    }
+    if (badge) {
+      badge.style.transition = reduce
         ? "none"
-        : `opacity ${SWIPE_REPLY.springMs}ms ease-out, transform ${SWIPE_REPLY.springMs}ms ease-out`;
-      icon.style.opacity = "0";
-      icon.style.transform = "translateY(-50%) scale(0.6)";
-      icon.style.color = "var(--muted-foreground)";
+        : `opacity ${SWIPE_REPLY.springMs}ms ease-out, transform ${SWIPE_REPLY.springMs}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      badge.style.opacity = "0";
+      badge.style.transform = "scale(0.6)";
+    }
+    if (label) {
+      label.style.transition = reduce ? "none" : `opacity ${SWIPE_REPLY.springMs}ms ease-out`;
+      label.style.opacity = "0";
     }
     if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
     resetTimer.current = window.setTimeout(
@@ -96,7 +127,13 @@ export function SwipeableMessage({
           content.style.willChange = "";
           content.style.transform = "";
         }
-        if (icon) icon.style.transition = "";
+        if (rail) rail.style.transition = "";
+        if (badge) badge.style.transition = "";
+        if (label) label.style.transition = "";
+        if (host) {
+          delete host.dataset.swipeDirection;
+          host.dataset.swipeArmed = "false";
+        }
       },
       reduce ? 0 : SWIPE_REPLY.springMs + 30,
     );
@@ -168,27 +205,20 @@ export function SwipeableMessage({
         state.axis = "y";
         return;
       }
-      // A committed left drag is the browser back gesture, never a reply.
-      // Abandon the gesture instead of tracking it and swallowing the tap.
-      if (dx < 0) {
-        state.axis = "y";
-        state.offset = 0;
-        paint(0, false);
-        return;
-      }
+      const host = hostRef.current;
       state.axis = "x";
-      hostRef.current?.setPointerCapture?.(event.pointerId);
-      if (hostRef.current) hostRef.current.dataset.swipeActive = "true";
+      host?.setPointerCapture?.(event.pointerId);
+      if (host) host.dataset.swipeActive = "true";
     }
 
-    // Only rightward drags arm the reply; the axis lock above already rejected
-    // a leftward gesture.
     if (event.cancelable) event.preventDefault();
-    let offset = dx;
-    if (offset > SWIPE_REPLY.maxDrag) {
-      offset = SWIPE_REPLY.maxDrag + (offset - SWIPE_REPLY.maxDrag) * SWIPE_REPLY.rubber;
-    }
-    const armed = offset >= SWIPE_REPLY.threshold;
+    const distance = Math.abs(dx);
+    const eased =
+      distance > SWIPE_REPLY.maxDrag
+        ? SWIPE_REPLY.maxDrag + (distance - SWIPE_REPLY.maxDrag) * SWIPE_REPLY.rubber
+        : distance;
+    const offset = dx < 0 ? -eased : eased;
+    const armed = eased >= SWIPE_REPLY.threshold;
     if (armed && !state.armed) {
       state.armed = true;
       try {
@@ -198,7 +228,7 @@ export function SwipeableMessage({
       }
     }
     state.offset = offset;
-    suppressClick.current = offset > SWIPE_REPLY.axisLock;
+    suppressClick.current = eased > SWIPE_REPLY.axisLock;
     paint(offset, armed);
   };
 
@@ -206,9 +236,9 @@ export function SwipeableMessage({
     const state = gesture.current;
     if (state.pointerId !== event.pointerId) return;
     const wasHorizontal = state.axis === "x";
-    const armed = state.offset >= SWIPE_REPLY.threshold;
+    const armed = Math.abs(state.offset) >= SWIPE_REPLY.threshold;
     // Do not eat a normal tap after a couple of pixels of finger jitter.
-    const dragged = state.offset > SWIPE_REPLY.axisLock;
+    const dragged = Math.abs(state.offset) > SWIPE_REPLY.axisLock;
     gesture.current.pointerId = -1;
     gesture.current.axis = "none";
     gesture.current.offset = 0;
@@ -242,7 +272,8 @@ export function SwipeableMessage({
     <div
       ref={hostRef}
       data-swipe-reply=""
-      className={cn("relative", className)}
+      data-swipe-armed="false"
+      className={cn("swipe-reply-host relative", className)}
       style={disabled ? undefined : { touchAction: "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -255,12 +286,14 @@ export function SwipeableMessage({
         event.stopPropagation();
       }}
     >
-      <div
-        ref={iconRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute left-2 top-1/2 z-0 -translate-y-1/2 opacity-0"
-      >
-        <CornerUpLeft className="h-5 w-5" strokeWidth={2.4} />
+      <div ref={railRef} aria-hidden="true" className="swipe-reply-rail">
+        <span ref={badgeRef} className="swipe-reply-badge">
+          <CornerUpLeft className="swipe-reply-icon swipe-reply-icon--right" strokeWidth={2.4} />
+          <CornerUpRight className="swipe-reply-icon swipe-reply-icon--left" strokeWidth={2.4} />
+        </span>
+        <span ref={labelRef} className="swipe-reply-label">
+          Reply
+        </span>
       </div>
       <div ref={contentRef} className="relative z-[1]">
         {children}

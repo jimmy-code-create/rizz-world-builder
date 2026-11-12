@@ -39,15 +39,20 @@ export function LiveNowChip({ className = "" }: { className?: string }) {
       type="button"
       onClick={() => window.dispatchEvent(new Event(OPEN_LIVE_STUDIO_EVENT))}
       aria-label={`${rooms.length} ${rooms.length === 1 ? "person is" : "people are"} live. Open live studio`}
+      data-count={rooms.length}
       className={`live-chip ${className}`}
     >
-      <span className="live-chip__dot" aria-hidden="true" />
-      <span className="text-[12px] font-semibold leading-none text-foreground">Live</span>
-      <span className="flex items-center pl-0.5" aria-hidden="true">
+      <span className="live-chip__signal" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="live-chip__label">Live</span>
+      <span className="live-chip__hosts" aria-hidden="true">
         {hosts.map((host, index) => (
           <Avatar
             key={`${host?.username ?? "host"}-${index}`}
-            className="-ml-1.5 h-5 w-5 border-0 ring-2 ring-card first:ml-0"
+            className="live-chip__avatar -ml-1.5 h-5 w-5 border-0 first:ml-0"
           >
             <AvatarImage src={host?.avatar_url ?? undefined} alt="" />
             <AvatarFallback className="bg-[#2c2d35] text-[8px] font-semibold text-[#f2efe6]">
@@ -56,7 +61,7 @@ export function LiveNowChip({ className = "" }: { className?: string }) {
           </Avatar>
         ))}
       </span>
-      <span className="text-[12px] font-semibold leading-none text-muted-foreground" aria-hidden="true">
+      <span className="live-chip__count" aria-hidden="true">
         {rooms.length}
       </span>
     </button>

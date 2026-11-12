@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -15,7 +17,6 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
-import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 import { StickerMedia } from "@/components/chat/StickerMedia";
 import {
   STICKER_PACKS,
@@ -26,6 +27,27 @@ import {
 } from "@/lib/stickers";
 import { cn } from "@/lib/utils";
 import "./emoji/picker.css";
+
+// The Unicode catalogue is ~750 entries and only the emoji tab needs it. Loading
+// it with the composer put that parse on every chat screen; warming the chunk
+// while the app is idle keeps the first open instant without paying for it up
+// front.
+const loadEmojiPanel = () => import("@/components/emoji/RizzEmojiPanel");
+const RizzEmojiPanel = lazy(() =>
+  loadEmojiPanel().then((module) => ({ default: module.RizzEmojiPanel })),
+);
+
+function EmojiPanelSkeleton() {
+  return (
+    <div className="grid grid-cols-8 gap-0 px-2 pt-3" aria-label="Loading emoji">
+      {Array.from({ length: 48 }, (_, index) => (
+        <div key={index} className="grid h-10 place-items-center">
+          <span className="h-6 w-6 rounded-full bg-white/[0.055]" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type GifResult = {
   id: string;
@@ -158,9 +180,7 @@ export function GifPicker({
   const setOpen = isControlled ? (setControlledOpen ?? (() => {})) : setInternalOpen;
 
   const [tab, setTab] = useState<PickerTab>(initialTab);
-  // Mount the emoji grid one paint after the sheet opens. The sheet's slide and
-  // the 1,000-glyph grid used to compete for the same frame on phones.
-  const [emojiReady, setEmojiReady] = useState(false);
+
   const [queries, setQueries] = useState<Record<PickerTab, string>>({
     emoji: "",
     gifs: "",
@@ -210,13 +230,23 @@ export function GifPicker({
   }, [initialTab, open]);
 
   useEffect(() => {
-    if (!open || tab !== "emoji") {
-      setEmojiReady(false);
-      return;
+    let cancelled = false;
+    const warm = () => {
+      if (!cancelled) void loadEmojiPanel();
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(warm, { timeout: 2200 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback?.(id);
+      };
     }
-    const timer = window.setTimeout(() => setEmojiReady(true), 30);
-    return () => window.clearTimeout(timer);
-  }, [open, tab]);
+    const timer = window.setTimeout(warm, 900);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open || tab !== "stickers") return;
@@ -510,7 +540,7 @@ export function GifPicker({
         <div key={tab} className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden">
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {emojiReady ? (
+              <Suspense fallback={<EmojiPanelSkeleton />}>
                 <RizzEmojiPanel
                   realmId={realmId}
                   realmName={realmName}
@@ -523,18 +553,7 @@ export function GifPicker({
                   initialScrollTop={scrollPositions.current.emoji}
                   onScrollTopChange={(value) => saveScroll("emoji", value)}
                 />
-              ) : (
-                <div
-                  className="grid grid-cols-8 gap-0 px-2 pt-3"
-                  aria-label="Loading emoji"
-                >
-                  {Array.from({ length: 48 }, (_, index) => (
-                    <div key={index} className="grid h-10 place-items-center">
-                      <span className="h-6 w-6 rounded-full bg-white/[0.055]" />
-                    </div>
-                  ))}
-                </div>
-              )}
+              </Suspense>
             </div>
           ) : tab === "gifs" ? (
             <div

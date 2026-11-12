@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { EmojiRow } from "@/lib/emoji-shared";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 
 /**
  * One emoji, wherever it is drawn: a unicode glyph as text, a custom emoji as
@@ -96,11 +97,8 @@ export function UnicodeGlyph({
     );
   }
   return (
-    <span
-      aria-hidden="true"
-      className={cn("inline-block text-[length:var(--emoji-size)] leading-none", className)}
-    >
-      {value}
+    <span aria-hidden="true" className={cn("inline-grid place-items-center leading-none", className)}>
+      <FluentEmoji glyph={value} size={size ?? 18} />
     </span>
   );
 }

@@ -10,6 +10,13 @@
   overscroll-behavior: contain;
 }
 
+/* A section's cells are virtualised already; this keeps a tall section's own
+   sticky header and paint work out of the scroll path until it is near. */
+.emoji-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 128px;
+}
+
 .rizz-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;

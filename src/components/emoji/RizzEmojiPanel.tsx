@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -18,6 +19,7 @@ import {
 import { emojiToken, readRecentEmoji, searchEmoji, type SharedEmoji } from "@/lib/emoji-shared";
 import { recordEmojiUse, useEmojiPreferences } from "@/lib/emoji-recents";
 import { RealmEmojiImage } from "@/components/emoji/RealmEmojiImage";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 import { useAvailableEmojis, useSavePrivateEmoji } from "@/lib/emoji-available";
 import { buildEmojiRealmSections } from "@/lib/emoji-realms";
 import { parseEmojiToken } from "@/lib/emoji-token";
@@ -133,7 +135,9 @@ function unicodeItem(entry: EmojiEntry): UnicodeItem {
 // sheet's first paint free of ~1,000 object allocations on every open (the
 // sheet unmounts when closed, so a component `useMemo` only cached one visit).
 const UNICODE_BY_CHAR = new Map(EMOJI_DATA.map((entry) => [entry.char, entry]));
-const UNICODE_SECTIONS: EmojiSection[] = EMOJI_CATEGORIES.map((category) => ({
+const UNICODE_SECTIONS: EmojiSection[] = EMOJI_CATEGORIES.filter(
+  (category) => category.id !== "flags",
+).map((category) => ({
   id: `unicode-${category.id}`,
   label: category.label,
   kind: "category" as const,
@@ -213,7 +217,7 @@ function PreviewMedia({ item }: { item: EmojiItem }) {
   if (item.kind === "unicode") {
     return (
       <span className="emoji-preview__glyph" aria-hidden="true">
-        {item.char}
+        <FluentEmoji glyph={item.char} size={96} priority />
       </span>
     );
   }
@@ -439,7 +443,11 @@ export function RizzEmojiPanel({
     ];
   }, [emojiById, prefs.recents, privateRows, realmById, realmSections]);
 
-  const trimmedQuery = searchValue.trim();
+  // Searching the full Unicode catalogue is the only part of the sheet that
+  // does real work on every keystroke. The field stays instant; the result set
+  // can follow one frame later.
+  const deferredSearch = useDeferredValue(searchValue);
+  const trimmedQuery = deferredSearch.trim();
   const searching = trimmedQuery.length > 0;
 
   const searchSection = useMemo<EmojiSection | null>(() => {
@@ -450,7 +458,9 @@ export function RizzEmojiPanel({
     )
       .slice(0, 120)
       .map((row) => realmItem(row, realmById.get(row.realm_id)?.icon ?? null));
-    const unicodeHits = searchUnicodeEmoji(trimmedQuery, 180).map(unicodeItem);
+    const unicodeHits = searchUnicodeEmoji(trimmedQuery, 180)
+      .filter((entry) => entry.category !== "Flags")
+      .map(unicodeItem);
     return {
       id: "search",
       label: "Search results",
@@ -478,7 +488,9 @@ export function RizzEmojiPanel({
         kind: "realm" as const,
         iconUrl: section.iconUrl,
       }));
-    const categories: RailItem[] = EMOJI_CATEGORIES.map((category) => ({
+    const categories: RailItem[] = EMOJI_CATEGORIES.filter(
+      (category) => category.id !== "flags",
+    ).map((category) => ({
       id: `unicode-${category.id}`,
       label: category.label,
       kind: "category" as const,
@@ -737,7 +749,9 @@ export function RizzEmojiPanel({
           }}
           onClick={() => onCellClick(item)}
         >
-          <span className="emoji-cell__glyph">{item.char}</span>
+          <span className="emoji-cell__glyph" aria-hidden="true">
+            <FluentEmoji glyph={item.char} size={30} />
+          </span>
         </button>
       );
     }
@@ -821,7 +835,7 @@ export function RizzEmojiPanel({
                 <RealmRailIcon url={item.iconUrl} name={item.label} />
               ) : (
                 <span className="emoji-rail__icon" aria-hidden="true">
-                  {item.iconChar}
+                  <FluentEmoji glyph={item.iconChar ?? "😀"} size={20} />
                 </span>
               )}
             </button>
@@ -856,7 +870,7 @@ export function RizzEmojiPanel({
             const isPrivate = entry.section.kind === "private";
             if (isPrivate && !items.length) {
               return (
-                <section key={entry.section.id}>
+                <section key={entry.section.id} className="emoji-section">
                   <div className="emoji-section-head sticky top-0 z-20">
                     <span className="truncate">{entry.section.label}</span>
                     <button
@@ -882,7 +896,7 @@ export function RizzEmojiPanel({
               );
             }
             return (
-              <section key={entry.section.id}>
+              <section key={entry.section.id} className="emoji-section">
                 {/* One header per section, sticky on the real header. */}
                 <div className="emoji-section-head sticky top-0 z-20">
                   <span className="truncate">{entry.section.label}</span>
