@@ -1,10 +1,9 @@
 /**
- * Web Audio sound effects for luxury gift drops.
+ * Web Audio sound effects for gift drops.
  *
- * Synthesised (no audio files, no new deps) so every flex plays instantly
- * without a network request. Each sound is short and loud enough to cut
- * through a voice room, but gated by the same "Notification sounds" and
- * master volume switches as every other app sound.
+ * Synthesised (no audio files, no new deps) so the rocket launches instantly
+ * without a network request. Gated by the same "Notification sounds" and master
+ * volume switches as every other app sound.
  */
 
 import { loadPrefs } from "@/lib/prefs";
@@ -50,89 +49,115 @@ function tone({
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.025);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationMs / 1000);
   osc.connect(gain).connect(ac.destination);
   osc.start(startAt);
-  osc.stop(startAt + durationMs / 1000 + 0.03);
+  osc.stop(startAt + durationMs / 1000 + 0.04);
 }
 
-/** Rising V8 engine growl — supercars and the Bugatti. */
-function playEngineRev(): void {
+/** Rising oscillator — the engine spooling up. */
+function sweep({
+  from,
+  to,
+  startAt,
+  durationMs,
+  volume,
+  type = "sawtooth",
+}: {
+  from: number;
+  to: number;
+  startAt: number;
+  durationMs: number;
+  volume: number;
+  type?: OscillatorType;
+}): void {
+  const ac = audioContext();
+  if (!ac) return;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, startAt);
+  osc.frequency.exponentialRampToValueAtTime(to, startAt + durationMs / 1000);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationMs / 1000);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(startAt);
+  osc.stop(startAt + durationMs / 1000 + 0.04);
+}
+
+/** Filtered noise burst — exhaust and air rushing past the camera. */
+function whoosh({
+  startAt,
+  durationMs,
+  volume,
+  cutoff,
+}: {
+  startAt: number;
+  durationMs: number;
+  volume: number;
+  cutoff: number;
+}): void {
+  const ac = audioContext();
+  if (!ac) return;
+  const length = Math.max(1, Math.floor(ac.sampleRate * (durationMs / 1000)));
+  const buffer = ac.createBuffer(1, length, ac.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  }
+  const source = ac.createBufferSource();
+  const filter = ac.createBiquadFilter();
+  const gain = ac.createGain();
+  source.buffer = buffer;
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(cutoff, startAt);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(180, cutoff * 0.3), startAt + durationMs / 1000);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.06);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationMs / 1000);
+  source.connect(filter).connect(gain).connect(ac.destination);
+  source.start(startAt);
+  source.stop(startAt + durationMs / 1000);
+}
+
+/**
+ * Rocket launch: a sub-bass ignition, a rising engine sweep, a rush of air,
+ * then three bright chimes as the smoke clears.
+ */
+function playRocketLaunch(): void {
   const ac = audioContext();
   if (!ac) return;
   const now = ac.currentTime;
-  tone({ frequency: 150, startAt: now, durationMs: 400, volume: 0.12 });
-  tone({ frequency: 320, startAt: now + 0.12, durationMs: 260, volume: 0.1 });
-  tone({ frequency: 200, startAt: now + 0.38, durationMs: 220, volume: 0.08 });
-}
 
-/** High-pitch burnout tire squeal — the Cybertruck. */
-function playTireScreech(): void {
-  const ac = audioContext();
-  if (!ac) return;
-  const now = ac.currentTime;
-  tone({ frequency: 900, startAt: now, durationMs: 350, volume: 0.09, type: "square" });
-  tone({ frequency: 1400, startAt: now + 0.08, durationMs: 340, volume: 0.08, type: "square" });
-  tone({ frequency: 1100, startAt: now + 0.16, durationMs: 330, volume: 0.07, type: "square" });
-}
+  tone({ frequency: 46, startAt: now, durationMs: 1250, volume: 0.16, type: "sine" });
+  tone({ frequency: 68, startAt: now + 0.03, durationMs: 1050, volume: 0.1, type: "triangle" });
+  sweep({
+    from: 92,
+    to: 560,
+    startAt: now + 0.05,
+    durationMs: 1050,
+    volume: 0.07,
+    type: "sawtooth",
+  });
+  whoosh({ startAt: now + 0.08, durationMs: 1050, volume: 0.12, cutoff: 1800 });
 
-/** Low jet rumble with turbine whine — the Gulfstream. */
-function playJetEngine(): void {
-  const ac = audioContext();
-  if (!ac) return;
-  const now = ac.currentTime;
-  tone({ frequency: 60, startAt: now, durationMs: 500, volume: 0.14 });
-  tone({ frequency: 110, startAt: now + 0.05, durationMs: 450, volume: 0.12 });
-  tone({ frequency: 2200, startAt: now + 0.1, durationMs: 400, volume: 0.06 });
-}
-
-/** Crisp champagne cork pop — the yacht. */
-function playChampagnePop(): void {
-  const ac = audioContext();
-  if (!ac) return;
-  const now = ac.currentTime;
-  tone({ frequency: 400, startAt: now, durationMs: 90, volume: 0.15 });
-  tone({ frequency: 700, startAt: now + 0.04, durationMs: 110, volume: 0.12 });
-  tone({ frequency: 300, startAt: now + 0.08, durationMs: 140, volume: 0.08 });
-}
-
-/** Diamond sparkle chime — the iced out chain. */
-function playDiamondTing(): void {
-  const ac = audioContext();
-  if (!ac) return;
-  const now = ac.currentTime;
-  tone({ frequency: 1400, startAt: now, durationMs: 180, volume: 0.1 });
-  tone({ frequency: 2200, startAt: now + 0.05, durationMs: 200, volume: 0.08 });
-  tone({ frequency: 3200, startAt: now + 0.1, durationMs: 220, volume: 0.06 });
+  tone({ frequency: 1046, startAt: now + 1.06, durationMs: 220, volume: 0.07, type: "triangle" });
+  tone({ frequency: 1568, startAt: now + 1.12, durationMs: 240, volume: 0.06, type: "triangle" });
+  tone({ frequency: 2093, startAt: now + 1.18, durationMs: 280, volume: 0.045, type: "sine" });
 }
 
 /**
  * Play the sound effect for a gift. Respects the same "Notification sounds"
  * and master volume switches as every other app sound.
  */
-export function playGiftSound(sound: GiftSound): void {
+export function playGiftSound(_sound: GiftSound): void {
   if (loadPrefs().sounds === false) return;
   if (loadSoundSettings().muted) return;
   if (isSelfDoNotDisturb()) return;
   const level = loadSoundSettings().notifications;
   if (level <= 0) return;
 
-  switch (sound) {
-    case "engine-rev":
-      playEngineRev();
-      break;
-    case "tire-screech":
-      playTireScreech();
-      break;
-    case "jet-engine":
-      playJetEngine();
-      break;
-    case "champagne-pop":
-      playChampagnePop();
-      break;
-    case "diamond-ting":
-      playDiamondTing();
-      break;
-  }
+  playRocketLaunch();
 }

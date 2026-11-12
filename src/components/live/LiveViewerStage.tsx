@@ -72,7 +72,7 @@ export function LiveViewerStage({
   /** Minimize, not leave: the room keeps playing behind the app. */
   onClose: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [draft, setDraft] = useState("");
   const [following, setFollowing] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
@@ -184,6 +184,10 @@ export function LiveViewerStage({
   const sendLuxuryGift = async (gift: (typeof GIFT_CATALOG)[number]) => {
     if (!hostId || !user?.id) return;
     setTipping(true);
+    const senderName =
+      profile?.username ||
+      (typeof user.user_metadata?.username === "string" && user.user_metadata.username) ||
+      "you";
     try {
       await sendPawsTip({
         to: hostId,
@@ -193,12 +197,12 @@ export function LiveViewerStage({
       // Broadcast the flex so every viewer in the room plays the overlay.
       void live.sendBroadcast("gift", {
         slug: gift.slug,
-        sender: user.id,
-        receiver: hostId,
-        message: `Sent you a ${gift.name}`,
+        sender: senderName,
+        receiver: host.name,
+        message: null,
       });
       // Local flex for the sender too.
-      dispatchGiftDrop(gift.slug, user.id, hostId, `Sent you a ${gift.name}`);
+      dispatchGiftDrop(gift.slug, senderName, host.name, null);
       toast.success(`Sent ${gift.name} to ${host.name}`);
       setTipOpen(false);
     } catch (error) {

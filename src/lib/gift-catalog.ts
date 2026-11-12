@@ -8,18 +8,10 @@
 
 export type GiftTier = "drip" | "supercars" | "millionaire" | "god-flex";
 
-export type GiftAnimation =
-  | "drive-by"        // vehicle sweeps right -> left across the screen
-  | "jet-flyover"     // jet flies across the top with a smoke trail
-  | "yacht-fireworks" // water splash + champagne pop + golden confetti
-  | "chain-sparkle";  // diamond sparkle beam
+/** One takeover now carries every gift: the RIZZ cat rocket. */
+export type GiftAnimation = "rocket-launch";
 
-export type GiftSound =
-  | "engine-rev"     // rising V8 growl
-  | "tire-screech"   // high-pitch burnout squeal
-  | "jet-engine"     // low rumble + turbine whine
-  | "champagne-pop"  // quick cork pop
-  | "diamond-ting";  // crisp glass chime
+export type GiftSound = "rocket-launch";
 
 export type Gift = {
   /** Stable key used in URLs and analytics. */
@@ -30,7 +22,7 @@ export type Gift = {
   pawsPrice: number;
   /** Tier label for grouping in the picker. */
   tier: GiftTier;
-  /** Which full-screen animation plays. */
+  /** The one full-screen animation every gift launches. */
   animation: GiftAnimation;
   /** Which sound effect plays. */
   sound: GiftSound;
@@ -50,8 +42,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Iced Out Chain",
     pawsPrice: 500,
     tier: "drip",
-    animation: "chain-sparkle",
-    sound: "diamond-ting",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "💎",
     accent: "#c9ff3d",
   },
@@ -60,8 +52,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Matte Cybertruck",
     pawsPrice: 1_500,
     tier: "supercars",
-    animation: "drive-by",
-    sound: "tire-screech",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "🛻",
     accent: "#8b7cf6",
   },
@@ -73,8 +65,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Lime Aventador",
     pawsPrice: 10_000,
     tier: "supercars",
-    animation: "drive-by",
-    sound: "engine-rev",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "🏎️",
     accent: "#a3e635",
   },
@@ -83,8 +75,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Matte G-Wagon",
     pawsPrice: 15_000,
     tier: "supercars",
-    animation: "drive-by",
-    sound: "engine-rev",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "🚗",
     accent: "#fbbf24",
   },
@@ -96,8 +88,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "RIZZ Gulfstream Jet",
     pawsPrice: 35_000,
     tier: "millionaire",
-    animation: "jet-flyover",
-    sound: "jet-engine",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "✈️",
     accent: "#f472b6",
   },
@@ -106,8 +98,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Bugatti Chiron",
     pawsPrice: 50_000,
     tier: "millionaire",
-    animation: "drive-by",
-    sound: "engine-rev",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "🏎️",
     accent: "#a78bfa",
   },
@@ -119,8 +111,8 @@ export const GIFT_CATALOG: readonly Gift[] = [
     name: "Super Yacht & Fireworks",
     pawsPrice: 100_000,
     tier: "god-flex",
-    animation: "yacht-fireworks",
-    sound: "champagne-pop",
+    animation: "rocket-launch",
+    sound: "rocket-launch",
     emoji: "🛥️",
     accent: "#fde047",
   },
@@ -147,9 +139,9 @@ export function giftsByTier(): Record<GiftTier, readonly Gift[]> {
   return out as Record<GiftTier, readonly Gift[]>;
 }
 
-/** True when the gift triggers a full-screen takeover (everything except chain). */
-export function isFullScreenFlex(gift: Gift): boolean {
-  return gift.animation !== "chain-sparkle";
+/** Every gift is now a full-screen rocket takeover. */
+export function isFullScreenFlex(_gift: Gift): boolean {
+  return true;
 }
 
 /** The garage valuation of a list of owned gifts, in Paws. */
