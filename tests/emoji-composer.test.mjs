@@ -128,9 +128,10 @@ await check("the picker is smileys only, with no realm lookup", () => {
     assert.match(read(file), /@\/lib\/smiley-data/, `${file} reads the shared table`);
   }
   assert.match(panel, /searchSmileys\(term\)/);
-  assert.ok(!/useAvailableEmojis|useJoinedEmoji|joined_realm_emoji/.test(panel), "the panel reads no emoji list");
-  assert.ok(!/fetch\(/.test(panel), "the picker makes no network request");
-  assert.ok(!/FluentEmoji|RealmEmojiImage/.test(panel), "a face is a glyph, not a downloaded image");
+  // One surface for every composer, with the realm pack inside it.
+  assert.match(panel, /useAvailableEmojis\(\)/);
+  assert.match(panel, /<FluentEmoji glyph=\{cell\.char\}/, "Microsoft Fluent artwork");
+  assert.ok(!/useJoinedEmoji|joined_realm_emoji/.test(panel), "no realm-scoped query");
   assert.match(panel, /No smiley matches/);
   assert.match(available, /AVAILABLE_EMOJIS_PATH/);
 });
@@ -166,12 +167,18 @@ await check("a failed image is a muted chip, never the raw uuid", () => {
 });
 
 await check("one smiley table, one header row, one callback per tap", () => {
-  assert.match(panel, /className="emoji-smiley-head"/);
-  assert.match(panel, /className="rizz-emoji-grid rizz-emoji-grid--smileys"/);
+  assert.match(panel, /className="emoji-smiley-head absolute inset-x-0"/);
+  assert.match(panel, /className="rizz-emoji-grid absolute inset-x-0"/);
   assert.ok(!/emoji-rail/.test(panel), "the category rail is gone");
   assert.ok(!/emoji-section-head/.test(panel), "sections are no longer measured or stickied");
+  // Only the rows on screen are mounted: the lag fix that matters.
+  assert.match(panel, /top \+ height < windowStart \|\| top > windowEnd/);
+  assert.match(panel, /const OVERSCAN = 160/);
   // A tap must emit exactly one emoji: calling both callbacks inserted it twice.
-  assert.match(panel, /if \(onPick\) onPick\(char, char\);\s*\n\s*else onEmoji\?\.\(char\);/);
+  assert.match(
+    panel,
+    /if \(onPick\) onPick\(cell\.token, cell\.token\);\s*\n\s*else onEmoji\?\.\(cell\.token\);/,
+  );
 });
 
 await check("custom emoji cells are square and contain the image", () => {

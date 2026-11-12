@@ -10,7 +10,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { SmilePlus, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactionPicker } from "@/components/chat/ReactionPicker";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -380,29 +380,24 @@ export function MessageActionMenu({
             (focus traps, scroll locks, reaction bars) per channel was the
             long-press jank. Open animation still plays on mount. */}
         {open ? (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-          <SheetContent
-            side="bottom"
-            hideClose
-            className="action-sheet rizz-action-menu z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
-          >
-            {/* Kept in the tree for screen readers, hidden from view. */}
-            <SheetHeader className="sr-only">
-              <SheetTitle>Message actions</SheetTitle>
-            </SheetHeader>
-            <span aria-hidden className="mx-auto mb-1 block h-1 w-10 rounded-full bg-white/20" />
-            {menuTopBar(true)}
-            {showingReactions ? (
-              reactionsView
-            ) : (
-              <>
-                {previewHeader}
-                {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
-                {renderActions(false)}
-              </>
-            )}
-          </SheetContent>
-        </Sheet>
+        <SwipeSheet
+          open={open}
+          onOpenChange={onOpenChange}
+          title="Message actions"
+          className="action-sheet rizz-action-menu z-[100] max-h-[78dvh] rounded-t-2xl"
+          bodyClassName="px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        >
+          {menuTopBar(true)}
+          {showingReactions ? (
+            reactionsView
+          ) : (
+            <>
+              {previewHeader}
+              {preview && <div aria-hidden className="mx-1 mb-1 h-px bg-white/[0.06]" />}
+              {renderActions(false)}
+            </>
+          )}
+        </SwipeSheet>
         ) : null}
       </>
     );

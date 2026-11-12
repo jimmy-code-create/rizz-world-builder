@@ -1,39 +1,68 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clock3, Search, Smile, X } from "lucide-react";
+import { Clock3, Image as ImageIcon, Search, Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { readRecentEmoji } from "@/lib/emoji-shared";
+import { emojiToken, readRecentEmoji } from "@/lib/emoji-shared";
 import { recordEmojiUse, useEmojiPreferences } from "@/lib/emoji-recents";
-import { SMILEY_CHARS, SMILEY_EMOJI, searchSmileys } from "@/lib/smiley-data";
+import { SMILEY_CHARS, searchSmileys } from "@/lib/smiley-data";
+import { useAvailableEmojis } from "@/lib/emoji-available";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 
 /**
- * The emoji tab of the composer sheet: smileys, and only smileys.
+ * The emoji picker used by every composer: DMs, groups and realms.
  *
- * The old panel carried the whole Unicode catalogue (750 glyphs in nine
- * sections), every joined realm's custom pack and a preview overlay. Opening it
- * meant building ~800 items, measuring nine virtualised sections and firing a
- * network request per visible face. This is one flat table of faces instead:
- * no query, no sections to measure, no image requests. A cell is a text glyph,
- * so the first frame is the finished frame — that is the whole lag fix.
+ * Two things make it fast, and both matter more than any animation:
  *
- * What a pick returns is unchanged (a raw glyph), so every composer keeps
- * working without knowing the panel got simpler.
+ *  1. Only the rows on screen are mounted. The smiley table is ~115 faces and
+ *     a realm pack can be larger, but the DOM holds roughly one screenful at a
+ *     time — the sheet opens in one frame instead of painting the whole set.
+ *  2. Nothing is fetched to show a face. Microsoft Fluent artwork is addressed
+ *     by Unicode codepoint, so a cell is one `<img loading="lazy">` that the
+ *     browser loads when its row actually appears; the text glyph underneath is
+ *     the instant fallback.
+ *
+ * The source chips on the row above the grid are how realm emoji get into a DM
+ * or a group: "Smileys" is the Unicode set, "Realms" is every custom emoji the
+ * viewer can use, grouped by realm.
  */
 
+type Cell = {
+  key: string;
+  kind: "smiley" | "realm";
+  name: string;
+  token: string;
+  char?: string;
+  url?: string;
+};
+
+type Row =
+  | { key: string; kind: "header"; label: string; count: number }
+  | { key: string; kind: "cells"; cells: Cell[] };
+
+const CELL_H = 48;
+const HEAD_H = 26;
+const OVERSCAN = 160;
 const RECENT_LIMIT = 16;
 
+function chunkRows(cells: Cell[], columns: number): Cell[][] {
+  const rows: Cell[][] = [];
+  for (let index = 0; index < cells.length; index += columns) {
+    rows.push(cells.slice(index, index + columns));
+  }
+  return rows;
+}
+
 export type RizzEmojiPanelProps = {
-  /** Kept for callers that still pass it; the panel no longer reads a realm. */
+  /** Kept for callers that still pass it; the panel reads every realm. */
   realmKey?: string;
   realmId?: string;
   realmName?: string;
-  /** Controlled when the sheet owns the sticky search field. */
+  /** Controlled when the sheet owns the search field. */
   query?: string;
   onQueryChange?: (query: string) => void;
   onPick?: (token: string, emoji: string) => void;
   /** Legacy single-callback form: only used when `onPick` is absent. */
   onEmoji?: (emoji: string) => void;
   onClose?: () => void;
-  /** Kept for the sheet's menu affordance; the panel shows only smileys. */
   onManage?: () => void;
   mode?: "normal" | "reactions";
   className?: string;
@@ -53,16 +82,18 @@ export function RizzEmojiPanel({
   onScrollTopChange,
 }: RizzEmojiPanelProps) {
   const prefs = useEmojiPreferences();
+  const available = useAvailableEmojis();
+  const [source, setSource] = useState<"smileys" | "realms">("smileys");
   const [localQuery, setLocalQuery] = useState("");
   const [storedRecents, setStoredRecents] = useState<string[]>([]);
+  const [viewport, setViewport] = useState({ top: 0, height: 460, width: 400 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useRef(0);
 
   const controlledSearch = query !== undefined;
   const searchValue = controlledSearch ? (query ?? "") : localQuery;
   const term = searchValue.trim().toLowerCase();
 
-  // Both stores are written on every pick; reading them on mount keeps the
-  // recent row honest without a subscription on the hot path.
   useEffect(() => {
     setStoredRecents(readRecentEmoji());
   }, [prefs.updatedAt]);
@@ -79,54 +110,225 @@ export function RizzEmojiPanel({
     return out;
   }, [prefs.recents, storedRecents]);
 
-  // 100-ish faces filter in well under a frame, so the field stays local and
-  // instant: no debounce, no deferred value, no worker.
-  const results = useMemo(() => searchSmileys(term), [term]);
+  const columns = viewport.width >= 560 ? 10 : viewport.width >= 440 ? 9 : 8;
+
+  const smileyCells = useMemo<Cell[]>(
+    () =>
+      searchSmileys(term).map((entry) => ({
+        key: `u:${entry.char}`,
+        kind: "smiley",
+        name: entry.name,
+        token: entry.char,
+        char: entry.char,
+      })),
+    [term],
+  );
+
+  /** Every custom emoji the viewer may use, grouped by where it comes from. */
+  const realmGroups = useMemo(() => {
+    const payload = available.data;
+    if (!payload) return [] as Array<{ key: string; label: string; cells: Cell[] }>;
+    const groups: Array<{ key: string; label: string; cells: Cell[] }> = [];
+    const matches = (name: string) => !term || name.toLowerCase().includes(term);
+    const privateCells: Cell[] = payload.private
+      .filter((emoji) => matches(emoji.name))
+      .map((emoji) => ({
+        key: `p:${emoji.id}`,
+        kind: "realm" as const,
+        name: emoji.name,
+        token: emojiToken({ id: emoji.id, shortcode: emoji.name }),
+        url: emoji.url,
+      }));
+    if (privateCells.length) groups.push({ key: "private", label: "Your emoji", cells: privateCells });
+    for (const realm of payload.realms) {
+      const cells: Cell[] = realm.emojis
+        .filter((emoji) => matches(emoji.name))
+        .map((emoji) => ({
+          key: `r:${emoji.id}`,
+          kind: "realm" as const,
+          name: emoji.name,
+          token: emojiToken({ id: emoji.id, shortcode: emoji.name }),
+          url: emoji.url,
+        }));
+      if (cells.length) groups.push({ key: realm.id, label: realm.name, cells });
+    }
+    return groups;
+  }, [available.data, term]);
+
+  const hasRealmEmoji = useMemo(
+    () =>
+      (available.data?.private.length ?? 0) > 0 ||
+      (available.data?.realms.some((realm) => realm.emojis.length > 0) ?? false),
+    [available.data],
+  );
+
+  // One flat row list, so the window maths stays the same for a smiley table
+  // and for realms with headers between packs.
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    if (source === "smileys") {
+      if (!term && recents.length) {
+        out.push({ key: "recent", kind: "header", label: "Recent", count: recents.length });
+        for (const cells of chunkRows(
+          recents.map<Cell>((char) => ({
+            key: `recent:${char}`,
+            kind: "smiley",
+            name: "recent",
+            token: char,
+            char,
+          })),
+          columns,
+        )) {
+          out.push({ key: `recent-${out.length}`, kind: "cells", cells });
+        }
+      }
+      out.push({
+        key: "smileys",
+        kind: "header",
+        label: term ? "Results" : "Smileys",
+        count: smileyCells.length,
+      });
+      for (const cells of chunkRows(smileyCells, columns)) {
+        out.push({ key: `smileys-${out.length}`, kind: "cells", cells });
+      }
+      return out;
+    }
+    for (const group of realmGroups) {
+      out.push({ key: `h:${group.key}`, kind: "header", label: group.label, count: group.cells.length });
+      for (const cells of chunkRows(group.cells, columns)) {
+        out.push({ key: `${group.key}-${out.length}`, kind: "cells", cells });
+      }
+    }
+    return out;
+  }, [columns, realmGroups, recents, smileyCells, source, term]);
+
+  /** Row offsets from fixed heights, so the window is arithmetic, not layout. */
+  const layout = useMemo(() => {
+    let top = 0;
+    return rows.map((row) => {
+      const height = row.kind === "header" ? HEAD_H : CELL_H * Math.ceil(row.cells.length / columns);
+      const entry = { row, top, height };
+      top += height;
+      return entry;
+    });
+  }, [columns, rows]);
+
+  const totalHeight = layout.length ? layout[layout.length - 1].top + layout[layout.length - 1].height : 0;
+
+  const measure = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    setViewport((current) => {
+      const next = {
+        top: element.scrollTop,
+        height: element.clientHeight || current.height,
+        width: element.clientWidth || current.width,
+      };
+      return next.top === current.top && next.height === current.height && next.width === current.width
+        ? current
+        : next;
+    });
+  }, []);
 
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
     element.scrollTop = initialScrollTop;
-    // Only the remembered position matters; the sheet remounts on each open.
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(element);
+    return () => observer.disconnect();
+    // The remembered position only applies to the first mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [measure]);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    element.scrollTop = 0;
+    measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, term]);
 
   const pick = useCallback(
-    (char: string) => {
-      recordEmojiUse(char, realmId);
-      // Exactly one callback per tap. Calling both used to insert the same
-      // emoji twice in the composer (two `onSelect` calls, one draft append).
-      if (onPick) onPick(char, char);
-      else onEmoji?.(char);
+    (cell: Cell) => {
+      recordEmojiUse(cell.token, realmId);
+      // Exactly one callback per tap: the old picker fired both, which inserted
+      // the same emoji twice into the composer.
+      if (onPick) onPick(cell.token, cell.token);
+      else onEmoji?.(cell.token);
     },
     [onEmoji, onPick, realmId],
   );
 
-  const renderCell = (char: string, name: string) => (
+  const windowStart = viewport.top - OVERSCAN;
+  const windowEnd = viewport.top + viewport.height + OVERSCAN;
+
+  const renderCell = (cell: Cell) => (
     <button
-      key={char}
+      key={cell.key}
       type="button"
-      className="emoji-cell emoji-cell--smiley"
-      aria-label={`${name} emoji`}
-      title={name}
-      onClick={() => pick(char)}
+      className={cn("emoji-cell emoji-cell--smiley", cell.kind === "realm" && "emoji-cell--realm")}
+      aria-label={cell.kind === "realm" ? `:${cell.name}:` : `${cell.name} emoji`}
+      title={cell.kind === "realm" ? `:${cell.name}:` : cell.name}
+      onClick={() => pick(cell)}
     >
-      <span className="emoji-cell__glyph" aria-hidden="true">
-        {char}
-      </span>
+      {cell.kind === "realm" && cell.url ? (
+        <img
+          src={cell.url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-8 w-8 object-contain"
+        />
+      ) : (
+        <span className="emoji-cell__glyph" aria-hidden="true">
+          {cell.char ? <FluentEmoji glyph={cell.char} size={28} /> : null}
+        </span>
+      )}
     </button>
   );
 
-  const heading = term ? "Results" : "Smileys";
-  const shown = term ? results.length : SMILEY_EMOJI.length;
-
   return (
-    <div
-      className={cn("rizz-picker relative flex h-full min-h-0 flex-col", className)}
-      data-mode={mode}
-    >
+    <div className={cn("rizz-picker relative flex h-full min-h-0 flex-col", className)} data-mode={mode}>
+      <div className="flex shrink-0 items-center gap-1.5 px-3 pb-1.5">
+        <button
+          type="button"
+          onClick={() => setSource("smileys")}
+          aria-pressed={source === "smileys"}
+          className={cn(
+            "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors",
+            source === "smileys"
+              ? "bg-white/[0.1] text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Smile className="h-3.5 w-3.5" aria-hidden="true" /> Smileys
+        </button>
+        <button
+          type="button"
+          onClick={() => setSource("realms")}
+          aria-pressed={source === "realms"}
+          className={cn(
+            "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors",
+            source === "realms"
+              ? "bg-white/[0.1] text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          Realms
+          {hasRealmEmoji ? (
+            <span className="ml-0.5 rounded-full bg-white/[0.08] px-1.5 text-[10px] tabular-nums text-muted-foreground">
+              {realmGroups.reduce((sum, group) => sum + group.cells.length, 0)}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
       {!controlledSearch && (
-        <div className="shrink-0 px-4 pb-2">
+        <div className="shrink-0 px-3 pb-2">
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -135,9 +337,9 @@ export function RizzEmojiPanel({
             <input
               value={searchValue}
               onChange={(event) => setLocalQuery(event.target.value)}
-              placeholder="Search smileys"
-              aria-label="Search smileys"
-              className="h-10 w-full rounded-[10px] border border-white/[0.08] bg-white/[0.04] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-white/25"
+              placeholder={source === "smileys" ? "Search smileys" : "Search realm emoji"}
+              aria-label="Search emoji"
+              className="h-9 w-full rounded-[10px] border border-white/[0.08] bg-white/[0.04] pl-9 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-white/25"
               autoFocus={mode === "reactions"}
             />
             {searchValue && (
@@ -156,39 +358,70 @@ export function RizzEmojiPanel({
 
       <div
         ref={scrollRef}
-        className="rizz-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4"
-        onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)}
+        className="rizz-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4"
+        onScroll={() => {
+          const element = scrollRef.current;
+          if (element) onScrollTopChange?.(element.scrollTop);
+          if (frameRef.current) return;
+          frameRef.current = window.requestAnimationFrame(() => {
+            frameRef.current = 0;
+            measure();
+          });
+        }}
       >
-        {!term && recents.length > 0 && (
-          <section className="emoji-smiley-group" aria-label="Recent smileys">
-            <div className="emoji-smiley-head">
-              <span className="flex items-center gap-1.5">
-                <Clock3 className="h-3 w-3" aria-hidden="true" /> Recent
-              </span>
-            </div>
-            <div className="rizz-emoji-grid rizz-emoji-grid--smileys">
-              {recents.map((char) => renderCell(char, "recent"))}
-            </div>
-          </section>
-        )}
+        <div style={{ height: totalHeight }} className="relative">
+          {layout.map(({ row, top, height }) => {
+            if (top + height < windowStart || top > windowEnd) return null;
+            if (row.kind === "header") {
+              return (
+                <div
+                  key={row.key}
+                  className="emoji-smiley-head absolute inset-x-0"
+                  style={{ top, height: HEAD_H }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {row.key === "recent" ? (
+                      <Clock3 className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <Smile className="h-3 w-3" aria-hidden="true" />
+                    )}
+                    {row.label}
+                  </span>
+                  <span className="emoji-smiley-count">{row.count}</span>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={row.key}
+                className="rizz-emoji-grid absolute inset-x-0"
+                style={{
+                  top,
+                  height,
+                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  gridAutoRows: `${CELL_H}px`,
+                }}
+              >
+                {row.cells.map(renderCell)}
+              </div>
+            );
+          })}
 
-        <section className="emoji-smiley-group" aria-label={heading}>
-          <div className="emoji-smiley-head">
-            <span className="flex items-center gap-1.5">
-              <Smile className="h-3 w-3" aria-hidden="true" /> {heading}
-            </span>
-            <span className="emoji-smiley-count">{shown}</span>
-          </div>
-          {results.length ? (
-            <div className="rizz-emoji-grid rizz-emoji-grid--smileys">
-              {results.map((entry) => renderCell(entry.char, entry.name))}
-            </div>
-          ) : (
-            <p className="px-2 py-8 text-center text-sm text-muted-foreground">
+          {source === "realms" && !realmGroups.length && (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              {available.isLoading
+                ? "Loading realm emoji…"
+                : term
+                  ? "No realm emoji matches that search."
+                  : "No realm emoji yet — add one from a realm's emoji sheet."}
+            </p>
+          )}
+          {source === "smileys" && !smileyCells.length && (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
               No smiley matches “{searchValue.trim()}”.
             </p>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );

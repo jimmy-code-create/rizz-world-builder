@@ -9,6 +9,7 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
   type UIEvent as ReactUIEvent,
 } from "react";
 import { Image as ImageIcon, Loader2, Search, Smile, Sparkles, X } from "lucide-react";
@@ -209,6 +210,9 @@ export function GifPicker({
   const [listView, setListView] = useState({ top: 0, height: 480 });
   const listScrollRef = useRef<HTMLDivElement | null>(null);
   const listFrame = useRef(0);
+  // Horizontal swipe between Emoji / GIFs / Stickers. Only a clear sideways
+  // gesture counts: a vertical drag still belongs to the list underneath.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const scrollPositions = useRef<Record<PickerTab, number>>({
     emoji: 0,
     gifs: 0,
@@ -354,6 +358,25 @@ export function GifPicker({
   const closeAnd = (marker: string) => {
     onSelect(marker);
     if (!keepOpenOnPick) setOpen(false);
+  };
+
+  const beginSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    swipeStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const endSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    const index = TABS.findIndex((item) => item.id === tab);
+    const next = TABS[Math.min(TABS.length - 1, Math.max(0, index + (dx < 0 ? 1 : -1)))];
+    if (next && next.id !== tab) setTab(next.id);
   };
 
   const choosePack = (pack: StickerPack) => {
@@ -537,7 +560,15 @@ export function GifPicker({
           </div>
         </div>
 
-        <div key={tab} className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          key={tab}
+          className="rizz-tab flex min-h-0 flex-1 flex-col overflow-hidden"
+          onTouchStart={beginSwipe}
+          onTouchEnd={endSwipe}
+          onTouchCancel={() => {
+            swipeStart.current = null;
+          }}
+        >
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <Suspense fallback={<EmojiPanelSkeleton />}>

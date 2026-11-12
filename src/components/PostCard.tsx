@@ -1,8 +1,10 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Smile, Share2, Bookmark, MoreHorizontal, Trash2, Flag, Link as LinkIcon, ExternalLink, Pencil, Copy, EyeOff, VolumeX, Download, Languages, Pin, PinOff, Quote, Ban, Lock, Sparkles, type LucideIcon } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import { BadgeRow } from "@/components/BadgeChip";
 import { ReactionPills, groupReactions } from "@/components/reactions/ReactionPills";
 import { AnimatedCount } from "@/components/ui/animated-count";
@@ -538,6 +540,92 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
     link.click();
   };
 
+  // The post's "..." menu is one list of actions rendered two ways: Discord's
+  // anchored popover for a mouse, and the same swipeable bottom sheet the chat
+  // menus use on a phone. The list is built once so the two can't drift.
+  const isMobile = useIsMobile();
+  const [actionsOpen, setActionsOpen] = useState(false);
+  type PostAction = {
+    id: string;
+    label: string;
+    icon: LucideIcon;
+    onSelect: () => void;
+    destructive?: boolean;
+    separator?: boolean;
+  };
+  const buildPostActions = (): PostAction[] => {
+    const items: PostAction[] = [
+      {
+        id: "link",
+        label: "Copy link",
+        icon: LinkIcon,
+        onSelect: () => {
+          navigator.clipboard.writeText(postUrl);
+          toast.success("Link copied");
+        },
+      },
+      { id: "text", label: "Copy text", icon: Copy, onSelect: copyText },
+      { id: "quote", label: "Quote post", icon: Quote, onSelect: quoteThis },
+    ];
+    if (canTranslate) {
+      items.push({
+        id: "translate",
+        label: isTranslating
+          ? "Translating…"
+          : showTranslated
+            ? "Show original"
+            : `Translate (${LANGUAGE_NAMES[viewerLang] || "Preferred"})`,
+        icon: Languages,
+        onSelect: handleTranslate,
+      });
+    }
+    if (externalVideo?.ok) {
+      items.push({ id: "original", label: "View original", icon: ExternalLink, onSelect: viewOriginal });
+    }
+    if (post.media_url && !externalVideo?.ok) {
+      items.push({ id: "download", label: "Download media", icon: Download, onSelect: downloadMedia });
+    }
+    if (isMine) {
+      items.push({
+        id: "pin",
+        label: isPinned ? "Unpin from profile" : "Pin to profile",
+        icon: isPinned ? PinOff : Pin,
+        onSelect: () => pinMut.mutate(),
+      });
+      items.push({
+        id: "edit",
+        label: "Edit caption",
+        icon: Pencil,
+        onSelect: () => {
+          setCaption(post.caption ?? "");
+          setEditOpen(true);
+        },
+      });
+      items.push({
+        id: "delete",
+        label: "Delete post",
+        icon: Trash2,
+        destructive: true,
+        separator: true,
+        onSelect: () => {
+          if (confirm("Delete this post?")) deleteMut.mutate();
+        },
+      });
+    } else {
+      items.push({ id: "hide", label: "Hide this post", icon: EyeOff, onSelect: hideLocally, separator: true });
+      items.push({ id: "mute", label: `Mute @${post.author?.username}`, icon: VolumeX, onSelect: muteAuthor });
+      items.push({ id: "block", label: `Block @${post.author?.username}`, icon: Ban, onSelect: blockAuthor });
+      items.push({
+        id: "report",
+        label: "Report post",
+        icon: Flag,
+        destructive: true,
+        onSelect: () => setReportOpen(true),
+      });
+    }
+    return items;
+  };
+
   if (hidden) return null;
 
   return (
@@ -572,77 +660,77 @@ function PostCardImpl({ post, liked: initialLiked, saved: initialSaved }: { post
             )}
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8" aria-label="More">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-strong border-white/10">
-            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(postUrl); toast.success("Link copied"); }}>
-              <LinkIcon className="mr-2 h-4 w-4" /> Copy link
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={copyText}>
-              <Copy className="mr-2 h-4 w-4" /> Copy text
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={quoteThis}>
-              <Quote className="mr-2 h-4 w-4" /> Quote post
-            </DropdownMenuItem>
-            {canTranslate && (
-              <DropdownMenuItem onClick={handleTranslate} disabled={isTranslating}>
-                <Languages className="mr-2 h-4 w-4" />
-                {isTranslating
-                  ? "Translating…"
-                  : showTranslated
-                    ? "Show original"
-                    : `Translate (${LANGUAGE_NAMES[viewerLang] || "Preferred"})`}
-              </DropdownMenuItem>
-            )}
-            {externalVideo?.ok && (
-              <DropdownMenuItem onClick={viewOriginal}>
-                <ExternalLink className="mr-2 h-4 w-4" /> View original
-              </DropdownMenuItem>
-            )}
-            {post.media_url && !externalVideo?.ok && (
-              <DropdownMenuItem onClick={downloadMedia}>
-                <Download className="mr-2 h-4 w-4" /> Download media
-              </DropdownMenuItem>
-            )}
-            {isMine ? (
-              <>
-                <DropdownMenuItem onClick={() => pinMut.mutate()}>
-                  {isPinned ? <><PinOff className="mr-2 h-4 w-4" /> Unpin from profile</> : <><Pin className="mr-2 h-4 w-4" /> Pin to profile</>}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setCaption(post.caption ?? ""); setEditOpen(true); }}>
-                  <Pencil className="mr-2 h-4 w-4" /> Edit caption
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => { if (confirm("Delete this post?")) deleteMut.mutate(); }}
-                  className="text-destructive focus:text-destructive"
+        {isMobile ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground h-8 w-8"
+            aria-label="More"
+            aria-haspopup="dialog"
+            onClick={() => setActionsOpen(true)}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8" aria-label="More">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-strong border-white/10">
+              {buildPostActions().map((item) => (
+                <Fragment key={item.id}>
+                  {item.separator ? <DropdownMenuSeparator /> : null}
+                  <DropdownMenuItem
+                    onClick={item.onSelect}
+                    disabled={item.id === "translate" && isTranslating}
+                    className={item.destructive ? "text-destructive focus:text-destructive" : undefined}
+                  >
+                    <item.icon className="mr-2 h-4 w-4" /> {item.label}
+                  </DropdownMenuItem>
+                </Fragment>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* The same actions as a sheet you can swipe away, so a phone never gets
+            the desktop popover floating over the post. */}
+        <SwipeSheet open={actionsOpen} onOpenChange={setActionsOpen} title="Post actions">
+          <div className="px-1 pb-1">
+            {buildPostActions().map((item) => (
+              <Fragment key={item.id}>
+                {item.separator ? <div aria-hidden className="my-1 h-px bg-white/[0.06]" /> : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsOpen(false);
+                    item.onSelect();
+                  }}
+                  className={cn(
+                    "flex min-h-12 w-full items-center gap-3 rounded-lg px-2 text-left text-[14px] font-medium transition-colors",
+                    item.destructive
+                      ? "text-[#f23f43] hover:bg-[#da373c] hover:text-white"
+                      : "text-[#dbdee1] hover:bg-white/[0.08] hover:text-white",
+                  )}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete post
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={hideLocally}>
-                  <EyeOff className="mr-2 h-4 w-4" /> Hide this post
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={muteAuthor}>
-                  <VolumeX className="mr-2 h-4 w-4" /> Mute @{post.author?.username}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={blockAuthor}>
-                  <Ban className="mr-2 h-4 w-4" /> Block @{post.author?.username}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive focus:text-destructive">
-                  <Flag className="mr-2 h-4 w-4" /> Report post
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-[10px]",
+                      item.destructive
+                        ? "bg-[#f23f43]/10 text-[#f23f43]"
+                        : "bg-white/[0.055] text-[#b5bac1]",
+                    )}
+                  >
+                    <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </button>
+              </Fragment>
+            ))}
+          </div>
+        </SwipeSheet>
       </header>
 
       {post.caption && (
