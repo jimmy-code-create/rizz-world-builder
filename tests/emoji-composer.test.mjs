@@ -115,8 +115,19 @@ await check("all three composers share the field", () => {
 await check("the picker is smileys only, with no realm lookup", () => {
   // The composer sheet used to mount a 750-glyph catalogue plus every joined
   // realm's pack; it now ships one flat table of faces and asks for nothing.
-  assert.match(panel, /export const SMILEY_EMOJI/);
-  assert.match(panel, /const SMILEY_CHARS = new Set/);
+  const smileys = read("src/lib/smiley-data.ts");
+  assert.match(smileys, /export const SMILEY_EMOJI/);
+  assert.match(smileys, /export const SMILEY_CHARS[\s\S]{0,60}new Set\(/);
+  assert.match(smileys, /export function searchSmileys/);
+  // One table for every surface: composer sheet, realm sheet and post sheet.
+  for (const file of [
+    "src/components/emoji/RizzEmojiPanel.tsx",
+    "src/components/emoji/EmojiPicker.tsx",
+    "src/components/chat/RealmEmojiPicker.tsx",
+  ]) {
+    assert.match(read(file), /@\/lib\/smiley-data/, `${file} reads the shared table`);
+  }
+  assert.match(panel, /searchSmileys\(term\)/);
   assert.ok(!/useAvailableEmojis|useJoinedEmoji|joined_realm_emoji/.test(panel), "the panel reads no emoji list");
   assert.ok(!/fetch\(/.test(panel), "the picker makes no network request");
   assert.ok(!/FluentEmoji|RealmEmojiImage/.test(panel), "a face is a glyph, not a downloaded image");

@@ -62,13 +62,13 @@ type PreviewProfile = {
   following_count?: number;
 };
 
-async function fetchPreview(username: string): Promise<PreviewProfile | null> {
+async function fetchPreview(username: string, userId?: string): Promise<PreviewProfile | null> {
   // `*` keeps the preview readable before/after the banner migration and gives
-  // the header the same row the full profile reads.
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("username", username)
+  // the header the same row the full profile reads. A caller that already knows
+  // the id (realm rows, mentions) passes it, so a display name that is not a
+  // handle still resolves to the right profile.
+  const base = supabase.from("profiles").select("*");
+  const { data, error } = await (userId ? base.eq("id", userId) : base.eq("username", username))
     .maybeSingle();
   if (error) throw error;
   const profile = (data as unknown as PreviewProfile | null) ?? null;
@@ -177,17 +177,20 @@ export function ProfilePreviewTrigger({
 
 export function ProfilePreviewDialog({
   username,
+  userId,
   open,
   onOpenChange,
 }: {
   username: string;
+  /** Preferred over the handle when the caller already has it (realm rows). */
+  userId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const profile = useQuery({
-    queryKey: ["profile-preview", username],
-    queryFn: () => fetchPreview(username),
-    enabled: open,
+    queryKey: ["profile-preview", userId ?? username],
+    queryFn: () => fetchPreview(username, userId),
+    enabled: open && Boolean(username || userId),
     staleTime: 60_000,
   });
   const { user } = useAuth();

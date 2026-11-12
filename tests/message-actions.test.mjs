@@ -44,10 +44,13 @@ await check("phone sheet and desktop popout use Discord's popout colour", async 
 });
 
 await check("rows are compact on desktop and full-size on touch", async () => {
-  assert.match(menu, /dense \? "min-h-8" : "min-h-11"/);
-  assert.ok(menu.includes("renderActions(false)"), "the sheet keeps 44px rows");
-  assert.ok(menu.includes("renderActions(true)"), "the popover uses 32px rows");
-  assert.ok(menu.includes("text-[13px] font-medium leading-[18px]"), "Discord row type");
+  assert.match(menu, /dense \? "min-h-9" : "min-h-12"/);
+  assert.ok(menu.includes("renderActions(false)"), "the sheet keeps 48px rows");
+  assert.ok(menu.includes("renderActions(true)"), "the popover uses 36px rows");
+  // Single-line rows: the hint text under every label was removed on request.
+  assert.ok(menu.includes("text-[14px] font-medium leading-5"), "Discord row type");
+  assert.ok(!menu.includes("rizz-action-hint"), "no description line under a label");
+  assert.ok(!menu.includes("ACTION_HINTS"), "no hint table left behind");
 });
 
 await check("Delete is red, fills on hover and sits behind a hairline", async () => {

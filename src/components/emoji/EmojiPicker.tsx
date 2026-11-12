@@ -7,7 +7,6 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_EMOJI,
   groupByRealm,
   readRecentEmoji,
   rememberEmoji,
@@ -19,7 +18,7 @@ import {
 import { removeSharedEmoji, reportRealmEmoji } from "@/lib/realm-emoji-actions";
 import { CatEmoji } from "@/components/emoji/CatEmoji";
 import { CAT_EMOJI_MANIFEST } from "@/components/emoji/cat-emoji-manifest";
-import { FluentEmoji } from "@/components/emoji/FluentEmoji";
+import { SMILEY_EMOJI } from "@/lib/smiley-data";
 
 export type EmojiPick =
   | { kind: "unicode"; value: string }
@@ -234,16 +233,16 @@ export function EmojiPicker({
             </div>
           ) : tab === "default" ? (
             <div className="grid max-h-[38dvh] grid-cols-8 gap-1 overflow-y-auto pb-2">
-              {DEFAULT_EMOJI.map((glyph) => (
+              {SMILEY_EMOJI.map(({ char, name }) => (
                 <button
-                  key={glyph}
+                  key={char}
                   type="button"
-                  onClick={() => chooseUnicode(glyph)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={glyph}
-                  title={glyph}
+                  onClick={() => chooseUnicode(char)}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-2xl transition-transform hover:scale-110 active:scale-95 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={name}
+                  title={name}
                 >
-                  <FluentEmoji glyph={glyph} size={30} />
+                  {char}
                 </button>
               ))}
             </div>

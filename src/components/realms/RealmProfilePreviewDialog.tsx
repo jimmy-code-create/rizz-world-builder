@@ -1,4 +1,5 @@
-import { ProfileCardDialog, type ProfileCardUser } from "@/components/profile/ProfileCard";
+import { ProfilePreviewDialog } from "@/components/ProfilePreview";
+import type { ProfileCardUser } from "@/components/profile/ProfileCard";
 
 export type RealmProfilePreviewUser = ProfileCardUser & {
   username: string;
@@ -14,10 +15,22 @@ type Props = {
 };
 
 /**
- * Realm profile preview — now a thin wrapper over the shared <ProfileCard>
- * so realm chat, comments, member lists, voice rooms and DMs all show the
- * same card (same profile + presence store as the profile page).
+ * Realm profile preview — the feed's preview, not a second design.
+ *
+ * Realms used to open the big ProfileCard while tapping the same person in the
+ * feed opened the compact preview sheet, so one user looked like two different
+ * people depending on where you found them. Both now mount
+ * `ProfilePreviewDialog`; realms hand it the id they already have, which makes
+ * the sheet resolve even when the name shown is a display name.
  */
-export function RealmProfilePreviewDialog({ user: targetUser, open, onOpenChange, onMention }: Props) {
-  return <ProfileCardDialog user={targetUser} open={open} onOpenChange={onOpenChange} onMention={onMention} />;
+export function RealmProfilePreviewDialog({ user, open, onOpenChange }: Props) {
+  const username = user?.username ?? "";
+  return (
+    <ProfilePreviewDialog
+      username={username}
+      userId={user?.userId ?? undefined}
+      open={open && Boolean(username || user?.userId)}
+      onOpenChange={onOpenChange}
+    />
+  );
 }

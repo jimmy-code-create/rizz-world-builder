@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { LucideIcon } from "lucide-react";
-import { SmilePlus } from "lucide-react";
+import { SmilePlus, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,18 +22,6 @@ export type MessageActionDescriptor = {
   destructive?: boolean;
   /** A short explanation shown under the label, Discord-style. */
   description?: string;
-};
-
-/** Copy that keeps every action readable without touching each call site. */
-const ACTION_HINTS: Record<string, string> = {
-  "Copy text": "Copy this message to the clipboard",
-  Reply: "Quote it in the composer",
-  "Edit message": "Change what you sent",
-  Forward: "Send it to another chat",
-  Report: "Flag it for moderators",
-  "Delete for me": "Hide it only on this device",
-  "Delete for everyone": "Remove it for both of you",
-  "Add reaction": "Pick an emoji",
 };
 
 /**
@@ -255,16 +243,36 @@ export function MessageActionMenu({
           {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
         </p>
       </div>
-      <div className="flex shrink-0 items-center">{reactionButton}</div>
     </div>
-  ) : reactionBar ? (
-    <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-1">
+  ) : null;
+
+  const closeButton = (
+    <button
+      type="button"
+      onClick={() => onOpenChange(false)}
+      aria-label="Close message actions"
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+    >
+      <X className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+
+  /**
+   * One top row for the menu: its label on the left, the reaction smiley and
+   * the close control tight together on the right. They used to sit in
+   * different corners of the sheet with the preview card between them.
+   */
+  const menuTopBar = (withClose: boolean) => (
+    <div className="flex h-9 items-center justify-between gap-2 pl-2 pr-0.5">
       <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#949ba4]">
         Message actions
       </span>
-      {reactionButton}
+      <div className="flex shrink-0 items-center gap-0.5">
+        {!showingReactions ? reactionButton : null}
+        {withClose ? closeButton : null}
+      </div>
     </div>
-  ) : null;
+  );
 
   const reactionsView = reactionBar ? (
     <ReactionPicker
@@ -286,7 +294,6 @@ export function MessageActionMenu({
     <div role="group" aria-label="Available actions" className="rizz-action-list flex flex-col">
       {actions.map((action, index) => {
         const Icon = action.icon;
-        const hint = action.description ?? ACTION_HINTS[action.label];
         const startsDanger = action.destructive && !actions.slice(0, index).some((item) => item.destructive);
         return (
           <Fragment key={`${action.label}-${index}`}>
@@ -297,8 +304,8 @@ export function MessageActionMenu({
               ref={index === 0 ? firstActionRef : undefined}
               type="button"
               onClick={() => select(action)}
-              className={`rizz-action-row group flex w-full items-center gap-2.5 rounded-[3px] px-2 text-left text-[13px] font-medium leading-[18px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
-                dense ? "min-h-8" : "min-h-11"
+              className={`rizz-action-row group flex w-full items-center gap-3 rounded-lg px-2 text-left text-[14px] font-medium leading-5 transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
+                dense ? "min-h-9" : "min-h-12"
               } ${
                 action.destructive
                   ? "rizz-action-row--danger text-[#f23f43] hover:bg-[#da373c] hover:text-white"
@@ -306,28 +313,15 @@ export function MessageActionMenu({
               }`}
             >
               <span
-                className={`rizz-action-icon grid h-7 w-7 shrink-0 place-items-center rounded-[9px] ${
+                className={`rizz-action-icon grid h-8 w-8 shrink-0 place-items-center rounded-[10px] ${
                   action.destructive
                     ? "bg-[#f23f43]/10 text-[#f23f43] group-hover:bg-white/15 group-hover:text-white"
                     : "bg-white/[0.055] text-[#b5bac1] group-hover:bg-white/10 group-hover:text-white"
                 }`}
               >
-                <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+                <Icon aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{action.label}</span>
-                {hint ? (
-                  <span
-                    className={`rizz-action-hint mt-0.5 block truncate text-[10.5px] font-normal leading-[14px] ${
-                      action.destructive
-                        ? "text-[#f23f43]/70 group-hover:text-white/80"
-                        : "text-[#949ba4] group-hover:text-white/65"
-                    }`}
-                  >
-                    {hint}
-                  </span>
-                ) : null}
-              </span>
+              <span className="min-w-0 flex-1 truncate">{action.label}</span>
             </button>
           </Fragment>
         );
@@ -389,13 +383,15 @@ export function MessageActionMenu({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
+            hideClose
             className="action-sheet rizz-action-menu z-[100] max-h-[78dvh] overflow-y-auto rounded-t-2xl border-white/[0.06] bg-[#111214] px-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {/* Kept in the tree for screen readers, hidden from view. */}
             <SheetHeader className="sr-only">
               <SheetTitle>Message actions</SheetTitle>
             </SheetHeader>
-            <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-white/20" />
+            <span aria-hidden className="mx-auto mb-1 block h-1 w-10 rounded-full bg-white/20" />
+            {menuTopBar(true)}
             {showingReactions ? (
               reactionsView
             ) : (
@@ -434,6 +430,7 @@ export function MessageActionMenu({
         }}
         className={`rizz-action-menu relative max-h-[min(72dvh,30rem)] w-[min(${showingReactions ? "19.5rem" : "15.5rem"},calc(100vw-1.5rem))] overflow-y-auto rounded-lg border border-black/50 bg-[#111214] p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95`}
       >
+        {menuTopBar(false)}
         {showingReactions ? (
           reactionsView
         ) : (

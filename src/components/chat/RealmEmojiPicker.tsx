@@ -11,7 +11,7 @@ import {
   useAvailableEmojis,
   useUploadEmoji,
 } from "@/lib/emoji-available";
-import { EMOJI_DATA } from "@/lib/emoji-data";
+import { SMILEY_EMOJI } from "@/lib/smiley-data";
 import { toast } from "@/lib/toast";
 
 type RealmEmojiPickerProps = {
@@ -44,6 +44,7 @@ export function RealmEmojiPicker({
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [tab, setTab] = useState<"standard" | "custom">("standard");
+  const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -151,21 +152,35 @@ export function RealmEmojiPicker({
         </SheetHeader>
 
         {tab === "standard" && (
-          <div className="mt-3 grid max-h-[50dvh] grid-cols-6 gap-2 overflow-y-auto p-1 sm:grid-cols-8">
-            {EMOJI_DATA.map((entry) => (
-              <button
-                key={entry.char}
-                type="button"
-                onClick={() => {
-                  onPick(entry.char);
-                  onOpenChange(false);
-                }}
-                className="grid h-12 w-12 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-2xl transition-transform hover:scale-105 hover:bg-white/10 active:scale-95"
-                aria-label={entry.name}
-              >
-                <span className="leading-none">{entry.char}</span>
-              </button>
-            ))}
+          <div className="mt-3 space-y-2">
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search smileys"
+              aria-label="Search smileys"
+              className="glass h-9 border-white/10"
+            />
+            <div className="grid max-h-[48dvh] grid-cols-8 gap-0.5 overflow-y-auto pb-1">
+              {SMILEY_EMOJI.filter((entry) =>
+                `${entry.name} ${entry.tags ?? ""}`
+                  .toLowerCase()
+                  .includes(query.trim().toLowerCase()),
+              ).map((entry) => (
+                <button
+                  key={entry.char}
+                  type="button"
+                  onClick={() => {
+                    onPick(entry.char);
+                    onOpenChange(false);
+                  }}
+                  className="grid h-10 w-10 place-items-center rounded-lg text-2xl transition-colors hover:bg-white/10 active:scale-95"
+                  aria-label={entry.name}
+                  title={entry.name}
+                >
+                  <span className="leading-none">{entry.char}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
