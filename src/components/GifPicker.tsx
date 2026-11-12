@@ -546,7 +546,6 @@ export function GifPicker({
                   realmName={realmName}
                   query={query}
                   onQueryChange={setQuery}
-                  onEmoji={(token) => closeAnd(token)}
                   onPick={(token) => closeAnd(token)}
                   onClose={() => setOpen(false)}
                   onManage={onCustomEmoji}

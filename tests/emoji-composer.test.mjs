@@ -112,14 +112,15 @@ await check("all three composers share the field", () => {
   assert.match(postComposer, /<ComposerInput/);
 });
 
-await check("the picker never depends on the route or a realm id", () => {
-  assert.match(panel, /useAvailableEmojis\(\)/);
-  assert.ok(
-    !/useJoinedEmoji|useJoinedRealms|joined_realm_emoji/.test(panel),
-    "the panel still reads a realm-scoped list",
-  );
-  assert.match(panel, /const payload = available\.data;/);
-  assert.match(panel, /for \(const realm of payload\.realms\)/);
+await check("the picker is smileys only, with no realm lookup", () => {
+  // The composer sheet used to mount a 750-glyph catalogue plus every joined
+  // realm's pack; it now ships one flat table of faces and asks for nothing.
+  assert.match(panel, /export const SMILEY_EMOJI/);
+  assert.match(panel, /const SMILEY_CHARS = new Set/);
+  assert.ok(!/useAvailableEmojis|useJoinedEmoji|joined_realm_emoji/.test(panel), "the panel reads no emoji list");
+  assert.ok(!/fetch\(/.test(panel), "the picker makes no network request");
+  assert.ok(!/FluentEmoji|RealmEmojiImage/.test(panel), "a face is a glyph, not a downloaded image");
+  assert.match(panel, /No smiley matches/);
   assert.match(available, /AVAILABLE_EMOJIS_PATH/);
 });
 
@@ -153,13 +154,13 @@ await check("a failed image is a muted chip, never the raw uuid", () => {
   );
 });
 
-await check("one sticky header per section; empty realms are hidden", () => {
-  const headers = panel.match(/emoji-section-head/g) ?? [];
-  assert.ok(headers.length >= 2, "the section header exists");
-  assert.ok(!panel.includes("emoji-section-head--sticky"), "no second overlay header");
-  assert.match(panel, /className="emoji-section-head sticky top-0/);
-  assert.match(panel, /filter\(\s*\n?\s*\(section\) => section\.emoji\.length > 0,?\s*\n?\s*\)/);
-  assert.match(panel, /label: "Private"/);
+await check("one smiley table, one header row, one callback per tap", () => {
+  assert.match(panel, /className="emoji-smiley-head"/);
+  assert.match(panel, /className="rizz-emoji-grid rizz-emoji-grid--smileys"/);
+  assert.ok(!/emoji-rail/.test(panel), "the category rail is gone");
+  assert.ok(!/emoji-section-head/.test(panel), "sections are no longer measured or stickied");
+  // A tap must emit exactly one emoji: calling both callbacks inserted it twice.
+  assert.match(panel, /if \(onPick\) onPick\(char, char\);\s*\n\s*else onEmoji\?\.\(char\);/);
 });
 
 await check("custom emoji cells are square and contain the image", () => {
