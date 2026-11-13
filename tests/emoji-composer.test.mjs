@@ -129,7 +129,7 @@ await check("the picker is smileys only, with no realm lookup", () => {
   }
   assert.match(panel, /searchSmileys\(term\)/);
   // One surface for every composer, with the realm pack inside it.
-  assert.match(panel, /useAvailableEmojis\(\)/);
+  assert.match(panel, /useAvailableEmojis\(source === "realms"\)/);
   assert.match(panel, /<FluentEmoji glyph=\{cell\.char\}/, "Microsoft Fluent artwork");
   assert.ok(!/useJoinedEmoji|joined_realm_emoji/.test(panel), "no realm-scoped query");
   assert.match(panel, /No smiley matches/);

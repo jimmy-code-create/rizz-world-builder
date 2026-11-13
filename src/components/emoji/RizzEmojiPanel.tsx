@@ -82,8 +82,10 @@ export function RizzEmojiPanel({
   onScrollTopChange,
 }: RizzEmojiPanelProps) {
   const prefs = useEmojiPreferences();
-  const available = useAvailableEmojis();
   const [source, setSource] = useState<"smileys" | "realms">("smileys");
+  // Only fetch realm packs once someone asks for them: opening the picker on
+  // smileys must cost zero requests.
+  const available = useAvailableEmojis(source === "realms");
   const [localQuery, setLocalQuery] = useState("");
   const [storedRecents, setStoredRecents] = useState<string[]>([]);
   const [viewport, setViewport] = useState({ top: 0, height: 460, width: 400 });
@@ -283,8 +285,16 @@ export function RizzEmojiPanel({
           className="h-8 w-8 object-contain"
         />
       ) : (
-        <span className="emoji-cell__glyph" aria-hidden="true">
-          {cell.char ? <FluentEmoji glyph={cell.char} size={28} /> : null}
+        // The system glyph paints in the first frame; the Fluent artwork sits
+        // on top and simply covers it once decoded. No blank cell, no waiting
+        // on the CDN before the grid is usable.
+        <span className="emoji-face" aria-hidden="true">
+          <span className="emoji-face__glyph">{cell.char}</span>
+          {cell.char ? (
+            <span className="emoji-face__art">
+              <FluentEmoji glyph={cell.char} size={27} />
+            </span>
+          ) : null}
         </span>
       )}
     </button>

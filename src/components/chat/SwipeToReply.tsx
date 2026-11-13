@@ -249,15 +249,28 @@ export function SwipeableMessage({
     settle();
   };
 
-  const onPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+  /**
+   * Whatever ends a drag that we did not see the pointerup for — a scroll
+   * taking the gesture, another element claiming the pointer — must put the
+   * row back. Otherwise the row stays shifted and its arrow stays painted,
+   * which is what a "floating reply bubble" really is.
+   */
+  const abortGesture = () => {
     const state = gesture.current;
-    if (state.pointerId !== event.pointerId) return;
+    if (state.pointerId === -1) return;
     const wasHorizontal = state.axis === "x";
+    const pointerId = state.pointerId;
     gesture.current.pointerId = -1;
     gesture.current.axis = "none";
     gesture.current.offset = 0;
-    endGesture(event.pointerId, wasHorizontal);
+    gesture.current.armed = false;
+    endGesture(pointerId, wasHorizontal);
     if (wasHorizontal) settle();
+  };
+
+  const onPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (gesture.current.pointerId !== event.pointerId) return;
+    abortGesture();
   };
 
   useEffect(
@@ -279,6 +292,7 @@ export function SwipeableMessage({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onLostPointerCapture={abortGesture}
       onClickCapture={(event) => {
         if (!suppressClick.current) return;
         suppressClick.current = false;

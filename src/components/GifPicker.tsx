@@ -1,6 +1,4 @@
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -29,26 +27,11 @@ import {
 import { cn } from "@/lib/utils";
 import "./emoji/picker.css";
 
-// The Unicode catalogue is ~750 entries and only the emoji tab needs it. Loading
-// it with the composer put that parse on every chat screen; warming the chunk
-// while the app is idle keeps the first open instant without paying for it up
-// front.
-const loadEmojiPanel = () => import("@/components/emoji/RizzEmojiPanel");
-const RizzEmojiPanel = lazy(() =>
-  loadEmojiPanel().then((module) => ({ default: module.RizzEmojiPanel })),
-);
-
-function EmojiPanelSkeleton() {
-  return (
-    <div className="grid grid-cols-8 gap-0 px-2 pt-3" aria-label="Loading emoji">
-      {Array.from({ length: 48 }, (_, index) => (
-        <div key={index} className="grid h-10 place-items-center">
-          <span className="h-6 w-6 rounded-full bg-white/[0.055]" />
-        </div>
-      ))}
-    </div>
-  );
-}
+// The picker is imported eagerly and is deliberately small: a face table plus
+// a windowed grid. An async boundary here meant the first open waited on a
+// chunk and showed a skeleton; now the sheet's emoji tab is ready in the same
+// commit that opens it, which is what makes it feel instant on a phone.
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 
 type GifResult = {
   id: string;
@@ -232,25 +215,6 @@ export function GifPicker({
     setDragging(false);
     if (sheetRef.current) sheetRef.current.style.transform = "";
   }, [initialTab, open]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const warm = () => {
-      if (!cancelled) void loadEmojiPanel();
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(warm, { timeout: 2200 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback?.(id);
-      };
-    }
-    const timer = window.setTimeout(warm, 900);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   useEffect(() => {
     if (!open || tab !== "stickers") return;
@@ -571,19 +535,17 @@ export function GifPicker({
         >
           {tab === "emoji" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <Suspense fallback={<EmojiPanelSkeleton />}>
-                <RizzEmojiPanel
-                  realmId={realmId}
-                  realmName={realmName}
-                  query={query}
-                  onQueryChange={setQuery}
-                  onPick={(token) => closeAnd(token)}
-                  onClose={() => setOpen(false)}
-                  onManage={onCustomEmoji}
-                  initialScrollTop={scrollPositions.current.emoji}
-                  onScrollTopChange={(value) => saveScroll("emoji", value)}
-                />
-              </Suspense>
+              <RizzEmojiPanel
+                realmId={realmId}
+                realmName={realmName}
+                query={query}
+                onQueryChange={setQuery}
+                onPick={(token) => closeAnd(token)}
+                onClose={() => setOpen(false)}
+                onManage={onCustomEmoji}
+                initialScrollTop={scrollPositions.current.emoji}
+                onScrollTopChange={(value) => saveScroll("emoji", value)}
+              />
             </div>
           ) : tab === "gifs" ? (
             <div

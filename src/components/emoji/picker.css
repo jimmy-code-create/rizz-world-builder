@@ -250,6 +250,30 @@
   font-size: min(calc(27px * var(--emoji-scale, 1)), 34px);
 }
 
+/* A face paints twice: the system glyph in the first frame, the Microsoft
+   Fluent artwork over it as soon as it decodes. Both live in the same box, so
+   the upgrade never shifts the grid and an offline CDN still shows emoji. */
+.emoji-face {
+  position: relative;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+}
+
+.emoji-face__glyph {
+  font-size: min(calc(26px * var(--emoji-scale, 1)), 32px);
+  line-height: 1;
+}
+
+.emoji-face__art {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
 .emoji-cell--realm {
   overflow: hidden;
 }

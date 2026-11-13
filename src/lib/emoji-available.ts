@@ -58,11 +58,13 @@ async function fetchAvailable(userId: string): Promise<AvailableEmojiResponse> {
   };
 }
 
-export function useAvailableEmojis() {
+export function useAvailableEmojis(enabled = true) {
   const { user } = useAuth();
   return useQuery({
     queryKey: availableEmojisKey(user?.id),
-    enabled: Boolean(user?.id),
+    // A picker that opens on smileys must not pay for this request until the
+    // person actually asks for realm emoji.
+    enabled: Boolean(user?.id) && enabled,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: () => fetchAvailable(user!.id),

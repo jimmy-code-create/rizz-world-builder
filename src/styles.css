@@ -4226,6 +4226,11 @@ button:active > .motion-icon {
    label, and a mirrored side for a leftward drag. */
 .swipe-reply-host {
   touch-action: pan-y;
+  /* The rail and its badge belong to this row and nothing else: clip them so a
+     gesture that ends outside the row can never leave a floating arrow over
+     the composer. */
+  overflow: hidden;
+  contain: paint;
 }
 .swipe-reply-rail {
   position: absolute;
