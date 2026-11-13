@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, Image as ImageIcon, Search, Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { emojiToken, readRecentEmoji } from "@/lib/emoji-shared";
@@ -6,6 +6,7 @@ import { recordEmojiUse, useEmojiPreferences } from "@/lib/emoji-recents";
 import { SMILEY_CHARS, searchSmileys } from "@/lib/smiley-data";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { FluentEmoji } from "@/components/emoji/FluentEmoji";
+import "./picker.css";
 
 /**
  * The emoji picker used by every composer: DMs, groups and realms.
@@ -15,10 +16,10 @@ import { FluentEmoji } from "@/components/emoji/FluentEmoji";
  *  1. Only the rows on screen are mounted. The smiley table is ~115 faces and
  *     a realm pack can be larger, but the DOM holds roughly one screenful at a
  *     time — the sheet opens in one frame instead of painting the whole set.
- *  2. Nothing is fetched to show a face. Microsoft Fluent artwork is addressed
- *     by Unicode codepoint, so a cell is one `<img loading="lazy">` that the
- *     browser loads when its row actually appears; the text glyph underneath is
- *     the instant fallback.
+ *  2. A cell paints its unicode glyph immediately. Microsoft Fluent artwork is
+ *     addressed by Unicode codepoint, so the same cell is one lazy `<img>`
+ *     whose SVG covers the glyph when it decodes — no blank grid, no lookup
+ *     table, and no per-cell fetch handler.
  *
  * The source chips on the row above the grid are how realm emoji get into a DM
  * or a group: "Smileys" is the Unicode set, "Realms" is every custom emoji the
@@ -51,6 +52,50 @@ function chunkRows(cells: Cell[], columns: number): Cell[][] {
   return rows;
 }
 
+/**
+ * One emoji button, memoised.
+ *
+ * The grid already mounts only the rows near the viewport, but every scroll
+ * tick used to rebuild each mounted button because the click handler was a new
+ * closure every render. `cell` objects come from memoised lists and `onPick` is
+ * stable, so a scroll now only mounts the row that just entered the window.
+ */
+const EmojiCell = memo(function EmojiCell({
+  cell,
+  onPick,
+}: {
+  cell: Cell;
+  onPick: (cell: Cell) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn("emoji-cell emoji-cell--smiley", cell.kind === "realm" && "emoji-cell--realm")}
+      aria-label={cell.kind === "realm" ? `:${cell.name}:` : `${cell.name} emoji`}
+      title={cell.kind === "realm" ? `:${cell.name}:` : cell.name}
+      onClick={() => onPick(cell)}
+    >
+      {cell.kind === "realm" && cell.url ? (
+        <img
+          src={cell.url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-8 w-8 object-contain"
+        />
+      ) : (
+        <span className="emoji-cell__glyph" aria-hidden="true">
+          {/* The unicode glyph paints in the same frame the row mounts; the
+              Fluent artwork covers it once the lazy image has decoded. That
+              keeps the grid from looking empty while CDN assets arrive. */}
+          {cell.char ? <FluentEmoji glyph={cell.char} size={28} /> : null}
+          {cell.char ? <span className="emoji-cell__char">{cell.char}</span> : null}
+        </span>
+      )}
+    </button>
+  );
+});
+
 export type RizzEmojiPanelProps = {
   /** Kept for callers that still pass it; the panel reads every realm. */
   realmKey?: string;
@@ -70,7 +115,7 @@ export type RizzEmojiPanelProps = {
   onScrollTopChange?: (scrollTop: number) => void;
 };
 
-export function RizzEmojiPanel({
+function RizzEmojiPanelImpl({
   realmId,
   query,
   onQueryChange,
@@ -82,10 +127,8 @@ export function RizzEmojiPanel({
   onScrollTopChange,
 }: RizzEmojiPanelProps) {
   const prefs = useEmojiPreferences();
+  const available = useAvailableEmojis();
   const [source, setSource] = useState<"smileys" | "realms">("smileys");
-  // Only fetch realm packs once someone asks for them: opening the picker on
-  // smileys must cost zero requests.
-  const available = useAvailableEmojis(source === "realms");
   const [localQuery, setLocalQuery] = useState("");
   const [storedRecents, setStoredRecents] = useState<string[]>([]);
   const [viewport, setViewport] = useState({ top: 0, height: 460, width: 400 });
@@ -94,7 +137,11 @@ export function RizzEmojiPanel({
 
   const controlledSearch = query !== undefined;
   const searchValue = controlledSearch ? (query ?? "") : localQuery;
-  const term = searchValue.trim().toLowerCase();
+  // The field paints from the live value; the grid filters from a deferred copy.
+  // A packed realm list can hold hundreds of cells, and doing that work on the
+  // keystroke itself is what made the search feel sticky on a phone.
+  const deferredSearchValue = useDeferredValue(searchValue);
+  const term = deferredSearchValue.trim().toLowerCase();
 
   useEffect(() => {
     setStoredRecents(readRecentEmoji());
@@ -141,7 +188,8 @@ export function RizzEmojiPanel({
         token: emojiToken({ id: emoji.id, shortcode: emoji.name }),
         url: emoji.url,
       }));
-    if (privateCells.length) groups.push({ key: "private", label: "Your emoji", cells: privateCells });
+    if (privateCells.length)
+      groups.push({ key: "private", label: "Your emoji", cells: privateCells });
     for (const realm of payload.realms) {
       const cells: Cell[] = realm.emojis
         .filter((emoji) => matches(emoji.name))
@@ -196,7 +244,12 @@ export function RizzEmojiPanel({
       return out;
     }
     for (const group of realmGroups) {
-      out.push({ key: `h:${group.key}`, kind: "header", label: group.label, count: group.cells.length });
+      out.push({
+        key: `h:${group.key}`,
+        kind: "header",
+        label: group.label,
+        count: group.cells.length,
+      });
       for (const cells of chunkRows(group.cells, columns)) {
         out.push({ key: `${group.key}-${out.length}`, kind: "cells", cells });
       }
@@ -208,25 +261,33 @@ export function RizzEmojiPanel({
   const layout = useMemo(() => {
     let top = 0;
     return rows.map((row) => {
-      const height = row.kind === "header" ? HEAD_H : CELL_H * Math.ceil(row.cells.length / columns);
+      const height =
+        row.kind === "header" ? HEAD_H : CELL_H * Math.ceil(row.cells.length / columns);
       const entry = { row, top, height };
       top += height;
       return entry;
     });
   }, [columns, rows]);
 
-  const totalHeight = layout.length ? layout[layout.length - 1].top + layout[layout.length - 1].height : 0;
+  const totalHeight = layout.length
+    ? layout[layout.length - 1].top + layout[layout.length - 1].height
+    : 0;
 
   const measure = useCallback(() => {
     const element = scrollRef.current;
     if (!element) return;
     setViewport((current) => {
       const next = {
-        top: element.scrollTop,
+        // Quantise to whole rows. A pixel-perfect update re-rendered the grid on
+        // every scroll frame even though the mounted window only changes when a
+        // row enters or leaves it; overscan covers the sub-row difference.
+        top: Math.floor(element.scrollTop / CELL_H) * CELL_H,
         height: element.clientHeight || current.height,
         width: element.clientWidth || current.width,
       };
-      return next.top === current.top && next.height === current.height && next.width === current.width
+      return next.top === current.top &&
+        next.height === current.height &&
+        next.width === current.width
         ? current
         : next;
     });
@@ -267,41 +328,21 @@ export function RizzEmojiPanel({
   const windowStart = viewport.top - OVERSCAN;
   const windowEnd = viewport.top + viewport.height + OVERSCAN;
 
-  const renderCell = (cell: Cell) => (
-    <button
-      key={cell.key}
-      type="button"
-      className={cn("emoji-cell emoji-cell--smiley", cell.kind === "realm" && "emoji-cell--realm")}
-      aria-label={cell.kind === "realm" ? `:${cell.name}:` : `${cell.name} emoji`}
-      title={cell.kind === "realm" ? `:${cell.name}:` : cell.name}
-      onClick={() => pick(cell)}
-    >
-      {cell.kind === "realm" && cell.url ? (
-        <img
-          src={cell.url}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="h-8 w-8 object-contain"
-        />
-      ) : (
-        // The system glyph paints in the first frame; the Fluent artwork sits
-        // on top and simply covers it once decoded. No blank cell, no waiting
-        // on the CDN before the grid is usable.
-        <span className="emoji-face" aria-hidden="true">
-          <span className="emoji-face__glyph">{cell.char}</span>
-          {cell.char ? (
-            <span className="emoji-face__art">
-              <FluentEmoji glyph={cell.char} size={27} />
-            </span>
-          ) : null}
-        </span>
-      )}
-    </button>
+  const visibleLayout = useMemo(
+    () => layout.filter(({ top, height }) => top + height >= windowStart && top <= windowEnd),
+    [layout, windowEnd, windowStart],
+  );
+
+  const renderCell = useCallback(
+    (cell: Cell) => <EmojiCell key={cell.key} cell={cell} onPick={pick} />,
+    [pick],
   );
 
   return (
-    <div className={cn("rizz-picker relative flex h-full min-h-0 flex-col", className)} data-mode={mode}>
+    <div
+      className={cn("rizz-picker relative flex h-full min-h-0 flex-col", className)}
+      data-mode={mode}
+    >
       <div className="flex shrink-0 items-center gap-1.5 px-3 pb-1.5">
         <button
           type="button"
@@ -380,7 +421,7 @@ export function RizzEmojiPanel({
         }}
       >
         <div style={{ height: totalHeight }} className="relative">
-          {layout.map(({ row, top, height }) => {
+          {visibleLayout.map(({ row, top, height }) => {
             if (top + height < windowStart || top > windowEnd) return null;
             if (row.kind === "header") {
               return (
@@ -436,3 +477,10 @@ export function RizzEmojiPanel({
     </div>
   );
 }
+
+/**
+ * The sheet re-renders for its own state (drag snap, GIF fetch, tab switches),
+ * and the composer's parent re-renders for every message. Memoising the panel
+ * keeps the grid still unless one of its own props actually changed.
+ */
+export const RizzEmojiPanel = memo(RizzEmojiPanelImpl);

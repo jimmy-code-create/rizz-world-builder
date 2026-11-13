@@ -8,6 +8,7 @@ import { CommentSection } from "@/components/comments/CommentSection";
 import { Button } from "@/components/ui/button";
 import { RizzCat } from "@/components/RizzCat";
 import { formatRelativeTime } from "@/lib/i18n";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 export const Route = createFileRoute("/_app/p/$postId")({
   validateSearch: (search: Record<string, unknown>): { comment?: string } => ({
@@ -115,7 +116,7 @@ function PostPermalinkPage() {
               {formatRelativeTime(commentRow.data.created_at)}
             </span>
             <span className="block truncate text-sm text-foreground/90">
-              {commentRow.data.body}
+              <EmojiText text={commentRow.data.body} />
             </span>
           </span>
         </div>

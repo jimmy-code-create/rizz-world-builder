@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Quote } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { fetchPostById } from "@/lib/posts";
 import { ExternalVideoEmbed } from "@/components/ExternalVideoEmbed";
 import { parseExternalReelLink } from "@/lib/external-reels";
@@ -34,7 +35,11 @@ export function QuoteEmbed({ postId }: { postId: string }) {
         </Avatar>
         <span className="truncate text-xs font-semibold">@{p.author?.username}</span>
       </div>
-      {p.caption && <p className="mt-1.5 line-clamp-3 text-xs leading-snug text-muted-foreground">{p.caption}</p>}
+      {p.caption && (
+        <p className="mt-1.5 line-clamp-3 text-xs leading-snug text-muted-foreground">
+          <EmojiText text={p.caption} />
+        </p>
+      )}
       {p.media_url && p.media_type === "image" && (
         <img src={p.media_url} alt="" loading="lazy" decoding="async" className="mt-2 max-h-48 w-full rounded-xl object-cover" />
       )}

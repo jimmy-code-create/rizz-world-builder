@@ -1,5 +1,7 @@
 import { CatEmoji } from "@/components/emoji/CatEmoji";
+import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 import { CAT_SHORTCODES, catNameForShortcode } from "@/components/emoji/cat-emoji-manifest";
+import { splitUnicodeEmoji } from "@/lib/unicode-emoji";
 
 // Built from the manifest so a new sticker (or a legacy alias) is picked up by
 // every renderer without a second list to drift.
@@ -45,8 +47,24 @@ export function renderTextWithCatEmoji(
 ) {
   const onlyEmoji = isOnlyCatEmoji(text);
   const size = onlyEmoji ? 40 : 22;
-  return splitCatSegments(text).map((seg, i) => {
-    if (!seg.cat) return <span key={`${keyPrefix}-${i}`}>{seg.text}</span>;
+  return splitCatSegments(text).flatMap((seg, i) => {
+    if (!seg.cat) {
+      // Unicode emoji use the same Fluent artwork as the picker. They size in
+      // `em`, so a 3rem emoji-only message and a 14px comment both scale.
+      return splitUnicodeEmoji(seg.text).map((piece, j) =>
+        piece.emoji ? (
+          <span key={`${keyPrefix}-${i}-${j}`} className="inline-fluent-emoji">
+            {/* The system glyph paints immediately; the Fluent SVG covers it
+                once decoded. If Microsoft has no art for this glyph (flags),
+                the glyph simply stays — never a hole, never a duplicate. */}
+            <FluentEmoji glyph={piece.emoji} size={20} inline decorative={false} />
+            <span className="inline-fluent-emoji__glyph">{piece.emoji}</span>
+          </span>
+        ) : (
+          <span key={`${keyPrefix}-${i}-${j}`}>{piece.text}</span>
+        ),
+      );
+    }
     const name = catNameForShortcode(`:${seg.cat}:`);
     if (!name) return <span key={`${keyPrefix}-${i}`}>{seg.text}</span>;
     return (
@@ -61,14 +79,18 @@ export function renderTextWithCatEmoji(
   });
 }
 
-/** Resolve a status emoji value: cat shortcode renders as CatEmoji, else Unicode text. */
+/** Resolve a status emoji value: cat shortcode renders as CatEmoji, else Fluent. */
 export function StatusEmoji({ emoji, size = 20 }: { emoji: string | null; size?: number }) {
   if (!emoji) return null;
   const name = catNameForShortcode(emoji);
   if (name) return <CatEmoji name={name} size={size} animate="loop" />;
   return (
-    <span aria-hidden style={{ fontSize: size, lineHeight: 1 }}>
-      {emoji}
+    <span
+      aria-hidden="true"
+      className="inline-grid place-items-center leading-none"
+      style={{ width: size, height: size }}
+    >
+      <FluentEmoji glyph={emoji} size={size} fallbackGlyph />
     </span>
   );
 }

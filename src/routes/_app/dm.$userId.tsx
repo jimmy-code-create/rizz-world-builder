@@ -30,19 +30,19 @@ import {
   Copy,
   Flag,
   Forward,
-  BarChart3,
   Pencil,
   Check,
   Bell,
   BellOff,
   Download,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
 import { useAvailableEmojis } from "@/lib/emoji-available";
 import { CatStickerSheet } from "@/components/chat/CatStickerSheet";
-import { PollDialog } from "@/components/chat/PollDialog";
 import { ChatPollCard } from "@/components/chat/PollCard";
 import { asChatPollCard } from "@/lib/chat-polls";
 import { CornerUpLeft } from "lucide-react";
@@ -85,7 +85,7 @@ import { useMediaViewer } from "@/components/media/useMediaViewer";
 import { DOUBLE_TAP_REACTION } from "@/lib/reactions";
 import { VoiceNoteBubble } from "@/components/chat/VoiceNoteBubble";
 import { startRecording, uploadVoiceNote } from "@/lib/voice-notes";
-import { blockUser, isBlocked, muteUser, unblockUser } from "@/lib/social";
+import { blockUser, isBlocked, muteUser, unblockUser, unmuteUser } from "@/lib/social";
 import { compressChatImage } from "@/lib/chat-media";
 import { ChatMessageMedia } from "@/components/chat/ChatMessageMedia";
 import { MessageRow } from "@/components/chat/MessageRow";
@@ -115,6 +115,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 // and group chat stay in sync.
 const MESSAGE_PAGE_SIZE = 30;
 const MAX_MESSAGE_LENGTH = 10_000;
+
+/** Mute lengths offered in the DM menu; `null` means until it is turned off. */
+const MUTE_PRESETS: Array<{ label: string; minutes: number }> = [
+  { label: "1 hour", minutes: 60 },
+  { label: "8 hours", minutes: 480 },
+  { label: "24 hours", minutes: 1_440 },
+  { label: "1 week", minutes: 10_080 },
+];
 type CachedDirectMessage = Database["public"]["Tables"]["direct_messages"]["Row"] & {
   delivery_status?: "sending" | "failed";
   deleted_at?: string | null;
@@ -215,6 +223,7 @@ function DMPage() {
   const lastTypingBroadcastAtRef = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [callPrompt, setCallPrompt] = useState<null | "offline" | "choose">(null);
   const [pendingCallVideo, setPendingCallVideo] = useState(false);
@@ -235,18 +244,22 @@ function DMPage() {
   const [wallpaper, setWallpaper] = useState<ChatWallpaper>(null);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
   const [muteOpen, setMuteOpen] = useState(false);
+  const [muteBusy, setMuteBusy] = useState(false);
+  const [muteError, setMuteError] = useState<string | null>(null);
+  const [mutedUntil, setMutedUntil] = useState<number | null>(null);
+  const lastMuteMinutesRef = useRef<number | null>(null);
   const [confirmBlockOpen, setConfirmBlockOpen] = useState(false);
   // Forward opens the same "send to" picker posts, reels and realms use.
   const [forwardDraft, setForwardDraft] = useState<ShareDraft | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [pollOpen, setPollOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const pendingMediaRef = useRef(new Map<string, File>());
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
   const draftKey = user?.id ? `rizz:dm-draft:${user.id}:${userId}` : null;
+  const muteUntilKey = user?.id ? `rizz:dm-mute-until:${user.id}:${userId}` : null;
 
   useEffect(
     () => () => {
@@ -270,6 +283,40 @@ function DMPage() {
   useEffect(() => {
     setWallpaper(loadWallpaper("dm", userId));
   }, [userId]);
+
+  // A timed mute survives a reload: the expiry lives beside the draft, and a
+  // lapsed one removes the server row as soon as the chat opens.
+  useEffect(() => {
+    if (!muteUntilKey) {
+      setMutedUntil(null);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(muteUntilKey);
+      setMutedUntil(raw ? Number(raw) || null : null);
+    } catch {
+      setMutedUntil(null);
+    }
+  }, [muteUntilKey]);
+
+  useEffect(() => {
+    if (!mutedUntil) return;
+    const remaining = mutedUntil - Date.now();
+    if (remaining > 0) {
+      const timer = window.setTimeout(() => setMutedUntil(Date.now()), remaining);
+      return () => window.clearTimeout(timer);
+    }
+    setMutedUntil(null);
+    try {
+      if (muteUntilKey) window.localStorage.removeItem(muteUntilKey);
+    } catch {
+      // Storage may be disabled; the mute still ends for this tab.
+    }
+    if (!user?.id) return;
+    void unmuteUser(user.id, userId)
+      .then(() => qc.setQueryData(["mute-status", user.id, userId], false))
+      .catch(() => undefined);
+  }, [mutedUntil, muteUntilKey, qc, user?.id, userId]);
 
   // The single Call button is only for genuinely narrow phones; 340px is the
   // last width where Voice and Video can stay separate without squeezing the
@@ -450,6 +497,21 @@ function DMPage() {
     queryKey: ["block-status", user?.id, userId],
     queryFn: () => isBlocked(user!.id, userId),
     enabled: !!user,
+  });
+
+  const muteStatus = useQuery({
+    queryKey: ["mute-status", user?.id, userId],
+    enabled: !!user && user.id !== userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mutes")
+        .select("muted_id")
+        .eq("muter_id", user!.id)
+        .eq("muted_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
   });
 
   const msgs = useQuery({
@@ -1007,16 +1069,65 @@ function DMPage() {
       void qc.invalidateQueries({ queryKey: ["blocked-users", user.id] });
     } catch (e: any) {
       toast.error(e.message || "Action failed");
+      // Keep the dialog open so the same button is an honest retry.
+      throw e;
     }
   };
 
-  const handleMute = async () => {
-    if (!user) return;
+  const handleMute = async (minutes: number | null) => {
+    if (!user || muteBusy) return;
+    lastMuteMinutesRef.current = minutes;
+    setMuteBusy(true);
+    setMuteError(null);
     try {
       await muteUser(user.id, userId);
-      toast.success("Conversation muted");
+      const until = minutes ? Date.now() + minutes * 60_000 : null;
+      setMutedUntil(until);
+      try {
+        if (muteUntilKey) {
+          if (until) window.localStorage.setItem(muteUntilKey, String(until));
+          else window.localStorage.removeItem(muteUntilKey);
+        }
+      } catch {
+        // Storage is best-effort; the mute row still exists.
+      }
+      qc.setQueryData(["mute-status", user.id, userId], true);
+      toast.success(
+        minutes
+          ? `Muted for ${MUTE_PRESETS.find((m) => m.minutes === minutes)?.label ?? "a while"}`
+          : "Conversation muted",
+      );
+      setMuteOpen(false);
     } catch (e: any) {
-      toast.error(e.message || "Couldn't mute");
+      const message = e?.message || "Couldn't mute this conversation";
+      setMuteError(message);
+      toast.error(message);
+    } finally {
+      setMuteBusy(false);
+    }
+  };
+
+  const handleUnmute = async () => {
+    if (!user || muteBusy) return;
+    setMuteBusy(true);
+    setMuteError(null);
+    try {
+      await unmuteUser(user.id, userId);
+      setMutedUntil(null);
+      try {
+        if (muteUntilKey) window.localStorage.removeItem(muteUntilKey);
+      } catch {
+        // Ignore storage failures; the server row is gone.
+      }
+      qc.setQueryData(["mute-status", user.id, userId], false);
+      toast.success("Conversation unmuted");
+      setMuteOpen(false);
+    } catch (e: any) {
+      const message = e?.message || "Couldn't unmute this conversation";
+      setMuteError(message);
+      toast.error(message);
+    } finally {
+      setMuteBusy(false);
     }
   };
 
@@ -1123,9 +1234,32 @@ function DMPage() {
     void markKnocksSeen(userId);
   }, [userId, knocks, user?.id]);
 
-  const filteredMsgs = (msgs.data ?? []).filter(
-    (m: any) => !searchQ || (m.body || "").toLowerCase().includes(searchQ.toLowerCase()),
-  );
+  // Search keeps the whole thread on screen and marks the matches: filtering
+  // to only hits loses the context that makes a search useful, and left the
+  // bar with no count or way to step through what it found.
+  const searchMatches = useMemo(() => {
+    const term = searchQ.trim().toLowerCase();
+    if (!term) return [] as string[];
+    return (msgs.data ?? [])
+      .filter((m: any) => (m.body || "").toLowerCase().includes(term))
+      .map((m: any) => String(m.id));
+  }, [msgs.data, searchQ]);
+  const activeSearchIndex = searchMatches.length
+    ? Math.min(searchIndex, searchMatches.length - 1)
+    : 0;
+
+  useEffect(() => {
+    setSearchIndex(0);
+  }, [searchQ]);
+
+  const jumpToMatch = (direction: 1 | -1) => {
+    if (!searchMatches.length) return;
+    const next = (activeSearchIndex + direction + searchMatches.length) % searchMatches.length;
+    setSearchIndex(next);
+    jumpToMessage(searchMatches[next]);
+  };
+
+  const filteredMsgs = msgs.data ?? [];
 
   /** A quoted original may be outside the loaded window; load it, then jump. */
   const jumpToReply = async (messageId: string) => {
@@ -2359,13 +2493,6 @@ function DMPage() {
                   onSelect: () => cameraInputRef.current?.click(),
                 },
                 {
-                  id: "poll",
-                  label: "Poll",
-                  hint: "Ask them",
-                  icon: BarChart3,
-                  onSelect: () => setPollOpen(true),
-                },
-                {
                   id: "schedule",
                   label: "Schedule",
                   hint: "Send in 10 seconds",
@@ -2480,29 +2607,52 @@ function DMPage() {
           onChange={setWallpaper}
         />
 
-        <ResponsiveOverlay open={muteOpen} onOpenChange={setMuteOpen} title="Mute conversation">
-          <div className="space-y-2">
+        <ResponsiveOverlay
+          open={muteOpen}
+          onOpenChange={(next) => {
+            if (!muteBusy) setMuteOpen(next);
+          }}
+          title="Mute conversation"
+        >
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              You won't receive notifications from this conversation.
+              You won&apos;t receive notifications from this conversation.
             </p>
-            <div className="grid gap-2">
-              <Button
-                onClick={async () => {
-                  await handleMute();
-                  setMuteOpen(false);
-                }}
-                className="h-11 rounded-xl"
-              >
-                Mute
+            {muteError && (
+              <p role="alert" className="text-sm text-destructive">
+                {muteError}
+              </p>
+            )}
+            {muteStatus.data || mutedUntil ? (
+              <Button onClick={handleUnmute} disabled={muteBusy} className="h-11 w-full rounded-xl">
+                {muteBusy ? "Unmuting…" : "Unmute"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setMuteOpen(false)}
-                className="h-11 rounded-xl"
-              >
-                Cancel
-              </Button>
-            </div>
+            ) : (
+              <div className="grid gap-2">
+                {MUTE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.minutes}
+                    onClick={() => void handleMute(preset.minutes)}
+                    disabled={muteBusy}
+                    className="h-11 rounded-xl"
+                  >
+                    {muteBusy && lastMuteMinutesRef.current === preset.minutes
+                      ? "Muting…"
+                      : `Mute for ${preset.label}`}
+                  </Button>
+                ))}
+                <Button
+                  onClick={() => void handleMute(null)}
+                  disabled={muteBusy}
+                  variant="outline"
+                  className="h-11 rounded-xl"
+                >
+                  {muteBusy && lastMuteMinutesRef.current === null
+                    ? "Muting…"
+                    : "Mute until I turn it back on"}
+                </Button>
+              </div>
+            )}
           </div>
         </ResponsiveOverlay>
 
@@ -2522,10 +2672,6 @@ function DMPage() {
             setConfirmBlockOpen(false);
           }}
         />
-
-        {/* The poll lives in the thread: the RPC inserts the message and its card,
-          and the realtime subscription drops it into the transcript. */}
-        <PollDialog open={pollOpen} onOpenChange={setPollOpen} dmUserId={userId ?? undefined} />
       </div>
     </div>
   );

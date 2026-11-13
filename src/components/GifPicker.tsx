@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -17,6 +18,7 @@ import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 import { PURIFY_PRICE_LABEL, usePurify } from "@/lib/purify";
 import { StickerMedia } from "@/components/chat/StickerMedia";
+import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 import {
   STICKER_PACKS,
   preloadStickerPack,
@@ -26,12 +28,6 @@ import {
 } from "@/lib/stickers";
 import { cn } from "@/lib/utils";
 import "./emoji/picker.css";
-
-// The picker is imported eagerly and is deliberately small: a face table plus
-// a windowed grid. An async boundary here meant the first open waited on a
-// chunk and showed a skeleton; now the sheet's emoji tab is ready in the same
-// commit that opens it, which is what makes it feel instant on a phone.
-import { RizzEmojiPanel } from "@/components/emoji/RizzEmojiPanel";
 
 type GifResult = {
   id: string;
@@ -161,7 +157,15 @@ export function GifPicker({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? (setControlledOpen ?? (() => {})) : setInternalOpen;
+  // A stable setter matters: the panel is memoised, and an inline function here
+  // would hand it a new `onClose` on every sheet render and defeat that.
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (isControlled) setControlledOpen?.(next);
+      else setInternalOpen(next);
+    },
+    [isControlled, setControlledOpen],
+  );
 
   const [tab, setTab] = useState<PickerTab>(initialTab);
 
@@ -171,7 +175,12 @@ export function GifPicker({
     stickers: "",
   });
   const query = queries[tab];
-  const setQuery = (next: string) => setQueries((current) => ({ ...current, [tab]: next }));
+  const setQuery = useCallback(
+    (next: string) => {
+      setQueries((current) => (current[tab] === next ? current : { ...current, [tab]: next }));
+    },
+    [tab],
+  );
 
   const [snap, setSnap] = useState<SnapPoint>("full");
   // The drag offset is written straight to the sheet element instead of state:
@@ -319,10 +328,32 @@ export function GifPicker({
     return () => observer.disconnect();
   }, [tab]);
 
-  const closeAnd = (marker: string) => {
-    onSelect(marker);
-    if (!keepOpenOnPick) setOpen(false);
-  };
+  // Parents pass an inline `onSelect` (the DM route appends to its draft), so
+  // keep the latest one in a ref. That lets `closeAnd` and every handler below
+  // stay referentially stable while the sheet re-renders around them.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  const closeAnd = useCallback(
+    (marker: string) => {
+      onSelectRef.current(marker);
+      if (!keepOpenOnPick) setOpen(false);
+    },
+    [keepOpenOnPick, setOpen],
+  );
+
+  // The input stays on the live query; the emoji grid catches up on a deferred
+  // copy. Typing then costs one input paint, not a rebuild of the visible grid.
+  const deferredEmojiQuery = useDeferredValue(query);
+
+  const handleEmojiPick = useCallback((token: string) => closeAnd(token), [closeAnd]);
+  const handleEmojiScroll = useCallback(
+    (value: number) => saveScroll("emoji", value),
+    [saveScroll],
+  );
+  const handleEmojiClose = useCallback(() => setOpen(false), [setOpen]);
 
   const beginSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
@@ -441,7 +472,7 @@ export function GifPicker({
         side="bottom"
         hideClose
         style={sheetStyle}
-        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-t border-white/[0.08] bg-[#0e0f10] p-0 shadow-[0_-18px_50px_-18px_rgba(0,0,0,0.8)]"
+        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-t border-white/[0.08] bg-[#0e0f10] p-0 shadow-[0_-18px_50px_-18px_rgba(0,0,0,0.8)] data-[state=closed]:duration-150 data-[state=open]:duration-200"
       >
         <SheetTitle className="sr-only">Emoji, GIFs and stickers</SheetTitle>
 
@@ -538,13 +569,13 @@ export function GifPicker({
               <RizzEmojiPanel
                 realmId={realmId}
                 realmName={realmName}
-                query={query}
+                query={deferredEmojiQuery}
                 onQueryChange={setQuery}
-                onPick={(token) => closeAnd(token)}
-                onClose={() => setOpen(false)}
+                onPick={handleEmojiPick}
+                onClose={handleEmojiClose}
                 onManage={onCustomEmoji}
                 initialScrollTop={scrollPositions.current.emoji}
-                onScrollTopChange={(value) => saveScroll("emoji", value)}
+                onScrollTopChange={handleEmojiScroll}
               />
             </div>
           ) : tab === "gifs" ? (

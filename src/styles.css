@@ -4149,6 +4149,59 @@ button:active > .motion-icon {
   margin: auto;
 }
 
+/* Fluent artwork inside a run of text: the box is 1.18em, set on the image, so
+   captions, comments and emoji-only chat lines all scale with their own type.
+   The system glyph sits underneath and is hidden the moment the SVG decodes:
+   the first paint is never blank, and a glyph Microsoft has no art for (a
+   country flag) keeps its system character instead of leaving a hole. */
+.inline-fluent-emoji {
+  position: relative;
+  display: inline-block;
+  width: 1.18em;
+  height: 1.18em;
+  margin-inline: 0.02em;
+  vertical-align: -0.2em;
+  line-height: 1;
+}
+
+.inline-fluent-emoji > .fluent-emoji,
+.inline-fluent-emoji > .fluent-emoji-fallback {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* A missing asset must not paint a grey box over the glyph underneath. */
+.inline-fluent-emoji > .fluent-emoji-fallback {
+  background: none;
+  opacity: 1;
+}
+
+.inline-fluent-emoji__glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.94em;
+  line-height: 1;
+}
+
+.inline-fluent-emoji > .fluent-emoji[data-loaded="true"] + .inline-fluent-emoji__glyph {
+  visibility: hidden;
+}
+
+/* Standalone glyph fallback (status emoji, animated reactions): the character
+   carries the meaning, so no grey placeholder box. */
+.fluent-emoji-fallback--glyph {
+  display: inline-grid;
+  place-items: center;
+  background: none;
+  opacity: 1;
+  line-height: 1;
+}
+
 /* ============ KNOCK DOOR ============ */
 /* The supplied reference, rebuilt as vector: a static frame, a leaf that swings
    on a left-edge perspective, three teal rays and a teal handle. */

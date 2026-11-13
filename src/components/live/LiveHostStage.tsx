@@ -30,6 +30,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VideoTile } from "@/components/voice/VideoTile";
 import { LiveAudienceDock } from "@/components/live/LiveAudienceDock";
 import type { LiveRoomState } from "@/components/live/useLiveRoom";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 type Person = {
   id: string;
@@ -321,7 +322,9 @@ export function LiveHostStage({
                   style={{ animationDelay: `${index * 20}ms` }}
                 >
                   <UserPlus className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{message.body}</span>
+                  <span className="truncate">
+                    <EmojiText text={message.body} className="truncate" />
+                  </span>
                 </div>
               ) : (
                 <div
@@ -336,7 +339,9 @@ export function LiveHostStage({
                     </AvatarFallback>
                   </Avatar>
                   <span className="shrink-0 font-bold text-white/80">{message.name}</span>
-                  <span className="truncate text-white">{message.body}</span>
+                  <span className="truncate text-white">
+                    <EmojiText text={message.body} className="truncate" />
+                  </span>
                 </div>
               ),
             )}

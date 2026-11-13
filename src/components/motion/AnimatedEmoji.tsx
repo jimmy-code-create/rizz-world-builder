@@ -38,7 +38,13 @@ export function AnimatedEmoji({
 }) {
   const cat = emoji.startsWith(":") ? catNameForShortcode(emoji) : null;
   const catMotion =
-    motion === "loop" ? "loop" : motion === "hover" ? "hover" : motion === "pop" ? "once" : "static";
+    motion === "loop"
+      ? "loop"
+      : motion === "hover"
+        ? "hover"
+        : motion === "pop"
+          ? "once"
+          : "static";
 
   return (
     <span
@@ -49,7 +55,7 @@ export function AnimatedEmoji({
         {cat ? (
           <CatEmoji name={cat} size={size} animate={catMotion} />
         ) : (
-          <FluentEmoji glyph={emoji} size={size} className="motion-emoji__glyph" />
+          <FluentEmoji glyph={emoji} size={size} className="motion-emoji__glyph" fallbackGlyph />
         )}
       </span>
     </span>

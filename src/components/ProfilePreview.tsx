@@ -35,6 +35,7 @@ import {
 import { BadgeLine } from "@/components/profile/BadgeInfoPopover";
 import { ProfileEffectArt, isPageProfileEffect } from "@/components/effects/registry";
 import { MarkdownText } from "@/components/MarkdownText";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { fetchUserBadges, profileBadgeLineup } from "@/lib/badges";
 import { useWornEffects } from "@/lib/effects";
 import { usePurify, withPurifyBadge } from "@/lib/purify";
@@ -531,6 +532,7 @@ export function ProfilePreviewDialog({
                 <MarkdownText
                   text={p.bio}
                   className="mt-2 line-clamp-4 whitespace-pre-wrap text-[13px] leading-5 text-foreground/90 [&_a]:text-primary [&_a]:underline"
+                  renderPlainText={(plain) => <EmojiText text={plain} />}
                 />
               ) : (
                 <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">No bio yet.</p>

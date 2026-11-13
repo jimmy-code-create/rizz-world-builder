@@ -9,6 +9,7 @@ import { fetchThread, sendThreadReply, threadKey, type ThreadMessage } from "@/l
 import { SwipeableMessage } from "@/components/chat/SwipeToReply";
 import { ReplyQuote } from "@/components/chat/ReplyQuote";
 import { replyPreviewText } from "@/lib/chat-reply";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { toast } from "@/lib/toast";
 
 type ThreadSheetProps = {
@@ -122,7 +123,9 @@ export function ThreadSheet({ open, onOpenChange, root, realmId, roomId }: Threa
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {root.author ?? "Member"}
             </p>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">{root.body}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+              <EmojiText text={root.body} />
+            </p>
           </div>
 
           {replies.isLoading && (
@@ -202,7 +205,9 @@ export function ThreadSheet({ open, onOpenChange, root, realmId, roomId }: Threa
                       }
                     />
                   ) : null}
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{reply.body}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
+                    <EmojiText text={reply.body} />
+                  </p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     {new Date(reply.created_at).toLocaleTimeString([], {
                       hour: "numeric",

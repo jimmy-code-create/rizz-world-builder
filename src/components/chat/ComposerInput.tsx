@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { parseEmojiToken, splitEmojiTokens, type EmojiTokenParts } from "@/lib/emoji-token";
 import { renderGifSegments } from "@/lib/gif-content";
+import { fluentEmojiUrl } from "@/components/emoji/FluentEmoji";
+import { isSingleEmoji, splitUnicodeEmoji } from "@/lib/unicode-emoji";
 
 /**
  * The message field, with custom emoji drawn where they are typed.
@@ -153,6 +155,36 @@ function createEmojiImage(parts: EmojiTokenParts, src: string | null): HTMLImage
   } else {
     const fallback = document.createTextNode(`:${parts.name}:`);
     image.replaceWith(fallback);
+  }
+  return image;
+}
+
+/**
+ * A Unicode emoji while composing, drawn with the same Fluent artwork the
+ * message will use after it is sent. `data-token` still carries the character,
+ * so `readComposerValue` writes exactly what the picker inserted.
+ */
+function createUnicodeEmojiImage(char: string): HTMLImageElement {
+  const image = document.createElement("img");
+  image.dataset.token = char;
+  image.dataset.unicode = "true";
+  image.alt = char;
+  image.title = char;
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.draggable = false;
+  image.contentEditable = "false";
+  image.className = "inline-emoji";
+  image.width = 20;
+  image.height = 20;
+  const url = fluentEmojiUrl(char);
+  if (url) {
+    image.src = url;
+    image.addEventListener("error", () => image.replaceWith(document.createTextNode(char)), {
+      once: true,
+    });
+  } else {
+    image.replaceWith(document.createTextNode(char));
   }
   return image;
 }
@@ -353,12 +385,18 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
           continue;
         }
         for (const piece of splitEmojiTokens(segment.value)) {
-          if (piece.kind === "text") {
-            nodes.push(document.createTextNode(piece.text));
+          if (piece.kind !== "text") {
+            const src = resolveRef.current?.(piece) ?? null;
+            nodes.push(createEmojiImage(piece, src));
             continue;
           }
-          const src = resolveRef.current?.(piece) ?? null;
-          nodes.push(createEmojiImage(piece, src));
+          // Unicode picked from the sheet draws as Fluent artwork right away,
+          // so the field and the sent message look the same. Flags fall back to
+          // the character in `createUnicodeEmojiImage`.
+          for (const run of splitUnicodeEmoji(piece.text)) {
+            if (run.emoji) nodes.push(createUnicodeEmojiImage(run.emoji));
+            else nodes.push(document.createTextNode(run.text));
+          }
         }
       }
       return nodes;
@@ -374,21 +412,26 @@ export const ComposerInput = forwardRef<ComposerInputHandle, ComposerInputProps>
         insertEmoji: (token, parts) => {
           const node = rootRef.current;
           if (!node) return;
-          const parsed = parts ?? null;
-          const src = parsed ? (resolveRef.current?.(parsed) ?? null) : null;
           // A zero-width space after the picture lets the caret sit outside it,
           // and is stripped from getValue() so the stored token stays clean.
           const trailing = document.createTextNode(ZERO_WIDTH);
+          const parsed = parts ?? parseEmojiToken(token);
+          // A single Unicode character picked from the sheet is stored as text,
+          // but drawn with Fluent artwork while it is still in the field.
+          if (!parsed && isSingleEmoji(token)) {
+            insertNodes([createUnicodeEmojiImage(token), trailing], { keepKeyboard: false });
+            return;
+          }
+          const src = parsed ? (resolveRef.current?.(parsed) ?? null) : null;
           insertNodes(
             [
               createEmojiImage(
-                parsed ??
-                  parseEmojiToken(token) ?? {
-                    animated: false,
-                    name: "emoji",
-                    id: "",
-                    token,
-                  },
+                parsed ?? {
+                  animated: false,
+                  name: "emoji",
+                  id: "",
+                  token,
+                },
                 src,
               ),
               trailing,

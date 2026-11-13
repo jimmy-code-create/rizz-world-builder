@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SwipeSheet } from "@/components/ui/swipe-sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactionPicker } from "@/components/chat/ReactionPicker";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type MessageActionDescriptor = {
@@ -240,7 +241,11 @@ export function MessageActionMenu({
           )}
         </p>
         <p className="rizz-action-quote mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#dbdee1]">
-          {preview.body?.trim() ? preview.body : "No text — open it to see the media."}
+          {preview.body?.trim() ? (
+            <EmojiText text={preview.body} />
+          ) : (
+            "No text — open it to see the media."
+          )}
         </p>
       </div>
     </div>

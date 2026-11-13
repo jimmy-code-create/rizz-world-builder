@@ -15,6 +15,7 @@ import { useStoryReactors } from "@/lib/story-reactions";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { renderCaptionWithTags } from "@/lib/hashtags";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { useMentionLabels } from "@/lib/mention-tokens";
 import { useStoriesStore } from "@/lib/stories-store";
 import { useI18n } from "@/lib/i18n";
@@ -747,7 +748,7 @@ function StoryViewer({
                       {part.text}
                     </Link>
                   ) : (
-                    <span key={index}>{part.text}</span>
+                    <EmojiText key={index} text={part.text} />
                   ),
                 )}
               </p>

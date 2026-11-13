@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Film, ImageIcon, Play } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmojiText } from "@/components/emoji/EmojiText";
 import { fetchPostById, type FeedPost } from "@/lib/posts";
 import { sharedPostIds } from "@/lib/share-links";
 
@@ -98,7 +99,9 @@ function SharedPostCardView({ post }: { post: FeedPost }) {
 
       <div className="px-3 py-2.5">
         {post.caption && (
-          <p className="line-clamp-2 text-[13px] leading-snug text-foreground/90">{post.caption}</p>
+          <p className="line-clamp-2 text-[13px] leading-snug text-foreground/90">
+            <EmojiText text={post.caption} />
+          </p>
         )}
         <div className="mt-2 flex items-center gap-2">
           <Avatar className="h-5 w-5 shrink-0">

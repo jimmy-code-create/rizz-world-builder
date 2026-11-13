@@ -4,6 +4,7 @@ import { Hash, Loader2, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { searchRealmMessages, searchReady, type SearchResult } from "@/lib/realm-search";
+import { EmojiText } from "@/components/emoji/EmojiText";
 
 type MessageSearchSheetProps = {
   open: boolean;
@@ -84,7 +85,7 @@ export function MessageSearchSheet({ open, onOpenChange, realmId, roomId, onJump
                   </span>
                 </span>
                 <span className="mt-1 line-clamp-3 block whitespace-pre-wrap break-words text-sm">
-                  {row.body}
+                  <EmojiText text={row.body} />
                 </span>
                 <span className="mt-1 block text-[10px] text-muted-foreground">
                   {new Date(row.created_at).toLocaleString([], {

@@ -45,9 +45,15 @@ const dm = read("src/routes/_app/dm.$userId.tsx");
 const group = read("src/routes/_app/g.$id.tsx");
 const css = read("src/components/emoji/picker.css");
 const migration = read("supabase/migrations/20261119000000_emoji_available_and_index.sql");
+const unicode = read("src/lib/unicode-emoji.ts");
+const fluent = read("src/components/emoji/FluentEmoji.tsx");
+const textRenderer = read("src/lib/cat-emoji-text.tsx");
 
 await check("the token regex is the documented one, in both directions", () => {
-  assert.match(token, /EMOJI_TOKEN_SOURCE = "<\(a\?\):\(\[A-Za-z0-9_\]\+\):\(\[0-9a-fA-F-\]\{36\}\)>"/);
+  assert.match(
+    token,
+    /EMOJI_TOKEN_SOURCE = "<\(a\?\):\(\[A-Za-z0-9_\]\+\):\(\[0-9a-fA-F-\]\{36\}\)>"/,
+  );
   assert.match(token, /export function parseEmojiToken/);
   assert.match(token, /export function buildEmojiToken/);
   assert.match(token, /`<\$\{input\.animated \? "a" : ""\}:\$\{input\.name\}:\$\{input\.id\}>`/);
@@ -70,6 +76,20 @@ await check("an emoji in the field is an img[data-token] at the shared size", ()
   assert.match(input, /className = "inline-emoji"/);
   assert.match(css, /\.inline-emoji \{[\s\S]*?height: var\(--emoji-size/);
   assert.match(css, /vertical-align: -0\.2em/);
+});
+
+await check("a picked unicode emoji draws Fluent in the field and after sending", () => {
+  assert.match(unicode, /export function splitUnicodeEmoji/);
+  assert.match(unicode, /new Intl\.Segmenter/);
+  assert.match(input, /for \(const run of splitUnicodeEmoji\(piece\.text\)\)/);
+  assert.match(input, /nodes\.push\(createUnicodeEmojiImage\(run\.emoji\)\)/);
+  assert.match(input, /!parsed && isSingleEmoji\(token\)/);
+  assert.match(input, /fluentEmojiUrl\(char\)/);
+  assert.match(fluent, /export function fluentEmojiUrl/);
+  assert.match(fluent, /fallbackGlyph/);
+  assert.match(textRenderer, /splitUnicodeEmoji\(seg\.text\)/);
+  assert.match(textRenderer, /className="inline-fluent-emoji"/);
+  assert.match(textRenderer, /inline-fluent-emoji__glyph/);
 });
 
 await check("getValue walks text, IMG, BR and Android's DIVs", () => {
@@ -123,10 +143,16 @@ await check("the picker is smileys only, with no realm lookup", () => {
   for (const file of [
     "src/components/emoji/RizzEmojiPanel.tsx",
     "src/components/emoji/EmojiPicker.tsx",
-    "src/components/chat/RealmEmojiPicker.tsx",
   ]) {
     assert.match(read(file), /@\/lib\/smiley-data/, `${file} reads the shared table`);
   }
+  // The realm sheet delegates to the same panel, so it cannot drift or mount
+  // its own 750-glyph list before the sheet paints.
+  assert.match(
+    read("src/components/chat/RealmEmojiPicker.tsx"),
+    /<RizzEmojiPanel/,
+    "the realm sheet uses the shared Fluent panel",
+  );
   assert.match(panel, /searchSmileys\(term\)/);
   // One surface for every composer, with the realm pack inside it.
   assert.match(panel, /useAvailableEmojis\(source === "realms"\)/);
@@ -196,6 +222,39 @@ await check("an upload shows locally, then is replaced by the server row", () =>
   assert.match(available, /removeOptimisticEmoji\(qc, context\.pendingId\)/);
   assert.match(available, /invalidateAvailableEmojis/);
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.save_private_emoji/);
+});
+
+await check("every posted-text surface renders Fluent unicode", () => {
+  // Fluent artwork is only guaranteed if every surface that prints a stored
+  // body goes through EmojiText (or renderTextWithCatEmoji). A raw `{caption}`
+  // or `{body}` would silently show the phone's own emoji set again.
+  const surfaces = [
+    "src/components/PostCard.tsx",
+    "src/components/comments/CommentBody.tsx",
+    "src/components/StoriesStrip.tsx",
+    "src/components/forum/ForumEmbeds.tsx",
+    "src/components/post/QuoteEmbed.tsx",
+    "src/components/chat/SharedPostCards.tsx",
+    "src/components/chat/ThreadSheet.tsx",
+    "src/components/chat/ReplyQuote.tsx",
+    "src/components/chat/MessageSearchSheet.tsx",
+    "src/components/live/LiveAudienceDock.tsx",
+    "src/components/live/LiveHostStage.tsx",
+    "src/components/live/LiveViewerStage.tsx",
+    "src/components/voice/VoiceCallView.tsx",
+    "src/components/notifications/NotificationRow.tsx",
+    "src/components/ProfilePreview.tsx",
+    "src/components/FeedSideDiscussion.tsx",
+    "src/routes/_app/dm.$userId.tsx",
+    "src/routes/_app/g.$id.tsx",
+    "src/routes/_app/r.$slug.tsx",
+    "src/routes/_app/reels.tsx",
+    "src/routes/_app/u.$username.tsx",
+    "src/routes/_app/p.$postId.tsx",
+  ];
+  for (const file of surfaces) {
+    assert.match(read(file), /EmojiText|renderTextWithCatEmoji/, `${file} draws Fluent text`);
+  }
 });
 
 await check("the suite runs this file", () => {
