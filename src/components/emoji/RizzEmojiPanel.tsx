@@ -127,8 +127,10 @@ function RizzEmojiPanelImpl({
   onScrollTopChange,
 }: RizzEmojiPanelProps) {
   const prefs = useEmojiPreferences();
-  const available = useAvailableEmojis();
   const [source, setSource] = useState<"smileys" | "realms">("smileys");
+  // Opening on smileys costs no request; the realm packs are fetched the first
+  // time someone taps the Realms chip.
+  const available = useAvailableEmojis(source === "realms");
   const [localQuery, setLocalQuery] = useState("");
   const [storedRecents, setStoredRecents] = useState<string[]>([]);
   const [viewport, setViewport] = useState({ top: 0, height: 460, width: 400 });
