@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
  * reply; the icon and rail mirror, and the browser's edge-back gesture is still
  * left alone. Everything is painted directly to the DOM during the drag — no
  * React state per pointermove — and the spring is CSS.
+ *
+ * Touch is tracked with native `touchstart`/`touchmove` listeners rather than
+ * React's delegated pointer events. A chat transcript is a vertical scroller,
+ * and on a real phone the browser claims a diagonal drag and fires
+ * `pointercancel` before a delegated React handler ever sees the horizontal
+ * commitment — the row then looks completely dead. A non-passive native
+ * `touchmove` listener can call `preventDefault()` at the exact moment the
+ * gesture turns horizontal, so the drag always belongs to the reply rail.
+ * Mouse and pen keep using pointer events (they have no touch stream).
  */
 export const SWIPE_REPLY = {
   /** Release past this many px and the reply is armed. */
@@ -21,6 +30,8 @@ export const SWIPE_REPLY = {
   rubber: 0.16,
   /** Movement before the gesture commits to an axis. */
   axisLock: 7,
+  /** A diagonal drag may lean this much vertically and still be a reply. */
+  axisLean: 1.15,
   /** The browser back gesture owns the first 22px of the left screen edge. */
   edgeGuard: 22,
   springMs: 240,
@@ -29,6 +40,26 @@ export const SWIPE_REPLY = {
 } as const;
 
 type Axis = "none" | "x" | "y";
+
+type Gesture = {
+  axis: Axis;
+  startX: number;
+  startY: number;
+  offset: number;
+  armed: boolean;
+  pointerId: number;
+  source: "pointer" | "touch" | null;
+};
+
+const IDLE_GESTURE: Gesture = {
+  axis: "none",
+  startX: 0,
+  startY: 0,
+  offset: 0,
+  armed: false,
+  pointerId: -1,
+  source: null,
+};
 
 type SwipeableMessageProps = {
   /** Called once on release when the drag passed the threshold. */
@@ -43,6 +74,17 @@ const reducedMotion = () =>
   typeof window.matchMedia === "function" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** Links, buttons, media controls and text fields own their own gestures. */
+const ownsItsGesture = (target: EventTarget | null) => {
+  const element = target as HTMLElement | null;
+  if (!element || typeof element.closest !== "function") return false;
+  return Boolean(
+    element.closest(
+      "a, button, input, textarea, select, [data-interactive], [data-swipe-ignore], [contenteditable='true']",
+    ),
+  );
+};
+
 export function SwipeableMessage({
   onReply,
   disabled = false,
@@ -54,17 +96,15 @@ export function SwipeableMessage({
   const railRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLSpanElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
-  const gesture = useRef({
-    axis: "none" as Axis,
-    startX: 0,
-    startY: 0,
-    offset: 0,
-    armed: false,
-    pointerId: -1,
-  });
+  const gesture = useRef<Gesture>({ ...IDLE_GESTURE });
   const resetTimer = useRef<number | null>(null);
   const suppressClick = useRef(false);
   const suppressTimer = useRef<number | null>(null);
+  // The reply callback is usually an inline arrow in the route; keeping it in a
+  // ref lets the native listeners bind once per `disabled` change instead of
+  // rebinding on every message-list render.
+  const onReplyRef = useRef(onReply);
+  onReplyRef.current = onReply;
 
   const paint = (offset: number, armed: boolean) => {
     const host = hostRef.current;
@@ -100,7 +140,9 @@ export function SwipeableMessage({
     const label = labelRef.current;
     const reduce = reducedMotion();
     if (content) {
-      content.style.transition = reduce ? "none" : `transform ${SWIPE_REPLY.springMs}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      content.style.transition = reduce
+        ? "none"
+        : `transform ${SWIPE_REPLY.springMs}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       content.style.transform = "translate3d(0, 0, 0)";
     }
     if (rail) {
@@ -141,13 +183,11 @@ export function SwipeableMessage({
 
   const endGesture = (pointerId: number, capture: boolean) => {
     const host = hostRef.current;
-    if (host) {
-      if (capture) {
-        try {
-          host.releasePointerCapture(pointerId);
-        } catch {
-          // The pointer may already be gone; nothing to release.
-        }
+    if (host && capture && pointerId >= 0) {
+      try {
+        host.releasePointerCapture(pointerId);
+      } catch {
+        // The pointer may already be gone; nothing to release.
       }
     }
     // Keep `data-swipe-active` until the same 350ms window that eats the click:
@@ -159,59 +199,64 @@ export function SwipeableMessage({
     }, 350);
   };
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+  const begin = (x: number, y: number, pointerId: number, source: Gesture["source"]) => {
+    if (disabled) return false;
     // Leave the screen-edge back gesture alone.
-    if (event.clientX < SWIPE_REPLY.edgeGuard) return;
-    // Links, buttons, media controls and text fields own their own gestures.
-    if (
-      (event.target as HTMLElement).closest(
-        "a, button, input, textarea, [data-interactive], [data-swipe-ignore], [contenteditable='true']",
-      )
-    ) {
-      return;
-    }
+    if (x < SWIPE_REPLY.edgeGuard) return false;
     if (resetTimer.current !== null) {
       window.clearTimeout(resetTimer.current);
       resetTimer.current = null;
     }
-    const content = contentRef.current;
-    if (content) {
-      content.style.transition = "none";
-      content.style.willChange = "transform";
-    }
     gesture.current = {
       axis: "none",
-      startX: event.clientX,
-      startY: event.clientY,
+      startX: x,
+      startY: y,
       offset: 0,
       armed: false,
-      pointerId: event.pointerId,
+      pointerId,
+      source,
     };
     suppressClick.current = false;
+    return true;
   };
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  /** Tracks a point. Returns true when the gesture has committed horizontally. */
+  const track = (x: number, y: number) => {
     const state = gesture.current;
-    if (disabled || state.pointerId !== event.pointerId || state.axis === "y") return;
-    const dx = event.clientX - state.startX;
-    const dy = event.clientY - state.startY;
+    if (disabled || !state.source || state.axis === "y") return false;
+    const dx = x - state.startX;
+    const dy = y - state.startY;
 
     if (state.axis === "none") {
-      if (Math.abs(dx) < SWIPE_REPLY.axisLock && Math.abs(dy) < SWIPE_REPLY.axisLock) return;
-      // Vertical wins ties: a scroll must never be mistaken for a reply.
-      if (Math.abs(dx) <= Math.abs(dy)) {
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX < SWIPE_REPLY.axisLock && absY < SWIPE_REPLY.axisLock) return false;
+      // Horizontal wins when it clearly leads, even with a little thumb lean.
+      if (absX >= SWIPE_REPLY.axisLock && absX * SWIPE_REPLY.axisLean >= absY) {
+        const host = hostRef.current;
+        state.axis = "x";
+        const content = contentRef.current;
+        if (content) {
+          content.style.transition = "none";
+          content.style.willChange = "transform";
+        }
+        if (state.source === "pointer") {
+          try {
+            host?.setPointerCapture?.(state.pointerId);
+          } catch {
+            // Capture is an optimisation; bubbling still reaches the host.
+          }
+        }
+        if (host) host.dataset.swipeActive = "true";
+      } else if (absY >= SWIPE_REPLY.axisLock) {
+        // A vertical drag is a scroll; never convert it into a reply later.
         state.axis = "y";
-        return;
+        return false;
+      } else {
+        return false;
       }
-      const host = hostRef.current;
-      state.axis = "x";
-      host?.setPointerCapture?.(event.pointerId);
-      if (host) host.dataset.swipeActive = "true";
     }
 
-    if (event.cancelable) event.preventDefault();
     const distance = Math.abs(dx);
     const eased =
       distance > SWIPE_REPLY.maxDrag
@@ -230,47 +275,132 @@ export function SwipeableMessage({
     state.offset = offset;
     suppressClick.current = eased > SWIPE_REPLY.axisLock;
     paint(offset, armed);
+    return true;
   };
 
-  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const finish = () => {
     const state = gesture.current;
-    if (state.pointerId !== event.pointerId) return;
+    if (!state.source) return;
     const wasHorizontal = state.axis === "x";
     const armed = Math.abs(state.offset) >= SWIPE_REPLY.threshold;
     // Do not eat a normal tap after a couple of pixels of finger jitter.
     const dragged = Math.abs(state.offset) > SWIPE_REPLY.axisLock;
-    gesture.current.pointerId = -1;
-    gesture.current.axis = "none";
-    gesture.current.offset = 0;
-    endGesture(event.pointerId, wasHorizontal);
-    if (!wasHorizontal) return;
+    const pointerId = state.pointerId;
+    const wasPointer = state.source === "pointer";
+    gesture.current = { ...IDLE_GESTURE };
+    if (!wasHorizontal) {
+      if (wasPointer) endGesture(pointerId, false);
+      return;
+    }
+    endGesture(pointerId, wasPointer);
     suppressClick.current = dragged;
-    if (armed && !disabled) onReply();
+    if (armed && !disabled) onReplyRef.current();
     settle();
   };
 
-  /**
-   * Whatever ends a drag that we did not see the pointerup for — a scroll
-   * taking the gesture, another element claiming the pointer — must put the
-   * row back. Otherwise the row stays shifted and its arrow stays painted,
-   * which is what a "floating reply bubble" really is.
-   */
-  const abortGesture = () => {
+  const abort = () => {
     const state = gesture.current;
-    if (state.pointerId === -1) return;
+    if (!state.source) return;
     const wasHorizontal = state.axis === "x";
     const pointerId = state.pointerId;
-    gesture.current.pointerId = -1;
-    gesture.current.axis = "none";
-    gesture.current.offset = 0;
-    gesture.current.armed = false;
-    endGesture(pointerId, wasHorizontal);
+    const wasPointer = state.source === "pointer";
+    gesture.current = { ...IDLE_GESTURE };
+    endGesture(pointerId, wasPointer);
     if (wasHorizontal) settle();
   };
 
-  const onPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+  // Touch: the only path that can prevent a scroll from claiming the gesture.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || disabled) return;
+    let touchId: number | null = null;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        if (touchId !== null) {
+          touchId = null;
+          abort();
+        }
+        return;
+      }
+      if (ownsItsGesture(event.target)) return;
+      const touch = event.touches[0];
+      if (touchId !== null) abort();
+      touchId = begin(touch.clientX, touch.clientY, touch.identifier, "touch")
+        ? touch.identifier
+        : null;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (touchId === null) return;
+      const touch = Array.from(event.touches).find((item) => item.identifier === touchId);
+      if (!touch) return;
+      const horizontal = track(touch.clientX, touch.clientY);
+      if (horizontal && event.cancelable) event.preventDefault();
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (touchId === null) return;
+      // A lifted second finger must not end the drag that is still moving.
+      if (Array.from(event.touches).some((item) => item.identifier === touchId)) return;
+      touchId = null;
+      finish();
+    };
+
+    const onTouchCancel = () => {
+      if (touchId === null) return;
+      touchId = null;
+      abort();
+    };
+
+    host.addEventListener("touchstart", onTouchStart, { passive: true });
+    host.addEventListener("touchmove", onTouchMove, { passive: false });
+    host.addEventListener("touchend", onTouchEnd);
+    host.addEventListener("touchcancel", onTouchCancel);
+    return () => {
+      host.removeEventListener("touchstart", onTouchStart);
+      host.removeEventListener("touchmove", onTouchMove);
+      host.removeEventListener("touchend", onTouchEnd);
+      host.removeEventListener("touchcancel", onTouchCancel);
+    };
+  }, [disabled]);
+
+  // Mouse and pen: no touch stream, so pointer events are the natural path.
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (ownsItsGesture(event.target)) return;
+    begin(event.clientX, event.clientY, event.pointerId, "pointer");
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    if (!track(event.clientX, event.clientY)) return;
+    if (event.cancelable) event.preventDefault();
+  };
+
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    if (gesture.current.source !== "pointer") return;
     if (gesture.current.pointerId !== event.pointerId) return;
-    abortGesture();
+    finish();
+  };
+
+  const onPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    if (gesture.current.source !== "pointer") return;
+    if (gesture.current.pointerId !== event.pointerId) return;
+    abort();
+  };
+
+  /**
+   * Whatever ends a drag we never saw a pointerup for — a scroll taking the
+   * gesture, another element claiming the pointer — must put the row back.
+   * Otherwise it stays shifted with its rail painted.
+   */
+  const onLostPointerCapture = () => {
+    if (gesture.current.source !== "pointer") return;
+    abort();
   };
 
   useEffect(
@@ -292,7 +422,7 @@ export function SwipeableMessage({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      onLostPointerCapture={abortGesture}
+      onLostPointerCapture={onLostPointerCapture}
       onClickCapture={(event) => {
         if (!suppressClick.current) return;
         suppressClick.current = false;
