@@ -2252,7 +2252,6 @@ function DMPage() {
                           ]}
                         >
                           <div
-                            data-mine={mine ? "true" : "false"}
                             className={`realm-message__body select-none touch-manipulation ${
                               deliveryStatus ? "opacity-60" : ""
                             }`}

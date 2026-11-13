@@ -2387,7 +2387,6 @@ function RealmPage() {
                         ]}
                       >
                         <div
-                          data-mine={mine ? "true" : "false"}
                           className={`realm-message__body select-none touch-manipulation ${emojiTextClass(bodyText, "chat") ?? ""} ${String(m.id).startsWith("pending-") ? "opacity-55" : ""}`}
                         >
                             {m.reply_to ? (

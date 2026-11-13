@@ -38,11 +38,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
-  /* One elevation scale for the whole app (see :root). */
-  --color-surface-0: var(--surface-0);
-  --color-surface-1: var(--surface-1);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -72,9 +67,7 @@
      (acid lime). No gradients, no glow, no blur blobs. This block is the only
      place brand values are defined: every page, sheet, card and control reads
      from here, so the landing page and the product stay one thing. */
-  /* The canvas is a dark gray with a hint of blue-violet, not a hole: the
-     surface scale above it has somewhere to climb from. */
-  --brand-ink: #0d0d10;
+  --brand-ink: #0a0a0b;
   --brand-ink-2: #131315;
   --brand-ink-3: #1c1c1f;
   --brand-line: #2a2a2e;
@@ -137,25 +130,7 @@
   --z-popover: 150;
   --z-toast: 200;
 
-  /* ---------- ELEVATION SCALE ----------
-     The canvas plus three steps above it, each roughly 4-6% lighter than the
-     one below. Every value is mixed from the theme's own ink and paper, so the
-     presets and the light theme keep the same relationships without a second
-     palette. Components read these — `bg-surface-2`, `var(--surface-line)` —
-     instead of hardcoding a hex per file. */
-  --surface-0: color-mix(in srgb, var(--foreground) 2%, var(--background));
-  --surface-1: color-mix(in srgb, var(--foreground) 6.5%, var(--background));
-  --surface-2: color-mix(in srgb, var(--foreground) 11.5%, var(--background));
-  --surface-3: color-mix(in srgb, var(--foreground) 17%, var(--background));
-  /* Hairlines only where a shape needs an edge; 7% reads as a seam, not a box. */
-  --surface-line: color-mix(in srgb, var(--foreground) 7%, transparent);
-  --surface-line-strong: color-mix(in srgb, var(--foreground) 11%, transparent);
-  /* My own messages: the same fill, warmed by the one accent. */
-  --surface-accent-wash: color-mix(in srgb, var(--primary) 10%, var(--surface-2));
-  --surface-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
-  --surface-shadow-soft: 0 2px 12px rgb(0 0 0 / 0.35);
-
-  /* Legacy flat shadows, kept for call sites that have not moved yet. */
+  /* Elevation: flat. Never a glow. */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
   --shadow-2: 0 14px 34px -22px rgb(0 0 0 / 0.85);
   --shadow-line: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -552,9 +527,8 @@
     border: 1px solid var(--border);
   }
   .glass-strong {
-    background: var(--surface-2);
-    border: 1px solid var(--surface-line);
-    box-shadow: var(--surface-shadow);
+    background: var(--card, var(--brand-ink-2));
+    border: 1px solid var(--border);
   }
   .ring-glow {
     box-shadow: 0 0 0 2px var(--brand-signal);
@@ -731,7 +705,7 @@
   }
 }
 .chat-bar {
-  background: var(--surface-1);
+  background: var(--surface-bar);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -740,12 +714,10 @@
 /* Compact single-row design: 56px tall, 34px avatar, 16px name, 22px icons in
    44px touch targets. Knock button appears when offline without layout shift. */
 .chat-header--dm {
-  /* The header is a step above the transcript, not part of it. */
-  background: var(--surface-1);
+  background: var(--background);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-bottom: 1px solid var(--surface-line);
-  box-shadow: var(--surface-shadow-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-paper) 10%, transparent);
 }
 .chat-header--dm .chat-header__row {
   min-height: 56px;
@@ -1472,23 +1444,6 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 72px;
 }
-/* The message itself sits on a bubble; the avatar and the hover actions stay on
-   the canvas. The negative inline margin cancels the new padding, so text keeps
-   the exact baseline it had before the bubble existed — no layout shift. */
-.realm-message__body {
-  max-width: 100%;
-  padding: 0.3rem 0.6rem;
-  margin-inline-start: -0.6rem;
-  border: 1px solid var(--surface-line);
-  border-radius: 14px;
-  background: var(--surface-2);
-}
-/* My own messages: the same shape, warmed by the one accent. */
-.realm-message__body[data-mine="true"] {
-  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
-  background: var(--surface-accent-wash);
-}
-
 /* The first row in the list, and the first row after a date separator, gets the
    group gap so a divider never looks glued to the message under it. */
 .realm-message--group-start,
@@ -1673,8 +1628,8 @@
 .chat-date-separator__label {
   flex: 0 0 auto;
   border-radius: 9999px;
-  border: 1px solid var(--surface-line);
-  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  background: color-mix(in srgb, var(--surface-bubble) 80%, transparent);
   padding: 0.15rem 0.6rem;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -2730,12 +2685,11 @@ body.focus-mode aside nav a[data-focus-dim="1"] {
   content-visibility: auto;
   contain-intrinsic-size: auto 420px;
   contain: layout paint;
-  /* A card is surface-2 on the canvas: a filled block with a soft shadow and
-     only a whisper of a hairline. */
-  border: 1px solid var(--surface-line);
-  border-radius: 16px;
-  background: var(--surface-2);
-  box-shadow: var(--surface-shadow-soft);
+  /* One flat surface, one hairline border. No tinted corner gradients. */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--brand-ink-2);
+  box-shadow: var(--shadow-line);
   transition:
     transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
     border-color 220ms ease,

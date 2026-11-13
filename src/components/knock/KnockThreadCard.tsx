@@ -73,11 +73,10 @@ export function KnockThreadCard({
     >
       <div
         className={cn(
-          // A filled card on the transcript rather than an outlined box.
           "flex w-full max-w-sm flex-col gap-2 rounded-2xl border px-3.5 py-2.5 backdrop-blur-sm",
           openForMe
-            ? "border-[var(--brand-signal,#c9ff3d)]/40 bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-2))]"
-            : "border-[var(--surface-line)] bg-surface-2",
+            ? "border-[var(--brand-signal,#c9ff3d)]/40 bg-[var(--brand-signal,#c9ff3d)]/[0.07]"
+            : "border-white/10 bg-white/[0.03]",
         )}
       >
         <button
@@ -90,7 +89,7 @@ export function KnockThreadCard({
           className="flex w-full items-center gap-2.5 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         >
           <span
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-surface-3 text-[var(--brand-signal,#c9ff3d)]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white/[0.06] text-[var(--brand-signal,#c9ff3d)]"
             aria-hidden="true"
           >
             <DoorOpen className="h-4 w-4" />
@@ -107,7 +106,7 @@ export function KnockThreadCard({
             </p>
           </div>
           {answer && (
-            <span className="shrink-0 rounded-full bg-surface-3 px-2 py-0.5 text-[10px] font-semibold text-foreground/90">
+            <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold text-foreground/90">
               {answer}
             </span>
           )}

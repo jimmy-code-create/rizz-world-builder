@@ -631,7 +631,7 @@ function DMsPage() {
                 key={g.id}
                 type="button"
                 onClick={() => nav({ to: "/g/$id", params: { id: g.id } })}
-                className="w-full rounded-xl p-3 border border-[var(--surface-line)] bg-surface-2 hover:bg-surface-3 flex items-center gap-3 text-left transition-colors"
+                className="w-full rounded-xl p-3 border border-border bg-card hover:bg-surface-2 flex items-center gap-3 text-left transition-colors"
               >
                 <GroupAvatar group={g} />
                 <div className="flex-1 min-w-0">
@@ -701,8 +701,8 @@ function DMsPage() {
                     isSelected
                       ? "border-primary bg-primary/10"
                       : unread > 0
-                        ? "border-primary/40 bg-surface-2"
-                        : "border-[var(--surface-line)] bg-surface-2 hover:bg-surface-3"
+                        ? "border-primary/40 bg-card"
+                        : "border-border bg-card hover:bg-surface-2"
                   }`}
                 >
                   <div className="relative shrink-0">

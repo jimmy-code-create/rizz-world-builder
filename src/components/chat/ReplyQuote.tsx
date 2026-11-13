@@ -37,11 +37,10 @@ export function ReplyQuote({
         onJump?.();
       }}
       className={cn(
-        // Discord's reply bar: a filled chip with a 3px accent rail on the left.
-        "mb-1 flex w-full max-w-full items-center gap-1.5 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left",
+        "mb-1 flex w-full max-w-full items-center gap-1.5 overflow-hidden rounded-md border-l-2 px-2 py-1 text-left",
         deleted
-          ? "border-[var(--surface-line-strong)] bg-surface-2"
-          : "border-primary bg-surface-3 hover:brightness-[1.08]",
+          ? "border-white/20 bg-white/[0.03]"
+          : "border-primary/70 bg-white/[0.04] hover:bg-white/[0.07]",
         className,
       )}
     >

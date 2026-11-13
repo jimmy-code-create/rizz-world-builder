@@ -433,7 +433,7 @@ function RizzEmojiPanelImpl({
           disabled={uploading}
           aria-label="Add images to your library"
           title="Add images to your library"
-          className="ml-auto inline-flex h-7 items-center gap-1 rounded-full border border-[var(--surface-line)] bg-surface-3 px-2.5 text-[11.5px] font-semibold text-foreground transition-colors hover:brightness-110 disabled:opacity-60"
+          className="ml-auto inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2.5 text-[11.5px] font-semibold text-foreground transition-colors hover:bg-white/[0.1] disabled:opacity-60"
         >
           {uploading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
