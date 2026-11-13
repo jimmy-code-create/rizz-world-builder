@@ -933,7 +933,7 @@ function GroupRoom() {
             above={imagePreview ? (
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
                 <img src={imagePreview} alt="Photo ready to send" className="h-14 w-14 rounded-lg object-cover" />
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Photo compresses before upload</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Ready to send</span>
                 <Button type="button" onClick={clearImage} variant="ghost" size="icon" aria-label="Remove photo">
                   <X className="h-4 w-4" />
                 </Button>

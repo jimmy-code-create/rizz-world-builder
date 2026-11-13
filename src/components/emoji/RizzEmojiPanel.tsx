@@ -1,10 +1,15 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Clock3, Image as ImageIcon, Search, Smile, X } from "lucide-react";
+import { Clock3, Image as ImageIcon, Loader2, Plus, Search, Smile, X } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { emojiToken, readRecentEmoji } from "@/lib/emoji-shared";
 import { recordEmojiUse, useEmojiPreferences } from "@/lib/emoji-recents";
 import { SMILEY_CHARS, searchSmileys } from "@/lib/smiley-data";
-import { useAvailableEmojis } from "@/lib/emoji-available";
+import {
+  LIBRARY_UPLOAD_LIMIT,
+  useAvailableEmojis,
+  useSavePrivateEmojis,
+} from "@/lib/emoji-available";
 import { FluentEmoji } from "@/components/emoji/FluentEmoji";
 import "./picker.css";
 
@@ -134,6 +139,9 @@ function RizzEmojiPanelImpl({
   const [localQuery, setLocalQuery] = useState("");
   const [storedRecents, setStoredRecents] = useState<string[]>([]);
   const [viewport, setViewport] = useState({ top: 0, height: 460, width: 400 });
+  const [uploading, setUploading] = useState(false);
+  const addRef = useRef<HTMLInputElement | null>(null);
+  const saveToLibrary = useSavePrivateEmojis();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef(0);
 
@@ -327,6 +335,33 @@ function RizzEmojiPanelImpl({
     [onEmoji, onPick, realmId],
   );
 
+  /**
+   * Upload pictures straight into the account's own library — the "Your emoji"
+   * group below. Files come from the device picker (which is Photos on a phone
+   * and the file browser on a desktop), up to ten at a time, and are stored as
+   * they are: the grid draws the image, so nothing here mentions compression.
+   */
+  const addImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const picked = Array.from(files)
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, LIBRARY_UPLOAD_LIMIT);
+    if (picked.length === 0) {
+      toast.error("Choose image files.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const saved = await saveToLibrary.mutateAsync({ files: picked });
+      setSource("realms");
+      toast.success(saved.length === 1 ? "Added to your library" : `${saved.length} added to your library`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't add those images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const windowStart = viewport.top - OVERSCAN;
   const windowEnd = viewport.top + viewport.height + OVERSCAN;
 
@@ -377,6 +412,35 @@ function RizzEmojiPanelImpl({
               {realmGroups.reduce((sum, group) => sum + group.cells.length, 0)}
             </span>
           ) : null}
+        </button>
+
+        {/* The library's own door: pick up to ten pictures and they land in
+            "Your emoji" for every chat — DMs, groups and realms alike. */}
+        <input
+          ref={addRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          multiple
+          hidden
+          onChange={(event) => {
+            void addImages(event.target.files);
+            event.currentTarget.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => addRef.current?.click()}
+          disabled={uploading}
+          aria-label="Add images to your library"
+          title="Add images to your library"
+          className="ml-auto inline-flex h-7 items-center gap-1 rounded-full border border-[var(--surface-line)] bg-surface-3 px-2.5 text-[11.5px] font-semibold text-foreground transition-colors hover:brightness-110 disabled:opacity-60"
+        >
+          {uploading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {uploading ? "Adding" : "Add"}
         </button>
       </div>
 

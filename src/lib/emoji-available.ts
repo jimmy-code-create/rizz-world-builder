@@ -86,6 +86,45 @@ export function useSavePrivateEmoji() {
   });
 }
 
+/**
+ * The library's upload: up to ten images in one go, saved to the account, not
+ * to a realm. Anyone signed in can use it — it is their own library, so there
+ * is no moderator check and nothing to subscribe to.
+ */
+export const LIBRARY_UPLOAD_LIMIT = 10;
+
+export function libraryEmojiName(file: File, index: number): string {
+  const base = (file.name.split(".")[0] ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 22);
+  // `:name:` is a-z, 0-9 and _ (2-32 chars); a short suffix keeps a second
+  // upload of the same filename from overwriting the first.
+  const suffix = Math.random().toString(36).slice(2, 5);
+  return `${base || "emoji"}_${suffix}_${index + 1}`.slice(0, 32);
+}
+
+export function useSavePrivateEmojis() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ files }: { files: File[] }) => {
+      const { uploadPrivateEmoji, savePrivateEmoji } = await import("@/lib/realm-emoji");
+      const saved: AvailableEmoji[] = [];
+      // Sequential on purpose: ten parallel uploads on a phone queue behind the
+      // same connection and the first failure would strand the rest.
+      for (const [index, file] of files.entries()) {
+        const name = libraryEmojiName(file, index);
+        const url = await uploadPrivateEmoji(file, name);
+        const { id } = await savePrivateEmoji({ name, url });
+        saved.push({ id, name, url, animated: file.type === "image/gif" });
+      }
+      return saved;
+    },
+    onSuccess: () => invalidateAvailableEmojis(qc),
+  });
+}
+
 export function invalidateAvailableEmojis(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ["available-emojis"] });
   // Message rendering resolves ids through the shared emoji lookup; a new row

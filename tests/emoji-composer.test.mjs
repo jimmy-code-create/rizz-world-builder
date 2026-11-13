@@ -166,7 +166,8 @@ await check("the endpoint answers for every joined realm, with no parameters", (
   assert.match(endpoint, /createFileRoute\("\/api\/emojis\/available"\)/);
   assert.match(endpoint, /auth\.client\s*\n?\s*\.from\("realm_members"\)/);
   assert.match(endpoint, /\.in\("realm_id", realmIds\)/);
-  assert.match(endpoint, /\{ private: \[\], realms \}/);
+  assert.match(endpoint, /\{ private: privateEmojis, realms \}/, "the viewer's own library rides along");
+  assert.match(endpoint, /\.is\("realm_id", null\)/, "private emoji are the realm-less rows");
   assert.match(migration, /CREATE INDEX IF NOT EXISTS idx_realm_custom_emoji_realm_id/);
 });
 

@@ -2566,7 +2566,7 @@ function DMPage() {
                   className="h-14 w-14 rounded-lg object-cover"
                 />
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  Image compressed before upload
+                  Ready to send
                 </span>
                 <Button
                   type="button"

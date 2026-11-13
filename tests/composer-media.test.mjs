@@ -56,7 +56,8 @@ await check("realm composers can send photos and videos, and paste an image", ()
   assert.match(realmComposer, /const MAX_ATTACHMENTS = 10;/);
   assert.match(realmComposer, /onPaste=\{handlePaste\}/);
   assert.match(realmComposer, /file\.type\.startsWith\("video\/"\)/);
-  assert.match(realmComposer, /Photo compresses before upload/);
+  assert.match(realmComposer, /Ready to send/);
+  assert.ok(!realmComposer.includes("compresses before upload"), "compression is not the user's problem");
   assert.match(library, /accept="image\/\*,video\/\*"/);
   assert.match(realm, /compressChatImage\(file\)/);
   assert.match(realm, /\.from\("chat-media"\)/);

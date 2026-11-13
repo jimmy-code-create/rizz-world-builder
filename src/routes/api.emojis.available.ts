@@ -12,9 +12,10 @@ import { getAuthorizedSupabase } from "@/lib/server-supabase";
  * may *I* use?" — so the answer is identical in a DM, a realm and the feed
  * composer.
  *
- * `private` is always empty today: emoji are owned by a realm. It is in the
- * response so the picker's "Private" section can be filled by a future
- * per-account upload (or by a local, not-yet-saved upload on the client).
+ * `private` is the viewer's own library — rows with no realm and this account as
+ * `owner_id`. It needs no membership and no subscription, so the picker's "Your
+ * emoji" section works in a DM, in a realm the viewer only lurks in, and in the
+ * feed composer alike.
  */
 export const Route = createFileRoute("/api/emojis/available")({
   server: {
@@ -23,7 +24,40 @@ export const Route = createFileRoute("/api/emojis/available")({
         const auth = await getAuthorizedSupabase(request);
         if (auth instanceof Response) return auth;
 
-        // Memberships first: this decides which realms (and icons) exist even
+        // The account's own library first: it is not tied to a realm, so a
+        // member of no realm at all still gets their pictures back.
+        // `owner_id` arrived with the private-emoji migration; the generated
+        // types predate it, so the table access is cast the same way the rest
+        // of the codebase reads new columns.
+        const { data: privateRows, error: privateError } = await (auth.client.from as any)(
+          "realm_custom_emoji",
+        )
+          .select("*")
+          .is("realm_id", null)
+          .eq("owner_id", auth.userId)
+          .eq("kind", "emoji");
+
+        if (privateError) {
+          console.error("[/api/emojis/available] private emoji lookup failed", privateError);
+        }
+
+        const privateEmojis = ((privateRows ?? []) as Array<{
+          id: string;
+          name: string;
+          url: string;
+          animated?: boolean | null;
+          status?: string | null;
+        }>)
+          .filter((row) => !row.status || row.status === "active")
+          .map((row) => ({
+            id: row.id,
+            name: row.name,
+            url: row.url,
+            animated: row.animated ?? /\.(gif|webp|webm)(\?|#|$)/i.test(row.url),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+        // Memberships next: this decides which realms (and icons) exist even
         // when a realm has no emoji of its own.
         const { data: memberships, error: memberError } = await auth.client
           .from("realm_members")
@@ -65,7 +99,10 @@ export const Route = createFileRoute("/api/emojis/available")({
 
         const realmIds = realms.map((realm) => realm.id);
         if (!realmIds.length) {
-          return Response.json({ private: [], realms: [] }, { headers: cacheHeaders() });
+          return Response.json(
+            { private: privateEmojis, realms: [] },
+            { headers: cacheHeaders() },
+          );
         }
 
         // One read for every joined realm. `status`/`animated` arrived with the
@@ -107,7 +144,7 @@ export const Route = createFileRoute("/api/emojis/available")({
           );
         }
 
-        return Response.json({ private: [], realms }, { headers: cacheHeaders() });
+        return Response.json({ private: privateEmojis, realms }, { headers: cacheHeaders() });
       },
     },
   },
