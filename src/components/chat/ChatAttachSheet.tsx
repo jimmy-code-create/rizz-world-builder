@@ -1,22 +1,20 @@
 import { useState } from "react";
-import { Plus, X, type LucideIcon } from "lucide-react";
+import { Camera, Plus, X, type LucideIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 /**
  * The composer's `+`.
  *
- * Every chat (DM, group, realm) opens this same sheet: one square tile per
- * action — an icon, a word, and a one-line hint — so nothing is discoverable
- * only by guessing what a lone photo icon does.
+ * Every chat (DM, group, realm) opens this same sheet, and it opens on the
+ * photo library: the pictures already shared in this conversation, newest
+ * first, one tap to send again. The camera tile sits in front of them, so the
+ * two ways people actually add a photo — take one, or reuse one — are the first
+ * things in the sheet.
  *
- * The tiles are square on purpose. The sheet is a row of equal choices, and a
- * square grid reads as a palette instead of a list of differently sized
- * buttons. The trigger is a squared tile too, so the `+` matches them.
- *
- * The Rizz library used to live here as a sub-view. It duplicated the sticker
- * pack the composer already has, and it hid the poll behind another tap, so it
- * is gone — the `+` is for things you attach or start.
+ * The actions live in one floating bar underneath, icon over word: Photos,
+ * Poll, Apps (GIF and stickers), Files, plus whatever the screen adds. The bar
+ * is the same row at every width; the photo grid is what fills the sheet.
  */
 export type ChatAttachAction = {
   id: string;
@@ -27,14 +25,25 @@ export type ChatAttachAction = {
   disabled?: boolean;
 };
 
+export type ChatAttachPhoto = {
+  id: string;
+  url: string;
+};
+
 export function ChatAttachButton({
   actions,
+  photos,
+  onPickPhoto,
   disabled,
   className,
   label = "Add to your message",
   appearance = "tile",
 }: {
   actions: ChatAttachAction[];
+  /** Photos already in this conversation, newest first. */
+  photos?: ChatAttachPhoto[];
+  /** Send one of them again: the sheet closes and the photo is attached. */
+  onPickPhoto?: (url: string) => void;
   disabled?: boolean;
   className?: string;
   label?: string;
@@ -42,6 +51,7 @@ export function ChatAttachButton({
   appearance?: "tile" | "circle";
 }) {
   const [open, setOpen] = useState(false);
+  const cameraAction = actions.find((action) => action.id === "camera");
 
   const run = (action: ChatAttachAction) => {
     if (action.disabled) return;
@@ -50,6 +60,15 @@ export function ChatAttachButton({
     // otherwise iOS drops the dialog and the picker never appears.
     window.setTimeout(action.onSelect, 60);
   };
+
+  const pickPhoto = (url: string) => {
+    if (!onPickPhoto) return;
+    setOpen(false);
+    window.setTimeout(() => onPickPhoto(url), 60);
+  };
+
+  const library = photos ?? [];
+  const showGrid = Boolean(cameraAction || library.length);
 
   return (
     <>
@@ -82,45 +101,77 @@ export function ChatAttachButton({
         <SheetContent
           side="bottom"
           hideClose
-          className="glass-strong max-h-[78dvh] rounded-t-3xl border-white/10 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
+          className="glass-strong flex max-h-[82dvh] flex-col gap-0 overflow-hidden rounded-t-3xl border-white/10 p-0 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
         >
-          <SheetTitle className="sr-only">Attachments</SheetTitle>
-          <div className="mx-auto mb-3 mt-1 h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
+          <SheetTitle className="sr-only">Add to your message</SheetTitle>
+          <div className="mx-auto mb-2 mt-2 h-1 w-10 shrink-0 rounded-full bg-white/20" aria-hidden="true" />
 
-          <div className="px-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">Add to your message</p>
+          <div className="flex shrink-0 items-center justify-end px-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {showGrid && (
+            <div className="rizz-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+              <div className="grid grid-cols-3 gap-[3px] sm:grid-cols-4">
+                {cameraAction && (
+                  <button
+                    type="button"
+                    onClick={() => run(cameraAction)}
+                    disabled={cameraAction.disabled}
+                    className="grid aspect-square place-items-center rounded-[10px] bg-white/[0.07] text-muted-foreground transition-colors hover:bg-white/[0.12] hover:text-foreground disabled:opacity-40"
+                    aria-label="Take a photo"
+                  >
+                    <Camera className="h-7 w-7" strokeWidth={1.6} />
+                  </button>
+                )}
+                {library.map((photo) => (
+                  <button
+                    key={photo.id}
+                    type="button"
+                    onClick={() => pickPhoto(photo.url)}
+                    className="group relative aspect-square overflow-hidden rounded-[10px] bg-white/[0.05] active:opacity-80"
+                    aria-label="Send this photo"
+                  >
+                    <img
+                      src={photo.url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.04]"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "mx-3 mb-1 flex shrink-0 items-stretch justify-around gap-1 rounded-3xl border border-white/[0.08] bg-[#0c0c0c]/90 p-1.5 backdrop-blur",
+              !showGrid && "mt-2",
+            )}
+          >
+            {actions.map((action) => (
               <button
+                key={action.id}
                 type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                onClick={() => run(action)}
+                disabled={action.disabled}
+                className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-40"
               >
-                <X className="h-4 w-4" />
+                <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-foreground transition-colors group-hover:border-white/20">
+                  <action.icon className="h-[17px] w-[17px]" />
+                </span>
+                <span className="max-w-full truncate">{action.label}</span>
               </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {actions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => run(action)}
-                  disabled={action.disabled}
-                  className="group flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.07] bg-white/[0.035] px-2 text-center transition-colors hover:border-white/15 hover:bg-white/[0.07] active:scale-[0.98] disabled:opacity-40"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-foreground transition-colors group-hover:border-white/20">
-                    <action.icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
-                  {action.hint && (
-                    <span className="text-[9px] leading-tight text-muted-foreground">
-                      {action.hint}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </SheetContent>
       </Sheet>

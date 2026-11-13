@@ -74,14 +74,17 @@ await check("the + is the Rizz Library in a realm, with every old action still r
   assert.match(library, />\s*Files\s*</);
 });
 
-await check("the attach sheet is a grid of squares, and the Rizz library is out of it", () => {
+await check("the attach sheet opens on the chat's photo library, actions underneath", () => {
   assert.match(attach, /export function ChatAttachButton\(/);
   assert.match(attach, /<Plus className="h-4 w-4" \/>/, "it wears the + people know");
   assert.match(attach, /rounded-xl border border-white\/10 bg-white\/\[0\.04\]/, "the trigger is a square tile");
-  assert.match(attach, /aspect-square/, "every action is a square tile");
-  assert.match(attach, /grid-cols-3/, "three squares to a row");
+  assert.match(attach, /photos\?: ChatAttachPhoto\[\]/, "it takes the photos already in the chat");
+  assert.match(attach, /onPickPhoto\?: \(url: string\) => void/, "one tap sends one again");
+  assert.match(attach, /aspect-square/, "library tiles are squares");
+  assert.match(attach, /grid-cols-3/, "three tiles to a row");
+  assert.match(attach, /aria-label="Take a photo"/, "the camera leads the grid");
+  assert.match(attach, /rounded-3xl border border-white\/\[0\.08\]/, "the actions sit in one bar");
   assert.ok(!attach.includes("onInsertSticker"), "the library sub-view is gone");
-  assert.ok(!attach.includes("Rizz library</span>"), "the + no longer advertises the library");
   assert.ok(!attach.includes("RIZZ_PACKS"), "the sheet no longer imports the emoji packs");
   for (const source of [realm, group, dm]) {
     assert.ok(!source.includes("insertRizzItem"), "no composer still wires the library");
@@ -89,7 +92,16 @@ await check("the attach sheet is a grid of squares, and the Rizz library is out 
   // The curated reaction set moved into the shared reactions module; the
   // library's packs, search and insert helpers are gone with their only user.
   assert.match(reactions, /export const RIZZ_REACTIONS/);
-  assert.match(attach, /RizzLibrarySheet/, "the library lives inside the + sheet again");
+  // Every chat opens the same library, and every chat can reach the device's
+  // own file browser next to its photo library.
+  assert.match(dm, /photos=\{recentPhotos\}/);
+  assert.match(group, /photos=\{recentPhotos\}/);
+  assert.match(realm, /photos=\{recentPhotos\}/);
+  assert.match(realmComposer, /photos=\{photos\}/);
+  for (const [name, source] of [["dms", dm], ["groups", group], ["realms", realmComposer]]) {
+    assert.match(source, /label: "Files"/, `${name} can browse files`);
+    assert.match(source, /label: "Photos"/, `${name} can pick from the library`);
+  }
 });
 
 await check("groups and realms can start a poll, DMs only read legacy ones", () => {

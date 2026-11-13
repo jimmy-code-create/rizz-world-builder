@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { BarChart3, CalendarClock, Camera, ImagePlus, Send, X } from "lucide-react";
+import { BarChart3, CalendarClock, Camera, Folder, ImagePlus, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageComposer, type ComposerReply } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -52,6 +52,8 @@ export type RealmComposerProps = {
   onPoll?: () => void;
   onSchedule?: (draft: string) => void;
   onInputFocus?: () => void;
+  /** Photos already in this channel, newest first: the attach sheet's library. */
+  photos?: { id: string; url: string }[];
   /** Quote strip above the row: replying to a message in this channel. */
   reply?: ComposerReply | null;
 };
@@ -63,6 +65,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     {
       realmId,
       realmName = "",
+      photos = [],
       channelKey: _channelKey,
       userId: _userId,
       joined = true,
@@ -93,6 +96,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
     const inputRef = useRef<ComposerInputHandle | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+    const filesInputRef = useRef<HTMLInputElement>(null);
 
     /**
      * One source for the inline images the composer draws: the same cached list
@@ -180,6 +184,25 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
       const newUrls = arr.map((f) => URL.createObjectURL(f));
       setPreviews((prev) => [...prev, ...newUrls].slice(0, MAX_ATTACHMENTS));
     }, []);
+
+    /** Send an attachment that is already in this channel: the sheet library. */
+    const pickRecentPhoto = useCallback(
+      async (url: string) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error("missing");
+          const blob = await response.blob();
+          if (!blob.type.startsWith("image/") && !blob.type.startsWith("video/")) {
+            throw new Error("unsupported");
+          }
+          const extension = (blob.type.split("/")[1] ?? "jpg").split("+")[0];
+          addFiles([new File([blob], `attachment.${extension}`, { type: blob.type })]);
+        } catch {
+          toast.error("Couldn't open that attachment.");
+        }
+      },
+      [addFiles],
+    );
 
     const removeAttachment = useCallback((index: number) => {
       setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -287,6 +310,18 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
             e.currentTarget.value = "";
           }}
         />
+        {/* Photos comes from the library; Files opens the device's own file
+            browser for the same images and clips. */}
+        <input
+          ref={filesInputRef}
+          type="file"
+          accept="image/*,video/*"
+          hidden
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.currentTarget.value = "";
+          }}
+        />
 
         <MessageComposer
           value={body}
@@ -342,7 +377,7 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
               actions={[
                 {
                   id: "photo",
-                  label: "Photo",
+                  label: "Photos",
                   hint: "Your library",
                   icon: ImagePlus,
                   onSelect: () => fileInputRef.current?.click(),
@@ -353,6 +388,13 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
                   hint: "Take a shot",
                   icon: Camera,
                   onSelect: () => cameraInputRef.current?.click(),
+                },
+                {
+                  id: "files",
+                  label: "Files",
+                  hint: "Browse device",
+                  icon: Folder,
+                  onSelect: () => filesInputRef.current?.click(),
                 },
                 ...(onPoll
                   ? [
@@ -378,6 +420,8 @@ export const RealmComposer = forwardRef<RealmComposerHandle, RealmComposerProps>
                     ]
                   : []),
               ]}
+              photos={photos}
+              onPickPhoto={(url) => void pickRecentPhoto(url)}
             />
           }
           mentions={

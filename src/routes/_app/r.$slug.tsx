@@ -439,6 +439,22 @@ function RealmPage() {
       ? messageRows.slice(messageRows.length - messageLimit)
       : messageRows;
   const hiddenCount = messageRows.length - visibleRows.length;
+
+  // The pictures already in this channel, newest first. The composer's `+`
+  // opens on them, so a photo everyone has already seen is one tap to send
+  // again instead of a trip through the device picker.
+  const recentPhotos = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; url: string }[] = [];
+    for (let i = messageRows.length - 1; i >= 0 && out.length < 12; i -= 1) {
+      const message = messageRows[i] as { id?: string; attachment_url?: string | null };
+      const url = message.attachment_url;
+      if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      seen.add(url);
+      out.push({ id: String(message.id ?? url), url });
+    }
+    return out;
+  }, [messageRows]);
   const messageIds = messageRows.map((message: { id: string }) => message.id);
   const reactions = useChatReactions("realm", messageIds, {
     myMessageIds: messageRows
@@ -2742,6 +2758,7 @@ function RealmPage() {
           ref={composerRef}
           realmId={c.id}
           realmName={c.name}
+          photos={recentPhotos}
           channelKey={sendChannelKey}
           userId={user?.id ?? null}
           joined={joined}

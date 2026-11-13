@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Palette, X, Forward, CornerUpLeft, BarChart3, Smile } from "lucide-react";
+import { ArrowLeft, Users, Link2, LogOut, Copy, Crown, Trash2, ImagePlus, Camera, Folder, Palette, X, Forward, CornerUpLeft, BarChart3, Smile } from "lucide-react";
 import { ChatAttachButton } from "@/components/chat/ChatAttachSheet";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import type { ComposerInputHandle } from "@/components/chat/ComposerInput";
@@ -93,6 +93,7 @@ function GroupRoom() {
   const [pollOpen, setPollOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const filesInputRef = useRef<HTMLInputElement>(null);
   // Replying is composer state, like Discord: the bar sits above the box, the
   // keyboard opens, and the chat settles on the newest message.
   const [replyTo, setReplyTo] = useState<{ id: string; body: string; author: string | null } | null>(null);
@@ -444,6 +445,34 @@ function GroupRoom() {
   // hooks than during the previous render" once the group query resolves.
   const visibleMessages = [...olderMessages, ...(msgs.data ?? [])];
   const visibleIds = visibleMessages.map((message: { id: string }) => message.id);
+
+  // The pictures already in this group, newest first: the attach sheet opens
+  // on them instead of a list of words.
+  const recentPhotos = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; url: string }[] = [];
+    for (let i = visibleMessages.length - 1; i >= 0 && out.length < 12; i -= 1) {
+      const message = visibleMessages[i] as { id?: string; attachment_url?: string | null };
+      const url = message.attachment_url;
+      if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      seen.add(url);
+      out.push({ id: String(message.id ?? url), url });
+    }
+    return out;
+  }, [visibleMessages]);
+
+  const pickRecentPhoto = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("missing");
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("not an image");
+      const extension = (blob.type.split("/")[1] ?? "jpg").split("+")[0];
+      await chooseImage(new File([blob], `photo.${extension}`, { type: blob.type }));
+    } catch {
+      toast.error("Couldn't open that photo.");
+    }
+  };
 
   // Mention notifications deep-link here; the row may mount a tick after the
   // route changes, so keep looking briefly instead of jumping once and missing.
@@ -875,6 +904,15 @@ function GroupRoom() {
             hidden
             onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
           />
+          {/* Photos come from the library; Files comes from the device's own
+              file browser. Same upload, two doors. */}
+          <input
+            ref={filesInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(event) => { void chooseImage(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}
+          />
           <MessageComposer
             value={body}
             onChange={(next, nextCaret) => {
@@ -911,11 +949,14 @@ function GroupRoom() {
               label="Attach"
               disabled={uploadingImage}
               actions={[
-                { id: "photo", label: "Photo", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
+                { id: "photo", label: "Photos", hint: "Your library", icon: ImagePlus, onSelect: () => imageInputRef.current?.click() },
                 { id: "camera", label: "Camera", hint: "Take a shot", icon: Camera, onSelect: () => cameraInputRef.current?.click() },
-                { id: "gif", label: "GIF", hint: "Emoji and stickers", icon: Smile, onSelect: () => setGifOpen(true) },
+                { id: "gif", label: "Apps", hint: "GIFs and stickers", icon: Smile, onSelect: () => setGifOpen(true) },
                 { id: "poll", label: "Poll", hint: "Ask the group", icon: BarChart3, onSelect: () => setPollOpen(true), disabled: uploadingImage },
+                { id: "files", label: "Files", hint: "Browse device", icon: Folder, onSelect: () => filesInputRef.current?.click() },
               ]}
+              photos={recentPhotos}
+              onPickPhoto={(url) => void pickRecentPhoto(url)}
             />}
             // The mention popup anchors to the composer's own wrapper, so it
             // opens above the field instead of the nearest positioned ancestor.

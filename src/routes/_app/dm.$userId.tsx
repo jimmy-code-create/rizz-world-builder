@@ -26,6 +26,7 @@ import {
   Trash2,
   ImagePlus,
   Camera,
+  Folder,
   Users,
   Copy,
   Flag,
@@ -255,6 +256,7 @@ function DMPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const filesInputRef = useRef<HTMLInputElement>(null);
   const pendingMediaRef = useRef(new Map<string, File>());
   const pendingReplyRef = useRef(new Map<string, string>());
   const imageObjectUrlsRef = useRef(new Set<string>());
@@ -1260,6 +1262,36 @@ function DMPage() {
   };
 
   const filteredMsgs = msgs.data ?? [];
+
+  // The pictures already in this conversation, newest first. The attach sheet
+  // opens on them, so sending a photo you have both already seen is one tap.
+  const recentPhotos = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; url: string }[] = [];
+    for (let i = filteredMsgs.length - 1; i >= 0 && out.length < 12; i -= 1) {
+      const message = filteredMsgs[i] as { id?: string; attachment_url?: string | null };
+      const url = message.attachment_url;
+      if (!url || seen.has(url) || String(message.id ?? "").startsWith("pending-")) continue;
+      seen.add(url);
+      out.push({ id: String(message.id ?? url), url });
+    }
+    return out;
+  }, [filteredMsgs]);
+
+  /** Re-attach a photo from the library: it becomes the same pending image the
+   *  picker would have handed to the composer. */
+  const pickRecentPhoto = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("missing");
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("not an image");
+      const extension = (blob.type.split("/")[1] ?? "jpg").split("+")[0];
+      chooseImage(new File([blob], `photo.${extension}`, { type: blob.type }));
+    } catch {
+      toast.error("Couldn't open that photo.");
+    }
+  };
 
   /** A quoted original may be outside the loaded window; load it, then jump. */
   const jumpToReply = async (messageId: string) => {
@@ -2442,6 +2474,18 @@ function DMPage() {
             event.currentTarget.value = "";
           }}
         />
+        {/* The same picker reached through the device's file browser: on a
+            phone the photo library and the Files app are different places. */}
+        <input
+          ref={filesInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            chooseImage(event.target.files?.[0] ?? null);
+            event.currentTarget.value = "";
+          }}
+        />
 
         <MessageComposer
           value={body}
@@ -2480,7 +2524,7 @@ function DMPage() {
               actions={[
                 {
                   id: "photo",
-                  label: "Photo",
+                  label: "Photos",
                   hint: "Your library",
                   icon: ImagePlus,
                   onSelect: () => imageInputRef.current?.click(),
@@ -2493,6 +2537,13 @@ function DMPage() {
                   onSelect: () => cameraInputRef.current?.click(),
                 },
                 {
+                  id: "files",
+                  label: "Files",
+                  hint: "Browse device",
+                  icon: Folder,
+                  onSelect: () => filesInputRef.current?.click(),
+                },
+                {
                   id: "schedule",
                   label: "Schedule",
                   hint: "Send in 10 seconds",
@@ -2501,6 +2552,8 @@ function DMPage() {
                   disabled: !body.trim(),
                 },
               ]}
+              photos={recentPhotos}
+              onPickPhoto={(url) => void pickRecentPhoto(url)}
             />
           }
           above={
