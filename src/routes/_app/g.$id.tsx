@@ -778,6 +778,7 @@ function GroupRoom() {
                     ]}
                   >
                     <div
+                      data-mine={mine ? "true" : "false"}
                       className={`realm-message__body select-none touch-manipulation ${
                         m.delivery_status ? "opacity-55" : ""
                       }`}

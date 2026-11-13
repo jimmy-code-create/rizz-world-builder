@@ -200,7 +200,10 @@ export function MessageComposer({
         // Solid, not blurred: one opaque bar is cheaper to composite on a phone
         // than a stack of translucent bars, and it cannot double up with a
         // screen's own wrapper.
-        "relative z-20 shrink-0 border-t border-[#1c1c1c] bg-[#0a0a0a] px-2.5 pt-1.5",
+        "relative z-20 shrink-0 border-t border-[var(--surface-line)] bg-surface-1 px-2.5 pt-1.5",
+        // A soft lift instead of a hard rule: the bar reads as a layer above
+        // the transcript even when the field is empty.
+        "shadow-[0_-8px_24px_-20px_rgb(0_0_0/_0.9)]",
         "pb-[max(env(safe-area-inset-bottom,0px),0.375rem)]",
       )}
     >
@@ -210,7 +213,7 @@ export function MessageComposer({
         {reply ? (
           // 40px strip: a lime bar, the target of the reply, and one line of
           // the message. The whole middle is a jump link on replies.
-          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-white/10 bg-[#0f0f0f]">
+          <div className="chat-reply-strip mb-1.5 flex h-9 items-stretch overflow-hidden rounded-lg border border-[var(--surface-line)] bg-surface-3">
             <span className="w-[3px] shrink-0 bg-primary" aria-hidden="true" />
             <button
               type="button"
@@ -250,8 +253,8 @@ export function MessageComposer({
               "relative flex min-w-0 flex-1 items-center rounded-[20px] border transition-colors duration-150",
               "motion-reduce:transition-none",
               disabled
-                ? "border-white/[0.08] bg-[#0d0d0d]"
-                : "border-white/[0.14] bg-[#121212] focus-within:border-white/25",
+                ? "border-[var(--surface-line)] bg-surface-1"
+                : "border-[var(--surface-line)] bg-surface-2 focus-within:border-[var(--surface-line-strong)]",
             )}
             style={{ minHeight: 40 }}
           >

@@ -55,7 +55,8 @@ await check("one compact composer bar, not a stack of bars", () => {
     );
   }
   assert.ok(composer.includes("minHeight: 40"), "the composer is not compact");
-  assert.ok(composer.includes("bg-[#0a0a0a]"), "the composer is not a solid bar");
+  assert.ok(composer.includes("bg-surface-1"), "the composer bar is not on the surface scale");
+  assert.ok(composer.includes("bg-surface-2"), "the field is not a raised pill");
 });
 
 await check("smiley opens the full picker and cat opens only cats", () => {

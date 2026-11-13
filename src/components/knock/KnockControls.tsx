@@ -208,7 +208,7 @@ export function KnockButton({
         description={mood.detail}
       >
         <div className="space-y-4">
-          <div className="relative overflow-hidden rounded-3xl border border-[var(--brand-line,rgba(244,241,231,0.13))] bg-[var(--brand-ink-3,#1c1c1f)] px-4 pb-4 pt-5 text-center">
+          <div className="relative overflow-hidden rounded-3xl border border-[var(--surface-line)] bg-surface-2 px-4 pb-4 pt-5 text-center shadow-[var(--surface-shadow)]">
             <span
               className="relative mx-auto grid h-20 w-20 place-items-center rounded-full"
               style={{
